@@ -131,9 +131,6 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
       "arangodb_replication_initial_remove_apply_time_total",
       "arangodb_replication_initial_remove_apply_time");
     nameVersionTable.try_emplace(
-      "arangodb_replication_initial_lookup_time_total",
-      "arangodb_replication_initial_lookup_time");
-    nameVersionTable.try_emplace(
       "arangodb_replication_tailing_requests_total",
       "arangodb_replication_tailing_requests");
     nameVersionTable.try_emplace(

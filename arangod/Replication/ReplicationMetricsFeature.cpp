@@ -61,8 +61,6 @@ DECLARE_COUNTER(arangodb_replication_initial_insert_apply_time_total,
                 "Time needed to apply replication initial sync insertions [ms]");
 DECLARE_COUNTER(arangodb_replication_initial_remove_apply_time_total,
                 "Time needed to apply replication initial sync removals [ms]");
-DECLARE_COUNTER(arangodb_replication_initial_lookup_time_total,
-                "Time needed for replication initial sync key lookups [ms]");
 DECLARE_COUNTER(arangodb_replication_tailing_requests_total,
                 "Number of replication tailing requests");
 DECLARE_COUNTER(arangodb_replication_tailing_follow_tick_failures_total,
@@ -122,8 +120,6 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
           arangodb_replication_initial_insert_apply_time_total{})),
       _waitedForSyncRemovals(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_initial_remove_apply_time_total{})),
-      _waitedForSyncKeyLookups(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_replication_initial_lookup_time_total{})),
       _numTailingRequests(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_tailing_requests_total{})),
       _numTailingFollowTickNotPresent(
@@ -178,7 +174,6 @@ void ReplicationMetricsFeature::InitialSyncStats::publish() {
   feature._waitedForSyncDocs += static_cast<uint64_t>(waitedForDocs * 1000);
   feature._waitedForSyncInsertions += static_cast<uint64_t>(waitedForInsertions * 1000);
   feature._waitedForSyncRemovals += static_cast<uint64_t>(waitedForRemovals * 1000);
-  feature._waitedForSyncKeyLookups += static_cast<uint64_t>(waitedForKeyLookups * 1000);
 
   reset();
 }
@@ -202,7 +197,6 @@ void ReplicationMetricsFeature::InitialSyncStats::reset() noexcept {
   waitedForDocs = 0.0;
   waitedForInsertions = 0.0;
   waitedForRemovals = 0.0;
-  waitedForKeyLookups = 0.0;
 }
 
 ReplicationMetricsFeature::InitialSyncStats& ReplicationMetricsFeature::InitialSyncStats::operator+=(ReplicationMetricsFeature::InitialSyncStats const& other) noexcept {
@@ -224,7 +218,6 @@ ReplicationMetricsFeature::InitialSyncStats& ReplicationMetricsFeature::InitialS
   waitedForDocs += other.waitedForDocs;
   waitedForInsertions += other.waitedForInsertions;
   waitedForRemovals += other.waitedForRemovals;
-  waitedForKeyLookups += other.waitedForKeyLookups;
 
   return *this;
 }

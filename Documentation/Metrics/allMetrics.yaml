@@ -4,10 +4,16 @@
 
     append operations resulting from `AppendEntriesRPC` requests.
 
+    Every event contributes a measurement to the histogram, which
+
+    also exposes the number of events and the total sum of all
+
+    measurements.
+
     '
   exposedBy:
   - agent
-  help: 'Agency RAFT follower append histogram.
+  help: 'Agency RAFT follower append time histogram
 
     '
   introducedIn: '3.7'
@@ -2465,12 +2471,42 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Accumulated wait time for replication key chunks determination requests.
+  description: 'This counter exhibits the accumulated wait time for replication key
+
+    chunks determination requests, in milliseconds. This is part of the
+
+    older (pre 3.8) initial replication protocol, which might still be used
+
+    in 3.8 for collections which have been created by older versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates the time used for the initial step of getting
+
+    the checksums for the key chunks.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated wait time for replication key chunks determination requests.
+  help: 'Accumulated wait time for replication key chunks determination requests
 
     '
   introducedIn: '3.8'
@@ -2479,12 +2515,44 @@
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Accumulated time needed to apply replication docs data.
+  description: 'This counter exhibits the accumulated wait time for requesting actual
+
+    documents for the initial replication, in milliseconds. This is part
+
+    of the older (pre 3.8) initial replication protocol, which might
+
+    still be used in 3.8 for collections which have been created by older
+
+    versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates the time used for the final step of actually
+
+    getting the needed documents.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated time needed to apply replication docs data.
+  help: 'Accumulated time needed to request replication docs data
 
     '
   introducedIn: '3.8'
@@ -2495,10 +2563,44 @@
   complexity: medium
   description: 'Accumulated time needed to apply replication initial sync insertions.
 
+    This counter exhibits the accumulated wait time for actually inserting
+
+    documents for the initial synchronization, in milliseconds. This is
+
+    part of the older (pre 3.8) initial replication protocol, which might
+
+    still be used in 3.8 for collections which have been created by older
+
+    versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates the time used for the actual insertion of
+
+    replicated documents on the follower.
+
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated time needed to apply replication initial sync insertions.
+  help: 'Accumulated time needed to apply replication initial sync insertions
 
     '
   introducedIn: '3.8'
@@ -2507,12 +2609,42 @@
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Accumulated wait time for replication keys requests.
+  description: 'This counter exhibits the accumulated wait time for fetching key
+
+    lists for a chunk, in milliseconds. This is part of the
+
+    older (pre 3.8) initial replication protocol, which might still be used
+
+    in 3.8 for collections which have been created by older versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates the time used for the second step of getting
+
+    lists of key/revision pairs for each chunk.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated wait time for replication keys requests.
+  help: 'Accumulated wait time for replication keys requests
 
     '
   introducedIn: '3.8'
@@ -2521,26 +2653,44 @@
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Accumulated time needed for replication initial sync key lookups.
+  description: 'This counter exhibits the accumulated wait time for removing local
+
+    documents during initial synchronization of a shard on the follower,
+
+    in milliseconds. This is part of the older (pre 3.8) initial
+
+    replication protocol, which might still be used in 3.8 for collections
+
+    which have been created by older versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates the time used for the intermediate step of
+
+    removing unneeded documents on the follower.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated time needed for replication initial sync key lookups.
-
-    '
-  introducedIn: '3.8'
-  name: arangodb_replication_initial_lookup_time_total
-  type: counter
-  unit: ms
-- category: Replication
-  complexity: medium
-  description: 'Accumulated time needed to apply replication initial sync removals.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated time needed to apply replication initial sync removals.
+  help: 'Accumulated time needed to apply replication initial sync removals
 
     '
   introducedIn: '3.8'
@@ -2549,26 +2699,84 @@
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Accumulated time needed to apply replication initial sync removals:
+  description: 'This counter exhibits the accumulated number of bytes received
+
+    for initial synchronization of shards. This is part of the
+
+    older (pre 3.8) initial replication protocol, which might still be used
+
+    in 3.8 for collections which have been created by older versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates number of bytes received for all three steps.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated time needed to apply replication initial sync removals:
+  help: 'Accumulated amount of bytes received in initial sync
 
     '
   introducedIn: '3.8'
-  name: arangodb_replication_initial_remove_apply_time_total
+  name: arangodb_replication_initial_sync_bytes_received_total
   type: counter
-  unit: ms
+  unit: bytes
 - category: Replication
   complexity: medium
-  description: 'Number of documents inserted by replication initial sync.
+  description: 'This counter exhibits the total number of documents inserted on the
+
+    follower during initial synchronization of shards. This is part of the
+
+    older (pre 3.8) initial replication protocol, which might still be
+
+    used in 3.8 for collections which have been created by older versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates the total number of documents inserted in the
+
+    third step.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of documents inserted by replication initial sync.
+  help: 'Number of documents inserted by replication initial sync
 
     '
   introducedIn: '3.8'
@@ -2577,12 +2785,42 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of documents removed by replication initial sync.
+  description: 'This counter exhibits the total number of documents removed on the
+
+    follower during initial synchronization of shards. This is part of the
+
+    older (pre 3.8) initial replication protocol, which might still be
+
+    used in 3.8 for collections which have been created by older versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates the total number of documents removed in the
+
+    third step.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of documents removed by replication initial sync.
+  help: 'Number of documents removed by replication initial sync
 
     '
   introducedIn: '3.8'
@@ -2591,12 +2829,44 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of documents requested by replication initial sync.
+  description: 'This counter exhibits the total number of documents fetched on the
+
+    follower from the leader during initial synchronization of shards.
+
+    This is part of the older (pre 3.8) initial replication protocol,
+
+    which might still be used in 3.8 for collections which have been
+
+    created by older versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates the total number of documents fetched from the
+
+    leader in the third step.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of documents requested by replication initial sync.
+  help: 'Number of documents requested by replication initial sync
 
     '
   introducedIn: '3.8'
@@ -2605,12 +2875,44 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of replication initial sync docs requests.
+  description: 'This counter exhibits the total number of times documents have been
+
+    fetched on the follower from the leader during initial synchronization
+
+    of shards. This is part of the older (pre 3.8) initial replication
+
+    protocol, which might still be used in 3.8 for collections which have
+
+    been created by older versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric accumulates the total number of times documents have been
+
+    fetched from the leader in the third step.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of replication initial sync docs requests.
+  help: 'Number of replication initial sync docs requests
 
     '
   introducedIn: '3.8'
@@ -2619,12 +2921,42 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of replication initial sync keys requests.
+  description: 'This counter exhibits the accumulated number of keys requests for
+
+    initial synchronization of shards. This is part of the
+
+    older (pre 3.8) initial replication protocol, which might still be used
+
+    in 3.8 for collections which have been created by older versions.
+
+
+    In this older protocol, the follower first fetches an overview over
+
+    a shard from the leader. This does a full collection scan and
+
+    divides the primary keys in the collection into equal sized chunks.
+
+    Then, a checksum for each chunk is returned. The same is then done
+
+    on the follower and the checksums are compared, chunk by chunk. For
+
+    each chunk, for which the checksums do not match, the list of keys and
+
+    revisions is fetched from the leader. This then enables the follower
+
+    to fetch the actually needed documents and remove superfluous ones
+
+    locally.
+
+
+    This metric counts the number of times the follower fetches a list of
+
+    keys for some chunk.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of replication initial sync keys requests.
+  help: 'Number of replication initial sync keys requests
 
     '
   introducedIn: '3.8'
@@ -2825,32 +3157,102 @@
   unit: number
 - category: RocksDB
   complexity: simple
-  description: 'Number of times RocksDB has entered a stalled (slowed) write state.
+  description: 'This counter reflects the number of times RocksDB was observed by
+
+    ArangoDB to have entered a stalled (slowed) write state.
+
+
+    If the RocksDB background threads which do cleanup and compaction
+
+    cannot keep up with the writing, then RocksDB first throttles its
+
+    write rate ("write stall") and later stops the writing entirely
+
+    ("write stop"). Both are suboptimal, since the write rate is too high.
 
     '
   exposedBy:
   - dbserver
   - agent
-  help: 'Number of times RocksDB has entered a stalled (slowed) write state.
+  - single
+  help: 'Number of times RocksDB has entered a stalled (slowed) write state
 
     '
   introducedIn: '3.8'
   name: arangodb_rocksdb_write_stalls_total
+  threshold: 'If this number grows, you are probably writing faster to ArangoDB than
+
+    RocksDB can keep up with its background processing. This is OK for
+
+    a while, but might eventually lead to actual write stops, which are
+
+    bad since they can lead to unavailability.
+
+    '
+  troubleshoot: 'Quite often, RocksDB is limited by the available I/O bandwidth. Sometimes,
+
+    it is not the bandwidth itself, but the number of I/O operations per
+
+    second (IOPS) which is limited. If you are in a cloud environment,
+
+    IOPS are often scarce (or expensive) and you might be able to
+
+    deploy more.
+
+    '
   type: counter
   unit: number
 - category: RocksDB
   complexity: simple
-  description: 'Number of times RocksDB has entered a stopped write state.
+  description: 'This counter reflects the number of times RocksDB was observed by
+
+    ArangoDB to have entered a stopped write state.
+
+
+    If the RocksDB background threads which do cleanup and compaction
+
+    cannot keep up with the writing, then RocksDB first throttles its
+
+    write rate ("write stall") and later stops the writing entirely
+
+    ("write stop"). Both are suboptimal, since the write rate is too high,
+
+    but write stops are considerably worse, since they can lead to service
+
+    unavailability.
 
     '
   exposedBy:
   - dbserver
   - agent
-  help: 'Number of times RocksDB has entered a stopped write state.
+  - single
+  help: 'Number of times RocksDB has entered a stopped write state
 
     '
   introducedIn: '3.8'
   name: arangodb_rocksdb_write_stops_total
+  threshold: 'If this number grows, you are probably writing a lot faster to
+
+    ArangoDB than RocksDB can keep up with its background processing.
+
+    This has lead to actual write stops, which are bad since they can lead
+
+    to unavailability. If you see this number grow, you need to act,
+
+    if in doubt, contact ArangoDB support.
+
+    '
+  troubleshoot: 'Quite often, RocksDB is limited by the available I/O bandwidth. Sometimes,
+
+    it is not the bandwidth itself, but the number of I/O operations per
+
+    second (IOPS) which is limited. If you are in a cloud environment,
+
+    IOPS are often scarce (or expensive) and you might be able to
+
+    deploy more.
+
+    '
   type: counter
   unit: number
 - category: Scheduler
