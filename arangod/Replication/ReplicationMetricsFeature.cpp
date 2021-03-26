@@ -38,7 +38,7 @@ DECLARE_COUNTER(arangodb_replication_dump_documents_total,
 DECLARE_COUNTER(arangodb_replication_dump_request_time_total,
                 "Wait time for replication requests [ms]");
 DECLARE_COUNTER(arangodb_replication_dump_apply_time_total,
-                "Accumulated time needed to apply replication dump data [ms]");
+                "Accumulated time needed to apply asynchronously replicated data on initial synchronization of shards. [ms]");
 DECLARE_COUNTER(arangodb_replication_initial_sync_keys_requests_total,
                 "Number of replication initial sync keys requests");
 DECLARE_COUNTER(arangodb_replication_initial_sync_docs_requests_total,
