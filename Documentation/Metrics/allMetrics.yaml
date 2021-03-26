@@ -3367,7 +3367,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of V8 contexts currently alive.
+  description: 'Number of V8 contexts currently alive. Normally, only coordinators
+    and
+
+    single servers should have V8 contexts, for dbservers and agents the
+
+    value is always zero.
 
     '
   exposedBy:
@@ -3380,11 +3385,28 @@
     '
   introducedIn: '3.6'
   name: arangodb_v8_context_alive
+  threshold: 'If this number is close to the maximum allowed number of V8 contexts,
+
+    there might be a shortage. This can delay Foxx queries and AQL
+
+    user defined functions. On the other hand, V8 contexts can use
+
+    quite a lot of memory, so one should not have too many if RAM
+
+    is scarce.
+
+    '
   type: gauge
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of V8 contexts currently busy.
+  description: 'Number of V8 contexts currently busy, that means, they are currently
+
+    working on some JavaScript task. Normally, only coordinators and
+
+    single servers should have V8 contexts, for dbservers and agents the
+
+    value is always zero.
 
     '
   exposedBy:
@@ -3397,17 +3419,37 @@
     '
   introducedIn: '3.6'
   name: arangodb_v8_context_busy
+  threshold: 'If this number is close to the maximum allowed number of V8 contexts,
+
+    there might be a shortage. This can delay Foxx queries and AQL
+
+    user defined functions. On the other hand, V8 contexts can use
+
+    quite a lot of memory, so one should not have too many if RAM
+
+    is scarce.
+
+    '
   type: gauge
   unit: number
 - category: V8
   complexity: simple
-  description: 'Total number of V8 contexts ever created.
+  description: 'This counter reflects the total number of V8 contexts ever created.
+    It is
+
+    OK if this number keeps growing since the V8 contexts are created and
+
+    destroyed as needed. In rare cases a high fluctuation can indicate
+
+    some unfortunate usage pattern.
 
     '
   exposedBy:
   - coordinator
+  - dbserver
+  - agent
   - single
-  help: 'Total number of V8 contexts ever created.
+  help: 'Total number of V8 contexts ever created
 
     '
   introducedIn: '3.6'
@@ -3416,13 +3458,21 @@
   unit: number
 - category: V8
   complexity: medium
-  description: 'Accumulated total time for creating V8 contexts.
+  description: 'This counter reflects the accumulated total time for creating V8
+
+    contexts, in milliseconds. It is OK if this number keeps growing since
+
+    the V8 contexts are created and destroyed as needed. In rare cases a
+
+    high fluctuation can indicate some unfortunate usage pattern.
 
     '
   exposedBy:
   - coordinator
+  - dbserver
+  - agent
   - single
-  help: 'Accumulated total time for creating V8 contexts.
+  help: 'Accumulated total time for creating V8 contexts
 
     '
   introducedIn: '3.8'
@@ -3431,13 +3481,21 @@
   unit: ms
 - category: V8
   complexity: medium
-  description: 'Total number of V8 contexts ever destroyed.
+  description: 'This counter reflects the total number of V8 contexts ever destroyed.
+
+    It is OK if this number keeps growing since the V8 contexts are
+
+    created and destroyed as needed. In rare cases a high fluctuation can
+
+    indicate some unfortunate usage pattern.
 
     '
   exposedBy:
   - coordinator
+  - dbserver
+  - agent
   - single
-  help: 'Total number of V8 contexts ever destroyed.
+  help: 'Total number of V8 contexts ever destroyed
 
     '
   introducedIn: '3.6'
@@ -3446,7 +3504,11 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of V8 contexts currently dirty.
+  description: 'This gauge reflects the number of V8 contexts that are currently dirty.
+
+    A V8 context is dirty, if it has executed JavaScript for some time and
+
+    is due for a garbage collection.
 
     '
   exposedBy:
@@ -3463,30 +3525,55 @@
   unit: number
 - category: V8
   complexity: simple
-  description: 'Total number of V8 context enter failures.
+  description: 'Total number of V8 context enter failures. A context receives a context
+
+    enter event every time it begins to execute some JavaScript. If no
+
+    context is available at such a time the system waits for 60s for a
+
+    context to become free. If this does not happen within the 60s, the
+
+    context enter event fails, a warning is logged and this counter is
+
+    increased by one.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Total number of V8 context enter failures.
+  - single
+  help: 'Total number of V8 context enter failures
 
     '
   introducedIn: '3.6'
   name: arangodb_v8_context_enter_failures_total
+  threshold: 'If you see V8 context enter failures, then you do not have enough
+
+    V8 contexts or the server is overloaded by JavaScript tasks. If some
+
+    JavaScript code blocks V8 contexts for too long, the free V8 contexts
+
+    can run out and these failures begin to happen.
+
+    '
   type: counter
   unit: number
 - category: V8
   complexity: simple
-  description: 'Total number of V8 context enter events.
+  description: 'Total number of V8 context enter events. A context receives a context
+
+    enter event every time it begins to execute some JavaScript. This number
+
+    is a rough estimate as to how much JavaScript the server executes.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Total number of V8 context enter events.
+  - single
+  help: 'Total number of V8 context enter events
 
     '
   introducedIn: '3.6'
@@ -3495,14 +3582,19 @@
   unit: number
 - category: V8
   complexity: simple
-  description: 'Total number of V8 context exit events.
+  description: 'This counter reflects the total number of V8 context exit events.
+
+    A context receives a context exit event every time it finishes to
+
+    execute some JavaScript.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Total number of V8 context exit events.
+  - single
+  help: 'Total number of V8 context exit events
 
     '
   introducedIn: '3.6'
@@ -3511,7 +3603,9 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of V8 contexts currently free.
+  description: 'This gauge reflects the number of V8 contexts that are currently free.
+
+    If this number drops to 0 there might be a shortage of V8 contexts.
 
     '
   exposedBy:
@@ -3528,7 +3622,11 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Maximum number of concurrent V8 contexts.
+  description: 'This is the maximum number of concurrent V8 contexts. This is limited
+
+    by a server option, since V8 contexts can use a lot of RAM. V8 contexts
+
+    are created and destroyed as needed up to the limit shown in this metric.
 
     '
   exposedBy:
@@ -3545,7 +3643,11 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Minimum number of concurrent V8 contexts.
+  description: 'This is the minimum number of concurrent V8 contexts. This is limited
+
+    by a server option. V8 contexts are created and destroyed as needed
+
+    but there are never fewer than the limit shown in this metric.
 
     '
   exposedBy:
