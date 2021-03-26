@@ -10,7 +10,7 @@ exposedBy:
   - dbserver
 description:
   The accumulated time needed to locally process the continuous
-  replication log on a Follower received from a replication
+  replication log on a follower received from a replication
   Leader.
 throubleshoot:
   If you see unusual spikes here, the follower might not have enough
