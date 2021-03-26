@@ -5,11 +5,11 @@
     append operations resulting from `AppendEntriesRPC` requests.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency RAFT follower append histogram.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_append_hist_total
   threshold: 'Normally these times should be clearly sub-second.
 
@@ -38,13 +38,11 @@
     in "active failover" deployment mode.
 
 '
-  exposedBy:
-  - dbserver
-  - coordinator
-  - single
+  exposedBy: [dbserver, coordinator, single]
   help: 'Current number of entries in agency cache callbacks table.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_cache_callback_number
   threshold: 'This number will usually be very low, something like 2 or 3.
 
@@ -62,13 +60,11 @@
     including agency cache callbacks.\nThis metric was named `arangodb_agency_callback_count`
     in previous versions \nof ArangoDB.\nNote that on single servers this metrics
     will only have a non-zero value\nin \"active failover\" deployment mode.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - single
+  exposedBy: [coordinator, dbserver, single]
   help: 'Current number of agency callbacks registered.
 
 '
+  introducedIn: '3.6'
   name: arangodb_agency_callback_number
   threshold: 'This number will usually be very low, something like 2 or 3.
 
@@ -85,13 +81,11 @@
   description: "This metric was named `arangodb_agency_callback_registered` in previous
     versions \nof ArangoDB.\nNote that on single servers this metrics will only have
     a non-zero value\nin \"active failover\" deployment mode.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - single
+  exposedBy: [coordinator, dbserver, single]
   help: 'Total number of agency callbacks ever registered.
 
 '
+  introducedIn: '3.8'
   name: arangodb_agency_callback_registered_total
   type: counter
   unit: number
@@ -100,50 +94,62 @@
   description: "Current number of entries in agency client id lookup table.\nThe lookup
     table is used internally for agency inquire operations\nand should be compacted
     at the same time when the agency's in-memory\nlog is compacted. \n"
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Current number of entries in agency client id lookup table.
 
 '
+  introducedIn: '3.6'
   name: arangodb_agency_client_lookup_table_size
   type: gauge
   unit: number
 - category: Agency
   complexity: medium
-  description: 'Agency RAFT commit time histogram.
+  description: 'Agency RAFT commit time histogram. Provides a distribution
+
+    of commit times for all agency write operations.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency RAFT commit histogram.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_commit_hist
   type: histogram
   unit: ms
 - category: Agency
   complexity: medium
-  description: 'Agency compaction time histogram.
+  description: 'Agency compaction time histogram. Provides a distribution
+
+    of agency compaction run times. Compactions are triggered after
+
+    `--agency.compaction-keep-size` entries have accumulated in the
+
+    RAFT log.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency compaction time histogram.
 
 '
+  introducedIn: '3.6'
   name: arangodb_agency_compaction_hist
+  troubleshoot: 'If compaction takes too long, it may be useful to reduce the number
+
+    of log entries to keep in `--agency.compaction-keep-size`.
+
+'
   type: histogram
   unit: ms
 - category: Agency
   complexity: simple
-  description: 'This agent''s commit index.
-
-'
-  exposedBy:
-  - agent
+  description: "This agent's commit index (i.e. the index until it has advanced in
+    \nthe agency's RAFT protocol).\n"
+  exposedBy: [agent]
   help: 'This agent''s commit index.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_local_commit_index
   type: gauge
   unit: number
@@ -162,11 +168,11 @@
     ` --agency.compaction-keep-size`.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency replicated log size.
 
 '
+  introducedIn: '3.6'
   name: arangodb_agency_log_size_bytes
   type: gauge
   unit: bytes
@@ -175,11 +181,11 @@
   description: 'Agency read with no leader.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency read no leader.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_read_no_leader_total
   threshold: 'This should normally not happen. If it happens regularly, the agency
 
@@ -200,11 +206,11 @@
   description: 'Number of agency read operations which went ok.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency read ok.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_read_ok_total
   type: counter
   unit: number
@@ -213,11 +219,11 @@
   description: 'Counter for FailedServer jobs.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Counter for FailedServer jobs.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_supervision_failed_server_total
   threshold: 'Many FailedServer jobs indicate frequent failures of dbservers. This
 
@@ -237,11 +243,11 @@
   description: 'Agency Supervision runtime histogram.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency Supervision runtime histogram.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_supervision_runtime_msec
   threshold: 'The supervision runtime goes up linearly with the number of collections
 
@@ -255,11 +261,11 @@
   description: 'Agency supervision wait for replication time.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency supervision wait for replication time.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_supervision_runtime_wait_for_replication_msec
   type: histogram
   unit: ms
@@ -268,11 +274,11 @@
   description: 'Agency''s term.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency''s term.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_term
   threshold: 'This number should usually not grow. If it does, the agency is doing
 
@@ -293,11 +299,11 @@
   description: 'Agency write time histogram.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency write time histogram.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_write_hist
   type: histogram
   unit: ms
@@ -306,11 +312,11 @@
   description: 'Agency write operations with no leader.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency write operations with no leader.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_write_no_leader_total
   type: counter
   unit: number
@@ -319,11 +325,11 @@
   description: 'Agency write operations which went ok.
 
 '
-  exposedBy:
-  - agent
+  exposedBy: [agent]
   help: 'Agency write operations which went ok.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agency_write_ok_total
   type: counter
   unit: number
@@ -332,12 +338,11 @@
   description: 'This histogram shows how long requests to the agency took.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
+  exposedBy: [coordinator, dbserver]
   help: 'Request time for Agency requests.
 
 '
+  introducedIn: '3.7'
   name: arangodb_agencycomm_request_time_msec
   threshold: "Usually, such requests should be relatively quick, mostly clearly\nsub-second.
     \n"
@@ -357,14 +362,11 @@
     versions of ArangoDB.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total number of AQL queries finished.
 
 '
+  introducedIn: '3.6'
   name: arangodb_aql_all_query_total
   type: counter
   unit: number
@@ -373,14 +375,11 @@
   description: 'Current number of AQL queries executing.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Current number of AQL queries executing.
 
 '
+  introducedIn: '3.8'
   name: arangodb_aql_current_query
   type: gauge
   unit: number
@@ -395,14 +394,11 @@
     the `--query.global-memory-limit` startup option.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total memory limit for all AQL queries combined.
 
 '
+  introducedIn: '3.8'
   name: arangodb_aql_global_memory_limit
   type: gauge
   unit: bytes
@@ -414,15 +410,12 @@
     startup option. \nIf the startup option has a value of `0`, then no global memory
     limit\nwill be enforced. If the startup option has a non-zero value, queries\nwill
     be aborted once the total query memory usage goes above the configured\nlimit.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total memory usage of all AQL queries executing; granularity: 32768 bytes
     steps.
 
 '
+  introducedIn: '3.8'
   name: arangodb_aql_global_memory_usage
   type: gauge
   unit: bytes
@@ -433,14 +426,11 @@
     The histogram includes all slow queries.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Execution time histogram for all AQL queries.
 
 '
+  introducedIn: '3.6'
   name: arangodb_aql_query_time
   type: histogram
   unit: s
@@ -455,14 +445,11 @@
     or `--query.slow-streaming-threshold`, resp.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Execution time histogram for slow AQL queries.
 
 '
+  introducedIn: '3.6'
   name: arangodb_aql_slow_query_time
   type: histogram
   unit: s
@@ -473,14 +460,11 @@
     including all slow queries.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total execution time of all AQL queries.
 
 '
+  introducedIn: '3.6'
   name: arangodb_aql_total_query_time_msec_total
   type: counter
   unit: ms
@@ -489,14 +473,11 @@
   description: 'Bytes received for a request.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Bytes received for a request
 
 '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_bytes_received
   type: histogram
   unit: bytes
@@ -505,14 +486,11 @@
   description: 'Bytes sent for a request.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Bytes sent for a request
 
 '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_bytes_sent
   type: histogram
   unit: bytes
@@ -521,14 +499,11 @@
   description: 'The number of client connections that are currently open.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'The number of client connections that are currently open
 
 '
+  introducedIn: '3.6'
   name: arangodb_client_connection_statistics_client_connections
   type: gauge
   unit: number
@@ -537,14 +512,11 @@
   description: 'Total connection time of a client.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total connection time of a client
 
 '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_connection_time
   type: histogram
   unit: s
@@ -553,14 +525,11 @@
   description: 'I/O time needed to answer a request.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'I/O time needed to answer a request
 
 '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_io_time
   type: histogram
   unit: number
@@ -569,14 +538,11 @@
   description: 'Queueing time needed for requests.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Queueing time needed for requests
 
 '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_queue_time
   type: histogram
   unit: s
@@ -585,14 +551,11 @@
   description: 'Request time needed to answer a request.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Request time needed to answer a request
 
 '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_request_time
   type: histogram
   unit: s
@@ -601,14 +564,11 @@
   description: 'Total time needed to answer a request.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total time needed to answer a request
 
 '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_total_time
   type: histogram
   unit: s
@@ -617,13 +577,11 @@
   description: "Total amount of time it took to acquire collection/shard locks for\nwrite
     operations, summed up for all collections/shards. Will not be increased \nfor
     any read operations.\nThe value is measured in microseconds.\n"
-  exposedBy:
-  - dbserver
-  - agent
-  - single
+  exposedBy: [dbserver, agent, single]
   help: 'Total amount of collection lock acquisition time.
 
 '
+  introducedIn: '3.6'
   name: arangodb_collection_lock_acquisition_micros_total
   troubleshoot: "In case this value is considered too high, check if there are AQL
     queries\nor transactions that use exclusive locks on collections, and try to reduce
@@ -641,13 +599,11 @@
     The values here are measured in seconds.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
+  exposedBy: [dbserver, agent, single]
   help: 'Collection lock acquisition time histogram.
 
 '
+  introducedIn: '3.6'
   name: arangodb_collection_lock_acquisition_time
   troubleshoot: "In case these values are considered too high, check if there are
     AQL queries\nor transactions that use exclusive locks on collections, and try
@@ -655,7 +611,7 @@
     temporarily, \nwhich will lead to an increase in lock acquisition times.\n"
   type: histogram
   unit: s
-- category: Transaction
+- category: Transactions
   complexity: advanced
   description: 'Number of transactions using sequential locking of collections to
     avoid deadlocking.
@@ -674,11 +630,11 @@
     sequential order. This will avoid deadlocks, but has a higher setup overhead.
 
 '
-  exposedBy:
-  - coordinator
+  exposedBy: [coordinator]
   help: 'Number of transactions using sequential locking of collections to avoid deadlocking.
 
 '
+  introducedIn: '3.7'
   name: arangodb_collection_lock_sequential_mode_total
   troubleshoot: "In case this value is increasing, check if there are AQL queries
     or transactions that \nuse exclusive locks on collections, and try to reduce them.
@@ -687,7 +643,7 @@
     run on multiple shards on different servers.\n"
   type: counter
   unit: number
-- category: Transaction
+- category: Transactions
   complexity: medium
   description: 'Number of timeouts when trying to acquire collection exclusive locks.
 
@@ -696,13 +652,11 @@
     cannot be acquired within the configured lock timeout.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
+  exposedBy: [dbserver, agent, single]
   help: 'Number of timeouts when trying to acquire collection exclusive locks.
 
 '
+  introducedIn: '3.6'
   name: arangodb_collection_lock_timeouts_exclusive_total
   troubleshoot: "In case this value is considered too high, check if there are AQL
     queries\nor transactions that use exclusive locks on collections, and try to reduce
@@ -711,20 +665,18 @@
     for the same locks.\n"
   type: counter
   unit: number
-- category: Transaction
+- category: Transactions
   complexity: medium
   description: "Number of timeouts when trying to acquire collection write locks.\nThis
     counter will be increased whenever a collection write lock\ncannot be acquired
     within the configured lock timeout. \nThis can only happen if writes on a collection
     are locked out by\nother operations on the collection that use an exclusive lock.
     Writes\nare not locked out by other, non-exclusively locked writes.\n"
-  exposedBy:
-  - dbserver
-  - agent
-  - single
+  exposedBy: [dbserver, agent, single]
   help: 'Number of timeouts when trying to acquire collection write locks.
 
 '
+  introducedIn: '3.6'
   name: arangodb_collection_lock_timeouts_write_total
   troubleshoot: "In case this value is considered too high, check if there are AQL
     queries\nor transactions that use exclusive locks on collections, and try to reduce
@@ -746,13 +698,11 @@
     line option `--server.export-read-write-metrics` is set to `true`.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
+  exposedBy: [dbserver, agent, single]
   help: 'Total time spent in collection truncate operations.
 
 '
+  introducedIn: '3.8'
   name: arangodb_collection_truncate_time
   type: histogram
   unit: s
@@ -765,11 +715,11 @@
     line option `--server.export-read-write-metrics` is set to `true`.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Total number of collection truncate operations by synchronous replication.
 
 '
+  introducedIn: '3.8'
   name: arangodb_collection_truncates_replication_total
   type: counter
   unit: number
@@ -782,13 +732,11 @@
     line option `--server.export-read-write-metrics` is set to `true`.
 
 '
-  exposedBy:
-  - agent
-  - dbserver
-  - single
+  exposedBy: [agent, dbserver, single]
   help: 'Total number of collection truncate operations (excl. synchronous replication).
 
 '
+  introducedIn: '3.8'
   name: arangodb_collection_truncates_total
   type: counter
   unit: number
@@ -803,12 +751,11 @@
     `ClusterComm`.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
+  exposedBy: [coordinator, dbserver]
   help: 'Total number of connections created for connection pool.
 
 '
+  introducedIn: '3.6'
   name: arangodb_connection_pool_connections_created_total
   type: counter
   unit: number
@@ -822,12 +769,11 @@
     cluster internal communication with label `ClusterComm`.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
+  exposedBy: [coordinator, dbserver]
   help: 'Current number of connections in pool.
 
 '
+  introducedIn: '3.6'
   name: arangodb_connection_connections_current
   type: gauge
   unit: number
@@ -841,12 +787,11 @@
     the other cluster internal communication with label `ClusterComm`.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
+  exposedBy: [coordinator, dbserver]
   help: 'Time to lease a connection from the connection pool.
 
 '
+  introducedIn: '3.6'
   name: arangodb_connection_pool_lease_time_hist
   type: histogram
   unit: ms
@@ -860,12 +805,11 @@
     cluster internal communication with label `ClusterComm`.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
+  exposedBy: [coordinator, dbserver]
   help: 'Total number of failed connection leases.
 
 '
+  introducedIn: '3.6'
   name: arangodb_connection_pool_leases_failed_total
   type: counter
   unit: number
@@ -880,12 +824,11 @@
     label `ClusterComm`.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
+  exposedBy: [coordinator, dbserver]
   help: 'Total number of successful connection leases from connection pool.
 
 '
+  introducedIn: '3.6'
   name: arangodb_connection_leases_successful_total
   type: counter
   unit: number
@@ -902,13 +845,11 @@
     to `true`.
 
 '
-  exposedBy:
-  - agent
-  - dbserver
-  - single
+  exposedBy: [agent, dbserver, single]
   help: 'Total time spent in document insert operations.
 
 '
+  introducedIn: '3.8'
   name: arangodb_document_insert_time
   type: histogram
   unit: s
@@ -922,13 +863,11 @@
     to `true`.
 
 '
-  exposedBy:
-  - dbserver
-  - single
-  - agent
+  exposedBy: [dbserver, single, agent]
   help: 'Total time spent in document read-by-primary-key operations.
 
 '
+  introducedIn: '3.8'
   name: arangodb_document_read_time
   type: histogram
   unit: s
@@ -945,13 +884,11 @@
     to `true`.
 
 '
-  exposedBy:
-  - agent
-  - dbserver
-  - single
+  exposedBy: [agent, dbserver, single]
   help: 'Total time spent in document remove operations.
 
 '
+  introducedIn: '3.8'
   name: arangodb_document_remove_time
   type: histogram
   unit: s
@@ -968,13 +905,11 @@
     to `true`.
 
 '
-  exposedBy:
-  - agent
-  - dbserver
-  - single
+  exposedBy: [agent, dbserver, single]
   help: 'Total time spent in document replace operations.
 
 '
+  introducedIn: '3.8'
   name: arangodb_document_replace_time
   type: histogram
   unit: s
@@ -991,13 +926,11 @@
     to `true`.
 
 '
-  exposedBy:
-  - agent
-  - dbserver
-  - single
+  exposedBy: [agent, dbserver, single]
   help: 'Total time spent in document update operations.
 
 '
+  introducedIn: '3.8'
   name: arangodb_document_update_time
   type: histogram
   unit: s
@@ -1008,11 +941,11 @@
     set to `true`.\nTotal number of document write operations (insert, update, replace,
     remove)\nexecuted by the synchronous replication on followers.\nThis metric is
     only present if the option `--server.export-read-write-metrics` \nis set to `true`.\n"
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Total number of document write operations by synchronous replication.
 
 '
+  introducedIn: '3.8'
   name: arangodb_document_writes_replication_total
   type: counter
   unit: number
@@ -1022,13 +955,11 @@
     remove) on\nleaders, excluding writes by the synchronous replication on followers.\nThis
     metric is only present if the option `--server.export-read-write-metrics` \nis
     set to `true`.\n"
-  exposedBy:
-  - agent
-  - dbserver
-  - single
+  exposedBy: [agent, dbserver, single]
   help: 'Total number of document write operations (excl. synchronous replication).
 
 '
+  introducedIn: '3.8'
   name: arangodb_document_writes_total
   type: counter
   unit: number
@@ -1039,11 +970,11 @@
     replication, and it would be unsafe in terms of data consistency \nto keep that
     follower.\nThis metric was named `arangodb_dropped_followers_count` in previous\nversions
     of ArangoDB.\n"
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of drop-follower events.
 
 '
+  introducedIn: '3.6'
   name: arangodb_dropped_followers_total
   threshold: 'Usually, drop-follower events should only happen if servers are
 
@@ -1056,13 +987,20 @@
   complexity: simple
   description: 'Total number of failed heartbeat transmissions.
 
+    Servers in a cluster periodically send their heartbeats to
+
+    the agency to report their own liveliness. This counter gets
+
+    increased whenever sending such a heartbeat fails. In the single
+
+    server, this counter is only used in active failover mode.
+
 '
-  exposedBy:
-  - coordinator
-  - dbserver
+  exposedBy: [coordinator, dbserver, single]
   help: 'Total number of failed heartbeat transmissions.
 
 '
+  introducedIn: '3.8'
   name: arangodb_heartbeat_failures_total
   threshold: 'It is a bad sign for health if heartbeat transmissions fail. This can
 
@@ -1082,14 +1020,21 @@
 
     sent the time is measured and an event is put into the histogram.
 
+    In the single server, this counter is only used in active failover mode.
+
 '
-  exposedBy:
-  - coordinator
-  - dbserver
+  exposedBy: [coordinator, dbserver, single]
   help: 'Time required to send a heartbeat.
 
 '
+  introducedIn: '3.8'
   name: arangodb_heartbeat_send_time_msec
+  threshold: "It is a bad sign for health if heartbeat transmissions are not fast.
+    \nIf there are heartbeats which frequently take longer than a few hundred\nmilliseconds,
+    or even seconds, this can eventually lead to failover actions \nwhich are ultimately
+    bad for the service.\n"
+  troubleshoot: "High heartbeat send times can be a sign of overload or of bad network
+    \nconnectivity. Potentially move the agent instances to separate machines.\n"
   type: histogram
   unit: ms
 - category: Statistics
@@ -1115,14 +1060,11 @@
     rate per second, averaged with a sliding window of a minute.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of asynchronously executed HTTP requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_async_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1141,14 +1083,11 @@
     when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
     it is usually visualized as a\nrate per second, averaged with a sliding window
     of a minute.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of HTTP DELETE requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_delete_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1167,14 +1106,11 @@
     process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
     usually visualized as a\nrate per second, averaged with a sliding window of a
     minute.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of HTTP GET requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_get_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1193,14 +1129,11 @@
     process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
     usually visualized as a\nrate per second, averaged with a sliding window of a
     minute.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of HTTP HEAD requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_head_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1219,14 +1152,11 @@
     when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
     it is usually visualized as a\nrate per second, averaged with a sliding window
     of a minute.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of HTTP OPTIONS requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_options_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1245,14 +1175,11 @@
     when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
     it is usually visualized as a\nrate per second, averaged with a sliding window
     of a minute.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of HTTP PATCH requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_patch_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1271,14 +1198,11 @@
     process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
     usually visualized as a\nrate per second, averaged with a sliding window of a
     minute.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of HTTP POST requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_post_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1297,14 +1221,11 @@
     process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
     usually visualized as a\nrate per second, averaged with a sliding window of a
     minute.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of HTTP PUT requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_put_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1335,14 +1256,11 @@
     rate per second, averaged with a sliding window of a minute.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of other HTTP requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_other_http_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1373,14 +1291,11 @@
     rate per second, averaged with a sliding window of a minute.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total number of HTTP requests executed by superuser/JWT
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_superuser_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1406,14 +1321,11 @@
     with a sliding window of a minute.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total number of HTTP requests
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_total_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1444,14 +1356,11 @@
     rate per second, averaged with a sliding window of a minute.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total number of HTTP requests executed by user clients
 
 '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_user_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1473,12 +1382,11 @@
     size of write operations after which an intermediate commit is triggered).\nThe
     values can also be overridden for individual transactions.\nThis metric was named
     `arangodb_intermediate_commits` in previous\nversions of ArangoDb.\n"
-  exposedBy:
-  - dbserver
-  - single
+  exposedBy: [dbserver, single]
   help: 'Number of intermediate commits performed in transactions.
 
 '
+  introducedIn: '3.6'
   name: arangodb_intermediate_commits_total
   troubeshoot: "If this value is non-zero, it doesn't necessarily indicate a problem.
     It can\nhappen for large transactions and large data-loading jobs. However, as
@@ -1492,30 +1400,58 @@
   unit: number
 - category: Maintenance
   complexity: medium
-  description: 'Histogram of `Current` loading runtimes.
-
-'
-  exposedBy:
-  - coordinator
-  - dbserver
+  description: "Histogram of `Current` loading runtimes, i.e. the runtimes\nof the
+    `ClusterInfo::loadCurrent` internal method. Provides a\ndistribution of all loading
+    times for the `Current`\nsection of the agency data. The `Current` section gets\nloaded
+    on server startup, and then gets reloaded on servers \nonly for any databases
+    in which there have been recent structural \nchanges (i.e. DDL changes).\n"
+  exposedBy: [coordinator, dbserver]
   help: '`Current` loading runtimes.
 
 '
+  introducedIn: '3.7'
   name: arangodb_load_current_runtime
+  troubleshoot: 'In case this histogram contains very high loading times, this
+
+    may be due to using many collections or many shards inside a
+
+    database for which there are often structural changes. It then
+
+    may make sense to reduce the number of collections or number
+
+    of shards. Note that this can have other effects, so it requires
+
+    an informed decision.
+
+'
   type: histogram
   unit: ms
 - category: Maintenance
   complexity: medium
-  description: 'Histogram of `Plan` loading runtimes.
-
-'
-  exposedBy:
-  - coordinator
-  - dbserver
+  description: "Histogram of `Plan` loading runtimes, i.e. the runtimes\nof the `ClusterInfo::loadPlan`
+    internal method. Provides a\ndistribution of all loading times for the `Plan`\nsection
+    of the agency data. The `Plan` section normally gets\nloaded on server startup,
+    and then gets reloaded on servers \nonly for any databases in which there have
+    been recent structural \nchanges (i.e. DDL changes).\n"
+  exposedBy: [coordinator, dbserver]
   help: '`Plan` loading runtimes.
 
 '
+  introducedIn: '3.7'
   name: arangodb_load_plan_runtime
+  troubleshoot: 'In case this histogram contains very high loading times, this
+
+    may be due to using many collections or many shards inside a
+
+    database for which there are often structural changes. It then
+
+    may make sense to reduce the number of collections or number
+
+    of shards. Note that this can have other effects, so it requires
+
+    an informed decision.
+
+'
   type: histogram
   unit: ms
 - category: Maintenance
@@ -1531,11 +1467,11 @@
     This metric counts the number of actions that are done and have been removed.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Counter of actions that are done and have been removed from the registry.
 
 '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_done_total
   type: counter
   unit: number
@@ -1554,11 +1490,11 @@
     be a duplicate of a already queued action.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Counter of actions that have been discarded because of a duplicate.
 
 '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_duplicate_total
   type: counter
   unit: number
@@ -1577,11 +1513,11 @@
     actions and can thus provide hints to investigate a malfunction.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Failure counter for the maintenance actions.
 
 '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_failure_total
   type: counter
   unit: number
@@ -1598,11 +1534,11 @@
     This metric tracks the time actions spend waiting in the queue in a histogram.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Time spent in the queue before execution for maintenance actions.
 
 '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_queue_time_msec
   type: histogram
   unit: ms
@@ -1619,11 +1555,11 @@
     This metric counts the number of actions that are queued or active.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Counter of actions that have been registered in the action registry.
 
 '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_registered_total
   type: counter
   unit: number
@@ -1640,11 +1576,11 @@
     This metric tracks the time actions spend executing in a histogram.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Time spent executing a maintenance action.
 
 '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_runtime_msec
   type: histogram
   unit: ms
@@ -1669,11 +1605,11 @@
     1s.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Total time spent on agency sync.
 
 '
+  introducedIn: '3.7'
   name: arangodb_maintenance_agency_sync_runtime_msec
   type: histogram
   unit: ms
@@ -1696,11 +1632,11 @@
     the difference between the local and the target state.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Maintenance Phase 1 runtime histogram.
 
 '
+  introducedIn: '3.7'
   name: arangodb_maintenance_phase1_runtime_msec
   type: histogram
   unit: ms
@@ -1723,24 +1659,26 @@
     what actions to execute given the difference of the local and target state.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Maintenance Phase 2 runtime histogram.
 
 '
+  introducedIn: '3.7'
   name: arangodb_maintenance_phase2_runtime_msec
   type: histogram
   unit: ms
 - category: Network
   complexity: simple
-  description: 'Number of requests forwarded to another coordinator.
-
-'
-  exposedBy:
-  - coordinator
+  description: "Number of requests forwarded to another coordinator.\nRequest forwarding
+    can happen in load-balanced setups,\nwhen one coordinator receives and forwards
+    requests \nthat can only be handled by a different coordinator.\nThis includes
+    requests for streaming transactions,\nAQL, query cursors, Pregel jobs and some
+    others.\n"
+  exposedBy: [coordinator]
   help: 'Number of requests forwarded to another coordinator.
 
 '
+  introducedIn: '3.6'
   name: arangodb_network_forwarded_requests_total
   type: counter
   unit: number
@@ -1751,13 +1689,11 @@
     This metric will have a value between 0 and 100.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Internal request round-trip time as a percentage of timeout.
 
 '
+  introducedIn: '3.8'
   name: arangodb_network_request_duration_as_percentage_of_timeout
   type: gauge
   unit: percentage
@@ -1766,13 +1702,11 @@
   description: 'Number of internal requests that have timed out.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Number of internal requests that have timed out.
 
 '
+  introducedIn: '3.8'
   name: arangodb_network_request_timeouts_total
   type: counter
   unit: number
@@ -1781,13 +1715,11 @@
   description: 'Number of outgoing internal requests in flight.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Number of outgoing internal requests in flight.
 
 '
+  introducedIn: '3.8'
   name: arangodb_network_requests_in_flight
   type: gauge
   unit: number
@@ -1796,12 +1728,9 @@
   description: On Windows, this figure contains the total number of page faults. On
     other system, this figure contains the number of major faults the process has
     made which have required loading a memory page from disk.
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: Number of major page faults
+  introducedIn: '3.6'
   name: arangodb_process_statistics_major_page_faults_total
   troubleshooting: If the rate of this is high, i.e. it increases fast, it could be
     an indication that the memory usage is too high, or the memory is too low, or
@@ -1812,12 +1741,9 @@
   complexity: simple
   description: The number of minor faults the process has made which have not required
     loading a memory page from disk. This figure is not reported on Windows.
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: Number of minor page faults
+  introducedIn: '3.6'
   name: arangodb_process_statistics_minor_page_faults_total
   type: gauge
   unit: number
@@ -1826,14 +1752,11 @@
   description: 'Number of threads in the arangod process.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of threads
 
 '
+  introducedIn: '3.6'
   name: arangodb_process_statistics_number_of_threads
   type: gauge
   unit: number
@@ -1843,12 +1766,9 @@
     This is just the pages which count toward text, data, or stack space. This does
     not include pages which have not been demand-loaded in, or which are swapped out.
     The resident set size is reported in bytes.
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: Resident set size
+  introducedIn: '3.6'
   name: arangodb_process_statistics_resident_set_size
   type: gauge
   unit: bytes
@@ -1858,12 +1778,9 @@
     compared to system memory. This is just the pages which count toward text, data,
     or stack space. This does not include pages which have not been demand-loaded
     in, or which are swapped out. The value is a ratio between 0.00 and 1.00.
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: Resident set size as fraction of system memory
+  introducedIn: '3.6'
   name: arangodb_process_statistics_resident_set_size_percent
   threshold: This value can be consistently relatively high, even when not under load,
     due to different caches like RocksDB block cache or the edge cache. There should
@@ -1879,12 +1796,9 @@
   complexity: simple
   description: Amount of time that this process has been scheduled in kernel mode,
     measured in seconds.
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: Process system time
+  introducedIn: '3.6'
   name: arangodb_process_statistics_system_time
   threshold: This metric can vary significantly dependent on the workload. If the
     rate is consistently very high, it could be an indication of some problem.
@@ -1897,12 +1811,9 @@
   complexity: simple
   description: Amount of time that this process has been scheduled in user mode, measured
     in seconds.
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: Process user time
+  introducedIn: '3.6'
   name: arangodb_process_statistics_user_time
   threshold: This metric can vary significantly dependent on the workload. If the
     rate is consistently very high, it could be an indication of some problem.
@@ -1916,12 +1827,9 @@
   description: On Windows, this figure contains the total amount of memory that the
     memory manager has committed for the arangod process. On other systems, this figure
     contains the size of the virtual memory the process is using.
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: Virtual memory size
+  introducedIn: '3.6'
   name: arangodb_process_statistics_virtual_memory_size
   type: gauge
   unit: bytes
@@ -1935,11 +1843,11 @@
     such a refusal answer is received by the shard leader, it will drop the\nfollower
     from the list of followers.\nThis metrics was named `arangodb_refused_followers_count`
     in previous\nversions of ArangoDB.\n"
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of refusal answers from a follower during synchronous replication.
 
 '
+  introducedIn: '3.6'
   name: arangodb_refused_followers_total
   threshold: "Usually, refusal answers only occur if request processing on followers
     is \ndelayed and there was a recent leadership change. This should not be a\ncommon
@@ -1951,11 +1859,11 @@
   description: 'Number of cluster replication inventory requests received.
 
 '
-  exposedBy:
-  - coordinator
+  exposedBy: [coordinator]
   help: 'Number of cluster replication inventory requests received.
 
 '
+  introducedIn: '3.6'
   name: arangodb_replication_cluster_inventory_requests_total
   type: counter
   unit: number
@@ -1964,11 +1872,11 @@
   description: 'Accumulated time needed to apply replication dump data.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated time needed to apply replication dump data.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_apply_time_total
   type: counter
   unit: ms
@@ -1977,11 +1885,11 @@
   description: 'Number of bytes received in replication dump requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of bytes received in replication dump requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_bytes_received_total
   type: counter
   unit: bytes
@@ -1990,11 +1898,11 @@
   description: 'Number of documents received in replication dump requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of documents received in replication dump requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_documents_total
   type: counter
   unit: number
@@ -2003,11 +1911,11 @@
   description: 'Accumulated wait time for replication requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated wait time for replication requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_request_time_total
   type: counter
   unit: ms
@@ -2016,11 +1924,11 @@
   description: 'Number of replication dump requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of replication dump requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_requests_total
   type: counter
   unit: number
@@ -2029,11 +1937,11 @@
   description: 'Number of failed connection attempts and response errors during replication.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of failed connection attempts and response errors during replication.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_failed_connects_total
   type: counter
   unit: number
@@ -2042,11 +1950,11 @@
   description: 'Accumulated wait time for replication key chunks determination requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated wait time for replication key chunks determination requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_chunks_requests_time_total
   type: counter
   unit: ms
@@ -2055,11 +1963,11 @@
   description: 'Accumulated time needed to apply replication docs data.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated time needed to apply replication docs data.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_docs_requests_time_total
   type: counter
   unit: ms
@@ -2068,11 +1976,11 @@
   description: 'Accumulated time needed to apply replication initial sync insertions.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated time needed to apply replication initial sync insertions.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_insert_apply_time_total
   type: counter
   unit: ms
@@ -2081,11 +1989,11 @@
   description: 'Accumulated wait time for replication keys requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated wait time for replication keys requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_keys_requests_time_total
   type: counter
   unit: ms
@@ -2094,11 +2002,11 @@
   description: 'Accumulated time needed for replication initial sync key lookups.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated time needed for replication initial sync key lookups.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_lookup_time_total
   type: counter
   unit: ms
@@ -2107,11 +2015,11 @@
   description: 'Accumulated time needed to apply replication initial sync removals.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated time needed to apply replication initial sync removals.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_remove_apply_time_total
   type: counter
   unit: ms
@@ -2120,11 +2028,11 @@
   description: 'Accumulated time needed to apply replication initial sync removals:
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated time needed to apply replication initial sync removals:
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_remove_apply_time_total
   type: counter
   unit: ms
@@ -2133,11 +2041,11 @@
   description: 'Number of documents inserted by replication initial sync.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of documents inserted by replication initial sync.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_docs_inserted_total
   type: counter
   unit: number
@@ -2146,11 +2054,11 @@
   description: 'Number of documents removed by replication initial sync.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of documents removed by replication initial sync.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_docs_removed_total
   type: counter
   unit: number
@@ -2159,11 +2067,11 @@
   description: 'Number of documents requested by replication initial sync.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of documents requested by replication initial sync.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_docs_requested_total
   type: counter
   unit: number
@@ -2172,11 +2080,11 @@
   description: 'Number of replication initial sync docs requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of replication initial sync docs requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_docs_requests_total
   type: counter
   unit: number
@@ -2185,11 +2093,11 @@
   description: 'Number of replication initial sync keys requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of replication initial sync keys requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_keys_requests_total
   type: counter
   unit: number
@@ -2198,11 +2106,11 @@
   description: 'Total number of synchronous replication requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Total number of synchronous replication requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_synchronous_requests_total_number._total
   type: counter
   unit: number
@@ -2211,11 +2119,11 @@
   description: 'Total time needed for all synchronous replication requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Total time needed for all synchronous replication requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_synchronous_requests_total_time_total
   type: counter
   unit: ms
@@ -2224,11 +2132,11 @@
   description: 'Accumulated time needed to apply replication tailing data.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated time needed to apply replication tailing data.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_apply_time_total
   type: counter
   unit: ms
@@ -2237,11 +2145,11 @@
   description: 'Accumulated number of bytes received for replication tailing requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated number of bytes received for replication tailing requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_bytes_received_total
   type: counter
   unit: bytes
@@ -2251,11 +2159,11 @@
     processed.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Accumulated number of replication tailing document inserts/replaces processed.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_documents_total
   type: counter
   unit: number
@@ -2264,11 +2172,11 @@
   description: 'Number of replication tailing failures due to missing tick on leader.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of replication tailing failures due to missing tick on leader.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_follow_tick_failures_total
   type: counter
   unit: number
@@ -2277,11 +2185,11 @@
   description: 'Number of replication tailing markers processed.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of replication tailing markers processed.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_markers_total
   type: counter
   unit: number
@@ -2290,11 +2198,11 @@
   description: 'Number of replication tailing document removals processed.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of replication tailing document removals processed.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_removals_total
   type: counter
   unit: number
@@ -2303,11 +2211,11 @@
   description: 'Aggregated wait time for replication tailing requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Aggregated wait time for replication tailing requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_request_time_total
   type: counter
   unit: ms
@@ -2316,11 +2224,11 @@
   description: 'Number of replication tailing requests.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of replication tailing requests.
 
 '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_requests_total
   type: counter
   unit: number
@@ -2329,12 +2237,11 @@
   description: 'Number of times RocksDB has entered a stalled (slowed) write state.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
+  exposedBy: [dbserver, agent]
   help: 'Number of times RocksDB has entered a stalled (slowed) write state.
 
 '
+  introducedIn: '3.8'
   name: arangodb_rocksdb_write_stalls_total
   type: counter
   unit: number
@@ -2343,12 +2250,11 @@
   description: 'Number of times RocksDB has entered a stopped write state.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
+  exposedBy: [dbserver, agent]
   help: 'Number of times RocksDB has entered a stopped write state.
 
 '
+  introducedIn: '3.8'
   name: arangodb_rocksdb_write_stops_total
   type: counter
   unit: number
@@ -2357,13 +2263,11 @@
   description: 'Number of awake worker threads.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Number of awake worker threads.
 
 '
+  introducedIn: '3.6'
   name: arangodb_scheduler_awake_threads
   type: gauge
   unit: number
@@ -2372,59 +2276,75 @@
   description: 'Current queue length of the high priority queue in the scheduler.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Current queue length of the high priority queue in the scheduler.
 
 '
+  introducedIn: '3.8'
   name: arangodb_scheduler_high_prio_queue_length
   type: gauge
   unit: number
 - category: Scheduler
   complexity: advanced
-  description: 'Total number of jobs dequeued.
+  description: 'The total number of jobs dequeued from all scheduler queues.
+
+    Calculating the difference between arangodb_scheduler_jobs_submitted_total
+
+    and arangodb_scheduler_jobs_dequeued_total gives the total number of
+
+    currently queued jobs.
+
+    Calculating the difference between arangodb_scheduler_jobs_dequeued_total
+
+    and arangodb_scheduler_jobs_done_total gives the number of jobs currently
+
+    being processed.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total number of jobs dequeued.
 
 '
-  name: arangodb_scheduler_jobs_dequeued
-  type: gauge
+  introducedIn: '3.8'
+  name: arangodb_scheduler_jobs_dequeued_total
+  type: counter
   unit: number
 - category: Scheduler
   complexity: advanced
-  description: 'Total number of queue jobs done.
+  description: 'The total number of queue jobs done.
+
+    Calculating the difference between arangodb_scheduler_jobs_dequeued_total
+
+    and arangodb_scheduler_jobs_done_total gives the total number of jobs
+
+    currently being processed.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total number of queue jobs done.
 
 '
-  name: arangodb_scheduler_jobs_done
+  introducedIn: '3.8'
+  name: arangodb_scheduler_jobs_done_total
   type: gauge
   unit: number
 - category: Scheduler
   complexity: advanced
-  description: 'Total number of jobs submitted to the queue.
+  description: 'Total number of jobs submitted to the scheduler.
+
+    Calculating the difference between arangodb_scheduler_jobs_submitted_total
+
+    and arangodb_scheduler_jobs_dequeued_total gives the total number of
+
+    currently queued jobs.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of jobs submitted to the queue.
+  exposedBy: [coordinator, dbserver, agent, single]
+  help: 'Total number of jobs submitted to the scheduler.
 
 '
-  name: arangodb_scheduler_jobs_submitted
+  introducedIn: '3.8'
+  name: arangodb_scheduler_jobs_submitted_total
   type: gauge
   unit: number
 - category: Scheduler
@@ -2432,13 +2352,11 @@
   description: 'Last recorded dequeue time for a low priority queue item.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Last recorded dequeue time for a low priority queue item.
 
 '
+  introducedIn: '3.8'
   name: arangodb_scheduler_low_prio_queue_last_dequeue_time
   type: gauge
   unit: ms
@@ -2447,13 +2365,11 @@
   description: 'Current queue length of the low priority queue in the scheduler.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Current queue length of the low priority queue in the scheduler.
 
 '
+  introducedIn: '3.8'
   name: arangodb_scheduler_low_prio_queue_length
   type: gauge
   unit: number
@@ -2462,13 +2378,11 @@
   description: 'Current queue length of the maintenance priority queue in the scheduler.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Current queue length of the maintenance priority queue in the scheduler.
 
 '
+  introducedIn: '3.8'
   name: arangodb_scheduler_maintenance_prio_queue_length
   type: gauge
   unit: number
@@ -2477,13 +2391,11 @@
   description: 'Current queue length of the medium priority queue in the scheduler.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Current queue length of the medium priority queue in the scheduler.
 
 '
+  introducedIn: '3.8'
   name: arangodb_scheduler_medium_prio_queue_length
   type: gauge
   unit: number
@@ -2492,13 +2404,11 @@
   description: 'Current number of worker threads.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Current number of worker threads.
 
 '
+  introducedIn: '3.6'
   name: arangodb_scheduler_num_worker_threads
   type: gauge
   unit: number
@@ -2507,13 +2417,11 @@
   description: 'Current number of working threads.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Current number of working threads.
 
 '
+  introducedIn: '3.6'
   name: arangodb_scheduler_num_working_threads
   type: gauge
   unit: number
@@ -2522,13 +2430,11 @@
   description: 'Total number of ongoing RestHandlers coming from the low prio queue.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Total number of ongoing RestHandlers coming from the low prio queue.
 
 '
+  introducedIn: '3.8'
   name: arangodb_scheduler_ongoing_low_prio
   type: gauge
   unit: number
@@ -2537,13 +2443,11 @@
   description: 'Number of tasks dropped and not added to internal queue.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Number of tasks dropped and not added to internal queue.
 
 '
+  introducedIn: '3.6'
   name: arangodb_scheduler_queue_full_failures_total
   type: counter
   unit: number
@@ -2552,13 +2456,11 @@
   description: 'Server''s internal queue length.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Server''s internal queue length.
 
 '
+  introducedIn: '3.6'
   name: arangodb_scheduler_queue_length
   type: gauge
   unit: number
@@ -2567,13 +2469,11 @@
   description: 'Total accumulated number of scheduler threads started.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Total accumulated number of scheduler threads started.
 
 '
+  introducedIn: '3.6'
   name: arangodb_scheduler_threads_started_total
   type: counter
   unit: number
@@ -2582,13 +2482,11 @@
   description: 'Accumulated total number of scheduler threads stopped.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Accumulated total number of scheduler threads stopped.
 
 '
+  introducedIn: '3.6'
   name: arangodb_scheduler_threads_stopped_total
   type: counter
   unit: number
@@ -2601,14 +2499,11 @@
     is set. In that case, the environment variable''s value will be reported.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of CPU cores visible to the arangod process
 
 '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_cpu_cores
   type: gauge
   unit: number
@@ -2617,14 +2512,11 @@
   description: "Percentage of time that the system CPUs have been idle, as \na value
     between 0 and 100, and as reported by the operating system.\nThis metric is only
     reported on some operating systems.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Percentage of time that the system CPUs have been idle
 
 '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_idle_percent
   type: gauge
   unit: percentage
@@ -2638,14 +2530,11 @@
     This metric is only reported on some operating systems.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Percentage of time that the system CPUs have been waiting for I/O
 
 '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_iowait_percent
   type: gauge
   unit: percentage
@@ -2654,14 +2543,11 @@
   description: "Physical memory of the system in bytes, as reported by the operating
     system \nunless the environment variable `ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY`
     \nis set. In that case, the environment variable's value will be reported.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Physical memory in bytes
 
 '
+  introducedIn: '3.6'
   name: arangodb_server_statistics_physical_memory
   type: gauge
   unit: bytes
@@ -2676,14 +2562,11 @@
     in previous versions of ArangoDB.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of seconds elapsed since server start
 
 '
+  introducedIn: '3.6'
   name: arangodb_server_statistics_server_uptime_total
   type: counter
   unit: s
@@ -2697,14 +2580,11 @@
     This metric is only reported on some operating systems.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Percentage of time that the system CPUs have spent in kernel mode
 
 '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_system_percent
   type: gauge
   unit: percentage
@@ -2717,14 +2597,11 @@
     This metric is only reported on some operating systems.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Percentage of time that the system CPUs have spent in user mode
 
 '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_user_percent
   type: gauge
   unit: percentage
@@ -2736,13 +2613,11 @@
     potentially multiple followers.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Number of leader shards on this machine.
 
 '
+  introducedIn: '3.7'
   name: arangodb_shards_leader_number
   troubleshoot: 'Since the leaders perform all the read and write operations and
 
@@ -2781,13 +2656,11 @@
     by one for every shards for which no follower is in sync.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Number of shards not replicated at all.
 
 '
+  introducedIn: '3.7'
   name: arangodb_shards_not_replicated
   troubleshoot: 'Needless to say, such a situation is very bad for resilience, since
     it
@@ -2820,11 +2693,11 @@
     follower shards.
 
 '
-  exposedBy:
-  - dbserver
+  exposedBy: [dbserver]
   help: 'Number of shards on this machine.
 
 '
+  introducedIn: '3.7'
   name: arangodb_shards_number
   troubleshoot: 'Since both leader and follower shards use memory and disk space,
 
@@ -2855,13 +2728,11 @@
     increased by one for every shards for which not all followers are in sync.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Number of leader shards not fully replicated.
 
 '
+  introducedIn: '3.7'
   name: arangodb_shards_out_of_sync
   troubleshoot: 'Needless to say, such a situation is not good resilience, since we
 
@@ -2901,13 +2772,11 @@
     resync process starts from scratch.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Number of times a mismatching shard checksum was detected when syncing shards.
 
 '
+  introducedIn: '3.6'
   name: arangodb_sync_wrong_checksum_total
   troubleshoot: 'Normally, this number will always be 0. If it is not, then usually
 
@@ -2924,14 +2793,11 @@
     will \nbe collected separately for transactions on coordinators and the\ntransaction
     counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_aborted`
     in previous\nversions of ArangoDB.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of transactions aborted.
 
 '
+  introducedIn: '3.6'
   name: arangodb_transactions_aborted_total
   type: counter
   unit: number
@@ -2941,14 +2807,11 @@
     will \nbe collected separately for transactions on coordinators and the\ntransaction
     counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_committed`
     in previous\nversions of ArangoDB.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of transactions committed.
 
 '
+  introducedIn: '3.6'
   name: arangodb_transactions_committed_total
   type: counter
   unit: number
@@ -2960,14 +2823,11 @@
     be collected separately for transactions \non coordinators and the transaction
     counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_expired`
     in previous\nversions of ArangoDB.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Total number of expired transactions.
 
 '
+  introducedIn: '3.8'
   name: arangodb_transactions_expired_total
   type: counter
   unit: number
@@ -2977,14 +2837,11 @@
     will \nbe collected separately for transactions on coordinators and the\ntransaction
     counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_started`
     in previous\nversions of ArangoDB.\n"
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of transactions started.
 
 '
+  introducedIn: '3.6'
   name: arangodb_transactions_started_total
   type: counter
   unit: number
@@ -2993,14 +2850,11 @@
   description: 'Number of V8 contexts currently alive.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of V8 contexts currently alive
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_alive
   type: gauge
   unit: number
@@ -3009,14 +2863,11 @@
   description: 'Number of V8 contexts currently busy.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of V8 contexts currently busy
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_busy
   type: gauge
   unit: number
@@ -3025,12 +2876,11 @@
   description: 'Total number of V8 contexts ever created.
 
 '
-  exposedBy:
-  - coordinator
-  - single
+  exposedBy: [coordinator, single]
   help: 'Total number of V8 contexts ever created.
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_created_total
   type: counter
   unit: number
@@ -3039,12 +2889,11 @@
   description: 'Accumulated total time for creating V8 contexts.
 
 '
-  exposedBy:
-  - coordinator
-  - single
+  exposedBy: [coordinator, single]
   help: 'Accumulated total time for creating V8 contexts.
 
 '
+  introducedIn: '3.8'
   name: arangodb_v8_context_creation_time_msec_total
   type: counter
   unit: ms
@@ -3053,12 +2902,11 @@
   description: 'Total number of V8 contexts ever destroyed.
 
 '
-  exposedBy:
-  - coordinator
-  - single
+  exposedBy: [coordinator, single]
   help: 'Total number of V8 contexts ever destroyed.
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_destroyed_total
   type: counter
   unit: number
@@ -3067,14 +2915,11 @@
   description: 'Number of V8 contexts currently dirty.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of V8 contexts currently dirty
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_dirty
   type: gauge
   unit: number
@@ -3083,13 +2928,11 @@
   description: 'Total number of V8 context enter failures.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Total number of V8 context enter failures.
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_enter_failures_total
   type: counter
   unit: number
@@ -3098,13 +2941,11 @@
   description: 'Total number of V8 context enter events.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Total number of V8 context enter events.
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_entered_total
   type: counter
   unit: number
@@ -3113,13 +2954,11 @@
   description: 'Total number of V8 context exit events.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  exposedBy: [coordinator, dbserver, agent]
   help: 'Total number of V8 context exit events.
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_exited_total
   type: counter
   unit: number
@@ -3128,14 +2967,11 @@
   description: 'Number of V8 contexts currently free.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Number of V8 contexts currently free
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_free
   type: gauge
   unit: number
@@ -3144,14 +2980,11 @@
   description: 'Maximum number of concurrent V8 contexts.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Maximum number of concurrent V8 contexts
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_max
   type: gauge
   unit: number
@@ -3160,824 +2993,968 @@
   description: 'Minimum number of concurrent V8 contexts.
 
 '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  - single
+  exposedBy: [coordinator, dbserver, agent, single]
   help: 'Minimum number of concurrent V8 contexts
 
 '
+  introducedIn: '3.6'
   name: arangodb_v8_context_min
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_actual_delayed_write_rate
+  description: 'This metric exhibits the RocksDB metric "rocksdb-actual-delayed-write-rate".
+
+    It shows the current actual delayed write rate. The value 0 means no delay.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_actual_delayed_write_rate
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-actual-delayed-write-rate"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_actual_delayed_write_rate
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_background_errors
+  description: 'This metric exhibits the RocksDB metric "background-errors". It shows
+
+    the accumulated number of background errors.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_background_errors
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "background-errors"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_background_errors
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_base_level
+  description: 'This metric exhibits the RocksDB metric "rocksdb-base-level".
+
+    It shows the number of the level to which L0 data will be
+
+    compacted.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_base_level
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-base-level"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_base_level
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_block_cache_capacity
+  description: 'This metric exhibits the RocksDB metric "rocksdb-block-cache-capacity".
+
+    It shows the block cache capacity in bytes. This can be configured with
+
+    the `--rocksdb.block-cache-size` option, for details, see
+
+    [the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb).
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_block_cache_capacity
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-block-cache-capacity"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_block_cache_capacity
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_block_cache_pinned_usage
+  description: "This metric exhibits the RocksDB metric \"rocksdb-block-cache-pinned-usage\".\nIt
+    shows the memory size for the RocksDB block cache for the entries \nwhich are
+    pinned, in bytes.\n"
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-block-cache-pinned-usage"
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_block_cache_pinned_usage
-
-'
+  introducedIn: '3.6'
   name: rocksdb_block_cache_pinned_usage
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_block_cache_usage
+  description: 'This metric exhibits the RocksDB metric "rocksdb-block-cache-usage".
+
+    It shows the memory size for the entries residing in the block cache,
+
+    in bytes.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_block_cache_usage
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-block-cache-usage"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_block_cache_usage
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cache_allocated
+  description: "This metric reflects the current global allocation for the ArangoDB\ncache
+    which sits in front of RocksDB. For example, the edge cache\ncounts towards this
+    allocation. All these caches together have a \nglobal limit which can be controlled
+    with the `--cache.size` option.\nSee [the manual for details](https://www.arangodb.com/docs/stable/programs-arangod-options.html#cache).\n"
+  exposedBy: [dbserver, agent, single]
+  help: 'Global current allocation of ArangoDB cache
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_cache_allocated
-
-'
+  introducedIn: '3.6'
   name: rocksdb_cache_allocated
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cache_hit_rate_lifetime
+  description: 'This metric reflects the lifetime hit rate of the ArangoDB in-memory
+
+    cache which is sitting in front of RocksDB. For example, the edge
+
+    cache is a part of this. The value will be a ratio between 0 and 1.
+
+    "Lifetime" means here that accounting is done from the most recent
+
+    start of the `arangod` instance.
+
+    If the hit rate is too low, you might have to little RAM available
+
+    for the in-memory caches.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_cache_hit_rate_lifetime
+  exposedBy: [dbserver, agent, single]
+  help: 'Lifetime hit rate of the ArangoDB cache in front of RocksDB
 
 '
+  introducedIn: '3.6'
   name: rocksdb_cache_hit_rate_lifetime
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cache_hit_rate_recent
+  description: 'This metric reflects the recent hit rate of the ArangoDB in-memory
+
+    cache which is sitting in front of RocksDB. For example, the edge
+
+    cache is a part of this. The value will be a ratio between 0 and 1.
+
+    If the hit rate is too low, you might have to little RAM available
+
+    for the in-memory caches.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_cache_hit_rate_recent
+  exposedBy: [dbserver, agent, single]
+  help: 'Recent hit rate of the ArangoDB cache in front of RocksDB
 
 '
+  introducedIn: '3.6'
   name: rocksdb_cache_hit_rate_recent
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cache_limit
+  description: 'This metric reflects the current global allocation limit for the
+
+    ArangoDB caches which sit in front of RocksDB. For example, the
+
+    edge cache counts towards this allocation. This global limit can
+
+    be controlled with the `--cache.size` option. See
+
+    [the manual for details](https://www.arangodb.com/docs/stable/programs-arangod-options.html#cache).
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_cache_limit
+  exposedBy: [dbserver, agent, single]
+  help: 'Global allocation limit for the ArangoDB cache in front of RocksDB
 
 '
+  introducedIn: '3.6'
   name: rocksdb_cache_limit
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compaction_pending
+  description: 'This metric exhibits the RocksDB metric "compaction-pending".
+
+    It shows the number of column families for which at least one compaction
+
+    is pending.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_compaction_pending
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "compaction-pending" - sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_compaction_pending
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level0
+  description: 'This metric exhibits the compression ratio of data at level 0 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 0.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_compression_ratio_at_level0
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level0"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level0
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level1
+  description: 'This metric exhibits the compression ratio of data at level 1 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 1.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_compression_ratio_at_level1
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level1"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level1
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level2
+  description: 'This metric exhibits the compression ratio of data at level 2 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 2.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_compression_ratio_at_level2
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level2"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level2
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level3
+  description: 'This metric exhibits the compression ratio of data at level 3 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 3.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_compression_ratio_at_level3
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level3"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level3
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level4
+  description: 'This metric exhibits the compression ratio of data at level 4 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 4.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_compression_ratio_at_level4
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level4"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level4
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level5
+  description: 'This metric exhibits the compression ratio of data at level 5 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 5.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_compression_ratio_at_level5
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level5"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level5
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level6
+  description: 'This metric exhibits the compression ratio of data at level 6 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 6.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_compression_ratio_at_level6
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level6"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level6
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cur_size_active_mem_table
+  description: 'This metric exhibits the RocksDB metric "rocksdb-cur-size-active-mem-table".
+
+    It shows the approximate size of the active memtable in bytes, summed
+
+    over all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_cur_size_active_mem_table
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-cur-size-active-mem-table" - sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_cur_size_active_mem_table
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cur_size_all_mem_tables
+  description: 'This metric exhibits the RocksDB metric "rocksdb-cur-size-all-mem-tables".
+
+    It shows the approximate size of active and unflushed immutable memtables
+
+    in bytes, summed over all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_cur_size_all_mem_tables
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-cur-size-all-mem-tables" - sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_cur_size_all_mem_tables
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_estimate_live_data_size
+  description: "This metric exposes the current write rate limit of the ArangoDB\nRocksDB
+    throttle. The throttle limits the write rate to allow\nRocksDB's background threads
+    to catch up with compactions and not\nfall behind too much, since this would in
+    the end lead to nasty\nwrite stops in RocksDB and incur considerable delays. If
+    0 is\nshown, no throttling happens, otherwise, you see the current\nwrite rate
+    limit in bytes per second. See \n[the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb)
+    for details.\n"
+  exposedBy: [dbserver, agent, single]
+  help: 'Current rate of the RocksDB throttle in bytes per second
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_estimate_live_data_size
+  introducedIn: '3.6'
+  name: rocksdb_engine_throttle_bps
+  type: gauge
+  unit: bytes per second
+- category: RocksDB
+  complexity: advanced
+  description: 'This metric exhibits the RocksDB metric "rocksdb-estimate-live-data-size".
+
+    It shows an estimate of the amount of live data in bytes, summed over
+
+    all column families.
 
 '
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-estimate-live-data-size" - sum over all column families
+
+'
+  introducedIn: '3.6'
   name: rocksdb_estimate_live_data_size
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_estimate_num_keys
+  description: 'This metric exhibits the RocksDB metric "rocksdb-estimate-num-keys".
+
+    It shows the estimated number of total keys in the active and unflushed
+
+    immutable memtables and storage, summed over all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_estimate_num_keys
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-estimate-num-keys" - sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_estimate_num_keys
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_estimate_pending_compaction_bytes
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-estimate-pending-compaction-bytes".
+
+    It shows the estimated total number of bytes compaction needs to
+
+    rewrite to get all levels down to under target size. Not valid for
+
+    other compactions than level-based. This value is summed over all
+
+    column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_estimate_pending_compaction_bytes
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-estimate-pending-compaction-bytes" - sum over all
+    column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_estimate_pending_compaction_bytes
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_estimate_table_readers_mem
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-estimate-table-readers-mem".
+
+    It shows the estimated memory used for reading SST tables, excluding
+
+    memory used in block cache (e.g. filter and index blocks), summed over
+
+    all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_estimate_table_readers_mem
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-estimate-table-readers-mem" - sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_estimate_table_readers_mem
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_free_disk_space
+  description: 'This metric shows the currently free disk space in bytes on the volume
+
+    which is used by RocksDB. Since RocksDB does not like out of disk
+
+    space scenarios, please make sure that there is enough free disk space
+
+    available at all times!  Note that this metric is only available/populated on
+    some platforms.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_free_disk_space
+  exposedBy: [dbserver, agent, single]
+  help: 'Free disk space in bytes on volume used by RocksDB
 
 '
+  introducedIn: '3.8'
   name: rocksdb_free_disk_space
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_free_inodes
+  description: 'This metric shows the currently free number of inodes on the disk
+    volume
+
+    used by RocksDB. Since RocksDB does not like out of disk space
+
+    scenarios, please make sure that there is enough free inodes available
+
+    at all times! Note that this metric is only available/populated on some platforms.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_free_inodes
+  exposedBy: [dbserver, agent, single]
+  help: 'Number of free inodes on the volume used by RocksDB
 
 '
+  introducedIn: '3.8'
   name: rocksdb_free_inodes
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_is_file_deletions_enabled
+  description: 'This metric exhibits the RocksDB metric "rocksdb-is-file-deletions-enabled".
+
+    It shows 0 if deletion of obsolete files is enabled, and otherwise,
+
+    it shows a non-zero number. Note that for ArangoDB, this is supposed
+
+    to always return 1, since the deletion of obsolete WAL files is done
+
+    from ArangoDB, externally to RocksDB.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_is_file_deletions_enabled
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-is-file-deletions-enabled"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_is_file_deletions_enabled
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_is_write_stopped
+  description: 'This metric exhibits the RocksDB metric "rocksdb-is-write-stopped".
+
+    It shows 1 if writing to RocksDB has been stopped, and otherwise 0.
+
+    If 1 is shown, this usually means that there are too many uncompacted
+
+    files and the RocksDB background threads have not managed to keep up
+
+    with their compaction work. This situation should be avoided, since
+
+    nasty delays in database operations are incurred. If in doubt,
+
+    contact ArangoDB support.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_is_write_stopped
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-is-write-stopped"
 
 '
+  introducedIn: '3.8'
   name: rocksdb_is_write_stopped
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_live_sst_files_size
+  description: 'This metric exhibits the RocksDB metric "rocksdb-live-sst-files-size".
+
+    It shows the total size in bytes of all SST files belonging to the latest
+
+    LSM tree, summed over all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_live_sst_files_size
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-live-sst-files-size" - sum over all column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_live_sst_files_size
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_mem_table_flush_pending
+  description: 'This metric exhibits the RocksDB metric "mem-table-flush-pending".
+    It
+
+    shows the number of column families for which a memtable flush is
+
+    pending.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_mem_table_flush_pending
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "mem_table_flush_pending", sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_mem_table_flush_pending
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_min_log_number_to_keep
+  description: 'This metric exhibits the RocksDB metric "rocksdb-min-log-number-to-keep".
+
+    It shows the minimum log number of the log files that should be kept.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_min_log_number_to_keep
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-min-log-number-to-keep"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_min_log_number_to_keep
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_deletes_active_mem_table
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-num-deletes-active-mem-table".
+
+    It shows the total number of delete entries in the active memtable,
+
+    summed over all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_deletes_active_mem_table
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-num-deletes-active-mem-table" - sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_deletes_active_mem_table
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_deletes_imm_mem_tables
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-num-deletes-imm-mem-tables".
+
+    It shows the total number of delete entries in the unflushed immutable
+
+    memtables, summed over all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_deletes_imm_mem_tables
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-num-deletes-imm-mem-tables" - sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_deletes_imm_mem_tables
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_entries_active_mem_table
+  description: "This metric exhibits the RocksDB metric \n\"rocksdb-num-entries-active-mem-table\".\nIt
+    shows the total number of entries in the active memtable,\nsummed over all column
+    families.\n"
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-num-entries-active-mem-table" - sum over column families
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_entries_active_mem_table
-
-'
+  introducedIn: '3.6'
   name: rocksdb_num_entries_active_mem_table
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_entries_imm_mem_tables
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-num-entries-imm-mem-tables".
+
+    It shows the total number of entries in the unflushed immutable memtables,
+
+    summed over all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_entries_imm_mem_tables
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-num-entries-imm-mem-tables" - sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_entries_imm_mem_tables
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level0
+  description: 'This metric reports the number of files at level 0 in the log structured
+
+    merge tree of RocksDB.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_files_at_level0
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "num-files-at-level0"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level0
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level1
+  description: 'This metric reports the number of files at level 1 in the log structured
+
+    merge tree of RocksDB.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_files_at_level1
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "num-files-at-level1"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level1
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level2
+  description: 'This metric reports the number of files at level 2 in the log structured
+
+    merge tree of RocksDB.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_files_at_level2
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "num-files-at-level2"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level2
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level3
+  description: 'This metric reports the number of files at level 3 in the log structured
+
+    merge tree of RocksDB.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_files_at_level3
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "num-files-at-level3"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level3
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level4
+  description: 'This metric reports the number of files at level 4 in the log structured
+
+    merge tree of RocksDB.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_files_at_level4
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "num-files-at-level4"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level4
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level5
+  description: 'This metric reports the number of files at level 5 in the log structured
+
+    merge tree of RocksDB.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_files_at_level5
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "num-files-at-level5"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level5
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level6
+  description: 'This metric reports the number of files at level 6 in the log structured
+
+    merge tree of RocksDB.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_files_at_level6
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "num-files-at-level6"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level6
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_immutable_mem_table
+  description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table\",
+    \nwhich shows the number of immutable memtables that have not yet been\nflushed.
+    This value is the sum over all column families.\n\nMemtables are sorted tables
+    of key/value pairs which begin\nto be built up in memory. At some stage they are
+    closed and become\nimmutable, and some time later they are flushed to disk.\n"
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "num-immutable-mem-table" - sum over column families
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_immutable_mem_table
-
-'
+  introducedIn: '3.6'
   name: rocksdb_num_immutable_mem_table
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_immutable_mem_table_flushed
+  description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table-flushed\",
+    \nwhich shows the number of immutable memtables that have already been\nflushed.
+    This value is the sum over all column families.\n\nMemtables are sorted tables
+    of key/value pairs which begin\nto be built up in memory. At some stage they are
+    closed and become\nimmutable, and some time later they are flushed to disk.\n"
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "num-immutable-mem-table-flushed" - sum over column families
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_immutable_mem_table_flushed
-
-'
+  introducedIn: '3.6'
   name: rocksdb_num_immutable_mem_table_flushed
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_live_versions
+  description: 'This metric exhibits the RocksDB metric "rocksdb-num-live-versions".
+
+    It shows the number of live versions. `Version` is an internal data
+
+    structure. See `version_set.h` in the RocksDB source for details. More
+
+    live versions often mean more SST files are held from being deleted,
+
+    by iterators or unfinished compactions. This number is the number
+
+    summed up over all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_live_versions
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-num-live-versions"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_live_versions
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_running_compactions
+  description: 'This metric exhibits the RocksDB metric "rocksdb-num-running-compactions".
+
+    It shows the number of currently running compactions.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_running_compactions
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-num-running-compactions"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_running_compactions
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_running_flushes
+  description: 'This metric exhibits the RocksDB metric "rocksdb-num-running-flushes".
+
+    It shows the number of currently running flushes.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_running_flushes
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-num-running-flushes"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_running_flushes
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_snapshots
+  description: 'This metric exhibits the RocksDB metric "rocksdb-num-snapshots".
+
+    It shows the number of unreleased snapshots of the database.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_num_snapshots
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-num-snapshots"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_num_snapshots
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_oldest_snapshot_time
+  description: 'This metric exhibits the RocksDB metric "rocksdb-oldest-snapshot-time".
+
+    It shows a number representing the unix timestamp of the oldest
+
+    unreleased snapshot.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_oldest_snapshot_time
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-oldest-snapshot-time"
 
 '
+  introducedIn: '3.6'
   name: rocksdb_oldest_snapshot_time
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_size_all_mem_tables
+  description: 'This metric exhibits the RocksDB metric "rocksdb-size-all-mem-tables".
+
+    It shows the approximate size of all active, unflushed immutable, and
+
+    pinned immutable memtables in bytes, summed over all column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_size_all_mem_tables
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-size-all-mem-tables" - sum over column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_size_all_mem_tables
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_total_disk_space
+  description: 'This metric shows the currently used disk space in bytes on the volume
+
+    which is used by RocksDB. Since RocksDB does not like out of disk
+
+    space scenarios, please make sure that there is enough free disk space
+
+    available at all times! Note that this metric is only available/populated on some
+    platforms.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_total_disk_space
+  exposedBy: [dbserver, agent, single]
+  help: 'Used disk space in bytes on volume used by RocksDB
 
 '
+  introducedIn: '3.8'
   name: rocksdb_total_disk_space
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_total_inodes
+  description: 'This metric shows the currently used number of inodes on the disk
+    volume
+
+    used by RocksDB. Since RocksDB does not like out of disk space
+
+    scenarios, please make sure that there are enough free inodes available
+
+    at all times! Note that this metric is only available/populated on some platforms.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_total_inodes
+  exposedBy: [dbserver, agent, single]
+  help: 'Number of used inodes on the volume used by RocksDB
 
 '
+  introducedIn: '3.8'
   name: rocksdb_total_inodes
   type: gauge
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_total_sst_files_size
+  description: 'This metric exhibits the RocksDB metric "rocksdb-total-sst-files-size".
+
+    It shows the total size in bytes of all SST files, summed over all
+
+    column families.
 
 '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdb_total_sst_files_size
+  exposedBy: [dbserver, agent, single]
+  help: 'RocksDB metric "rocksdb-total-sst-files-size" - sum over all column families
 
 '
+  introducedIn: '3.6'
   name: rocksdb_total_sst_files_size
   type: gauge
-  unit: number
-- category: RocksDB
-  complexity: advanced
-  description: 'rocksdbengine_throttle_bps
-
-'
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdbengine_throttle_bps
-
-'
-  name: rocksdbengine_throttle_bps
-  type: gauge
-  unit: number
+  unit: bytes
