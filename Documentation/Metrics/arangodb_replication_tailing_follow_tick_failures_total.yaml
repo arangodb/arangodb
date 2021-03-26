@@ -9,4 +9,10 @@ complexity: advanced
 exposedBy:
   - dbserver
 description: |
-  Number of replication tailing failures due to missing tick on leader.
+  The number of replication tailing failures due to missing tick on leader.
+troubleshoot:
+  Action is required. Required follower ticks is not present (potentially
+  removed) on a Leader DB-Server. Please check the related Leader DB-Server
+  log-files to identify the origin of the cause. It may be required to do
+  a full re-sync and/or increase the number of historic logfiles on the
+  leader(s).
