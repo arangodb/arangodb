@@ -18,6 +18,6 @@ threshold:
   This metric can vary significantly dependent on the workload. If the rate is
   consistently very high, it could be an indication of some problem.
 troubleshooting:
-  There are many possible reasons for this, and specific advise cannot be given
+  There are many possible reasons for this, and specific advice cannot be given
   here. Examples can be costly or inefficient queries being executed, or just
   that the machine's performance is not sufficient for the tasks.
