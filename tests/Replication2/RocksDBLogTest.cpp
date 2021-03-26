@@ -91,14 +91,15 @@ auto make_iterator(std::initializer_list<LogEntry> c)
       c.begin(), c.end());
 }
 
-TEST_F(RocksDBLogTest, simple_test) {
+TEST_F(RocksDBLogTest, insert_iterate) {
   auto log = createLog(LogId{12}, 12);
 
   {
     auto entries = std::vector{
-        LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{}},
-        LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{}},
-        LogEntry{LogTerm{2}, LogIndex{3}, LogPayload{}},
+        LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{"first"}},
+        LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"second"}},
+        LogEntry{LogTerm{2}, LogIndex{3}, LogPayload{"third"}},
+        LogEntry{LogTerm{2}, LogIndex{1000}, LogPayload{"thousand"}},
     };
     auto iter = make_iterator(entries);
 
@@ -114,16 +115,25 @@ TEST_F(RocksDBLogTest, simple_test) {
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1);
     ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logPayload().dummy, "first");
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 2);
     ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logPayload().dummy, "second");
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 3);
     ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logPayload().dummy, "third");
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 1000);
+    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logPayload().dummy, "thousand");
 
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());

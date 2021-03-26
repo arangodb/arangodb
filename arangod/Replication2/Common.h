@@ -46,6 +46,8 @@ struct LogTerm {
   std::uint64_t value;
 };
 struct LogPayload {
+  explicit LogPayload(std::string_view dummy) : dummy(dummy) {}
+
   // just a placeholder for now
   std::string dummy;
 };

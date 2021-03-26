@@ -284,7 +284,7 @@ void RocksDBKey::constructLogEntry(uint64_t objectId, replication2::LogIndex idx
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, objectId);
-  uint64ToPersistent(*_buffer, idx.value);
+  uintToPersistentBigEndian<uint64_t>(*_buffer, idx.value);
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
@@ -385,7 +385,8 @@ uint64_t RocksDBKey::geoValue(rocksdb::Slice const& slice) {
 
 replication2::LogIndex RocksDBKey::logIndex(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() == 2 * sizeof(uint64_t));
-  return replication2::LogIndex{uint64FromPersistent(slice.data() + sizeof(uint64_t))};
+  return replication2::LogIndex{
+      uintFromPersistentBigEndian<uint64_t>(slice.data() + sizeof(uint64_t))};
 }
 
 replication2::LogIndex RocksDBKey::logIndex(RocksDBKey const& key) {
