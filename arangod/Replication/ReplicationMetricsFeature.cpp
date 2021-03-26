@@ -34,7 +34,7 @@ DECLARE_COUNTER(arangodb_replication_dump_requests_total,
 DECLARE_COUNTER(arangodb_replication_dump_bytes_received_total,
                 "Total number of bytes replicated in initial asynchronous phase.");
 DECLARE_COUNTER(arangodb_replication_dump_documents_total,
-                "Number of documents received in replication dump requests");
+                "Total number of documents replicated in initial asynchronous phase.");
 DECLARE_COUNTER(arangodb_replication_dump_request_time_total,
                 "Wait time for replication requests [ms]");
 DECLARE_COUNTER(arangodb_replication_dump_apply_time_total,
