@@ -1,5 +1,5 @@
 name: arangodb_shards_out_of_sync
-introducedIn: "3.7"
+introducedIn: "3.7.1"
 help: |
   Number of leader shards not fully replicated.
 unit: number

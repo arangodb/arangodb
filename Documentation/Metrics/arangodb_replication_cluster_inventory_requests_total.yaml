@@ -1,5 +1,6 @@
 name: arangodb_replication_cluster_inventory_requests_total
-introducedIn: "3.6"
+renamedFrom: arangodb_replication_cluster_inventory_requests
+introducedIn: "3.8.0"
 help: |
   (DC-2-DC only) Number of times the database and collection overviews have been requested.
 unit: number

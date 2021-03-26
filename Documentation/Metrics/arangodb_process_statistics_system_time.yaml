@@ -1,5 +1,5 @@
 name: arangodb_process_statistics_system_time
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   Process system time
 unit: s

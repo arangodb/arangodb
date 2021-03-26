@@ -1,5 +1,5 @@
 name: rocksdb_estimate_table_readers_mem
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-estimate-table-readers-mem" - sum over column families
 unit: bytes

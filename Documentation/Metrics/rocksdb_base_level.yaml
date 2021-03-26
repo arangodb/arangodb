@@ -1,5 +1,5 @@
 name: rocksdb_base_level
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-base-level"
 unit: number

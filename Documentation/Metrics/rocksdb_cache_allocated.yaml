@@ -1,5 +1,5 @@
 name: rocksdb_cache_allocated
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   Global current allocation of ArangoDB cache
 unit: bytes

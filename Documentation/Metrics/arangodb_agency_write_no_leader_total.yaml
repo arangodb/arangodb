@@ -1,5 +1,6 @@
 name: arangodb_agency_write_no_leader_total
-introducedIn: "3.7"
+renamedFrom: arangodb_agency_write_no_leader
+introducedIn: "3.8.0"
 help: |
   Agency write operations with no leader or on followers.
 unit: number

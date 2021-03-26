@@ -1,5 +1,5 @@
 name: arangodb_agency_supervision_runtime_msec
-introducedIn: "3.8"
+introducedIn: "3.7.1"
 help: |
   Agency supervision runtime histogram.
 unit: ms

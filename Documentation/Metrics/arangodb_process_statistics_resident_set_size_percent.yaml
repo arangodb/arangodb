@@ -1,5 +1,5 @@
 name: arangodb_process_statistics_resident_set_size_percent
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   Resident set size as fraction of system memory
 unit: number

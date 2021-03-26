@@ -1,5 +1,6 @@
 name: arangodb_rocksdb_write_stops_total
-introducedIn: "3.8"
+renamedFrom: rocksdb_write_stops
+introducedIn: "3.8.0"
 help: |
   Number of times RocksDB has entered a stopped write state
 unit: number
