@@ -10,7 +10,7 @@ exposedBy:
   - dbserver
 description:
   The accumulated number of replication tailing document inserts/replaces
-  processed on a Follower.
+  processed on a follower.
 troubleshoot:
   Compare this metric with all other related participating Follower
   DB-Servers. If the given value on a DB-Server is considerable higher,
