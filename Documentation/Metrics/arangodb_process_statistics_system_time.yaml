@@ -1,5 +1,5 @@
 name: arangodb_process_statistics_system_time
-help: |
+help:
   Process system time
 unit: s
 type: gauge
@@ -10,10 +10,10 @@ exposedBy:
   - dbserver
   - agent
   - single
-description: |
+description:
   Amount of time that this process has been scheduled in kernel mode,
   measured in seconds.
-threshold: |
+threshold:
   This metric can vary significantly dependent on the workload. If the rate is
   consistently very high, it could be an indication of some problem.
 troubleshooting:

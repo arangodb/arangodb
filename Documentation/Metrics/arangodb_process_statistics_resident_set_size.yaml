@@ -1,5 +1,5 @@
 name: arangodb_process_statistics_resident_set_size
-help: |
+help:
   Resident set size
 unit: bytes
 type: gauge
@@ -10,7 +10,7 @@ exposedBy:
   - dbserver
   - agent
   - single
-description: |
+description:
   The total size of the number of pages the process has in real memory.
   This is just the pages which count toward text, data, or stack space.
   This does not include pages which have not been demand-loaded in, or
