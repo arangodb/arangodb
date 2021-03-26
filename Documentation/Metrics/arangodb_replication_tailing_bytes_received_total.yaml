@@ -9,7 +9,7 @@ complexity: medium
 exposedBy:
   - dbserver
 description:
-  The accumulated number of bytes received from a Leader for replication
+  The accumulated number of bytes received from a leader for replication
   tailing requests. The higher the amount of bytes is, the more data
   is being processed afterwards on the follower dbserver.
 troubleshoot:
