@@ -27,16 +27,22 @@
 #include <rocksdb/db.h>
 #include <rocksdb/listener.h>
 
+#include <atomic>
+
 namespace arangodb {
 
 class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
  public:
-  virtual ~RocksDBBackgroundErrorListener();
+  RocksDBBackgroundErrorListener();
+  ~RocksDBBackgroundErrorListener();
 
   void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
+  bool called() const noexcept;
+  void resume();
+
  private:
-  bool _called = false;
+  std::atomic<bool> _called;
 };  // class RocksDBThrottle
 
 }  // namespace arangodb

@@ -49,8 +49,10 @@ void RocksDBBackgroundThread::beginShutdown() {
 
 void RocksDBBackgroundThread::run() {
   double const startTime = TRI_microtime();
+  uint64_t runs = 0;
 
   while (!isStopping()) {
+    ++runs;
     {
       CONDITION_LOCKER(guard, _condition);
       guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
@@ -58,6 +60,10 @@ void RocksDBBackgroundThread::run() {
 
     if (_engine.inRecovery()) {
       continue;
+    }
+
+    if (runs % 8 == 0) {
+      _engine.tryResume();
     }
 
     TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }

@@ -642,7 +642,8 @@ void RocksDBEngine::start() {
     _options.listeners.push_back(_shaListener);
   }  // if
 
-  _options.listeners.push_back(std::make_shared<RocksDBBackgroundErrorListener>());
+  _backgroundErrorListener = std::make_shared<RocksDBBackgroundErrorListener>();
+  _options.listeners.push_back(_backgroundErrorListener);
 
   if (opts._totalWriteBufferSize > 0) {
     _options.db_write_buffer_size = opts._totalWriteBufferSize;
@@ -928,6 +929,25 @@ void RocksDBEngine::unprepare() {
   TRI_ASSERT(isEnabled());
   waitForCompactionJobsToFinish();
   shutdownRocksDBInstance();
+}
+
+void RocksDBEngine::tryResume() {
+  if (_backgroundErrorListener != nullptr &&
+     _backgroundErrorListener->called()) {
+
+    LOG_TOPIC("a77d3", DEBUG, Logger::ENGINES) 
+        << "trying to resume RocksDB operations after background error";
+    rocksdb::Status s = _db->GetRootDB()->Resume();
+    if (s.ok()) {
+      _backgroundErrorListener->resume();
+      LOG_TOPIC("02f89", INFO, Logger::ENGINES) 
+          << "resumed RocksDB operations after background error";
+    } else {
+      LOG_TOPIC("9708a", WARN, Logger::ENGINES) 
+          << "resuming RocksDB operations after background error failed: " 
+          << rocksutils::convertStatus(s).errorMessage();
+    }
+  }
 }
 
 std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(

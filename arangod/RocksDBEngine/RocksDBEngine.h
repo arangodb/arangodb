@@ -52,6 +52,7 @@ namespace arangodb {
 
 class PhysicalCollection;
 class PhysicalView;
+class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBEventListener;
 class RocksDBKey;
@@ -308,6 +309,9 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
 
+  // try to resume operations in case there was a background error
+  void tryResume();
+
  private:
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
@@ -497,6 +501,9 @@ class RocksDBEngine final : public StorageEngine {
   // optional code to notice when rocksdb creates or deletes .ssh files.  Currently
   //  uses that input to create or delete parallel sha256 files
   std::shared_ptr<RocksDBEventListener> _shaListener;
+  
+  // listener for background errors
+  std::shared_ptr<RocksDBBackgroundErrorListener> _backgroundErrorListener; 
 
   arangodb::basics::ReadWriteLock _purgeLock;
 
