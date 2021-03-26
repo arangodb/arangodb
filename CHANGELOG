@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 2.0.1.
+
 * Introduce metrics for AQL query memory limit violations:
   - `arangodb_aql_global_query_memory_limit_reached`: Total number of times the
     global query memory limit was violated.
