@@ -14,6 +14,6 @@ description:
   is being processed afterwards on the follower dbserver.
 troubleshoot:
   Compare this metric with all other related participating follower
-  DB-Servers. If the given value on a DB-Server is considerable higher,
+  dbservers. If the given value on a dbserver is considerable higher,
   you might want to think about rebalancing your data as the overall
   work might not be evenly distributed.
