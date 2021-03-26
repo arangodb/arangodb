@@ -64,6 +64,19 @@ using namespace arangodb::import;
 
 namespace fu = arangodb::fuerte;
 
+namespace {
+// return an identifier to a connection configuration, consisting of
+// endpoint, username, password, jwt, authentication and protocol type
+std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
+  return
+      builder.normalizedEndpoint() + "/" +
+      builder.user() + "/" + builder.password() + "/" + 
+      builder.jwtToken() + "/" +
+      to_string(builder.authenticationType()) + "/" + 
+      to_string(builder.protocolType());
+}
+} // namespace
+
 V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& server,
                                        ClientFeature& client)
     : _server(server),
@@ -110,97 +123,124 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
     setCustomError(400, "no endpoint specified");
     return nullptr;
   }
-  auto newConnection = _builder.connect(_loop);
+
+  auto findConnection = [this]() {
+    std::string id = connectionIdentifier(_builder);
+
+    // check if we have a connection for that endpoint in our cache
+    auto it = _connectionCache.find(id);
+    if (it != _connectionCache.end()) { 
+      auto c = (*it).second;
+      // cache hit. remove the connection from the cache and return it!
+      _connectionCache.erase(it);
+      return std::make_pair(c, true);
+    }
+    // no connection found in cache. create a new one
+    return std::make_pair(_builder.connect(_loop), false);
+  };
+
+  // try to find an existing connection in the cache
+  // the cache has one connection per endpoint
+  auto [newConnection, wasFromCache] = findConnection();
+  int retryCount = wasFromCache? 2 : 1;
   fu::StringMap params{{"details", "true"}};
-  auto req = fu::createRequest(fu::RestVerb::Get, "/_api/version", params);
-  req->header.database = _databaseName;
-  req->timeout(std::chrono::seconds(30));
-  try {
-    auto res = newConnection->sendRequest(std::move(req));
+  while (retryCount > 0) {
+    auto req = fu::createRequest(fu::RestVerb::Get, "/_api/version", params);
+    req->header.database = _databaseName;
+    req->timeout(std::chrono::seconds(30));
+    retryCount -= 1;
+    try {
+      auto res = newConnection->sendRequest(std::move(req));
 
     _lastHttpReturnCode = res->statusCode();
 
-    std::shared_ptr<VPackBuilder> parsedBody;
-    VPackSlice body;
-    if (res->contentType() == fu::ContentType::VPack) {
-      body = res->slice();
-    } else if (res->contentType() == fu::ContentType::Json) {
-      parsedBody =
+      std::shared_ptr<VPackBuilder> parsedBody;
+      VPackSlice body;
+      if (res->contentType() == fu::ContentType::VPack) {
+        body = res->slice();
+      } else if (res->contentType() == fu::ContentType::Json) {
+        parsedBody =
           VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
                                 res->payload().size());
-      body = parsedBody->slice();
-    }
-    if (_lastHttpReturnCode >= 400) {
-      auto const& headers = res->messageHeader().meta();
-      auto it = headers.find("http/1.1");
-      if (it != headers.end()) {
-        std::string errorMessage = (*it).second;
-        if (body.isObject()) {
-          std::string const msg =
-            VelocyPackHelper::getStringValue(body, StaticStrings::ErrorMessage, "");
-          if (!msg.empty()) {
-            errorMessage = msg;
+        body = parsedBody->slice();
+      }
+      if (_lastHttpReturnCode >= 400) {
+        auto const& headers = res->messageHeader().meta();
+        auto it = headers.find("http/1.1");
+        if (it != headers.end()) {
+          std::string errorMessage = (*it).second;
+          if (body.isObject()) {
+            std::string const msg =
+              VelocyPackHelper::getStringValue(body, StaticStrings::ErrorMessage, "");
+            if (!msg.empty()) {
+              errorMessage = msg;
+            }
           }
+          setCustomError(_lastHttpReturnCode, errorMessage);
+          return nullptr;
         }
-        setCustomError(_lastHttpReturnCode, errorMessage);
+      }
+
+      if (!body.isObject()) {
+        std::string msg("invalid response: '");
+        msg += std::string(reinterpret_cast<char const*>(res->payload().data()),
+                           res->payload().size());
+        msg += "'";
+        setCustomError(503, msg);
         return nullptr;
       }
-    }
 
-    if (!body.isObject()) {
-      std::string msg("invalid response: '");
-      msg += std::string(reinterpret_cast<char const*>(res->payload().data()),
-                         res->payload().size());
-      msg += "'";
-      setCustomError(503, msg);
-      return nullptr;
-    }
+      std::lock_guard<std::recursive_mutex> guard(_lock);
+      _connection = newConnection;
 
-    std::lock_guard<std::recursive_mutex> guard(_lock);
-    _connection = newConnection;
-
-    std::string const server =
+      std::string const server =
         VelocyPackHelper::getStringValue(body, "server", "");
 
-    // "server" value is a string and content is "arango"
-    if (server == "arango") {
-      // look up "version" value
-      _version = VelocyPackHelper::getStringValue(body, "version", "");
-      VPackSlice const details = body.get("details");
-      if (details.isObject()) {
-        VPackSlice const mode = details.get("mode");
-        if (mode.isString()) {
-          _mode = mode.copyString();
+      // "server" value is a string and content is "arango"
+      if (server == "arango") {
+        // look up "version" value
+        _version = VelocyPackHelper::getStringValue(body, "version", "");
+        VPackSlice const details = body.get("details");
+        if (details.isObject()) {
+          VPackSlice const mode = details.get("mode");
+          if (mode.isString()) {
+            _mode = mode.copyString();
+          }
+          VPackSlice role = details.get("role");
+          if (role.isString()) {
+            _role = role.copyString();
+          }
         }
-        VPackSlice role = details.get("role");
-        if (role.isString()) {
-          _role = role.copyString();
+        if (!body.hasKey("version")) {
+          // if we don't get a version number in return, the server is
+          // probably running in hardened mode
+          return newConnection;
         }
-      }
-      if (!body.hasKey("version")) {
-        // if we don't get a version number in return, the server is
-        // probably running in hardened mode
-        return newConnection;
-      }
-      std::string const versionString =
+        std::string const versionString =
           VelocyPackHelper::getStringValue(body, "version", "");
-      std::pair<int, int> version = rest::Version::parseVersionString(versionString);
-      if (version.first < 3) {
-        // major version of server is too low
-        //_client->disconnect();
-        shutdownConnection();
-        std::string msg("Server version number ('" + versionString +
-                        "') is too low. Expecting 3.0 or higher");;
-        setCustomError(500, msg);
-        return newConnection;
+        std::pair<int, int> version = rest::Version::parseVersionString(versionString);
+        if (version.first < 3) {
+          // major version of server is too low
+          //_client->disconnect();
+          shutdownConnection();
+          std::string msg("Server version number ('" + versionString +
+                          "') is too low. Expecting 3.0 or higher");;
+          setCustomError(500, msg);
+          return newConnection;
+        }
+      }
+      return _connection;
+    } catch (fu::Error const& e) {  // connection error
+      if (retryCount <= 0) {
+        std::string msg(fu::to_string(e));
+        setCustomError(503, msg);
+        return nullptr;
+      } else {
+        newConnection = _builder.connect(_loop);
       }
     }
-    return _connection;
-  } catch (fu::Error const& e) {  // connection error
-    std::string msg(fu::to_string(e));
-    setCustomError(503, msg);
-    return nullptr;
   }
+  return nullptr;
 }
 
 std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection() {
@@ -294,6 +334,8 @@ void V8ClientConnection::connect() {
 void V8ClientConnection::reconnect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
+  std::string oldConnectionId = connectionIdentifier(_builder);
+
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
   _databaseName = _client.databaseName();
   _builder.endpoint(_client.endpoint());
@@ -312,7 +354,13 @@ void V8ClientConnection::reconnect() {
   std::shared_ptr<fu::Connection> oldConnection;
   _connection.swap(oldConnection);
   if (oldConnection) {
-    oldConnection->cancel();
+    if (oldConnection->state() == fu::Connection::State::Disconnected) {
+      oldConnection->cancel();
+    } else {
+      // a non-closed connection. now try to insert it into the connection
+      // cache for later reuse
+      _connectionCache.emplace(oldConnectionId, oldConnection);
+    }
   }
   oldConnection.reset();
   try {
