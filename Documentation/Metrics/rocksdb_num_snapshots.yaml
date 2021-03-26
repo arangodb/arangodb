@@ -1,7 +1,7 @@
 name: rocksdb_num_snapshots
 introducedIn: "3.6"
 help: |
-  rocksdb_num_snapshots
+  RocksDB metric "rocksdb-num-snapshots"
 unit: number
 type: gauge
 category: RocksDB
@@ -11,4 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_num_snapshots
+  This metric exhibits the RocksDB metric "rocksdb-num-snapshots".
+  It shows the number of unreleased snapshots of the database.
+
