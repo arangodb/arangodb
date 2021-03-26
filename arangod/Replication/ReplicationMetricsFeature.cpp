@@ -32,7 +32,7 @@ using namespace arangodb::options;
 DECLARE_COUNTER(arangodb_replication_dump_requests_total,
                 "Number of replication dump requests");
 DECLARE_COUNTER(arangodb_replication_dump_bytes_received_total,
-                "Number of bytes received in replication dump requests");
+                "Total number of bytes replicated in initial asynchronous phase.");
 DECLARE_COUNTER(arangodb_replication_dump_documents_total,
                 "Number of documents received in replication dump requests");
 DECLARE_COUNTER(arangodb_replication_dump_request_time_total,
