@@ -8,5 +8,13 @@ category: Replication
 complexity: medium
 exposedBy:
   - dbserver
-description: |
-  Accumulated time needed to apply replication tailing data.
+description:
+  The accumulated time needed to locally process the continuous
+  replication log on a Follower received from a replication
+  Leader.
+throubleshoot:
+  If you see unusual spikes here, the follower might not have enough
+  IO bandwith or might be overloaded. Try to provision more IOPS or
+  more CPU capacity. Additionally, it could make sense to compare the
+  value with all other available Follower DB-Servers to detect potential
+  differences.

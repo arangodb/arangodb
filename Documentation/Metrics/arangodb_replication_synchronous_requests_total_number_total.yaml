@@ -8,5 +8,6 @@ category: Replication
 complexity: medium
 exposedBy:
   - dbserver
-description: |
-  The total amount of all synchronous replication operation requests being done.
+description:
+  The total amount of all synchronous replication operation requests
+  between DB-Servers being done.
