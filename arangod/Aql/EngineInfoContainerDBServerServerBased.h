@@ -146,7 +146,7 @@ class EngineInfoContainerDBServerServerBased {
   // the DBServers. The GraphNode itself will retain on the coordinator.
   void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
-  void addUpsertNode(UpsertNode const* node);
+  void addUpsertNode(UpsertNode* node);
 
  private:
 

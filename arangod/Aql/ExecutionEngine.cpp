@@ -40,6 +40,8 @@
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SharedQueryState.h"
+#include "Aql/SkipResult.h"
+#include "Aql/WalkerWorker.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
