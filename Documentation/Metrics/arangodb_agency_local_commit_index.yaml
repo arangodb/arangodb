@@ -9,4 +9,5 @@ complexity: simple
 exposedBy:
   - agent
 description: |
-  This agent's commit index.
+  This agent's commit index (i.e. the index until it has advanced in 
+  the agency's RAFT protocol).

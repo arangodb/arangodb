@@ -33,6 +33,22 @@ devel
   RAM: 274877906944 (262144MiB)  Limit: 248077311017 (236584MiB), %mem: 90.2
   RAM: 549755813888 (524288MiB)  Limit: 496154622034 (473169MiB), %mem: 90.2
 
+* The old metrics API contains the following gauges which should actually be
+  counters:
+    * arangodb_scheduler_jobs_dequeued
+    * arangodb_scheduler_jobs_submitted
+    * arangodb_scheduler_jobs_done
+  Therefore the new v2 metric api adds the following counters:
+    * arangodb_scheduler_jobs_dequeued_total
+    * arangodb_scheduler_jobs_submitted_total
+    * arangodb_scheduler_jobs_done_total
+  These counters are only visible in the new v2 metrics API and replace the old
+  metrics which are suppressed for v2.
+  
+* Fix connectionTime statistic. This statistic should provide the distribution
+  of the connection lifetimes, but in previous versions the tracking was broken
+  and no values were reported.
+
 * Add an option for locking down all endpoints in the `/_admin/cluster` REST
   API for callers without a proper JWT set in the request. There is a new
   startup option `--cluster.api-jwt-policy` that allows *additional* checks

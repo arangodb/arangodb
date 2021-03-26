@@ -1,7 +1,7 @@
 name: rocksdb_is_file_deletions_enabled
 introducedIn: "3.6"
 help: |
-  rocksdb_is_file_deletions_enabled
+  RocksDB metric "rocksdb-is-file-deletions-enabled"
 unit: number
 type: gauge
 category: RocksDB
@@ -11,4 +11,8 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_is_file_deletions_enabled
+  This metric exhibits the RocksDB metric "rocksdb-is-file-deletions-enabled".
+  It shows 0 if deletion of obsolete files is enabled, and otherwise,
+  it shows a non-zero number. Note that for ArangoDB, this is supposed
+  to always return 1, since the deletion of obsolete WAL files is done
+  from ArangoDB, externally to RocksDB.

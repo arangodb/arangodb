@@ -1,8 +1,8 @@
 name: rocksdb_estimate_table_readers_mem
 introducedIn: "3.6"
 help: |
-  rocksdb_estimate_table_readers_mem
-unit: number
+  RocksDB metric "rocksdb-estimate-table-readers-mem" - sum over column families
+unit: bytes
 type: gauge
 category: RocksDB
 complexity: advanced
@@ -11,4 +11,9 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_estimate_table_readers_mem
+  This metric exhibits the RocksDB metric
+  "rocksdb-estimate-table-readers-mem".
+  It shows the estimated memory used for reading SST tables, excluding
+  memory used in block cache (e.g. filter and index blocks), summed over
+  all column families.
+
