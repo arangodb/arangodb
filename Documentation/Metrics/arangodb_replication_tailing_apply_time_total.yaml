@@ -12,7 +12,7 @@ description: |
   The accumulated time needed to locally process the continuous
   replication log on a follower received from a replication
   Leader.
-throubleshoot:
+throubleshoot: |
   If you see unusual spikes here, the follower might not have enough
   IO bandwith or might be overloaded. Try to provision more IOPS or
   more CPU capacity. Additionally, it could make sense to compare the
