@@ -11,7 +11,7 @@ exposedBy:
   - dbserver
   - agent
 description: |
-  Number of internal requests that have timed out. This metric in increased
+  Number of internal requests that have timed out. This metric is increased
   whenever any cluster-internal request executed in the underlying connection
   pool runs into a timeout.
 troubleshoot: |
