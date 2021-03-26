@@ -11,4 +11,11 @@ exposedBy:
   - dbserver
   - agent
 description: |
-  Number of outgoing internal requests in flight.
+  Number of outgoing internal requests in flight. This metric in increased
+  whenever any cluster-internal request is about to be sent via the underlying 
+  connection pool, and is decreased whenever a response for such request is
+  received or the request runs into a timeout.
+  This metric provides an estimate of the fan-out of operations. For example,
+  a user operation on a collection with a single shard will normally lead to
+  a single internal request (plus replication), whereas an operation on a
+  collection with 10 shards may lead to a fan-out of 10 (plus replication).
