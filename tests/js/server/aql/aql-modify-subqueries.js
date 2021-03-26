@@ -35,12 +35,12 @@ var helper = require("@arangodb/aql-helper");
 var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
 var assertQueryError = helper.assertQueryError;
 const isCluster = require('@arangodb/cluster').isCluster();
-const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations" ] } };
-const disableRestrictToSingleShard = { optimizer : { rules : [ "-restrict-to-single-shard" ] } };
+const disableSingleDocOp = {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}};
+const disableRestrictToSingleShard = {optimizer: {rules: ["-restrict-to-single-shard"]}};
 
 const disableSingleDocOpRestrictToSingleShard = {
-  optimizer : {
-    rules : [
+  optimizer: {
+    rules: [
       "-restrict-to-single-shard",
       "-optimize-cluster-single-document-operations"
     ]
@@ -60,17 +60,17 @@ var sanitizeStats = function (stats) {
   return stats;
 };
 
-let hasDistributeNode = function(nodes) {
-  return (nodes.filter(function(node) {
+let hasDistributeNode = function (nodes) {
+  return (nodes.filter(function (node) {
     return node.type === 'DistributeNode';
   }).length > 0);
 };
 
-let allNodesOfTypeAreRestrictedToShard = function(nodes, typeName, collection) {
-  return nodes.filter(function(node) {
+let allNodesOfTypeAreRestrictedToShard = function (nodes, typeName, collection) {
+  return nodes.filter(function (node) {
     return node.type === typeName &&
-           node.collection === collection.name();
-  }).every(function(node) {
+      node.collection === collection.name();
+  }).every(function (node) {
     return (collection.shards().indexOf(node.restrictedTo) !== -1);
   });
 };
@@ -79,35 +79,35 @@ let allNodesOfTypeAreRestrictedToShard = function(nodes, typeName, collection) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlModifySuite () {
+function ahuacatlModifySuite() {
   const errors = internal.errors;
   const cn = "UnitTestsAhuacatlModify";
   const cn2 = "UnitTestsAhuacatlModify2";
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       db._drop(cn2);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn);
       db._drop(cn2);
     },
 
     // use default shard key (_key)
 
-    testUpdateSingle : function () {
+    testUpdateSingle: function () {
       if (!isCluster) {
         return;
       }
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       { // no - RestrictToSingleShard
-        let key = c.insert({ id: "test", value: 1 })._key;
+        let key = c.insert({id: "test", value: 1})._key;
 
-        let expected = { writesExecuted: 1, writesIgnored: 4 };
+        let expected = {writesExecuted: 1, writesIgnored: 4};
         let query = "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2 } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
@@ -120,13 +120,13 @@ function ahuacatlModifySuite () {
         assertEqual(1, c.count());
         assertEqual(0, actual.json.length);
         assertEqual(expected, sanitizeStats(actual.stats));
-        c.truncate({ compact: false });
+        c.truncate({compact: false});
       }
 
       // RestrictToSingleShard
-      let key = c.insert({ id: "test", value: 1 })._key;
+      let key = c.insert({id: "test", value: 1})._key;
 
-      let expected = { writesExecuted: 1, writesIgnored: 0 };
+      let expected = {writesExecuted: 1, writesIgnored: 0};
       let query = "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
@@ -141,26 +141,26 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateSingleShardKeyChange : function () {
+    testUpdateSingleShardKeyChange: function () {
       if (!isCluster) {
         return;
       }
 
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
-      let key = c.insert({ id: "test", value: 1 })._key;
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
+      let key = c.insert({id: "test", value: 1})._key;
 
       assertQueryError(errors.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2, id: 'bark' } IN " + cn);
     },
 
-    testReplaceSingle : function () {
+    testReplaceSingle: function () {
       if (!isCluster) {
         return;
       }
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
       { // no - RestrictToSingleShard
-        let key = c.insert({ id: "test", value: 1 })._key;
+        let key = c.insert({id: "test", value: 1})._key;
 
-        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let expected = {writesExecuted: 1, writesIgnored: 0};
         let query = "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { id: 'test', value: 2 } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
@@ -168,13 +168,13 @@ function ahuacatlModifySuite () {
         assertTrue(hasDistributeNode(plan.nodes));
         assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'ReplaceNode', c));
         assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
-        c.truncate({ compact: false });
+        c.truncate({compact: false});
       }
 
       // RestrictToSingleShard
-      let key = c.insert({ id: "test", value: 1 })._key;
+      let key = c.insert({id: "test", value: 1})._key;
 
-      let expected = { writesExecuted: 1, writesIgnored: 0 };
+      let expected = {writesExecuted: 1, writesIgnored: 0};
       let query = "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { id: 'test', value: 2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
@@ -188,23 +188,23 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceSingleShardKeyChange : function () {
+    testReplaceSingleShardKeyChange: function () {
       if (!isCluster) {
         return;
       }
 
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
-      let key = c.insert({ id: "test", value: 1 })._key;
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
+      let key = c.insert({id: "test", value: 1})._key;
 
       assertQueryError(errors.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2, id: 'bark' } IN " + cn);
     },
 
-    testInsertMainLevelWithCustomShardKeyConstant : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testInsertMainLevelWithCustomShardKeyConstant: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       // no - RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
-        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let expected = {writesExecuted: 1, writesIgnored: 0};
         let query = "INSERT { value: " + i + ", id: 'test" + i + "' } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
@@ -218,16 +218,16 @@ function ahuacatlModifySuite () {
         assertEqual(expected, sanitizeStats(actual.stats));
       }
       assertEqual(30, c.count());
-      c.truncate({ compact: false });
+      c.truncate({compact: false});
 
       // RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
-        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let expected = {writesExecuted: 1, writesIgnored: 0};
         let query = "INSERT { value: " + i + ", id: 'test" + i + "' } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
+          let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
           assertFalse(hasDistributeNode(plan.nodes));
           assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -244,17 +244,17 @@ function ahuacatlModifySuite () {
       }
     },
 
-    testInsertMainLevelWithCustomShardKeyMultiLevel : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["a.b"]});
+    testInsertMainLevelWithCustomShardKeyMultiLevel: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["a.b"]});
 
       // no - RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
-        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let expected = {writesExecuted: 1, writesIgnored: 0};
         let query = "INSERT { value: " + i + ", a: { b: 'test" + i + "' } } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
+          let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -263,11 +263,11 @@ function ahuacatlModifySuite () {
         assertEqual(expected, sanitizeStats(actual.stats));
       }
       assertEqual(30, c.count());
-      c.truncate({ compact: false });
+      c.truncate({compact: false});
 
       // RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
-        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let expected = {writesExecuted: 1, writesIgnored: 0};
         let query = "INSERT { value: " + i + ", a: { b: 'test" + i + "' } } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
@@ -289,11 +289,11 @@ function ahuacatlModifySuite () {
       }
     },
 
-    testInsertMainLevelWithKeyConstant : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testInsertMainLevelWithKeyConstant: function () {
+      let c = db._create(cn, {numberOfShards: 5});
       // no - RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
-        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let expected = {writesExecuted: 1, writesIgnored: 0};
         let query = "INSERT { value: " + i + ", _key: 'test" + i + "' } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
@@ -319,16 +319,16 @@ function ahuacatlModifySuite () {
         assertEqual("test" + i, r[0]._key);
         assertEqual(cn + "/test" + i, r[0]._id);
       }
-      c.truncate({ compact: false });
+      c.truncate({compact: false});
 
       // RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
-        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let expected = {writesExecuted: 1, writesIgnored: 0};
         let query = "INSERT { value: " + i + ", _key: 'test" + i + "' } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
+          let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
           assertFalse(hasDistributeNode(plan.nodes));
           assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -351,16 +351,16 @@ function ahuacatlModifySuite () {
       }
     },
 
-    testInsertMainLevelWithKeyExpression : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testInsertMainLevelWithKeyExpression: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 30; ++i) {
-        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let expected = {writesExecuted: 1, writesIgnored: 0};
         let query = "INSERT { value: " + i + ", _key: NOOPT(CONCAT('test', '" + i + "')) } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
+          let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -383,10 +383,10 @@ function ahuacatlModifySuite () {
       }
     },
 
-    testInsertMainLevelWithKey : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testInsertMainLevelWithKey: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
-      let expected = { writesExecuted: 2000, writesIgnored: 0 };
+      let expected = {writesExecuted: 2000, writesIgnored: 0};
       let query = "FOR i IN 1..2000 INSERT { value: i, _key: CONCAT('test', i) } IN " + cn;
       { // no - RestrictToSingleShard
         let actual = getModifyQueryResultsRaw(query);
@@ -399,7 +399,7 @@ function ahuacatlModifySuite () {
         assertEqual(2000, c.count());
         assertEqual(0, actual.json.length);
         assertEqual(expected, sanitizeStats(actual.stats));
-        c.truncate({ compact: false });
+        c.truncate({compact: false});
       }
       // RestrictToSingleShard
       let actual = getModifyQueryResultsRaw(query);
@@ -414,11 +414,11 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testInsertMainLevelWithKeyReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testInsertMainLevelWithKeyReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
-      let expected = { writesExecuted: 2000, writesIgnored: 0 };
-      let query = "FOR i IN 1..2000 INSERT { value: i, _key: CONCAT('test', i) } IN " + cn +  " RETURN NEW";
+      let expected = {writesExecuted: 2000, writesIgnored: 0};
+      let query = "FOR i IN 1..2000 INSERT { value: i, _key: CONCAT('test', i) } IN " + cn + " RETURN NEW";
       let actual = getModifyQueryResultsRaw(query);
 
       if (isCluster) {
@@ -431,10 +431,10 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testInsertMainLevelCustomShardKey : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testInsertMainLevelCustomShardKey: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
-      let expected = { writesExecuted: 2000, writesIgnored: 0 };
+      let expected = {writesExecuted: 2000, writesIgnored: 0};
       let query = "FOR i IN 1..2000 INSERT { value: i, id: i } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
 
@@ -448,10 +448,10 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testInsertMainLevelCustomShardKeyReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testInsertMainLevelCustomShardKeyReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
-      let expected = { writesExecuted: 2000, writesIgnored: 0 };
+      let expected = {writesExecuted: 2000, writesIgnored: 0};
       let query = "FOR i IN 1..2000 INSERT { value: i, id: i } IN " + cn + " RETURN NEW";
       let actual = getModifyQueryResultsRaw(query);
 
@@ -465,10 +465,10 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testInsertMainLevel : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testInsertMainLevel: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
-      let expected = { writesExecuted: 2000, writesIgnored: 0 };
+      let expected = {writesExecuted: 2000, writesIgnored: 0};
       let query = "FOR i IN 1..2000 INSERT { value: i } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
 
@@ -482,10 +482,10 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testInsertMainLevelWithReturn : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testInsertMainLevelWithReturn: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
-      let expected = { writesExecuted: 2000, writesIgnored: 0 };
+      let expected = {writesExecuted: 2000, writesIgnored: 0};
       let query = "FOR i IN 1..2000 INSERT { value: i } IN " + cn + " RETURN NEW";
       let actual = getModifyQueryResultsRaw(query);
 
@@ -499,22 +499,22 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testInsertInSubquery : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testInsertInSubquery: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR i IN 1..100 INSERT { value: i } IN " + cn + ")");
 
       assertEqual(100, c.count());
       assertEqual(1, actual.json.length);
-      assertEqual([ [ ] ], actual.json);
+      assertEqual([[]], actual.json);
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testInsertInSubqueryWithReturn : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testInsertInSubqueryWithReturn: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR i IN 1..100 INSERT { value: i } IN " + cn + " RETURN NEW)");
 
       assertEqual(100, c.count());
@@ -523,14 +523,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelWithKeySingle : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelWithKeySingle: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 1, writesIgnored: 0 };
+      let expected = {writesExecuted: 1, writesIgnored: 0};
       let query = "FOR d IN " + cn + " FILTER d._key == 'test93' REMOVE d IN " + cn;
       let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
       if (isCluster) {
@@ -545,18 +545,18 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelWithKeySingleReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelWithKeySingleReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 1, writesIgnored: 0 };
+      let expected = {writesExecuted: 1, writesIgnored: 0};
       let query = "FOR d IN " + cn + " FILTER d._key == 'test93' REMOVE d IN " + cn + " RETURN OLD";
       let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
       if (isCluster) {
-        let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
+        let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'IndexNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -567,11 +567,11 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelWithoutKey : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelWithoutKey: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
       let query = "FOR d IN " + cn + " REMOVE { foo: 'bar' } IN " + cn;
@@ -585,11 +585,11 @@ function ahuacatlModifySuite () {
       assertEqual(100, c.count());
     },
 
-    testRemoveMainLevelSingleKey : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelSingleKey: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
       let query = "FOR d IN " + cn + " REMOVE { _key: 'bar' } IN " + cn;
@@ -604,14 +604,14 @@ function ahuacatlModifySuite () {
       assertEqual(100, c.count());
     },
 
-    testRemoveMainLevelWithKey : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelWithKey: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -625,14 +625,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelWithKeyReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelWithKeyReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key } IN " + cn + " RETURN OLD";
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -646,14 +646,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelWithKey2 : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelWithKey2: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR i IN 0..99 REMOVE { _key: CONCAT('test', i) } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -666,14 +666,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelWithKey2ReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelWithKey2ReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR i IN 0..99 REMOVE { _key: CONCAT('test', i) } IN " + cn + " RETURN OLD";
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -686,14 +686,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelDefaultShardKeyByReference : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelDefaultShardKeyByReference: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE d IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -707,14 +707,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelDefaultShardKeyByAttribute : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelDefaultShardKeyByAttribute: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE d._key IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -728,15 +728,15 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelDefaultShardKeyByObject : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelDefaultShardKeyByObject: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       { // no - RestrictToSingleShard
         for (let i = 0; i < 100; ++i) {
-          c.insert({ id: i });
+          c.insert({id: i});
         }
 
-        let expected = { writesExecuted: 100, writesIgnored: 0 };
+        let expected = {writesExecuted: 100, writesIgnored: 0};
         let query = "FOR d IN " + cn + " REMOVE { _key: d._key } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
         if (isCluster) {
@@ -751,10 +751,10 @@ function ahuacatlModifySuite () {
       }
       //  RestrictToSingleShard
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -768,24 +768,24 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelCustomShardKeyFixed : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testRemoveMainLevelCustomShardKeyFixed: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: 42 });
+        c.insert({id: 42});
       }
 
       let expected;
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
-        expected = { writesExecuted: 100, writesIgnored: 0 };
+        expected = {writesExecuted: 100, writesIgnored: 0};
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       } else {
-        expected = { writesExecuted: 100, writesIgnored: 0 };
+        expected = {writesExecuted: 100, writesIgnored: 0};
       }
 
       assertEqual(0, c.count());
@@ -818,19 +818,19 @@ function ahuacatlModifySuite () {
     },
     */
 
-    testRemoveMainLevelCustomShardKeyFixedSingleWithFilter : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testRemoveMainLevelCustomShardKeyFixedSingleWithFilter: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 1, writesIgnored: 0 };
+      let expected = {writesExecuted: 1, writesIgnored: 0};
       let query = "FOR d IN " + cn + " FILTER d.id == 42 REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
 
       if (isCluster) {
-        expected = { writesExecuted: 1, writesIgnored: 0 };
+        expected = {writesExecuted: 1, writesIgnored: 0};
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
@@ -842,14 +842,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelCustomShardKeys : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id1", "id2"]});
+    testRemoveMainLevelCustomShardKeys: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id1", "id2"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id1: i, id2: i % 10 });
+        c.insert({id1: i, id2: i % 10});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id1: d.id1, id2: d.id2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -863,14 +863,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelCustomShardKeysFixed : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id1", "id2"]});
+    testRemoveMainLevelCustomShardKeysFixed: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id1", "id2"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id1: i, id2: i % 10 });
+        c.insert({id1: i, id2: i % 10});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
+      let expected = {writesExecuted: 100, writesIgnored: isCluster ? 400 : 0};
       // this will delete all documents!
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id1: d.id1, id2: 2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
@@ -887,14 +887,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelCustomShardKeysFixedWithFilter : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id1", "id2"]});
+    testRemoveMainLevelCustomShardKeysFixedWithFilter: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id1", "id2"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id1: i, id2: i % 10 });
+        c.insert({id1: i, id2: i % 10});
       }
 
-      let expected = { writesExecuted: 10, writesIgnored: isCluster ? 40 : 0 };
+      let expected = {writesExecuted: 10, writesIgnored: isCluster ? 40 : 0};
       let query = "FOR d IN " + cn + " FILTER d.id2 == 2 REMOVE { _key: d._key, id1: d.id1, id2: 2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -908,15 +908,15 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelCustomShardKeysWithFilterIndexed : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id1", "id2"]});
-      c.ensureIndex({ type: "hash", fields: ["id1", "id2"] });
+    testRemoveMainLevelCustomShardKeysWithFilterIndexed: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id1", "id2"]});
+      c.ensureIndex({type: "hash", fields: ["id1", "id2"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id1: i, id2: i % 10 });
+        c.insert({id1: i, id2: i % 10});
       }
 
-      let expected = { writesExecuted: 3, writesIgnored: 0 };
+      let expected = {writesExecuted: 3, writesIgnored: 0};
       let query = "FOR d IN " + cn + " FILTER d.id1 IN [ 2, 12, 22 ] && d.id2 == 2 REMOVE { _key: d._key, id1: d.id1, id2: d.id2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -930,14 +930,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelCustomShardKeysMissing : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id1", "id2"]});
+    testRemoveMainLevelCustomShardKeysMissing: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id1", "id2"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id1: i, id2: i % 10 });
+        c.insert({id1: i, id2: i % 10});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
+      let expected = {writesExecuted: 100, writesIgnored: isCluster ? 400 : 0};
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id1: d.id1 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -952,14 +952,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelCustomShardKey : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testRemoveMainLevelCustomShardKey: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: d.id } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -973,14 +973,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelCustomShardKey2 : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testRemoveMainLevelCustomShardKey2: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE d IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -993,14 +993,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelCustomShardKeyReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testRemoveMainLevelCustomShardKeyReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: d.id } IN " + cn + " RETURN OLD";
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -1013,14 +1013,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevel : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevel: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE d IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -1033,14 +1033,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveMainLevelWithReturn : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveMainLevelWithReturn: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " REMOVE d IN " + cn + " RETURN OLD";
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -1053,30 +1053,30 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveInSubquery : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveInSubquery: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REMOVE d IN " + cn + ")");
 
       assertEqual(0, c.count());
       assertEqual(1, actual.json.length);
-      assertEqual([ [ ] ], actual.json);
+      assertEqual([[]], actual.json);
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveInSubqueryWithReturn : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testRemoveInSubqueryWithReturn: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REMOVE d IN " + cn + " RETURN OLD)");
 
       assertEqual(0, c.count());
@@ -1085,14 +1085,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateMainLevel : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testUpdateMainLevel: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -1105,14 +1105,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateMainLevelWithReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testUpdateMainLevelWithReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let query = "FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN OLD";
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -1125,14 +1125,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateMainLevelWithReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testUpdateMainLevelWithReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN NEW");
 
       assertEqual(100, c.count());
@@ -1140,30 +1140,30 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateInSubquery : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testUpdateInSubquery: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + ")");
 
       assertEqual(100, c.count());
       assertEqual(1, actual.json.length);
-      assertEqual([ [ ] ], actual.json);
+      assertEqual([[]], actual.json);
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateInSubqueryWithReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testUpdateInSubqueryWithReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN OLD)");
 
       assertEqual(100, c.count());
@@ -1172,14 +1172,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateInSubqueryWithReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testUpdateInSubqueryWithReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN NEW)");
 
       assertEqual(100, c.count());
@@ -1188,14 +1188,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceMainLevel : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testReplaceMainLevel: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " REPLACE d WITH { value: 2 } IN " + cn);
 
       assertEqual(100, c.count());
@@ -1203,14 +1203,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceMainLevelWithReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testReplaceMainLevelWithReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " REPLACE d WITH { value: 2 } IN " + cn + " RETURN OLD");
 
       assertEqual(100, c.count());
@@ -1218,14 +1218,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceMainLevelWithReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testReplaceMainLevelWithReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " REPLACE d WITH { value: 2 } IN " + cn + " RETURN NEW");
 
       assertEqual(100, c.count());
@@ -1233,30 +1233,30 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceInSubquery : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testReplaceInSubquery: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REPLACE d WITH { value: 2 } IN " + cn + ")");
 
       assertEqual(100, c.count());
       assertEqual(1, actual.json.length);
-      assertEqual([ [ ] ], actual.json);
+      assertEqual([[]], actual.json);
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceInSubqueryWithReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testReplaceInSubqueryWithReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REPLACE d WITH { value: 2 } IN " + cn + " RETURN OLD)");
 
       assertEqual(100, c.count());
@@ -1265,14 +1265,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceInSubqueryWithReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5});
+    testReplaceInSubqueryWithReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        c.insert({_key: "test" + i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REPLACE d WITH { value: 2 } IN " + cn + " RETURN NEW)");
 
       assertEqual(100, c.count());
@@ -1283,10 +1283,10 @@ function ahuacatlModifySuite () {
 
     // use custom shard key
 
-    testInsertMainLevelCustomShardKeyWithReturn : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testInsertMainLevelCustomShardKeyWithReturn: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR i IN 1..100 INSERT { id: i, value: i } IN " + cn + " RETURN NEW");
 
       assertEqual(100, c.count());
@@ -1294,22 +1294,22 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testInsertCustomShardKeyInSubquery : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testInsertCustomShardKeyInSubquery: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR i IN 1..100 INSERT { id: i, value: i } IN " + cn + ")");
 
       assertEqual(100, c.count());
       assertEqual(1, actual.json.length);
-      assertEqual([ [ ] ], actual.json);
+      assertEqual([[]], actual.json);
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testInsertCustomShardKeyInSubqueryWithReturn : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testInsertCustomShardKeyInSubqueryWithReturn: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR i IN 1..100 INSERT { id: i, value: i } IN " + cn + " RETURN NEW)");
 
       assertEqual(100, c.count());
@@ -1318,14 +1318,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveCustomShardKeyMainLevel : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testRemoveCustomShardKeyMainLevel: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " REMOVE d IN " + cn);
 
       assertEqual(0, c.count());
@@ -1333,14 +1333,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveCustomShardKeyMainLevelWithReturn : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testRemoveCustomShardKeyMainLevelWithReturn: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " REMOVE d IN " + cn + " RETURN OLD");
 
       assertEqual(0, c.count());
@@ -1348,46 +1348,46 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testRemoveCustomShardKeyInSubquery : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testRemoveCustomShardKeyInSubquery: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       { // no - RestrictToSingleShard
         for (let i = 0; i < 100; ++i) {
-          c.insert({ id: i });
+          c.insert({id: i});
         }
 
-        let expected = { writesExecuted: 100, writesIgnored: 0 };
+        let expected = {writesExecuted: 100, writesIgnored: 0};
         let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REMOVE d IN " + cn + ")", {}, disableRestrictToSingleShard);
 
         assertEqual(0, c.count());
         assertEqual(1, actual.json.length);
-        assertEqual([ [ ] ], actual.json);
+        assertEqual([[]], actual.json);
         assertEqual(expected, sanitizeStats(actual.stats));
       }
 
       { // RestrictToSingleShard
         for (let i = 0; i < 100; ++i) {
-          c.insert({ id: i });
+          c.insert({id: i});
         }
 
-        let expected = { writesExecuted: 100, writesIgnored: 0 };
+        let expected = {writesExecuted: 100, writesIgnored: 0};
         let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REMOVE d IN " + cn + ")");
 
         assertEqual(0, c.count());
         assertEqual(1, actual.json.length);
-        assertEqual([ [ ] ], actual.json);
+        assertEqual([[]], actual.json);
         assertEqual(expected, sanitizeStats(actual.stats));
       }
     },
 
-    testRemoveCustomShardKeyInSubqueryWithReturn : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testRemoveCustomShardKeyInSubqueryWithReturn: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REMOVE d IN " + cn + " RETURN OLD)");
 
       assertEqual(0, c.count());
@@ -1396,14 +1396,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateCustomShardKeyMainLevel : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testUpdateCustomShardKeyMainLevel: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn);
 
       assertEqual(100, c.count());
@@ -1411,14 +1411,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateCustomShardKeyMainLevelWithReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testUpdateCustomShardKeyMainLevelWithReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN OLD");
 
       assertEqual(100, c.count());
@@ -1426,14 +1426,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateCustomShardKeyMainLevelWithReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testUpdateCustomShardKeyMainLevelWithReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN NEW");
 
       assertEqual(100, c.count());
@@ -1441,30 +1441,30 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateCustomShardKeyInSubquery : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testUpdateCustomShardKeyInSubquery: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + ")");
 
       assertEqual(100, c.count());
       assertEqual(1, actual.json.length);
-      assertEqual([ [ ] ], actual.json);
+      assertEqual([[]], actual.json);
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateCustomShardKeyInSubqueryWithReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testUpdateCustomShardKeyInSubqueryWithReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN OLD)");
 
       assertEqual(100, c.count());
@@ -1473,14 +1473,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testUpdateCustomShardKeyInSubqueryWithReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testUpdateCustomShardKeyInSubqueryWithReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN NEW)");
 
       assertEqual(100, c.count());
@@ -1489,14 +1489,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceCustomShardKeyMainLevel : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testReplaceCustomShardKeyMainLevel: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " REPLACE d WITH { id: d.id, value: 2 } IN " + cn);
 
       assertEqual(100, c.count());
@@ -1504,14 +1504,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceCustomShardKeyMainLevelWithReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testReplaceCustomShardKeyMainLevelWithReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " REPLACE d WITH { id: d.id, value: 2 } IN " + cn + " RETURN OLD");
 
       assertEqual(100, c.count());
@@ -1519,14 +1519,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceCustomShardKeyMainLevelWithReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testReplaceCustomShardKeyMainLevelWithReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " REPLACE d WITH { id: d.id, value: 2 } IN " + cn + " RETURN NEW");
 
       assertEqual(100, c.count());
@@ -1534,30 +1534,30 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceCustomShardKeyInSubquery : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testReplaceCustomShardKeyInSubquery: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REPLACE d WITH { id: d.id, value: 2 } IN " + cn + ")");
 
       assertEqual(100, c.count());
       assertEqual(1, actual.json.length);
-      assertEqual([ [ ] ], actual.json);
+      assertEqual([[]], actual.json);
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceCustomShardKeyInSubqueryWithReturnOld : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testReplaceCustomShardKeyInSubqueryWithReturnOld: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REPLACE d WITH { id: d.id, value: 2 } IN " + cn + " RETURN OLD)");
 
       assertEqual(100, c.count());
@@ -1566,14 +1566,14 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
-    testReplaceCustomShardKeyInSubqueryWithReturnNew : function () {
-      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+    testReplaceCustomShardKeyInSubqueryWithReturnNew: function () {
+      let c = db._create(cn, {numberOfShards: 5, shardKeys: ["id"]});
 
       for (let i = 0; i < 100; ++i) {
-        c.insert({ id: i });
+        c.insert({id: i});
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      let expected = {writesExecuted: 100, writesIgnored: 0};
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " REPLACE d WITH { id: d.id, value: 2 } IN " + cn + " RETURN NEW)");
 
       assertEqual(100, c.count());
@@ -1585,7 +1585,7 @@ function ahuacatlModifySuite () {
     // Regression test for a bug in ExecutionPlan::instantiateFromPlan, where
     // the false branch was not part of the plan anymore (at least, not visible
     // from the root) if the condition was `true` at compile time.
-    testTernaryEvaluateBothTrue : function () {
+    testTernaryEvaluateBothTrue: function () {
       const c1 = db._create(cn);
       const c2 = db._create(cn2);
 
@@ -1597,7 +1597,7 @@ function ahuacatlModifySuite () {
 
     // Complementary test to testTernaryEvaluateBothTrue, with a constant `false`
     // condition.
-    testTernaryEvaluateBothFalse : function () {
+    testTernaryEvaluateBothFalse: function () {
       const c1 = db._create(cn);
       const c2 = db._create(cn2);
 
@@ -1609,7 +1609,7 @@ function ahuacatlModifySuite () {
 
     // Complementary test to testTernaryEvaluateBothTrue, with a non-constant
     // condition.
-    testTernaryEvaluateBothRand : function () {
+    testTernaryEvaluateBothRand: function () {
       const c1 = db._create(cn);
       const c2 = db._create(cn2);
 
@@ -1619,95 +1619,95 @@ function ahuacatlModifySuite () {
         db._query(query);
         assertEqual([1], c1.toArray().map(o => o.value));
         assertEqual([2], c2.toArray().map(o => o.value));
-        c1.truncate({ compact: false });
-        c2.truncate({ compact: false });
+        c1.truncate({compact: false});
+        c2.truncate({compact: false});
       }
     },
 
   };
 }
 
-function ahuacatlModifySkipSuite () {
+function ahuacatlModifySkipSuite() {
   var errors = internal.errors;
   var cn = "UnitTestsAhuacatlModify";
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
-      let c = db._create(cn, {numberOfShards:5});
+      let c = db._create(cn, {numberOfShards: 5});
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value1 : i, value2: (i % 10), updated: false });
+        c.insert({value1: i, value2: (i % 10), updated: false});
       }
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn);
     },
-    
-    testUpdateFull : function () {
+
+    testUpdateFull: function () {
       let query = "FOR doc IN " + cn + " UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(1000, result.json[0]);
 
-      assertEqual(0, db[cn].byExample({ updated: false }).toArray().length);
-      assertEqual(1000, db[cn].byExample({ updated: true }).toArray().length);
+      assertEqual(0, db[cn].byExample({updated: false}).toArray().length);
+      assertEqual(1000, db[cn].byExample({updated: true}).toArray().length);
     },
-    
-    testUpdateLimit : function () {
+
+    testUpdateLimit: function () {
       let query = "FOR doc IN " + cn + " LIMIT 500 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(500, result.json[0]);
 
-      assertEqual(500, db[cn].byExample({ updated: false }).toArray().length);
-      assertEqual(500, db[cn].byExample({ updated: true }).toArray().length);
+      assertEqual(500, db[cn].byExample({updated: false}).toArray().length);
+      assertEqual(500, db[cn].byExample({updated: true}).toArray().length);
     },
 
-    testUpdateSkip : function () {
+    testUpdateSkip: function () {
       let query = "FOR doc IN " + cn + " LIMIT 100, 200 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(200, result.json[0]);
 
-      assertEqual(800, db[cn].byExample({ updated: false }).toArray().length);
-      assertEqual(200, db[cn].byExample({ updated: true }).toArray().length);
+      assertEqual(800, db[cn].byExample({updated: false}).toArray().length);
+      assertEqual(200, db[cn].byExample({updated: true}).toArray().length);
     },
-    
-    testUpdateSkipAlmostAll : function () {
+
+    testUpdateSkipAlmostAll: function () {
       let query = "FOR doc IN " + cn + " LIMIT 990, 5 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(5, result.json[0]);
 
-      assertEqual(995, db[cn].byExample({ updated: false }).toArray().length);
-      assertEqual(5, db[cn].byExample({ updated: true }).toArray().length);
+      assertEqual(995, db[cn].byExample({updated: false}).toArray().length);
+      assertEqual(5, db[cn].byExample({updated: true}).toArray().length);
     },
-    
-    testUpdateSkipAll : function () {
+
+    testUpdateSkipAll: function () {
       let query = "FOR doc IN " + cn + " LIMIT 1000, 200 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(0, result.json[0]);
 
-      assertEqual(1000, db[cn].byExample({ updated: false }).toArray().length);
-      assertEqual(0, db[cn].byExample({ updated: true }).toArray().length);
+      assertEqual(1000, db[cn].byExample({updated: false}).toArray().length);
+      assertEqual(0, db[cn].byExample({updated: true}).toArray().length);
     },
-    
-    testUpdateSkipTheUniverse : function () {
+
+    testUpdateSkipTheUniverse: function () {
       let query = "FOR doc IN " + cn + " LIMIT 1000000, 1 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(0, result.json[0]);
 
-      assertEqual(1000, db[cn].byExample({ updated: false }).toArray().length);
-      assertEqual(0, db[cn].byExample({ updated: true }).toArray().length);
+      assertEqual(1000, db[cn].byExample({updated: false}).toArray().length);
+      assertEqual(0, db[cn].byExample({updated: true}).toArray().length);
     },
-    
-    testRemoveFull : function () {
+
+    testRemoveFull: function () {
       let query = "FOR doc IN " + cn + " REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(1000, result.json[0]);
 
       assertEqual(0, db[cn].count());
     },
-    
-    testRemoveLimit : function () {
+
+    testRemoveLimit: function () {
       let query = "FOR doc IN " + cn + " LIMIT 500 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(500, result.json[0]);
@@ -1715,31 +1715,31 @@ function ahuacatlModifySkipSuite () {
       assertEqual(500, db[cn].count());
     },
 
-    testRemoveSkip : function () {
+    testRemoveSkip: function () {
       let query = "FOR doc IN " + cn + " LIMIT 100, 200 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(200, result.json[0]);
 
       assertEqual(800, db[cn].count());
     },
-    
-    testRemoveSkipAlmostAll : function () {
+
+    testRemoveSkipAlmostAll: function () {
       let query = "FOR doc IN " + cn + " LIMIT 990, 5 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(5, result.json[0]);
 
       assertEqual(995, db[cn].count());
     },
-    
-    testRemoveSkipAll : function () {
+
+    testRemoveSkipAll: function () {
       let query = "FOR doc IN " + cn + " LIMIT 1000, 200 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(0, result.json[0]);
 
       assertEqual(1000, db[cn].count());
     },
-    
-    testRemoveSkipTheUniverse : function () {
+
+    testRemoveSkipTheUniverse: function () {
       let query = "FOR doc IN " + cn + " LIMIT 1000000, 1 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
       let result = AQL_EXECUTE(query);
       assertEqual(0, result.json[0]);
@@ -1756,24 +1756,24 @@ function ahuacatlGeneratedSuite() {
   const cleanup = () => {
     try {
       db._drop(cn);
-    } catch (e) { }
+    } catch (e) {}
     try {
       db._drop(cn2);
-    } catch (e) { }
+    } catch (e) {}
     try {
       db._drop(cn3);
-    } catch (e) { }
+    } catch (e) {}
   };
 
   return {
     setUp: function () {
       cleanup();
-      let c = db._create(cn, { numberOfShards: 5 });
-      let c1 = db._create(cn2, { numberOfShards: 5 });
-      let c2 = db._create(cn3, { numberOfShards: 5 });
+      let c = db._create(cn, {numberOfShards: 5});
+      let c1 = db._create(cn2, {numberOfShards: 5});
+      let c2 = db._create(cn3, {numberOfShards: 5});
       const docs = [];
       for (let i = 1; i < 11; ++i) {
-        docs.push({ value: i });
+        docs.push({value: i});
       }
       c.save(docs);
       c1.save(docs);
@@ -1859,7 +1859,7 @@ function ahuacatlGeneratedSuite() {
       assertEqual(6, res.toArray().length);
     },
 
-    testSkipOverModifySubquery: function() {
+    testSkipOverModifySubquery: function () {
       const cn = "UnitTestModifySubquery";
       try {
         db._create(cn);
@@ -1881,8 +1881,8 @@ function ahuacatlGeneratedSuite() {
         db._drop(cn);
       }
     },
-    testChaosGenerated15: function() {
-      const q = 
+    testChaosGenerated15: function () {
+      const q =
         `FOR fv0 IN 1..10 /* SubqueryChaosCollection0  */
            LET sq1 = (FOR fv2 IN SubqueryChaosCollection1 
              LET sq3 = (FOR fv4 IN SubqueryChaosCollection2
