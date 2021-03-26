@@ -562,7 +562,7 @@
   unit: ms
 - category: Statistics
   complexity: simple
-  description: 'Bytes received for a request.
+  description: 'Histogram of the received request sizes in bytes.
 
     '
   exposedBy:
@@ -579,7 +579,7 @@
   unit: bytes
 - category: Statistics
   complexity: simple
-  description: 'Bytes sent for a request.
+  description: 'Histogram of the sent response sizes in bytes
 
     '
   exposedBy:
@@ -598,6 +598,10 @@
   complexity: simple
   description: 'The number of client connections that are currently open.
 
+    Note: this metric considers only HTTP and HTTP/2 connections, but not VST
+
+    connections.
+
     '
   exposedBy:
   - coordinator
@@ -613,7 +617,16 @@
   unit: number
 - category: Statistics
   complexity: advanced
-  description: 'Total connection time of a client.
+  description: 'Histogram of the connection''s total lifetime, i.e., the time between
+    the
+
+    point when the connection was established until it was closed. Smaller
+
+    numbers indicate that there is not a lot of load and/or that connections
+
+    are not reused for multiple requests. Consider using keep-alive header
+
+    or HTTP/2 or VST.
 
     '
   exposedBy:
@@ -630,7 +643,12 @@
   unit: s
 - category: Statistics
   complexity: simple
-  description: 'I/O time needed to answer a request.
+  description: 'Histogram of I/O times needed to answer a request. This includes the
+    time
+
+    required to read the incoming request as well as the time required to send
+
+    the response.
 
     '
   exposedBy:
@@ -647,7 +665,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Queueing time needed for requests.
+  description: 'Histogram of the time requests are spending on a queue waiting to
+    be
+
+    processed. The overwhelming majority of these times should be clearly
+
+    sub-second.
 
     '
   exposedBy:
@@ -664,7 +687,12 @@
   unit: s
 - category: Statistics
   complexity: simple
-  description: 'Request time needed to answer a request.
+  description: 'Histogram of the time required to actually process a request. This
+    does not
+
+    include the time required to read the incoming request, the time the request
+
+    is sitting on the queue, or the time required to send the response.
 
     '
   exposedBy:
@@ -681,7 +709,13 @@
   unit: s
 - category: Statistics
   complexity: simple
-  description: 'Total time needed to answer a request.
+  description: 'Histogram of the total times required to process a request. This includes
+
+    the time required to read the incoming request, the time the request is
+
+    sitting in the queue, the time to actually process the request, and the
+
+    time required to send the response.
 
     '
   exposedBy:
