@@ -1,6 +1,7 @@
 name: rocksdb_num_running_flushes
+introducedIn: "3.6"
 help: |
-  rocksdb_num_running_flushes
+  RocksDB metric "rocksdb-num-running-flushes"
 unit: number
 type: gauge
 category: RocksDB
@@ -10,4 +11,5 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_num_running_flushes
+  This metric exhibits the RocksDB metric "rocksdb-num-running-flushes".
+  It shows the number of currently running flushes.

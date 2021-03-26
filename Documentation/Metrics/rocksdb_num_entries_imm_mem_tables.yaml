@@ -1,6 +1,7 @@
 name: rocksdb_num_entries_imm_mem_tables
+introducedIn: "3.6"
 help: |
-  rocksdb_num_entries_imm_mem_tables
+  RocksDB metric "rocksdb-num-entries-imm-mem-tables" - sum over column families
 unit: number
 type: gauge
 category: RocksDB
@@ -10,4 +11,8 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_num_entries_imm_mem_tables
+  This metric exhibits the RocksDB metric
+  "rocksdb-num-entries-imm-mem-tables".
+  It shows the total number of entries in the unflushed immutable memtables,
+  summed over all column families.
+

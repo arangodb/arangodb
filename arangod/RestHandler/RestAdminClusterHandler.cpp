@@ -275,7 +275,28 @@ std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
 
 RestStatus RestAdminClusterHandler::execute() {
-  // No more check for admin rights here, since we handle this in every individual
+  // here we first do a glboal check, which is based on the setting in startup option
+  // `--cluster.api-jwt-policy`:
+  // - "jwt-all"    = JWT required to access all operations
+  // - "jwt-write"  = JWT required to access post/put/delete operations
+  // - "jwt-compat" = compatibility mode = same permissions as in 3.7 (default)
+  // this is a convenient way to lock the entire /_admin/cluster API for users w/o JWT.
+  if (!ExecContext::current().isSuperuser()) {
+    // no superuser... now check if the API policy is set to jwt-all or jwt-write.
+    // in this case only requests with valid JWT will have access to the operations
+    // (jwt-all = all operations require the JWT, jwt-write = POST/PUT/DELETE operations
+    // require the JWT, GET operations are handled as before).
+    bool const isWriteOperation =  (request()->requestType() != rest::RequestType::GET);
+    std::string const& apiJwtPolicy = server().getFeature<ClusterFeature>().apiJwtPolicy();
+
+    if (apiJwtPolicy == "jwt-all" || 
+        (apiJwtPolicy == "jwt-write" && isWriteOperation)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      return RestStatus::DONE;
+    }
+  }
+
+  // No further check for admin rights here, since we handle this in every individual
   // method below. Some of them do no longer require admin access
   // (e.g. /_admin/cluster/health). If you add a new API below here, please
   // make sure to check for permissions!

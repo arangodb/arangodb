@@ -1,6 +1,7 @@
 name: rocksdb_estimate_num_keys
+introducedIn: "3.6"
 help: |
-  rocksdb_estimate_num_keys
+  RocksDB metric "rocksdb-estimate-num-keys" - sum over column families
 unit: number
 type: gauge
 category: RocksDB
@@ -10,4 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_estimate_num_keys
+  This metric exhibits the RocksDB metric "rocksdb-estimate-num-keys".
+  It shows the estimated number of total keys in the active and unflushed
+  immutable memtables and storage, summed over all column families.

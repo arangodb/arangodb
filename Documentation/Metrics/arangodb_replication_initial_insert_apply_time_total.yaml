@@ -1,4 +1,5 @@
 name: arangodb_replication_initial_insert_apply_time_total
+introducedIn: "3.8"
 help: |
   Accumulated time needed to apply replication initial sync insertions.
 unit: ms
