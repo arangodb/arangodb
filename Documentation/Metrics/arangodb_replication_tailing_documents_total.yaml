@@ -12,8 +12,8 @@ description:
   The accumulated number of replication tailing document inserts/replaces
   processed on a follower.
 troubleshoot:
-  Compare this metric with all other related participating Follower
-  DB-Servers. If the given value on a DB-Server is considerable higher,
+  Compare this metric with all other related participating follower
+  dbservers. If the given value on a dbserver is considerable higher,
   you might want to think about rebalancing your data as the overall
   work might not be evenly distributed. It is important to understand
   that this metric only enumerates the amount of documents and does not
