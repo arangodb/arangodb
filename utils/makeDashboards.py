@@ -278,7 +278,7 @@ def incxy(x, y):
 
 def makePanel(x, y, met):
     title = met["help"]
-    if title[-1:] == ".":
+    while title[-1:] == "." or title[-1:] == "\n":
         title = title[:-1]
     return {"gridPos": {"h": 8, "w": 12, "x": x, "y": y }, \
             "description": met["description"], \
