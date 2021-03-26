@@ -34,7 +34,10 @@ auto arangodb::MockLog::insert(std::shared_ptr<LogIterator> iter) -> arangodb::R
 
 template <typename I>
 struct MockIterator : LogIterator {
-  MockIterator(I begin, I end) : _current(begin), _end(end) {}
+  MockIterator(MockLog::storeType store, LogIndex start)
+      : _store(std::move(store)),
+        _current(_store.lower_bound(start)),
+        _end(_store.end()) {}
 
   auto next() -> std::optional<LogEntry> override {
     if (_current == _end) {
@@ -43,15 +46,16 @@ struct MockIterator : LogIterator {
     return (_current++)->second;
   }
 
+  MockLog::storeType _store;
   I _current;
   I _end;
 };
 
 auto arangodb::MockLog::read(arangodb::replication2::LogIndex start)
     -> std::shared_ptr<LogIterator> {
-  return std::make_shared<MockIterator<iteratorType>>(_storage.lower_bound(start),
-                                                      _storage.end());
+  return std::make_shared<MockIterator<iteratorType>>(_storage, start);
 }
+
 auto arangodb::MockLog::remove(arangodb::replication2::LogIndex stop) -> arangodb::Result {
   _storage.erase(_storage.begin(), _storage.lower_bound(stop));
   return {};
