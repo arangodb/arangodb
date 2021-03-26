@@ -277,9 +277,12 @@ def incxy(x, y):
     return x, y
 
 def makePanel(x, y, met):
+    title = met["help"]
+    if title[-1:] == ".":
+        title = title[:-1]
     return {"gridPos": {"h": 8, "w": 12, "x": x, "y": y }, \
             "description": met["description"], \
-            "title": met["help"]}
+            "title": title}
 
 for c in categoryNames:
     if c in categories:
