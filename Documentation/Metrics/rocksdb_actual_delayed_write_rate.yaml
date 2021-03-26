@@ -1,6 +1,7 @@
 name: rocksdb_actual_delayed_write_rate
+introducedIn: "3.6"
 help: |
-  rocksdb_actual_delayed_write_rate
+  RocksDB metric "rocksdb-actual-delayed-write-rate"
 unit: number
 type: gauge
 category: RocksDB
@@ -10,4 +11,5 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_actual_delayed_write_rate
+  This metric exhibits the RocksDB metric "rocksdb-actual-delayed-write-rate".
+  It shows the current actual delayed write rate. The value 0 means no delay.

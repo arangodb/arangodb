@@ -1,4 +1,5 @@
 name: arangodb_connection_pool_leases_failed_total
+introducedIn: "3.6"
 help: |
   Total number of failed connection leases.
 unit: number

@@ -41,6 +41,8 @@
   struct x : arangodb::metrics::GaugeBuilder<x, type> { \
     x() { _name = #x; _help = help; } \
     }
+    
+#define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)
 
 #define DECLARE_HISTOGRAM(x, scale, help)                   \
   struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
@@ -189,6 +191,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   std::unordered_map<std::string, std::string> nameVersionTable;
   std::unordered_set<std::string> v2suppressions;
+  std::unordered_set<std::string> v1suppressions;
 };
 
 }  // namespace arangodb

@@ -1,4 +1,5 @@
 name: arangodb_collection_truncates_total
+introducedIn: "3.8"
 help: |
   Total number of collection truncate operations (excl. synchronous replication).
 unit: number

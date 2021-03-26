@@ -24,10 +24,6 @@
 #ifndef VELOCYPACK_SHAREDSLICE_H
 #define VELOCYPACK_SHAREDSLICE_H
 
-#if __cplusplus < 201703L
-#error "This file can only be used with at least C++17. Set CMAKE_CXX_STANDARD=17."
-#endif
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 

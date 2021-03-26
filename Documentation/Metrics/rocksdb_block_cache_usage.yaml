@@ -1,7 +1,8 @@
 name: rocksdb_block_cache_usage
+introducedIn: "3.6"
 help: |
-  rocksdb_block_cache_usage
-unit: number
+  RocksDB metric "rocksdb-block-cache-usage"
+unit: bytes
 type: gauge
 category: RocksDB
 complexity: advanced
@@ -10,4 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_block_cache_usage
+  This metric exhibits the RocksDB metric "rocksdb-block-cache-usage".
+  It shows the memory size for the entries residing in the block cache,
+  in bytes.

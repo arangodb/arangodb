@@ -1,6 +1,7 @@
 name: rocksdb_min_log_number_to_keep
+introducedIn: "3.6"
 help: |
-  rocksdb_min_log_number_to_keep
+  RocksDB metric "rocksdb-min-log-number-to-keep"
 unit: number
 type: gauge
 category: RocksDB
@@ -10,4 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_min_log_number_to_keep
+  This metric exhibits the RocksDB metric "rocksdb-min-log-number-to-keep".
+  It shows the minimum log number of the log files that should be kept.
+

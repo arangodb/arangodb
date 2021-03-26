@@ -368,6 +368,13 @@
         this.waitForInit(this.cluster.bind(this));
         return;
       }
+      if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
+        // no privileges to use cluster/nodes from the web UI
+        this.routes[''] = 'collections';
+        this.navigate('#collections', {trigger: true});
+        return;
+      }
+
       if (!this.isCluster) {
         if (this.currentDB.get('name') === '_system') {
           this.routes[''] = 'dashboard';
@@ -399,6 +406,13 @@
         this.waitForInit(this.node.bind(this), id);
         return;
       }
+      if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
+        // no privileges to use cluster/nodes from the web UI
+        this.routes[''] = 'collections';
+        this.navigate('#collections', {trigger: true});
+        return;
+      }
+
       if (this.isCluster === false) {
         this.routes[''] = 'dashboard';
         this.navigate('#dashboard', {trigger: true});

@@ -1,6 +1,7 @@
 name: rocksdb_num_files_at_level6
+introducedIn: "3.6"
 help: |
-  rocksdb_num_files_at_level6
+  RocksDB metric "num-files-at-level6"
 unit: number
 type: gauge
 category: RocksDB
@@ -10,4 +11,5 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_num_files_at_level6
+    This metric reports the number of files at level 6 in the log structured
+    merge tree of RocksDB.

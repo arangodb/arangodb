@@ -2389,7 +2389,7 @@ DECLARE_GAUGE(rocksdb_size_all_mem_tables, uint64_t, "rocksdb_size_all_mem_table
 DECLARE_GAUGE(rocksdb_total_disk_space, uint64_t, "rocksdb_total_disk_space");
 DECLARE_GAUGE(rocksdb_total_inodes, uint64_t, "rocksdb_total_inodes");
 DECLARE_GAUGE(rocksdb_total_sst_files_size, uint64_t, "rocksdb_total_sst_files_size");
-DECLARE_GAUGE(rocksdbengine_throttle_bps, uint64_t, "rocksdbengine_throttle_bps");
+DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t, "rocksdb_engine_throttle_bps");
 
 void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
   VPackBuilder stats;
