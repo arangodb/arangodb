@@ -8,7 +8,7 @@ category: Replication
 complexity: medium
 exposedBy:
   - dbserver
-description:
+description: |
   The accumulated time needed to locally process the continuous
   replication log on a follower received from a replication
   Leader.
