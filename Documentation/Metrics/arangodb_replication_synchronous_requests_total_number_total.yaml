@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
 description: |
   The total amount of all synchronous replication operation requests
-  between DB-Servers being done.
+  between dbservers being done.
