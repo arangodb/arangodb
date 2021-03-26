@@ -16,7 +16,7 @@ struct elsa<ErrorCode> {
 #include <frozen/unordered_map.h>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 353> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -273,6 +273,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessage
       "wrong checksum"},
     {TRI_ERROR_REPLICATION_SHARD_NONEMPTY,  // 1417
       "shard not empty"},
+    {TRI_ERROR_CLUSTER_NOT_FOLLOWER,  // 1446
+      "not a follower"},
     {TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,  // 1447
       "follower transaction intermediate commit already performed"},
     {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,  // 1448

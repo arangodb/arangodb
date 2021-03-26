@@ -20,6 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Replication2/MockLog.h"
+
 #include <Replication2/InMemoryLog.h>
 
 #include <gtest/gtest.h>
@@ -30,7 +32,8 @@ using namespace arangodb::replication2;
 TEST(InMemoryLogTest, test) {
   auto const state = std::make_shared<InMemoryState>();
   auto const ourParticipantId = ParticipantId{1};
-  auto log = InMemoryLog{ourParticipantId, state};
+  auto persistedLog = std::make_shared<MockLog>(LogId{1});
+  auto log = InMemoryLog{ourParticipantId, state, persistedLog};
 
   log.becomeLeader(LogTerm{1}, {}, 1);
 
@@ -40,7 +43,8 @@ TEST(InMemoryLogTest, test) {
     ASSERT_EQ(LogIndex{0}, stats.spearHead);
   }
 
-  auto index = log.insert(LogPayload{"myLogEntry 1"});
+  auto const payload = LogPayload{"myLogEntry 1"};
+  auto index = log.insert(payload);
   ASSERT_EQ(LogIndex{1}, index);
 
   auto f = log.waitFor(index);
@@ -60,4 +64,12 @@ TEST(InMemoryLogTest, test) {
     ASSERT_EQ(LogIndex{1}, stats.commitIndex);
     ASSERT_EQ(LogIndex{1}, stats.spearHead);
   }
+
+  auto it = persistedLog->read(LogIndex{1});
+  auto const elt = it->next();
+  ASSERT_TRUE(elt.has_value());
+  auto const logEntry = *elt;
+  EXPECT_EQ(LogIndex{1}, logEntry.logIndex());
+  EXPECT_EQ(LogTerm{1}, logEntry.logTerm());
+  EXPECT_EQ(payload, logEntry.logPayload());
 }

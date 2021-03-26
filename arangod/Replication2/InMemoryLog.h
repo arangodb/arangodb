@@ -33,6 +33,8 @@
 #include <variant>
 #include <vector>
 
+#include "Replication2/PersistedLog.h"
+
 #include "Common.h"
 
 namespace arangodb::replication2 {
@@ -67,7 +69,8 @@ class InMemoryState {
 class InMemoryLog {
  public:
   InMemoryLog() = delete;
-  explicit InMemoryLog(ParticipantId participantId, std::shared_ptr<InMemoryState> state);
+  explicit InMemoryLog(ParticipantId participantId, std::shared_ptr<InMemoryState> state,
+                       std::shared_ptr<PersistedLog> persistedLog);
 
   // follower only
   auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult>;
@@ -85,11 +88,19 @@ class InMemoryLog {
   auto becomeFollower(LogTerm, ParticipantId leaderId) -> void;
 
   // Set to leader, and (strictly increase) term to the given value
-  auto becomeLeader(LogTerm, std::unordered_set<ParticipantId> followerIds, std::size_t writeConcern) -> void;
+  auto becomeLeader(LogTerm, std::unordered_set<ParticipantId> followerIds,
+                    std::size_t writeConcern) -> void;
 
   [[nodiscard]] auto getStatistics() const -> LogStatistics;
 
   auto runAsyncStep() -> void;
+
+  [[nodiscard]] auto participantId() const noexcept -> ParticipantId;
+
+ protected:
+  LogIndex nextIndex();
+  void assertLeader() const;
+  void assertFollower() const;
 
  private:
   struct Unconfigured {};
@@ -103,6 +114,8 @@ class InMemoryLog {
 
   std::variant<Unconfigured, Leader, Follower> _role;
   ParticipantId _id{};
+  std::shared_ptr<PersistedLog> _persistedLog;
+  LogIndex _persistedLogEnd{};
   LogTerm _currentTerm = LogTerm{};
   std::deque<LogEntry> _log;
   std::shared_ptr<InMemoryState> _state;
@@ -110,9 +123,7 @@ class InMemoryLog {
 
   using WaitForPromise = futures::Promise<arangodb::futures::Unit>;
   std::multimap<LogIndex, WaitForPromise> _waitForQueue;
-
- private:
-  LogIndex nextIndex();
+  void persistRemainingLogEntries();
 };
 
 }  // namespace arangodb::replication2

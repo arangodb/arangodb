@@ -44,9 +44,12 @@ struct LogTerm {
   LogTerm() : value{0} {}
   explicit LogTerm(std::uint64_t value) : value{value} {}
   std::uint64_t value;
+  [[nodiscard]] auto operator==(LogTerm) const -> bool;
 };
 struct LogPayload {
   explicit LogPayload(std::string_view dummy) : dummy(dummy) {}
+
+  [[nodiscard]] auto operator==(LogPayload const&) const -> bool;
 
   // just a placeholder for now
   std::string dummy;

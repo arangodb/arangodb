@@ -1128,6 +1128,7 @@ foreach(TARGET
   arango_metrics
   arango_pregel
   arango_replication
+  arango_replication2
   arango_rocksdb
   arango_storage_engine
   arango_storage_engine_common

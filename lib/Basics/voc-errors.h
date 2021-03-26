@@ -687,6 +687,11 @@ constexpr auto TRI_ERROR_REPLICATION_WRONG_CHECKSUM                             
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr auto TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = ErrorCode{1417};
 
+/// 1446: ERROR_CLUSTER_NOT_FOLLOWER
+/// "not a follower"
+/// Will be raised when an operation is sent to a non-following server.
+constexpr auto TRI_ERROR_CLUSTER_NOT_FOLLOWER                                    = ErrorCode{1446};
+
 /// 1447: ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED
 /// "follower transaction intermediate commit already performed"
 /// Will be raised when a follower transaction has already performed an

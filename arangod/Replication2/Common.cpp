@@ -46,3 +46,9 @@ LogIndex LogEntry::logIndex() const { return _logIndex; }
 
 LogPayload const& LogEntry::logPayload() const { return _payload; }
 
+auto LogTerm::operator==(LogTerm other) const -> bool {
+  return value == other.value;
+}
+auto LogPayload::operator==(LogPayload const& other) const -> bool {
+  return dummy == other.dummy;
+}

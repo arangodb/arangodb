@@ -22,21 +22,55 @@
 
 #include "InMemoryLog.h"
 
+#include "Basics/Exceptions.h"
+
+#include <Basics/application-exit.h>
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-InMemoryLog::InMemoryLog(ParticipantId id, std::shared_ptr<InMemoryState> state)
-    : _id(id), _state(std::move(state)), _commitIndex{LogIndex{0}} {}
+class InMemoryLogIterator : public LogIterator {
+ public:
+  explicit InMemoryLogIterator(std::deque<LogEntry>::const_iterator begin,
+                               std::deque<LogEntry>::const_iterator end)
+      : _begin(std::move(begin)), _end(std::move(end)) {}
+
+  auto next() -> std::optional<LogEntry> override {
+    if (_begin != _end) {
+      auto const& res = *_begin;
+      ++_begin;
+      return res;
+    }
+    return std::nullopt;
+  }
+
+ private:
+  std::deque<LogEntry>::const_iterator _begin;
+  std::deque<LogEntry>::const_iterator _end;
+};
+
+InMemoryLog::InMemoryLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
+                         std::shared_ptr<PersistedLog> persistedLog)
+    : _id(id), _persistedLog(std::move(persistedLog)), _state(std::move(state)), _commitIndex{LogIndex{0}} {
+  if (ADB_UNLIKELY(_persistedLog == nullptr)) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "When instantiating InMemoryLog: persistedLog must not be a nullptr");
+  }
+}
 
 auto InMemoryLog::appendEntries(AppendEntriesRequest)
     -> arangodb::futures::Future<AppendEntriesResult> {
+  assertFollower();
+
   // TODO
   std::abort();
 }
 
 auto InMemoryLog::insert(LogPayload payload) -> LogIndex {
+  assertLeader();
   auto const index = nextIndex();
   _log.emplace_back(LogEntry{_currentTerm, index, std::move(payload)});
   return index;
@@ -62,6 +96,7 @@ auto InMemoryLog::becomeFollower(LogTerm, ParticipantId) -> void {
 auto InMemoryLog::becomeLeader(LogTerm term, std::unordered_set<ParticipantId> followerIds,
                                std::size_t writeConcern) -> void {
   _role = Leader{std::move(followerIds), writeConcern};
+  _currentTerm = term;
 }
 
 [[nodiscard]] auto InMemoryLog::getStatistics() const -> LogStatistics {
@@ -80,4 +115,37 @@ auto InMemoryLog::runAsyncStep() -> void {
   for (auto it = _waitForQueue.begin(); it != end; ++it) {
     it->second.setValue();
   }
+
+  persistRemainingLogEntries();
 }
+
+void InMemoryLog::persistRemainingLogEntries() {
+  if (_persistedLogEnd < nextIndex()) {
+    auto from = _log.cbegin();
+    auto const endIdx = nextIndex();
+    TRI_ASSERT(_persistedLogEnd < endIdx);
+    std::advance(from, _persistedLogEnd.value);
+    auto to = _log.cend();
+    auto it = std::make_shared<InMemoryLogIterator>(from, to);
+    auto res = _persistedLog->insert(std::move(it));
+    if (res.ok()) {
+      _persistedLogEnd = endIdx;
+    } else {
+      LOG_TOPIC("c2bb2", INFO, Logger::REPLICATION)
+          << "Error persisting log entries: " << res.errorMessage();
+    }
+  }
+}
+
+void InMemoryLog::assertLeader() const {
+  if (ADB_UNLIKELY(!std::holds_alternative<Leader>(_role))) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+  }
+}
+
+void InMemoryLog::assertFollower() const {
+  if (ADB_UNLIKELY(!std::holds_alternative<Follower>(_role))) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+  }
+}
+auto InMemoryLog::participantId() const noexcept -> ParticipantId { return _id; }

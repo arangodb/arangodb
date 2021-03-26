@@ -174,6 +174,7 @@ ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a s
 ## ArangoDB cluster errors
 ################################################################################
 
+ERROR_CLUSTER_NOT_FOLLOWER,1446,"not a follower","Will be raised when an operation is sent to a non-following server."
 ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,1447,"follower transaction intermediate commit already performed","Will be raised when a follower transaction has already performed an intermediate commit and must be rolled back."
 ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,1448,"creating collection failed due to precondition","Will be raised when updating the plan on collection creation failed."
 ERROR_CLUSTER_SERVER_UNKNOWN,1449,"got a request from an unknown server","Will be raised on some occasions when one server gets a request from another, which has not (yet?) been made known via the Agency."
