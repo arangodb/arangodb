@@ -513,8 +513,11 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
       if (it.second != nullptr) {
         auto const& builder = *it.second;
         auto const& stat = statIt->second;
-        auto const& statName = stat[0];
+        std::string statName(stat[0]);
         auto const& statType = metricType(stat[1], true);
+        if (statType == "counter") {
+          statName += "_total";
+        }
         [[maybe_unused]] auto const& statHelp = stat[2];
         if (builder.name() != statName) {
           foundError = true;
