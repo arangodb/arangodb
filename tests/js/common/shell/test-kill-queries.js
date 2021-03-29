@@ -129,11 +129,9 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryGotRegistered", true, "off", true));
 
   // stream
-  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterStreamQueryIsGettingProcessed", true, "on", true));
-  testCases.push(createTestCaseEntry("ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated", true, "on", true));
-  testCases.push(createTestCaseEntry("ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated", true, "on", true));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", true));
   testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped", false, "on", true));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", true));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", true)); // TODO: Cannot kill here as _query does not exist
 
   // execution in default & stream
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', true));
@@ -141,7 +139,7 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', true));
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', true));
   testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', false));
-  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryExecuteReturnsWaiting", true, 'both', false));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting", false, 'both', false));
 
   const testSuite = {
     setUp: function () {
@@ -178,12 +176,11 @@ function GenericQueryKillSuite() { // can be either default or stream
 
       // cluster only
       if (internal.isCluster() && suite.onlyInCluster) {
-        unexpectedFailures.push('ClusterQuery::directKillAfterQueryExecuteReturnsWaiting');
       }
     } else if (testCase.stream === "on") {
       // unexpected errors in stream
-      unexpectedFailures.push('RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped');
-      unexpectedFailures.push('RestCursorHandler::directKillAfterStreamQueryIsGettingDumped');
+      //unexpectedFailures.push('RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped');
+      //unexpectedFailures.push('RestCursorHandler::directKillAfterStreamQueryIsGettingDumped');
       unexpectedFailures.push('ExecutionEngine::directKillBeforeAQLQueryExecute');
       unexpectedFailures.push('Query::directKillBeforeQueryWillBeFinalized');
       unexpectedFailures.push('Query::directKillAfterQueryWillBeFinalized');
@@ -191,16 +188,12 @@ function GenericQueryKillSuite() { // can be either default or stream
 
       // cluster only
       if (internal.isCluster() && suite.onlyInCluster) {
-        unexpectedFailures.push('ClusterQuery::directKillAfterQueryExecuteReturnsWaiting');
-        unexpectedFailures.push('ClusterQuery::directKillAfterStreamQueryIsGettingProcessed');
-        unexpectedFailures.push('ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated'); // shutdown loop
-        unexpectedFailures.push('ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated'); // shutdown loop
       }
     }
 
     const found = unexpectedFailures.find(entry => entry === testCase.failurePointName);
     if (found) {
-      return;
+      //return;
     }
 
     suite[createTestName(testCase.failurePointName, testCase.stream)] = function (failurePointName, stream, reportKilled) {

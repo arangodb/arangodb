@@ -207,25 +207,14 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
                            "cannot use 'count' option for a streaming query"));
       return RestStatus::DONE;
     }
-    TRI_IF_FAILURE("ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated") {
-      if (_query.get() != nullptr) {
-        _query->debugKillQuery();
-      } else {
-        LOG_DEVEL << "Entered failure point but cannot call kill. _query not constructed yet!";
-      }
-    }
     
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
     _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
     _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
 
-    TRI_IF_FAILURE("ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated") {
-      if (_query.get() != nullptr) {
-        _query->debugKillQuery();
-      } else {
-        LOG_DEVEL << "Entered failure point but cannot call kill. _query not constructed yet!";
-      }
+    TRI_IF_FAILURE("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated") {
+      _cursor->debugKillQuery();
     }
     
     return generateCursorResult(rest::ResponseCode::CREATED);
@@ -271,7 +260,7 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
     auto state = _query->execute(_queryResult);
 
     if (state == aql::ExecutionState::WAITING) {
-      TRI_IF_FAILURE("ClusterQuery::directKillAfterQueryExecuteReturnsWaiting") {
+      TRI_IF_FAILURE("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting") {
         _query->debugKillQuery();
       }
       guard.cancel();
@@ -553,13 +542,13 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   builder.openObject(/*unindexed*/true);
 
   TRI_IF_FAILURE("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped") {
-    _query->debugKillQuery();
+    _cursor->debugKillQuery();
   }
 
   auto const [state, r] = _cursor->dump(builder);
 
   TRI_IF_FAILURE("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped") {
-    _query->debugKillQuery();
+    _cursor->debugKillQuery();
   }
 
   if (state == aql::ExecutionState::WAITING) {

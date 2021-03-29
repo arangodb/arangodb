@@ -214,6 +214,14 @@ void QueryStreamCursor::kill() {
   }
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+void QueryStreamCursor::debugKillQuery() {
+  if (_query) {
+    _query->debugKillQuery();
+  }
+}
+#endif
+
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
