@@ -1,4 +1,5 @@
 name: arangodb_maintenance_agency_sync_runtime_msec
+introducedIn: "3.7.1"
 help: |
   Total time spent on agency sync.
 unit: ms

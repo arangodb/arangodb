@@ -1,4 +1,5 @@
 name: arangodb_scheduler_num_worker_threads
+introducedIn: "3.6.7"
 help: |
   Current number of worker threads.
 unit: number
@@ -9,5 +10,7 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Current number of worker threads.
+  The number of worker threads currently started. Worker threads can be started
+  and stopped dynamically based on the server load.

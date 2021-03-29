@@ -1,6 +1,7 @@
 name: rocksdb_total_inodes
+introducedIn: "3.8.0"
 help: |
-  rocksdb_total_inodes
+  Number of used inodes on the volume used by RocksDB
 unit: number
 type: gauge
 category: RocksDB
@@ -10,4 +11,7 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_total_inodes
+  This metric shows the currently used number of inodes on the disk volume
+  used by RocksDB. Since RocksDB does not like out of disk space
+  scenarios, please make sure that there are enough free inodes available
+  at all times! Note that this metric is only available/populated on some platforms.

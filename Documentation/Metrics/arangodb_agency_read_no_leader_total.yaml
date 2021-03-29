@@ -1,6 +1,8 @@
 name: arangodb_agency_read_no_leader_total
+renamedFrom: arangodb_agency_read_no_leader
+introducedIn: "3.8.0"
 help: |
-  Agency read no leader.
+  Agency read operations with no leader or on followers.
 unit: number
 type: counter
 category: Agency
@@ -8,7 +10,7 @@ complexity: simple
 exposedBy:
   - agent
 description: |
-  Agency read with no leader.
+  Total number of agency read operations with no leader or on followers.
 threshold: |
   This should normally not happen. If it happens regularly, the agency
   is reelecting its leader often.
