@@ -127,7 +127,6 @@ function GenericQueryKillSuite() { // can be either default or stream
 
   // defaults
   testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryGotRegistered", true, "off", true));
-  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryIsGettingProcessed", true, "off", true));
 
   // stream
   testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterStreamQueryIsGettingProcessed", true, "on", true));
@@ -180,7 +179,6 @@ function GenericQueryKillSuite() { // can be either default or stream
       // cluster only
       if (internal.isCluster() && suite.onlyInCluster) {
         unexpectedFailures.push('ClusterQuery::directKillAfterQueryExecuteReturnsWaiting');
-        unexpectedFailures.push('ClusterQuery::directKillAfterQueryIsGettingProcessed');
       }
     } else if (testCase.stream === "on") {
       // unexpected errors in stream
