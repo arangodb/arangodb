@@ -170,21 +170,39 @@ install(
 
 install(
   DIRECTORY
-    ${PROJECT_SOURCE_DIR}/js/client/modules/@arangodb/testsuites
     ${PROJECT_SOURCE_DIR}/js/client/modules/@arangodb/testutils
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/js/client/modules/@arangodb/testutils
+  COMPONENT testsuites
+  EXCLUDE_FROM_ALL
+)
+install(
+  DIRECTORY
+    ${PROJECT_SOURCE_DIR}/js/client/modules/@arangodb/testsuites
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/js/client/modules/@arangodb/testsuites
+  COMPONENT testsuites
+  EXCLUDE_FROM_ALL
+)
+install(
+  DIRECTORY
     ${PROJECT_SOURCE_DIR}/tests/js/
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/tests/js
+  COMPONENT testsuites
+  EXCLUDE_FROM_ALL
+)
+install(
+  DIRECTORY
+    ${PROJECT_SOURCE_DIR}/tests/rb/
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/tests/rb
   COMPONENT testsuites
   EXCLUDE_FROM_ALL
 )
 install(
   DIRECTORY
     ${PROJECT_SOURCE_DIR}/UnitTests
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/Unittests
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/UnitTests
   COMPONENT testsuites
   EXCLUDE_FROM_ALL
   )
-
 
 configure_file(
     ${PROJECT_SOURCE_DIR}/scripts/_unittests.in
@@ -199,6 +217,12 @@ install(
   EXCLUDE_FROM_ALL
 )
 
+install(
+  DIRECTORY ${PROJECT_SOURCE_DIR}/etc/relative/
+  DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/relative
+  COMPONENT testsuites
+  EXCLUDE_FROM_ALL
+)
 
 ################################################################################
 ### @brief detect if we're on a systemd enabled system; if install unit file.
