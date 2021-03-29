@@ -75,7 +75,7 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 } // namespace
 
 
-DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "Number of cluster replication inventory requests received");
+DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "(DC-2-DC only) Number of times the database and collection overviews have been requested.");
 
 namespace arangodb {
 

@@ -1,8 +1,8 @@
 name: rocksdb_cur_size_active_mem_table
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
-  rocksdb_cur_size_active_mem_table
-unit: number
+  RocksDB metric "rocksdb-cur-size-active-mem-table" - sum over column families
+unit: bytes
 type: gauge
 category: RocksDB
 complexity: advanced
@@ -11,4 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_cur_size_active_mem_table
+  This metric exhibits the RocksDB metric "rocksdb-cur-size-active-mem-table".
+  It shows the approximate size of the active memtable in bytes, summed
+  over all column families.

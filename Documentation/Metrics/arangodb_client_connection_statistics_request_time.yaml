@@ -1,5 +1,5 @@
 name: arangodb_client_connection_statistics_request_time
-introducedIn: "3.7"
+introducedIn: "3.8.0"
 help: |
   Request time needed to answer a request
 unit: s
@@ -12,4 +12,6 @@ exposedBy:
   - agent
   - single
 description: |
-  Request time needed to answer a request.
+  Histogram of the time required to actually process a request. This does not
+  include the time required to read the incoming request, the time the request
+  is sitting on the queue, or the time required to send the response.

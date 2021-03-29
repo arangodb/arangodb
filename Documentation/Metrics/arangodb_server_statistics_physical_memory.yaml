@@ -1,5 +1,5 @@
 name: arangodb_server_statistics_physical_memory
-introducedIn: "3.6"
+introducedIn: "3.6.7"
 help: |
   Physical memory in bytes
 unit: bytes

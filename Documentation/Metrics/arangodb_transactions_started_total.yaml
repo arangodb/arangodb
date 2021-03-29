@@ -1,5 +1,6 @@
 name: arangodb_transactions_started_total
-introducedIn: "3.6"
+renamedFrom: arangodb_transactions_started
+introducedIn: "3.8.0"
 help: |
   Number of transactions started.
 unit: number
