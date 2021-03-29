@@ -1,5 +1,6 @@
 name: arangodb_collection_lock_acquisition_micros_total
-introducedIn: "3.6"
+renamedFrom: arangodb_collection_lock_acquisition_micros
+introducedIn: "3.8.0"
 help: |
   Total amount of collection lock acquisition time.
 unit: us

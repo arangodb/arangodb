@@ -1,5 +1,6 @@
 name: arangodb_heartbeat_failures_total
-introducedIn: "3.8"
+renamedFrom: arangodb_heartbeat_failures
+introducedIn: "3.8.0"
 help: |
   Total number of failed heartbeat transmissions.
 unit: number

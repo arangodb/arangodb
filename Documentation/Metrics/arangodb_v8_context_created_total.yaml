@@ -1,5 +1,6 @@
 name: arangodb_v8_context_created_total
-introducedIn: "3.6"
+renamedFrom: arangodb_v8_context_created
+introducedIn: "3.8.0"
 help: |
   Total number of V8 contexts ever created
 unit: number

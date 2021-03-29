@@ -1,5 +1,6 @@
 name: arangodb_process_statistics_minor_page_faults_total
-introducedIn: "3.6"
+renamedFrom: arangodb_process_statistics_minor_page_faults
+introducedIn: "3.8.0"
 help: |
   Number of minor page faults
 unit: number

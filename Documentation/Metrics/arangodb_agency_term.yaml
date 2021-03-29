@@ -1,5 +1,5 @@
 name: arangodb_agency_term
-introducedIn: "3.7"
+introducedIn: "3.7.1"
 help: |
   Agency's term.
 unit: number

@@ -1,5 +1,6 @@
 name: arangodb_agency_read_ok_total
-introducedIn: "3.7"
+renamedFrom: arangodb_agency_read_ok
+introducedIn: "3.8.0"
 help: |
   Number of successful agency read operations.
 unit: number

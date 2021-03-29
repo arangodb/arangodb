@@ -1,5 +1,5 @@
 name: arangodb_agency_commit_hist
-introducedIn: "3.7"
+introducedIn: "3.7.1"
 help: |
   Agency RAFT commit histogram.
 unit: ms

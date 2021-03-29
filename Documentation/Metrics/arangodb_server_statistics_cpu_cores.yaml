@@ -1,5 +1,5 @@
 name: arangodb_server_statistics_cpu_cores
-introducedIn: "3.8"
+introducedIn: "3.8.0"
 help: |
   Number of CPU cores visible to the arangod process
 unit: number

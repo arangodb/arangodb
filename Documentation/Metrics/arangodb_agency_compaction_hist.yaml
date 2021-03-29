@@ -1,5 +1,5 @@
 name: arangodb_agency_compaction_hist
-introducedIn: "3.6"
+introducedIn: "3.7.1"
 help: |
   Agency compaction time histogram.
 unit: ms

@@ -1,5 +1,6 @@
 name: arangodb_shards_number
-introducedIn: "3.7"
+renamedFrom: arangodb_shards_total_count
+introducedIn: "3.8.0"
 help: |
   Number of shards on this machine.
 unit: number

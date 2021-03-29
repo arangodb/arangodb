@@ -1,5 +1,6 @@
 name: arangodb_rocksdb_write_stalls_total
-introducedIn: "3.8"
+renamedFrom: rocksdb_write_stalls
+introducedIn: "3.8.0"
 help: |
   Number of times RocksDB has entered a stalled (slowed) write state
 unit: number

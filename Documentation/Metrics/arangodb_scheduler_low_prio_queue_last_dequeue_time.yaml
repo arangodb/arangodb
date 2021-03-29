@@ -1,5 +1,5 @@
 name: arangodb_scheduler_low_prio_queue_last_dequeue_time
-introducedIn: "3.8"
+introducedIn: "3.8.0"
 help: |
   Last recorded dequeue time for a low priority queue item.
 unit: ms
