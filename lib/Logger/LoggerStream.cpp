@@ -36,10 +36,12 @@ LoggerStreamBase::LoggerStreamBase(bool enabled)
     : _topicId(LogTopic::MAX_LOG_TOPICS),
       _level(LogLevel::DEFAULT),
       _line(0),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _enabled(enabled),
+#endif
       _logid(nullptr),
       _file(nullptr),
-      _function(nullptr),
-      _enabled(enabled) {}
+      _function(nullptr) {}
 
 LoggerStreamBase::LoggerStreamBase()
     : LoggerStreamBase(true) {}

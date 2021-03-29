@@ -82,10 +82,12 @@ class LoggerStreamBase {
   size_t _topicId;
   LogLevel _level;
   int _line;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool const _enabled;
+#endif
   char const* _logid;
   char const* _file;
   char const* _function;
-  bool const _enabled;
 };
 
 class LoggerStream : public LoggerStreamBase {
