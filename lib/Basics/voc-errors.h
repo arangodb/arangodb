@@ -1101,6 +1101,11 @@ constexpr auto TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION                     
 /// cannot be figured out at query compile time.
 constexpr auto TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              = ErrorCode{1575};
 
+/// 1576: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
+/// "collection '%s' used as expression operand"
+/// Will be raised when a collection is used as an operand in an AQL expression.
+constexpr auto TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     = ErrorCode{1576};
+
 /// 1577: ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE
 /// "could not use forced index hint"
 /// Will be raised when forceIndexHint is specified, and the hint cannot be
