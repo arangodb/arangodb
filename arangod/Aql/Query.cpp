@@ -240,10 +240,11 @@ bool Query::killed() const {
 
 /// @brief set the query to killed
 void Query::kill() {
-  _queryKilled = true;
-  
-  if (_trx->state()->isCoordinator()) {
+  if (_trx->state()->isCoordinator() && !_queryKilled) {
+    _queryKilled = true;
     this->cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, /*sync*/false);
+  } else {
+    _queryKilled = true;
   }
 }
   
@@ -1412,7 +1413,9 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     });
 
     TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
-      debugKillQuery();
+      if (_shutdownState.load(std::memory_order_relaxed) == ShutdownState::None) {
+        debugKillQuery();
+      }
     }
 
     return ExecutionState::WAITING;
