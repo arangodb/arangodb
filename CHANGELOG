@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
+
 * Updated arangosync to 2.0.1.
 
 * Introduce metrics for AQL query memory limit violations:
