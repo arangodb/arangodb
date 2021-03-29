@@ -223,10 +223,12 @@ let cleanupDirectories = [];
 let isEnterpriseClient = false;
 
 let BIN_DIR;
+let SBIN_DIR;
 let ARANGOBACKUP_BIN;
 let ARANGOBENCH_BIN;
 let ARANGODUMP_BIN;
 let ARANGOD_BIN;
+let ARANGO_SECURE_INSTALLATION_BIN;
 let ARANGOIMPORT_BIN;
 let ARANGORESTORE_BIN;
 let ARANGOEXPORT_BIN;
@@ -241,9 +243,24 @@ let UNITTESTS_DIR;
 
 const TOP_DIR = (function findTopDir () {
   const topDir = fs.normalize(fs.makeAbsolute('.'));
+  print(topDir)
+  const isSourceDir = fs.exists('3rdParty') &&
+        fs.exists('arangod') &&
+        fs.exists('arangosh') &&
+        fs.exists('tests');
+  const isInstallDir =
+        fs.exists('bin/') &&
+        fs.exists('etc/') &&
+        fs.exists('js/') &&
+        fs.exists('lib/') &&
+        fs.exists('out/') &&
+        fs.exists('sbin/') &&
+        fs.exists('share/') &&
+        fs.exists('testing/') &&
+        fs.exists('tests/') &&
+        fs.exists('var/');
 
-  if (!fs.exists('3rdParty') && !fs.exists('arangod') &&
-    !fs.exists('arangosh') && !fs.exists('tests')) {
+  if (!isSourceDir && !isInstallDir) {
     throw new Error('Must be in ArangoDB topdir to execute tests.');
   }
 
@@ -295,6 +312,10 @@ function setupBinaries (builddir, buildType, configDir) {
   if (!fs.exists(BIN_DIR)) {
     BIN_DIR = fs.join(TOP_DIR, 'bin');
   }
+  SBIN_DIR = BIN_DIR.replace('bin', 'sbin');
+  if (!fs.exists(SBIN_DIR)) {
+    SBIN_DIR = BIN_DIR;
+  }
 
   UNITTESTS_DIR = fs.join(fs.join(builddir, 'tests'));
   if (!fs.exists(UNITTESTS_DIR)) {
@@ -313,7 +334,9 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOBACKUP_BIN = fs.join(BIN_DIR, 'arangobackup' + executableExt);
   ARANGOBENCH_BIN = fs.join(BIN_DIR, 'arangobench' + executableExt);
   ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump' + executableExt);
-  ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executableExt);
+  ARANGOD_BIN = fs.join(SBIN_DIR, 'arangod' + executableExt);
+  ARANGO_SECURE_INSTALLATION_BIN = fs.join(SBIN_DIR, 'arango-secure-installation' + executableExt);
+
   ARANGOIMPORT_BIN = fs.join(BIN_DIR, 'arangoimport' + executableExt);
   ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executableExt);
   ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
@@ -2427,12 +2450,14 @@ exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 exports.dumpAgency = dumpAgency;
 Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
 Object.defineProperty(exports, 'ARANGOD_BIN', {get: () => ARANGOD_BIN});
+Object.defineProperty(exports, 'ARANGO_SECURE_INSTALLATION_BIN', {get: () => ARANGO_SECURE_INSTALLATION_BIN});
 Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => ARANGOSH_BIN});
 Object.defineProperty(exports, 'CONFIG_DIR', {get: () => CONFIG_DIR});
 Object.defineProperty(exports, 'TOP_DIR', {get: () => TOP_DIR});
 Object.defineProperty(exports, 'LOGS_DIR', {get: () => LOGS_DIR});
 Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => UNITTESTS_DIR});
 Object.defineProperty(exports, 'BIN_DIR', {get: () => BIN_DIR});
+Object.defineProperty(exports, 'SBIN_DIR', {get: () => SBIN_DIR});
 Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => CONFIG_ARANGODB_DIR});
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => CONFIG_RELATIVE_DIR});
 Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal, set: (value) => { serverCrashedLocal = value; } });
