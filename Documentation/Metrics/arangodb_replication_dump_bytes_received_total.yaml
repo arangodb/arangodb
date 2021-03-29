@@ -1,7 +1,8 @@
 name: arangodb_replication_dump_bytes_received_total
-introducedIn: "3.8"
+renamedFrom: arangodb_replication_dump_bytes_received
+introducedIn: "3.8.0"
 help: |
-  Number of bytes received in replication dump requests.
+  Total number of bytes replicated in initial asynchronous phase.
 unit: bytes
 type: counter
 category: Replication
@@ -9,4 +10,6 @@ complexity: medium
 exposedBy:
   - dbserver
 description: |
-  Number of bytes received in replication dump requests.
+  During initial replication the existing data from the leader is copied asynchronously
+  over to new shards. The amount of requests required to transport data to this server,
+  as a replica for a shard, is counted here.

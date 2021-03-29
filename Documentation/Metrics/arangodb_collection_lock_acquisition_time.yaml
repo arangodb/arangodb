@@ -1,5 +1,5 @@
 name: arangodb_collection_lock_acquisition_time
-introducedIn: "3.6"
+introducedIn: "3.6.11"
 help: |
   Collection lock acquisition time histogram.
 unit: s
@@ -11,7 +11,7 @@ exposedBy:
   - agent
   - single
 description: |
-  Histogram of the collection/shard lock acquistion times. Locks will be acquired for
+  Histogram of the collection/shard lock acquisition times. Locks will be acquired for
   all write operations, but not for read operations.
   The values here are measured in seconds.
 troubleshoot: |

@@ -131,9 +131,6 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
       "arangodb_replication_initial_remove_apply_time_total",
       "arangodb_replication_initial_remove_apply_time");
     nameVersionTable.try_emplace(
-      "arangodb_replication_initial_lookup_time_total",
-      "arangodb_replication_initial_lookup_time");
-    nameVersionTable.try_emplace(
       "arangodb_replication_tailing_requests_total",
       "arangodb_replication_tailing_requests");
     nameVersionTable.try_emplace(
@@ -319,6 +316,9 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_scheduler_threads_stopped_total",
       "arangodb_scheduler_threads_stopped");
+    nameVersionTable.try_emplace(
+      "arangodb_scheduler_num_awake_threads",
+      "arangodb_scheduler_awake_threads");
     // For the sake of completeness, we add the renamings from v1 to v2 from the
     // statistics feature:
     nameVersionTable.try_emplace(
@@ -386,6 +386,15 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
         "arangodb_load_current_accum_runtime_msec_total",
         "arangodb_load_plan_accum_runtime_msec_total",
         "arangodb_aql_slow_query_total",
+        "arangodb_scheduler_jobs_dequeued",
+        "arangodb_scheduler_jobs_submitted",
+        "arangodb_scheduler_jobs_done",
+    };
+    
+    v1suppressions = {
+        "arangodb_scheduler_jobs_dequeued_total",
+        "arangodb_scheduler_jobs_submitted_total",
+        "arangodb_scheduler_jobs_done_total",
     };
   } catch (std::exception const& e) {
     LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
@@ -490,6 +499,9 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
       std::string name = i.second->name();
       std::string alternativeName;
       if (!v2) {
+        if (v1suppressions.find(name) != v1suppressions.end()) {
+          continue;
+        }
         // In v1 we do a name conversion. Note that we set 
         // alternativeName == name in the end, in v2 though,
         // alternativeName is empty and no conversion happens.

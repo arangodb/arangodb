@@ -5,6 +5,11 @@ set(boost_version "1.71.0")
 set(BOOST_VERSION ${boost_version} PARENT_SCOPE)
 set(boost_src "${CMAKE_CURRENT_SOURCE_DIR}/${boost_version}")
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-suggest-override")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-suggest-override")
+endif()
+
 #create interface target for boost header only libraries
 message(STATUS "using 3rdParty BOOST")
 add_library(boost_boost INTERFACE)

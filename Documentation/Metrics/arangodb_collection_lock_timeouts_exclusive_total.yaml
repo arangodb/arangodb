@@ -1,5 +1,6 @@
 name: arangodb_collection_lock_timeouts_exclusive_total
-introducedIn: "3.6"
+renamedFrom: arangodb_collection_lock_timeouts_exclusive
+introducedIn: "3.8.0"
 help: |
   Number of timeouts when trying to acquire collection exclusive locks.
 unit: number

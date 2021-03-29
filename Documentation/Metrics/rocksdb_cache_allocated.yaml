@@ -1,8 +1,8 @@
 name: rocksdb_cache_allocated
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
-  rocksdb_cache_allocated
-unit: number
+  Global current allocation of ArangoDB cache
+unit: bytes
 type: gauge
 category: RocksDB
 complexity: advanced
@@ -11,4 +11,8 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_cache_allocated
+  This metric reflects the current global allocation for the ArangoDB
+  cache which sits in front of RocksDB. For example, the edge cache
+  counts towards this allocation. All these caches together have a 
+  global limit which can be controlled with the `--cache.size` option.
+  See [the manual for details](https://www.arangodb.com/docs/stable/programs-arangod-options.html#cache).
