@@ -1,6 +1,16 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fix velocypack errors in cursor API in case an exception occurs while the
+  cursor is being filled with data. In this case, the result could be in an
+  arbitrary state (e.g. halfway produced), so adding more attributes to the
+  result such as "error" and "code" was potentially unsafe. If the result
+  was not properly built, trying to add "error" and "code" attributes could
+  have led to arbitrary velocypack errors, which were then reported back to
+  callers, masking the original error.
+  Now the original error is returned, and no attempt is made to write into
+  the result after an exception has occurred.
+
 * Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
 
 * When using connections to multiple endpoints and switching between them,
