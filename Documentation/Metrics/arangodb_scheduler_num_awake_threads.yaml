@@ -1,5 +1,6 @@
 name: arangodb_scheduler_num_awake_threads
-introducedIn: "3.8"
+renamedFrom: arangodb_scheduler_awake_threads
+introducedIn: "3.8.0"
 help: |
   Number of awake worker threads.
 unit: number

@@ -1,5 +1,5 @@
 name: rocksdb_block_cache_usage
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-block-cache-usage"
 unit: bytes

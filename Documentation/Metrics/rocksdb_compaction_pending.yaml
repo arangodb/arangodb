@@ -1,5 +1,5 @@
 name: rocksdb_compaction_pending
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "compaction-pending" - sum over column families
 unit: number

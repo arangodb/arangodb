@@ -1,5 +1,5 @@
 name: arangodb_process_statistics_user_time
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   Process user time
 unit: s

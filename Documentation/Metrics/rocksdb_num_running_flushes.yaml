@@ -1,5 +1,5 @@
 name: rocksdb_num_running_flushes
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-num-running-flushes"
 unit: number

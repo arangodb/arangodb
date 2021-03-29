@@ -1,5 +1,5 @@
 name: rocksdb_cache_limit
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   Global allocation limit for the ArangoDB cache in front of RocksDB
 unit: bytes

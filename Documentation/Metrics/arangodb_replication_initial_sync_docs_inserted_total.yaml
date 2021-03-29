@@ -1,5 +1,6 @@
 name: arangodb_replication_initial_sync_docs_inserted_total
-introducedIn: "3.8"
+renamedFrom: arangodb_replication_initial_sync_docs_inserted
+introducedIn: "3.8.0"
 help: |
   Number of documents inserted by replication initial sync
 unit: number

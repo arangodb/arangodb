@@ -1,5 +1,5 @@
 name: rocksdb_num_immutable_mem_table_flushed
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "num-immutable-mem-table-flushed" - sum over column families
 unit: number
