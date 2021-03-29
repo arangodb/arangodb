@@ -40,42 +40,61 @@ function GenericQueryKillSuite() { // can be either default or stream
   let executeDefaultCursorQuery = (reportKilled) => {
     // default execution
     let localQuery;
+    let stateForBoth = false; // marker that we expect either a kill or a result
 
     try {
       localQuery = db._query(exlusiveWriteQueryString);
-      if (reportKilled) {
+      if (reportKilled === 'true') {
         fail();
       }
     } catch (e) {
+      stateForBoth = true;
       console.warn("It is expected to fail here (default): ");
       console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
 
     // in case we're expecting a success here
-    if (!reportKilled) {
+    if (reportKilled === 'false') {
       assertTrue(localQuery);
+    }
+    if (localQuery) {
+      stateForBoth = true;
+    }
+    if (reportKilled === 'both') {
+      assertTrue(stateForBoth);
     }
   }
 
   let executeStreamCursorQuery = (reportKilled) => {
     // stream execution
     let localQuery;
+    let stateForBoth = false; // marker that we expect either a kill or a result
 
     try {
       localQuery = db._query(exlusiveWriteQueryString, null, null, {stream: true});
-      if (reportKilled) {
+      if (reportKilled === 'true') {
         fail();
       }
     } catch (e) {
+      stateForBoth = true;
       console.warn("It is expected to fail here (stream): ");
+      console.warn(" == ")
+      console.warn(localQuery);
+      console.warn(" == ")
       console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
 
     // in case we're expecting a success here
-    if (!reportKilled) {
+    if (reportKilled === 'false') {
       assertTrue(localQuery);
+    }
+    if (localQuery) {
+      stateForBoth = true;
+    }
+    if (reportKilled === 'both') {
+      assertTrue(stateForBoth);
     }
   }
 
@@ -83,7 +102,7 @@ function GenericQueryKillSuite() { // can be either default or stream
    * failurePointName: <Class::Name>
    * onlyInCluster: <boolean>
    * stream: <string> - "on", "off" or "both"
-   * reportKilled: <boolean>
+   * reportKilled: <string> "true", "false", "both"
    */
   const createTestCaseEntry = (failurePointName, onlyInCluster, stream, reportKilled) => {
     if (!internal.isCluster() && onlyInCluster) {
@@ -105,7 +124,7 @@ function GenericQueryKillSuite() { // can be either default or stream
         console.error("Wrong definition of stream, given: " + JSON.stringify(stream));
       }
     }
-    if (typeof reportKilled !== 'boolean') {
+    if (typeof reportKilled !== 'string') {
       console.error("Wrong definition of reportKilled, given: " + JSON.stringify(reportKilled));
       error = true;
     }
@@ -126,20 +145,20 @@ function GenericQueryKillSuite() { // can be either default or stream
   // TODOs: check reportKilled flags for each entry
 
   // defaults
-  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryGotRegistered", true, "off", true));
+  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryGotRegistered", true, "off", "true"));
 
   // stream
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", true));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped", false, "on", true));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", true));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "true"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped", false, "on", "true"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", "true"));
 
   // execution in default & stream
-  testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', true));
-  testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', true));
-  testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', true));
-  testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', true));
-  testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', false));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting", false, 'both', false));
+  testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', "true"));
+  testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "true")); // TODO: works but potentially duplicate query kill call here - check!
+  testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', "both"));
+  testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "true"));
+  testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', "false"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting", false, 'both', "false"));
 
   const testSuite = {
     setUp: function () {
@@ -209,6 +228,8 @@ function GenericQueryKillSuite() { // can be either default or stream
         executeDefaultCursorQuery(reportKilled);
       } else if (stream === 'both') {
         executeStreamCursorQuery(reportKilled);
+        internal.debugClearFailAt(failurePointName); // Try to prevent other queries from running into break point TODO: optimize c++ debugKill method
+        internal.debugSetFailAt(failurePointName);
         executeDefaultCursorQuery(reportKilled);
       }
 
