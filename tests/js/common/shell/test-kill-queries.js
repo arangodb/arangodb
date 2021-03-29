@@ -49,7 +49,10 @@ function GenericQueryKillSuite() { // can be either default or stream
       }
     } catch (e) {
       stateForBoth = true;
-      console.warn("It is expected to fail here (default): ");
+      console.warn("It might be expected to fail here (default) - reportKilled: " + reportKilled);
+      console.warn("= localQuery =");
+      console.warn(localQuery);
+      console.warn("==");
       console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
@@ -78,10 +81,10 @@ function GenericQueryKillSuite() { // can be either default or stream
       }
     } catch (e) {
       stateForBoth = true;
-      console.warn("It is expected to fail here (stream): ");
-      console.warn(" == ")
+      console.warn("It might be expected to fail here (stream) - reportKilled: " + reportKilled);
+      console.warn("= localQuery =");
       console.warn(localQuery);
-      console.warn(" == ")
+      console.warn("==");
       console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
