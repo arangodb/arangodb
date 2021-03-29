@@ -1,6 +1,8 @@
 v3.6.13 (XXXX-XX-XX)
 --------------------
 
+* Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
+
 * When using connections to multiple endpoints and switching between them,
   arangosh can now reuse existing connections by referring to an internal
   connection cache. This helps for arangosh scripts that repeatedly connect to
@@ -50,9 +52,8 @@ v3.6.13 (XXXX-XX-XX)
   The default value for the option is `true`, meaning statistics will be
   displayed in the web interface for all databases.
 
-* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
-
 * Cleanup old HotBackup transfer jobs in agency.
+
 
 v3.6.12 (2021-02-18)
 --------------------
