@@ -607,7 +607,7 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
     return addErrorMsg(res, keySlice.copyString());
   } else if (!s.IsNotFound()) {
     // IsBusy(), IsTimedOut() etc... this indicates a conflict
-    return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
+    return addErrorMsg(res.reset(rocksutils::convertStatus(s)), keySlice.copyString());
   }
 
   ps.Reset();  // clear used memory
@@ -664,7 +664,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ true);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
-    addErrorMsg(res);
+    addErrorMsg(res, keySlice.copyString());
   }
   return res;
 }
@@ -691,7 +691,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
   rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
-    addErrorMsg(res);
+    addErrorMsg(res, keySlice.copyString());
   }
   return res;
 }
@@ -714,7 +714,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   rocksdb::Status s = mthds->Delete(_cf, key.ref());
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
-    addErrorMsg(res);
+    addErrorMsg(res, keySlice.copyString());
   }
   return res;
 }

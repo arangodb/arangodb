@@ -1,6 +1,11 @@
 devel
 -----
 
+* Add value of `_key` to more insert/update/replace/remove error messages
+  so it is easier to figure out which document caused unique constraint
+  violations and/or write-write conflict during a multi-document write
+  operation.
+
 * Updated arangosync to 2.0.1.
 
 * Introduce metrics for AQL query memory limit violations:
