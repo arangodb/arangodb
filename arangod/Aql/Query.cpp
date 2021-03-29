@@ -1350,7 +1350,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   TRI_IF_FAILURE("Query::directKillBeforeQueryWillBeFinalized") {
     debugKillQuery();
   }
-  
+
   // simon: do not unregister _queryProfile here, since kill() will be called
   //        under the same QueryList lock
   
@@ -1478,14 +1478,14 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     // b) Query is in the query-registery. In this case the query registry can hit a timeout, which triggers the kill
     // c) The query id has been handed out to the user (stream query only)
     bool isStreaming = queryOptions().stream;
-    bool wasInList = false;
+    bool isInList = false;
     bool isInRegistry = false;
     auto const& queryList = vocbase().queryList();
     if (queryList->enabled()) {
       auto const& current = queryList->listCurrent();
       for (auto const& it : current) {
         if (it.id == _queryId) {
-          wasInList = true;
+          isInList = true;
           break;
         }
       }
@@ -1495,8 +1495,10 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     if (registry != nullptr) {
       isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
     }
-    LOG_DEVEL << "Query killed for debugging in current " << std::boolalpha << wasInList << " streaming " << isStreaming << " in QueryRegistry " << isInRegistry;
-    TRI_ASSERT(wasInList || isStreaming || isInRegistry);
+    LOG_DEVEL << "Query killed for debugging in current: " << std::boolalpha << isInList << " ,streaming: " << isStreaming << ", in QueryRegistry: " << isInRegistry;
+    LOG_DEVEL << "Query string is: " << queryString();
+
+    TRI_ASSERT(isInList || isStreaming || isInRegistry || _execState == QueryExecutionState::ValueType::FINALIZATION);
     kill();
   }
 #endif
