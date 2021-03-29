@@ -207,7 +207,7 @@ auto const statStrings = std::map<std::string_view, std::vector<std::string_view
    {"arangodb_process_statistics_minor_page_faults", "gauge/counter",
     "The number of minor faults the process has made which have not required loading a memory page from disk. This figure is not reported on Windows"}},
   {"majorPageFaults",
-   {"arangodb_process_statistics_major_page_faults", "gauge",
+   {"arangodb_process_statistics_major_page_faults", "gauge/counter",
     "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk"}},
   {"userTime",
    {"arangodb_process_statistics_user_time", "gauge",
