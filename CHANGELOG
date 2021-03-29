@@ -1,6 +1,8 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* Updated ArangoDB Starter to 0.15.0-preview-2.
+
 * Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
 
 * Updated arangosync to 2.0.1.
