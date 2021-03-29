@@ -1,5 +1,6 @@
 name: arangodb_maintenance_action_done_total
-introducedIn: "3.7"
+renamedFrom: arangodb_maintenance_action_done_counter
+introducedIn: "3.8.0"
 help: |
   Counter of actions that are done and have been removed from the registry.
 unit: number

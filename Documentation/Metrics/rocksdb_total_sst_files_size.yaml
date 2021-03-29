@@ -1,8 +1,8 @@
 name: rocksdb_total_sst_files_size
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
-  rocksdb_total_sst_files_size
-unit: number
+  RocksDB metric "rocksdb-total-sst-files-size" - sum over all column families
+unit: bytes
 type: gauge
 category: RocksDB
 complexity: advanced
@@ -11,4 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_total_sst_files_size
+  This metric exhibits the RocksDB metric "rocksdb-total-sst-files-size".
+  It shows the total size in bytes of all SST files, summed over all
+  column families.

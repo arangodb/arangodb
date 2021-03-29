@@ -131,9 +131,6 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
       "arangodb_replication_initial_remove_apply_time_total",
       "arangodb_replication_initial_remove_apply_time");
     nameVersionTable.try_emplace(
-      "arangodb_replication_initial_lookup_time_total",
-      "arangodb_replication_initial_lookup_time");
-    nameVersionTable.try_emplace(
       "arangodb_replication_tailing_requests_total",
       "arangodb_replication_tailing_requests");
     nameVersionTable.try_emplace(
@@ -319,6 +316,9 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_scheduler_threads_stopped_total",
       "arangodb_scheduler_threads_stopped");
+    nameVersionTable.try_emplace(
+      "arangodb_scheduler_num_awake_threads",
+      "arangodb_scheduler_awake_threads");
     // For the sake of completeness, we add the renamings from v1 to v2 from the
     // statistics feature:
     nameVersionTable.try_emplace(
