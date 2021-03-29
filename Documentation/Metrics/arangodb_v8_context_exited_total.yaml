@@ -1,5 +1,6 @@
 name: arangodb_v8_context_exited_total
-introducedIn: "3.6"
+renamedFrom: arangodb_v8_context_exited
+introducedIn: "3.8.0"
 help: |
   Total number of V8 context exit events
 unit: number

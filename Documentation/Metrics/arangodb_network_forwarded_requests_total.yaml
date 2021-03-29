@@ -1,5 +1,6 @@
 name: arangodb_network_forwarded_requests_total
-introducedIn: "3.6"
+renamedFrom: arangodb_network_forwarded_requests
+introducedIn: "3.8.0"
 help: |
   Number of requests forwarded to another coordinator.
 unit: number

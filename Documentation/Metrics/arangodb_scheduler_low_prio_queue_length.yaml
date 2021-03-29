@@ -1,5 +1,5 @@
 name: arangodb_scheduler_low_prio_queue_length
-introducedIn: "3.8"
+introducedIn: "3.8.0"
 help: |
   Current queue length of the low priority queue in the scheduler.
 unit: number

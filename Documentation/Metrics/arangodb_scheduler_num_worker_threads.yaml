@@ -1,5 +1,5 @@
 name: arangodb_scheduler_num_worker_threads
-introducedIn: "3.6"
+introducedIn: "3.6.7"
 help: |
   Current number of worker threads.
 unit: number

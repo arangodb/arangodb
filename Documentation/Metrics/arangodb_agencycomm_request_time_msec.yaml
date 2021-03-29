@@ -1,5 +1,5 @@
 name: arangodb_agencycomm_request_time_msec
-introducedIn: "3.7"
+introducedIn: "3.7.1"
 help: |
   Request time for Agency requests.
 unit: ms

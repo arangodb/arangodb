@@ -1,5 +1,5 @@
 name: arangodb_agency_log_size_bytes
-introducedIn: "3.6"
+introducedIn: "3.6.9"
 help: |
   Agency replicated log size.
 unit: bytes

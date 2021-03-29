@@ -1,5 +1,5 @@
 name: rocksdb_num_entries_active_mem_table
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-num-entries-active-mem-table" - sum over column families
 unit: number

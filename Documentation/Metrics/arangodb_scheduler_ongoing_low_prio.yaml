@@ -1,5 +1,5 @@
 name: arangodb_scheduler_ongoing_low_prio
-introducedIn: "3.8"
+introducedIn: "3.8.0"
 help: |
   Total number of ongoing RestHandlers coming from the low prio queue.
 unit: number

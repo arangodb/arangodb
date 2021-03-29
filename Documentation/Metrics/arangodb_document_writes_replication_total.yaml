@@ -1,5 +1,6 @@
 name: arangodb_document_writes_replication_total
-introducedIn: "3.8"
+renamedFrom: arangodb_document_writes_replication
+introducedIn: "3.8.0"
 help: |
   Total number of document write operations by synchronous replication.
 unit: number

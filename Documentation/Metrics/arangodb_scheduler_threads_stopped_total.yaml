@@ -1,5 +1,6 @@
 name: arangodb_scheduler_threads_stopped_total
-introducedIn: "3.6"
+renamedFrom: arangodb_scheduler_threads_stopped
+introducedIn: "3.8.0"
 help: |
   Accumulated total number of scheduler threads stopped.
 unit: number
