@@ -47,7 +47,7 @@ function GenericQueryKillSuite() { // can be either default or stream
         fail();
       }
     } catch (e) {
-      console.warn("Expected to fail here: ");
+      console.warn("It is expected to fail here (default): ");
       console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
@@ -68,7 +68,7 @@ function GenericQueryKillSuite() { // can be either default or stream
         fail();
       }
     } catch (e) {
-      console.warn("Expected to fail here: ");
+      console.warn("It is expected to fail here (stream): ");
       console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
@@ -131,7 +131,7 @@ function GenericQueryKillSuite() { // can be either default or stream
   // stream
   testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", true));
   testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped", false, "on", true));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", true)); // TODO: Cannot kill here as _query does not exist
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", true));
 
   // execution in default & stream
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', true));
@@ -179,9 +179,6 @@ function GenericQueryKillSuite() { // can be either default or stream
       }
     } else if (testCase.stream === "on") {
       // unexpected errors in stream
-      //unexpectedFailures.push('RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped');
-      //unexpectedFailures.push('RestCursorHandler::directKillAfterStreamQueryIsGettingDumped');
-      unexpectedFailures.push('ExecutionEngine::directKillBeforeAQLQueryExecute');
       unexpectedFailures.push('Query::directKillBeforeQueryWillBeFinalized');
       unexpectedFailures.push('Query::directKillAfterQueryWillBeFinalized');
       unexpectedFailures.push('Query::directKillAfterDBServerFinishRequests');
