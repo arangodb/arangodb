@@ -1413,9 +1413,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     });
 
     TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
-      if (_shutdownState.load(std::memory_order_relaxed) == ShutdownState::None) {
-        debugKillQuery();
-      }
+      debugKillQuery();
     }
 
     return ExecutionState::WAITING;
