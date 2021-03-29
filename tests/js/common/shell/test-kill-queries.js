@@ -37,14 +37,24 @@ function GenericQueryKillSuite() { // can be either default or stream
   const docsPerWrite = 5;
   const exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true}`;
 
-  let executeDefaultCursorQuery = () => {
+  let executeDefaultCursorQuery = (reportKilled) => {
     // default execution
+    let localQuery;
+
     try {
-      db._query(exlusiveWriteQueryString);
-      fail();
+      localQuery = db._query(exlusiveWriteQueryString);
+      if (reportKilled) {
+        fail();
+      }
     } catch (e) {
+      console.warn("Expected to fail here: ");
       console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
+    }
+
+    // in case we're expecting a success here
+    if (!reportKilled) {
+      assertTrue(localQuery);
     }
   }
 
@@ -65,8 +75,6 @@ function GenericQueryKillSuite() { // can be either default or stream
 
     // in case we're expecting a success here
     if (!reportKilled) {
-      console.info("Not expecting to be killed in this case.");
-      console.info(typeof localQuery);
       assertTrue(localQuery);
     }
   }
@@ -133,9 +141,8 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', true));
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', true));
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', true));
-  testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', true));
+  testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', false));
   testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryExecuteReturnsWaiting", true, 'both', false));
-  console.info(testCases);
 
   const testSuite = {
     setUp: function () {
