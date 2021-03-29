@@ -140,7 +140,7 @@ LoggerStream::LoggerStream(bool enabled)
     : LoggerStreamBase(enabled) {}
 #endif
 
-LoggerStream::LoggerStream() {
+LoggerStream::LoggerStream() 
     : LoggerStreamBase(true) {}
 
 LoggerStream::~LoggerStream() {
