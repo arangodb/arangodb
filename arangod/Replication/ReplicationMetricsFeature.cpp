@@ -30,15 +30,15 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 DECLARE_COUNTER(arangodb_replication_dump_requests_total,
-                "Number of replication dump requests");
+                "Number of requests used in initial asynchronous replication phase.");
 DECLARE_COUNTER(arangodb_replication_dump_bytes_received_total,
-                "Number of bytes received in replication dump requests");
+                "Total number of bytes replicated in initial asynchronous phase.");
 DECLARE_COUNTER(arangodb_replication_dump_documents_total,
-                "Number of documents received in replication dump requests");
+                "Total number of documents replicated in initial asynchronous phase.");
 DECLARE_COUNTER(arangodb_replication_dump_request_time_total,
-                "Wait time for replication requests [ms]");
+                "Accumulated wait time for replication requests in initial asynchronous phase. [ms]");
 DECLARE_COUNTER(arangodb_replication_dump_apply_time_total,
-                "Accumulated time needed to apply replication dump data [ms]");
+                "Accumulated time needed to apply asynchronously replicated data on initial synchronization of shards. [ms]");
 DECLARE_COUNTER(arangodb_replication_initial_sync_keys_requests_total,
                 "Number of replication initial sync keys requests");
 DECLARE_COUNTER(arangodb_replication_initial_sync_docs_requests_total,
@@ -75,7 +75,7 @@ DECLARE_COUNTER(arangodb_replication_tailing_bytes_received_total,
                 "Number of bytes received for replication tailing requests");
 DECLARE_COUNTER(arangodb_replication_failed_connects_total,
                 "Number of failed connection attempts and response errors "
-                "during replication");
+                "during initial asynchronous replication");
 DECLARE_COUNTER(arangodb_replication_tailing_request_time_total,
                 "Wait time for replication tailing requests [ms]");
 DECLARE_COUNTER(arangodb_replication_tailing_apply_time_total,

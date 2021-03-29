@@ -816,7 +816,7 @@
   unit: us
 - category: RocksDB
   complexity: medium
-  description: 'Histogram of the collection/shard lock acquistion times. Locks will
+  description: 'Histogram of the collection/shard lock acquisition times. Locks will
     be acquired for
 
     all write operations, but not for read operations.
@@ -2418,43 +2418,83 @@
   type: counter
   unit: number
 - category: Replication
-  complexity: medium
-  description: 'Number of cluster replication inventory requests received.
+  complexity: advanced
+  description: 'When using a DC-2-DC configuration of ArangoDB this metric is active
+    on both data-centers.
+
+    It indicates that the follower data-center peridocally matches the available databases
+    and collections
+
+    in order to mirror them. If no DC-2-DC is set up this value is expected to be
+    0.
 
     '
   exposedBy:
   - coordinator
-  help: 'Number of cluster replication inventory requests received.
+  help: '(DC-2-DC only) Number of times the database and collection overviews have
+    been requested.
 
     '
   introducedIn: 3.8.0
   name: arangodb_replication_cluster_inventory_requests_total
   renamedFrom: arangodb_replication_cluster_inventory_requests
+  troubleshoot: 'If you have a DC-2-DC installation, and this metric stays constant
+    over a longer period of time in any of the two data centers
+
+    this indicates that the follower data center is not properly connected anymore.
+
+    The issue most likely is within the sync process on either of the two data-centers
+    as they do not compare their inventory anymore.
+
+    This gives no information about the healthiness of the ArangoDB cluster itself,
+    please check other metrics for this.
+
+    '
   type: counter
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Accumulated time needed to apply replication dump data.
+  description: 'Measures the time required to clone the existing leader copy of the
+    data onto a new replica shard.
+
+    Will only be measured on the follower server. This time is expected to increase
+    whenever new followers
+
+    are created, e.g. increasing replication factor, shard redistribution.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated time needed to apply replication dump data.
+  help: 'Accumulated time needed to apply asynchronously replicated data on initial
+    synchronization of shards.
 
     '
   introducedIn: 3.8.0
   name: arangodb_replication_dump_apply_time_total
   renamedFrom: arangodb_replication_dump_apply_time
+  troubleshoot: 'This metric measures as typical operation to keep the cluster resilient,
+    so no reaction is required.
+
+    In a stable cluster situation (no outages, no collection modification) this metric
+    should also be stable.
+
+    '
   type: counter
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Number of bytes received in replication dump requests.
+  description: 'During initial replication the existing data from the leader is copied
+    asynchronously
+
+    over to new shards. The amount of requests required to transport data to this
+    server,
+
+    as a replica for a shard, is counted here.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of bytes received in replication dump requests.
+  help: 'Total number of bytes replicated in initial asynchronous phase.
 
     '
   introducedIn: 3.8.0
@@ -2464,12 +2504,18 @@
   unit: bytes
 - category: Replication
   complexity: simple
-  description: 'Number of documents received in replication dump requests.
+  description: 'During initial replication the existing data from the leader is copied
+    asynchronously
+
+    over to new shards. The amount of documents transported to this server, as a replica
+    for
+
+    a shard, is counted here.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of documents received in replication dump requests.
+  help: 'Total number of documents replicated in initial asynchronous phase.
 
     '
   introducedIn: 3.8.0
@@ -2479,12 +2525,18 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Accumulated wait time for replication requests.
+  description: 'During initial replication the existing data from the leader is copied
+    asynchronously
+
+    over to new shards. The accumulated time the follower waited for the leader to
+    send
+
+    the data is counted here.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated wait time for replication requests.
+  help: 'Accumulated wait time for replication requests in initial asynchronous phase.
 
     '
   introducedIn: 3.8.0
@@ -2494,12 +2546,18 @@
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Number of replication dump requests.
+  description: 'During initial replication the existing data from the leader is copied
+    asynchronously
+
+    over to new shards. The amount of data transported to this server, as a replica
+    for
+
+    a shard, is counted here.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of replication dump requests.
+  help: 'Number of requests used in initial asynchronous replication phase.
 
     '
   introducedIn: 3.8.0
@@ -2509,17 +2567,53 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of failed connection attempts and response errors during replication.
+  description: 'During initial replication the existing data from the leader is copied
+    asynchronously
+
+    over to new shards. Whenever there is a communication issue between the follower
+    and
+
+    the leader of the shard it will be counted here for the follower. This communication
+
+    issues cover failed connections or http errors, but they also cover invalid or
+
+    unexpected data formats revieved on the follower.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of failed connection attempts and response errors during replication.
+  help: 'Number of failed connection attempts and response errors during initial asynchronous
+    replication.
 
     '
   introducedIn: 3.8.0
   name: arangodb_replication_failed_connects_total
   renamedFrom: arangodb_replication_failed_connects
+  threshold: 'In ideal situation this counter should be 0. It is expected to increase
+    if there is
+
+    server or network outage. However it is not guaranteed that this metric increases
+
+    in such a situation.
+
+    '
+  troubleshoot: "If this counter increases this typically indicates an issue with
+    the communication\nbetween servers. If it is just occasionally an increase of
+    one, it can be a simple\nnetwork hiccup, if you see constant increases here that
+    indicates serious issues.\nThis also indicates that there is a shard trying to
+    get into sync with the existing\ndata, which cannot make progress. So you have
+    only replicationFactor - 1 copies of\nthe data right now. If more servers suffer
+    outage you may lose data in this case.\n* First thing to check: Network connectivity,
+    make sure all servers are online\n  and the machines can communicate to one-another.\n*
+    Second: Check ArangoDB logs of this server for more details, most likely\n  you
+    will see WARN or ERROR messages in \"replication\" log topic. If you contact\n
+    \ ArangoDB support for this issue, it will help to include this servers logs as
+    well.\n* Third: (Unlikely) If the logs contain unexpected format or value entries\n
+    \ please check if you are running all ArangoDB Database servers within the same\n
+    \ version of ArangoDB. Only upgrades of one minor version at a time are supported\n
+    \ in general, so if you are running one server with a much newer / older version\n
+    \ please upgrade all servers to the newest version.\n* Forth: If none of the above
+    applies, please contact ArangoDB Support.\n"
   type: counter
   unit: number
 - category: Replication
