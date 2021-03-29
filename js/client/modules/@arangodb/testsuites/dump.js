@@ -338,11 +338,20 @@ class DumpRestoreHelper {
       this.restoreConfig.setDatabase(database);
     }
     this.restoreConfig.disableContinue();
+    let retryCount = 0;
     do {
       this.results.restore = this.arangorestore();
       if (this.results.restore.exitCode === 38) {
-        print("Failure point has terminated the application, restarting");
+        retryCount += 1;
+        if (retryCount === 21) {
+          this.restoreConfig.deactivateFailurePoint();
+          this.restoreOldConfig.deactivateFailurePoint();
+          print("Failure point has terminated the application, restarting, continuing without.");
+        } else {
+          print("Failure point has terminated the application, restarting");
+        }
         sleep(2 * timeoutFactor);
+        
         this.restoreConfig.enableContinue();
       }
     } while(this.results.restore.exitCode === 38);

@@ -1,5 +1,5 @@
 name: rocksdb_num_running_compactions
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-num-running-compactions"
 unit: number

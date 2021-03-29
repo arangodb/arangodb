@@ -1,5 +1,5 @@
 name: rocksdb_estimate_pending_compaction_bytes
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-estimate-pending-compaction-bytes" - sum over all column families
 unit: bytes

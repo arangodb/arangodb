@@ -1,5 +1,5 @@
 name: arangodb_agency_supervision_runtime_wait_for_replication_msec
-introducedIn: "3.7"
+introducedIn: "3.7.1"
 help: |
   Agency supervision wait for replication time.
 unit: ms
@@ -9,4 +9,7 @@ complexity: medium
 exposedBy:
   - agent
 description: |
-  Agency supervision wait for replication time.
+  Agency supervision replication time histogram. Whenever the agency
+  supervision carries out changes, it will write them to the leader's log 
+  and replicate the changes to followers. This metric provides a histogram
+  of the time it took to replicate the supervision changes to followers.
