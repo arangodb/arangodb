@@ -133,6 +133,11 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexc
   return *this;
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+LoggerStream::LoggerStream(bool enabled)
+    : LoggerStreamBase(enabled) {}
+#endif
+
 LoggerStream::~LoggerStream() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // this instance variable can only be false in maintainer mode.

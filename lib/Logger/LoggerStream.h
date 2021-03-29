@@ -90,6 +90,9 @@ class LoggerStreamBase {
 
 class LoggerStream : public LoggerStreamBase {
  public:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  explicit LoggerStream(bool enabled);
+#endif
   ~LoggerStream();
 };
 
