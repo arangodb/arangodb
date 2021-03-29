@@ -1,5 +1,5 @@
 name: arangodb_agency_write_hist
-introducedIn: "3.7"
+introducedIn: "3.7.1"
 help: |
   Agency write time histogram.
 unit: ms

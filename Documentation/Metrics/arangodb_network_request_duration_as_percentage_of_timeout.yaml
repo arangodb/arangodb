@@ -1,5 +1,5 @@
 name: arangodb_network_request_duration_as_percentage_of_timeout
-introducedIn: "3.8"
+introducedIn: "3.8.0"
 help: |
   Internal request round-trip time as a percentage of timeout.
 unit: percentage

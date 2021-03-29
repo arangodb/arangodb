@@ -1,5 +1,5 @@
 name: rocksdb_estimate_live_data_size
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-estimate-live-data-size" - sum over all column families
 unit: bytes

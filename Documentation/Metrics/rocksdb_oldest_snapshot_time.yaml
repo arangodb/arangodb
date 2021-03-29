@@ -1,5 +1,5 @@
 name: rocksdb_oldest_snapshot_time
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-oldest-snapshot-time"
 unit: number

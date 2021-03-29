@@ -1,5 +1,5 @@
 name: rocksdb_size_all_mem_tables
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-size-all-mem-tables" - sum over column families
 unit: bytes
