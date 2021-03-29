@@ -444,9 +444,17 @@ bool FieldIterator::setValue(VPackSlice const value,
   if (!pool->accepts(valueType)) {
     return false;
   }
-
-  iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
-
+  switch(pool->returnType()) {
+    case AnalyzerValueType::Bool:
+      arangodb::iresearch::kludge::mangleBool(_nameBuffer);
+      break;
+    case AnalyzerValueType::Number:
+      arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
+      break;
+    default:
+      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      break;
+  }
   // init stream
   auto analyzer = pool->get();
 

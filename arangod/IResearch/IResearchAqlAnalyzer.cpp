@@ -519,6 +519,9 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
               irs::get_mutable<irs::term_attribute>(getSubStream(_options.returnType))
               : &_aqlTerm)) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
+  std::get<AnalyzerValueTypeAttribute>(_attrs).value =
+    _options.returnType == AnalyzerValueType::Undefined ?
+    AnalyzerValueType::String : _options.returnType;
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
                  .ok());
@@ -548,59 +551,66 @@ bool AqlAnalyzer::next() {
             valueSet = true;
           }
         } else  if (!value.isNull(true) || _options.keepNull) {
-          if (_options.returnType == AnalyzerValueType::String) {
-            if (value.isString()) {
-              _aqlTerm.value = arangodb::iresearch::getBytesRef(value.slice());
-              valueSet = true;
-            } else {
-              arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
-              VPackFunctionParameters params{arena};
-              params.push_back(value);
-              aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
-              auto converted = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
-              TRI_ASSERT(converted.isString());
-              _aqlTerm.value = arangodb::iresearch::getBytesRef(converted.slice());
-              valueSet = true;
-            }
-          } else if (_options.returnType == AnalyzerValueType::Number) {
-            if (value.isNumber()) {
-              _numeric_stream.reset(value.toDouble());
-            } else {
-              arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
-              VPackFunctionParameters params{arena};
-              params.push_back(value);
-              aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
-              auto converted = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
-              TRI_ASSERT(converted.isNumber());
-              _numeric_stream.reset(converted.toDouble());
-              _active_sub_stream = &_numeric_stream;
-            }
-            _active_sub_stream = &_numeric_stream;
-            break; // go for upper cycle to drain sub_stream
-          } else if (_options.returnType == AnalyzerValueType::Bool) {
-            if (value.isBoolean()) {
-              _boolean_stream.reset(value.toBoolean());
-            } else {
-              arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
-              VPackFunctionParameters params{arena};
-              params.push_back(value);
-              aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
-              auto converted = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
-              TRI_ASSERT(converted.isBoolean());
-              _boolean_stream.reset(converted.toBoolean());
-            }
-            _active_sub_stream = &_boolean_stream;
-            break; // go for upper cycle to drain sub_stream
+          switch(_options.returnType) {
+            case AnalyzerValueType::String:
+              if (value.isString()) {
+                _aqlTerm.value = arangodb::iresearch::getBytesRef(value.slice());
+                valueSet = true;
+              }   else {
+                arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
+                VPackFunctionParameters params{arena};
+                params.push_back(value);
+                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                auto converted = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(converted.isString());
+                _aqlTerm.value = arangodb::iresearch::getBytesRef(converted.slice());
+                valueSet = true;
+              }
+              break;
+            case AnalyzerValueType::Number:
+              if (value.isNumber()) {
+                _numeric_stream.reset(value.toDouble());
+              } else {
+                arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
+                VPackFunctionParameters params{arena};
+                params.push_back(value);
+                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                auto converted = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(converted.isNumber());
+                _numeric_stream.reset(converted.toDouble());
+              }
+              if(_numeric_stream.next()) {
+                _active_sub_stream = &_numeric_stream;
+                valueSet = true;
+              }
+              break; // go for upper cycle to drain sub_stream
+            case AnalyzerValueType::Bool:
+              if (value.isBoolean()) {
+                _boolean_stream.reset(value.toBoolean());
+              } else {
+                arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
+                VPackFunctionParameters params{arena};
+                params.push_back(value);
+                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                auto converted = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(converted.isBoolean());
+                _boolean_stream.reset(converted.toBoolean());
+              }
+              if(_boolean_stream.next()) {
+                _active_sub_stream = &_boolean_stream;
+                valueSet = true;
+              }
+              break;
           }
-          if (valueSet) {
-            _aqlIncrement.value = _nextIncVal;
-            _nextIncVal = !_options.collapsePositions;
-            return true;
-          }
+        }
+        if (valueSet) {
+          _aqlIncrement.value = _nextIncVal;
+          _nextIncVal = !_options.collapsePositions;
+          return true;
         }
       }
     }
-    if (_executionState == ExecutionState::HASMORE) {
+    if (!_active_sub_stream && _executionState == ExecutionState::HASMORE) {
       _executionState = ExecutionState::DONE;  // set to done to terminate in case of exception
       _resultRowIdx = 0;
       _queryResults = nullptr;

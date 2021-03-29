@@ -33,6 +33,7 @@
 
 #include <velocypack/Iterator.h>
 #include "IResearch/IResearchAqlAnalyzer.h"
+#include <analysis/token_streams.hpp>
 
 
 class IResearchAqlAnalyzerTest : public IResearchQueryTest {};
@@ -41,7 +42,7 @@ namespace {
 constexpr irs::string_ref AQL_ANALYZER_NAME{"aql"};
 
 struct analyzer_token {
-  irs::string_ref value;
+  std::string value;
   uint32_t pos;
 };
 
@@ -69,6 +70,7 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
   }
   ASSERT_EQ(expected_token, expected_tokens.end());
 }
+
 } // namespace
 
 TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
@@ -543,6 +545,57 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1000);
     ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 33554432U);
   }
+  // string return type
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
+                                                    irs::type<irs::text_format::vpack>::get(),
+                                                    arangodb::iresearch::ref<char>(
+                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"returnType\":\"string\"}")
+                                                            ->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
+    ASSERT_EQ(actualSlice.get("returnType").stringView(), "string");
+  }
+
+  // bool return type
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
+                                                    irs::type<irs::text_format::vpack>::get(),
+                                                    arangodb::iresearch::ref<char>(
+                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"returnType\":\"bool\"}")
+                                                            ->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
+    ASSERT_EQ(actualSlice.get("returnType").stringView(), "bool");
+  }
+
+  // number return type
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
+                                                    irs::type<irs::text_format::vpack>::get(),
+                                                    arangodb::iresearch::ref<char>(
+                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"returnType\":\"number\"}")
+                                                            ->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
+    ASSERT_EQ(actualSlice.get("returnType").stringView(), "number");
+  }
+
   // empty query
   {
     std::string actual;
@@ -659,4 +712,99 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
     ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
   }
+
+  // invalid returnType
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"returnType\":1001 }")
+                ->slice())));
+  }
+
+  // invalid returnType
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"returnType\":\"array\" }")
+                ->slice())));
+  }
 }
+
+TEST_F(IResearchAqlAnalyzerTest, test_numeric_return) {
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"RETURN @param\", \"returnType\":\"number\"}")->slice()),
+      false);
+  ASSERT_NE(nullptr, ptr);
+  
+  analyzer_tokens expected_tokens;
+  irs::numeric_token_stream ns; 
+  ns.reset(2.);
+  auto* nsTerm = irs::get<irs::term_attribute>(ns);
+  auto* nsIncr = irs::get<irs::increment>(ns);
+  uint32_t pos{std::numeric_limits<uint32_t>::max()};
+  while (ns.next()) {
+    pos += nsIncr->value;
+    analyzer_token token;
+    token.pos = pos;
+    token.value.assign(irs::ref_cast<char>(nsTerm->value).c_str(), nsTerm->value.size());
+    expected_tokens.push_back(std::move(token));
+  }
+  assert_analyzer(ptr.get(), "2", expected_tokens);
+}
+
+TEST_F(IResearchAqlAnalyzerTest, test_numeric_return_array) {
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a\", \"returnType\":\"number\", \"collapsePositions\":false}")->slice()),
+      false);
+  ASSERT_NE(nullptr, ptr);
+  
+  analyzer_tokens expected_tokens;
+  irs::numeric_token_stream ns;
+  for (uint32_t i = 0; i < 3; ++i) {
+    ns.reset(static_cast<double>(i + 1));
+    auto* nsTerm = irs::get<irs::term_attribute>(ns);
+    auto* nsIncr = irs::get<irs::increment>(ns);
+    while (ns.next()) {
+      analyzer_token token;
+      token.pos = i;
+      token.value.assign(irs::ref_cast<char>(nsTerm->value).c_str(), nsTerm->value.size());
+      expected_tokens.push_back(std::move(token));
+    }
+  }
+  assert_analyzer(ptr.get(), "3", expected_tokens);
+}
+
+TEST_F(IResearchAqlAnalyzerTest, test_numeric_return_array_collapsed) {
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a\", \"returnType\":\"number\", \"collapsePositions\":true}")->slice()),
+      false);
+  ASSERT_NE(nullptr, ptr);
+  
+  analyzer_tokens expected_tokens;
+  irs::numeric_token_stream ns;
+  for (uint32_t i = 0; i < 3; ++i) {
+    ns.reset(static_cast<double>(i + 1));
+    auto* nsTerm = irs::get<irs::term_attribute>(ns);
+    auto* nsIncr = irs::get<irs::increment>(ns);
+    while (ns.next()) {
+      analyzer_token token;
+      token.pos = 0;
+      token.value.assign(irs::ref_cast<char>(nsTerm->value).c_str(), nsTerm->value.size());
+      expected_tokens.push_back(std::move(token));
+    }
+  }
+  assert_analyzer(ptr.get(), "3", expected_tokens);
+}
+
