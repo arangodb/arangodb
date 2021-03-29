@@ -32,16 +32,17 @@
 
 namespace arangodb {
 
-LoggerStreamBase::LoggerStreamBase()
+LoggerStreamBase::LoggerStreamBase(bool enabled)
     : _topicId(LogTopic::MAX_LOG_TOPICS),
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-      _topicLevel(LogLevel::DEFAULT),
-#endif
       _level(LogLevel::DEFAULT),
       _line(0),
       _logid(nullptr),
       _file(nullptr),
-      _function(nullptr) {}
+      _function(nullptr),
+      _enabled(enabled) {}
+
+LoggerStreamBase::LoggerStreamBase()
+    : LoggerStreamBase(true) {}
 
 LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
   _level = level;
@@ -50,11 +51,8 @@ LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
 
 LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
   _topicId = topic.id();
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  _topicLevel = topic.level();
-#endif
   return *this;
-  }
+}
 
 // print a hex representation of the binary data
 LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
@@ -136,13 +134,15 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexc
 }
 
 LoggerStream::~LoggerStream() {
-  try {
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-    // log maintainer mode disables this if in the macro, do it here:
-    if (!::arangodb::Logger::_isEnabled(_level, _topicLevel)) {
-      return;
-    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // this instance variable can only be false in maintainer mode.
+  // so save the check here if it is known to be always true.
+  if (!_enabled) {
+    return;
+  }
 #endif
+    
+  try {
     // TODO: with c++20, we can get a view on the stream's underlying buffer,
     // without copying it
     Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());
