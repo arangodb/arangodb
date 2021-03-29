@@ -8,6 +8,24 @@ except ImportError:
 
 import os, re, sys
 
+# Usage:
+
+def printUsage():
+    print("""Usage: utils/generateAllMetricsDocumentation.py [-h] [--help] [-d]
+
+    -d:    if this option is given, a combined file with all metrics
+           documentation snippets is written to 
+              Documentation/Metrics/allMetrics.yaml
+           otherwise, this script only checks the format of all snippets and
+           that there is one exactly one metrics declarations for each snippet.
+
+    use -h or --help for this help.
+""")
+
+if len(sys.argv) > 1 and (sys.argv[1] == "-h" or sys.argv[1] == "--help"):
+    printUsage()
+    sys.exit(0)
+
 # Some data:
 categoryNames = ["Health", "AQL", "Transactions", "Foxx", "Pregel", \
                  "Statistics", "Replication", "Disk", "Errors", \
@@ -139,27 +157,13 @@ for i in range(0, len(yamlfiles)):
         tooMany = True
         print("YAML file '" + name + ".yaml'\n  does not have a corresponding metric declared in the source code!")
 
-onlyCheck = False
-if len(sys.argv) > 1 and sys.argv[1] == "-c":
-  onlyCheck = True
+dumpMetrics = False
+if len(sys.argv) > 1 and sys.argv[1] == "-d":
+  dumpMetrics = True
 
 outfile = "Documentation/Metrics/allMetrics.yaml"
 output = dump(yamls, Dumper=Dumper)
-if onlyCheck:
-  input = open(outfile, "r")
-  found = input.read()
-  input.close()
-  if output != found:
-    print("""
-Generated file Documentation/Metrics/allMetrics.yaml does not match
-the metrics documentation snippets. Please run
-
-  utils/generateAllMetricsDocumentation.py
-
-and commit Documentation/Metrics/allMetrics.yaml with your PR!
-""")
-    sys.exit(18)
-else:
+if dumpMetrics:
   # Dump what we have:
   s = open(outfile, "w")
   s.write(output)
