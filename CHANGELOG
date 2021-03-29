@@ -1,6 +1,8 @@
 v3.6.13 (XXXX-XX-XX)
 --------------------
 
+* Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
+
 * Put Sync/LatestID into hotbackup and restore it on hotbackup restore if it is
   in the backup. This helps with unique key generation after a hotbackup is
   restored to a young cluster.
@@ -42,9 +44,8 @@ v3.6.13 (XXXX-XX-XX)
   The default value for the option is `true`, meaning statistics will be
   displayed in the web interface for all databases.
 
-* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
-
 * Cleanup old HotBackup transfer jobs in agency.
+
 
 v3.6.12 (2021-02-18)
 --------------------
