@@ -5,7 +5,7 @@
 #include <cmath>
 #endif
 
-#ifdef MELLON_RECORD_PENDING_OBJECTS
+#if defined(MELLON_RECORD_PENDING_OBJECTS) || defined(MELLON_RECORD_BACKTRACE)
 #include <vector>
 #include <unordered_set>
 #endif
