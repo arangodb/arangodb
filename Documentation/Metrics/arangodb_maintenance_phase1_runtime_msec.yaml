@@ -1,0 +1,19 @@
+name: arangodb_maintenance_phase1_runtime_msec
+introducedIn: "3.7.1"
+help: |
+  Maintenance Phase 1 runtime histogram.
+unit: ms
+type: histogram
+category: Maintenance
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Database servers execute reconciliation actions to let the cluster converge
+  to the desired state. To identify the target state differences in the meta
+  data store provided by the agency are investigated and local changes are
+  reported. This process is called agency sync and is executed in regular
+  intervals.
+
+  This metric tracks the runtime of phase1 of an agency sync. Phase1 calculates
+  the difference between the local and the target state.

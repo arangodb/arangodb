@@ -37,8 +37,6 @@
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
 
-#include <Basics/ResourceUsage.h>
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -132,10 +130,19 @@ class QueryContext {
   virtual void exitV8Context() {}
   
   virtual bool hasEnteredV8Context() const { return false; }
+  
+  // base overhead for each query. the number used here is somewhat arbitrary. 
+  // it is just that all the basics data structures of a query are not totally 
+  // free, and there is not other accounting for them. note: this value is
+  // counted up in the constructor and counted down in the destructor.
+  constexpr static std::size_t baseMemoryUsage = 8192;
 
  protected:
   /// @brief current resources and limits used by query
   arangodb::ResourceMonitor _resourceMonitor;
+
+  /// @brief registers/unregisters query base ovehead
+  arangodb::ResourceUsageScope _baseOverHeadTracker;
   
   TRI_voc_tick_t const _queryId;
   

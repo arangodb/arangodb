@@ -24,6 +24,9 @@
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
+
+#include <frozen/unordered_map.h>
+
 #include <unicode/locid.h> // for icu::Locale
 
 #if defined(_MSC_VER)
@@ -48,6 +51,7 @@
   #pragma warning(default: 4229)
 #endif
 
+#include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
 
 #include "text_token_normalizing_stream.hpp"
@@ -100,13 +104,13 @@ bool make_locale_from_name(const irs::string_ref& name,
   return false;
 }
 
-const irs::string_ref LOCALE_PARAM_NAME      = "locale";
-const irs::string_ref CASE_CONVERT_PARAM_NAME = "case";
-const irs::string_ref ACCENT_PARAM_NAME    = "accent";
+constexpr irs::string_ref LOCALE_PARAM_NAME       = "locale";
+constexpr irs::string_ref CASE_CONVERT_PARAM_NAME = "case";
+constexpr irs::string_ref ACCENT_PARAM_NAME       = "accent";
 
-const std::unordered_map<
-    std::string, 
-    irs::analysis::text_token_normalizing_stream::options_t::case_convert_t> CASE_CONVERT_MAP = {
+constexpr frozen::unordered_map<
+    irs::string_ref,
+    irs::analysis::text_token_normalizing_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
   { "lower", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::LOWER },
   { "none", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::NONE },
   { "upper", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::UPPER },
@@ -243,7 +247,7 @@ bool make_json_config(
       json.AddMember(
         rapidjson::StringRef(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size()),
         rapidjson::Value(case_value->first.c_str(),
-                         static_cast<rapidjson::SizeType>(case_value->first.length())),
+                         static_cast<rapidjson::SizeType>(case_value->first.size())),
         allocator);
     }
     else {
@@ -323,12 +327,7 @@ namespace analysis {
 
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options)
-  : attributes{{
-      { irs::type<increment>::id(), &inc_       },
-      { irs::type<offset>::id(), &offset_       },
-      { irs::type<payload>::id(), &payload_     },
-      { irs::type<term_attribute>::id(), &term_ }},
-      irs::type<text_token_normalizing_stream>::get()},
+  : analyzer{irs::type<text_token_normalizing_stream>::get()},
     state_(memory::make_unique<state_t>(options)),
     term_eof_(true) {
 }
@@ -414,7 +413,7 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
     data_utf8_ref = data_utf8;
   }
 
-  if (data_utf8_ref.size() > irs::integer_traits<int32_t>::const_max) {
+  if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
@@ -460,10 +459,11 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   // use the normalized value
   // ...........................................................................
   static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term_.value = irs::ref_cast<irs::byte_type>(state_->term_buf);
-  offset_.start = 0;
-  offset_.end = data.size();
-  payload_.value = ref_cast<uint8_t>(data);
+  std::get<term_attribute>(attrs_).value = irs::ref_cast<irs::byte_type>(state_->term_buf);
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = static_cast<uint32_t>(data.size());
+  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 
   return true;

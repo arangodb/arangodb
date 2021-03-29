@@ -1,0 +1,22 @@
+name: arangodb_collection_lock_timeouts_exclusive_total
+renamedFrom: arangodb_collection_lock_timeouts_exclusive
+introducedIn: "3.8.0"
+help: |
+  Number of timeouts when trying to acquire collection exclusive locks.
+unit: number
+type: counter
+category: Transactions
+complexity: medium
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of timeouts when trying to acquire collection exclusive locks.
+  This counter will be increased whenever an exclusive collection lock
+  cannot be acquired within the configured lock timeout.
+troubleshoot: |
+  In case this value is considered too high, check if there are AQL queries
+  or transactions that use exclusive locks on collections, and try to reduce them. 
+  Operations using exclusive locks may lock out other queries/transactions temporarily, 
+  which can lead to other operations running into timeouts waiting for the same locks.

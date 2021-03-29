@@ -1,0 +1,16 @@
+name: rocksdb_block_cache_pinned_usage
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "rocksdb-block-cache-pinned-usage"
+unit: bytes
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "rocksdb-block-cache-pinned-usage".
+  It shows the memory size for the RocksDB block cache for the entries 
+  which are pinned, in bytes.

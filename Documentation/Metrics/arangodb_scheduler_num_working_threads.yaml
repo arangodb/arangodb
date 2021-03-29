@@ -1,0 +1,16 @@
+name: arangodb_scheduler_num_working_threads
+introducedIn: "3.6.10"
+help: |
+  Current number of working threads.
+unit: number
+type: gauge
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The current number of threads actually working on some job (i.e., not
+  spinning while waiting for new work).

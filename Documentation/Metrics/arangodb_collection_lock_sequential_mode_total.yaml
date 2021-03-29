@@ -1,0 +1,24 @@
+name: arangodb_collection_lock_sequential_mode_total
+renamedFrom: arangodb_collection_lock_sequential_mode
+introducedIn: "3.8.0"
+help: |
+  Number of transactions using sequential locking of collections to avoid deadlocking.
+unit: number
+type: counter
+category: Transactions
+complexity: advanced
+exposedBy:
+  - coordinator
+description: |
+  Number of transactions using sequential locking of collections to avoid deadlocking.
+  By default, a coordinator will try to lock all shards of a collection in parallel.
+  This approach is normally fast but can cause deadlocks with other transactions that
+  lock the same shards in a different order. In case such a deadlock is detected, the
+  coordinator will abort the lock round and start a new one that locks all shards in
+  sequential order. This will avoid deadlocks, but has a higher setup overhead.
+troubleshoot: |
+  In case this value is increasing, check if there are AQL queries or transactions that 
+  use exclusive locks on collections, and try to reduce them. 
+  Operations using exclusive locks may lock out other queries/transactions temporarily, 
+  which will lead can lead to (temporary) deadlocks in case the queries/transactions
+  are run on multiple shards on different servers.

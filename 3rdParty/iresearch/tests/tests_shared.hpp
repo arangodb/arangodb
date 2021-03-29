@@ -24,12 +24,12 @@
 #ifndef IRESEARCH_TESTS_SHARED_H
 #define IRESEARCH_TESTS_SHARED_H
 
-#include "gtest/gtest.h"
-
-#include "../core/shared.hpp"
 #include <memory>
 #include <cstdio>
 
+#include <gtest/gtest.h>
+
+#include "shared.hpp"
 #include "utils/utf8_path.hpp"
 
 namespace cmdline {

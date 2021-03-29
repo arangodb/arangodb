@@ -1,0 +1,26 @@
+name: arangodb_load_plan_runtime
+introducedIn: "3.7.1"
+help: |
+  `Plan` loading runtimes.
+unit: ms
+type: histogram
+category: Maintenance
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  Histogram of `Plan` loading runtimes, i.e. the runtimes
+  of the `ClusterInfo::loadPlan` internal method. Provides a
+  distribution of all loading times for the `Plan`
+  section of the agency data. The `Plan` section normally gets
+  loaded on server startup, and then gets reloaded on servers 
+  only for any databases in which there have been recent structural 
+  changes (i.e. DDL changes).
+troubleshoot: |
+  In case this histogram contains very high loading times, this
+  may be due to using many collections or many shards inside a
+  database for which there are often structural changes. It then
+  may make sense to reduce the number of collections or number
+  of shards. Note that this can have other effects, so it requires
+  an informed decision.

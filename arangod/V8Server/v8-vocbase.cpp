@@ -1398,7 +1398,7 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
-  engine.getStatistics(builder);
+  engine.getStatistics(builder, true);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
@@ -1910,6 +1910,31 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_SystemStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  auto& vocbase = GetContextVocBase(isolate);
+
+  if (args.Length() != 1 || !args[0]->IsNumber()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("SYSTEM_STATISTICS(start)");
+  }
+                                           
+  double start = TRI_ObjectToDouble(isolate, args[0]);
+
+  VPackBuilder builder;
+  Result res = vocbase.server().getFeature<StatisticsFeature>().getClusterSystemStatistics(vocbase, start, builder);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this is for single server mode to dump an agency
 ////////////////////////////////////////////////////////////////////////////////
@@ -1917,6 +1942,7 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
 static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
   auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
@@ -2160,6 +2186,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AGENCY_DUMP"),
                                JS_AgencyDump, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYSTEM_STATISTICS"),
+                               JS_SystemStatistics, true);
   
 #ifdef USE_ENTERPRISE
   if (v8g->_server.hasFeature<V8DealerFeature>() &&

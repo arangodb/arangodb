@@ -514,7 +514,7 @@ TEST(GeoFilterTest, query) {
   {
     auto const origin = docs->slice().at(7);
     std::set<std::string> expected {
-      arangodb::iresearch::getStringRef(origin.get("name"))
+      origin.get("name").copyString()
     };
 
     GeoFilter q;
@@ -530,7 +530,7 @@ TEST(GeoFilterTest, query) {
   {
     auto const origin = docs->slice().at(7);
     std::set<std::string> expected {
-      arangodb::iresearch::getStringRef(origin.get("name"))
+      origin.get("name").copyString()
     };
 
     GeoFilter q;
@@ -546,7 +546,7 @@ TEST(GeoFilterTest, query) {
   {
     auto const origin = docs->slice().at(7);
     std::set<std::string> expected {
-      arangodb::iresearch::getStringRef(origin.get("name"))
+      origin.get("name").copyString()
     };
 
     GeoFilter q;

@@ -1,0 +1,13 @@
+name: arangodb_agency_commit_hist
+introducedIn: "3.7.1"
+help: |
+  Agency RAFT commit histogram.
+unit: ms
+type: histogram
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  Agency RAFT commit time histogram. Provides a distribution
+  of commit times for all agency write operations.

@@ -405,13 +405,16 @@ void CommitTask::operator()() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  auto const syncStart = std::chrono::steady_clock::now(); // FIXME: add sync durations to metrics
   auto res = link->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
 
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, iresearch::TOPIC)
         << "successful sync of arangosearch link '" << id
-        << "', run id '" << size_t(&runId) << "'";
-
+        << "', run id '" << size_t(&runId) << "', took: " << 
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - syncStart).count()
+        << "ms";
     if (code == IResearchLink::CommitResult::DONE) {
       if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
         cleanupIntervalCount = 0;
@@ -420,15 +423,22 @@ void CommitTask::operator()() {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
+        auto const cleanupStart = std::chrono::steady_clock::now(); // FIXME: add cleanup durations to metrics
         res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
 
         if (res.ok()) {
           LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
               << "successful cleanup of arangosearch link '" << id
-              << "', run id '" << size_t(&runId) << "'";
+              << "', run id '" << size_t(&runId) << "', took: " << 
+              std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - cleanupStart).count()
+              << "ms";
         } else {
           LOG_TOPIC("130de", WARN, iresearch::TOPIC)
-              << "error while cleaning up arangosearch link '" << id
+              << "error after running for " <<
+              std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - cleanupStart).count()
+              << "ms while cleaning up arangosearch link '" << id
               << "', run id '" << size_t(&runId)
               << "': " << res.errorNumber() << " " << res.errorMessage();
         }
@@ -436,7 +446,10 @@ void CommitTask::operator()() {
     }
   } else {
     LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
-        << "error while committing arangosearch link '" << link->id()
+        << "error after running for " <<
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - syncStart).count()
+        << "ms while committing arangosearch link '" << link->id()
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
@@ -542,6 +555,7 @@ void ConsolidationTask::operator()() {
   }
 
   // run consolidation ('_asyncSelf' locked by async task)
+  auto const consolidationStart = std::chrono::steady_clock::now(); // FIXME: add consolidation durations to metrics
   bool emptyConsolidation = false;
   auto const res = link->consolidateUnsafe(consolidationPolicy, progress, emptyConsolidation);
 
@@ -551,13 +565,18 @@ void ConsolidationTask::operator()() {
     } else {
        state->noopConsolidationCount = 0;
     }
-
     LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
         << "successful consolidation of arangosearch link '" << link->id()
-        << "', run id '" << size_t(&runId) << "'";
+        << "', run id '" << size_t(&runId) << "', took: " << 
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - consolidationStart).count()
+        << "ms";
   } else {
     LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
-        << "error while consolidating arangosearch link '" << link->id()
+        << "error after running for " <<
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - consolidationStart).count()
+        << "ms while consolidating arangosearch link '" << link->id()
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
@@ -1350,7 +1369,7 @@ Result IResearchLink::initDataStore(
       if (name.null()) {
         return { primarySortCompression(), {}, encrypt };
       }
-      auto compress = comprMap.find(name);
+      auto compress = comprMap.find(static_cast<std::string>(name)); // FIXME: remove cast after C++20
       if (compress != comprMap.end()) {
         // do not waste resources to encrypt primary key column
         return { compress->second(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };

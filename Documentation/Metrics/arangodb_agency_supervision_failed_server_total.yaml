@@ -1,0 +1,22 @@
+name: arangodb_agency_supervision_failed_server_total
+renamedFrom: arangodb_agency_supervision_failed_server_count
+introducedIn: "3.8.0"
+help: |
+  Counter for FailedServer jobs.
+unit: number
+type: counter
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  Counter for FailedServer jobs. This counter is increased whenever a 
+  supervision run encounters a failed server and starts a FailedServer job.
+  This metric was named `arangodb_agency_supervision_failed_server_count`
+  in previous versions of ArangoDB.
+threshold: |
+  Many FailedServer jobs indicate frequent failures of dbservers. This
+  is generally not good.
+troubleshoot: |
+  Find the root cause of server failures. Overload and bad network latency
+  can lead to misdetected server failures.

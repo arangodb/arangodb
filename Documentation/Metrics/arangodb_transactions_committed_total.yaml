@@ -1,0 +1,20 @@
+name: arangodb_transactions_committed_total
+renamedFrom: arangodb_transactions_committed
+introducedIn: "3.8.0"
+help: |
+  Number of transactions committed.
+unit: number
+type: counter
+category: Transactions
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of transactions committed. In the cluster, this metric will 
+  be collected separately for transactions on coordinators and the
+  transaction counterparts on leaders and followers.
+  This metric was named `arangodb_transactions_committed` in previous
+  versions of ArangoDB.

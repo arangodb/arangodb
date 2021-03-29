@@ -192,6 +192,11 @@
     delete global.SYS_IS_FOXX_STORE_DISABLED;
   }
 
+  if (global.SYS_CLUSTER_API_JWT_POLICY) {
+    exports.clusterApiJwtPolicy = global.SYS_CLUSTER_API_JWT_POLICY;
+    delete global.SYS_CLUSTER_API_JWT_POLICY;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief autoload modules from database
   // //////////////////////////////////////////////////////////////////////////////
@@ -274,6 +279,20 @@
   if (global.SYS_ENABLED_STATISTICS) {
     exports.enabledStatistics = global.SYS_ENABLED_STATISTICS;
     delete global.SYS_ENABLED_STATISTICS;
+  }
+  
+  if (global.SYS_ENABLED_STATISTICS_ALL_DATABASES) {
+    exports.enabledStatisticsInAllDatabases = global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
+    delete global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief whether or not Metrics are enabled
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ENABLED_METRICS) {
+    exports.enabledMetrics = global.SYS_ENABLED_METRICS;
+    delete global.SYS_ENABLED_METRICS;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

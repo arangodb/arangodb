@@ -1,0 +1,17 @@
+name: arangodb_process_statistics_minor_page_faults_total
+renamedFrom: arangodb_process_statistics_minor_page_faults
+introducedIn: "3.8.0"
+help: |
+  Number of minor page faults
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The number of minor faults the process has made which have not required
+  loading a memory page from disk. This figure is not reported on Windows.

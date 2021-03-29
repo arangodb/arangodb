@@ -277,7 +277,7 @@ irs::filter::prepared::ptr prepareFilter(
 
      bool reading_threshold = true;
      // the first 'term' should be threshold in tenth - e.g. if value is 7 this means 0.7
-     for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+     for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
        if (reading_threshold) {
          reading_threshold = false;
          opts->threshold = float_t(std::stoll(tmpBuf))/ 10.f;
@@ -297,7 +297,7 @@ irs::filter::prepared::ptr prepareFilter(
 
     irs::And query;
 
-    for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+    for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
       auto& part = query.add<irs::by_term>();
       *part.mutable_field() = "body";
       irs::assign(
@@ -318,7 +318,7 @@ irs::filter::prepared::ptr prepareFilter(
 
     irs::Or query;
 
-    for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+    for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
       auto& part = query.add<irs::by_term>();
       *part.mutable_field() = "body";
       irs::assign(
@@ -381,7 +381,7 @@ irs::filter::prepared::ptr prepareFilter(
      irs::Or query;
      // the first 'term' should be number of minimum matched
      bool reading_min_match = true;
-     for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+     for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
        if (reading_min_match) {
          reading_min_match = false;
          query.min_match_count(std::stoll(tmpBuf));
@@ -442,10 +442,8 @@ int search(
   irs::default_pdp(2, false); irs::default_pdp(2, true);
 
   static const std::map<std::string, irs::type_info> text_formats = {
-    { "csv", irs::type<irs::text_format::csv>::get() },
     { "json", irs::type<irs::text_format::json>::get() },
     { "text", irs::type<irs::text_format::text>::get() },
-    { "xml", irs::type<irs::text_format::xml>::get() },
   };
   auto arg_format_itr = text_formats.find(scorer_arg_format);
 
@@ -484,19 +482,20 @@ int search(
   search_threads = (std::max)(size_t(1), search_threads);
   scored_terms_limit = (std::max)(size_t(1), scored_terms_limit);
 
+  std::cout << "Configuration:\n"
+            << INDEX_DIR << "=" << path << '\n'
+            << MAX << "=" << tasks_max << '\n'
+            << RPT << "=" << repeat << '\n'
+            << THR << "=" << search_threads << '\n'
+            << TOPN << "=" << limit << '\n'
+            << RND << "=" << shuffle << '\n'
+            << CSV << "=" << csv << '\n'
+            << SCORED_TERMS_LIMIT << "=" << scored_terms_limit << '\n'
+            << SCORER << "=" << scorer << '\n'
+            << SCORER_ARG_FMT << "=" << scorer_arg_format << '\n'
+            << SCORER_ARG << "=" << scorer_arg << '\n';
+
   SCOPED_TIMER("Total Time");
-  std::cout << "Configuration: " << std::endl;
-  std::cout << INDEX_DIR << "=" << path << std::endl;
-  std::cout << MAX << "=" << tasks_max << std::endl;
-  std::cout << RPT << "=" << repeat << std::endl;
-  std::cout << THR << "=" << search_threads << std::endl;
-  std::cout << TOPN << "=" << limit << std::endl;
-  std::cout << RND << "=" << shuffle << std::endl;
-  std::cout << CSV << "=" << csv << std::endl;
-  std::cout << SCORED_TERMS_LIMIT << "=" << scored_terms_limit << std::endl;
-  std::cout << SCORER << "=" << scorer << std::endl;
-  std::cout << SCORER_ARG_FMT << "=" << scorer_arg_format << std::endl;
-  std::cout << SCORER_ARG << "=" << scorer_arg << std::endl;
 
   irs::directory_reader reader;
   irs::order::prepared order;
@@ -506,6 +505,10 @@ int search(
     SCOPED_TIMER("Index read time");
     reader = irs::directory_reader::open(*dir, codec);
   }
+
+  std::cout << "Index stats:\n"
+            << "docs=" << reader->docs_count()
+            << "\nlive-docs=" << reader->live_docs_count() << '\n';
 
   {
     SCOPED_TIMER("Order build time");

@@ -1,0 +1,17 @@
+name: rocksdb_num_deletes_imm_mem_tables
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "rocksdb-num-deletes-imm-mem-tables" - sum over column families
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric
+  "rocksdb-num-deletes-imm-mem-tables".
+  It shows the total number of delete entries in the unflushed immutable
+  memtables, summed over all column families.

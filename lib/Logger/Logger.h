@@ -265,6 +265,7 @@ class Logger {
 
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
+  static void setHostname(std::string const&);
   static void setShowIds(bool);
   static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
@@ -309,7 +310,7 @@ class Logger {
     return true;
   }
   static bool _isEnabled(LogLevel level, LogLevel topicLevel) {
-    return (int)level <= (int)topicLevel;
+    return level == LogLevel::FATAL || (int)level <= (int)topicLevel;
   }
 #else
   static bool isEnabled(LogLevel level) {
@@ -353,6 +354,7 @@ class Logger {
   static char _role;  // current server role to log
   static TRI_pid_t _cachedPid;
   static std::string _outputPrefix;
+  static std::string _hostname;
 
   static std::unique_ptr<LogThread> _loggingThread;
 };

@@ -89,13 +89,17 @@ router.get('/config.js', function (req, res) {
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
+      metricsEnabled: internal.enabledMetrics(),
+      statisticsInAllDatabases: internal.enabledStatisticsInAllDatabases(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
       foxxApiEnabled: !internal.isFoxxApiDisabled(),
+      clusterApiJwtPolicy: internal.clusterApiJwtPolicy(),
       minReplicationFactor: internal.minReplicationFactor,
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
-      forceOneShard: internal.forceOneShard 
+      forceOneShard: internal.forceOneShard,
+      showMaintenanceStatus: true
     })}`
   );
 })
@@ -324,7 +328,7 @@ authRouter.get('/query/result/download/:query', function (req, res) {
 authRouter.post('/graph-examples/create/:name', function (req, res) {
   const name = req.pathParams.name;
 
-  if (['knows_graph', 'social', 'routeplanner', 'traversalGraph', 'kShortestPathsGraph', 'mps_graph', 'worldCountry'].indexOf(name) === -1) {
+  if (['knows_graph', 'social', 'routeplanner', 'traversalGraph', 'kShortestPathsGraph', 'mps_graph', 'worldCountry', 'connectedComponentsGraph'].indexOf(name) === -1) {
     res.throw('not found');
   }
   if (generalGraph._list().indexOf(name) !== -1) {
@@ -398,7 +402,7 @@ authRouter.delete('/job/:id', function (req, res) {
   if (frontend) {
     // get the job result and return before deletion
     let resp = request.put({
-      url: '/_api/job/' + encodeURIComponent(req.pathParams.id),
+      url: '/_db/' + encodeURIComponent(db._name()) + '/_api/job/' + encodeURIComponent(req.pathParams.id),
       json: true,
       headers: {
         'Authorization': req.headers.authorization

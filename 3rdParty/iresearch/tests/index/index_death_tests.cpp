@@ -244,7 +244,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -358,7 +358,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -507,7 +507,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -1160,7 +1160,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -1290,7 +1290,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -1409,7 +1409,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -1585,7 +1585,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }

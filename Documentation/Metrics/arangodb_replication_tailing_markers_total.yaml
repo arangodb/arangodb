@@ -1,0 +1,18 @@
+name: arangodb_replication_tailing_markers_total
+renamedFrom: arangodb_replication_tailing_markers
+introducedIn: "3.8.0"
+help: |
+  Number of replication tailing markers processed.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The number of replication tailing markers processed on a follower
+  dbserver. Markers are specific operations which are part of the
+  write-ahead log (WAL). Example actions which are being used in
+  markers: Create or drop a database. Create, drop, rename, change
+  or truncate a collection. Create or drop an index. Create, drop,
+  change a view. Start, commit or abort a transaction.

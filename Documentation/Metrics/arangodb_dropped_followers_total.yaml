@@ -1,0 +1,21 @@
+name: arangodb_dropped_followers_total
+renamedFrom: arangodb_dropped_followers_count
+introducedIn: "3.8.0"
+help: |
+  Number of drop-follower events.
+unit: number
+type: counter
+category: Health
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Total number of drop-follower events. This metric is increased on leaders
+  whenever a write operation cannot be replicated to a follower during
+  synchronous replication, and it would be unsafe in terms of data consistency 
+  to keep that follower.
+  This metric was named `arangodb_dropped_followers_count` in previous
+  versions of ArangoDB.
+threshold: |
+  Usually, drop-follower events should only happen if servers are
+  restarted or if there are real problems on followers.

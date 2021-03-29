@@ -75,6 +75,8 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 } // namespace
 
 
+DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "(DC-2-DC only) Number of times the database and collection overviews have been requested.");
+
 namespace arangodb {
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
@@ -90,8 +92,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
       _inventoryRequests(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_cluster_inventory_requests", 0, "Number of cluster replication inventory requests received")) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_replication_cluster_inventory_requests_total{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -142,7 +143,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      "Limit at which 'quick' calls to the replication keys API return only the document count for second run",
                      new UInt64Parameter(&_quickKeysLimit),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30709).setIntroducedIn(30800);
+                     .setIntroducedIn(30709);
 
   options
       ->addOption(

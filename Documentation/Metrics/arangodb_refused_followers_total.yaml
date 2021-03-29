@@ -1,0 +1,26 @@
+name: arangodb_refused_followers_total
+renamedFrom: arangodb_refused_followers_count
+introducedIn: "3.8.0"
+help: |
+  Number of refusal answers from a follower during synchronous replication.
+unit: number
+type: counter
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of refusal answers from a follower during synchronous replication.
+  A refusal answer will only be sent by a follower if the follower is under
+  the impression that the replication request was not sent by the current
+  shard leader. This can happen if replication requests to the follower are 
+  delayed or the follower is slow to process incoming requests and there was 
+  a leader change for the shard.
+  If such a refusal answer is received by the shard leader, it will drop the
+  follower from the list of followers.
+  This metrics was named `arangodb_refused_followers_count` in previous
+  versions of ArangoDB.
+threshold: |
+  Usually, refusal answers only occur if request processing on followers is 
+  delayed and there was a recent leadership change. This should not be a
+  common case and normally indicates a problem with the setup or with the load.

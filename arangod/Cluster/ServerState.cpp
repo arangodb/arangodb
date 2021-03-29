@@ -37,16 +37,18 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterInfo.h"
-#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -378,7 +380,7 @@ bool ServerState::logoff(double timeout) {
       return true;
     }
 
-    if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE || !res.connected()) {
+    if (res.httpCode() == rest::ResponseCode::SERVICE_UNAVAILABLE || !res.connected()) {
       LOG_TOPIC("1776b", INFO, Logger::CLUSTER)
           << "unable to unregister server from agency, because agency is in "
              "shutdown";
@@ -787,10 +789,16 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
 }
 
 std::string ServerState::getShortName() const {
+  if (_role == ROLE_AGENT) {
+    return getId().substr(0, 13);
+  }
   std::stringstream ss;  // ShortName
   auto num = getShortId();
-  size_t width = std::max(std::to_string(num + 1).size(), static_cast<size_t>(4));
-  ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0') << num + 1;
+  if (num == 0) {
+    return std::string{};   // not yet known
+  }
+  size_t width = std::max(std::to_string(num).size(), static_cast<size_t>(4));
+  ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0') << num;
   return ss.str();
 }
 

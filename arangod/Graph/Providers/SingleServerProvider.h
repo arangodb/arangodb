@@ -61,6 +61,7 @@ namespace graph {
 // data should be returned THis is most-likely done via Template Parameter like
 // this: template<ProduceVertexData>
 struct SingleServerProvider {
+  using Options = BaseProviderOptions;
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
     class Vertex {
@@ -133,7 +134,7 @@ struct SingleServerProvider {
 
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;                           // rocks
+      -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
 
@@ -145,7 +146,6 @@ struct SingleServerProvider {
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
-  arangodb::ResourceMonitor* resourceMonitor();
 
   aql::TraversalStats stealStats();
 
@@ -154,8 +154,6 @@ struct SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
 
-  [[nodiscard]] arangodb::aql::QueryContext* query() const;
-
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor
@@ -163,14 +161,10 @@ struct SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
 
-  arangodb::aql::QueryContext* _query;
-
-  arangodb::ResourceMonitor* _resourceMonitor;
-
-  RefactoredTraverserCache _cache;
-
   BaseProviderOptions _opts;
 
+  RefactoredTraverserCache _cache;
+  
   arangodb::aql::TraversalStats _stats;
 };
 }  // namespace graph

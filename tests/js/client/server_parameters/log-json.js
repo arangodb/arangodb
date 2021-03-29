@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertMatch, assertEqual */
+/* global getOptions, assertTrue, assertFalse, arango, assertMatch, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -31,7 +31,8 @@ const fs = require('fs');
 if (getOptions === true) {
   return {
     'log.use-json-format': 'true',
-    'log.output': 'file://' + fs.getTempFile(),
+    'log.role': 'false',
+    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
   };
 }
@@ -86,6 +87,9 @@ return require('internal').options()["log.output"];
         assertTrue(msg.hasOwnProperty("level"), msg);
         assertTrue(msg.hasOwnProperty("topic"), msg);
         assertTrue(msg.hasOwnProperty("id"), msg);
+        assertFalse(msg.hasOwnProperty("hostname"), msg);
+        assertFalse(msg.hasOwnProperty("role"), msg);
+        assertFalse(msg.hasOwnProperty("tid"), msg);
         assertMatch(/^[a-f0-9]{5}/, msg.id, msg);
         assertTrue(msg.hasOwnProperty("message"), msg);
         assertEqual("testmann: testi" + (i - 1), msg.message, msg);

@@ -43,12 +43,13 @@ IRESEARCH_API void write_header(index_output& out, const string_ref& format, int
 
 IRESEARCH_API void write_footer(index_output& out);
 
+IRESEARCH_API size_t header_length(const string_ref& format) noexcept;
+
 IRESEARCH_API int32_t check_header(
   index_input& in,
   const string_ref& format,
   int32_t min_ver,
-  int32_t max_ver
-);
+  int32_t max_ver);
 
 inline int64_t read_checksum(index_input& in) {
   in.seek(in.length() - FOOTER_LEN);

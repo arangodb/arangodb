@@ -1,0 +1,19 @@
+name: arangodb_agency_term
+introducedIn: "3.7.1"
+help: |
+  Agency's term.
+unit: number
+type: gauge
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  The Agency's current term.
+threshold: |
+  This number should usually not grow. If it does, the agency is doing
+  repeated reelections, which suggests overload or bad network latency
+  between agents.
+troubleshoot: |
+  It might help to reduce network latency between agents or move agent
+  instances to separate machines.

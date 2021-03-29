@@ -450,8 +450,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "startup, in order to startup reduce IO",
                   new BooleanParameter(&_limitOpenFilesAtStartup),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 
   options
       ->addOption("--rocksdb.allow-fallocate",
@@ -459,8 +458,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "fallocate calls are bypassed",
                   new BooleanParameter(&_allowFAllocate),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
   options
       ->addOption("--rocksdb.exclusive-writes",
                   "if true, writes are exclusive. This allows the RocksDB engine to mimic "
@@ -556,16 +554,18 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
       "--rocksdb.min-write-buffer-number-to-merge");
  
   // limit memory usage of agent instances, if not otherwise configured
-  AgencyFeature& feature = server().getEnabledFeature<AgencyFeature>();
-  if (feature.activated()) {
-    // if we are an agency instance...
-    if (!options->processingResult().touched("--rocksdb.block-cache-size")) {
-      // restrict block cache size to 1 GB if not set explicitly
-      _blockCacheSize = std::min<uint64_t>(_blockCacheSize, uint64_t(1) << 30);
-    }
-    if (!options->processingResult().touched("--rocksdb.total-write-buffer-size")) {
-      // restrict total write buffer size to 512 MB if not set explicitly
-      _totalWriteBufferSize = std::min<uint64_t>(_totalWriteBufferSize, uint64_t(512) << 20);
+  if (server().hasFeature<AgencyFeature>()) {
+    AgencyFeature& feature = server().getFeature<AgencyFeature>();
+    if (feature.activated()) {
+      // if we are an agency instance...
+      if (!options->processingResult().touched("--rocksdb.block-cache-size")) {
+        // restrict block cache size to 1 GB if not set explicitly
+        _blockCacheSize = std::min<uint64_t>(_blockCacheSize, uint64_t(1) << 30);
+      }
+      if (!options->processingResult().touched("--rocksdb.total-write-buffer-size")) {
+        // restrict total write buffer size to 512 MB if not set explicitly
+        _totalWriteBufferSize = std::min<uint64_t>(_totalWriteBufferSize, uint64_t(512) << 20);
+      }
     }
   }
 }
