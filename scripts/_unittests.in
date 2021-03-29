@@ -68,10 +68,13 @@ fi
 (
   cd "${EXEC_PATH}"
   exec $NUMA $ARANGOSH \
+       -c $(pwd)${PS}etc${PS}testing${PS}arangosh.conf \
        --log.level warning \
        --server.endpoint none \
+       --javascript.startup-directory $(pwd)${PS}@CMAKE_INSTALL_DATAROOTDIR_ARANGO@${PS}@ARANGODB_JS_VERSION@ \
+       --javascript.allow-port-testing true \
        --javascript.allow-external-process-control true \
-       --javascript.execute @CMAKE_INSTALL_DATAROOTDIR_ARANGO@${PS}@ARANGODB_JS_VERSION@${PS}UnitTests${PS}unittest.js \
+       --javascript.execute $(pwd)${PS}@CMAKE_INSTALL_DATAROOTDIR_ARANGO@${PS}@ARANGODB_JS_VERSION@${PS}UnitTests${PS}UnitTests${PS}unittest.js \
        -- \
        "$@" "${EXTRA_ARGS[@]}"
 )
