@@ -146,6 +146,7 @@ function GenericQueryKillSuite() { // can be either default or stream
 
   // defaults
   testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryGotRegistered", true, "off", "true"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting", false, 'off', "true"));
 
   // stream
   testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "true"));
@@ -156,9 +157,8 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', "true"));
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "true")); // TODO: works but potentially duplicate query kill call here - check!
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', "both"));
-  testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "true"));
-  testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', "false"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting", false, 'both', "false"));
+  testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "both"));
+  testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', "both"));
 
   const testSuite = {
     setUp: function () {
@@ -189,8 +189,6 @@ function GenericQueryKillSuite() { // can be either default or stream
     const unexpectedFailures = [];
     if (suite.stream === "off") {
       // unexpected errors in default (non-stream)
-      unexpectedFailures.push('Query::directKillBeforeQueryWillBeFinalized');
-      unexpectedFailures.push('Query::directKillAfterQueryWillBeFinalized');
       unexpectedFailures.push('Query::directKillAfterDBServerFinishRequests');
 
       // cluster only
@@ -198,8 +196,6 @@ function GenericQueryKillSuite() { // can be either default or stream
       }
     } else if (testCase.stream === "on") {
       // unexpected errors in stream
-      unexpectedFailures.push('Query::directKillBeforeQueryWillBeFinalized');
-      unexpectedFailures.push('Query::directKillAfterQueryWillBeFinalized');
       unexpectedFailures.push('Query::directKillAfterDBServerFinishRequests');
 
       // cluster only
