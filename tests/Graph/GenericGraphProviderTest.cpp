@@ -352,7 +352,7 @@ TYPED_TEST(GraphProviderTest, destroy_engines) {
   TypeParam testee = this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
 
   // steel the stats, so we reset them internally and have a clean state
-  TraversalStats statsBeforeSteal = testee.stealStats();
+  std::ignore = testee.stealStats();
 
   testee.destroyEngines();
   TraversalStats statsAfterSteal = testee.stealStats();

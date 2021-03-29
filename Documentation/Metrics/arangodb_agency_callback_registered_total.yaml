@@ -1,4 +1,6 @@
 name: arangodb_agency_callback_registered_total
+renamedFrom: arangodb_agency_callback_registered
+introducedIn: "3.8.0"
 help: |
   Total number of agency callbacks ever registered.
 unit: number

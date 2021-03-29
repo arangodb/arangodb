@@ -1,7 +1,8 @@
 name: rocksdb_total_disk_space
+introducedIn: "3.8.0"
 help: |
-  rocksdb_total_disk_space
-unit: number
+  Used disk space in bytes on volume used by RocksDB
+unit: bytes
 type: gauge
 category: RocksDB
 complexity: advanced
@@ -10,4 +11,7 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_total_disk_space
+  This metric shows the currently used disk space in bytes on the volume
+  which is used by RocksDB. Since RocksDB does not like out of disk
+  space scenarios, please make sure that there is enough free disk space
+  available at all times! Note that this metric is only available/populated on some platforms.

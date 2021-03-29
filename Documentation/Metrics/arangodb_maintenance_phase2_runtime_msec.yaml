@@ -1,4 +1,5 @@
 name: arangodb_maintenance_phase2_runtime_msec
+introducedIn: "3.7.1"
 help: |
   Maintenance Phase 2 runtime histogram.
 unit: ms

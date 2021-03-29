@@ -1,4 +1,6 @@
 name: arangodb_intermediate_commits_total
+renamedFrom: arangodb_intermediate_commits
+introducedIn: "3.8.0"
 help: |
   Number of intermediate commits performed in transactions.
 unit: number

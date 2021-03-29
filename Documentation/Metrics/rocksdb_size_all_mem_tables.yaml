@@ -1,7 +1,8 @@
 name: rocksdb_size_all_mem_tables
+introducedIn: "3.6.1"
 help: |
-  rocksdb_size_all_mem_tables
-unit: number
+  RocksDB metric "rocksdb-size-all-mem-tables" - sum over column families
+unit: bytes
 type: gauge
 category: RocksDB
 complexity: advanced
@@ -10,4 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_size_all_mem_tables
+  This metric exhibits the RocksDB metric "rocksdb-size-all-mem-tables".
+  It shows the approximate size of all active, unflushed immutable, and
+  pinned immutable memtables in bytes, summed over all column families.

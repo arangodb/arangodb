@@ -69,7 +69,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   auto cleanup = scopeGuard([&] {
     updateStatus(transaction::Status::ABORTED);
-    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
+    ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
   });
 
   Result res = useCollections();
@@ -79,7 +79,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // all valid
   updateStatus(transaction::Status::RUNNING);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
+  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted;
 
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
@@ -124,7 +124,7 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
   }
 
   updateStatus(transaction::Status::COMMITTED);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
+  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted;
 
   return {};
 }
@@ -135,8 +135,7 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   updateStatus(transaction::Status::ABORTED);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
-
+  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
   return {};
 }
 

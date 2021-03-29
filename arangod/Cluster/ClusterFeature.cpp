@@ -56,6 +56,7 @@ DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale, "R
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Cluster"),
+    _apiJwtPolicy("jwt-compat"),
     _agency_comm_request_time_ms(
       server.getFeature<arangodb::MetricsFeature>().add(arangodb_agencycomm_request_time_msec{})) {
   setOptional(true);
@@ -226,6 +227,18 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                    arangodb::options::Flags::OnCoordinator,
                                    arangodb::options::Flags::Hidden));
+  
+  options
+      ->addOption("--cluster.api-jwt-policy",
+                  "access permissions required for accessing /_admin/cluster REST APIs "
+                  "(jwt-all = JWT required to access all operations, jwt-write = JWT required "
+                  "for post/put/delete operations, jwt-compat = 3.7 compatibility mode)",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_apiJwtPolicy,
+                      std::unordered_set<std::string>{"jwt-all", "jwt-write", "jwt-compat"}),
+                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                               arangodb::options::Flags::OnCoordinator))
+      .setIntroducedIn(30800);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

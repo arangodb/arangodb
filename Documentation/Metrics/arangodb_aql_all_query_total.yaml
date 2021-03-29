@@ -1,4 +1,6 @@
 name: arangodb_aql_all_query_total
+renamedFrom: arangodb_aql_all_query
+introducedIn: "3.8.0"
 help: |
   Total number of AQL queries finished.
 unit: number

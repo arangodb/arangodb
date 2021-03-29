@@ -1,4 +1,6 @@
 name: arangodb_refused_followers_total
+renamedFrom: arangodb_refused_followers_count
+introducedIn: "3.8.0"
 help: |
   Number of refusal answers from a follower during synchronous replication.
 unit: number

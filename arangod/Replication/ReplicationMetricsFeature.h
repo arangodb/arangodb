@@ -89,7 +89,6 @@ class ReplicationMetricsFeature final : public application_features::Application
     double waitedForDocs = 0.0;
     double waitedForInsertions = 0.0;
     double waitedForRemovals = 0.0;
-    double waitedForKeyLookups = 0.0;
 
     bool autoPublish;
   };
@@ -167,7 +166,6 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _waitedForSyncDocs;
   Counter& _waitedForSyncInsertions;
   Counter& _waitedForSyncRemovals;
-  Counter& _waitedForSyncKeyLookups;
   
   // tailing statistics
   
