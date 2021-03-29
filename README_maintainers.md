@@ -106,10 +106,11 @@ following things:
    under `Documentation/Metrics/template.yaml`)
  - many of the componentes are required, so please provide adequate
    information about your metric
- - the script also assembles all these YAML documentation snippets
+ - the script can also assemble all these YAML documentation snippets
    into a single file under `Documentation/Metrics/allMetrics.yaml`,
    the format is again a structured YAML file which can easily be
-   processed by the documentation tools.
+   processed by the documentation tools, this is only needed when
+   we update the documentation web pages.
 
 Please, if you have added or modified a metric, make sure to declare
 the metric as shown above and add a documentation YAML snippet in the
@@ -117,7 +118,9 @@ correct format. Afterwards, run
 
     utils/generateAllMetricsDocumentation.py
 
-and include `Documentation/allMetrics.yaml` in your PR.
+but do not include `Documentation/Metrics/allMetrics.yaml` in your PR
+(as was a previous policy). The file is only generated if you add
+`-d` as command line option to the script.
 
 
 ---
