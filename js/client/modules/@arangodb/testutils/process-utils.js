@@ -243,7 +243,7 @@ let UNITTESTS_DIR;
 
 const TOP_DIR = (function findTopDir () {
   const topDir = fs.normalize(fs.makeAbsolute('.'));
-  print(topDir)
+
   const isSourceDir = fs.exists('3rdParty') &&
         fs.exists('arangod') &&
         fs.exists('arangosh') &&
