@@ -34,7 +34,8 @@ struct PersistedLog {
   [[nodiscard]] auto id() const noexcept -> LogId { return _lid; }
   virtual auto insert(std::shared_ptr<LogIterator> iter) -> Result = 0;
   virtual auto read(LogIndex start) -> std::shared_ptr<LogIterator> = 0;
-  virtual auto remove(LogIndex stop) -> Result = 0;
+  virtual auto removeFront(LogIndex stop) -> Result = 0;
+  virtual auto removeBack(LogIndex start) -> Result = 0;
 
   virtual auto drop() -> Result = 0;
  private:

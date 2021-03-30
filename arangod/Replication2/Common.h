@@ -39,12 +39,17 @@ struct LogIndex {
   [[nodiscard]] auto operator==(LogIndex) const -> bool;
   [[nodiscard]] auto operator<=(LogIndex) const -> bool;
   [[nodiscard]] auto operator<(LogIndex) const -> bool;
+
+  auto operator+(std::uint64_t delta) const -> LogIndex;
 };
 struct LogTerm {
   LogTerm() : value{0} {}
   explicit LogTerm(std::uint64_t value) : value{value} {}
   std::uint64_t value;
   [[nodiscard]] auto operator==(LogTerm) const -> bool;
+  [[nodiscard]] auto operator!=(LogTerm) const -> bool;
+  [[nodiscard]] auto operator<=(LogTerm) const -> bool;
+  [[nodiscard]] auto operator<(LogTerm) const -> bool;
 };
 struct LogPayload {
   explicit LogPayload(std::string_view dummy) : dummy(dummy) {}

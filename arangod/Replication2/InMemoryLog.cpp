@@ -30,6 +30,26 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
+template <typename I>
+struct ContainerIterator : LogIterator {
+  static_assert(std::is_same_v<typename I::value_type, LogEntry>);
+
+  ContainerIterator(I begin, I end)
+      :
+        _current(begin),
+        _end(end) {}
+
+  auto next() -> std::optional<LogEntry> override {
+    if (_current == _end) {
+      return std::nullopt;
+    }
+    return *(_current++);
+  }
+
+  I _current;
+  I _end;
+};
+
 class InMemoryLogIterator : public LogIterator {
  public:
   explicit InMemoryLogIterator(std::deque<LogEntry>::const_iterator begin,
@@ -61,12 +81,44 @@ InMemoryLog::InMemoryLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
   }
 }
 
-auto InMemoryLog::appendEntries(AppendEntriesRequest)
+auto InMemoryLog::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
   assertFollower();
 
-  // TODO
-  std::abort();
+  // TODO does >= suffice here? Maybe we want to do an atomic operation
+  // before increasing our term
+  if (req.leaderTerm != _currentTerm) {
+    return AppendEntriesResult{false, _currentTerm};
+  }
+
+  auto entry = getEntryByIndex(req.prevLogIndex);
+  if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
+    return AppendEntriesResult{false, _currentTerm};
+  }
+
+  auto res = _persistedLog->removeBack(req.prevLogIndex + 1);
+  if (!res.ok()) {
+    abort();
+  }
+
+  auto iter =
+      std::make_shared <
+      ContainerIterator<std::vector<LogEntry>::const_iterator>>(req.entries.cbegin(),
+                                                               req.entries.cend());
+  res = _persistedLog->insert(iter);
+  if (!res.ok()) {
+    abort();
+  }
+
+  _log.erase(_log.begin() + req.prevLogIndex.value, _log.end());
+  _log.insert(_log.end(), req.entries.begin(), req.entries.end());
+
+  if (_commitIndex < req.leaderCommit && !_log.empty()) {
+    _commitIndex = std::min(req.leaderCommit, _log.back().logIndex());
+    // TODO Apply operations to state machine here?
+  }
+
+  return AppendEntriesResult{true, _currentTerm};
 }
 
 auto InMemoryLog::insert(LogPayload payload) -> LogIndex {
@@ -87,14 +139,24 @@ auto InMemoryLog::waitFor(LogIndex index) -> futures::Future<arangodb::futures::
   return _waitForQueue.emplace(index, WaitForPromise{})->second.getFuture();
 }
 
-auto InMemoryLog::becomeFollower(LogTerm, ParticipantId) -> void {
-  // TODO
-  std::abort();
+auto InMemoryLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
+  TRI_ASSERT( _currentTerm < term);
+  _currentTerm = term;
+  _role = FollowerConfig{id};
 }
 
-auto InMemoryLog::becomeLeader(LogTerm term, std::unordered_set<ParticipantId> followerIds,
+auto InMemoryLog::becomeLeader(LogTerm term,
+                               std::vector<std::shared_ptr<LogFollower>> const& follower,
                                std::size_t writeConcern) -> void {
-  _role = Leader{std::move(followerIds), writeConcern};
+  TRI_ASSERT( _currentTerm < term);
+  std::vector<Follower> follower_vec;
+  follower_vec.reserve(follower.size());
+  std::transform(follower.cbegin(), follower.cend(), std::back_inserter(follower_vec),
+                 [&](std::shared_ptr<LogFollower> const& impl) -> Follower {
+                  return Follower{impl, LogIndex{0}};
+                 });
+
+  _role = LeaderConfig{std::move(follower_vec), writeConcern};
   _currentTerm = term;
 }
 
@@ -137,20 +199,32 @@ void InMemoryLog::persistRemainingLogEntries() {
 }
 
 void InMemoryLog::assertLeader() const {
-  if (ADB_UNLIKELY(!std::holds_alternative<Leader>(_role))) {
+  if (ADB_UNLIKELY(!std::holds_alternative<LeaderConfig>(_role))) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
   }
 }
 
 void InMemoryLog::assertFollower() const {
-  if (ADB_UNLIKELY(!std::holds_alternative<Follower>(_role))) {
+  if (ADB_UNLIKELY(!std::holds_alternative<FollowerConfig>(_role))) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
   }
 }
-auto InMemoryLog::participantId() const noexcept -> ParticipantId { return _id; }
+auto InMemoryLog::participantId() const noexcept -> ParticipantId {
+  return _id;
+}
 
 auto InMemoryState::createSnapshot() -> std::shared_ptr<InMemoryState const> {
   return std::make_shared<InMemoryState>(_state);
+}
+
+auto InMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry> {
+  if (_log.size() <= idx.value) {
+    return std::nullopt;
+  }
+
+  auto const& e = _log.at(idx.value - 1);
+  TRI_ASSERT(e.logIndex() == idx);
+  return e;
 }
 
 InMemoryState::InMemoryState(InMemoryState::state_container state)

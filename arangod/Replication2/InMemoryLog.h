@@ -70,18 +70,27 @@ class InMemoryState {
   explicit InMemoryState(state_container state);
 };
 
+
+struct LogFollower {
+  virtual ~LogFollower() = default;
+
+  [[nodiscard]] virtual auto participantId() const noexcept -> ParticipantId = 0;
+  virtual auto appendEntries(AppendEntriesRequest)
+      -> arangodb::futures::Future<AppendEntriesResult> = 0;
+};
+
 /**
  * @brief A simple non-persistent log implementation, mainly for prototyping
  * replication 2.0.
  */
-class InMemoryLog {
+class InMemoryLog : public LogFollower {
  public:
   InMemoryLog() = delete;
   explicit InMemoryLog(ParticipantId participantId, std::shared_ptr<InMemoryState> state,
                        std::shared_ptr<PersistedLog> persistedLog);
 
   // follower only
-  auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult>;
+  auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult> override;
 
   // leader only
   auto insert(LogPayload) -> LogIndex;
@@ -96,31 +105,38 @@ class InMemoryLog {
   auto becomeFollower(LogTerm, ParticipantId leaderId) -> void;
 
   // Set to leader, and (strictly increase) term to the given value
-  auto becomeLeader(LogTerm, std::unordered_set<ParticipantId> followerIds,
+  auto becomeLeader(LogTerm term, std::vector<std::shared_ptr<LogFollower>> const& follower,
                     std::size_t writeConcern) -> void;
 
   [[nodiscard]] auto getStatistics() const -> LogStatistics;
 
   auto runAsyncStep() -> void;
 
-  [[nodiscard]] auto participantId() const noexcept -> ParticipantId;
+  [[nodiscard]] auto participantId() const noexcept -> ParticipantId override;
 
  protected:
   LogIndex nextIndex();
   void assertLeader() const;
   void assertFollower() const;
 
+  [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
+
  private:
+  struct Follower {
+    std::shared_ptr<LogFollower> _impl;
+    LogIndex lastAckedIndex;
+  };
+
   struct Unconfigured {};
-  struct Leader {
-    std::unordered_set<ParticipantId> followerIds{};
+  struct LeaderConfig {
+    std::vector<Follower> follower{};
     std::size_t writeConcern{};
   };
-  struct Follower {
+  struct FollowerConfig {
     ParticipantId leaderId{};
   };
 
-  std::variant<Unconfigured, Leader, Follower> _role;
+  std::variant<Unconfigured, LeaderConfig, FollowerConfig> _role;
   ParticipantId _id{};
   std::shared_ptr<PersistedLog> _persistedLog;
   LogIndex _persistedLogEnd{};

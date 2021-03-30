@@ -33,8 +33,8 @@ auto arangodb::MockLog::insert(std::shared_ptr<LogIterator> iter) -> arangodb::R
 }
 
 template <typename I>
-struct MockIterator : LogIterator {
-  MockIterator(MockLog::storeType store, LogIndex start)
+struct ContainerIterator : LogIterator {
+  ContainerIterator(MockLog::storeType store, LogIndex start)
       : _store(std::move(store)),
         _current(_store.lower_bound(start)),
         _end(_store.end()) {}
@@ -53,7 +53,7 @@ struct MockIterator : LogIterator {
 
 auto arangodb::MockLog::read(arangodb::replication2::LogIndex start)
     -> std::shared_ptr<LogIterator> {
-  return std::make_shared<MockIterator<iteratorType>>(_storage, start);
+  return std::make_shared<ContainerIterator<iteratorType>>(_storage, start);
 }
 
 auto arangodb::MockLog::remove(arangodb::replication2::LogIndex stop) -> arangodb::Result {
