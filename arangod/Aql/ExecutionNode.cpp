@@ -125,26 +125,6 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
 };
 
-void propagateConstVariables(RegisterPlan& from, RegisterPlan& to) {
-  for (auto const& [id, info] : from.varInfo) {
-    if (info.registerId.isConstRegister()) {
-      to.varInfo.try_emplace(id, info);
-    }
-  }
-}
-
-// we have to ensure that all const variables are available in the
-// register plans of all subqueries. this can be removed once the
-// old-subqueries are fully removed during planning.
-void propagateConstVariablesToSubqueries(RegisterPlan& plan) {
-  for (auto& s : plan.subqueryNodes) {
-    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
-    subqueryPlan.nrConstRegs = plan.nrConstRegs;
-    propagateConstVariables(plan, subqueryPlan);
-    propagateConstVariablesToSubqueries(subqueryPlan);
-  }
-}
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -1008,47 +988,23 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, Walke
 #endif
 
 /// @brief planRegisters
-void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan explainRegisterPlan) {
-  // The super is only for the case of subqueries.
-  std::shared_ptr<RegisterPlan> v;
-
-  if (super == nullptr) {
-    v = std::make_shared<RegisterPlan>();
-  } else {
-    v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
-  }
-
+void ExecutionNode::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
+  auto v = std::make_shared<RegisterPlan>();
   auto walker = RegisterPlanWalker{v, explainRegisterPlan};
   walk(walker);
 
-  if (v->subqueryNodes.empty() && super == nullptr) {
-    // shrink RegisterPlan by cutting off all unused rightmost registers
-    // from each depth. this is a completely optional performance
-    // optimization. turning it off should not affect correctness,
-    // only performance.
-    // note: we are intentionally not performing this optimization
-    // in case the query still contains old style subqueries. 
-    // in that case, the register planning optimization would be slightly
-    // more complex to perform. 99.99% of queries should not be affected
-    // by this optimization being turned off, because old-style subqueries
-    // are only around in case except someone intentionally turned off
-    // subquery optimizations. 
-    v->shrink(this);
-  }
-
-  // Now handle old-style subqueries:
-  for (auto& s : v->subqueryNodes) {
-    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-    sq->getSubquery()->planRegisters(s, explainRegisterPlan);
-    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
-    // we only want to create a single const block for all queries, so we have to
-    // ensure that nrConstRegs in the RegisterPlan of the root node contains the
-    // sum of all const regs in all (sub)queries.
-    v->nrConstRegs = subqueryPlan.nrConstRegs;
-    propagateConstVariables(subqueryPlan, *v);
-  }
-
-  propagateConstVariablesToSubqueries(*v);
+  // shrink RegisterPlan by cutting off all unused rightmost registers
+  // from each depth. this is a completely optional performance
+  // optimization. turning it off should not affect correctness,
+  // only performance.
+  // note: we are intentionally not performing this optimization
+  // in case the query still contains old style subqueries. 
+  // in that case, the register planning optimization would be slightly
+  // more complex to perform. 99.99% of queries should not be affected
+  // by this optimization being turned off, because old-style subqueries
+  // are only around in case except someone intentionally turned off
+  // subquery optimizations. 
+  v->shrink(this);
 }
 
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
