@@ -34,6 +34,7 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const cn = "UnitTestsCollection";
+const en = "UnitTestsEdge";
 const db = require('internal').db;
 
 function testSuite() {
@@ -46,10 +47,14 @@ function testSuite() {
         docs.push({ _key: "test" + i, value: i });
       }
       c.insert(docs);
+      
+      db._drop(en);
+      db._createEdgeCollection(en);
     },
     
     tearDownAll: function() {
       db._drop(cn);
+      db._drop(en);
     },
 
     testUseInForLoop: function() {
@@ -70,41 +75,55 @@ function testSuite() {
         assertTrue(doc.hasOwnProperty('value'));
       });
     },
+    
+    testUseInInsert: function() {
+      let result = db._query("FOR i IN 1..1000 FILTER i > 10000 INSERT {} INTO " + cn).toArray();
+      assertEqual(0, result.length);
+    },
+    
+    testUseInUpdate: function() {
+      let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 9999999 UPDATE doc WITH {} IN " + cn).toArray();
+      assertEqual(0, result.length);
+    },
+    
+    testUseInReplace: function() {
+      let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 9999999 REPLACE doc WITH {} IN " + cn).toArray();
+      assertEqual(0, result.length);
+    },
+    
+    testUseInRemove: function() {
+      let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 9999999 REMOVE doc IN " + cn).toArray();
+      assertEqual(0, result.length);
+    },
+    
+    testUseInTraversal: function() {
+      let result = db._query("WITH " + cn + " FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test0' " + en + " RETURN [v, e, p]").toArray();
+      assertEqual(0, result.length);
+    },
+    
+    testUseInShortestPath: function() {
+      let result = db._query("WITH " + cn + " FOR s IN OUTBOUND SHORTEST_PATH '" + cn + "/test0' TO '" + cn + "/test1' " + en + " RETURN s").toArray();
+      assertEqual(0, result.length);
+    },
+    
+    testUseInExpressions: function() {
+      let queries = [
+        "RETURN " + cn,
+        "RETURN " + cn + "[*].value",
+        "FOR value IN " + cn + "[*].value RETURN value",
+        "FOR doc IN " + cn + " RETURN " + cn + "[0]",
+        "FOR doc IN " + cn + " RETURN " + cn + " + 1",
+        "FOR doc IN " + cn + " RETURN NOOPT(" + cn + ")",
+      ];
 
-    testUseInExpression1: function() {
-      try {
-        db._query("RETURN " + cn).toArray();
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION.code, err.errorNum);
-      }
-    },
-    
-    testUseInExpression2: function() {
-      try {
-        db._query("RETURN " + cn + "[*].value").toArray();
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION.code, err.errorNum);
-      }
-    },
-    
-    testUseInExpression3: function() {
-      try {
-        db._query("FOR value IN " + cn + "[*].value RETURN value").toArray();
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION.code, err.errorNum);
-      }
-    },
-    
-    testUseInExpression4: function() {
-      try {
-        db._query("FOR doc IN " + cn + " RETURN " + cn + "[0]").toArray();
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION.code, err.errorNum);
-      }
+      queries.forEach((query) => {
+        try {
+          db._query(query);
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION.code, err.errorNum);
+        }
+      });
     },
   };
 }
