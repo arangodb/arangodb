@@ -59,7 +59,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/SubqueryEndExecutionNode.h"
-#include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
@@ -136,7 +135,7 @@ void propagateConstVariables(RegisterPlan& from, RegisterPlan& to) {
 
 // we have to ensure that all const variables are available in the
 // register plans of all subqueries. this can be removed once the
-// old-subqueries are fully removed in 3.9.
+// old-subqueries are fully removed during planning.
 void propagateConstVariablesToSubqueries(RegisterPlan& plan) {
   for (auto& s : plan.subqueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
@@ -311,13 +310,11 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
         }
       }
 
-      // TODO - this can be removed in 3.9
-      bool count = slice.get("count").getBoolean();
       bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
 
       auto node = new CollectNode(plan, slice, expressionVariable, outVariable, keepVariables,
                                   plan->getAst()->variables()->variables(false), groupVariables,
-                                  aggregateVariables, isDistinctCommand, count);
+                                  aggregateVariables, isDistinctCommand);
 
       // specialize the node if required
       bool specialized = slice.get("specialized").getBoolean();
@@ -2171,33 +2168,7 @@ bool SubqueryNode::mayAccessCollections() {
 std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  auto const it = cache.find(getSubquery());
-  TRI_ASSERT(it != cache.end());
-  auto subquery = it->second;
-  TRI_ASSERT(subquery != nullptr);
-
-  ExecutionNode const* previousNode = getFirstDependency();
-  TRI_ASSERT(previousNode != nullptr);
-
-  auto outputRegisters = RegIdSet{};
-
-  auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
-  TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
-  RegisterId outReg = outVar->second.registerId;
-  outputRegisters.emplace(outReg);
-
-  auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
-
-  // The const_cast has been taken from previous implementation.
-  auto executorInfos =
-      SubqueryExecutorInfos(*subquery, engine.getQuery(), outReg, const_cast<SubqueryNode*>(this)->isConst());
-  if (isModificationNode()) {
-    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  } else {
-    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<false>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot instantiate SubqueryExecutor");
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,

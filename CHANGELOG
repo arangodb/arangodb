@@ -1,6 +1,11 @@
 devel
 -----
 
+* Remove now-unused SubqueryExecutor. This is an internal change only and
+  should not have any effect on queries, as from 3.8 onwards only spliced
+  subqueries should be used in query execution plans and during query
+  execution.
+
 * Updated ArangoDB Starter to 0.15.0-preview-2.
 
 * Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
