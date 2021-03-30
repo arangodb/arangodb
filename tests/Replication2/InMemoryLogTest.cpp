@@ -30,7 +30,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 TEST(InMemoryLogTest, test) {
-  auto const state = std::make_shared<InMemoryState>();
+  auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
   auto const ourParticipantId = ParticipantId{1};
   auto persistedLog = std::make_shared<MockLog>(LogId{1});
   auto log = InMemoryLog{ourParticipantId, state, persistedLog};

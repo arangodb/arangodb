@@ -106,11 +106,20 @@ auto RocksDBLog::drop() -> Result {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-auto RocksDBLog::remove(replication2::LogIndex stop) -> Result {
+auto RocksDBLog::removeFront(replication2::LogIndex stop) -> Result {
   auto last = RocksDBKey();
-  last.constructLogEntry(_objectId, LogIndex{stop.value - 1});
+  last.constructLogEntry(_objectId, LogIndex{stop.value});
 
   rocksdb::WriteOptions opts;
   auto s = _db->DeleteRange(opts, _cf, getBounds().start(), last.string());
+  return rocksutils::convertStatus(s);
+}
+
+auto RocksDBLog::removeBack(replication2::LogIndex start) -> Result {
+  auto first = RocksDBKey();
+  first.constructLogEntry(_objectId, LogIndex{start.value});
+
+  rocksdb::WriteOptions opts;
+  auto s = _db->DeleteRange(opts, _cf, first.string(), getBounds().end());
   return rocksutils::convertStatus(s);
 }

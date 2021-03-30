@@ -38,7 +38,8 @@ class RocksDBLog : public replication2::PersistedLog {
   auto insert(std::shared_ptr<replication2::LogIterator> iter) -> Result override;
   auto read(replication2::LogIndex start)
       -> std::shared_ptr<replication2::LogIterator> override;
-  auto remove(replication2::LogIndex stop) -> Result override;
+  auto removeFront(replication2::LogIndex stop) -> Result override;
+  auto removeBack(replication2::LogIndex start) -> Result override;
 
 
   uint64_t objectId() const { return _objectId.load(); }

@@ -158,6 +158,7 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
         LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{"first"}},
         LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"second"}},
         LogEntry{LogTerm{2}, LogIndex{3}, LogPayload{"third"}},
+        LogEntry{LogTerm{2}, LogIndex{999}, LogPayload{"nine-nine-nine"}},
         LogEntry{LogTerm{2}, LogIndex{1000}, LogPayload{"thousand"}},
     };
     auto iter = make_iterator(entries);
@@ -167,7 +168,7 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
   }
 
   {
-    auto s = log->remove(LogIndex{1000});
+    auto s = log->removeFront(LogIndex{1000});
     ASSERT_TRUE(s.ok());
   }
 
@@ -195,6 +196,7 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
         LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{"first"}},
         LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"second"}},
         LogEntry{LogTerm{2}, LogIndex{3}, LogPayload{"third"}},
+        LogEntry{LogTerm{2}, LogIndex{999}, LogPayload{"nine-nine-nine"}},
         LogEntry{LogTerm{2}, LogIndex{1000}, LogPayload{"thousand"}},
     };
     auto iter = make_iterator(entries);
@@ -206,7 +208,7 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
   auto iter = log->read(LogIndex{1});
 
   {
-    auto s = log->remove(LogIndex{1000});
+    auto s = log->removeFront(LogIndex{1000});
     ASSERT_TRUE(s.ok());
   }
 
@@ -230,6 +232,12 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
     ASSERT_EQ(entry->logIndex().value, 3);
     ASSERT_EQ(entry->logTerm().value, 2);
     ASSERT_EQ(entry->logPayload().dummy, "third");
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 999);
+    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logPayload().dummy, "nine-nine-nine");
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());

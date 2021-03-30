@@ -56,8 +56,13 @@ auto arangodb::MockLog::read(arangodb::replication2::LogIndex start)
   return std::make_shared<ContainerIterator<iteratorType>>(_storage, start);
 }
 
-auto arangodb::MockLog::remove(arangodb::replication2::LogIndex stop) -> arangodb::Result {
+auto arangodb::MockLog::removeFront(arangodb::replication2::LogIndex stop) -> arangodb::Result {
   _storage.erase(_storage.begin(), _storage.lower_bound(stop));
+  return {};
+}
+
+auto arangodb::MockLog::removeBack(arangodb::replication2::LogIndex start) -> arangodb::Result {
+  _storage.erase(_storage.lower_bound(start), _storage.begin());
   return {};
 }
 

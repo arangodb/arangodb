@@ -36,6 +36,9 @@ auto LogIndex::operator<=(LogIndex other) const -> bool {
 auto LogIndex::operator<(LogIndex other) const -> bool {
   return value < other.value;
 }
+auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {
+  return LogIndex(this->value + delta);
+}
 
 LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
     : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
