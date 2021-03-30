@@ -1480,6 +1480,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     });
 
     if (usingSystemCollection) {
+      LOG_DEVEL << "Using system collection: " << std::boolalpha << usingSystemCollection;
       return;
     }
 

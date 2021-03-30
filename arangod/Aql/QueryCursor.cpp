@@ -152,7 +152,11 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
       _queryResultPos(0),
       _exportCount(-1),
       _finalization(false) {
-
+/*
+   LOG_DEVEL << "Found a StreamingCursor, str: " << _query->queryString().string();
+   std::this_thread::sleep_for(std::chrono::seconds(2));
+   LOG_DEVEL_IF(_query->state() != aql::QueryExecutionState::ValueType::EXECUTION) << QueryExecutionState::toString(_query->state()) << (void*)_query.get();
+  */
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
   _ctx = _query->newTrxContext();
