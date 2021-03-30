@@ -702,7 +702,7 @@ void StatisticsFeature::appendHistogram(
 
   result += concatT(
       "\n# HELP ", name, " ", stat[2],
-      "\n# TYPE ", name, " ", stat[1], '\n');
+      "\n# TYPE ", name, " ", stat[1], "\n");
 
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
@@ -711,12 +711,12 @@ void StatisticsFeature::appendHistogram(
     uint64_t v = counts.at(i++).getNumber<uint64_t>();
     sum += v;
     v = v2 ? sum : v;
-    result += concatT(name, "_bucket{le=\"", le, "\"}", " ", v, '\n');
+    result += concatT(name, "_bucket{le=\"", le, "\"}", " ", v, "\n");
   }
-  result += concatT(name, "_count ", sum, '\n');
+  result += concatT(name, "_count ", sum, "\n");
   if (v2) {
     double v = slc.get("sum").getNumber<double>();
-    result += concatT(name, "_sum ", v, '\n');
+    result += concatT(name, "_sum ", v, "\n");
   }
 }
 
@@ -734,7 +734,7 @@ void StatisticsFeature::appendMetric(std::string& result, std::string const& val
     "\n# HELP ", name, " ", stat[2],
     "\n# TYPE ", name, " ");
   result.append(type.data(), type.size());
-  result += concatT('\n', name, " ", val, '\n');
+  result += concatT("\n", name, " ", val, "\n");
 }
 
 void StatisticsFeature::toPrometheus(std::string& result, double const& now, bool v2) {
