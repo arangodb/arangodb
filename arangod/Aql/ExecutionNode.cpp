@@ -2168,6 +2168,7 @@ bool SubqueryNode::mayAccessCollections() {
 std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot instantiate SubqueryExecutor");
 }
 
