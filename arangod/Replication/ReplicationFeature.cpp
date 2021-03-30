@@ -39,7 +39,6 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
-#include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -76,7 +75,7 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 } // namespace
 
 
-DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "Number of cluster replication inventory requests received");
+DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "(DC-2-DC only) Number of times the database and collection overviews have been requested.");
 
 namespace arangodb {
 
@@ -98,7 +97,6 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
   startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<DatabaseFeature>();
-  startsAfter<ServerIdFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 }

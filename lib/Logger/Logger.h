@@ -310,7 +310,7 @@ class Logger {
     return true;
   }
   static bool _isEnabled(LogLevel level, LogLevel topicLevel) {
-    return (int)level <= (int)topicLevel;
+    return level == LogLevel::FATAL || (int)level <= (int)topicLevel;
   }
 #else
   static bool isEnabled(LogLevel level) {

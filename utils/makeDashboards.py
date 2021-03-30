@@ -1,16 +1,21 @@
 #!/usr/bin/python3
 
-from yaml import load, dump, YAMLError
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
+"""A script to automatically make dashboards for Grafana."""
 
-import os, re, sys, json
+import os
+import sys
+import json
+
+from yaml import load, YAMLError
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
 
 # Usage:
 
-def printUsage():
+def print_usage():
+    """Print usage."""
     print("""Usage: utils/makeDashboards.py [-p PERSONA] [-h] [--help]
 
     where PERSONA is one of:
@@ -27,208 +32,208 @@ def printUsage():
 """)
 
 # Check that we are in the right place:
-lshere = os.listdir(".")
-if not("arangod" in lshere and "arangosh" in lshere and \
-        "Documentation" in lshere and "CMakeLists.txt" in lshere):
-  print("Please execute me in the main source dir!", file=sys.stderr)
-  sys.exit(1)
+LS_HERE = os.listdir(".")
+if not("arangod" in LS_HERE and "arangosh" in LS_HERE and \
+        "Documentation" in LS_HERE and "CMakeLists.txt" in LS_HERE):
+    print("Please execute me in the main source dir!", file=sys.stderr)
+    sys.exit(1)
 
-yamlfile = "Documentation/Metrics/allMetrics.yaml"
+YAMLFILE = "Documentation/Metrics/allMetrics.yaml"
 
 # Database about categories and personas and their interests:
 
-categoryNames = ["Health", "AQL", "Transactions", "Foxx", "Pregel", \
+CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel", \
                  "Statistics", "Replication", "Disk", "Errors", \
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",\
                  "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb"]
 
-complexities = ["none", "simple", "medium", "advanced"]
+COMPLEXITIES = ["none", "simple", "medium", "advanced"]
 
-personainterests = {}
-personainterests["all"] = \
-    { "Health":       "advanced", \
-      "AQL":          "advanced", \
-      "Transactions": "advanced", \
-      "Foxx":         "advanced", \
-      "Pregel":       "advanced", \
-      "Statistics":   "advanced", \
-      "Replication":  "advanced", \
-      "Disk":         "advanced", \
-      "Errors":       "advanced", \
-      "RocksDB":      "advanced", \
-      "Hotbackup":    "advanced", \
-      "k8s":          "advanced", \
-      "Connectivity": "advanced", \
-      "Network":      "advanced", \
-      "V8":           "advanced", \
-      "Agency":       "advanced", \
-      "Scheduler":    "advanced", \
-      "Maintenance":  "advanced", \
-      "kubearangodb": "advanced", \
+PERSONAINTERESTS = {}
+PERSONAINTERESTS["all"] = \
+    {"Health":       "advanced", \
+     "AQL":          "advanced", \
+     "Transactions": "advanced", \
+     "Foxx":         "advanced", \
+     "Pregel":       "advanced", \
+     "Statistics":   "advanced", \
+     "Replication":  "advanced", \
+     "Disk":         "advanced", \
+     "Errors":       "advanced", \
+     "RocksDB":      "advanced", \
+     "Hotbackup":    "advanced", \
+     "k8s":          "advanced", \
+     "Connectivity": "advanced", \
+     "Network":      "advanced", \
+     "V8":           "advanced", \
+     "Agency":       "advanced", \
+     "Scheduler":    "advanced", \
+     "Maintenance":  "advanced", \
+     "kubearangodb": "advanced", \
     }
-personainterests["dbadmin"] = \
-    { "Health":       "advanced", \
-      "AQL":          "advanced", \
-      "Transactions": "simple", \
-      "Foxx":         "simple", \
-      "Pregel":       "simple", \
-      "Statistics":   "medium", \
-      "Replication":  "advanced", \
-      "Disk":         "advanced", \
-      "Errors":       "simple", \
-      "RocksDB":      "simple", \
-      "Hotbackup":    "simple", \
-      "k8s":          "medium", \
-      "Connectivity": "simple", \
-      "Network":      "medium", \
-      "V8":           "medium", \
-      "Agency":       "none", \
-      "Scheduler":    "none", \
-      "Maintenance":  "none", \
-      "kubearangodb": "medium", \
+PERSONAINTERESTS["dbadmin"] = \
+    {"Health":       "advanced", \
+     "AQL":          "advanced", \
+     "Transactions": "simple", \
+     "Foxx":         "simple", \
+     "Pregel":       "simple", \
+     "Statistics":   "medium", \
+     "Replication":  "advanced", \
+     "Disk":         "advanced", \
+     "Errors":       "simple", \
+     "RocksDB":      "simple", \
+     "Hotbackup":    "simple", \
+     "k8s":          "medium", \
+     "Connectivity": "simple", \
+     "Network":      "medium", \
+     "V8":           "medium", \
+     "Agency":       "none", \
+     "Scheduler":    "none", \
+     "Maintenance":  "none", \
+     "kubearangodb": "medium", \
     }
-personainterests["sysadmin"] = \
-    { "Health":       "advanced", \
-      "AQL":          "simple", \
-      "Transactions": "simple", \
-      "Foxx":         "simple", \
-      "Pregel":       "simple", \
-      "Statistics":   "medium", \
-      "Replication":  "advanced", \
-      "Disk":         "advanced", \
-      "Errors":       "simple", \
-      "RocksDB":      "none", \
-      "Hotbackup":    "none", \
-      "k8s":          "medium", \
-      "Connectivity": "simple", \
-      "Network":      "medium", \
-      "V8":           "medium", \
-      "Agency":       "none", \
-      "Scheduler":    "none", \
-      "Maintenance":  "none", \
-      "kubearangodb": "simple", \
+PERSONAINTERESTS["sysadmin"] = \
+    {"Health":       "advanced", \
+     "AQL":          "simple", \
+     "Transactions": "simple", \
+     "Foxx":         "simple", \
+     "Pregel":       "simple", \
+     "Statistics":   "medium", \
+     "Replication":  "advanced", \
+     "Disk":         "advanced", \
+     "Errors":       "simple", \
+     "RocksDB":      "none", \
+     "Hotbackup":    "none", \
+     "k8s":          "medium", \
+     "Connectivity": "simple", \
+     "Network":      "medium", \
+     "V8":           "medium", \
+     "Agency":       "none", \
+     "Scheduler":    "none", \
+     "Maintenance":  "none", \
+     "kubearangodb": "simple", \
     }
-personainterests["user"] = \
-    { "Health":       "simple", \
-      "AQL":          "medium", \
-      "Transactions": "advanced", \
-      "Foxx":         "medium", \
-      "Pregel":       "medium", \
-      "Statistics":   "simple", \
-      "Replication":  "simple", \
-      "Disk":         "simple", \
-      "Errors":       "medium", \
-      "RocksDB":      "none", \
-      "Hotbackup":    "none", \
-      "k8s":          "medium", \
-      "Connectivity": "simple", \
-      "Network":      "simple", \
-      "V8":           "medium", \
-      "Agency":       "none", \
-      "Scheduler":    "none", \
-      "Maintenance":  "none", \
-      "kubearangodb": "none", \
+PERSONAINTERESTS["user"] = \
+    {"Health":       "simple", \
+     "AQL":          "medium", \
+     "Transactions": "advanced", \
+     "Foxx":         "medium", \
+     "Pregel":       "medium", \
+     "Statistics":   "simple", \
+     "Replication":  "simple", \
+     "Disk":         "simple", \
+     "Errors":       "medium", \
+     "RocksDB":      "none", \
+     "Hotbackup":    "none", \
+     "k8s":          "medium", \
+     "Connectivity": "simple", \
+     "Network":      "simple", \
+     "V8":           "medium", \
+     "Agency":       "none", \
+     "Scheduler":    "none", \
+     "Maintenance":  "none", \
+     "kubearangodb": "none", \
     }
-personainterests["oasiscustomer"] = \
-    { "Health":       "simple", \
-      "AQL":          "medium", \
-      "Transactions": "advanced", \
-      "Foxx":         "medium", \
-      "Pregel":       "medium", \
-      "Statistics":   "simple", \
-      "Replication":  "medium", \
-      "Disk":         "simple", \
-      "Errors":       "medium", \
-      "RocksDB":      "none", \
-      "Hotbackup":    "simple", \
-      "k8s":          "none", \
-      "Connectivity": "none", \
-      "Network":      "simple", \
-      "V8":           "medium", \
-      "Agency":       "none", \
-      "Scheduler":    "none", \
-      "Maintenance":  "none", \
-      "kubearangodb": "none", \
+PERSONAINTERESTS["oasiscustomer"] = \
+    {"Health":       "simple", \
+     "AQL":          "medium", \
+     "Transactions": "advanced", \
+     "Foxx":         "medium", \
+     "Pregel":       "medium", \
+     "Statistics":   "simple", \
+     "Replication":  "medium", \
+     "Disk":         "simple", \
+     "Errors":       "medium", \
+     "RocksDB":      "none", \
+     "Hotbackup":    "simple", \
+     "k8s":          "none", \
+     "Connectivity": "none", \
+     "Network":      "simple", \
+     "V8":           "medium", \
+     "Agency":       "none", \
+     "Scheduler":    "none", \
+     "Maintenance":  "none", \
+     "kubearangodb": "none", \
     }
-personainterests["appdeveloper"] = \
-    { "Health":       "medium", \
-      "AQL":          "advanced", \
-      "Transactions": "advanced", \
-      "Foxx":         "advanced", \
-      "Pregel":       "advanced", \
-      "Statistics":   "medium", \
-      "Replication":  "simple", \
-      "Disk":         "simple", \
-      "Errors":       "advanced", \
-      "RocksDB":      "simple", \
-      "Hotbackup":    "none", \
-      "k8s":          "simple", \
-      "Connectivity": "none", \
-      "Network":      "medium", \
-      "V8":           "advanced", \
-      "Agency":       "none", \
-      "Scheduler":    "simple", \
-      "Maintenance":  "none", \
-      "kubearangodb": "none", \
+PERSONAINTERESTS["appdeveloper"] = \
+    {"Health":       "medium", \
+     "AQL":          "advanced", \
+     "Transactions": "advanced", \
+     "Foxx":         "advanced", \
+     "Pregel":       "advanced", \
+     "Statistics":   "medium", \
+     "Replication":  "simple", \
+     "Disk":         "simple", \
+     "Errors":       "advanced", \
+     "RocksDB":      "simple", \
+     "Hotbackup":    "none", \
+     "k8s":          "simple", \
+     "Connectivity": "none", \
+     "Network":      "medium", \
+     "V8":           "advanced", \
+     "Agency":       "none", \
+     "Scheduler":    "simple", \
+     "Maintenance":  "none", \
+     "kubearangodb": "none", \
     }
-personainterests["oasisoncall"] = \
-    { "Health":       "advanced", \
-      "AQL":          "medium", \
-      "Transactions": "medium", \
-      "Foxx":         "medium", \
-      "Pregel":       "medium", \
-      "Statistics":   "medium", \
-      "Replication":  "medium", \
-      "Disk":         "advanced", \
-      "Errors":       "medium", \
-      "RocksDB":      "medium", \
-      "Hotbackup":    "medium", \
-      "k8s":          "medium", \
-      "Connectivity": "medium", \
-      "Network":      "medium", \
-      "V8":           "medium", \
-      "Agency":       "simple", \
-      "Scheduler":    "medium", \
-      "Maintenance":  "simple", \
-      "kubearangodb": "medium", \
+PERSONAINTERESTS["oasisoncall"] = \
+    {"Health":       "advanced", \
+     "AQL":          "medium", \
+     "Transactions": "medium", \
+     "Foxx":         "medium", \
+     "Pregel":       "medium", \
+     "Statistics":   "medium", \
+     "Replication":  "medium", \
+     "Disk":         "advanced", \
+     "Errors":       "medium", \
+     "RocksDB":      "medium", \
+     "Hotbackup":    "medium", \
+     "k8s":          "medium", \
+     "Connectivity": "medium", \
+     "Network":      "medium", \
+     "V8":           "medium", \
+     "Agency":       "simple", \
+     "Scheduler":    "medium", \
+     "Maintenance":  "simple", \
+     "kubearangodb": "medium", \
     }
-personainterests["arangodbdeveloper"] = \
-    { "Health":       "advanced", \
-      "AQL":          "advanced", \
-      "Transactions": "advanced", \
-      "Foxx":         "advanced", \
-      "Pregel":       "advanced", \
-      "Statistics":   "advanced", \
-      "Replication":  "advanced", \
-      "Disk":         "advanced", \
-      "Errors":       "advanced", \
-      "RocksDB":      "advanced", \
-      "Hotbackup":    "advanced", \
-      "k8s":          "advanced", \
-      "Connectivity": "advanced", \
-      "Network":      "advanced", \
-      "V8":           "advanced", \
-      "Agency":       "advanced", \
-      "Scheduler":    "advanced", \
-      "Maintenance":  "advanced", \
-      "kubearangodb": "advanced", \
+PERSONAINTERESTS["arangodbdeveloper"] = \
+    {"Health":       "advanced", \
+     "AQL":          "advanced", \
+     "Transactions": "advanced", \
+     "Foxx":         "advanced", \
+     "Pregel":       "advanced", \
+     "Statistics":   "advanced", \
+     "Replication":  "advanced", \
+     "Disk":         "advanced", \
+     "Errors":       "advanced", \
+     "RocksDB":      "advanced", \
+     "Hotbackup":    "advanced", \
+     "k8s":          "advanced", \
+     "Connectivity": "advanced", \
+     "Network":      "advanced", \
+     "V8":           "advanced", \
+     "Agency":       "advanced", \
+     "Scheduler":    "advanced", \
+     "Maintenance":  "advanced", \
+     "kubearangodb": "advanced", \
     }
 
 # Parse command line options:
 
-persona = "all"
+PERSONA = "all"
 i = 1
 while i < len(sys.argv):
     if sys.argv[i] == "-h" or sys.argv[i] == "--help":
-        printUsage()
+        print_usage()
         sys.exit(0)
     if sys.argv[i] == "-p":
         if i+1 < len(sys.argv):
-            p = sys.argv[i+1]
-            if p in personainterests:
-                persona = p
+            P = sys.argv[i+1]
+            if P in PERSONAINTERESTS:
+                PERSONA = P
             else:
-                print("Warning: persona " + p + " not known.", file=sys.stderr)
+                print("Warning: persona " + P + " not known.", file=sys.stderr)
                 sys.exit(1)
             i += 2
         else:
@@ -237,109 +242,112 @@ while i < len(sys.argv):
 # Now read all metrics from the `allMetrics.yaml` file:
 
 try:
-    allMetricsFile = open(yamlfile)
+    ALLMETRICSFILE = open(YAMLFILE)
 except FileNotFoundError:
-    print("Could not open file '" + yamlfile + "'!", file=sys.stderr)
+    print("Could not open file '" + YAMLFILE + "'!", file=sys.stderr)
     sys.exit(1)
 
 try:
-    allMetrics= load(allMetricsFile, Loader=Loader)
+    ALLMETRICS = load(ALLMETRICSFILE, Loader=Loader)
 except YAMLError as err:
-    print("Could not parse YAML file '" + yamlfile + "', error:\n" + str(err), file=sys.stderr)
+    print("Could not parse YAML file '" + YAMLFILE + "', error:\n" + str(err), file=sys.stderr)
     sys.exit(2)
 
-allMetricsFile.close()
+ALLMETRICSFILE.close()
 
 # And generate the output:
 
-categories = {}
-metrics = {}
-for m in allMetrics:
+CATEGORIES = {}
+METRICS = {}
+for m in ALLMETRICS:
     c = m["category"]
-    if not c in categoryNames:
+    if not c in CATEGORYNAMES:
         print("Warning: Found category", c, "which is not in our current list!", file=sys.stderr)
-    if not c in categories:
-        categories[c] = []
-    categories[c].append(m["name"])
-    metrics[m["name"]] = m
+    if not c in CATEGORIES:
+        CATEGORIES[c] = []
+    CATEGORIES[c].append(m["name"])
+    METRICS[m["name"]] = m
 
-posx = 0
-posy = 0
+POSX = 0
+POSY = 0
 
-out = { "panels" : [] }
-panels = out["panels"]
+OUT = {"panels" : []}
+PANELS = OUT["panels"]
 
 def incxy(x, y):
+    """Increment coordinates."""
     x += 12
     if x >= 24:
         x = 0
         y += 8
     return x, y
 
-def makePanel(x, y, met):
-    return {"gridPos": {"h": 8, "w": 12, "x": x, "y": y }, \
-            "description": met["description"], \
-            "title": met["help"]}
+def make_panel(x, y, mett):
+    """Make a panel."""
+    title = mett["help"]
+    while title[-1:] == "." or title[-1:] == "\n":
+        title = title[:-1]
+    return {"gridPos": {"h": 8, "w": 12, "x": x, "y": y}, \
+            "description": mett["description"], \
+            "title": title}
 
-for c in categoryNames:
-    if c in categories:
-        ca = categories[c]
+for c in CATEGORYNAMES:
+    if c in CATEGORIES:
+        ca = CATEGORIES[c]
         if len(ca) > 0:
             # Find complexity interest of persona:
-            complexitylimit = complexities.index(personainterests[persona][c])
+            complexitylimit = COMPLEXITIES.index(PERSONAINTERESTS[PERSONA][c])
             # Make row:
-            row = {"gridPos": {"h":1, "w": 24, "x": 0, "y": posy}, \
+            row = {"gridPos": {"h":1, "w": 24, "x": 0, "y": POSY}, \
                    "panels": [], "title": c, "type": "row"}
-            posx = 0
-            posy += 1
-            panels.append(row)
+            POSX = 0
+            POSY += 1
+            PANELS.append(row)
             for name in ca:
-              met = metrics[name]
-              if complexities.index(met["complexity"]) <= complexitylimit:
-                panel = makePanel(posx, posy, met)
-                if met["type"] == "counter":
-                    panel["type"] = "graph"
-                    panel["targets"] = [ { "expr": "rate(" + met["name"] + \
-                                                   "[1m])", \
-                         "legendFormat": "{{instance}}:{{shortname}}" } ]
-                    posx, posy = incxy(posx, posy)
-                    panels.append(panel)
-                elif met["type"] == "gauge":
-                    panel["type"] = "graph"
-                    panel["targets"] = [ { "expr": met["name"], \
-                         "legendFormat": "{{instance}}:{{shortname}}" } ]
-                    posx, posy = incxy(posx, posy)
-                    panels.append(panel)
-                elif met["type"] == "histogram":
-                    panel["type"] = "heatmap"
-                    panel["legend"] = {"show": False}
-                    panel["targets"] = [ \
-                        { "expr": "histogram_quantile(0.95, sum(rate(" + \
-                          met["name"] + "_bucket[60s])) by (le))", \
-                          "format": "heatmap", \
-                          "legendFormat": "" } ]
-                    posx, posy = incxy(posx, posy)
-                    panels.append(panel)
-                    panel = makePanel(posx, posy, met)
-                    panel["title"] = panel["title"] + " (count of events per second)"
-                    panel["type"] = "graph"
-                    panel["targets"] = [ \
-                        { "expr": "rate(" + met["name"] + "_count[60s])", \
-                          "legendFormat": "{{instance}}:{{shortname}}" } ]
-                    posx, posy = incxy(posx, posy)
-                    panels.append(panel)
-                    panel = makePanel(posx, posy, met)
-                    panel["title"] = panel["title"] + " (average per second)"
-                    panel["type"] = "graph"
-                    panel["targets"] = [ \
-                        { "expr": "rate(" + met["name"] + "_sum[60s])" + \
-                                  " / rate(" + met["name"] + "_count[60s])", \
-                          "legendFormat": "{{instance}}:{{shortname}}" } ]
-                    posx, posy = incxy(posx, posy)
-                    panels.append(panel)
-                else:
-                    print("Strange metrics type:", met["type"], file=sys.stderr)
+                met = METRICS[name]
+                if COMPLEXITIES.index(met["complexity"]) <= complexitylimit:
+                    panel = make_panel(POSX, POSY, met)
+                    if met["type"] == "counter":
+                        panel["type"] = "graph"
+                        panel["targets"] = [{"expr": "rate(" + met["name"] + \
+                                                     "[1m])", \
+                            "legendFormat": "{{instance}}:{{shortname}}"}]
+                        POSX, POSY = incxy(POSX, POSY)
+                        PANELS.append(panel)
+                    elif met["type"] == "gauge":
+                        panel["type"] = "graph"
+                        panel["targets"] = [{"expr": met["name"], \
+                            "legendFormat": "{{instance}}:{{shortname}}"}]
+                        POSX, POSY = incxy(POSX, POSY)
+                        PANELS.append(panel)
+                    elif met["type"] == "histogram":
+                        panel["type"] = "heatmap"
+                        panel["legend"] = {"show": False}
+                        panel["targets"] = [\
+                            {"expr": "histogram_quantile(0.95, sum(rate(" + \
+                             met["name"] + "_bucket[60s])) by (le))", \
+                             "format": "heatmap", \
+                             "legendFormat": ""}]
+                        POSX, POSY = incxy(POSX, POSY)
+                        PANELS.append(panel)
+                        panel = make_panel(POSX, POSY, met)
+                        panel["title"] = panel["title"] + " (count of events per second)"
+                        panel["type"] = "graph"
+                        panel["targets"] = [\
+                            {"expr": "rate(" + met["name"] + "_count[60s])", \
+                             "legendFormat": "{{instance}}:{{shortname}}"}]
+                        POSX, POSY = incxy(POSX, POSY)
+                        PANELS.append(panel)
+                        panel = make_panel(POSX, POSY, met)
+                        panel["title"] = panel["title"] + " (average per second)"
+                        panel["type"] = "graph"
+                        panel["targets"] = [\
+                            {"expr": "rate(" + met["name"] + "_sum[60s])" + \
+                                      " / rate(" + met["name"] + "_count[60s])", \
+                              "legendFormat": "{{instance}}:{{shortname}}"}]
+                        POSX, POSY = incxy(POSX, POSY)
+                        PANELS.append(panel)
+                    else:
+                        print("Strange metrics type:", met["type"], file=sys.stderr)
 
-json.dump(out, sys.stdout)
-
-
+json.dump(OUT, sys.stdout)

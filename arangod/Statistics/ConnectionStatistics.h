@@ -67,6 +67,12 @@ class ConnectionStatistics {
       }
     }
 
+    void SET_END() {
+      if (_stat != nullptr) {
+        _stat->_connEnd = StatisticsFeature::time();
+      }
+    }
+    
     void SET_HTTP();
 
    private:

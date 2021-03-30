@@ -1,7 +1,8 @@
 name: arangodb_server_statistics_system_percent
+introducedIn: "3.8.0"
 help: |
   Percentage of time that the system CPUs have spent in kernel mode
-unit: number
+unit: percentage
 type: gauge
 category: Statistics
 complexity: simple
@@ -11,4 +12,6 @@ exposedBy:
   - agent
   - single
 description: |
-  Percentage of time that the system CPUs have spent in kernel mode.
+  Percentage of time that the system CPUs have spent in kernel mode, as
+  a value between 0 and 100, and as reported by the operating system.
+  This metric is only reported on some operating systems.

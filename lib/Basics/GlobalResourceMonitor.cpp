@@ -48,6 +48,24 @@ std::int64_t GlobalResourceMonitor::memoryLimit() const noexcept {
 std::int64_t GlobalResourceMonitor::current() const noexcept {
   return _current.load(std::memory_order_relaxed);
 }
+
+/// @brief number of times the global and any local limits were reached
+GlobalResourceMonitor::Stats GlobalResourceMonitor::stats() const noexcept {
+  Stats stats;
+  stats.globalLimitReached = _globalLimitReachedCounter.load(std::memory_order_relaxed);
+  stats.localLimitReached = _localLimitReachedCounter.load(std::memory_order_relaxed);
+  return stats;
+}
+  
+/// @brief increase the counter for global memory limit violations
+void GlobalResourceMonitor::trackGlobalViolation() noexcept {
+  _globalLimitReachedCounter.fetch_add(1, std::memory_order_relaxed);
+}
+
+  /// @brief increase the counter for local memory limit violations
+void GlobalResourceMonitor::trackLocalViolation() noexcept {
+  _localLimitReachedCounter.fetch_add(1, std::memory_order_relaxed);
+}
   
 /// @brief increase global memory usage by <value> bytes. if increasing exceeds the
 /// memory limit, does not perform the increase and returns false. if increasing
