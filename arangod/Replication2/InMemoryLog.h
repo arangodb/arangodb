@@ -25,6 +25,7 @@
 
 #include <Futures/Future.h>
 #include <velocypack/SharedSlice.h>
+#include <immer/map.hpp>
 
 #include <deque>
 #include <map>
@@ -56,10 +57,17 @@ struct AppendEntriesRequest {
 /**
  * @brief State stub, later to be replaced by a RocksDB state.
  */
+
 class InMemoryState {
  public:
+  using state_container = immer::map<std::string, arangodb::velocypack::SharedSlice>;
+
+  auto createSnapshot() -> std::shared_ptr<InMemoryState const>;
+
   // TODO We probably want an immer::map to be able to get snapshots
-  std::map<std::string, arangodb::velocypack::SharedSlice> _state;
+  state_container _state;
+
+  explicit InMemoryState(state_container state);
 };
 
 /**

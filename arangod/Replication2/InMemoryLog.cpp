@@ -80,8 +80,7 @@ LogIndex InMemoryLog::nextIndex() { return LogIndex{_log.size() + 1}; }
 
 auto InMemoryLog::createSnapshot()
     -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>> {
-  // TODO
-  std::abort();
+  return std::make_pair(_commitIndex, _state->createSnapshot());
 }
 
 auto InMemoryLog::waitFor(LogIndex index) -> futures::Future<arangodb::futures::Unit> {
@@ -149,3 +148,10 @@ void InMemoryLog::assertFollower() const {
   }
 }
 auto InMemoryLog::participantId() const noexcept -> ParticipantId { return _id; }
+
+auto InMemoryState::createSnapshot() -> std::shared_ptr<InMemoryState const> {
+  return std::make_shared<InMemoryState>(_state);
+}
+
+InMemoryState::InMemoryState(InMemoryState::state_container state)
+    : _state(std::move(state)) {}
