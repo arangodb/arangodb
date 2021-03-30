@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 500 */
-/* global assertEqual, assertNotEqual, assertNotNull */
+/* global assertEqual, assertNotEqual, assertNotNull, assertTrue */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for query language, functions
 // /
@@ -2641,7 +2641,7 @@ function ahuacatlDateFunctionsTestSuite () {
         if (res.match(/UTC/)) {
           res = "UTC";
         }
-        assertEqual(systemtz, res);
+        assertTrue(systemtz.find(res) >= 0);
       } else {
         assertNotNull(res);
       }
