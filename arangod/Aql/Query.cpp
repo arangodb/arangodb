@@ -1469,6 +1469,20 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     if (_wasDebugKilled) {
       return;
     }
+    bool usingSystemCollection = false;
+    // Ignore queries on System collections, we do not want them to hit failure points
+    collections().visit([&usingSystemCollection](std::string const&, Collection& col) -> bool {
+      if (col.getCollection()->system()) {
+        usingSystemCollection = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (usingSystemCollection) {
+      return;
+    }
+
     _wasDebugKilled = true;
     // A query can only be killed under certain circumstances.
     // We assert here that one of those is true.
