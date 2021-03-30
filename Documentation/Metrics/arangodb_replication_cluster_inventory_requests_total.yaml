@@ -17,4 +17,4 @@ troubleshoot: |
   If you have a DC-2-DC installation, and this metric stays constant over a longer period of time in any of the two data centers
   this indicates that the follower data center is not properly connected anymore.
   The issue most likely is within the sync process on either of the two data-centers as they do not compare their inventory anymore.
-  This gives no information about the healthyness of the ArangoDB cluster itself, please check other metrics for this.
+  This gives no information about the healthiness of the ArangoDB cluster itself, please check other metrics for this.
