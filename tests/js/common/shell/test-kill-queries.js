@@ -44,7 +44,7 @@ function GenericQueryKillSuite() { // can be either default or stream
 
     try {
       localQuery = db._query(exlusiveWriteQueryString);
-      if (reportKilled === 'true') {
+      if (reportKilled === 'on') {
         fail();
       }
     } catch (e) {
@@ -58,7 +58,7 @@ function GenericQueryKillSuite() { // can be either default or stream
     }
 
     // in case we're expecting a success here
-    if (reportKilled === 'false') {
+    if (reportKilled === 'off') {
       assertTrue(localQuery);
     }
     if (localQuery) {
@@ -76,7 +76,7 @@ function GenericQueryKillSuite() { // can be either default or stream
 
     try {
       localQuery = db._query(exlusiveWriteQueryString, null, null, {stream: true});
-      if (reportKilled === 'true') {
+      if (reportKilled === 'on') {
         fail();
       }
     } catch (e) {
@@ -90,7 +90,7 @@ function GenericQueryKillSuite() { // can be either default or stream
     }
 
     // in case we're expecting a success here
-    if (reportKilled === 'false') {
+    if (reportKilled === 'off') {
       assertTrue(localQuery);
     }
     if (localQuery) {
@@ -105,13 +105,9 @@ function GenericQueryKillSuite() { // can be either default or stream
    * failurePointName: <Class::Name>
    * onlyInCluster: <boolean>
    * stream: <string> - "on", "off" or "both"
-   * reportKilled: <string> "true", "false", "both"
+   * reportKilled: <string> "on", "off", "both"
    */
   const createTestCaseEntry = (failurePointName, onlyInCluster, stream, reportKilled) => {
-    if (!internal.isCluster() && onlyInCluster) {
-      return;
-    }
-
     let error = false;
     if (typeof failurePointName !== 'string') {
       console.error("Wrong definition of failurePointName, given: " + JSON.stringify(failurePointName));
@@ -122,9 +118,12 @@ function GenericQueryKillSuite() { // can be either default or stream
       error = true;
     }
     if (typeof stream !== 'string') {
+      console.error("Wrong type used for stream. Must be a string. Given: " + typeof stream);
+    } else if (typeof stream === 'string') {
       const acceptedValues = ['on', 'off', 'both'];
       if (!acceptedValues.find(entry => entry === stream)) {
         console.error("Wrong definition of stream, given: " + JSON.stringify(stream));
+        error = true;
       }
     }
     if (typeof reportKilled !== 'string') {
@@ -190,7 +189,7 @@ function GenericQueryKillSuite() { // can be either default or stream
 
   const addTestCase = (suite, testCase) => {
     const unexpectedFailures = [];
-    if (suite.stream === "off") {
+    if (testCase.stream === "off") {
       // unexpected errors in default (non-stream)
       unexpectedFailures.push('Query::directKillAfterDBServerFinishRequests');
 
@@ -211,7 +210,10 @@ function GenericQueryKillSuite() { // can be either default or stream
       //return;
     }
 
-    suite[createTestName(testCase.failurePointName, testCase.stream)] = function (failurePointName, stream, reportKilled) {
+    suite[createTestName(testCase.failurePointName, testCase.stream)] = function (failurePointName, stream, reportKilled, onlyInCluster) {
+      if (!internal.isCluster() && onlyInCluster) {
+        return;
+      }
       console.warn("Failure Point: " + failurePointName);
       console.warn("Stream type: " + stream);
 
@@ -238,9 +240,9 @@ function GenericQueryKillSuite() { // can be either default or stream
         console.error("Failed to release the failure point: " + failurePointName)
         console.error(e);
       }
-    }.bind(this, testCase.failurePointName, testCase.stream, testCase.reportKilled)
+    }.bind(this, testCase.failurePointName, testCase.stream, testCase.reportKilled, testCase.onlyInCluster)
   };
-
+  
   for (const testCase of testCases) {
     addTestCase(testSuite, testCase);
   }
