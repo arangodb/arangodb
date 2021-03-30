@@ -95,7 +95,7 @@ auto detail::generate_backtrace_string() noexcept -> std::vector<std::string> tr
 
     std::stringstream line;
     line << "[+0x" << std::setfill('0') << std::setw (16) << std::hex << (pc - base) << "] ";
-    auto res = unw_get_proc_name(&cursor, mangled, kMax, &offset);
+    /*auto res = unw_get_proc_name(&cursor, mangled, kMax, &offset);
     if (res == 0 || res == -UNW_ENOMEM) {
       int ok;
       size_t len = kMax;
@@ -107,7 +107,7 @@ auto detail::generate_backtrace_string() noexcept -> std::vector<std::string> tr
       line << "<no information available>";
     } else {
       line << "<symbol lookup failed: "<< -res << ">";
-    }
+    }*/
     bt.emplace_back(line.str());
   }
 

@@ -36,13 +36,6 @@ future<T, Tag>& future<T, Tag>::operator=(future&& o) noexcept(
 }
 
 template <typename T, typename Tag>
-future<T, Tag>::~future() {
-  if (_base) {
-    std::move(*this).abandon();
-  }
-}
-
-template <typename T, typename Tag>
 template <typename... Args, std::enable_if_t<std::is_constructible_v<T, Args...>, int>>
 future<T, Tag>::future(std::in_place_t, Args&&... args) noexcept(
     std::conjunction_v<std::is_nothrow_constructible<T, Args...>, std::bool_constant<is_value_inlined>>) {
@@ -66,10 +59,16 @@ future<T, Tag>::future(std::in_place_t, Args&&... args) noexcept(
 }
 
 template <typename T, typename Tag>
+future<T, Tag>::~future() {
+  if (_base) {
+    std::move(*this).abandon();
+  }
+}
+
+template <typename T, typename Tag>
 template <typename F, std::enable_if_t<std::is_nothrow_invocable_v<F, T&&>, int>, typename R>
 auto future<T, Tag>::and_then(F&& f) && noexcept {
-  static_assert(!std::is_same_v<R, void>,
-                "the lambda object must return a value");
+  static_assert(!std::is_void_v<R>, "the lambda object must return a value");
   detail::tag_trait_helper<Tag>::debug_assert_true(
       !empty(), "and_then called on empty future");
   if constexpr (detail::tag_trait_helper<Tag>::is_disable_temporaries()) {

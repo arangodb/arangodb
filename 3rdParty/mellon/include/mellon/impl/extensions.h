@@ -7,7 +7,7 @@ namespace mellon {
 template <typename T, template <typename> typename F, typename Tag>
 struct FUTURES_EMPTY_BASE future_type_based_extensions
     : detail::future_prototype<T, F, Tag> {};
-    
+
 template <typename T, template <typename> typename Fut, typename Tag>
 struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut, Tag>
     : detail::future_prototype<expect::expected<T>, Fut, Tag> {
@@ -23,6 +23,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
             typename R = std::invoke_result_t<F, U&&>>
   auto then(F&& f) && noexcept {
     // TODO what if `F` returns an `expected<U>`. Do we want to flatten automagically?
+    // mpoeter - I think it would make sense!
     static_assert(std::is_nothrow_constructible_v<F, F>,
                   "the lambda object must be nothrow constructible from "
                   "itself. You should pass it as rvalue reference and it "
@@ -44,22 +45,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
         -> expect::expected<R> { return std::move(e).map_value(f); });
   }
 
-  /**
-   * If the `expected<T>` contains a value, the callback is called with the value.
-   * Otherwise it is not executed. Any thrown exception is captured by the `expected<T>`.
-   * @tparam F
-   * @tparam R
-   * @param f
-   * @return
-   */
-  /*template <typename F, std::enable_if_t<std::is_invocable_v<F, expect::expected<T>&&>, int> = 0,
-            typename R = std::invoke_result_t<F, expect::expected<T>&&>,
-            typename U = T, std::enable_if_t<!expect::is_expected_v<U>, int> = 0>
-  auto then(F&& f) && noexcept {
-    // TODO what if `F` returns an `expected<U>`. Do we want to flatten automagically?
-    return std::move(self()).and_capture(std::forward<F>(f));
-  }*/
-
+  // mpoeter - documentation missing
   template <typename G, typename U = T, std::enable_if_t<std::is_invocable_v<G, U&&>, int> = 0,
             typename ReturnType = std::invoke_result_t<G, U&&>,
             std::enable_if_t<is_future_like_v<ReturnType>, int> = 0,
@@ -85,6 +71,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
     return std::move(f);
   }
 
+  // mpoeter - documentation missing
   template <typename G, typename U = T, std::enable_if_t<std::is_invocable_v<G, U&&>, int> = 0,
             typename ReturnType = std::invoke_result_t<G, U&&>,
             std::enable_if_t<is_future_like_v<ReturnType>, int> = 0,

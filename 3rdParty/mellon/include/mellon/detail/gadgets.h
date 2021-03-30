@@ -1,13 +1,7 @@
 #ifndef FUTURES_GADGETS_H
 #define FUTURES_GADGETS_H
 
-#ifndef FUTURES_EMPTY_BASE
-#ifdef _MSC_VER
-#define FUTURES_EMPTY_BASE __declspec(empty_bases)
-#else
-#define FUTURES_EMPTY_BASE
-#endif
-#endif
+#include "../commons.h"
 
 namespace mellon::detail {
 template <typename T>

@@ -1,5 +1,6 @@
 #ifndef FUTURES_CONTINUATION_H
 #define FUTURES_CONTINUATION_H
+#include <mutex>
 
 #ifdef FUTURES_COUNT_ALLOC
 #include <cmath>

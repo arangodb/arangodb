@@ -14,6 +14,7 @@ add_executable(mellon-test
   call-generic-test.cpp
   await-test.cpp
   collector-test.cpp
+  future-test.cpp
   fuzzer-test.cpp
 )
 target_compile_options(mellon-test PRIVATE "-fsanitize=address")

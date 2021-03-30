@@ -19,7 +19,7 @@ inline constexpr auto is_expected_v = is_expected<T>::value;
 
 /**
  * Invokes `f` with `args...` and captures the return value in an expected. If
- * and exception is thrown is it also captured.
+ * an exception is thrown it is also captured.
  * @tparam F Callable
  * @tparam Args Argument types
  * @tparam R Return value type (deduced)
@@ -32,8 +32,8 @@ template <typename F, typename... Args, std::enable_if_t<std::is_invocable_v<F, 
 auto captured_invoke(F&& f, Args&&... args) noexcept -> expected<R>;
 
 /**
- * Invokes `f` with `args...` and captures the returns the result. If
- * and exception is thrown is it also captured and returned instead.
+ * Invokes `f` with `args...` and captures the returned result. If
+ * an exception is thrown it is also captured and returned instead.
  * @tparam F Callable
  * @tparam Args Argument types
  * @tparam R Return value of `f`.
