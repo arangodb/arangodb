@@ -66,14 +66,18 @@
 
 /// @brief logs a message for a topic given that a condition is true
 #if ARANGODB_ENABLE_MAINTAINER_MODE
-// in maintainer mode, we *intentionally and always build all log messages*.
+// in maintainer mode, we *intentionally and always build all log messages* if
+// the condition is true.
 // we do this to find any errors when building log messages in low log levels
 // (e.g. trace) that would otherwise go undetected. we store a boolean in the
-// LoggerStream then to indicate whether we want to show the log message or
+// LoggerStream then to indicate whether we want to emit the log message or
 // not.
 #define ARANGO_INTERNAL_LOG_STREAM(level, topic, cond)                                                        \
-  ::arangodb::LoggerStream((::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic)) && (cond))) \
-  << (::arangodb::LogLevel::level)
+  !(cond)                                                                                                     \
+    ? (void)nullptr                                                                                           \
+    : ::arangodb::LogVoidify() &                                                                              \
+        (::arangodb::LoggerStream(::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic)))      \
+         << (::arangodb::LogLevel::level))
 
 #else
 // outside of maintainer mode, we check if the log message should be emitted,
@@ -82,7 +86,9 @@
 #define ARANGO_INTERNAL_LOG_STREAM(level, topic, cond)                                                        \
   !(::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic)) && (cond))                          \
     ? (void)nullptr                                                                                           \
-    : ::arangodb::LogVoidify() & (::arangodb::LoggerStream() << (::arangodb::LogLevel::level))                                                 
+    : ::arangodb::LogVoidify() &                                                                              \
+        (::arangodb::LoggerStream()                                                                           \
+         << (::arangodb::LogLevel::level))
 
 #endif
 
