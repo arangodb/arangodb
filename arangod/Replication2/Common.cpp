@@ -27,19 +27,12 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-auto LogIndex::operator==(LogIndex other) const -> bool {
-  return this->value == other.value;
-}
 auto LogIndex::operator<=(LogIndex other) const -> bool {
   return value <= other.value;
-}
-auto LogIndex::operator<(LogIndex other) const -> bool {
-  return value < other.value;
 }
 auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {
   return LogIndex(this->value + delta);
 }
-
 LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
     : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
 
@@ -49,17 +42,8 @@ LogIndex LogEntry::logIndex() const { return _logIndex; }
 
 LogPayload const& LogEntry::logPayload() const { return _payload; }
 
-auto LogTerm::operator==(LogTerm other) const -> bool {
-    return value == other.value;
-}
-auto LogTerm::operator!=(LogTerm other) const -> bool {
-    return value != other.value;
-}
 auto LogTerm::operator<=(LogTerm other) const -> bool {
   return value <= other.value;
-}
-auto LogTerm::operator<(LogTerm other) const -> bool {
-  return value < other.value;
 }
 auto LogPayload::operator==(LogPayload const& other) const -> bool {
   return dummy == other.dummy;

@@ -24,33 +24,54 @@
 #define ARANGODB3_REPLICATION_COMMON_H
 #include <cstddef>
 #include <cstdint>
-#include <string>
 #include <optional>
+#include <string>
 
 #include <Basics/Identifier.h>
 
 namespace arangodb::replication2 {
 
-struct LogIndex {
+template <typename T, typename S = T>
+struct implement_compare {
+  [[nodiscard]] bool operator==(S const& other) const {
+    return self() <= other && other <= self();
+  }
+  [[nodiscard]] bool operator!=(S const& other) const {
+    return !(self() == other);
+  }
+  [[nodiscard]] bool operator<(S const& other) const {
+    return self() <= other && self() != other;
+  }
+  [[nodiscard]] bool operator>=(S const& other) const {
+    return !(self() < other);
+  }
+  [[nodiscard]] bool operator>(S const& other) const {
+    return !(self() <= other);
+  }
+
+ private:
+  [[nodiscard]] auto self() const -> T const& {
+    return static_cast<T const&>(*this);
+  }
+};
+
+struct LogIndex : implement_compare<LogIndex> {
   LogIndex() : value{0} {}
   explicit LogIndex(std::uint64_t value) : value{value} {}
   std::uint64_t value;
 
-  [[nodiscard]] auto operator==(LogIndex) const -> bool;
   [[nodiscard]] auto operator<=(LogIndex) const -> bool;
-  [[nodiscard]] auto operator<(LogIndex) const -> bool;
 
   auto operator+(std::uint64_t delta) const -> LogIndex;
 };
-struct LogTerm {
+
+struct LogTerm : implement_compare<LogTerm> {
   LogTerm() : value{0} {}
   explicit LogTerm(std::uint64_t value) : value{value} {}
   std::uint64_t value;
-  [[nodiscard]] auto operator==(LogTerm) const -> bool;
-  [[nodiscard]] auto operator!=(LogTerm) const -> bool;
   [[nodiscard]] auto operator<=(LogTerm) const -> bool;
-  [[nodiscard]] auto operator<(LogTerm) const -> bool;
 };
+
 struct LogPayload {
   explicit LogPayload(std::string_view dummy) : dummy(dummy) {}
 

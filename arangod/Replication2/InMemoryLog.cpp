@@ -34,10 +34,7 @@ template <typename I>
 struct ContainerIterator : LogIterator {
   static_assert(std::is_same_v<typename I::value_type, LogEntry>);
 
-  ContainerIterator(I begin, I end)
-      :
-        _current(begin),
-        _end(end) {}
+  ContainerIterator(I begin, I end) : _current(begin), _end(end) {}
 
   auto next() -> std::optional<LogEntry> override {
     if (_current == _end) {
@@ -91,9 +88,11 @@ auto InMemoryLog::appendEntries(AppendEntriesRequest req)
     return AppendEntriesResult{false, _currentTerm};
   }
 
-  auto entry = getEntryByIndex(req.prevLogIndex);
-  if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
-    return AppendEntriesResult{false, _currentTerm};
+  if (req.prevLogIndex > LogIndex{0}) {
+    auto entry = getEntryByIndex(req.prevLogIndex);
+    if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
+      return AppendEntriesResult{false, _currentTerm};
+    }
   }
 
   auto res = _persistedLog->removeBack(req.prevLogIndex + 1);
@@ -101,10 +100,8 @@ auto InMemoryLog::appendEntries(AppendEntriesRequest req)
     abort();
   }
 
-  auto iter =
-      std::make_shared <
-      ContainerIterator<std::vector<LogEntry>::const_iterator>>(req.entries.cbegin(),
-                                                               req.entries.cend());
+  auto iter = std::make_shared<ContainerIterator<std::vector<LogEntry>::const_iterator>>(
+      req.entries.cbegin(), req.entries.cend());
   res = _persistedLog->insert(iter);
   if (!res.ok()) {
     abort();
@@ -136,11 +133,15 @@ auto InMemoryLog::createSnapshot()
 }
 
 auto InMemoryLog::waitFor(LogIndex index) -> futures::Future<arangodb::futures::Unit> {
-  return _waitForQueue.emplace(index, WaitForPromise{})->second.getFuture();
+  auto it = _waitForQueue.emplace(index, WaitForPromise{});
+  auto& promise = it->second;
+  auto&& future = promise.getFuture();
+  TRI_ASSERT(future.valid());
+  return std::move(future);
 }
 
 auto InMemoryLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
-  TRI_ASSERT( _currentTerm < term);
+  TRI_ASSERT(_currentTerm < term);
   _currentTerm = term;
   _role = FollowerConfig{id};
 }
@@ -148,12 +149,12 @@ auto InMemoryLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
 auto InMemoryLog::becomeLeader(LogTerm term,
                                std::vector<std::shared_ptr<LogFollower>> const& follower,
                                std::size_t writeConcern) -> void {
-  TRI_ASSERT( _currentTerm < term);
+  TRI_ASSERT(_currentTerm < term);
   std::vector<Follower> follower_vec;
   follower_vec.reserve(follower.size());
   std::transform(follower.cbegin(), follower.cend(), std::back_inserter(follower_vec),
                  [&](std::shared_ptr<LogFollower> const& impl) -> Follower {
-                  return Follower{impl, LogIndex{0}};
+                   return Follower{impl, LogIndex{0}};
                  });
 
   _role = LeaderConfig{std::move(follower_vec), writeConcern};
@@ -218,7 +219,7 @@ auto InMemoryState::createSnapshot() -> std::shared_ptr<InMemoryState const> {
 }
 
 auto InMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry> {
-  if (_log.size() <= idx.value) {
+  if (_log.size() < idx.value || idx.value == 0) {
     return std::nullopt;
   }
 

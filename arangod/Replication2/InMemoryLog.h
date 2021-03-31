@@ -48,6 +48,7 @@ struct AppendEntriesResult {
 struct AppendEntriesRequest {
   LogTerm leaderTerm;
   ParticipantId leaderId;
+  // TODO assert index == 0 <=> term == 0
   LogTerm prevLogTerm;
   LogIndex prevLogIndex;
   LogIndex leaderCommit;
@@ -64,7 +65,6 @@ class InMemoryState {
 
   auto createSnapshot() -> std::shared_ptr<InMemoryState const>;
 
-  // TODO We probably want an immer::map to be able to get snapshots
   state_container _state;
 
   explicit InMemoryState(state_container state);
@@ -114,13 +114,12 @@ class InMemoryLog : public LogFollower {
 
   [[nodiscard]] auto participantId() const noexcept -> ParticipantId override;
 
+  [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
+
  protected:
   LogIndex nextIndex();
   void assertLeader() const;
   void assertFollower() const;
-
-  [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
-
  private:
   struct Follower {
     std::shared_ptr<LogFollower> _impl;
