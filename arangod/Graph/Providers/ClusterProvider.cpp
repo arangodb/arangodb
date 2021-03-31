@@ -125,7 +125,7 @@ auto ClusterProvider::startVertex(VertexType vertex) -> Step {
 
 void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,
                                                std::vector<Step*>& result) {
-  auto const* engines = _opts.getCache()->engines();
+  auto const* engines = _opts.engines();
   // slow path, sharding not deducable from _id
   transaction::BuilderLeaser leased(trx());
   leased->openObject();
@@ -229,8 +229,44 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   }
 }
 
+void ClusterProvider::destroyEngines() {
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
+
+  auto* pool = trx()->vocbase().server().getFeature<NetworkFeature>().pool();
+  // We have to clean up the engines in Coordinator Case.
+  if (pool == nullptr) {
+    return;
+  }
+  // nullptr only happens on controlled server shutdown
+
+  network::RequestOptions options;
+  options.database = trx()->vocbase().name();
+  options.timeout = network::Timeout(30.0);
+  options.skipScheduler = true;  // hack to speed up future.get()
+
+  auto const* engines = _opts.engines();
+  for (auto const& engine : *engines) {
+    _stats.addHttpRequests(1);
+    auto res = network::sendRequest(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
+                                    "/_internal/traverser/" +
+                                    arangodb::basics::StringUtils::itoa(engine.second),
+                                    VPackBuffer<uint8_t>(), options)
+        .get();
+
+    if (res.error != fuerte::Error::NoError) {
+      // Note If there was an error on server side we do not have
+      // CL_COMM_SENT
+      LOG_TOPIC("d31a5", ERR, arangodb::Logger::GRAPHS)
+      << "Could not destroy all traversal engines: "
+      << TRI_errno_string(network::fuerteToArangoErrorCode(res));
+    }
+  }
+}
+
 Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
-  auto const* engines = _opts.getCache()->engines();
+  auto const* engines = _opts.engines();
   // TODO Assert that the vertex is not in _vertexConnections after no-loose-end handling todo is done.
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
@@ -329,7 +365,7 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
   if (looseEnds.size() > 0) {
     result.reserve(looseEnds.size());
     fetchVerticesFromEngines(looseEnds, result);
-    _stats.addHttpRequests(_opts.getCache()->engines()->size() * looseEnds.size());
+    _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
 
     for (auto const& step : result) {
       if (_vertexConnectedEdges.find(step->getVertex().getID()) ==
@@ -337,7 +373,7 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
         auto res = fetchEdgesFromEngines(step->getVertex().getID());
         // TODO: check stats (also take a look of vertex stats)
         // add http stats
-        _stats.addHttpRequests(_opts.getCache()->engines()->size());
+        _stats.addHttpRequests(_opts.engines()->size());
 
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);

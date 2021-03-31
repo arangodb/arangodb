@@ -1699,6 +1699,10 @@ std::string encodeBase64(std::string const& str) {
   return encodeBase64(str.data(), str.size());
 }
 
+std::string encodeBase64(std::string_view str) {
+  return encodeBase64(str.data(), str.size());
+}
+
 std::string decodeBase64(std::string const& source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];

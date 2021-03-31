@@ -1,0 +1,15 @@
+name: arangodb_process_statistics_number_of_threads
+introducedIn: "3.6.1"
+help: |
+  Number of threads
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of threads in the arangod process.

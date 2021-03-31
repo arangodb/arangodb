@@ -1,0 +1,18 @@
+name: rocksdb_cache_hit_rate_recent
+introducedIn: "3.6.1"
+help: |
+  Recent hit rate of the ArangoDB cache in front of RocksDB
+unit: ratio
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric reflects the recent hit rate of the ArangoDB in-memory
+  cache which is sitting in front of RocksDB. For example, the edge
+  cache is a part of this. The value will be a ratio between 0 and 1.
+  If the hit rate is too low, you might have to little RAM available
+  for the in-memory caches.

@@ -50,6 +50,9 @@ class Error final {
 
   template <typename S>
   void appendErrorMessage(S&& msg) {
+    if (_errorMessage.empty()) {
+      _errorMessage += errorMessage();
+    }
     _errorMessage += std::forward<S>(msg);
   }
 

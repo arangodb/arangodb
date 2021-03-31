@@ -654,15 +654,15 @@ Result const& ManagedDirectory::File::close() {
 }
 
 
-TRI_read_return_t ManagedDirectory::File::offset() const {
+std::int64_t ManagedDirectory::File::offset() const {
   MUTEX_LOCKER(lock, _mutex);
 
-  TRI_read_return_t fileBytesRead = -1;
+  std::int64_t fileBytesRead = -1;
 
   if (isGzip()) {
     fileBytesRead = gzoffset(_gzFile);
   } else {
-    fileBytesRead = (TRI_read_return_t)TRI_LSEEK(_fd, 0L, SEEK_CUR);
+    fileBytesRead = TRI_LSEEK(_fd, 0L, SEEK_CUR);
   } // else
 
   return fileBytesRead;

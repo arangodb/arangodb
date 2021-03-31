@@ -25,6 +25,8 @@
 
 #include "shared.hpp"
 
+#include <vector>
+
 #if defined(_MSC_VER)
   // NOOP
 #elif defined (__GNUC__)
@@ -37,6 +39,8 @@
 #endif
 
 #include <fst/fst.h>
+#include <fst/connect.h>
+#include <fst/test-properties.h>
 
 #if defined(_MSC_VER)
   // NOOP
@@ -51,6 +55,9 @@
 namespace fst {
 namespace fsa {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class BooleanWeight
+////////////////////////////////////////////////////////////////////////////////
 class BooleanWeight {
  public:
   using ReverseWeight = BooleanWeight;
@@ -129,41 +136,66 @@ class BooleanWeight {
 
   PayloadType v_{Invalid};
   PayloadType p_{};
-};
+}; // BooleanWeight
 
-template<typename T>
+////////////////////////////////////////////////////////////////////////////////
+/// @struct RangeLabel
+////////////////////////////////////////////////////////////////////////////////
 struct RangeLabel {
-  using ValueType = T;
-
-  constexpr RangeLabel() noexcept = default;
-
-  constexpr RangeLabel(ValueType label) noexcept
-    : min(label), max(label) {
+  static constexpr RangeLabel fromRange(uint32_t min, uint32_t max) noexcept {
+    return RangeLabel{min, max};
   }
-  constexpr RangeLabel(ValueType min, ValueType max) noexcept
-    : min(min), max(max) {
+  static constexpr RangeLabel fromRange(uint32_t min) noexcept {
+    return fromRange(min, min);
   }
+  static constexpr RangeLabel fromLabel(int64_t label) noexcept {
+    return RangeLabel{label};
+  }
+
+  constexpr RangeLabel() noexcept
+    : ilabel{fst::kNoLabel} {
+  }
+
+  constexpr RangeLabel(uint32_t min, uint32_t max) noexcept
+    : max{max}, min{min} {
+  }
+
+  constexpr explicit RangeLabel(int64_t ilabel) noexcept
+    : ilabel{ilabel} {
+  }
+
+  constexpr operator int64_t() const noexcept {
+    return ilabel;
+  }
+
   friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
     strm << '[' << l.min << ".." << l.max << ']';
     return strm;
   }
 
-  ValueType min{kNoLabel};
-  ValueType max{kNoLabel};
+  union {
+    int64_t ilabel;
+#ifdef IRESEARCH_BIG_ENDIAN
+    struct {
+      uint32_t min;
+      uint32_t max;
+    };
+#else
+    struct {
+      uint32_t max;
+      uint32_t min;
+    };
+#endif
+  };
 }; // RangeLabel
 
-constexpr uint64_t EncodeRange(uint32_t min, uint32_t max) noexcept {
-  return uint64_t(min) << 32 | uint64_t(max);
-}
-
-constexpr uint64_t EncodeRange(uint32_t v) noexcept {
-  return EncodeRange(v, v);
-}
-
-template<typename W = BooleanWeight, typename L = int32_t>
-struct Transition {
+////////////////////////////////////////////////////////////////////////////////
+/// @struct Transition
+////////////////////////////////////////////////////////////////////////////////
+template<typename W = BooleanWeight>
+struct Transition : RangeLabel {
   using Weight = W;
-  using Label = L;
+  using Label = int64_t;
   using StateId = int32_t;
 
   static const std::string &Type() {
@@ -171,7 +203,6 @@ struct Transition {
     return type;
   }
 
-  Label ilabel{fst::kNoLabel};
   union {
     StateId nextstate{fst::kNoStateId};
     fstext::EmptyLabel<Label> olabel;
@@ -180,53 +211,194 @@ struct Transition {
 
   constexpr Transition() = default;
 
-  constexpr Transition(Label ilabel, StateId nextstate)
-    : ilabel(ilabel),
+  constexpr Transition(RangeLabel ilabel, StateId nextstate)
+    : RangeLabel{ilabel},
       nextstate(nextstate) {
+  }
+
+  constexpr Transition(Label ilabel, StateId nextstate)
+    : RangeLabel{ilabel},
+      nextstate{nextstate} {
   }
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label, Weight, StateId nextstate)
-    : ilabel(ilabel),
-      nextstate(nextstate) {
+    : RangeLabel{ilabel},
+      nextstate{nextstate} {
   }
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label, StateId nextstate)
-    : ilabel(ilabel),
-      nextstate(nextstate) {
+    : RangeLabel{ilabel},
+      nextstate{nextstate} {
   }
 }; // Transition
 
-static_assert(sizeof(Transition<>) == sizeof(Transition<>::Label) + sizeof(Transition<>::StateId));
-
-constexpr const int32_t kEps   = 0;        // match all + don't consume symbol
-constexpr const int32_t kRho   = irs::integer_traits<int32_t>::const_max; // match rest + consume symbol
-constexpr const int32_t kPhi   = kRho - 1; // match rest + don't consume symbol
-constexpr const int32_t kSigma = kPhi - 1; // match all + consume symbol
-
-constexpr const int32_t kMinLabel = 0;
-constexpr const int32_t kMaxLabel = kSigma - 1;
-
 } // fsa
-} // fst
 
-namespace std {
-
-template<typename T, typename W>
-inline void swap(::fst::fsa::RangeLabel<T>& lhs,
-                 typename ::fst::fstext::EmptyLabel<W>& /*rhs*/) noexcept {
-  lhs = ::fst::kNoLabel;
-}
-
-template<typename T>
-struct hash<::fst::fsa::RangeLabel<T>> {
-  size_t operator()(const ::fst::fsa::RangeLabel<T>& label) const noexcept {
-    return hash<uint64_t>()(uint64_t(label.min) | uint64_t(label.max) << 32);
+template<typename W>
+uint64 ComputeProperties(
+    const Fst<fsa::Transition<W>> &fst, uint64 mask,
+    uint64 *known, bool use_stored) {
+  using Arc = fsa::Transition<W>;
+  using Label = typename Arc::Label;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
+  const auto fst_props = fst.Properties(kFstProperties, false);  // FST-stored.
+  // Check stored FST properties first if allowed.
+  if (use_stored) {
+    const auto known_props = KnownProperties(fst_props);
+    // If FST contains required info, return it.
+    if ((known_props & mask) == mask) {
+      if (known) *known = known_props;
+      return fst_props;
+    }
   }
-};
+  // Computes (trinary) properties explicitly.
+  // Initialize with binary properties (already known).
+  uint64 comp_props = fst_props & kBinaryProperties;
+  // Computes these trinary properties with a DFS. We compute only those that
+  // need a DFS here, since we otherwise would like to avoid a DFS since its
+  // stack could grow large.
+  uint64 dfs_props = kCyclic | kAcyclic | kInitialCyclic | kInitialAcyclic |
+                     kAccessible | kNotAccessible | kCoAccessible |
+                     kNotCoAccessible;
+  std::vector<StateId> scc;
+  if (mask & (dfs_props | kWeightedCycles | kUnweightedCycles)) {
+    SccVisitor<Arc> scc_visitor(&scc, nullptr, nullptr, &comp_props);
+    DfsVisit(fst, &scc_visitor);
+  }
+  // Computes any remaining trinary properties via a state and arcs iterations
+  if (mask & ~(kBinaryProperties | dfs_props)) {
+    comp_props |= kAcceptor | kNoEpsilons | kNoIEpsilons | kNoOEpsilons |
+                  kILabelSorted | kOLabelSorted | kUnweighted | kTopSorted |
+                  kString;
+    if (mask & (kIDeterministic | kNonIDeterministic)) {
+      comp_props |= kIDeterministic;
+    }
+    if (mask & (kODeterministic | kNonODeterministic)) {
+      comp_props |= kODeterministic;
+    }
+    if (mask & (dfs_props | kWeightedCycles | kUnweightedCycles)) {
+      comp_props |= kUnweightedCycles;
+    }
 
+    struct RangeLabelComparer {
+      bool operator()(Label lhs, Label rhs) const noexcept {
+        if (lhs > rhs) {
+          std::swap(lhs, rhs);
+        }
+
+        fsa::RangeLabel lhsRange{lhs};
+        fsa::RangeLabel rhsRange{rhs};
+
+        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min;
+      }
+    };
+
+    using Labels = std::set<Label, RangeLabelComparer>;
+
+    std::unique_ptr<Labels> ilabels;
+    std::unique_ptr<Labels> olabels;
+    StateId nfinal = 0;
+    for (StateIterator<Fst<Arc>> siter(fst); !siter.Done(); siter.Next()) {
+      StateId s = siter.Value();
+      Arc prev_arc;
+      // Creates these only if we need to.
+      if (mask & (kIDeterministic | kNonIDeterministic)) {
+        ilabels.reset(new Labels());
+      }
+      if (mask & (kODeterministic | kNonODeterministic)) {
+        olabels.reset(new Labels());
+      }
+      bool first_arc = true;
+      for (ArcIterator<Fst<Arc>> aiter(fst, s); !aiter.Done(); aiter.Next()) {
+        const auto &arc = aiter.Value();
+        if (ilabels && ilabels->find(arc.ilabel) != ilabels->end()) {
+          comp_props |= kNonIDeterministic;
+          comp_props &= ~kIDeterministic;
+        }
+        if (olabels && olabels->find(arc.olabel) != olabels->end()) {
+          comp_props |= kNonODeterministic;
+          comp_props &= ~kODeterministic;
+        }
+        if (arc.ilabel != arc.olabel) {
+          comp_props |= kNotAcceptor;
+          comp_props &= ~kAcceptor;
+        }
+        if (arc.ilabel == 0 && arc.olabel == 0) {
+          comp_props |= kEpsilons;
+          comp_props &= ~kNoEpsilons;
+        }
+        if (arc.ilabel == 0) {
+          comp_props |= kIEpsilons;
+          comp_props &= ~kNoIEpsilons;
+        }
+        if (arc.olabel == 0) {
+          comp_props |= kOEpsilons;
+          comp_props &= ~kNoOEpsilons;
+        }
+        if (!first_arc) {
+          if (arc.ilabel < prev_arc.ilabel) {
+            comp_props |= kNotILabelSorted;
+            comp_props &= ~kILabelSorted;
+          }
+          if (arc.olabel < prev_arc.olabel) {
+            comp_props |= kNotOLabelSorted;
+            comp_props &= ~kOLabelSorted;
+          }
+        }
+        if (arc.weight != Weight::One() && arc.weight != Weight::Zero()) {
+          comp_props |= kWeighted;
+          comp_props &= ~kUnweighted;
+          if ((comp_props & kUnweightedCycles) &&
+              scc[s] == scc[arc.nextstate]) {
+            comp_props |= kWeightedCycles;
+            comp_props &= ~kUnweightedCycles;
+          }
+        }
+        if (arc.nextstate <= s) {
+          comp_props |= kNotTopSorted;
+          comp_props &= ~kTopSorted;
+        }
+        if (arc.nextstate != s + 1) {
+          comp_props |= kNotString;
+          comp_props &= ~kString;
+        }
+        prev_arc = arc;
+        first_arc = false;
+        if (ilabels) ilabels->insert(arc.ilabel);
+        if (olabels) olabels->insert(arc.olabel);
+      }
+
+      if (nfinal > 0) {  // Final state not last.
+        comp_props |= kNotString;
+        comp_props &= ~kString;
+      }
+      const auto final_weight = fst.Final(s);
+      if (final_weight != Weight::Zero()) {  // Final state.
+        if (final_weight != Weight::One()) {
+          comp_props |= kWeighted;
+          comp_props &= ~kUnweighted;
+        }
+        ++nfinal;
+      } else {  // Non-final state.
+        if (fst.NumArcs(s) != 1) {
+          comp_props |= kNotString;
+          comp_props &= ~kString;
+        }
+      }
+    }
+    if (fst.Start() != kNoStateId && fst.Start() != 0) {
+      comp_props |= kNotString;
+      comp_props &= ~kString;
+    }
+  }
+  if (known) *known = KnownProperties(comp_props);
+  return comp_props;
 }
+
+} // fst
 
 #if defined(_MSC_VER)
   // NOOP
@@ -243,14 +415,5 @@ struct hash<::fst::fsa::RangeLabel<T>> {
 #elif defined (__GNUC__)
   #pragma GCC diagnostic pop
 #endif
-
-namespace fst {
-namespace fsa {
-
-template<typename W, typename L>
-using AutomatonMatcher = SortedMatcher<Automaton<W, L>>;
-
-}
-}
 
 #endif // IRESEARCH_AUTOMATON_H

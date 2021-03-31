@@ -1,0 +1,15 @@
+name: rocksdb_background_errors
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "background-errors"
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "background-errors". It shows
+  the accumulated number of background errors.

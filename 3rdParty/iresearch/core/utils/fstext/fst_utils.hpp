@@ -49,6 +49,11 @@ struct EmptyLabel {
   }
 }; // EmptyLabel
 
+template<typename Label, typename T>
+constexpr bool operator==(EmptyLabel<Label>, const T&) noexcept { return true; }
+template<typename Label, typename T>
+constexpr bool operator!=(EmptyLabel<Label>, const T&) noexcept { return false; }
+
 template<typename Weight>
 struct EmptyWeight {
   using ReverseWeight = EmptyWeight;
@@ -117,12 +122,12 @@ struct ILabelArc {
 namespace std {
 
 template<typename L>
-inline void swap(typename ::fst::fstext::EmptyLabel<L>& /*lhs*/, int32_t& rhs) noexcept {
+inline void swap(typename ::fst::fstext::EmptyLabel<L>& /*lhs*/, L& rhs) noexcept {
   rhs = ::fst::kNoLabel;
 }
 
 template<typename L>
-inline void swap(int32_t& lhs, typename ::fst::fstext::EmptyLabel<L>& /*rhs*/) noexcept {
+inline void swap(L& lhs, typename ::fst::fstext::EmptyLabel<L>& /*rhs*/) noexcept {
   lhs = ::fst::kNoLabel;
 }
 

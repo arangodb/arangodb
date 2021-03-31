@@ -319,14 +319,18 @@ class Query : public QueryContext {
   bool const _contextOwnedByExterior;
   
   /// @brief set if we are inside a JS transaction
-  bool _embeddedQuery;
+  bool const _embeddedQuery;
+  
+  /// @brief whether or not the transaction context was registered
+  /// in a v8 context
+  bool _registeredInV8Context;
   
   /// @brief was this query killed
   bool _queryKilled;
   
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
-  
+
   /// @brief user that started the query
   std::string _user;
 };

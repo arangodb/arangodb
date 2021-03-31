@@ -167,7 +167,7 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
   auto* inc = irs::get<irs::increment>(*pipe);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(pipe->reset(data));
-  uint32_t pos{ irs::integer_traits<uint32_t>::const_max };
+  uint32_t pos{ std::numeric_limits<uint32_t>::max() };
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
     auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
@@ -647,10 +647,11 @@ TEST(pipeline_token_stream_test, normalize_json) {
 }
 
 TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
-  irs::bytes_ref test_payload{ { 0x1, 0x2, 0x3 }, 3 };
-  irs::bytes_ref test_payload2{ { 0x11, 0x22, 0x33 }, 3 };
-  pipeline_test_analyzer payload_offset(true, test_payload);
-  pipeline_test_analyzer only_payload(false, test_payload2);
+  // store as separate arrays to make asan happy
+  iresearch::byte_type p1[] = { 0x1, 0x2, 0x3 };
+  iresearch::byte_type p2[] = { 0x11, 0x22, 0x33 };
+  pipeline_test_analyzer payload_offset(true, p1);
+  pipeline_test_analyzer only_payload(false, p2);
   pipeline_test_analyzer only_offset(true, irs::bytes_ref::NIL);
   pipeline_test_analyzer no_payload_no_offset(false, irs::bytes_ref::NIL);
 
@@ -669,7 +670,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload, pay->value);
+    ASSERT_EQ(p1, pay->value.c_str());
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -686,7 +687,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload, pay->value);
+    ASSERT_EQ(p1, pay->value.c_str());
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -703,7 +704,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload2, pay->value);
+    ASSERT_EQ(p2, pay->value.c_str());
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -720,7 +721,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload, pay->value);
+    ASSERT_EQ(p1, pay->value.c_str());
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -737,7 +738,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload2, pay->value);
+    ASSERT_EQ(p2, pay->value.c_str());
   }
 }
 

@@ -90,6 +90,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
   ClusterInfo& clusterInfo();
+
+  /// @brief permissions required to access /_admin/cluster REST API endpoint:
+  /// - "jwt-all"    = JWT required to access all operations
+  /// - "jwt-write"  = JWT required to access post/put/delete operations
+  /// - "jwt-compat" = compatibility mode = same permissions as in 3.7
+  std::string const& apiJwtPolicy() const noexcept { return _apiJwtPolicy; }
   
   Counter& followersDroppedCounter() { return _followersDroppedCounter->get(); }
   Counter& followersRefusedCounter() { return _followersRefusedCounter->get(); }
@@ -149,6 +155,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myRole;
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
+  std::string _apiJwtPolicy;
   std::uint32_t _writeConcern = 1;             // write concern
   std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor
   std::uint32_t _systemReplicationFactor = 2;
@@ -173,6 +180,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
+  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
 
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;

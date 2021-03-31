@@ -1,13 +1,16 @@
 name: arangodb_document_read_time
+introducedIn: "3.8.0"
 help: |
-  Total time spent in document read operations.
+  Total time spent in document read-by-primary-key operations.
 unit: s
 type: histogram
-category: Statistics
+category: Transactions
 complexity: simple
 exposedBy:
   - dbserver
+  - single
+  - agent
 description: |
-  Accumulated total time spent in document read operations. This metric
+  Total time spent in document read-by-primary-key operations. This metric
   is only present if the option `--server.export-read-write-metrics` is set
   to `true`.

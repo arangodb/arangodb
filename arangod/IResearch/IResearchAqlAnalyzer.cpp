@@ -142,12 +142,12 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
   return false;
 }
 
-/// @brief Dummmy transaction state which does nothing but provides valid
+/// @brief Dummy transaction state which does nothing but provides valid
 /// statuses to keep ASSERT happy
 class CalculationTransactionState final : public arangodb::TransactionState {
  public:
   explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
-      : TransactionState(vocbase, arangodb::TransactionId(0), _options) {
+      : TransactionState(vocbase, arangodb::TransactionId(0), arangodb::transaction::Options()) {
     updateStatus(arangodb::transaction::Status::RUNNING);  // always running to make ASSERTS happy
   }
 
@@ -177,9 +177,6 @@ class CalculationTransactionState final : public arangodb::TransactionState {
 
   /// @brief number of commits, including intermediate commits
   uint64_t numCommits() const override { return 0; }
-
- private:
-  arangodb::transaction::Options _options;
 };
 
 /// @brief Dummy transaction context which just gives dummy state
@@ -448,7 +445,7 @@ namespace iresearch {
 
 /*static*/ bool AqlAnalyzer::normalize_json(const irs::string_ref& args,
                                                     std::string& out) {
-  auto src = VPackParser::fromJson(args);
+  auto src = VPackParser::fromJson(args.c_str(), args.size());
   VPackBuilder builder;
   if (normalize_slice(src->slice(), builder)) {
     out = builder.toString();
@@ -464,7 +461,7 @@ namespace iresearch {
 
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(irs::string_ref const& args) {
-  auto builder = VPackParser::fromJson(args);
+  auto builder = VPackParser::fromJson(args.c_str(), args.size());
   return make_slice(builder->slice());
 }
 

@@ -1,0 +1,19 @@
+name: arangodb_client_connection_statistics_connection_time
+introducedIn: "3.8.0"
+help: |
+  Total connection time of a client
+unit: s
+type: histogram
+category: Statistics
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Histogram of the connection's total lifetime, i.e., the time between the
+  point when the connection was established until it was closed. Smaller
+  numbers indicate that there is not a lot of load and/or that connections
+  are not reused for multiple requests. Consider using keep-alive header
+  or HTTP/2 or VST.

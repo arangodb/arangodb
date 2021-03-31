@@ -192,6 +192,11 @@
     delete global.SYS_IS_FOXX_STORE_DISABLED;
   }
 
+  if (global.SYS_CLUSTER_API_JWT_POLICY) {
+    exports.clusterApiJwtPolicy = global.SYS_CLUSTER_API_JWT_POLICY;
+    delete global.SYS_CLUSTER_API_JWT_POLICY;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief autoload modules from database
   // //////////////////////////////////////////////////////////////////////////////

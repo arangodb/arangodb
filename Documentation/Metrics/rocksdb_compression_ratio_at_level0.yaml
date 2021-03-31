@@ -1,0 +1,18 @@
+name: rocksdb_compression_ratio_at_level0
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "rocksdb-compression-ratio-at-level0"
+unit: ratio
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the compression ratio of data at level 0 in RocksDB's
+  log structured merge tree. Here, compression
+  ratio is defined as uncompressed data size / compressed file size.
+  Returns "-1.0" if there are no open files at level 0.
+  

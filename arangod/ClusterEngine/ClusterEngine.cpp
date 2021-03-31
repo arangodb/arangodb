@@ -150,7 +150,7 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
       new ClusterCollection(collection, engineType(), info));
 }
 
-void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
+void ClusterEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
   Result res = getEngineStatsFromDBServers(server().getFeature<ClusterFeature>(), builder);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);

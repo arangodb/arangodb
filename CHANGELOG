@@ -1,12 +1,224 @@
 devel
 -----
 
+* Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
+  Now, any maintainer mode build will build all log messages automatically,
+  so we will have full coverage of log message construction during our
+  tests. In non-maintainer mode, log messages are still only built when
+  actually required. This simplifies the build and increases coverage.
+
+* Updated ArangoDB Starter to 0.15.0-preview-2.
+
+* Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
+
+* Updated arangosync to 2.0.1.
+
+* Introduce metrics for AQL query memory limit violations:
+  - `arangodb_aql_global_query_memory_limit_reached`: Total number of times the
+    global query memory limit was violated.
+  - `arangodb_aql_local_query_memory_limit_reached`: Total number of times a
+    local query memory limit was violated.
+
+* Set the default value for `--query.global-memory-limit` to around 90% of RAM,
+  so that a global memory limit is now effective by default.
+
+  The default global memory limit value is calculated by a formula depending on
+  the amount of available RAM and will result in the following values for 
+  common RAM sizes:
+  
+  RAM:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+  RAM:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+  RAM:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
+  RAM:    536870912    (512MiB)  Limit:    255013683    (243MiB), %mem: 47.5
+  RAM:    805306368    (768MiB)  Limit:    510027366    (486MiB), %mem: 63.3
+  RAM:   1073741824   (1024MiB)  Limit:    765041049    (729MiB), %mem: 71.2
+  RAM:   2147483648   (2048MiB)  Limit:   1785095782   (1702MiB), %mem: 83.1
+  RAM:   4294967296   (4096MiB)  Limit:   3825205248   (3648MiB), %mem: 89.0
+  RAM:   8589934592   (8192MiB)  Limit:   7752415969   (7393MiB), %mem: 90.2
+  RAM:  17179869184  (16384MiB)  Limit:  15504831938  (14786MiB), %mem: 90.2
+  RAM:  25769803776  (24576MiB)  Limit:  23257247908  (22179MiB), %mem: 90.2
+  RAM:  34359738368  (32768MiB)  Limit:  31009663877  (29573MiB), %mem: 90.2
+  RAM:  42949672960  (40960MiB)  Limit:  38762079846  (36966MiB), %mem: 90.2
+  RAM:  68719476736  (65536MiB)  Limit:  62019327755  (59146MiB), %mem: 90.2
+  RAM: 103079215104  (98304MiB)  Limit:  93028991631  (88719MiB), %mem: 90.2
+  RAM: 137438953472 (131072MiB)  Limit: 124038655509 (118292MiB), %mem: 90.2
+  RAM: 274877906944 (262144MiB)  Limit: 248077311017 (236584MiB), %mem: 90.2
+  RAM: 549755813888 (524288MiB)  Limit: 496154622034 (473169MiB), %mem: 90.2
+
+* The old metrics API contains the following gauges which should actually be
+  counters:
+    * arangodb_scheduler_jobs_dequeued
+    * arangodb_scheduler_jobs_submitted
+    * arangodb_scheduler_jobs_done
+  Therefore the new v2 metric api adds the following counters:
+    * arangodb_scheduler_jobs_dequeued_total
+    * arangodb_scheduler_jobs_submitted_total
+    * arangodb_scheduler_jobs_done_total
+  These counters are only visible in the new v2 metrics API and replace the old
+  metrics which are suppressed for v2.
+  
+* Fix connectionTime statistic. This statistic should provide the distribution
+  of the connection lifetimes, but in previous versions the tracking was broken
+  and no values were reported.
+
+* Add an option for locking down all endpoints in the `/_admin/cluster` REST
+  API for callers without a proper JWT set in the request. There is a new
+  startup option `--cluster.api-jwt-policy` that allows *additional* checks
+  for a valid JWT in requests to sub-routes of `/_admin/cluster`. The
+  possible values for the startup option are:
+
+  - "jwt-all": requires a valid JWT for all accesses to `/_admin/cluster` and
+    its sub-routes. If this configuration is used, the "Cluster" and "Nodes"
+    sections of the web interface will be disabled, as they are relying on the
+    ability to read data from several cluster APIs.
+  - "jwt-write": requires a valid JWT for write accesses (all HTTP methods
+    except HTTP GET) to `/_admin/cluster`. This setting can be used to allow
+    privileged users to read data from the cluster APIs, but not to do any
+    modifications. All existing permissions checks for the cluster API routes
+    are still in effect with this setting, meaning that read operations without
+    a valid JWT may still require dedicated other permissions (as in 3.7).
+  - "jwt-compat": no *additional* access checks are in place for the cluster
+    APIs. However, all existing permissions checks for the cluster API routes
+    are still in effect with this setting, meaning that all operations may
+    still require dedicated other permissions (as in 3.7).
+
+  The default value for the option is `jwt-compat`, which means this option 
+  will not cause any extra JWT checks compared to 3.7.
+
+* Increase default idle timeout in streaming transactions from 10 seconds to 
+  60 seconds, and make the timeout configurable via a startup parameter
+  `--transaction.streaming-idle-timeout`.
+
+* Use RebootTracker to abort cluster transactions on DB servers should the
+  originating coordinator die or be rebooted. The previous implementation left
+  the coordinator's transactions open on DB servers until they timed out there.
+  Now, the coordinator's unavailability or reboot will be detected as early as
+  it is reported by the agency, and all open transactions from that coordinator
+  will be auto-aborted on DB servers.
+
+* Fix shortName labels in metrics, in particular for agents.
+
+* Fix a race in LogAppender::haveAppenders.
+  `haveAppenders` is called as part of audit logging. It accesses internal maps
+  but previously did not hold a lock while doing so.
+
+* Fix implicit capture of views in a context of JS transaction.
+
+* Fix a crash caused by returning a result produced by ANALYZER function.
+
+* Update the Web UI's list of built-in AQL functions for proper syntax
+  highlighting in the query editor.
+
+* Bug-fix in the case of very rare network issues there was a chance that
+  an AQL query could get stuck during a cleanup and after a commit.
+	This would cause the client to receive a timeout, and the Coordinator
+	blocking a Scheduler thread. This situation is sorted out and the thread
+	will not be blocked anymore. We also added logs in case the query
+	could not successfully be cleaned up, which would leave locks on shards
+	behind.
+
+* Switched to GCC 10 as the default compiler and use Sandy Bridge as the
+  default required architecture (Linux, macOS binaries).
+
+* Fix an assertion failure that occurred when restoring view definitions from
+  a cluster into a single server.
+
+* Added new ArangoSearch analyzer type "stopwords".
+
+* Fix error message in case of index unique constraint violations. They were
+  lacking the actual error message (i.e. "unique constraint violated") and
+  only showed the index details. The issue was introduced only in devel in Feb.
+
+* Removed obsolete metrics in new v2 metric API. Those metrics' values were
+  identical to the sum value of histograms.
+
+* Allow process-specific logfile names.
+
+  This change allows replacing '$PID' with the current process id in the 
+  `--log.output` and `--audit.output` startup parameters.
+  This way it is easier to write process-specific logfiles.
+
+* Backport a bugfix from upstream RocksDB for opening encrypted files with
+  small sizes. Without the bugfix, the server may run into assertion failures
+  during recovery.
+
+* Fix duplicate leaving of V8 contexts when returning streaming cursors.
+  The `exitContext` call done on query shutdown could previously try to exit
+  the V8 context multiple times, which would cause undefined behavior. Now
+  we are tracking if we already left the context to prevent duplicate invocation.
+
+* In a cluster, do not create the collections `_statistics`, `_statistics15` and 
+  `statisticsRaw` on DB servers. These collections should only be created by the
+  coordinator, and should translate into 2 shards each on DB servers. But there
+  shouldn't be shards named `_statistics*` on DB servers.
+
+* Fixed two bogus messages about hotbackup restore:
+  - Coordinators unconditionally logged the message "Got a hotbackup restore
+    event, getting new cluster-wide unique IDs..." on shutdown. This was not
+    necessarily related to a hotbackup restore.
+  - DB servers unconditionally logged the message "Strange, we could not 
+    unregister the hotbackup restore callback." on shutdown, although this was
+    meaningless.
+
+* Rename "save" return attribute to "dst" in AQL functions `DATE_UTCTOLOCAL` and
+  `DATE_LOCALTOUTC`.
+
+* Fix potentially undefined behavior when creating a CalculationTransactionContext
+  for an arangosearch analyzer. An uninitialized struct member was passed as an
+  argument to its base class. This potentially had no observable effects, but
+  should be fixed.
+
+* Retry a cluster internal network request if the connection comes from the
+  pool and turns out to be stale (connection immediately closed). This fixes
+  some spurious errors after a hotbackup restore.
+
+* Fix progress reporting for arangoimport with large files on Windows.
+  Previously, progress was only reported for the first 2GB of data due to an
+  int overflow.
+
+* Log the actual signal instead of "control-c" and also include the process id
+  of the process that sent the signal.
+
+* Fixed Github issue #13665: Improve index selection when there are multiple
+  candidate indexes.
+
+* When dropping a collection or an index with a larger amount of documents, the
+  key range for the collection/index in RocksDB gets compacted. Previously, the
+  compaction was running in foreground and thus would block the deletion operations.
+  Now, the compaction is running in background, so that the deletion operations 
+  can return earlier. 
+  The maximum number of compaction jobs that are executed in background can be
+  configured using the new startup parameter `--rocksdb.max-parallel-compactions`, 
+  which defaults to 2.
+
+* Put Sync/LatestID into hotbackup and restore it on hotbackup restore
+  if it is in the backup. This helps with unique key generation after
+  a hotbackup is restored to a young cluster.
+
+* Fixed a bug in the index count optimization that doubled counted documents
+  when using array expansions in the fields definition.
+  
+* Don't store selectivity estimate values for newly created system collections.
+
+  Not storing the estimates has a benefit especially for the `_statistics`
+  system collections, which are written to periodically even on otherwise
+  idle servers. In this particular case, the actual statistics data was way
+  smaller than the writes caused by the index estimate values, causing a
+  disproportional overhead just for maintaining the selectivity estimates.
+  The change now turns off the selectivity estimates for indexes in all newly 
+  created system collections, and for new user-defined indexes of type
+  "persistent", "hash" or "skiplist", there is now an attribute "estimates"
+  which can be set to `false` to disable the selectivity estimates for the index.
+  The attribute is optional. Not setting it will lead to the index being
+  created with selectivity estimates, so this is a downwards-compatible change
+  for user-defined indexes.
+
 * Added startup option `--query.global-memory-limit` to set a limit on the
   combined estimated memory usage of all AQL queries (in bytes). 
   If this option has a value of `0`, then no memory limit is in place. 
   This is also the default value and the same behavior as in previous versions
   of ArangoDB. 
-  Setting the option to a value greater zero will mean that the total memory
+  Setting the option to a value greater than zero will mean that the total memory
   usage of all AQL queries will be limited approximately to the configured value. 
   The limit is enforced by each server in a cluster independently, i.e. it can 
   be set separately for coordinators, DB servers etc. The memory usage of a 
@@ -42,12 +254,14 @@ devel
 * Added metric `arangodb_aql_global_memory_limit` to expose the memory limit 
   from startup option `--query.global-memory-limit`.
 
-
 * Allow setting path to the timezone information via the `TZ_DATA` environment
   variable, in the same fashion as the currently existing `ICU_DATA` environment
   variable. The `TZ_DATA` variable is useful in environments` that start arangod
   from some unusual locations, when it can't find its `tzdata` directory 
   automatically.
+
+* Fixed a bug in query cost estimation when a NoResults node occured in a spliced
+  subquery. This could lead to a server crash.
 
 * Fix slower-than-necessary arangoimport behavior:
   arangoimport has a built-in rate limiter, which can be useful for importing
@@ -82,7 +296,7 @@ devel
 * Added metrics documentation snippets and infrastructure for that.
 
 * Added a new cluster distribution view to the web UI. The view includes general
-  details about cluster-wide distrubution in general as well as more detailed 
+  details about cluster-wide distribution in general as well as more detailed 
   shard distribution specific information.
 
 * Follower primaries respond with
@@ -816,6 +1030,9 @@ devel
   (assuming the data fits in one batch).
 
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
+
+* Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
+  upgraded to 3.7.5 the DOCUMENT method in AQL will now return documents again.
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
 
