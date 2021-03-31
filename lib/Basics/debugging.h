@@ -30,6 +30,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <boost/stacktrace.hpp>
 
 #include "Basics/system-compiler.h"
 
@@ -142,7 +143,7 @@ struct is_container
                            !std::is_same_v<unsigned char*, typename std::decay<T>::type> &&
                            !std::is_same_v<unsigned char const*, typename std::decay<T>::type> &&
                            !std::is_same_v<T, std::string> && !std::is_same_v<T, std::string_view> &&
-                           !std::is_same_v<T, const std::string>,
+                           !std::is_same_v<T, const std::string> && !std::is_same_v<T, boost::stacktrace::stacktrace>,
                        std::true_type, std::false_type>::type {};
 
 template <typename T>
