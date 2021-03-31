@@ -510,14 +510,26 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
     _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
-            SerializationFormat::SHADOWROWS, nullptr),
-    _attrs((_options.substreamWillCountPositions()?
-              irs::get_mutable<irs::increment>(getSubStream(_options.returnType))
-              : &_aqlIncrement),
-           {},
-           (_options.substreamInUse()?
-              irs::get_mutable<irs::term_attribute>(getSubStream(_options.returnType))
-              : &_aqlTerm)) {
+            SerializationFormat::SHADOWROWS, nullptr) {
+  switch (_options.returnType) {
+    case AnalyzerValueType::Bool:
+      std::get<2>(_attrs).value =
+        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(&_boolVal),
+                       sizeof(_boolVal));
+      break;
+    case AnalyzerValueType::Number:
+      std::get<2>(_attrs).value =
+        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(&_doubleVal),
+                       sizeof(_doubleVal));
+    break;
+    case AnalyzerValueType::String:
+    case AnalyzerValueType::Undefined:
+      break; // string-like values are dynamically allocated
+    default:
+      // new return type added?
+      TRI_ASSERT(false);
+      break;
+  }
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value =
     _options.returnType == AnalyzerValueType::Undefined ?
@@ -529,33 +541,27 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
 
 bool AqlAnalyzer::next() {
   do {
-    if (_active_sub_stream && _active_sub_stream->next()) {
-      _aqlIncrement.value = _nextIncVal;
-      _nextIncVal = !_options.collapsePositions;
-      return true;
-    }
-    _active_sub_stream = nullptr;
     if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
         AqlValue const& value =
             _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
         bool valueSet{false};
         if (_options.returnType == AnalyzerValueType::Undefined) { // FIXME: use functors!
-          // old behaviour
+          // old behaviour - skip if it is not string/null
           if (value.isString() || (value.isNull(true) && _options.keepNull)) {
             if (value.isString()) {
-              _aqlTerm.value = arangodb::iresearch::getBytesRef(value.slice());
+              std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());
             } else {
-              _aqlTerm.value = irs::bytes_ref::EMPTY;
+              std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
             }
             valueSet = true;
           }
         } else  if (!value.isNull(true) || _options.keepNull) {
+          valueSet = true; // for explicit conversion value always will be generated
           switch(_options.returnType) {
             case AnalyzerValueType::String:
               if (value.isString()) {
-                _aqlTerm.value = arangodb::iresearch::getBytesRef(value.slice());
-                valueSet = true;
+                std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());
               }   else {
                 arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
                 VPackFunctionParameters params{arena};
@@ -563,13 +569,13 @@ bool AqlAnalyzer::next() {
                 aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 auto converted = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(converted.isString());
-                _aqlTerm.value = arangodb::iresearch::getBytesRef(converted.slice());
-                valueSet = true;
+                _stringVal = converted.slice().copyString();
+                std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(_stringVal);
               }
               break;
             case AnalyzerValueType::Number:
               if (value.isNumber()) {
-                _numeric_stream.reset(value.toDouble());
+                _doubleVal = value.toDouble();
               } else {
                 arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
                 VPackFunctionParameters params{arena};
@@ -577,16 +583,12 @@ bool AqlAnalyzer::next() {
                 aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 auto converted = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(converted.isNumber());
-                _numeric_stream.reset(converted.toDouble());
+                _doubleVal = converted.toDouble();
               }
-              if(_numeric_stream.next()) {
-                _active_sub_stream = &_numeric_stream;
-                valueSet = true;
-              }
-              break; // go for upper cycle to drain sub_stream
+              break;
             case AnalyzerValueType::Bool:
               if (value.isBoolean()) {
-                _boolean_stream.reset(value.toBoolean());
+                _boolVal = value.toBoolean();
               } else {
                 arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
                 VPackFunctionParameters params{arena};
@@ -594,23 +596,19 @@ bool AqlAnalyzer::next() {
                 aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 auto converted = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(converted.isBoolean());
-                _boolean_stream.reset(converted.toBoolean());
-              }
-              if(_boolean_stream.next()) {
-                _active_sub_stream = &_boolean_stream;
-                valueSet = true;
+                _boolVal = converted.toBoolean();
               }
               break;
           }
         }
         if (valueSet) {
-          _aqlIncrement.value = _nextIncVal;
+          std::get<0>(_attrs).value = _nextIncVal;
           _nextIncVal = !_options.collapsePositions;
           return true;
         }
       }
     }
-    if (!_active_sub_stream && _executionState == ExecutionState::HASMORE) {
+    if (_executionState == ExecutionState::HASMORE) {
       _executionState = ExecutionState::DONE;  // set to done to terminate in case of exception
       _resultRowIdx = 0;
       _queryResults = nullptr;
@@ -630,7 +628,7 @@ bool AqlAnalyzer::next() {
             << " AQL query: " << _options.queryString;
       }
     }
-  } while (_active_sub_stream || _executionState != ExecutionState::DONE || (_queryResults != nullptr &&
+  } while (_executionState != ExecutionState::DONE || (_queryResults != nullptr &&
                                                        _queryResults->numRows() > _resultRowIdx));
   return false;
 }

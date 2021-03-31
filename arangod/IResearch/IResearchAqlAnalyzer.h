@@ -108,22 +108,10 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
  private:
   using attributes = std::tuple<
-    irs::attribute_ptr<irs::increment>,
+    irs::increment,
     AnalyzerValueTypeAttribute,
-    irs::attribute_ptr<irs::term_attribute>>;
+    irs::term_attribute>;
 
-  irs::token_stream* getSubStream(AnalyzerValueType type) noexcept {
-    switch (type) {
-      case AnalyzerValueType::Bool:
-        return &_boolean_stream;
-      case AnalyzerValueType::Number:
-        return &_numeric_stream;
-      default:
-        return nullptr;
-    }
-  }
-
-  std::string _str;
   Options _options;
   std::unique_ptr<arangodb::aql::QueryContext> _query;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
@@ -133,18 +121,14 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   arangodb::aql::SharedAqlItemBlockPtr _queryResults;
   std::vector<arangodb::aql::AstNode*> _bindedNodes;
   arangodb::aql::ExecutionState _executionState{arangodb::aql::ExecutionState::DONE};
-  irs::term_attribute _aqlTerm;
-  irs::increment _aqlIncrement;
-
-  // sub-streams
-  irs::numeric_token_stream _numeric_stream;
-  irs::boolean_token_stream _boolean_stream;
-  irs::token_stream* _active_sub_stream{nullptr};
 
   attributes _attrs;
   size_t _resultRowIdx{ 0 };
   uint32_t _nextIncVal{0};
 
+  std::string _stringVal;
+  double _doubleVal;
+  bool _boolVal;
 }; // AqlAnalyzer
 } // namespace iresearch
 } // namespace arangodb

@@ -1279,9 +1279,6 @@ bool AnalyzerPool::init(
 
       std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance.get());
       _features = features;  // store only requested features
-      if(AnalyzerValueType::Number == _returnType) {
-        _features.add(irs::type<irs::granularity_prefix>::id());
-      }
       _revision = revision;
       return true;
     }
@@ -1467,9 +1464,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
   for (auto& feature : features) {
-    if (irs::type<irs::granularity_prefix>::id() == feature) {
-      // no extra validation required
-    } else if (irs::type<irs::frequency>::id() == feature) {
+    if (irs::type<irs::frequency>::id() == feature) {
       // no extra validation required
     } else if (irs::type<irs::norm>::id() == feature) {
       // no extra validation required
@@ -1547,9 +1542,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
   for (auto& feature : features) {
-    if (irs::type<irs::granularity_prefix>::id() == feature) {
-      // no extra validation required
-    } else if (irs::type<irs::frequency>::id() == feature) {
+    if (irs::type<irs::frequency>::id() == feature) {
       // no extra validation required
     } else if (irs::type<irs::norm>::id() == feature) {
       // no extra validation required

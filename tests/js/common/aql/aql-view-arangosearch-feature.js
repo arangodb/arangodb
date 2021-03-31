@@ -1777,6 +1777,91 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     
+    testCustomAqlAnalyzerNumericInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param)", returnType:"number"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" + 
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("1", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == 3 OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res3.length);
+        assertEqual("3", res3[0].field);
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
+                             "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerNumericArrayInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"1"});
+        col.save({field:"2"});
+        col.save({field:"3"});
+        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a", returnType:"number"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " + 
+                             "SEARCH d.field == 2 OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
+                             "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
     testInvalidTypeAnalyzer : function() {
       let analyzerName = "unknownUnderTest";
       try {
