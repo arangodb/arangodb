@@ -98,6 +98,7 @@ function replicationFuzz (options) {
         message = 'failed to start slave instance!';
       }
       slave['isSlaveInstance'] = true;
+      process.env['flatCommands'] = slave.endpoint;
       return {
         instanceInfo: slave,
         message: message,
@@ -121,7 +122,29 @@ function replicationFuzz (options) {
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
+      print(instanceInfo)
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
+        print(testCases)
+        while (true) {
+          print(customInstanceInfos.postStart.instanceInfo)
+          if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
+            throw("DEAD!");
+          }
+          if (customInstanceInfos.postStart.instanceInfo.arangods[0].exitStatus.status != "TERMINATED") {
+            throw("DEADD!");
+          }
+          require('internal').sleep(5);
+          customInstanceInfos.postStart.instanceInfo.arangods[0].pid = false;
+          pu.reStartInstance(options, customInstanceInfos.postStart.instanceInfo, {});
+          
+          print(customInstanceInfos.postStart.instanceInfo)
+          testCases.forEach(testCase => {
+            // process.env['flatCommands'] = .endpoint;
+            tu.runInArangosh(options, instanceInfo, testCase,
+                             {flatCommands: customInstanceInfos.postStart.instanceInfo.endpoint});
+          });
+        }
+        
         if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
           return {
             state: false,
