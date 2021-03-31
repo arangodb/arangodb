@@ -564,7 +564,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       Optimizer optimizer(1);
       // disable all rules which are not necessary
       optimizer.disableRules(plan.get(), [](OptimizerRule const& rule) -> bool {
-        return rule.canBeDisabled();
+        return rule.canBeDisabled() || rule.isClusterOnly();
       });
       optimizer.createPlans(std::move(plan), _query->queryOptions(), false);
 
