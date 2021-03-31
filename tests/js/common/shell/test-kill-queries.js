@@ -237,7 +237,7 @@ function GenericQueryKillSuite() { // can be either default or stream
         executeDefaultCursorQuery(reportKilled);
       } else if (stream === 'both') {
         executeStreamCursorQuery(reportKilled);
-        internal.debugClearFailAt(failurePointName); // Try to prevent other queries from running into break point TODO: optimize c++ debugKill method
+        internal.debugClearFailAt(failurePointName);
         internal.debugSetFailAt(failurePointName);
         executeDefaultCursorQuery(reportKilled);
       }
