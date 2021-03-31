@@ -226,7 +226,7 @@ function GenericQueryKillSuite() { // can be either default or stream
       console.warn("Stream type: " + stream);
 
       try {
-        //internal.debugSetFailAt(failurePointName);
+        internal.debugSetFailAt(failurePointName);
       } catch (e) {
         console.error("Failed to initialize the failure point.")
       }
@@ -237,13 +237,13 @@ function GenericQueryKillSuite() { // can be either default or stream
         executeDefaultCursorQuery(reportKilled);
       } else if (stream === 'both') {
         executeStreamCursorQuery(reportKilled);
-        //internal.debugClearFailAt(failurePointName); // Try to prevent other queries from running into break point TODO: optimize c++ debugKill method
-        //internal.debugSetFailAt(failurePointName);
+        internal.debugClearFailAt(failurePointName); // Try to prevent other queries from running into break point TODO: optimize c++ debugKill method
+        internal.debugSetFailAt(failurePointName);
         executeDefaultCursorQuery(reportKilled);
       }
 
       try {
-        //internal.debugClearFailAt(failurePointName);
+        internal.debugClearFailAt(failurePointName);
       } catch (e) {
         console.error("Failed to release the failure point: " + failurePointName)
         console.error(e);
