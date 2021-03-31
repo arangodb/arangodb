@@ -30,10 +30,12 @@
 #include "Aql/Ast.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlValue.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Containers/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
 #include "IResearchAnalyzerValueTypeAttribute.h"
 
@@ -114,6 +116,8 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
   Options _options;
   std::unique_ptr<arangodb::aql::QueryContext> _query;
+  arangodb::containers::SmallVector<
+    arangodb::aql::AqlValue>::allocator_type::arena_type _params_arena;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
   arangodb::aql::ExecutionEngine _engine;

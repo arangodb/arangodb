@@ -545,26 +545,22 @@ bool AqlAnalyzer::next() {
       while (_queryResults->numRows() > _resultRowIdx) {
         AqlValue const& value =
             _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
-        bool valueSet{false};
-        if (_options.returnType == AnalyzerValueType::Undefined) { // FIXME: use functors!
-          // old behaviour - skip if it is not string/null
-          if (value.isString() || (value.isNull(true) && _options.keepNull)) {
-            if (value.isString()) {
-              std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());
-            } else {
-              std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
-            }
-            valueSet = true;
-          }
-        } else  if (!value.isNull(true) || _options.keepNull) {
-          valueSet = true; // for explicit conversion value always will be generated
+        if (value.isString() ||
+            (_options.keepNull && value.isNull(true) ) ||
+            (_options.returnType != AnalyzerValueType::Undefined && !value.isNull(true))){
           switch(_options.returnType) {
+            case AnalyzerValueType::Undefined:
+              if (value.isString()) {
+                std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());
+              } else {
+                std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
+              }
+              break;
             case AnalyzerValueType::String:
               if (value.isString()) {
                 std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());
-              }   else {
-                arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
-                VPackFunctionParameters params{arena};
+              } else {
+                VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
                 aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 auto converted = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
@@ -577,8 +573,7 @@ bool AqlAnalyzer::next() {
               if (value.isNumber()) {
                 _doubleVal = value.toDouble();
               } else {
-                arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
-                VPackFunctionParameters params{arena};
+                VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
                 aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 auto converted = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
@@ -590,8 +585,7 @@ bool AqlAnalyzer::next() {
               if (value.isBoolean()) {
                 _boolVal = value.toBoolean();
               } else {
-                arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
-                VPackFunctionParameters params{arena};
+                VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
                 aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 auto converted = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
@@ -599,9 +593,13 @@ bool AqlAnalyzer::next() {
                 _boolVal = converted.toBoolean();
               }
               break;
+            default:
+              // new return type added?
+              TRI_ASSERT(false);
+              LOG_TOPIC("a9ba5", WARN, iresearch::TOPIC) << "Unexpected AqlAnalyzer return type " <<
+                static_cast<std::underlying_type_t<AnalyzerValueType>>(_options.returnType);
+              std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
           }
-        }
-        if (valueSet) {
           std::get<0>(_attrs).value = _nextIncVal;
           _nextIncVal = !_options.collapsePositions;
           return true;
