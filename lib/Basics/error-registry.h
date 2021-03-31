@@ -16,7 +16,7 @@ struct elsa<ErrorCode> {
 #include <frozen/unordered_map.h>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 341> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -637,28 +637,6 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessage
       "must not change the value of the smartJoinAttribute"},
     {TRI_ERROR_INVALID_DISJOINT_SMART_EDGE,  // 4010
       "non disjoint edge found"},
-    {TRI_ERROR_CLUSTER_REPAIRS_FAILED,  // 5000
-      "error during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY,  // 5001
-      "not enough (healthy) db servers"},
-    {TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,  // 5002
-      "replication factor violated during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS,  // 5003
-      "no dbservers during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS,  // 5004
-      "mismatching leaders during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS,  // 5005
-      "mismatching followers during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES,  // 5006
-      "inconsistent attributes during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS,  // 5007
-      "mismatching shards during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED,  // 5008
-      "move shard job failed during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED,  // 5009
-      "move shard job disappeared during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED,  // 5010
-      "agency transaction failed during cluster repairs"},
     {TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,  // 20001
       "malformed gossip message"},
     {TRI_ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,  // 20002
