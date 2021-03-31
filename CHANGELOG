@@ -1,6 +1,11 @@
 devel
 -----
 
+* Remove obsolete API endpoint /_admin/repair/distributeShardsLike`. This
+  API was intended to correct some bad state introduced before 3.2.12 or 3.3.4,
+  respectively. It had to be invoked manually by callers and there was never
+  any driver support for it.
+
 * Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
   Now, any maintainer mode build will build all log messages automatically,
   so we will have full coverage of log message construction during our
