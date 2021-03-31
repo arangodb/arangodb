@@ -1,6 +1,8 @@
 devel
 -----
 
+* Web UI: Highlight binary and hexadecimal integer literals in AQL queries
+
 * Remove now-unused SubqueryExecutor. This is an internal change only and
   should not have any effect on queries, as from 3.8 onwards only spliced
   subqueries should be used in query execution plans and during query
