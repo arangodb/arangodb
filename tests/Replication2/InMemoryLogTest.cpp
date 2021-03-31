@@ -259,26 +259,140 @@ TEST(InMemoryLog, replicationTest) {
   auto followerLog = std::make_shared<DelayedFollowerLog>(followerId, followerState,
                                                           followerPersistentLog);
 
-  followerLog->becomeFollower(LogTerm{1}, leaderId);
-  leaderLog->becomeLeader(LogTerm{1}, {followerLog}, 2);
-
   {
-    auto const payload = LogPayload{"myLogEntry 1"};
-    auto index = leaderLog->insert(payload);
-    ASSERT_EQ(LogIndex{1}, index);
+    followerLog->becomeFollower(LogTerm{1}, leaderId);
+    leaderLog->becomeLeader(LogTerm{1}, {followerLog}, 2);
+
+    {
+      auto const payload = LogPayload{"myLogEntry 1"};
+      auto index = leaderLog->insert(payload);
+      ASSERT_EQ(LogIndex{1}, index);
+    }
+
+    auto fut = leaderLog->waitFor(LogIndex{1});
+
+    ASSERT_FALSE(fut.isReady());
+    ASSERT_FALSE(followerLog->hasPendingAppendEntries());
+    leaderLog->runAsyncStep();
+    // future should not be ready because write concern is two
+    ASSERT_FALSE(fut.isReady());
+    ASSERT_TRUE(followerLog->hasPendingAppendEntries());
+
+    followerLog->runAsyncAppendEntries();
+    ASSERT_TRUE(fut.isReady());
+
+    auto& info = fut.get();
+    ASSERT_EQ(info->quorum.size(), 2);
+    ASSERT_EQ(info->term, LogTerm{1});
   }
 
-  auto fut = leaderLog->waitFor(LogIndex{1});
+  {
+    leaderLog->becomeLeader(LogTerm{2}, {followerLog}, 1);
+    {
+      auto const payload = LogPayload{"myLogEntry 2"};
+      auto index = leaderLog->insert(payload);
+      ASSERT_EQ(LogIndex{2}, index);
+    }
+    auto fut = leaderLog->waitFor(LogIndex{2});
+    leaderLog->runAsyncStep();
+    ASSERT_TRUE(followerLog->hasPendingAppendEntries());
+    ASSERT_TRUE(fut.isReady());
+    {
+      auto& info = fut.get();
+      ASSERT_EQ(info->quorum.size(), 1);
+      ASSERT_EQ(info->term, LogTerm{2});
+      ASSERT_EQ(info->quorum[0], leaderId);
+    }
 
-  ASSERT_FALSE(fut.isReady());
+    {
+      auto stats = followerLog->getStatistics();
+      ASSERT_EQ(stats.commitIndex, LogIndex{0});
+      ASSERT_EQ(stats.spearHead, LogIndex{1});
+    }
+    followerLog->runAsyncAppendEntries();
+    {
+      auto stats = followerLog->getStatistics();
+      ASSERT_EQ(stats.commitIndex, LogIndex{0});
+      ASSERT_EQ(stats.spearHead, LogIndex{1});
+    }
+    // should still be true because of leader retry
+    ASSERT_TRUE(followerLog->hasPendingAppendEntries());
+    followerLog->becomeFollower(LogTerm{2}, leaderId);
+    followerLog->runAsyncAppendEntries();
+    {
+      auto stats = followerLog->getStatistics();
+      ASSERT_EQ(stats.commitIndex, LogIndex{2});
+      ASSERT_EQ(stats.spearHead, LogIndex{2});
+    }
+  }
+}
+
+
+TEST(InMemoryLog, replicationTest2) {
+  auto const leaderId = ParticipantId{1};
+  auto const leaderState = std::make_shared<InMemoryState>();
+  auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
+  auto leaderLog = std::make_shared<InMemoryLog>(leaderId, leaderState, leaderPersistentLog);
+
+  auto const followerId = ParticipantId{3};
+  auto const followerState = std::make_shared<InMemoryState>();
+  auto const followerPersistentLog = std::make_shared<MockLog>(LogId{5});
+  auto followerLog = std::make_shared<DelayedFollowerLog>(followerId, followerState,
+                                                          followerPersistentLog);
+
+  {
+    followerLog->becomeFollower(LogTerm{1}, leaderId);
+    leaderLog->becomeLeader(LogTerm{1}, {followerLog}, 2);
+
+    {
+      leaderLog->insert(LogPayload{"myLogEntry 1"});
+      leaderLog->insert(LogPayload{"myLogEntry 2"});
+      leaderLog->insert(LogPayload{"myLogEntry 3"});
+      auto index = leaderLog->insert(LogPayload{"myLogEntry 4"});
+      ASSERT_EQ(LogIndex{4}, index);
+    }
+
+    {
+      auto stats = leaderLog->getStatistics();
+      ASSERT_EQ(stats.commitIndex, LogIndex{0});
+      ASSERT_EQ(stats.spearHead, LogIndex{4});
+    }
+
+    auto fut = leaderLog->waitFor(LogIndex{4});
+
+    ASSERT_FALSE(fut.isReady());
+    ASSERT_FALSE(followerLog->hasPendingAppendEntries());
+    leaderLog->runAsyncStep();
+    // future should not be ready because write concern is two
+    ASSERT_FALSE(fut.isReady());
+    ASSERT_TRUE(followerLog->hasPendingAppendEntries());
+    followerLog->runAsyncAppendEntries();
+    ASSERT_TRUE(fut.isReady());
+    auto& info = fut.get();
+    ASSERT_EQ(info->quorum.size(), 2);
+    ASSERT_EQ(info->term, LogTerm{1});
+
+    {
+      auto stats = leaderLog->getStatistics();
+      ASSERT_EQ(stats.commitIndex, LogIndex{4});
+      ASSERT_EQ(stats.spearHead, LogIndex{4});
+    }
+
+    {
+      auto stats = followerLog->getStatistics();
+      ASSERT_EQ(stats.commitIndex, LogIndex{0});
+      ASSERT_EQ(stats.spearHead, LogIndex{4});
+    }
+    ASSERT_TRUE(followerLog->hasPendingAppendEntries());
+    followerLog->runAsyncAppendEntries();
+    {
+      auto stats = followerLog->getStatistics();
+      ASSERT_EQ(stats.commitIndex, LogIndex{4});
+      ASSERT_EQ(stats.spearHead, LogIndex{4});
+    }
+  }
+
   ASSERT_FALSE(followerLog->hasPendingAppendEntries());
-  leaderLog->runAsyncStep();
-  // future should not be ready because write concern is two
-  ASSERT_FALSE(fut.isReady());
-  ASSERT_TRUE(followerLog->hasPendingAppendEntries());
-
-  followerLog->runAsyncAppendEntries();
-  ASSERT_TRUE(fut.isReady());
 }
 
 TEST(LogIndexTest, compareOperators) {

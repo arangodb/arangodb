@@ -126,13 +126,14 @@ auto InMemoryLog::insert(LogPayload payload) -> LogIndex {
 }
 
 LogIndex InMemoryLog::nextIndex() { return LogIndex{_log.size() + 1}; }
+LogIndex InMemoryLog::getLastIndex() { return LogIndex{_log.size()}; }
 
 auto InMemoryLog::createSnapshot()
     -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>> {
   return std::make_pair(_commitIndex, _state->createSnapshot());
 }
 
-auto InMemoryLog::waitFor(LogIndex index) -> futures::Future<arangodb::futures::Unit> {
+auto InMemoryLog::waitFor(LogIndex index) -> futures::Future<std::shared_ptr<QuorumData>> {
   assertLeader();
   auto it = _waitForQueue.emplace(index, WaitForPromise{});
   auto& promise = it->second;
@@ -193,6 +194,7 @@ void InMemoryLog::persistRemainingLogEntries() {
     auto res = _persistedLog->insert(std::move(it));
     if (res.ok()) {
       _persistedLogEnd = endIdx;
+      checkCommitIndex();
     } else {
       LOG_TOPIC("c2bb2", INFO, Logger::REPLICATION)
           << "Error persisting log entries: " << res.errorMessage();
@@ -229,12 +231,13 @@ auto InMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>
   return e;
 }
 
-void InMemoryLog::updateCommitIndexLeader(LogIndex newIndex) {
+void InMemoryLog::updateCommitIndexLeader(LogIndex newIndex, std::shared_ptr<QuorumData> quorum) {
   TRI_ASSERT(_commitIndex < newIndex);
   _commitIndex = newIndex;
+  _lastQuorum = quorum;
   auto const end = _waitForQueue.upper_bound(_commitIndex);
   for (auto it = _waitForQueue.begin(); it != end; it = _waitForQueue.erase(it)) {
-    it->second.setValue();
+    it->second.setValue(quorum);
   }
 }
 
@@ -243,8 +246,9 @@ void InMemoryLog::sendAppendEntries(Follower& follower) {
     return; // wait for the request to return
   }
 
-  auto endIndex = nextIndex();
-  if (follower.lastAckedIndex == endIndex) {
+  auto currentCommitIndex = _commitIndex;
+  auto lastIndex = getLastIndex();
+  if (follower.lastAckedIndex == lastIndex && _commitIndex == follower.lastAckedCommitIndex) {
     return; // nothing to replicate
   }
 
@@ -271,16 +275,17 @@ void InMemoryLog::sendAppendEntries(Follower& follower) {
   }
 
   follower.requestInFlight = true;
-  follower._impl->appendEntries(std::move(req)).thenFinal([&, endIndex](futures::Try<AppendEntriesResult>&& res) {
+  follower._impl->appendEntries(std::move(req)).thenFinal([this, &follower, lastIndex, currentCommitIndex](futures::Try<AppendEntriesResult>&& res) {
     TRI_ASSERT(res.hasValue());
     follower.requestInFlight = false;
     auto& response = res.get();
     if (response.success) {
-      follower.lastAckedIndex = endIndex;
+      follower.lastAckedIndex = lastIndex;
+      follower.lastAckedCommitIndex = currentCommitIndex;
       checkCommitIndex();
-      // try sending the next batch
-      sendAppendEntries(follower);
     }
+    // try sending the next batch
+    sendAppendEntries(follower);
   });
 }
 
@@ -300,10 +305,10 @@ void InMemoryLog::checkCommitIndex() {
   auto quorum_size = conf.writeConcern;
 
   // TODO make this so that we can place any predicate here
-  std::vector<LogIndex> indexes;
+  std::vector<std::pair<LogIndex, ParticipantId>> indexes;
   std::transform(conf.follower.begin(), conf.follower.end(), std::back_inserter(indexes),
-                 [](Follower const& f) { return f.lastAckedIndex; });
-  indexes.push_back(_persistedLogEnd);
+                 [](Follower const& f) { return std::make_pair(f.lastAckedIndex, f._impl->participantId()); });
+  indexes.push_back(std::make_pair(_persistedLogEnd, participantId()));
   TRI_ASSERT(indexes.size() == conf.follower.size() + 1);
 
   if (quorum_size <= 0 || quorum_size > indexes.size()) {
@@ -311,12 +316,19 @@ void InMemoryLog::checkCommitIndex() {
   }
 
   std::nth_element(indexes.begin(), indexes.begin() + (quorum_size - 1),
-                   indexes.end(), std::greater<LogIndex>{});
+                   indexes.end(), [](auto& a, auto& b) {
+                     return a.first > b.first;
+                   });
 
-  auto commitIndex = indexes.at(quorum_size - 1);
+  auto& [commitIndex, participant] = indexes.at(quorum_size - 1);
   TRI_ASSERT(commitIndex >= _commitIndex);
   if (commitIndex > _commitIndex) {
-    updateCommitIndexLeader(commitIndex);
+    std::vector<ParticipantId> quorum;
+    std::transform(indexes.begin(), indexes.end(), std::back_inserter(quorum),
+                   [](auto& p) { return p.second; });
+
+    auto quorum_data = std::make_shared<QuorumData>(commitIndex, _currentTerm, std::move(quorum));
+    updateCommitIndexLeader(commitIndex, std::move(quorum_data));
   }
 }
 
@@ -324,11 +336,12 @@ InMemoryState::InMemoryState(InMemoryState::state_container state)
     : _state(std::move(state)) {}
 
 void DelayedFollowerLog::runAsyncAppendEntries() {
-  for (auto& p : _asyncQueue) {
+  auto asyncQueue = std::move(_asyncQueue);
+  _asyncQueue.clear();
+
+  for (auto& p : asyncQueue) {
     p.setValue();
   }
-
-  _asyncQueue.clear();
 }
 auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
@@ -338,3 +351,6 @@ auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
     return InMemoryLog::appendEntries(std::move(req));
   });
 }
+
+QuorumData::QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum)
+    : index(index), term(term), quorum(std::move(quorum)) {}

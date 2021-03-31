@@ -80,6 +80,14 @@ struct LogFollower {
       -> arangodb::futures::Future<AppendEntriesResult> = 0;
 };
 
+struct QuorumData {
+  QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum);
+
+  LogIndex index;
+  LogTerm term;
+  std::vector<ParticipantId> quorum;
+};
+
 /**
  * @brief A simple non-persistent log implementation, mainly for prototyping
  * replication 2.0.
@@ -100,7 +108,7 @@ class InMemoryLog : public LogFollower {
   auto createSnapshot() -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
 
   // leader only
-  auto waitFor(LogIndex) -> arangodb::futures::Future<arangodb::futures::Unit>;
+  auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
 
   // Set to follower, and (strictly increase) term to the given value
   auto becomeFollower(LogTerm, ParticipantId leaderId) -> void;
@@ -119,11 +127,12 @@ class InMemoryLog : public LogFollower {
 
  protected:
   LogIndex nextIndex();
+  LogIndex getLastIndex();
   void assertLeader() const;
   void assertFollower() const;
 
   void checkCommitIndex();
-  void updateCommitIndexLeader(LogIndex newIndex);
+  void updateCommitIndexLeader(LogIndex newIndex, std::shared_ptr<QuorumData>);
  private:
   struct Follower {
     explicit Follower(std::shared_ptr<LogFollower> impl)
@@ -131,6 +140,7 @@ class InMemoryLog : public LogFollower {
 
     std::shared_ptr<LogFollower> _impl;
     LogIndex lastAckedIndex = LogIndex{0};
+    LogIndex lastAckedCommitIndex = LogIndex{0};
     bool requestInFlight = false;
   };
 
@@ -154,9 +164,10 @@ class InMemoryLog : public LogFollower {
   LogTerm _currentTerm = LogTerm{};
   std::deque<LogEntry> _log;
   std::shared_ptr<InMemoryState> _state;
-  LogIndex _commitIndex{};
+  LogIndex _commitIndex{0};
+  std::shared_ptr<QuorumData> _lastQuorum;
 
-  using WaitForPromise = futures::Promise<arangodb::futures::Unit>;
+  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
   std::multimap<LogIndex, WaitForPromise> _waitForQueue;
   void persistRemainingLogEntries();
 };
