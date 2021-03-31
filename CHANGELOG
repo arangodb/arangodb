@@ -1,6 +1,9 @@
 devel
 -----
 
+* Make arangovpack more powerful, by supporting different input and output
+  formats (json and vpack, plain or hex-encoded).
+
 * Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
   Now, any maintainer mode build will build all log messages automatically,
   so we will have full coverage of log message construction during our

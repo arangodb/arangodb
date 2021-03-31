@@ -41,10 +41,9 @@ class VPackFeature final : public application_features::ApplicationFeature {
   int* _result;
   std::string _inputFile;
   std::string _outputFile;
-  bool _prettyPrint;
-  bool _jsonInput;
-  bool _hexInput;
-  bool _printNonJson;
+  std::string _inputType;
+  std::string _outputType;
+  bool _failOnNonJson;
 };
 
 }  // namespace arangodb
