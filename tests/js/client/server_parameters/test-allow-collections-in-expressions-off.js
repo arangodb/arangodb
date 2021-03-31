@@ -106,6 +106,18 @@ function testSuite() {
       assertEqual(0, result.length);
     },
     
+    testUseInCount: function() {
+      let result = db._query("RETURN COUNT(" + cn + ")").toArray();
+      assertEqual(1, result.length);
+      assertEqual(db[cn].count(), result[0]);
+    },
+    
+    testUseInLength: function() {
+      let result = db._query("RETURN LENGTH(" + cn + ")").toArray();
+      assertEqual(1, result.length);
+      assertEqual(db[cn].count(), result[0]);
+    },
+    
     testUseInExpressions: function() {
       let queries = [
         "RETURN " + cn,
@@ -114,6 +126,7 @@ function testSuite() {
         "FOR doc IN " + cn + " RETURN " + cn + "[0]",
         "FOR doc IN " + cn + " RETURN " + cn + " + 1",
         "FOR doc IN " + cn + " RETURN NOOPT(" + cn + ")",
+        "RETURN APPEND(" + cn + ", 'foo')",
       ];
 
       queries.forEach((query) => {
