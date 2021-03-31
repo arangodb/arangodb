@@ -38,6 +38,7 @@ function GenericQueryKillSuite() { // can be either default or stream
   const exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true}`;
 
   let executeDefaultCursorQuery = (reportKilled) => {
+    return;
     // default execution
     let localQuery;
     let stateForBoth = false; // marker that we expect either a kill or a result
@@ -76,6 +77,11 @@ function GenericQueryKillSuite() { // can be either default or stream
 
     try {
       localQuery = db._query(exlusiveWriteQueryString, null, null, {stream: true});
+      localQuery.dispose();
+      // 1.) dispose muss funktionieren
+      // 2.) OHNE dispose, Cursor hält noch daten: Erwartet das der Cursor lebt => timeout "rennen"
+      // 3.) OHNE DISPOSE, cursor hält KEINE weiteren Daten mehr (ist fertig) => timeout sollte nicht mehr auftreten.
+
       if (reportKilled === 'on') {
         fail();
       }
@@ -172,6 +178,7 @@ function GenericQueryKillSuite() { // can be either default or stream
     },
 
     tearDown: function () {
+      console.warn("CALLING TEAR DOWN, DROPPING DB");
       db._useDatabase("_system");
       db._dropDatabase(databaseName);
     },
@@ -188,6 +195,10 @@ function GenericQueryKillSuite() { // can be either default or stream
   };
 
   const addTestCase = (suite, testCase) => {
+    if (!internal.isCluster() && testCase.onlyInCluster) {
+      return;
+    }
+
     const unexpectedFailures = [];
     if (testCase.stream === "off") {
       // unexpected errors in default (non-stream)
@@ -210,15 +221,12 @@ function GenericQueryKillSuite() { // can be either default or stream
       //return;
     }
 
-    suite[createTestName(testCase.failurePointName, testCase.stream)] = function (failurePointName, stream, reportKilled, onlyInCluster) {
-      if (!internal.isCluster() && onlyInCluster) {
-        return;
-      }
+    suite[createTestName(testCase.failurePointName, testCase.stream)] = function (failurePointName, stream, reportKilled) {
       console.warn("Failure Point: " + failurePointName);
       console.warn("Stream type: " + stream);
 
       try {
-        internal.debugSetFailAt(failurePointName);
+        //internal.debugSetFailAt(failurePointName);
       } catch (e) {
         console.error("Failed to initialize the failure point.")
       }
@@ -229,23 +237,35 @@ function GenericQueryKillSuite() { // can be either default or stream
         executeDefaultCursorQuery(reportKilled);
       } else if (stream === 'both') {
         executeStreamCursorQuery(reportKilled);
-        internal.debugClearFailAt(failurePointName); // Try to prevent other queries from running into break point TODO: optimize c++ debugKill method
-        internal.debugSetFailAt(failurePointName);
+        //internal.debugClearFailAt(failurePointName); // Try to prevent other queries from running into break point TODO: optimize c++ debugKill method
+        //internal.debugSetFailAt(failurePointName);
         executeDefaultCursorQuery(reportKilled);
       }
 
       try {
-        internal.debugClearFailAt(failurePointName);
+        //internal.debugClearFailAt(failurePointName);
       } catch (e) {
         console.error("Failed to release the failure point: " + failurePointName)
         console.error(e);
       }
     }.bind(this, testCase.failurePointName, testCase.stream, testCase.reportKilled, testCase.onlyInCluster)
   };
-  
+
   for (const testCase of testCases) {
     addTestCase(testSuite, testCase);
   }
+
+  // add two regular tests (one default, one stream) without breakpoint activation
+  testSuite["test_positiveStreamQueryExecution"] = function () {
+    let localQuery = db._query(exlusiveWriteQueryString, null, null, {stream: true});
+    assertTrue(localQuery);
+    localQuery.dispose();
+  };
+
+  testSuite["test_positiveDefaultQueryExecution"] = function () {
+    let localQuery = db._query(exlusiveWriteQueryString);
+    assertTrue(localQuery);
+  };
 
   return testSuite;
 
