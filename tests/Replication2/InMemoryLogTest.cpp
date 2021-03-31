@@ -22,8 +22,8 @@
 
 #include "Replication2/MockLog.h"
 
-#include <Replication2/InMemoryLog.h>
 #include <Basics/Exceptions.h>
+#include <Replication2/InMemoryLog.h>
 
 #include <gtest/gtest.h>
 
@@ -80,7 +80,7 @@ TEST(InMemoryLogTest, appendEntries) {
   auto const ourParticipantId = ParticipantId{1};
   auto const leaderId = ParticipantId{2};
   auto persistedLog = std::make_shared<MockLog>(LogId{1});
-  auto log = InMemoryLog{ourParticipantId, state, persistedLog};
+  auto log = DelayedFollowerLog{ourParticipantId, state, persistedLog};
 
   log.becomeFollower(LogTerm{1}, leaderId);
 
@@ -94,6 +94,8 @@ TEST(InMemoryLogTest, appendEntries) {
     request.entries = {};
 
     auto future = log.appendEntries(request);
+    ASSERT_FALSE(future.isReady());
+    log.runAsyncAppendEntries();
     ASSERT_TRUE(future.isReady());
     auto res = future.getTry();
     ASSERT_TRUE(res.hasValue());
@@ -111,6 +113,8 @@ TEST(InMemoryLogTest, appendEntries) {
     request.entries = {LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{"one"}}};
     {
       auto future = log.appendEntries(request);
+      ASSERT_FALSE(future.isReady());
+      log.runAsyncAppendEntries();
       ASSERT_TRUE(future.isReady());
       auto res = future.getTry();
       ASSERT_TRUE(res.hasValue());
@@ -135,6 +139,8 @@ TEST(InMemoryLogTest, appendEntries) {
     request.entries = {};
 
     auto future = log.appendEntries(request);
+    ASSERT_FALSE(future.isReady());
+    log.runAsyncAppendEntries();
     ASSERT_TRUE(future.isReady());
     auto res = future.getTry();
     ASSERT_TRUE(res.hasValue());
@@ -152,6 +158,8 @@ TEST(InMemoryLogTest, appendEntries) {
     request.entries = {};
 
     auto future = log.appendEntries(request);
+    ASSERT_FALSE(future.isReady());
+    log.runAsyncAppendEntries();
     ASSERT_TRUE(future.isReady());
     auto res = future.getTry();
     ASSERT_TRUE(res.hasValue());
@@ -166,9 +174,12 @@ TEST(InMemoryLogTest, appendEntries) {
     request.prevLogTerm = LogTerm{1};
     request.prevLogIndex = LogIndex{1};
     request.leaderCommit = LogIndex{0};
-    request.entries = {LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"two"}}, LogEntry{LogTerm{1}, LogIndex{3}, LogPayload{"three"}}};
+    request.entries = {LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"two"}},
+                       LogEntry{LogTerm{1}, LogIndex{3}, LogPayload{"three"}}};
     {
       auto future = log.appendEntries(request);
+      ASSERT_FALSE(future.isReady());
+      log.runAsyncAppendEntries();
       ASSERT_TRUE(future.isReady());
       auto res = future.getTry();
       ASSERT_TRUE(res.hasValue());
@@ -202,13 +213,24 @@ TEST(InMemoryLogTest, appendEntries) {
     request.prevLogIndex = LogIndex{1};
     request.leaderCommit = LogIndex{0};
     request.entries = {LogEntry{LogTerm{2}, LogIndex{2}, LogPayload{"two.2"}}};
+
     {
       auto future = log.appendEntries(request);
+      ASSERT_FALSE(future.isReady());
+      log.runAsyncAppendEntries();
       ASSERT_TRUE(future.isReady());
       auto res = future.getTry();
       ASSERT_TRUE(res.hasValue());
       EXPECT_TRUE(res->success);
       EXPECT_EQ(LogTerm{2}, res->logTerm);
+    }
+    {
+      auto const maybeEntry = log.getEntryByIndex(LogIndex{1});
+      ASSERT_TRUE(maybeEntry.has_value());
+      auto const& entry = maybeEntry.value();
+      ASSERT_EQ(LogIndex{1}, entry.logIndex());
+      ASSERT_EQ(LogTerm{1}, entry.logTerm());
+      ASSERT_EQ(LogPayload{"one"}, entry.logPayload());
     }
     {
       auto const maybeEntry = log.getEntryByIndex(LogIndex{2});

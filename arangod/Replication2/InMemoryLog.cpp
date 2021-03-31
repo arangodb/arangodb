@@ -232,3 +232,19 @@ auto InMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>
 
 InMemoryState::InMemoryState(InMemoryState::state_container state)
     : _state(std::move(state)) {}
+
+void DelayedFollowerLog::runAsyncAppendEntries() {
+  for (auto& p : _asyncQueue) {
+    p.setValue();
+  }
+
+  _asyncQueue.clear();
+}
+auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
+    -> arangodb::futures::Future<AppendEntriesResult> {
+  auto f = _asyncQueue.emplace_back().getFuture();
+
+  return std::move(f).then([this, req = std::move(req)](auto) mutable {
+    return InMemoryLog::appendEntries(std::move(req));
+  });
+}

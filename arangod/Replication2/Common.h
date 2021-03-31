@@ -40,13 +40,13 @@ struct implement_compare {
     return !(self() == other);
   }
   [[nodiscard]] bool operator<(S const& other) const {
-    return self() <= other && self() != other;
+    return !(other <= self());
   }
   [[nodiscard]] bool operator>=(S const& other) const {
-    return !(self() < other);
+    return other <= self();
   }
   [[nodiscard]] bool operator>(S const& other) const {
-    return !(self() <= other);
+    return other < self();
   }
 
  private:

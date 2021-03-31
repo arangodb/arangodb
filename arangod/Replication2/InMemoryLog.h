@@ -149,6 +149,18 @@ class InMemoryLog : public LogFollower {
   void persistRemainingLogEntries();
 };
 
+struct DelayedFollowerLog : private InMemoryLog {
+  using InMemoryLog::InMemoryLog;
+  auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult> override;
+  void runAsyncAppendEntries();
+
+  using InMemoryLog::becomeFollower;
+  using InMemoryLog::getEntryByIndex;
+ private:
+  using WaitForAsyncPromise = futures::Promise<arangodb::futures::Unit>;
+  std::vector<WaitForAsyncPromise> _asyncQueue;
+};
+
 }  // namespace arangodb::replication2
 
 #endif  // ARANGOD_REPLICATION2_INMEMORYLOG_H
