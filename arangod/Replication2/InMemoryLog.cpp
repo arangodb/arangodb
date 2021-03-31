@@ -133,6 +133,7 @@ auto InMemoryLog::createSnapshot()
 }
 
 auto InMemoryLog::waitFor(LogIndex index) -> futures::Future<arangodb::futures::Unit> {
+  assertLeader();
   auto it = _waitForQueue.emplace(index, WaitForPromise{});
   auto& promise = it->second;
   auto&& future = promise.getFuture();
@@ -169,16 +170,17 @@ auto InMemoryLog::becomeLeader(LogTerm term,
 }
 
 auto InMemoryLog::runAsyncStep() -> void {
+  assertLeader();
   if (_log.size() > _commitIndex.value) {
     ++_commitIndex.value;
   }
 
+  persistRemainingLogEntries();
+
   auto const end = _waitForQueue.upper_bound(_commitIndex);
-  for (auto it = _waitForQueue.begin(); it != end; ++it) {
+  for (auto it = _waitForQueue.begin(); it != end; it = _waitForQueue.erase(it)) {
     it->second.setValue();
   }
-
-  persistRemainingLogEntries();
 }
 
 void InMemoryLog::persistRemainingLogEntries() {

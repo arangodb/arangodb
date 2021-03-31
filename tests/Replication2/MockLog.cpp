@@ -21,12 +21,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "MockLog.h"
 
+#include <Basics/debugging.h>
+#include <Logger/LogMacros.h>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 
+namespace std {
+auto operator<<(std::ostream& ostream, LogIndex logIndex) -> std::ostream& {
+  return ostream << "LogIndex{" << logIndex.value << "}";
+}
+auto operator<<(std::ostream& ostream, LogEntry const& logEntry) -> std::ostream& {
+  return ostream << "LogEntry{" << logEntry.logTerm().value << ", " << logEntry.logIndex() << ", " << logEntry.logPayload().dummy << "}";
+}
+}
+
 auto arangodb::MockLog::insert(std::shared_ptr<LogIterator> iter) -> arangodb::Result {
   while (auto entry = iter->next()) {
-    _storage.emplace(entry->logIndex(), entry.value());
+    auto const res = _storage.try_emplace(entry->logIndex(), entry.value());
+    TRI_ASSERT(res.second);
   }
 
   return {};
@@ -56,13 +69,15 @@ auto arangodb::MockLog::read(arangodb::replication2::LogIndex start)
   return std::make_shared<ContainerIterator<iteratorType>>(_storage, start);
 }
 
-auto arangodb::MockLog::removeFront(arangodb::replication2::LogIndex stop) -> arangodb::Result {
+auto arangodb::MockLog::removeFront(arangodb::replication2::LogIndex stop)
+    -> arangodb::Result {
   _storage.erase(_storage.begin(), _storage.lower_bound(stop));
   return {};
 }
 
-auto arangodb::MockLog::removeBack(arangodb::replication2::LogIndex start) -> arangodb::Result {
-  _storage.erase(_storage.lower_bound(start), _storage.begin());
+auto arangodb::MockLog::removeBack(arangodb::replication2::LogIndex start)
+    -> arangodb::Result {
+  _storage.erase(_storage.lower_bound(start), _storage.end());
   return {};
 }
 
