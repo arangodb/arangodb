@@ -154,7 +154,7 @@ size_t buffered_index_input::refill() {
 
   const ptrdiff_t data_size = data_end - data_start;
   if (data_size <= 0) {
-    throw eof_error(); // read past eof
+    return 0; // read past eof
   }
 
   assert(buf_);

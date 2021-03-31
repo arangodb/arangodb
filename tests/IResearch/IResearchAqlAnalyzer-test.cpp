@@ -55,7 +55,7 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
   auto* inc = irs::get<irs::increment>(*analyzer);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(analyzer->reset(data));
-  uint32_t pos{irs::integer_traits<uint32_t>::const_max};
+  uint32_t pos{std::numeric_limits<uint32_t>::max()};
   auto expected_token = expected_tokens.begin();
   while (analyzer->next()) {
     auto term_value =

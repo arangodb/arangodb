@@ -24,10 +24,9 @@
 
 #include "RefactoredClusterTraverserCache.h"
 
-#include "Aql/AqlValue.h"
-#include "Aql/Query.h"
-#include "Graph/BaseOptions.h"
-#include "Graph/EdgeDocumentToken.h"
+#include "Basics/StaticStrings.h"
+
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -39,12 +38,10 @@ constexpr size_t costPerVertexOrEdgeStringRefSlice = sizeof(velocypack::Slice) +
 constexpr size_t heapBlockSize = 4096;
 };
 
-RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
-    std::unordered_map<ServerID, aql::EngineId> const* engines, ResourceMonitor& resourceMonitor)
+RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor)
     : _resourceMonitor{resourceMonitor},
       _stringHeap(resourceMonitor, heapBlockSize), /* arbitrary block-size may be adjusted for performance */
-      _datalake(resourceMonitor),
-      _engines(engines) {}
+      _datalake(resourceMonitor) {}
 
 RefactoredClusterTraverserCache::~RefactoredClusterTraverserCache() {
   clear();
@@ -56,12 +53,17 @@ void RefactoredClusterTraverserCache::clear() {
   _resourceMonitor.decreaseMemoryUsage(_edgeData.size() * ::costPerVertexOrEdgeStringRefSlice);
   _stringHeap.clear();
   _persistedStrings.clear();
+  _vertexData.clear();
+  _edgeData.clear();
 }
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
                                                   velocypack::Slice vertexSlice) -> void {
-  _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
-  _vertexData.try_emplace(vertexId, vertexSlice);
+  auto [it, inserted] = _vertexData.try_emplace(vertexId, vertexSlice);
+  if (inserted) {
+    // If we have added something into the cache, we need to account for it.
+    _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
+  }
 }
 
 auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey) const
@@ -75,7 +77,7 @@ auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey) cons
 
 auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) const -> VPackSlice {
   if (!isVertexCached(vertex)) {
-    return VPackSlice::noneSlice();
+    return VPackSlice::nullSlice();
   }
   return _vertexData.at(vertex);
 }
@@ -83,7 +85,7 @@ auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) 
 auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge) const
     -> VPackSlice {
   if (!isEdgeCached(edge)) {
-    return VPackSlice::noneSlice();
+    return VPackSlice::nullSlice();
   }
   return _edgeData.at(edge);
 }
@@ -112,5 +114,5 @@ auto RefactoredClusterTraverserCache::persistEdgeData(velocypack::Slice edgeSlic
   if (inserted) {
     _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
   }
-  return {it->second, inserted};
+  return std::make_pair(it->second, inserted);
 }

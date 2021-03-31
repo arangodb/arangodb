@@ -220,7 +220,7 @@ filter::prepared::ptr by_same_position::prepare(
   }
 
   // per segment query state
-  same_position_query::states_t query_states(index.size());
+  same_position_query::states_t query_states(index);
 
   // per segment terms states
   same_position_query::states_t::state_type term_states;

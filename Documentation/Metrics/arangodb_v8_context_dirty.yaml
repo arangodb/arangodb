@@ -1,0 +1,17 @@
+name: arangodb_v8_context_dirty
+introducedIn: "3.6.7"
+help: |
+  Number of V8 contexts currently dirty
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This gauge reflects the number of V8 contexts that are currently dirty.
+  A V8 context is dirty, if it has executed JavaScript for some time and
+  is due for a garbage collection.

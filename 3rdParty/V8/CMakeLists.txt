@@ -348,7 +348,7 @@ else ()
   set(V8_CFLAGS   "$ENV{V8_CFLAGS}")
   set(V8_CXXFLAGS "$ENV{V8_CXXFLAGS}")
   set(V8_LDFLAGS  "$ENV{V8_LDFLAGS}")
-  
+
   # build V8 without debug information
   if (USE_MINIMAL_DEBUGINFO)
     set(V8_CFLAGS   "${V8_CFLAGS} -g0")
@@ -360,6 +360,10 @@ else ()
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(V8_CFLAGS   "${V8_CFLAGS} -fno-delete-null-pointer-checks")
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -fno-delete-null-pointer-checks")
+  endif()
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+      set(V8_CFLAGS "${V8_CFLAGS} -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion")
+      set(V8_CXXFLAGS "${V8_CXXFLAGS} -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion")
   endif()
 
   if (BUILD_SHARED_LIBS AND CMAKE_POSITION_INDEPENDENT_CODE)

@@ -56,14 +56,25 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-DECLARE_COUNTER(arangodb_maintenance_phase1_accum_runtime_msec_total, "Accumulated runtime of phase one [ms]");
-DECLARE_COUNTER(arangodb_maintenance_phase2_accum_runtime_msec_total, "Accumulated runtime of phase two [ms]");
-DECLARE_COUNTER(arangodb_maintenance_agency_sync_accum_runtime_msec_total, "Accumulated runtime of agency sync phase [ms]");
 DECLARE_COUNTER(arangodb_maintenance_action_duplicate_total, "Counter of actions that have been discarded because of a duplicate");
 DECLARE_COUNTER(arangodb_maintenance_action_registered_total, "Counter of actions that have been registered in the action registry");
-DECLARE_COUNTER(arangodb_maintenance_action_accum_runtime_msec_total, "Accumulated action runtime");
-DECLARE_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total, "Accumulated action queue time");
 DECLARE_COUNTER(arangodb_maintenance_action_failure_total, "Failure counter for the maintenance actions");
+
+
+////////////////////////////////////////////////////////////////////////////////
+// FAKE DECLARATIONS - remove when v1 is removed
+////////////////////////////////////////////////////////////////////////////////
+
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase1_accum_runtime_msec_total,
+    "Accumulated runtime of phase one [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase2_accum_runtime_msec_total,
+    "Accumulated runtime of phase two [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_agency_sync_accum_runtime_msec_total,
+    "Accumulated runtime of agency sync phase [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_runtime_msec_total,
+    "Accumulated action runtime");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total,
+    "Accumulated action queue time");
 
 struct MaintenanceScale {
   static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }

@@ -41,9 +41,18 @@
   struct x : arangodb::metrics::GaugeBuilder<x, type> { \
     x() { _name = #x; _help = help; } \
     }
+    
+#define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)
 
 #define DECLARE_HISTOGRAM(x, scale, help)                   \
   struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
+    x() { _name = #x; _help = help; } \
+    }
+
+// The following is only needed in 3.8 for the case of duplicate
+// metrics which will be removed in a future version:
+#define DECLARE_LEGACY_COUNTER(x, help)                \
+  struct x : arangodb::metrics::CounterBuilder<x> { \
     x() { _name = #x; _help = help; } \
     }
 
@@ -180,8 +189,9 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   bool _export;
   bool _exportReadWriteMetrics;
 
-  std::unordered_map<std::string,std::string> nameVersionTable;
-
+  std::unordered_map<std::string, std::string> nameVersionTable;
+  std::unordered_set<std::string> v2suppressions;
+  std::unordered_set<std::string> v1suppressions;
 };
 
 }  // namespace arangodb

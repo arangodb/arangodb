@@ -1,5 +1,13 @@
 News for the tz database
 
+Release 2021a - 2021-01-24 10:54:57 -0800
+
+  Changes to future timestamps
+
+    South Sudan changes from +03 to +02 on 2021-02-01 at 00:00.
+    (Thanks to Steffen Thorsen.)
+
+
 Release 2020f - 2020-12-29 00:17:46 -0800
 
   Change to build procedure

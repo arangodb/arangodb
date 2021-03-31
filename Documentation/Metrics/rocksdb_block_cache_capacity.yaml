@@ -1,0 +1,17 @@
+name: rocksdb_block_cache_capacity
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "rocksdb-block-cache-capacity"
+unit: bytes
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "rocksdb-block-cache-capacity".
+  It shows the block cache capacity in bytes. This can be configured with
+  the `--rocksdb.block-cache-size` option, for details, see
+  [the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb).

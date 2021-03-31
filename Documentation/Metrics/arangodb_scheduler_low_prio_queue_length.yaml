@@ -1,4 +1,5 @@
 name: arangodb_scheduler_low_prio_queue_length
+introducedIn: "3.8.0"
 help: |
   Current queue length of the low priority queue in the scheduler.
 unit: number
@@ -9,5 +10,8 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Current queue length of the low priority queue in the scheduler.
+  The number of jobs currently queued on the scheduler's low priority queue.
+  The capacity of the low priority queue can be configured via the startup
+  option `--server.maximal-queue-size`.

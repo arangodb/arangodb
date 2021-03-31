@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -264,7 +265,7 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
 
 /// @brief closes an open collection
 ErrorCode RocksDBCollection::close() {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -281,7 +282,7 @@ void RocksDBCollection::load() {
       }
     }
   }
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->load();
   }
@@ -293,7 +294,7 @@ void RocksDBCollection::unload() {
     destroyCache();
     TRI_ASSERT(_cache.get() == nullptr);
   }
-  READ_LOCKER(indexGuard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -312,7 +313,8 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
   auto& engine = selector.engine<RocksDBEngine>();
   std::vector<std::shared_ptr<Index>> indexes;
   {
-    READ_LOCKER(guard, _indexesLock);  // link creation needs read-lock too
+    // link creation needs read-lock too
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     if (indexesSlice.length() == 0 && _indexes.empty()) {
       engine.indexFactory().fillSystemIndexes(_logicalCollection, indexes);
     } else {
@@ -320,7 +322,7 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     }
   }
 
-  WRITE_LOCKER(guard, _indexesLock);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   TRI_ASSERT(_indexes.empty());
   for (std::shared_ptr<Index>& idx : indexes) {
     TRI_ASSERT(idx != nullptr);
@@ -394,7 +396,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   std::shared_ptr<Index> idx;
   {  // Step 1. Check for matching index
-    READ_LOCKER(guard, _indexesLock);
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     if ((idx = findIndex(info, _indexes)) != nullptr) {
       // We already have this index.
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
@@ -434,7 +436,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
 
   {
-    READ_LOCKER(guard, _indexesLock);
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     for (auto const& other : _indexes) {  // conflicting index exists
       if (other->id() == idx->id() || other->name() == idx->name()) {
         // definition shares an identifier with an existing index with a
@@ -503,7 +505,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
     if (inBackground) {  // allow concurrent inserts into index
       {
-        WRITE_LOCKER(guard, _indexesLock);
+        RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
         _indexes.emplace(buildIdx);
       }
       res = buildIdx->fillIndexBackground(locker);
@@ -516,19 +518,20 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     locker.lock(); // always lock to avoid inconsistencies
 
     // Step 5. register in index list
-    WRITE_LOCKER(guard, _indexesLock);
-    if (inBackground) {  // swap in actual index
-      for (auto& it : _indexes) {
-        if (it->id() == buildIdx->id()) {
-          _indexes.erase(it);
-          _indexes.emplace(idx);
-          break;
+    {
+      RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+      if (inBackground) {  // swap in actual index
+        for (auto& it : _indexes) {
+          if (it->id() == buildIdx->id()) {
+            _indexes.erase(it);
+            _indexes.emplace(idx);
+            break;
+          }
         }
+      } else {
+        _indexes.emplace(idx);
       }
-    } else {
-      _indexes.emplace(idx);
     }
-    guard.unlock();
 #if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection.vocbase());
 #endif
@@ -554,16 +557,17 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   // cleanup routine
   if (res.fail()) { // We could not create the index. Better abort
-    WRITE_LOCKER(guard, _indexesLock);
-    auto it = _indexes.begin();
-    while (it != _indexes.end()) {
-      if ((*it)->id() == idx->id()) {
-        _indexes.erase(it);
-        break;
+    {
+      RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+      auto it = _indexes.begin();
+      while (it != _indexes.end()) {
+        if ((*it)->id() == idx->id()) {
+          _indexes.erase(it);
+          break;
+        }
+        it++;
       }
-      it++;
     }
-    guard.unlock();
     idx->drop();
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -581,7 +585,7 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
 
   std::shared_ptr<arangodb::Index> toRemove;
   {
-    WRITE_LOCKER(guard, _indexesLock);
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
     for (auto& it : _indexes) {
       if (iid == it->id()) {
         toRemove = it;
@@ -598,7 +602,7 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
     return false;
   }
 
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
   RocksDBIndex* cindex = static_cast<RocksDBIndex*>(toRemove.get());
   TRI_ASSERT(cindex != nullptr);
@@ -731,7 +735,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     // delete indexes, place estimator blockers
     {
-      READ_LOCKER(idxGuard, _indexesLock);
+      RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
       for (std::shared_ptr<Index> const& idx : _indexes) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
         bounds = ridx->getBounds();
@@ -767,7 +771,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
                                 -static_cast<int64_t>(numDocs));
 
     {
-      READ_LOCKER(idxGuard, _indexesLock);
+      RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
       for (std::shared_ptr<Index> const& idx : _indexes) {
         idx->afterTruncate(seq, &trx);  // clears caches / clears links (if applicable)
       }
@@ -1455,7 +1459,7 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
                     rootDB, RocksDBKeyBounds::CollectionDocuments(objectId()), true)));
     builder.add("indexes", VPackValue(VPackValueType::Array));
     {
-      READ_LOCKER(guard, _indexesLock);
+      RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
       for (auto it : _indexes) {
         auto type = it->type();
         if (type == Index::TRI_IDX_TYPE_UNKNOWN ||
@@ -1536,7 +1540,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     // spoil the current WriteBatch, which on a RollbackToSavePoint will
     // need to be completely reconstructed. the reconstruction of write
     // batches is super expensive, so we try to avoid it here.
-    READ_LOCKER(guard, _indexesLock);
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
     for (auto const& idx : _indexes) {
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
@@ -1573,7 +1577,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   bool needReversal = false;
   
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
@@ -1631,7 +1635,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       << " seq: " << mthds->sequenceNumber()
       << " objectID " << objectId() << " name: " << _logicalCollection.name();*/
 
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
@@ -1687,7 +1691,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
     // spoil the current WriteBatch, which on a RollbackToSavePoint will
     // need to be completely reconstructed. the reconstruction of write
     // batches is super expensive, so we try to avoid it here.
-    READ_LOCKER(guard, _indexesLock);
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
     for (auto const& idx : _indexes) {
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
@@ -1734,7 +1738,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
     invalidateCacheEntry(key.ref());
   }
 
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     auto rIdx = static_cast<RocksDBIndex*>(it->get());

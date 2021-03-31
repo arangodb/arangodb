@@ -128,6 +128,7 @@
       var unique;
       var sparse;
       var deduplicate;
+      var estimates;
       var background;
       var name;
 
@@ -164,6 +165,7 @@
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
+          estimates = self.checkboxToValue('#newPersistentEstimates');
           background = self.checkboxToValue('#newPersistentBackground');
           name = $('#newPersistentName').val();
           postParameter = {
@@ -172,6 +174,7 @@
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
+            estimates: estimates,
             inBackground: background,
             name: name
           };
@@ -181,6 +184,7 @@
           unique = self.checkboxToValue('#newHashUnique');
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
+          estimates = self.checkboxToValue('#newHashEstimates');
           background = self.checkboxToValue('#newHashBackground');
           name = $('#newHashName').val();
           postParameter = {
@@ -189,6 +193,7 @@
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
+            estimates: estimates,
             inBackground: background,
             name: name
           };
@@ -211,6 +216,7 @@
           unique = self.checkboxToValue('#newSkiplistUnique');
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
+          estimates = self.checkboxToValue('#newSkiplistEstimates');
           background = self.checkboxToValue('#newSkiplistBackground');
           name = $('#newSkiplistName').val();
           postParameter = {
@@ -219,6 +225,7 @@
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
+            estimates: estimates,
             inBackground: background,
             name: name
           };
@@ -435,7 +442,7 @@
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var extras = [];
-          ["deduplicate", "expireAfter", "minLength", "geoJson"].forEach(function(k) {
+          ["deduplicate", "expireAfter", "minLength", "geoJson", "estimates"].forEach(function(k) {
             if (v.hasOwnProperty(k)) {
               extras.push(k + ": " + v[k]);
             }
@@ -467,6 +474,9 @@
         $('#newIndexType').val(arangoHelper.escapeHtml(type));
       }
       $('#newIndexType' + type).show();
+      if (type) {
+        $('#new' + type + 'Estimates').prop('checked', true);
+      }
     },
 
     resetIndexForms: function () {
@@ -490,7 +500,6 @@
           $('#cancelIndex').detach().appendTo(elem);
           $('#createIndex').detach().appendTo(elem);
         }
-
         this.resetIndexForms();
       }
       arangoHelper.createTooltips('.index-tooltip');
