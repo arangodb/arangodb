@@ -38,7 +38,6 @@ function GenericQueryKillSuite() { // can be either default or stream
   const exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true}`;
 
   let executeDefaultCursorQuery = (reportKilled) => {
-    return;
     // default execution
     let localQuery;
     let stateForBoth = false; // marker that we expect either a kill or a result
@@ -153,17 +152,19 @@ function GenericQueryKillSuite() { // can be either default or stream
   // TODOs: check reportKilled flags for each entry
 
   // defaults
-  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryGotRegistered", true, "off", "true"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting", false, 'off', "true"));
+  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryGotRegistered", true, "off", "on"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting", false, 'off', "on"));
 
   // stream
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "true"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped", false, "on", "true"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", "true"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryBeforeCursorIsBeingCreated", false, "on", "on"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "on"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped", false, "on", "on"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", "on"));
 
   // execution in default & stream
-  testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', "true"));
-  testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "true")); // TODO: works but potentially duplicate query kill call here - check!
+  testCases.push(createTestCaseEntry("QueryList::killAfterCurrentInsert", false, 'both', "on"));
+  testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', "on"));
+  testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "on")); // TODO: works but potentially duplicate query kill call here - check!
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', "both"));
