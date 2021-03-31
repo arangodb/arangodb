@@ -44,9 +44,11 @@ function testSuite() {
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < 500; ++i) {
-        docs.push({ _key: "test" + i, value: i });
+        docs.push({ _key: "test" + i, value: i, text: "testi" + i, loc: [i * 0.001, -i * 0.001] });
       }
       c.insert(docs);
+      c.ensureIndex({ type: "fulltext", fields: ["text"] }); 
+      c.ensureIndex({ type: "geo", fields: ["loc"] }); 
       
       db._drop(en);
       db._createEdgeCollection(en);
@@ -116,6 +118,18 @@ function testSuite() {
       let result = db._query("RETURN LENGTH(" + cn + ")").toArray();
       assertEqual(1, result.length);
       assertEqual(db[cn].count(), result[0]);
+    },
+    
+    testUseInFulltext: function() {
+      let result = db._query("RETURN FULLTEXT(" + cn + ", 'text', 'prefix:testi')").toArray();
+      assertEqual(1, result.length);
+      assertEqual(500, result[0].length);
+    },
+    
+    testUseInWithinRectangle: function() {
+      let result = db._query("RETURN WITHIN_RECTANGLE(" + cn + ", -1, -1, 1, 1)").toArray();
+      assertEqual(1, result.length);
+      assertEqual(500, result[0].length);
     },
     
     testUseInExpressions: function() {
