@@ -68,6 +68,7 @@ class InMemoryState {
   state_container _state;
 
   explicit InMemoryState(state_container state);
+  InMemoryState() = default;
 };
 
 
@@ -120,11 +121,22 @@ class InMemoryLog : public LogFollower {
   LogIndex nextIndex();
   void assertLeader() const;
   void assertFollower() const;
+
+  void checkCommitIndex();
+  void updateCommitIndexLeader(LogIndex newIndex);
  private:
   struct Follower {
+    explicit Follower(std::shared_ptr<LogFollower> impl)
+        : _impl(std::move(impl)) {}
+
     std::shared_ptr<LogFollower> _impl;
-    LogIndex lastAckedIndex;
+    LogIndex lastAckedIndex = LogIndex{0};
+    bool requestInFlight = false;
   };
+
+  auto getLogIterator(LogIndex from) -> std::shared_ptr<LogIterator>;
+
+  void sendAppendEntries(Follower&);
 
   struct Unconfigured {};
   struct LeaderConfig {
@@ -149,13 +161,10 @@ class InMemoryLog : public LogFollower {
   void persistRemainingLogEntries();
 };
 
-struct DelayedFollowerLog : private InMemoryLog {
+struct DelayedFollowerLog : InMemoryLog {
   using InMemoryLog::InMemoryLog;
   auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult> override;
   void runAsyncAppendEntries();
-
-  using InMemoryLog::becomeFollower;
-  using InMemoryLog::getEntryByIndex;
  private:
   using WaitForAsyncPromise = futures::Promise<arangodb::futures::Unit>;
   std::vector<WaitForAsyncPromise> _asyncQueue;

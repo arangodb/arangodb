@@ -247,6 +247,22 @@ TEST(InMemoryLogTest, appendEntries) {
   }
 }
 
+TEST(InMemoryLog, replicationTest) {
+  auto const leaderId = ParticipantId {1};
+  auto const leaderState = std::make_shared<InMemoryState>();
+  auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
+  auto leaderLog = std::make_shared<InMemoryLog>(leaderId, leaderState, leaderPersistentLog);
+
+  auto const followerId = ParticipantId {3};
+  auto const followerState = std::make_shared<InMemoryState>();
+  auto const followerPersistentLog = std::make_shared<MockLog>(LogId{5});
+  auto followerLog = std::make_shared<DelayedFollowerLog>(followerId, followerState, followerPersistentLog);
+
+  followerLog->becomeFollower(LogTerm{1}, leaderId);
+  leaderLog->becomeLeader(LogTerm{1}, {followerLog}, 2);
+
+}
+
 TEST(LogIndexTest, compareOperators) {
   auto one = LogIndex{1};
   auto two = LogIndex{2};

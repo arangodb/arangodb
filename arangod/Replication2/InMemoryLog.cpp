@@ -155,7 +155,7 @@ auto InMemoryLog::becomeLeader(LogTerm term,
   follower_vec.reserve(follower.size());
   std::transform(follower.cbegin(), follower.cend(), std::back_inserter(follower_vec),
                  [&](std::shared_ptr<LogFollower> const& impl) -> Follower {
-                   return Follower{impl, LogIndex{0}};
+                   return Follower{impl};
                  });
 
   _role = LeaderConfig{std::move(follower_vec), writeConcern};
@@ -171,26 +171,25 @@ auto InMemoryLog::becomeLeader(LogTerm term,
 
 auto InMemoryLog::runAsyncStep() -> void {
   assertLeader();
-  if (_log.size() > _commitIndex.value) {
-    ++_commitIndex.value;
+  auto& conf = std::get<LeaderConfig>(_role);
+  for (auto& follower : conf.follower) {
+    sendAppendEntries(follower);
   }
+
+
+  /*if (_log.size() > _commitIndex.value) {
+    ++_commitIndex.value;
+  }*/
 
   persistRemainingLogEntries();
 
-  auto const end = _waitForQueue.upper_bound(_commitIndex);
-  for (auto it = _waitForQueue.begin(); it != end; it = _waitForQueue.erase(it)) {
-    it->second.setValue();
-  }
+  /**/
 }
 
 void InMemoryLog::persistRemainingLogEntries() {
   if (_persistedLogEnd < nextIndex()) {
-    auto from = _log.cbegin();
+    auto it = getLogIterator(_persistedLogEnd);
     auto const endIdx = nextIndex();
-    TRI_ASSERT(_persistedLogEnd < endIdx);
-    std::advance(from, _persistedLogEnd.value);
-    auto to = _log.cend();
-    auto it = std::make_shared<InMemoryLogIterator>(from, to);
     auto res = _persistedLog->insert(std::move(it));
     if (res.ok()) {
       _persistedLogEnd = endIdx;
@@ -228,6 +227,92 @@ auto InMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>
   auto const& e = _log.at(idx.value - 1);
   TRI_ASSERT(e.logIndex() == idx);
   return e;
+}
+
+void InMemoryLog::updateCommitIndexLeader(LogIndex newIndex) {
+  TRI_ASSERT(_commitIndex < newIndex);
+  _commitIndex = newIndex;
+  auto const end = _waitForQueue.upper_bound(_commitIndex);
+  for (auto it = _waitForQueue.begin(); it != end; it = _waitForQueue.erase(it)) {
+    it->second.setValue();
+  }
+}
+
+void InMemoryLog::sendAppendEntries(Follower& follower) {
+  if (follower.requestInFlight) {
+    return; // wait for the request to return
+  }
+
+  auto endIndex = nextIndex();
+  if (follower.lastAckedIndex == endIndex) {
+    return; // nothing to replicate
+  }
+
+  auto const lastAcked = getEntryByIndex(follower.lastAckedIndex);
+
+
+  AppendEntriesRequest req;
+  req.leaderCommit = _commitIndex;
+  req.leaderTerm = _currentTerm;
+  req.leaderId = _id;
+
+  if (lastAcked) {
+    req.prevLogIndex = lastAcked->logIndex();
+    req.prevLogTerm = lastAcked->logTerm();
+  } else {
+    req.prevLogIndex = LogIndex{0};
+    req.prevLogTerm = LogTerm{0};
+  }
+
+  // TODO maybe put an iterator into the request?
+  auto it = getLogIterator(follower.lastAckedIndex);
+  while (auto entry = it->next()) {
+    req.entries.emplace_back(*std::move(entry));
+  }
+
+  follower.requestInFlight = true;
+  follower._impl->appendEntries(std::move(req)).thenFinal([&, endIndex](futures::Try<AppendEntriesResult>&& res) {
+    TRI_ASSERT(res.hasValue());
+    follower.requestInFlight = false;
+    auto& response = res.get();
+    if (response.success) {
+      follower.lastAckedIndex = endIndex;
+      checkCommitIndex();
+      // try sending the next batch
+      sendAppendEntries(follower);
+    }
+  });
+}
+
+auto InMemoryLog::getLogIterator(LogIndex fromIdx) -> std::shared_ptr<LogIterator> {
+  auto from = _log.cbegin();
+  auto const endIdx = nextIndex();
+  TRI_ASSERT(fromIdx < endIdx);
+  std::advance(from, fromIdx.value);
+  auto to = _log.cend();
+  return std::make_shared<InMemoryLogIterator>(from, to);
+}
+
+void InMemoryLog::checkCommitIndex() {
+
+  auto& conf = std::get<LeaderConfig>(_role);
+
+  auto quorum_size = conf.writeConcern;
+
+  // TODO make this so that we can place any predicate here
+  std::vector<LogIndex> indexes;
+  std::transform(conf.follower.begin(), conf.follower.end(), std::back_inserter(indexes),
+                 [](Follower const& f) { return f.lastAckedIndex; });
+  indexes.push_back(_persistedLogEnd);
+
+  std::nth_element(indexes.begin(), indexes.begin() + (quorum_size - 1),
+                   indexes.end(), std::greater<LogIndex>{});
+
+  auto commitIndex = indexes.at(quorum_size);
+  TRI_ASSERT(commitIndex >= _commitIndex);
+  if (commitIndex > _commitIndex) {
+    updateCommitIndexLeader(commitIndex);
+  }
 }
 
 InMemoryState::InMemoryState(InMemoryState::state_container state)
