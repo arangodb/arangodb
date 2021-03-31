@@ -28,6 +28,8 @@
 #include <exception>
 #include <iosfwd>
 
+#include <boost/stacktrace.hpp>
+
 #include "velocypack/velocypack-common.h"
 
 namespace arangodb {
@@ -96,6 +98,8 @@ class Exception : public virtual std::exception {
   ExceptionType errorCode() const noexcept { return _type; }
 
   static char const* message(ExceptionType type) noexcept;
+
+  boost::stacktrace::stacktrace _trace;
 };
 
 }  // namespace arangodb::velocypack
