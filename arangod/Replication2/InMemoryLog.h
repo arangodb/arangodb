@@ -165,6 +165,8 @@ struct DelayedFollowerLog : InMemoryLog {
   using InMemoryLog::InMemoryLog;
   auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult> override;
   void runAsyncAppendEntries();
+
+  [[nodiscard]] auto hasPendingAppendEntries() const -> bool { return !_asyncQueue.empty(); }
  private:
   using WaitForAsyncPromise = futures::Promise<arangodb::futures::Unit>;
   std::vector<WaitForAsyncPromise> _asyncQueue;

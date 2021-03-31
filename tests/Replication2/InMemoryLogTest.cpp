@@ -248,19 +248,36 @@ TEST(InMemoryLogTest, appendEntries) {
 }
 
 TEST(InMemoryLog, replicationTest) {
-  auto const leaderId = ParticipantId {1};
+  auto const leaderId = ParticipantId{1};
   auto const leaderState = std::make_shared<InMemoryState>();
   auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
   auto leaderLog = std::make_shared<InMemoryLog>(leaderId, leaderState, leaderPersistentLog);
 
-  auto const followerId = ParticipantId {3};
+  auto const followerId = ParticipantId{3};
   auto const followerState = std::make_shared<InMemoryState>();
   auto const followerPersistentLog = std::make_shared<MockLog>(LogId{5});
-  auto followerLog = std::make_shared<DelayedFollowerLog>(followerId, followerState, followerPersistentLog);
+  auto followerLog = std::make_shared<DelayedFollowerLog>(followerId, followerState,
+                                                          followerPersistentLog);
 
   followerLog->becomeFollower(LogTerm{1}, leaderId);
   leaderLog->becomeLeader(LogTerm{1}, {followerLog}, 2);
 
+  {
+    auto const payload = LogPayload{"myLogEntry 1"};
+    auto index = leaderLog->insert(payload);
+    ASSERT_EQ(LogIndex{1}, index);
+  }
+
+  auto fut = leaderLog->waitFor(LogIndex{1});
+
+  ASSERT_FALSE(fut.isReady());
+  leaderLog->runAsyncStep();
+  // future should not be ready because write concern is two
+  ASSERT_FALSE(fut.isReady());
+  ASSERT_TRUE(followerLog->hasPendingAppendEntries());
+
+  followerLog->runAsyncAppendEntries();
+  ASSERT_TRUE(fut.isReady());
 }
 
 TEST(LogIndexTest, compareOperators) {
