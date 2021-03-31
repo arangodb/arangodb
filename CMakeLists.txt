@@ -1264,7 +1264,6 @@ if (USE_MAINTAINER_MODE)
 
   set(EXIT_CODE_FILES
     lib/Basics/exitcodes.h
-    lib/Basics/exitcodes.cpp
     js/common/bootstrap/exitcodes.js
     Installation/Windows/Plugins/exitcodes.nsh
   )
@@ -1278,7 +1277,7 @@ if (USE_MAINTAINER_MODE)
       COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
       COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ./utils/generateExitCodesFiles.py
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building exitcode files ${m}"
       VERBATIM
