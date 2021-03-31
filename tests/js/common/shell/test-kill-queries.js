@@ -199,28 +199,6 @@ function GenericQueryKillSuite() { // can be either default or stream
       return;
     }
 
-    const unexpectedFailures = [];
-    if (testCase.stream === "off") {
-      // unexpected errors in default (non-stream)
-      unexpectedFailures.push('Query::directKillAfterDBServerFinishRequests');
-
-      // cluster only
-      if (internal.isCluster() && suite.onlyInCluster) {
-      }
-    } else if (testCase.stream === "on") {
-      // unexpected errors in stream
-      unexpectedFailures.push('Query::directKillAfterDBServerFinishRequests');
-
-      // cluster only
-      if (internal.isCluster() && suite.onlyInCluster) {
-      }
-    }
-
-    const found = unexpectedFailures.find(entry => entry === testCase.failurePointName);
-    if (found) {
-      //return;
-    }
-
     suite[createTestName(testCase.failurePointName, testCase.stream)] = function (failurePointName, stream, reportKilled) {
       console.warn("Failure Point: " + failurePointName);
       console.warn("Stream type: " + stream);
