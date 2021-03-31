@@ -447,22 +447,6 @@ ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE,4009,"must not change the val
 ERROR_INVALID_DISJOINT_SMART_EDGE,4010,"non disjoint edge found","Will be raised if there is an attempt to create an edge between separated graph components."
 
 ################################################################################
-## Cluster repair errors
-################################################################################
-
-ERROR_CLUSTER_REPAIRS_FAILED,5000,"error during cluster repairs","General error during cluster repairs"
-ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY,5001,"not enough (healthy) db servers","Will be raised when, during repairDistributeShardsLike, there must be a free DB-Server to move a shard, but there is no candidate or none is healthy."
-ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,5002,"replication factor violated during cluster repairs","Will be raised on various inconsistencies regarding the replication factor"
-ERROR_CLUSTER_REPAIRS_NO_DBSERVERS,5003,"no dbservers during cluster repairs","Will be raised if a collection that is fixed has some shard without DB-Servers"
-ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS,5004,"mismatching leaders during cluster repairs","Will be raised if a shard in collection and its prototype in the corresponding distributeShardsLike collection have mismatching leaders (when they should already have been fixed)"
-ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS,5005,"mismatching followers during cluster repairs","Will be raised if a shard in collection and its prototype in the corresponding distributeShardsLike collection don't have the same followers (when they should already have been adjusted)"
-ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES,5006,"inconsistent attributes during cluster repairs","Will be raised if a collection that is fixed does (not) have distributeShardsLike when it is expected, or does (not) have repairingDistributeShardsLike when it is expected"
-ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS,5007,"mismatching shards during cluster repairs","Will be raised if in a collection and its distributeShardsLike prototype collection some shard and its prototype have an unequal number of DB-Servers"
-ERROR_CLUSTER_REPAIRS_JOB_FAILED,5008,"move shard job failed during cluster repairs","Will be raised if a move shard job in the Agency failed during cluster repairs"
-ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED,5009,"move shard job disappeared during cluster repairs","Will be raised if a move shard job in the Agency cannot be found anymore before it finished"
-ERROR_CLUSTER_REPAIRS_OPERATION_FAILED,5010,"agency transaction failed during cluster repairs","Will be raised if an agency transaction failed during either sending or executing it."
-
-################################################################################
 ## Agency errors
 ################################################################################
 
