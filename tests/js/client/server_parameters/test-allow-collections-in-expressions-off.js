@@ -108,6 +108,12 @@ function testSuite() {
       assertEqual(0, result.length);
     },
     
+    testUseInCollectionCount: function() {
+      let result = db._query("RETURN COLLECTION_COUNT(" + cn + ")").toArray();
+      assertEqual(1, result.length);
+      assertEqual(db[cn].count(), result[0]);
+    },
+    
     testUseInCount: function() {
       let result = db._query("RETURN COUNT(" + cn + ")").toArray();
       assertEqual(1, result.length);
