@@ -32,14 +32,17 @@
 
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "analysis/token_attributes.hpp"
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
+
 
 namespace iresearch {
 
 class boolean_filter;  // forward declaration
 struct data_output;    // forward declaration
 class token_stream;    // forward declaration
+class numeric_token_stream; // forward declaration
 
 }  // namespace iresearch
 
@@ -196,7 +199,10 @@ class FieldIterator {
   arangodb::transaction::Methods* _trx;
   irs::string_ref _collection;
   Field _value;  // iterator's value
-  IndexId _linkId;    
+  IndexId _linkId;
+  irs::analysis::analyzer* _superAnalyzer{nullptr};
+  irs::numeric_token_stream* _subAnalyzer{nullptr};
+  irs::term_attribute const* _superAnalyzerValue{nullptr};
   bool _isDBServer;
 }; // FieldIterator
 

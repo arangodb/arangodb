@@ -37,7 +37,6 @@
 #include "Misc.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 
 #include "search/term_filter.hpp"
@@ -444,17 +443,7 @@ bool FieldIterator::setValue(VPackSlice const value,
   if (!pool->accepts(valueType)) {
     return false;
   }
-  switch(pool->returnType()) {
-    case AnalyzerValueType::Bool:
-      arangodb::iresearch::kludge::mangleBool(_nameBuffer);
-      break;
-    case AnalyzerValueType::Number:
-      arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
-      break;
-    default:
-      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
-      break;
-  }
+
   // init stream
   auto analyzer = pool->get();
 
@@ -463,16 +452,39 @@ bool FieldIterator::setValue(VPackSlice const value,
         << "got nullptr from analyzer factory, name '" << pool->name() << "'";
     return false;
   }
-
   if (!analyzer->reset(valueRef)) {
-    return false;
+      return false;
   }
-
   // set field properties
-  _value._name = _nameBuffer;
-  _value._analyzer = analyzer;
-  _value._features = &(pool->features());
+  switch(pool->returnType()) {
+    case AnalyzerValueType::Bool:
+      arangodb::iresearch::kludge::mangleBool(_nameBuffer);
+      _value._features = &irs::flags::empty_instance();
+      break;
+    case AnalyzerValueType::Number:
+      {
+        arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
+        if (!analyzer->next()) {
+          return false;
+        }
+        _superAnalyzer = analyzer.get();
+        _superAnalyzerValue = irs::get<irs::term_attribute>(*analyzer);
+        TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof(double))
+        auto stream = NumericStreamPool.emplace();
+        stream->reset(*reinterpret_cast<double const*>(_superAnalyzerValue->value.c_str()));
+        _subAnalyzer = stream.get();
+        _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+        _value._features = &NumericStreamFeatures;
 
+      }
+      break;
+    default:
+      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      _value._analyzer = analyzer;
+      _value._features = &(pool->features());
+      break;
+  }
+  _value._name = _nameBuffer;
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
     auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
@@ -488,7 +500,12 @@ bool FieldIterator::setValue(VPackSlice const value,
 
 void FieldIterator::next() {
   TRI_ASSERT(valid());
-
+  if (_superAnalyzer && _superAnalyzer->next()) {
+    _subAnalyzer->reset(*reinterpret_cast<double const*>(_superAnalyzerValue->value.c_str()));
+    return;
+  } else  {
+    _superAnalyzer = nullptr;
+  }
   FieldMeta const* context = top().meta;
 
   // restore value
