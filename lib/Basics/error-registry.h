@@ -401,6 +401,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 353> ErrorMessage
       "division by zero"},
     {TRI_ERROR_QUERY_ARRAY_EXPECTED,  // 1563
       "array expected"},
+    {TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,  // 1568
+      "collection '%s' used as expression operand"},
     {TRI_ERROR_QUERY_FAIL_CALLED,  // 1569
       "FAIL(%s) called"},
     {TRI_ERROR_QUERY_GEO_INDEX_MISSING,  // 1570
@@ -415,8 +417,6 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 353> ErrorMessage
       "invalid aggregate expression"},
     {TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,  // 1575
       "query options must be readable at query compile time"},
-    {TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,  // 1576
-      "collection '%s' used as expression operand"},
     {TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,  // 1577
       "could not use forced index hint"},
     {TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,  // 1578

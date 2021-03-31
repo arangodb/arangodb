@@ -1062,6 +1062,11 @@ constexpr auto TRI_ERROR_QUERY_DIVISION_BY_ZERO                                 
 /// expects an array argument operand.
 constexpr auto TRI_ERROR_QUERY_ARRAY_EXPECTED                                    = ErrorCode{1563};
 
+/// 1568: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
+/// "collection '%s' used as expression operand"
+/// Will be raised when a collection is used as an operand in an AQL expression.
+constexpr auto TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     = ErrorCode{1568};
+
 /// 1569: ERROR_QUERY_FAIL_CALLED
 /// "FAIL(%s) called"
 /// Will be raised when the function FAIL() is called from inside a query.
@@ -1100,11 +1105,6 @@ constexpr auto TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION                     
 /// Will be raised when an AQL data-modification query contains options that
 /// cannot be figured out at query compile time.
 constexpr auto TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              = ErrorCode{1575};
-
-/// 1576: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
-/// "collection '%s' used as expression operand"
-/// Will be raised when a collection is used as an operand in an AQL expression.
-constexpr auto TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     = ErrorCode{1576};
 
 /// 1577: ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE
 /// "could not use forced index hint"
