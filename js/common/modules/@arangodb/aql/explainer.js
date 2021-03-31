@@ -160,6 +160,11 @@ function attribute(v) {
   return '`' + colors.COLOR_YELLOW + v + colors.COLOR_RESET + '`';
 }
 
+function attributePath(v) {
+  'use strict';
+  return v.split('.').map(attribute).join('.');
+}
+
 function header(v) {
   'use strict';
   return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
@@ -1175,7 +1180,7 @@ function processQuery(query, explain, planIndex) {
           }
 
           sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
-            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
+            return variableName(node.outVariable) + '.' + attributePath(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
           }).join(', ');
         }
 
@@ -1200,10 +1205,10 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
           viewVariables = node.viewValuesVars.map(function (viewValuesColumn) {
             if (viewValuesColumn.hasOwnProperty('field')) {
-              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesColumn.field);
+              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attributePath(viewValuesColumn.field);
             } else {
               return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
-                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attributePath(viewValuesVar.field);
               }).join('');
             }
           }).join('');
