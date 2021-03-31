@@ -304,11 +304,16 @@ void InMemoryLog::checkCommitIndex() {
   std::transform(conf.follower.begin(), conf.follower.end(), std::back_inserter(indexes),
                  [](Follower const& f) { return f.lastAckedIndex; });
   indexes.push_back(_persistedLogEnd);
+  TRI_ASSERT(indexes.size() == conf.follower.size() + 1);
+
+  if (quorum_size <= 0 || quorum_size > indexes.size()) {
+    return;
+  }
 
   std::nth_element(indexes.begin(), indexes.begin() + (quorum_size - 1),
                    indexes.end(), std::greater<LogIndex>{});
 
-  auto commitIndex = indexes.at(quorum_size);
+  auto commitIndex = indexes.at(quorum_size - 1);
   TRI_ASSERT(commitIndex >= _commitIndex);
   if (commitIndex > _commitIndex) {
     updateCommitIndexLeader(commitIndex);

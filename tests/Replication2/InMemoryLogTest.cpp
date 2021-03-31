@@ -271,6 +271,7 @@ TEST(InMemoryLog, replicationTest) {
   auto fut = leaderLog->waitFor(LogIndex{1});
 
   ASSERT_FALSE(fut.isReady());
+  ASSERT_FALSE(followerLog->hasPendingAppendEntries());
   leaderLog->runAsyncStep();
   // future should not be ready because write concern is two
   ASSERT_FALSE(fut.isReady());
