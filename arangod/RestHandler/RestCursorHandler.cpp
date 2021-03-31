@@ -210,6 +210,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
+    TRI_IF_FAILURE("RestCursorHandler::directKillStreamQueryBeforeCursorIsBeingCreated") {
+      query->debugKillQuery();
+    }
     _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
     _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
 

@@ -240,7 +240,7 @@ bool Query::killed() const {
 
 /// @brief set the query to killed
 void Query::kill() {
-  if (_trx->state()->isCoordinator() && !_queryKilled) {
+  if (ServerState::instance()->isCoordinator() && !_queryKilled) {
     _queryKilled = true;
     this->cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, /*sync*/false);
   } else {
