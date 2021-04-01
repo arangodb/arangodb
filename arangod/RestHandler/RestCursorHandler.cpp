@@ -582,15 +582,16 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     TRI_ASSERT(r.ok());
     return RestStatus::WAITING;
   }
-
-  builder.add(StaticStrings::Error, VPackValue(false));
-  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-  builder.close();
-
+    
   if (r.ok()) {
+    builder.add(StaticStrings::Error, VPackValue(false));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+    builder.close();
+
     _response->setContentType(rest::ContentType::JSON);
     generateResult(code, std::move(buffer), std::move(ctx));
   } else {
+    // builder can be in a broken state here. simply return the error
     generateError(r);
   }
   

@@ -272,8 +272,6 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     aql::ExecutionEngine* engine = _query->rootEngine();
     TRI_ASSERT(engine != nullptr);
 
-    SharedAqlItemBlockPtr value;
-
     ExecutionState state = ExecutionState::WAITING;
 
     while (state == ExecutionState::WAITING) {
