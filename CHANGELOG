@@ -4,6 +4,9 @@ v3.8.0 (XXXX-XX-XX)
 * Change metrics' internal `low()` and `high()` methods so that they  return by
   value, not by reference.
 
+* Fixed issue BTS-353: memleak when running into an out-of-memory situation
+  while repurposing an existing AqlItemBlock.
+
 * Fix logging of urls when using `--log.level requests=debug`. There was an
   issue since v3.7.7 with the wrong URL being logged in request logging if
   multiple requests were sent over the same connection. In this case, the
