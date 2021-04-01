@@ -1,6 +1,11 @@
 devel
 -----
 
+* Remove obsolete API endpoint /_admin/repair/distributeShardsLike`. This
+  API was intended to correct some bad state introduced before 3.2.12 or 3.3.4,
+  respectively. It had to be invoked manually by callers and there was never
+  any driver support for it.
+
 * Remove now-unused SubqueryExecutor. This is an internal change only and
   should not have any effect on queries, as from 3.8 onwards only spliced
   subqueries should be used in query execution plans and during query
