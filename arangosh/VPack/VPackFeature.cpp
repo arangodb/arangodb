@@ -212,7 +212,7 @@ void VPackFeature::start() {
     ofs.seekp(0);
   }
 
-  bool const outputIsJson = (_outputType == "json" || _outputType == "json-hex" || _outputType == "json-pretty");
+  bool const outputIsJson = (_outputType == "json" || _outputType == "json-pretty");
   bool const outputIsHex = (_outputType == "vpack-hex");
   if (outputIsJson) {
     // JSON output
