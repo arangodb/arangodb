@@ -25,15 +25,8 @@ add_executable(fuertetest
 )
 
 target_link_libraries(fuertetest
-    fuerte
-    gtest
-    boost_boost
-    arango
-    arango_v8server
     arangoserver
-    ${MSVC_LIBS}
-    ${OPENSSL_LIBRARIES}
-    ${CMAKE_THREAD_LIBS_INIT}
+    gtest
 )
 
 target_include_directories(fuertetest SYSTEM PRIVATE

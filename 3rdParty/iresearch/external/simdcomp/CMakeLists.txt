@@ -44,7 +44,7 @@ set(SIMDCOMP_SRCS
 
 # static library
 add_library(simdcomp-static STATIC "${SIMDCOMP_SRCS}")
-target_link_libraries(simdcomp-static ${BASE_FLAGS})
+target_compile_options(simdcomp-static PRIVATE ${BASE_FLAGS})
 target_include_directories(
   simdcomp-static
   PUBLIC ${PROJECT_SOURCE_DIR}/include
@@ -52,7 +52,7 @@ target_include_directories(
 
 # shared library
 add_library(simdcomp-shared SHARED "${SIMDCOMP_SRCS}")
-target_link_libraries(simdcomp-shared ${BASE_FLAGS})
+target_compile_options(simdcomp-shared PRIVATE ${BASE_FLAGS})
 target_include_directories(
   simdcomp-shared
   PUBLIC ${PROJECT_SOURCE_DIR}/include

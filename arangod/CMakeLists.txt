@@ -103,12 +103,7 @@ target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
 )
 
-get_target_property(arango_iresearch_type arango_iresearch TYPE)
-if (arango_iresearch_type STREQUAL STATIC_LIBRARY)
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static)
-else()
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-shared)
-endif()
+set(IRESEARCH_TARGET_DEPENDENCY iresearch-static)
 
 get_target_property(IRESEARCH_INCLUDE
   ${IRESEARCH_TARGET_DEPENDENCY} INCLUDE_DIRECTORIES)
@@ -453,6 +448,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
   Aql/QueryCursor.cpp
   Replication/DatabaseReplicationApplier.cpp
+  Transaction/Methods.cpp
   Utils/CollectionNameResolver.cpp
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
@@ -793,7 +789,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/Helpers.cpp
   Transaction/Manager.cpp
   Transaction/ManagerFeature.cpp
-  Transaction/Methods.cpp
   Transaction/Options.cpp
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
