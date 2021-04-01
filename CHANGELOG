@@ -16,6 +16,12 @@ v3.8.0 (XXXX-XX-XX)
   collection names in AQL queries where they are expected, e.g. `FOR doc IN 
   collection RETURN doc`.
 
+  The option `--query.allow-collections-in-expressions` is introduced with a
+  default value of `true` in 3.8 to ensure downwards-compatibility, but the
+  default value will change to `false` in 3.9. Furthermore, the option will
+  be deprecated in 3.9 and removed in later versions, in addition to making
+  unintended usage of collection names always an error.
+
 
 v3.8.0-alpha.1 (2021-03-29)
 ---------------------------
