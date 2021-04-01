@@ -136,6 +136,17 @@ function replicationFuzz (options) {
           require('internal').sleep(5);
           customInstanceInfos.postStart.instanceInfo.arangods[0].pid = false;
           pu.reStartInstance(options, customInstanceInfos.postStart.instanceInfo, {});
+          require('internal').sleep(2)
+          if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
+            throw("DEAD!");
+          }
+          if (customInstanceInfos.postStart.instanceInfo.arangods[0].exitStatus.status != "TERMINATED") {
+            throw("DEADD!");
+          }
+          require('internal').sleep(5);
+          customInstanceInfos.postStart.instanceInfo.arangods[0].pid = false;
+
+          pu.reStartInstance(options, customInstanceInfos.postStart.instanceInfo, {});
           
           print(customInstanceInfos.postStart.instanceInfo)
           testCases.forEach(testCase => {
