@@ -331,8 +331,9 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   
   options->addOption("--query.allow-collections-in-expressions",
                      "allow full collections to be used in AQL expressions",
-                     new BooleanParameter(&_allowCollectionsInExpressions))
-                     .setIntroducedIn(30900);
+                     new BooleanParameter(&_allowCollectionsInExpressions),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800).setDeprecatedIn(30900);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
