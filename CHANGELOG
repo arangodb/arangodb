@@ -7,6 +7,10 @@ v3.8.0 (XXXX-XX-XX)
   request logging only reported the first URL requested in the connection,
   even for all subsequent requests.
 
+* Fix errors caused by creating some log messages in log level DEBUG in log
+  topics PREGEL and GRAPHS. Setting the log level to DEBUG for these topics
+  could lead to errors when running some Pregel jobs or SmartGraph traversals.
+
 
 v3.8.0-alpha.1 (2021-03-29)
 ---------------------------
