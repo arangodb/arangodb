@@ -169,6 +169,20 @@ const impTodos = [{
   separator: ',',
   backslash: true
 }, {
+  id: 'csvheaders',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
+  coll: 'UnitTestsImportCsvHeaders',
+  type: 'csv',
+  create: 'true',
+}, {
+  id: 'csvbrokenheaders',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-broken-headers.csv')),
+  coll: 'UnitTestsImportCsvBrokenHeaders',
+  type: 'csv',
+  create: 'true',
+}, {
   id: 'tsv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.tsv')),
   coll: 'UnitTestsImportTsv1',

@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added option `--headers-file` to arangoimport, to optionally read CSV/TSV
+  headers from a separate file.
+
 * Fix logging of urls when using `--log.level requests=debug`. There was an
   issue since v3.7.7 with the wrong URL being logged in request logging if
   multiple requests were sent over the same connection. In this case, the
