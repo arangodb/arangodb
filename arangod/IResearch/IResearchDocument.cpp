@@ -457,22 +457,34 @@ bool FieldIterator::setValue(VPackSlice const value,
   }
   // set field properties
   switch(pool->returnType()) {
-    case AnalyzerValueType::Bool:
-      arangodb::iresearch::kludge::mangleBool(_nameBuffer);
-      _value._features = &irs::flags::empty_instance();
-      break;
-    case AnalyzerValueType::Number:
+    case AnalyzerValueType::Bool: 
       {
-        arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
         if (!analyzer->next()) {
           return false;
         }
         _superAnalyzer = analyzer.get();
         _superAnalyzerValue = irs::get<irs::term_attribute>(*analyzer);
-        TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof(double))
+         TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof(bool))
+        arangodb::iresearch::kludge::mangleBool(_nameBuffer);
+        auto stream = BoolStreamPool.emplace();
+        stream->reset(*reinterpret_cast<bool const*>(_superAnalyzerValue->value.c_str()));
+        _subBoolAnalyzer = stream.get();
+        _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+        _value._features = &irs::flags::empty_instance();
+      }
+      break;
+    case AnalyzerValueType::Number:
+      {
+        if (!analyzer->next()) {
+          return false;
+        }
+        arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
+        _superAnalyzer = analyzer.get();
+        _superAnalyzerValue = irs::get<irs::term_attribute>(*analyzer);
         auto stream = NumericStreamPool.emplace();
+        TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof(double))
         stream->reset(*reinterpret_cast<double const*>(_superAnalyzerValue->value.c_str()));
-        _subAnalyzer = stream.get();
+        _subNumericAnalyzer = stream.get();
         _value._analyzer = stream.release();  // FIXME don't use shared_ptr
         _value._features = &NumericStreamFeatures;
 
@@ -500,12 +512,33 @@ bool FieldIterator::setValue(VPackSlice const value,
 
 void FieldIterator::next() {
   TRI_ASSERT(valid());
-  if (_superAnalyzer && _superAnalyzer->next()) {
-    _subAnalyzer->reset(*reinterpret_cast<double const*>(_superAnalyzerValue->value.c_str()));
-    return;
-  } else  {
-    _superAnalyzer = nullptr;
+
+  if (_superAnalyzer) {
+     if(_superAnalyzer->next()) {
+       TRI_ASSERT(_subBoolAnalyzer || _subNumericAnalyzer);
+       if (_subNumericAnalyzer) {
+         TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof (double));
+         _subNumericAnalyzer->reset(*reinterpret_cast<double const*>(_superAnalyzerValue->value.c_str()));
+       } else {
+         TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof (bool));
+         _subBoolAnalyzer->reset(*reinterpret_cast<bool const*>(_superAnalyzerValue->value.c_str()));
+       }
+       return;
+     } else {
+       _superAnalyzer = nullptr;
+       _subBoolAnalyzer = nullptr;
+       _subNumericAnalyzer = nullptr;
+     }
   }
+
+      
+    //while (!_subStack.empty()) {
+    //  if (_subStack.top().next()) {
+    //    return;
+    //  }
+    //  _subStack.pop();
+    //}
+
   FieldMeta const* context = top().meta;
 
   // restore value

@@ -39,10 +39,11 @@
 
 namespace iresearch {
 
-class boolean_filter;  // forward declaration
-struct data_output;    // forward declaration
-class token_stream;    // forward declaration
-class numeric_token_stream; // forward declaration
+class boolean_filter;
+struct data_output;
+class token_stream;
+class numeric_token_stream;
+class boolean_token_stream;
 
 }  // namespace iresearch
 
@@ -174,8 +175,6 @@ class FieldIterator {
     return _stack.back();
   }
 
-  IteratorValue const& topValue() noexcept { return top().it.value(); }
-
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
   FieldIterator& operator=(FieldIterator const&) = delete;
@@ -200,9 +199,12 @@ class FieldIterator {
   irs::string_ref _collection;
   Field _value;  // iterator's value
   IndexId _linkId;
+
   irs::analysis::analyzer* _superAnalyzer{nullptr};
-  irs::numeric_token_stream* _subAnalyzer{nullptr};
+  irs::numeric_token_stream* _subNumericAnalyzer{nullptr};
+  irs::boolean_token_stream* _subBoolAnalyzer{nullptr};
   irs::term_attribute const* _superAnalyzerValue{nullptr};
+  
   bool _isDBServer;
 }; // FieldIterator
 

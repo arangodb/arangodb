@@ -1953,7 +1953,7 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     
-    testCustomAqlAnalyzerBoolArrayInView : function() {
+    testCustomAqlAnalyzerBoolInView : function() {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
@@ -1966,7 +1966,7 @@ function iResearchFeatureAqlTestSuite () {
         col.save({field:"1"});
         col.save({field:"2"});
         col.save({field:"3"});
-        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) % 2 == 0",
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) == 2 ",
                                               returnType:"bool"});
         db._createView(viewName, "arangosearch", 
                                   {links: 
@@ -1975,12 +1975,13 @@ function iResearchFeatureAqlTestSuite () {
                                        includeAllFields:true, 
                                        analyzers:['calcUnderTest']}}});
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
-                             "OPTIONS { waitForSync: true } RETURN d ",
+                             " OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
         assertEqual(1, res1.length);
         assertEqual("2", res1[0].field);
         let res3 = db._query("FOR d IN @@v  " + 
-                             "SEARCH d.field == false OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             "SEARCH d.field == false " +
+                             " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
                              { '@v':viewName }).toArray();
         assertEqual(2, res3.length);
         assertEqual("1", res3[0].field);
@@ -2004,7 +2005,7 @@ function iResearchFeatureAqlTestSuite () {
         col.save({field:"1"});
         col.save({field:"2"});
         col.save({field:"3"});
-        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a % 2 == 0",
+        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a == 2",
                                               returnType:"bool"});
         db._createView(viewName, "arangosearch", 
                                   {links: 
@@ -2013,13 +2014,14 @@ function iResearchFeatureAqlTestSuite () {
                                        includeAllFields:true, 
                                        analyzers:['calcUnderTest']}}});
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
-                             "OPTIONS { waitForSync: true } RETURN d ",
+                             " OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
         assertEqual(2, res1.length);
         assertEqual("2", res1[0].field);
         assertEqual("3", res1[1].field);
         let res3 = db._query("FOR d IN @@v  " + 
-                             "SEARCH d.field == false OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             "SEARCH d.field == false OPTIONS " +
+                             "{ waitForSync: true } SORT d.field ASC RETURN d ",
                              { '@v':viewName }).toArray();
         assertEqual(3, res3.length);
         assertEqual("1", res3[0].field);
@@ -2028,6 +2030,17 @@ function iResearchFeatureAqlTestSuite () {
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
+      }
+    },
+    
+    testCustomAqlAnalyzerInvalidTypeInView : function() {
+      try {
+        let invalid  =  analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a % 2 == 0",
+                                       returnType:"null"});
+        fail();                               
+      } catch(err) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                    err.errorNum);
       }
     },
     
