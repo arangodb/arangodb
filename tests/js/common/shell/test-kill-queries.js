@@ -153,23 +153,33 @@ function GenericQueryKillSuite() { // can be either default or stream
 
   // defaults
   testCases.push(createTestCaseEntry("QueryProfile::directKillAfterQueryGotRegistered", true, "off", "on"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting", false, 'off', "on"));
 
-  // stream
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryBeforeCursorIsBeingCreated", false, "on", "on"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "on"));
+  /*
+   * Stream
+   */
+  testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryBeforeCursorIsBeingCreated", false, "on", "on"));
+  testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "on"));
   // On stream the dump happens during process of the query, so it can be killed
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryIsGettingDumped", false, "on", "on"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryIsGettingDumped", false, "on", "on"));
+  testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumped", false, "on", "on"));
+  testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "on"));
+  testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced", false, "on", "on")); // TODO shell_server only
+  testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumpedSynced", false, "on", "on")); // TODO shell_server only
 
-  // Non-Stream
-  // On non stream the dump happens after query is fully processed, so it cannot be killed anymore.
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryIsGettingDumped", false, "on", "off"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryIsGettingDumped", false, "on", "off"));
+  /*
+   * Non-Stream
+   */
+  // On non stream the dump happens after query is fully processed, so it cannot be killed anymore. // TODO check if that is true
+  // Here the server should throw CANCELED
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "on"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnDONE", false, "off", "off"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnCREATED", false, "off", "off"));
 
-  // execution in default & stream
+  /*
+   * Execution in default & stream
+   */
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', "on"));
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "on"));
+  testCases.push(createTestCaseEntry("Query::directKillAfterQueryExecuteReturnsWaiting", false, 'both', "on")); // TODO check if both is true here
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', "both"));

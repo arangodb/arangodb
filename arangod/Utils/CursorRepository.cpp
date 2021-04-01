@@ -33,6 +33,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <Basics/ScopeGuard.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -146,8 +147,17 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
 //////////////////////////////////////////////////////////////////////////////
 
 Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+  TRI_IF_FAILURE("CursorRepository::directKillStreamQueryBeforeCursorIsBeingCreated") {
+    q->debugKillQuery();
+  }
+
   auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
   cursor->use();
+
+  TRI_IF_FAILURE(
+      "CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated") {
+    TRI_DEFER() { cursor->debugKillQuery(); }
+  }
 
   return addCursor(std::move(cursor));
 }

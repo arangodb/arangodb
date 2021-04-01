@@ -210,15 +210,8 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
-    TRI_IF_FAILURE("RestCursorHandler::directKillStreamQueryBeforeCursorIsBeingCreated") {
-      query->debugKillQuery();
-    }
     _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
     _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
-
-    TRI_IF_FAILURE("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated") {
-      _cursor->debugKillQuery();
-    }
     
     return generateCursorResult(rest::ResponseCode::CREATED);
   }
@@ -263,9 +256,6 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
     auto state = _query->execute(_queryResult);
 
     if (state == aql::ExecutionState::WAITING) {
-      TRI_IF_FAILURE("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting") {
-        _query->debugKillQuery();
-      }
       guard.cancel();
       return RestStatus::WAITING;
     }
@@ -278,6 +268,9 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
 
 // non stream case, result is complete
 RestStatus RestCursorHandler::handleQueryResult() {
+  TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
+    _query->debugKillQuery();
+  }
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
@@ -357,6 +350,12 @@ RestStatus RestCursorHandler::handleQueryResult() {
     // can send back the query result to the client and the client can make follow-up
     // requests on the same transaction (e.g. trx.commit()) without the server code for
     // freeing the resources and the client code racing for who's first
+
+    TRI_IF_FAILURE(
+        "RestCursorHandler::"
+        "directKillAfterQueryResultIsGettingHandledAndWillReturnDONE") {
+      TRI_DEFER() { _query->debugKillQuery(); }
+    }
     return RestStatus::DONE;
   } else {
     // result is bigger than batchSize, and a cursor will be created
@@ -365,6 +364,12 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
     _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
+
+    TRI_IF_FAILURE(
+        "RestCursorHandler::"
+        "directKillAfterQueryResultIsGettingHandledAndWillReturnCREATED") {
+      TRI_DEFER() { _query->debugKillQuery(); }
+    }
     return generateCursorResult(rest::ResponseCode::CREATED);
   }
 }
@@ -544,15 +549,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   VPackBuilder builder(buffer);
   builder.openObject(/*unindexed*/true);
 
-  TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryIsGettingDumped") {
-    _cursor->debugKillQuery();
-  }
-
   auto const [state, r] = _cursor->dump(builder);
-
-  TRI_IF_FAILURE("RestCursorHandler::directKillAfterQueryIsGettingDumped") {
-    _cursor->debugKillQuery();
-  }
 
   if (state == aql::ExecutionState::WAITING) {
     builder.clear();

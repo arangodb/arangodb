@@ -225,6 +225,13 @@ void QueryStreamCursor::debugKillQuery() {
 #endif
 
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
+  TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
+    debugKillQuery();
+  }
+  TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumped") {
+    TRI_DEFER() { debugKillQuery(); }
+  }
+
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
     << "executing query " << _id << ": '"
@@ -271,6 +278,12 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
 }
 
 Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
+  TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced") {
+    debugKillQuery();
+  }
+  TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumpedSynced") {
+    TRI_DEFER() { debugKillQuery(); }
+  }
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9dada", TRACE, Logger::QUERIES)
       << "executing query " << _id << ": '"
