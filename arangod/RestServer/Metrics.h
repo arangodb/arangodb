@@ -398,8 +398,8 @@ template<typename Scale> class Histogram : public Metric {
     records(t);
   }
 
-  value_type const& low() const { return _scale.low(); }
-  value_type const& high() const { return _scale.high(); }
+  value_type low() const { return _scale.low(); }
+  value_type high() const { return _scale.high(); }
 
   Metrics::hist_type::value_type& operator[](size_t n) {
     return _c[n];
@@ -413,7 +413,7 @@ template<typename Scale> class Histogram : public Metric {
     return v;
   }
 
-  uint64_t load(size_t i) const { return _c.load(i); };
+  uint64_t load(size_t i) const { return _c.load(i); }
 
   size_t size() const { return _c.size(); }
 

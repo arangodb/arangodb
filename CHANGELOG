@@ -1,6 +1,9 @@
 v3.6.13 (XXXX-XX-XX)
 --------------------
 
+* Change metrics' internal `low()` and `high()` methods so that they 
+  return by value, not by reference.
+
 * Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
 
 * When using connections to multiple endpoints and switching between them,
