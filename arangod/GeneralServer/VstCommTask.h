@@ -104,7 +104,7 @@ class VstCommTask final : public GeneralCommTask<T> {
 
  private:
 
-  std::string const& url(VstRequest* req);
+  std::string url(VstRequest const* req) const;
 
   std::map<uint64_t, Message> _messages;
 

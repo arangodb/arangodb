@@ -163,6 +163,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _smartJoins(true),
       _parallelizeTraversals(true),
 #endif
+      _allowCollectionsInExpressions(true),
       _queryGlobalMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue(), 0.2, 0.75)),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
@@ -327,6 +328,13 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                                               arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30701);
 #endif
+ 
+  // the default value of this option is true in 3.8, but will change to false in 3.9.
+  // in 3.9 the option will also be deprecated
+  options->addOption("--query.allow-collections-in-expressions",
+                     "allow full collections to be used in AQL expressions",
+                     new BooleanParameter(&_allowCollectionsInExpressions))
+                     .setIntroducedIn(30800);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
