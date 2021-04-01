@@ -15,13 +15,13 @@ except ImportError:
 # Check that we are in the right place:
 LS_HERE = os.listdir(".")
 if not("arangod" in LS_HERE and "arangosh" in LS_HERE and
-        "Documentation" in LS_HERE and "CMakeLists.txt" in LS_HERE):
-  print("Please execute me in the main source dir!")
-  sys.exit(1)
+       "Documentation" in LS_HERE and "CMakeLists.txt" in LS_HERE):
+    print("Please execute me in the main source dir!")
+    sys.exit(1)
 
 # List files in Documentation/Metrics:
 YAMLFILES = [f for f in os.listdir("Documentation/Metrics")
-        if not f.startswith('.')]
+             if not f.startswith('.')]
 YAMLFILES.sort()
 if "allMetrics.yaml" in YAMLFILES:
     YAMLFILES.remove("allMetrics.yaml")
@@ -55,12 +55,12 @@ for root, dirs, files in os.walk("."):
                 ff = os.path.join(root, f)
                 continuation = False
                 s = open(ff, 'rt', encoding='utf-8')
-                type : Optional[MetricType] = None
+                type: Optional[MetricType] = None
                 while True:
                     l = s.readline()
                     if l == "":
                         break
-                    if not(continuation):
+                    if not continuation:
                         m = HEADERMATCH.search(l)
                         if m:
                             type = MetricType.fromStr(m.group('type'))
@@ -86,38 +86,42 @@ def verifyYaml(metric, y, fileName, filePath):
     for attr in ["name", "help", "exposedBy", "description", "unit",
                  "type", "category", "complexity"]:
         if not attr in y:
-            print("YAML file '" + filePath + "' does not have required attribute '" + attr + "'")
+            print("YAML file '" + filePath +
+                  "' does not have required attribute '" + attr + "'")
             return False
     for attr in ["name", "help", "description", "unit",
                  "type", "category", "complexity"]:
         if not isinstance(y[attr], str):
-            print("YAML file '" + filePath + "' has an attribute '" + attr + "' whose value must be a string but isn't.")
+            print("YAML file '" + filePath + "' has an attribute '" +
+                  attr + "' whose value must be a string but isn't.")
             return False
     if not isinstance(y["exposedBy"], list):
-        print("YAML file '" + filePath + "' has an attribute 'exposedBy' whose value must be a list but isn't.")
+        print("YAML file '" + filePath +
+              "' has an attribute 'exposedBy' whose value " +
+              "must be a list but isn't.")
         return False
     if y['name'] != metric.name:
         print("Metric name '{}' defined in cpp file '{}' "
-                "doesn't match name '{}' defined in YAML file '{}'"
-                .format(metric.name, metric.file, y['name'], fileName))
+              "doesn't match name '{}' defined in YAML file '{}'"
+              .format(metric.name, metric.file, y['name'], fileName))
         return False
     knownTypes = ['gauge', 'counter', 'histogram']
     if not y['type'] in knownTypes:
         print("Unexpected type '{}', expected one of {} in YAML file '{}'"
-                .format(y['type'], knownTypes, fileName))
+              .format(y['type'], knownTypes, fileName))
         return False
     elif MetricType.fromStr(y['type']) != metric.type:
         print("Type mismatch for metric '{}': "
-                "Defined as {} in cpp file '{}', "
-                "but defined as {} in YAML file '{}'."
-                .format(metric.name, metric.type.name, metric.file,
-                    y['type'], fileName))
+              "Defined as {} in cpp file '{}', "
+              "but defined as {} in YAML file '{}'."
+              .format(metric.name, metric.type.name, metric.file,
+                      y['type'], fileName))
         return False
     return True
 
 # Check that every listed metric has a .yaml documentation file:
-missing = False
-yamls = []
+MISSING = False
+YAMLS = []
 for i in range(0, len(METRICSLIST)):
     bad = False
     metric = METRICSLIST[i]
@@ -141,34 +145,36 @@ for i in range(0, len(METRICSLIST)):
             bad = True
             continue
 
-        yamls.append(y)   # for later dump
+        YAMLS.append(y)   # for later dump
 
         if not verifyYaml(metric, y, fileName, filePath):
             bad = True
 
 
     if bad:
-        missing = True
+        MISSING = True
 
-metricNames = { metric.name : True for metric in METRICSLIST }
-tooMany = False
+METRICNAMES = {metric.name : True for metric in METRICSLIST}
+TOOMANY = False
 for i in range(0, len(YAMLFILES)):
     name = YAMLFILES[i][:-5]
-    if not(name in metricNames):
-        tooMany = True
-        print("YAML file '" + name + ".yaml'\n  does not have a corresponding metric declared in the source code!")
+    if not name in METRICNAMES:
+        TOOMANY = True
+        print("YAML file '" + name +
+              ".yaml'\n  does not have a corresponding metric " +
+              "declared in the source code!")
 
-onlyCheck = False
+DUMPMETRICS = False
 if len(sys.argv) > 1 and sys.argv[1] == "-c":
-    onlyCheck = True
+    DUMPMETRICS = True
 
-outfile = "Documentation/Metrics/allMetrics.yaml"
-output = dump(yamls, Dumper=Dumper, default_flow_style=False)
-if onlyCheck:
-    input = open(outfile, "r")
-    found = input.read()
-    input.close()
-    if output != found:
+OUTFILE = "Documentation/Metrics/allMetrics.yaml"
+OUTPUT = dump(YAMLS, Dumper=Dumper, default_flow_style=False)
+if DUMPMETRICS:
+    S = open(OUTFILE, "r")
+    found = S.read()
+    S.close()
+    if OUTPUT != found:
         print("""
 Generated file Documentation/Metrics/allMetrics.yaml does not match
 the metrics documentation snippets. Please run
@@ -180,12 +186,12 @@ and commit Documentation/Metrics/allMetrics.yaml with your PR!
     sys.exit(18)
 else:
     # Dump what we have:
-    s = open(outfile, "w")
-    s.write(output)
+    s = open(OUTFILE, "w")
+    s.write(OUTPUT)
     s.close()
 
-if missing:
+if MISSING:
     sys.exit(17)
 
-if tooMany:
+if TOOMANY:
     sys.exit(18)
