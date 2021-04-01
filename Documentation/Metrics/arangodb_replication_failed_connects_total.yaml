@@ -25,7 +25,7 @@ troubleshoot: |
   network hiccup, if you see constant increases here that indicates serious issues.
   This also indicates that there is a shard trying to get into sync with the existing
   data, which cannot make progress. So you have only replicationFactor - 1 copies of
-  the data right now. If more servers suffer outage you may loose data in this case.
+  the data right now. If more servers suffer outage you may lose data in this case.
   * First thing to check: Network connectivity, make sure all servers are online
     and the machines can communicate to one-another.
   * Second: Check ArangoDB logs of this server for more details, most likely

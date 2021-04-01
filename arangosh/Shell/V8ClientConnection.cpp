@@ -1763,7 +1763,7 @@ again:
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
       req->header.acceptType(fu::ContentType::Custom);
     }
-    req->header.addMeta(pair.first, pair.second);
+    req->header.addMeta(basics::StringUtils::tolower(pair.first), pair.second);
   }
   if (isFile) {
     std::string const infile = TRI_ObjectToString(isolate, body);
@@ -1867,7 +1867,7 @@ again:
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
       req->header.acceptType(fu::ContentType::Custom);
     }
-    req->header.addMeta(pair.first, pair.second);
+    req->header.addMeta(basics::StringUtils::tolower(pair.first), pair.second);
   }
   if (body->IsString() || body->IsStringObject()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);

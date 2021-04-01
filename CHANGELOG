@@ -6,6 +6,26 @@ devel
   violations and/or write-write conflict during a multi-document write
   operation.
 
+* Remove obsolete API endpoint /_admin/repair/distributeShardsLike`. This
+  API was intended to correct some bad state introduced before 3.2.12 or 3.3.4,
+  respectively. It had to be invoked manually by callers and there was never
+  any driver support for it.
+
+* Remove now-unused SubqueryExecutor. This is an internal change only and
+  should not have any effect on queries, as from 3.8 onwards only spliced
+  subqueries should be used in query execution plans and during query
+  execution.
+
+* Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
+  Now, any maintainer mode build will build all log messages automatically,
+  so we will have full coverage of log message construction during our
+  tests. In non-maintainer mode, log messages are still only built when
+  actually required. This simplifies the build and increases coverage.
+
+* Updated ArangoDB Starter to 0.15.0-preview-2.
+
+* Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
+
 * Updated arangosync to 2.0.1.
 
 * Introduce metrics for AQL query memory limit violations:
