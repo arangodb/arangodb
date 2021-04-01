@@ -1,6 +1,10 @@
 devel
 -----
 
+* Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve
+  only as a stopgap measure while porting applications from the MMFiles
+  storage engine to RocksDB.
+
 * Added startup option `--query.allow-collections-in-expressions` to control
   whether collection names can be used in arbitrary places in AQL expressions,
   e.g. `collection + 1`. This was allowed before, as a collection can be seen
