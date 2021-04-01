@@ -604,7 +604,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
   // we use a backwards compatible stack here.
   // This will always continue with a fetch-all on underlying subqueries (if any)
   AqlCallStack compatibilityStack{AqlCallList{AqlCall::SimulateGetSome(atMost)}};
-  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
   // We cannot trigger a skip operation from here
   TRI_ASSERT(skipped.nothingSkipped());
   return {state, std::move(block)};
@@ -624,7 +624,7 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   // we use a backwards compatible stack here.
   // This will always continue with a fetch-all on underlying subqueries (if any)
   AqlCallStack compatibilityStack{AqlCallList{AqlCall::SimulateSkipSome(atMost)}};
-  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
   // We cannot be triggered within a subquery from earlier versions.
   // Also we cannot produce anything ourselfes here.
   TRI_ASSERT(block == nullptr);

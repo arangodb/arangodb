@@ -180,8 +180,6 @@ function GenericQueryKillSuite() { // can be either default or stream
     testCases.push(createTestCaseEntry("Query::executeV8directKillAfterQueryResultIsGettingHandled", false, "off", "on"));
   } else { // shell_client
     testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
-    testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnDONE", false, "off", "off"));
-    testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnCREATED", false, "off", "off")); // TODO: set batchSize to 1
   }
   // Non-Stream does always use dumpSync
   testCases.push(createTestCaseEntry("QueryResultCursor::directKillBeforeQueryIsGettingDumpedSynced", false, "off", "off"));
@@ -191,12 +189,19 @@ function GenericQueryKillSuite() { // can be either default or stream
    * Execution in default & stream
    */
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', "on"));
-  testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "on"));
+  if (internal.isCluster()) {
+    // We wait after first Execute. SO we are not done and can kill the query.
+    testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "on"));
+  } else {
+    // NO waiting, the query is done after a single Execute run
+    // With > 1000 results this should return an error
+    testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "off"));
+  }
   // Waiting is only possible in cluster
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryExecuteReturnsWaiting", true, 'both', "on"));
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "both"));
-  testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', "both"));
+  testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", true, 'both', "both"));
 
   const testSuite = {
     setUp: function () {

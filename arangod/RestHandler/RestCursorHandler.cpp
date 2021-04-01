@@ -268,9 +268,7 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
 
 // non stream case, result is complete
 RestStatus RestCursorHandler::handleQueryResult() {
-  TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
-    _query->debugKillQuery();
-  }
+  TRI_ASSERT(_query == nullptr);
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
@@ -351,11 +349,6 @@ RestStatus RestCursorHandler::handleQueryResult() {
     // requests on the same transaction (e.g. trx.commit()) without the server code for
     // freeing the resources and the client code racing for who's first
 
-    TRI_IF_FAILURE(
-        "RestCursorHandler::"
-        "directKillAfterQueryResultIsGettingHandledAndWillReturnDONE") {
-      _query->debugKillQuery();
-    }
     return RestStatus::DONE;
   } else {
     // result is bigger than batchSize, and a cursor will be created
@@ -365,11 +358,6 @@ RestStatus RestCursorHandler::handleQueryResult() {
     // steal the query result, cursor will take over the ownership
     _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
 
-    TRI_IF_FAILURE(
-        "RestCursorHandler::"
-        "directKillAfterQueryResultIsGettingHandledAndWillReturnCREATED") {
-      _query->debugKillQuery();
-    }
     return generateCursorResult(rest::ResponseCode::CREATED);
   }
 }
@@ -413,6 +401,7 @@ void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> quer
   }
 
   TRI_ASSERT(_query == nullptr);
+  TRI_ASSERT(query != nullptr);
   _query = std::move(query);
 }
 
@@ -421,6 +410,9 @@ void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> quer
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::unregisterQuery() {
+  TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
+    _query->debugKillQuery();
+  }
   MUTEX_LOCKER(mutexLocker, _queryLock);
   _query.reset();
 }
