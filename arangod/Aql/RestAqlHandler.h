@@ -53,11 +53,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
    public:
     static auto execute() -> const char* { return "/_api/aql/execute"; }
   };
-
- public:
-  // DELETE method for /_api/aql/kill/<queryId>, (internal)
-  bool killQuery(std::string const& idString);
-
+  
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "execute", "getSome", "skipSome" "initializeCursor" or

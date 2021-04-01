@@ -38,6 +38,8 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Optimizer.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryString.h"
 #include "Basics/ResourceUsage.h"
@@ -552,7 +554,21 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
         }
       });
       ast->validateAndOptimize(_query->trxForOptimization());
-      _plan = ExecutionPlan::instantiateFromAst(ast, true);
+      
+      std::unique_ptr<ExecutionPlan> plan = ExecutionPlan::instantiateFromAst(ast, true);
+      
+      // run the plan through the optimizer, executing only the absolutely necessary
+      // optimizer rules (we skip all other rules to save time). we have to execute
+      // the "splice-subqueries" rule here so we replace all SubqueryNodes with
+      // SubqueryStartNodes and SubqueryEndNodes.
+      Optimizer optimizer(1);
+      // disable all rules which are not necessary
+      optimizer.disableRules(plan.get(), [](OptimizerRule const& rule) -> bool {
+        return rule.canBeDisabled() || rule.isClusterOnly();
+      });
+      optimizer.createPlans(std::move(plan), _query->queryOptions(), false);
+
+      _plan = optimizer.stealBest();
     } else {
       for (auto node : _bindedNodes) {
         node->setStringValue(field.c_str(), field.size());

@@ -447,7 +447,7 @@ class ExecutionNode {
   ExecutionPlan* plan();
 
   /// @brief static analysis
-  void planRegisters(ExecutionNode* super = nullptr, ExplainRegisterPlan = ExplainRegisterPlan::No);
+  void planRegisters(ExplainRegisterPlan = ExplainRegisterPlan::No);
 
   /// @brief get RegisterPlan
   std::shared_ptr<RegisterPlan> getRegisterPlan() const;

@@ -275,12 +275,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp)
 
-if (USE_FAILURE_TESTS)
-  # add test that depends on USE_FAILURE_TESTS
-  set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES} Aql/OldSubqueriesTest.cpp)
-endif ()
-
-
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions
