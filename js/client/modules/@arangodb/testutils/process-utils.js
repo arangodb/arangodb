@@ -1013,6 +1013,10 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     'ignore-missing': what.ignoreMissing || false
   };
 
+  if (what.headers !== undefined) {
+    args['headers-file'] = fs.join(TOP_DIR, what.headers);
+  }
+
   if (what.skipLines !== undefined) {
     args['skip-lines'] = what.skipLines;
   }

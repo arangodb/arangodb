@@ -46,6 +46,8 @@
   db._drop("UnitTestsImportCsv4");
   db._drop("UnitTestsImportCsv5");
   db._drop("UnitTestsImportCsv6");
+  db._drop("UnitTestsImportCsvHeaders");
+  db._drop("UnitTestsImportCsvBrokenHeaders");
   db._drop("UnitTestsImportCsvNoConvert");
   db._drop("UnitTestsImportCsvNoEol");
   db._drop("UnitTestsImportTsv1");
