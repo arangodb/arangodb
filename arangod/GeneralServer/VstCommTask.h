@@ -60,7 +60,7 @@ class VstCommTask final : public GeneralCommTask<T> {
 
  private:
 
-  std::string const& url(VstRequest* req);
+  std::string url(VstRequest const* req) const;
 
   // Process the given incoming chunk.
   bool processChunk(fuerte::vst::Chunk const& chunk);

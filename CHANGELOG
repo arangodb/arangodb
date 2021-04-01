@@ -1,6 +1,12 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fix logging of urls when using `--log.level requests=debug`. There was an
+  issue since v3.7.7 with the wrong URL being logged in request logging if
+  multiple requests were sent over the same connection. In this case, the
+  request logging only reported the first URL requested in the connection, even
+  for all subsequent requests.
+
 * Fix velocypack errors in cursor API in case an exception occurs while the
   cursor is being filled with data. In this case, the result could be in an
   arbitrary state (e.g. halfway produced), so adding more attributes to the
