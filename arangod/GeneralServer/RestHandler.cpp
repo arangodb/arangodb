@@ -301,7 +301,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
      ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
     Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-                  std::string("VPack error: ") + ex.what() + " at " + ss.str(), __FILE__, __LINE__);
+                  std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
