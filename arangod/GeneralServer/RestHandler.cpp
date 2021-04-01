@@ -300,8 +300,6 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     bool const isParseError =
     (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
      ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
-    std::stringstream ss;
-    ss << ex._trace;
     Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
                   std::string("VPack error: ") + ex.what() + " at " + ss.str(), __FILE__, __LINE__);
     handleError(err);
