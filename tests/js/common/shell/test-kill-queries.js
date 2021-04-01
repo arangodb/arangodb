@@ -36,7 +36,7 @@ function GenericQueryKillSuite() { // can be either default or stream
   const databaseName = "UnitTestsDBTemp"
   const collectionName = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const docsPerWrite = 5;
-  const exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true}`;
+  const exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true} RETURN NEW`;
 
   let executeDefaultCursorQuery = (reportKilled) => {
     // default execution
