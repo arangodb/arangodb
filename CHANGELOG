@@ -1,3 +1,22 @@
+v3.8.0 (XXXX-XX-XX)
+-------------------
+
+* Added startup option `--query.allow-collections-in-expressions` to control
+  whether collection names can be used in arbitrary places in AQL expressions,
+  e.g. `collection + 1`. This was allowed before, as a collection can be seen
+  as an array of documents. However, referring to a collection like this in a
+  query would materialize all the collection's documents in RAM, making such
+  constructs prohibitively expensive for medium-size to large-size collections.
+
+  The option can now be set to `false` to prohibit accidental usage of 
+  collection names in AQL expressions. With that setting, using a collection
+  inside an arbitrary expression will trigger the error `collection used as 
+  expression operand` and make the query fail.
+  Even with the option being set to `false`, it is still possible to use 
+  collection names in AQL queries where they are expected, e.g. `FOR doc IN 
+  collection RETURN doc`.
+
+
 v3.8.0-alpha.1 (2021-03-29)
 ---------------------------
 
