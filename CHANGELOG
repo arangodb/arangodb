@@ -4,8 +4,29 @@ v3.8.0 (XXXX-XX-XX)
 * Fix logging of urls when using `--log.level requests=debug`. There was an
   issue since v3.7.7 with the wrong URL being logged in request logging if
   multiple requests were sent over the same connection. In this case, the
-  request logging only reported the first URL requested in the connection,
-  even for all subsequent requests.
+  request logging only reported the first URL requested in the connection, even
+  for all subsequent requests.
+
+* Added startup option `--query.allow-collections-in-expressions` to control
+  whether collection names can be used in arbitrary places in AQL expressions,
+  e.g. `collection + 1`. This was allowed before, as a collection can be seen as
+  an array of documents. However, referring to a collection like this in a query
+  would materialize all the collection's documents in RAM, making such
+  constructs prohibitively expensive for medium-size to large-size collections.
+
+  The option can now be set to `false` to prohibit accidental usage of
+  collection names in AQL expressions. With that setting, using a collection
+  inside an arbitrary expression will trigger the error `collection used as
+  expression operand` and make the query fail.
+  Even with the option being set to `false`, it is still possible to use
+  collection names in AQL queries where they are expected, e.g. `FOR doc IN
+  collection RETURN doc`.
+
+  The option `--query.allow-collections-in-expressions` is introduced with a
+  default value of `true` in 3.8 to ensure downwards-compatibility, but the
+  default value will change to `false` in 3.9. Furthermore, the option will be
+  deprecated in 3.9 and removed in later versions, in addition to making
+  unintended usage of collection names always an error.
 
 * Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve only
   as a stopgap measure while porting applications from the MMFiles storage

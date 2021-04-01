@@ -16,7 +16,7 @@ struct elsa<ErrorCode> {
 #include <frozen/unordered_map.h>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 353> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -401,6 +401,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessage
       "division by zero"},
     {TRI_ERROR_QUERY_ARRAY_EXPECTED,  // 1563
       "array expected"},
+    {TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,  // 1568
+      "collection '%s' used as expression operand"},
     {TRI_ERROR_QUERY_FAIL_CALLED,  // 1569
       "FAIL(%s) called"},
     {TRI_ERROR_QUERY_GEO_INDEX_MISSING,  // 1570
