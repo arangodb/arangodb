@@ -160,19 +160,19 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryBeforeCursorIsBeingCreated", false, "on", "on"));
   testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "on"));
   // On stream the dump happens during process of the query, so it can be killed
-  testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumped", false, "on", "on"));
-  testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "on"));
+  testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumped", false, "on", "on")); // TODO shell_client
+  testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "on")); // TODO shell_client
   testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced", false, "on", "on")); // TODO shell_server only
   testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumpedSynced", false, "on", "on")); // TODO shell_server only
 
   /*
    * Non-Stream
    */
-  // On non stream the dump happens after query is fully processed, so it cannot be killed anymore. // TODO check if that is true
+  // On non stream the (dump) handleQueryResult happens after query is fully processed, so it cannot be killed anymore.
   // Here the server should throw CANCELED
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "on"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
   testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnDONE", false, "off", "off"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnCREATED", false, "off", "off"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnCREATED", false, "off", "off")); // TODO: set batchSize to 1
 
   /*
    * Execution in default & stream

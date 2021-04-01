@@ -354,7 +354,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_IF_FAILURE(
         "RestCursorHandler::"
         "directKillAfterQueryResultIsGettingHandledAndWillReturnDONE") {
-      TRI_DEFER() { _query->debugKillQuery(); }
+      _query->debugKillQuery();
     }
     return RestStatus::DONE;
   } else {
@@ -368,7 +368,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_IF_FAILURE(
         "RestCursorHandler::"
         "directKillAfterQueryResultIsGettingHandledAndWillReturnCREATED") {
-      TRI_DEFER() { _query->debugKillQuery(); }
+      _query->debugKillQuery();
     }
     return generateCursorResult(rest::ResponseCode::CREATED);
   }

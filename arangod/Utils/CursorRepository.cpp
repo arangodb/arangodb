@@ -118,6 +118,11 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
     _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
   }
 
+  TRI_IF_FAILURE(
+      "CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated") {
+    cursor->debugKillQuery();
+  }
+
   return cursor.release();
 }
 
@@ -153,11 +158,6 @@ Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query
 
   auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
   cursor->use();
-
-  TRI_IF_FAILURE(
-      "CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated") {
-    TRI_DEFER() { cursor->debugKillQuery(); }
-  }
 
   return addCursor(std::move(cursor));
 }

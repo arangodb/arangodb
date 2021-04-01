@@ -460,7 +460,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           TRI_ASSERT(skipped.nothingSkipped());
           if (state == ExecutionState::WAITING) {
             TRI_IF_FAILURE("Query::directKillAfterQueryExecuteReturnsWaiting") {
-              TRI_DEFER() { debugKillQuery(); }
+              debugKillQuery();
             }
 
             return state;
