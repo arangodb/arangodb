@@ -549,8 +549,8 @@ bool AqlAnalyzer::next() {
             _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
         if (value.isString() ||
             (_options.keepNull && value.isNull(true) ) ||
-            (_options.returnType != AnalyzerValueType::Undefined && !value.isNull(true))){
-          switch(_options.returnType) {
+            (_options.returnType != AnalyzerValueType::Undefined && !value.isNull(true))) {
+          switch (_options.returnType) {
             case AnalyzerValueType::Undefined:
               if (value.isString()) {
                 std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());
@@ -664,9 +664,9 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
         }
       });
       ast->validateAndOptimize(_query->trxForOptimization());
-      
+
       std::unique_ptr<ExecutionPlan> plan = ExecutionPlan::instantiateFromAst(ast, true);
-      
+
       // run the plan through the optimizer, executing only the absolutely necessary
       // optimizer rules (we skip all other rules to save time). we have to execute
       // the "splice-subqueries" rule here so we replace all SubqueryNodes with

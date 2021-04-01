@@ -328,6 +328,9 @@ void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
+  _superAnalyzer = nullptr;
+  _subBoolAnalyzer = nullptr;
+  _subNumericAnalyzer = nullptr;
   _stack.clear();
   _nameBuffer.clear();
 
@@ -456,8 +459,8 @@ bool FieldIterator::setValue(VPackSlice const value,
       return false;
   }
   // set field properties
-  switch(pool->returnType()) {
-    case AnalyzerValueType::Bool: 
+  switch (pool->returnType()) {
+    case AnalyzerValueType::Bool:
       {
         if (!analyzer->next()) {
           return false;
@@ -487,7 +490,6 @@ bool FieldIterator::setValue(VPackSlice const value,
         _subNumericAnalyzer = stream.get();
         _value._analyzer = stream.release();  // FIXME don't use shared_ptr
         _value._features = &NumericStreamFeatures;
-
       }
       break;
     default:
@@ -514,7 +516,7 @@ void FieldIterator::next() {
   TRI_ASSERT(valid());
 
   if (_superAnalyzer) {
-     if(_superAnalyzer->next()) {
+     if (_superAnalyzer->next()) {
        TRI_ASSERT(_subBoolAnalyzer || _subNumericAnalyzer);
        if (_subNumericAnalyzer) {
          TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof (double));
@@ -530,14 +532,6 @@ void FieldIterator::next() {
        _subNumericAnalyzer = nullptr;
      }
   }
-
-      
-    //while (!_subStack.empty()) {
-    //  if (_subStack.top().next()) {
-    //    return;
-    //  }
-    //  _subStack.pop();
-    //}
 
   FieldMeta const* context = top().meta;
 
@@ -699,7 +693,6 @@ bool StoredValue::write(irs::data_output& out) const {
               trx.resolver(), slice, document)));
       }
 
-      
       slice = builder.slice();
       // a builder is destroyed but a buffer is alive
     }

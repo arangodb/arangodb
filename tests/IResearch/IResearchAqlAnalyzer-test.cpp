@@ -118,7 +118,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     assert_analyzer(ptr.get(), "2", {{"2test", 0}});
     assert_analyzer(ptr.get(), "3", {{"3test", 0}});
   }
-  // cycle 
+  // cycle
   {
     auto ptr = irs::analysis::analyzers::get(
         AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
@@ -254,7 +254,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}});
   }
-  
+
   // check memoryLimit does not kill query
   {
     auto ptr =
@@ -267,8 +267,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     ASSERT_TRUE(ptr->reset("AAAAAAAAA"));
     ASSERT_TRUE(ptr->next());
   }
-  
-  
+
   // check memoryLimit kills query
   {
     // note: setting a memoryLimit value of 1 is effectively a memoryLimit of 64kb,
@@ -283,7 +282,6 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     ASSERT_TRUE(ptr->reset("AAAAAAAAA"));
     ASSERT_FALSE(ptr->next());
   }
-
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_create_invalid) {
@@ -315,7 +313,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_invalid) {
                                     arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN ANALYZER(@param, 'text_en')\"}")
                                                                        ->slice()),
                                     false));
-  // UDF function 
+  // UDF function
   ASSERT_FALSE(
       irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                     irs::type<irs::text_format::vpack>::get(),
@@ -743,20 +741,13 @@ TEST_F(IResearchAqlAnalyzerTest, test_numeric_return) {
           VPackParser::fromJson("{\"queryString\": \"RETURN @param\", \"returnType\":\"number\"}")->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
-  
+
   analyzer_tokens expected_tokens;
-  irs::numeric_token_stream ns; 
-  ns.reset(2.);
-  auto* nsTerm = irs::get<irs::term_attribute>(ns);
-  auto* nsIncr = irs::get<irs::increment>(ns);
-  uint32_t pos{std::numeric_limits<uint32_t>::max()};
-  while (ns.next()) {
-    pos += nsIncr->value;
-    analyzer_token token;
-    token.pos = pos;
-    token.value.assign(irs::ref_cast<char>(nsTerm->value).c_str(), nsTerm->value.size());
-    expected_tokens.push_back(std::move(token));
-  }
+  double val{2};
+  analyzer_token token;
+  token.pos = 0;
+  token.value.assign(reinterpret_cast<char const*>(&val), sizeof(double));
+  expected_tokens.push_back(std::move(token));
   assert_analyzer(ptr.get(), "2", expected_tokens);
 }
 
@@ -764,47 +755,156 @@ TEST_F(IResearchAqlAnalyzerTest, test_numeric_return_array) {
   auto ptr = irs::analysis::analyzers::get(
       AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
       arangodb::iresearch::ref<char>(
-          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a\", \"returnType\":\"number\", \"collapsePositions\":false}")->slice()),
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a\", \"returnType\":\"number\"}")->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
-  
+
   analyzer_tokens expected_tokens;
-  irs::numeric_token_stream ns;
-  for (uint32_t i = 0; i < 3; ++i) {
-    ns.reset(static_cast<double>(i + 1));
-    auto* nsTerm = irs::get<irs::term_attribute>(ns);
-    auto* nsIncr = irs::get<irs::increment>(ns);
-    while (ns.next()) {
-      analyzer_token token;
-      token.pos = i;
-      token.value.assign(irs::ref_cast<char>(nsTerm->value).c_str(), nsTerm->value.size());
-      expected_tokens.push_back(std::move(token));
-    }
+
+  for (uint32_t i = 1; i <= 3; ++i) {
+    double val = i;
+    analyzer_token token;
+    token.pos = i - 1;
+    token.value.assign(reinterpret_cast<char const*>(&val), sizeof(double));
+    expected_tokens.push_back(std::move(token));
   }
   assert_analyzer(ptr.get(), "3", expected_tokens);
 }
 
-TEST_F(IResearchAqlAnalyzerTest, test_numeric_return_array_collapsed) {
+TEST_F(IResearchAqlAnalyzerTest, test_bool_return) {
   auto ptr = irs::analysis::analyzers::get(
       AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
       arangodb::iresearch::ref<char>(
-          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a\", \"returnType\":\"number\", \"collapsePositions\":true}")->slice()),
+          VPackParser::fromJson("{\"queryString\": \"RETURN @param\", \"returnType\":\"bool\"}")->slice()),
       false);
   ASSERT_NE(nullptr, ptr);
-  
+
   analyzer_tokens expected_tokens;
-  irs::numeric_token_stream ns;
-  for (uint32_t i = 0; i < 3; ++i) {
-    ns.reset(static_cast<double>(i + 1));
-    auto* nsTerm = irs::get<irs::term_attribute>(ns);
-    auto* nsIncr = irs::get<irs::increment>(ns);
-    while (ns.next()) {
-      analyzer_token token;
-      token.pos = 0;
-      token.value.assign(irs::ref_cast<char>(nsTerm->value).c_str(), nsTerm->value.size());
-      expected_tokens.push_back(std::move(token));
-    }
+  bool val{true};
+  analyzer_token token;
+  token.pos = 0;
+  token.value.assign(reinterpret_cast<char const*>(&val), sizeof(bool));
+  expected_tokens.push_back(std::move(token));
+  assert_analyzer(ptr.get(), "2", expected_tokens);
+}
+
+TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array) {
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a == 2\", \"returnType\":\"bool\"}")->slice()),
+      false);
+  ASSERT_NE(nullptr, ptr);
+
+  analyzer_tokens expected_tokens;
+
+  for (uint32_t i = 1; i <= 3; ++i) {
+    bool val{i == 2};
+    analyzer_token token;
+    token.pos = i - 1;
+    token.value.assign(reinterpret_cast<char const*>(&val), sizeof(bool));
+    expected_tokens.push_back(std::move(token));
   }
   assert_analyzer(ptr.get(), "3", expected_tokens);
 }
 
+TEST_F(IResearchAqlAnalyzerTest, test_string_return) {
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"RETURN TO_NUMBER(@param) + 10\", \"returnType\":\"string\"}")->slice()),
+      false);
+  ASSERT_NE(nullptr, ptr);
+
+  analyzer_tokens expected_tokens;
+  analyzer_token token;
+  token.pos = 0;
+  token.value = "12";
+  expected_tokens.push_back(std::move(token));
+  assert_analyzer(ptr.get(), "2", expected_tokens);
+}
+
+TEST_F(IResearchAqlAnalyzerTest, test_string_return_array) {
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..@param RETURN a\", \"returnType\":\"string\"}")->slice()),
+      false);
+  ASSERT_NE(nullptr, ptr);
+
+  analyzer_tokens expected_tokens;
+
+  for (uint32_t i = 1; i <= 3; ++i) {
+    analyzer_token token;
+    token.pos = i - 1;
+    token.value = std::to_string(i);
+    expected_tokens.push_back(std::move(token));
+  }
+  assert_analyzer(ptr.get(), "3", expected_tokens);
+}
+
+TEST_F(IResearchAqlAnalyzerTest, test_string_return_array_keep_null) {
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..(@param * 10) "
+                                " RETURN a > 5 ? null : a \", "
+                                "\"returnType\":\"string\", \"keepNull\":true}")->slice()),
+      false);
+  ASSERT_NE(nullptr, ptr);
+
+  analyzer_tokens expected_tokens;
+
+  for (uint32_t i = 1; i <= 30; ++i) {
+    analyzer_token token;
+    token.pos = i - 1;
+    token.value = i <= 5  ? std::to_string(i) : "";
+    expected_tokens.push_back(std::move(token));
+  }
+  assert_analyzer(ptr.get(), "3", expected_tokens);
+}
+
+TEST_F(IResearchAqlAnalyzerTest, test_number_return_array_keep_null) {
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..(@param * 10) "
+                                " RETURN a > 5 ? null : a \", "
+                                "\"returnType\":\"number\", \"keepNull\":true}")->slice()),
+      false);
+  ASSERT_NE(nullptr, ptr);
+
+  analyzer_tokens expected_tokens;
+
+  for (uint32_t i = 1; i <= 30; ++i) {
+    double val = i <= 5  ? i : 0;
+    analyzer_token token;
+    token.pos = i - 1;
+    token.value.assign(reinterpret_cast<char const*>(&val), sizeof(double));
+    expected_tokens.push_back(std::move(token));
+  }
+  assert_analyzer(ptr.get(), "3", expected_tokens);
+}
+
+
+TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array_keep_null) {
+  auto ptr = irs::analysis::analyzers::get(
+      AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(
+          VPackParser::fromJson("{\"queryString\": \"FOR a IN 1..(@param * 10) "
+                                " RETURN a > 5 ? null : true \", "
+                                "\"returnType\":\"bool\", \"keepNull\":true}")->slice()),
+      false);
+  ASSERT_NE(nullptr, ptr);
+
+  analyzer_tokens expected_tokens;
+
+  for (uint32_t i = 1; i <= 30; ++i) {
+    bool val = i <= 5  ? true : false;
+    analyzer_token token;
+    token.pos = i - 1;
+    token.value.assign(reinterpret_cast<char const*>(&val), sizeof(bool));
+    expected_tokens.push_back(std::move(token));
+  }
+  assert_analyzer(ptr.get(), "3", expected_tokens);
+}
