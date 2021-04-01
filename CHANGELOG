@@ -22,6 +22,10 @@ v3.8.0 (XXXX-XX-XX)
   deprecated in 3.9 and removed in later versions, in addition to making
   unintended usage of collection names always an error.
 
+* Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve only
+  as a stopgap measure while porting applications from the MMFiles storage
+  engine to RocksDB.
+
 * Fix errors caused by creating some log messages in log level DEBUG in log
   topics PREGEL and GRAPHS. Setting the log level to DEBUG for these topics
   could lead to errors when running some Pregel jobs or SmartGraph traversals.
