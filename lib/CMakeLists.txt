@@ -339,6 +339,8 @@ target_link_libraries(arango_v8
   )
 
 target_link_libraries(arango_v8 arango_v8_deadline)
+target_link_libraries(arango_v8_deadline ${V8_LIBS} ${ICU_LIBS})
+add_dependencies(arango_v8_deadline v8_build)
 
 # Enterprise
 if (USE_ENTERPRISE)
