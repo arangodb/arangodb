@@ -1,6 +1,12 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix logging of urls when using `--log.level requests=debug`. There was an
+  issue since v3.7.7 with the wrong URL being logged in request logging if
+  multiple requests were sent over the same connection. In this case, the
+  request logging only reported the first URL requested in the connection, even
+  for all subsequent requests.
+
 * Added startup option `--query.allow-collections-in-expressions` to control
   whether collection names can be used in arbitrary places in AQL expressions,
   e.g. `collection + 1`. This was allowed before, as a collection can be seen as
