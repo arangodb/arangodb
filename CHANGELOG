@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fix logging of urls when using `--log.level requests=debug`. There was an
+  issue since v3.7.7 with the wrong URL being logged in request logging if
+  multiple requests were sent over the same connection. In this case, the
+  request logging only reported the first URL requested in the connection,
+  even for all subsequent requests.
+
 * Remove obsolete API endpoint /_admin/repair/distributeShardsLike`. This
   API was intended to correct some bad state introduced before 3.2.12 or 3.3.4,
   respectively. It had to be invoked manually by callers and there was never
