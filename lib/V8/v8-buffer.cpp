@@ -1326,6 +1326,7 @@ static void ReadFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
   memcpy(&val, ptr, sizeof(T));
 
   if (ENDIANNESS != IsBigEndian()) {
+    // cppcheck-suppress objectIndex
     Swizzle(reinterpret_cast<char*>(&val), sizeof(T));
   }
 

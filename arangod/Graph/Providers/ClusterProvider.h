@@ -89,7 +89,7 @@ class ClusterProvider {
     class Edge {
      public:
       explicit Edge(EdgeType tkn) : _edge(std::move(tkn)) {}
-      explicit Edge() : _edge() { _edge = EdgeType(); }
+      explicit Edge() : _edge() {}
 
       void addToBuilder(ClusterProvider& provider, arangodb::velocypack::Builder& builder) const;
       EdgeType const& getID() const;  // TODO: Performance Test compare EdgeType <-> EdgeDocumentToken

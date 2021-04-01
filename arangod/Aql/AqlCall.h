@@ -86,15 +86,15 @@ struct AqlCall {
       : offset{offset}, softLimit{softLimit}, hardLimit{hardLimit}, fullCount{fullCount} {}
 
   enum class LimitType { SOFT, HARD };
-  // cppcheck-suppress *
   constexpr AqlCall(size_t offset, bool fullCount, Infinity)
+      // cppcheck-suppress *
       : offset{offset}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fullCount} {}
-  // cppcheck-suppress *
-  constexpr AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
+  constexpr AqlCall(size_t offset, bool fullCountP, size_t limit, LimitType limitType)
+      // cppcheck-suppress *
       : offset{offset},
         softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},
         hardLimit{limitType == LimitType::HARD ? Limit{limit} : Limit{Infinity{}}},
-        fullCount{fullCount} {}
+        fullCount{fullCountP} {}
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCall>;
   void toVelocyPack(velocypack::Builder&) const;

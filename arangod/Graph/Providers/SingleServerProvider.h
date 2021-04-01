@@ -85,7 +85,7 @@ struct SingleServerProvider {
     class Edge {
      public:
       explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
-      explicit Edge() : _token() { _token = EdgeDocumentToken(); }
+      explicit Edge() : _token() {}
 
       void addToBuilder(SingleServerProvider& provider,
                         arangodb::velocypack::Builder& builder) const;

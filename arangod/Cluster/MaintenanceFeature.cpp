@@ -411,6 +411,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
+      // cppcheck-suppress nullPointerRedundantCheck
       if (newAction && newAction->ok()) {
         // Register action only if construction was ok
         registerAction(newAction, executeNow);
