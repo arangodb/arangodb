@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Change metrics' internal `low()` and `high()` methods so that they 
+  return by value, not by reference.
+
 * Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve only
   as a stopgap measure while porting applications from the MMFiles storage
   engine to RocksDB.
