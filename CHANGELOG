@@ -1,3 +1,11 @@
+v3.8.0 (XXXX-XX-XX)
+-------------------
+
+* Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve
+  only as a stopgap measure while porting applications from the MMFiles
+  storage engine to RocksDB.
+
+
 v3.8.0-alpha.1 (2021-03-29)
 ---------------------------
 
