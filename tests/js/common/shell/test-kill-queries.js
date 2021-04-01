@@ -158,8 +158,14 @@ function GenericQueryKillSuite() { // can be either default or stream
   // stream
   testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryBeforeCursorIsBeingCreated", false, "on", "on"));
   testCases.push(createTestCaseEntry("RestCursorHandler::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "on"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped", false, "on", "on"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", "on"));
+  // On stream the dump happens during process of the query, so it can be killed
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryIsGettingDumped", false, "on", "on"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryIsGettingDumped", false, "on", "on"));
+
+  // Non-Stream
+  // On non stream the dump happens after query is fully processed, so it cannot be killed anymore.
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryIsGettingDumped", false, "on", "off"));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryIsGettingDumped", false, "on", "off"));
 
   // execution in default & stream
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', "on"));
@@ -206,26 +212,28 @@ function GenericQueryKillSuite() { // can be either default or stream
       try {
         internal.debugSetFailAt(failurePointName);
       } catch (e) {
-        console.error("Failed to initialize the failure point.")
-      }
-
-      if (stream === 'on') {
-        executeStreamCursorQuery(reportKilled);
-      } else if (stream === 'off') {
-        executeDefaultCursorQuery(reportKilled);
-      } else if (stream === 'both') {
-        executeStreamCursorQuery(reportKilled);
-        internal.debugClearFailAt(failurePointName);
-        internal.debugSetFailAt(failurePointName);
-        executeDefaultCursorQuery(reportKilled);
+        // Let the Test fail
+        throw `Failed to initialize failurepoint ${failurePointName}`;
       }
 
       try {
-        internal.debugClearFailAt(failurePointName);
-      } catch (e) {
-        console.error("Failed to release the failure point: " + failurePointName)
-        console.error(e);
+        if (stream === 'on') {
+          executeStreamCursorQuery(reportKilled);
+        } else if (stream === 'off') {
+          executeDefaultCursorQuery(reportKilled);
+        } else if (stream === 'both') {
+          executeStreamCursorQuery(reportKilled);
+          executeDefaultCursorQuery(reportKilled);
+        }
+      } finally {
+        try {
+          internal.debugClearFailAt(failurePointName);
+        } catch (e) {
+          // Let the Test fail
+          throw `Failed to clear failurepoint ${failurePointName}`;
+        }
       }
+
     }.bind(this, testCase.failurePointName, testCase.stream, testCase.reportKilled, testCase.onlyInCluster)
   };
 

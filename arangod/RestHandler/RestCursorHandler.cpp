@@ -544,13 +544,13 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   VPackBuilder builder(buffer);
   builder.openObject(/*unindexed*/true);
 
-  TRI_IF_FAILURE("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped") {
+  TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryIsGettingDumped") {
     _cursor->debugKillQuery();
   }
 
   auto const [state, r] = _cursor->dump(builder);
 
-  TRI_IF_FAILURE("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped") {
+  TRI_IF_FAILURE("RestCursorHandler::directKillAfterQueryIsGettingDumped") {
     _cursor->debugKillQuery();
   }
 
