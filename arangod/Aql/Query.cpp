@@ -690,6 +690,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
 
         if (!_queryOptions.silent && resultRegister.isValid()) {
+          TRI_IF_FAILURE("Query::executeV8directKillBeforeQueryResultIsGettingHandled") {
+            debugKillQuery();
+          }
           size_t memoryUsage = 0;
           size_t const n = value->numRows();
 
@@ -719,6 +722,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           // this may throw
           _resourceMonitor.increaseMemoryUsage(memoryUsage);
           _resultMemoryUsage += memoryUsage;
+
+          TRI_IF_FAILURE("Query::executeV8directKillAfterQueryResultIsGettingHandled") {
+            debugKillQuery();
+          }
         }
 
         if (killed()) {

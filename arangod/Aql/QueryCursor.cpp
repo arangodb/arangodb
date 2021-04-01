@@ -95,6 +95,16 @@ std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder)
 }
 
 Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
+  TRI_IF_FAILURE("QueryResultCursor::directKillBeforeQueryIsGettingDumpedSynced") {
+    debugKillQuery();
+  }
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  TRI_DEFER() {
+    TRI_IF_FAILURE("QueryResultCursor::directKillAfterQueryIsGettingDumpedSynced") {
+      debugKillQuery();
+    }
+  }
+#endif
   try {
     size_t const n = batchSize();
     // reserve an arbitrary number of bytes for the result to save

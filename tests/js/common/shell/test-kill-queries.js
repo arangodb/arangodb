@@ -26,6 +26,7 @@
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
+const isServer = require('@arangodb').isServer;
 let db = arangodb.db;
 
 function GenericQueryKillSuite() { // can be either default or stream
@@ -159,20 +160,32 @@ function GenericQueryKillSuite() { // can be either default or stream
    */
   testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryBeforeCursorIsBeingCreated", false, "on", "on"));
   testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "on"));
+
   // On stream the dump happens during process of the query, so it can be killed
-  testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumped", false, "on", "on")); // TODO shell_client
-  testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "on")); // TODO shell_client
-  testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced", false, "on", "on")); // TODO shell_server only
-  testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumpedSynced", false, "on", "on")); // TODO shell_server only
+  if (isServer) { // shell_server
+    testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced", false, "on", "on"));
+    testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumpedSynced", false, "on", "on"));
+  } else { // shell_client
+    testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumped", false, "on", "on"));
+    testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "on"));
+  }
 
   /*
    * Non-Stream
    */
   // On non stream the (dump) handleQueryResult happens after query is fully processed, so it cannot be killed anymore.
   // Here the server should throw CANCELED
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnDONE", false, "off", "off"));
-  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnCREATED", false, "off", "off")); // TODO: set batchSize to 1
+  if (isServer) { // shell_server
+    testCases.push(createTestCaseEntry("Query::executeV8directKillBeforeQueryResultIsGettingHandled", false, "off", "on"));
+    testCases.push(createTestCaseEntry("Query::executeV8directKillAfterQueryResultIsGettingHandled", false, "off", "on"));
+  } else { // shell_client
+    testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
+    testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnDONE", false, "off", "off"));
+    testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryResultIsGettingHandledAndWillReturnCREATED", false, "off", "off")); // TODO: set batchSize to 1
+  }
+  // Non-Stream does always use dumpSync
+  testCases.push(createTestCaseEntry("QueryResultCursor::directKillBeforeQueryIsGettingDumpedSynced", false, "off", "off"));
+  testCases.push(createTestCaseEntry("QueryResultCursor::directKillAfterQueryIsGettingDumpedSynced", false, "off", "off"));
 
   /*
    * Execution in default & stream
