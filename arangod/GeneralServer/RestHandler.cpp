@@ -295,13 +295,15 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
     << "maintainer mode: caught velocypack exception in " << name() << ": "
-    << ex.what() << " at " << ex._trace;
+    << ex.what();
 #endif
     bool const isParseError =
     (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
      ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
+    std::stringstream ss;
+    ss << ex._trace;
     Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-                  std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
+                  std::string("VPack error: ") + ex.what() + " at " + ss.str(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
