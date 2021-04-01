@@ -1,6 +1,10 @@
 devel
 -----
 
+* Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve
+  only as a stopgap measure while porting applications from the MMFiles
+  storage engine to RocksDB.
+
 * Remove obsolete API endpoint /_admin/repair/distributeShardsLike`. This
   API was intended to correct some bad state introduced before 3.2.12 or 3.3.4,
   respectively. It had to be invoked manually by callers and there was never
