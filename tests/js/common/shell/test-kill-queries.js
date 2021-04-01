@@ -152,7 +152,7 @@ function GenericQueryKillSuite() { // can be either default or stream
   // TODOs: check reportKilled flags for each entry
 
   // defaults
-  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryGotRegistered", true, "off", "on"));
+  testCases.push(createTestCaseEntry("QueryProfile::directKillAfterQueryGotRegistered", true, "off", "on"));
   testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterQueryExecuteReturnsWaiting", false, 'off', "on"));
 
   // stream
@@ -162,9 +162,8 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", "on"));
 
   // execution in default & stream
-  testCases.push(createTestCaseEntry("QueryList::killAfterCurrentInsert", false, 'both', "on"));
   testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', "on"));
-  testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "on")); // TODO: works but potentially duplicate query kill call here - check!
+  testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "on"));
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', "both"));

@@ -133,10 +133,6 @@ bool QueryList::insert(Query* query) {
     // return whether or not insertion worked
     bool inserted = _current.insert({query->id(), query}).second;
     _queryRegistryFeature.trackQueryStart();
-    TRI_IF_FAILURE("QueryList::killAfterCurrentInsert") {
-      writeLocker.unlock();
-      query->debugKillQuery();
-    }
     return inserted;
   } catch (...) {
     return false;

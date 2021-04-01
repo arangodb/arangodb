@@ -59,7 +59,7 @@ void QueryProfile::registerInQueryList() {
   if (queryList) {
     _tracked = queryList->insert(_query);
 
-    TRI_IF_FAILURE("ClusterQuery::directKillAfterQueryGotRegistered") {
+    TRI_IF_FAILURE("QueryProfile::directKillAfterQueryGotRegistered") {
       _query->debugKillQuery();
     }
   }
