@@ -213,7 +213,7 @@ bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   auto [shadowRowsBegin, shadowRowsEnd] = block().getShadowRowIndexesFrom(0);
 
   // Count the number of shadow rows before this row.
-  size_t const numShadowRowsBeforeCurrentRow = [this, shadowRowsBegin = shadowRowsBegin]() {
+  size_t const numShadowRowsBeforeCurrentRow = [this, shadowRowsBegin]() {
     // this is the last shadow row after _baseIndex, i.e.
     // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
     auto [offsetBegin, offsetEnd] = block().getShadowRowIndexesFrom(_baseIndex);
