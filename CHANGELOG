@@ -1,11 +1,11 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* Change metrics' internal `low()` and `high()` methods so that they  return by
-  value, not by reference.
-
 * Added option `--headers-file` to arangoimport, to optionally read CSV/TSV
   headers from a separate file.
+
+* Change metrics' internal `low()` and `high()` methods so that they  return by
+  value, not by reference.
 
 * Fix logging of urls when using `--log.level requests=debug`. There was an
   issue since v3.7.7 with the wrong URL being logged in request logging if
