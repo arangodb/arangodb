@@ -2213,7 +2213,7 @@ void ExecutionPlan::findVarUsage() {
 bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
 
 void ExecutionPlan::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
-  _root->planRegisters(nullptr, explainRegisterPlan);
+  _root->planRegisters(explainRegisterPlan);
 }
 
 /// @brief unlinkNodes, note that this does not delete the removed

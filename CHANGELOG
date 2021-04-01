@@ -16,6 +16,11 @@ devel
   collection names in AQL queries where they are expected, e.g. `FOR doc IN 
   collection RETURN doc`.
 
+* Remove now-unused SubqueryExecutor. This is an internal change only and
+  should not have any effect on queries, as from 3.8 onwards only spliced
+  subqueries should be used in query execution plans and during query
+  execution.
+
 * Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
   Now, any maintainer mode build will build all log messages automatically,
   so we will have full coverage of log message construction during our
