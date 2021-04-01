@@ -114,7 +114,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
  private:
 
-  std::string const& url(HttpRequest* req);
+  std::string url(HttpRequest const* req) const;
 
   velocypack::Buffer<uint8_t> _outbuffer;
 
