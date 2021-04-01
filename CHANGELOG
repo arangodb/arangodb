@@ -1,3 +1,13 @@
+v3.8.0 (XXXX-XX-XX)
+-------------------
+
+* Fix logging of urls when using `--log.level requests=debug`. There was an
+  issue since v3.7.7 with the wrong URL being logged in request logging if
+  multiple requests were sent over the same connection. In this case, the
+  request logging only reported the first URL requested in the connection,
+  even for all subsequent requests.
+
+
 v3.8.0-alpha.1 (2021-03-29)
 ---------------------------
 
