@@ -246,6 +246,12 @@ void Query::kill() {
   } else {
     _queryKilled = true;
   }
+  /*
+   * Old
+   *   _queryKilled = true;
+  if (ServerState::instance()->isCoordinator()) {
+    this->cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, false);
+  }*/
 }
   
 /// @brief return the start time of the query (steady clock value)
