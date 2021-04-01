@@ -1,9 +1,13 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve
-  only as a stopgap measure while porting applications from the MMFiles
-  storage engine to RocksDB.
+* Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve only
+  as a stopgap measure while porting applications from the MMFiles storage
+  engine to RocksDB.
+
+* Fix errors caused by creating some log messages in log level DEBUG in log
+  topics PREGEL and GRAPHS. Setting the log level to DEBUG for these topics
+  could lead to errors when running some Pregel jobs or SmartGraph traversals.
 
 
 v3.8.0-alpha.1 (2021-03-29)
