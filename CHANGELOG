@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Change metrics' internal `low()` and `high()` methods so that they 
+  return by value, not by reference.
+
 * Fix velocypack errors in cursor API in case an exception occurs while the
   cursor is being filled with data. In this case, the result could be in an
   arbitrary state (e.g. halfway produced), so adding more attributes to the
