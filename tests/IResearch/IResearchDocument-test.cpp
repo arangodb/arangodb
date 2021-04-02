@@ -1853,8 +1853,6 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_primitive_ty
     ] \
   }");
 
-  auto const slice = json->slice();
-
   std::function<AssertFieldFunc> const assertFields[] = {
     [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "nested.foo"); },
     [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("keys")); },
