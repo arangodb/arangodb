@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue BTS-353: memleak when running into an out-of-memory situation
+  while repurposing an existing AqlItemBlock.
+
 * Change metrics' internal `low()` and `high()` methods so that they  return by
   value, not by reference.
 
