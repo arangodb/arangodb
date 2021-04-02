@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Updated ArangoDB Starter to 0.15.0-preview-3.
+
 * Fixed issue BTS-353: memleak when running into an out-of-memory situation
   while repurposing an existing AqlItemBlock.
 
