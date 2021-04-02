@@ -74,7 +74,12 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, Register
   if (block == nullptr) {
     block = new AqlItemBlock(*this, numRows, numRegisters);
   } else {
-    block->rescale(numRows, numRegisters);
+    try {
+      block->rescale(numRows, numRegisters);
+    } catch (...) {
+      delete block;
+      throw;
+    }
   }
 
   TRI_ASSERT(block != nullptr);

@@ -229,7 +229,7 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
                                             registerInfos().getOutputRegisters(),
                                             registerInfos().registersToKeep(),
                                             registerInfos().registersToClear(),
-                                            call, copyRowBehaviour);
+                                            std::move(call), copyRowBehaviour);
 }
 
 template <class Executor>
