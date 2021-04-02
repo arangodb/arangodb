@@ -199,10 +199,10 @@ class FieldIterator {
   irs::string_ref _collection;
   Field _value;  // iterator's value
   IndexId _linkId;
-  irs::analysis::analyzer* _superAnalyzer{nullptr};
+  irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
+  irs::term_attribute const* _currentTypedAnalyzerValue{nullptr};
   irs::numeric_token_stream* _subNumericAnalyzer{nullptr};
   irs::boolean_token_stream* _subBoolAnalyzer{nullptr};
-  irs::term_attribute const* _superAnalyzerValue{nullptr};
   bool _isDBServer;
 }; // FieldIterator
 

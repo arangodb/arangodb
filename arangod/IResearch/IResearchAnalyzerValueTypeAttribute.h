@@ -41,13 +41,12 @@ enum class AnalyzerValueType : uint64_t {
   Object    = 1 << 5,
 };
 
-
 ENABLE_BITMASK_ENUM(AnalyzerValueType);
-
 
 struct AnalyzerValueTypeAttribute final : irs::attribute {
   static constexpr irs::string_ref type_name() noexcept { return "value_type_attribute"; }
-
+  explicit AnalyzerValueTypeAttribute(AnalyzerValueType t = AnalyzerValueType::Undefined)
+    : value(t) {}
   AnalyzerValueType value;
 };
 

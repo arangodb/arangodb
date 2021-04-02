@@ -84,13 +84,16 @@ template<typename Analyzer, typename Server>
 void assertField(
     Server& server,
     arangodb::iresearch::Field const& value,
-    std::string const& expectedName) {
+    std::string const& expectedName, irs::string_ref explicitAnalyzerName = irs::string_ref::NIL) {
   SCOPED_TRACE(testing::Message("Expected name: ") << expectedName);
 
   auto* analyzer = dynamic_cast<Analyzer*>(&value.get_tokens());
   ASSERT_NE(nullptr, analyzer);
   if constexpr (std::is_base_of_v<irs::analysis::analyzer, Analyzer>) {
-    ASSERT_EQ(mangleString(expectedName, irs::type<Analyzer>::name()), value.name());
+    auto analyzerName = explicitAnalyzerName.null() ?
+                          std::string(irs::type<Analyzer>::name()) :
+                          std::string(explicitAnalyzerName);
+    ASSERT_EQ(mangleString(expectedName, analyzerName), value.name());
     auto& analyzers = server.template getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     const auto expectedAnalyzerPtr = irs::analysis::analyzers::get(
       irs::type<Analyzer>::name(),
@@ -103,7 +106,7 @@ void assertField(
       : "";
 
     auto const expectedArangoSearchAnalyzerPtr = analyzers.get(
-      prefix + std::string(irs::type<Analyzer>::name()),
+      prefix + analyzerName,
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
       true);
     ASSERT_NE(nullptr, expectedArangoSearchAnalyzerPtr);
@@ -241,6 +244,81 @@ bool InvalidAnalyzer::returnFalseFromToString = false;
 
 REGISTER_ANALYZER_VPACK(InvalidAnalyzer, InvalidAnalyzer::make, InvalidAnalyzer::normalize);
 
+class TypedAnalyzer : public irs::analysis::analyzer {
+ public:
+  static constexpr irs::string_ref type_name() noexcept {
+    return "iresearch-document-typed";
+  }
+
+  static ptr make(irs::string_ref const& args) {
+    PTR_NAMED(TypedAnalyzer, ptr, args);
+    return ptr;
+  }
+
+  static bool normalize(irs::string_ref const& args, std::string& out) {
+    out.assign(args.c_str(), args.size());
+    return true;
+  }
+
+  explicit TypedAnalyzer(irs::string_ref const& args) : irs::analysis::analyzer(irs::type<TypedAnalyzer>::get()) {
+    VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
+    if (slice.hasKey("type")) {
+      auto type = slice.get("type").stringRef();
+      if(type == "number") {
+        _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
+        _term.value = irs::bytes_ref(reinterpret_cast<irs::byte_type*>(&_dblVal), sizeof(_dblVal));
+      } else if (type == "bool") {
+         _returnType.value = arangodb::iresearch::AnalyzerValueType::Bool;
+         _term.value = irs::bytes_ref(reinterpret_cast<irs::byte_type*>(&_blVal), sizeof(_blVal));
+      } else if (type == "string") {
+         _returnType.value = arangodb::iresearch::AnalyzerValueType::String;
+         _term.value = irs::ref_cast<irs::byte_type>(_strVal);
+      } else {
+        // Failure here means we have unexpected type
+        EXPECT_TRUE(false);
+      }
+    }
+  }
+
+  virtual bool reset(irs::string_ref const& data) override {
+    _resetted = true;
+    return true;
+  }
+
+  virtual bool next() override {
+    if (_resetted) {
+      _resetted = false;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::term_attribute>::id()) {
+      return &_term;
+    }
+    if (type == irs::type<irs::increment>::id()) {
+      return &_inc;
+    }
+    if (type == irs::type<arangodb::iresearch::AnalyzerValueTypeAttribute>::id()) {
+      return &_returnType;
+    }
+    return nullptr;
+  }
+
+ private:
+  double _dblVal{0};
+  std::string _strVal;
+  bool _blVal{false};
+  irs::term_attribute _term;
+  irs::increment _inc;
+  bool _resetted{false};
+  arangodb::iresearch::AnalyzerValueTypeAttribute _returnType;
+};
+
+REGISTER_ANALYZER_VPACK(TypedAnalyzer, TypedAnalyzer::make, TypedAnalyzer::normalize);
+
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -295,6 +373,28 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-vpack-analyzer",
         "iresearch-vpack-analyzer",
         VPackSlice::emptyObjectSlice(),
+        irs::flags{});
+    EXPECT_TRUE(res.ok());
+
+    res = analyzers.emplace(
+        result,
+        arangodb::StaticStrings::SystemDatabase + "::iresearch-document-number",
+        "iresearch-document-typed",
+        arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")->slice(),
+        irs::flags{});
+    EXPECT_TRUE(res.ok());
+    res = analyzers.emplace(
+        result,
+        arangodb::StaticStrings::SystemDatabase + "::iresearch-document-bool",
+        "iresearch-document-typed",
+        arangodb::velocypack::Parser::fromJson("{ \"type\": \"bool\" }")->slice(),
+        irs::flags{});
+    EXPECT_TRUE(res.ok());
+    res = analyzers.emplace(
+        result,
+        arangodb::StaticStrings::SystemDatabase + "::iresearch-document-string",
+        "iresearch-document-typed",
+        arangodb::velocypack::Parser::fromJson("{ \"type\": \"string\" }")->slice(),
         irs::flags{});
     EXPECT_TRUE(res.ok());
   }
@@ -1701,6 +1801,111 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
     analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer' will not be optimized out
   }
+}
+
+TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_primitive_type_sub_analyzers) {
+  auto const linkMetaJson = arangodb::velocypack::Parser::fromJson(
+  "{ \
+    \"includeAllFields\" : true, \
+    \"trackListPositions\" : true, \
+    \"fields\" : { \
+       \"boost\" : { \"analyzers\": [ \"iresearch-document-number\" ] }, \
+       \"keys\" : { \"trackListPositions\" : false, \"analyzers\": [ \"iresearch-document-number\", \"iresearch-document-bool\" ] }, \
+       \"depth\" : { \"trackListPositions\" : true, \"analyzers\": [ \"iresearch-document-string\"] }, \
+       \"fields\" : { \"analyzers\": [ \"iresearch-document-number\", \"iresearch-document-bool\" ],\
+                      \"includeAllFields\" : false, \"fields\" :\
+                        { \"fieldA\" : { \"includeAllFields\" : true } } }, \
+       \"listValuation\" : { \"includeAllFields\" : false }, \
+       \"array\" : { \
+         \"analyzers\": [ \"iresearch-document-number\", \"iresearch-document-bool\" ],\
+         \"trackListPositions\":true,\
+         \"fields\" : { \"subarr\" : { \"trackListPositions\" : false }, \"subobj\": { \"includeAllFields\" : false, \"fields\":{\"id\" : {}} }, \"id\" : { } } \
+       } \
+     }, \
+    \"analyzers\": [ \"identity\"] \
+  }");
+
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+  arangodb::iresearch::IResearchLinkMeta linkMeta;
+  std::string error;
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
+                            error, sysVocbase.get()->name()));
+
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
+                                     EMPTY, EMPTY, EMPTY,
+                                     arangodb::transaction::Options());
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+  "{ \
+    \"nested\": { \"foo\": \"str\" }, \
+    \"keys\": [ \"1\",\"2\"], \
+    \"analyzers\": [], \
+    \"boost\": \"10\", \
+    \"depth\": \"20\", \
+    \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
+    \"listValuation\": \"ignored\", \
+    \"array\" : [ \
+      { \"id\" : \"1\", \"subarr\" : [ \"1\", \"2\", \"3\" ], \"subobj\" : { \"id\" : \"1\" } }, \
+      { \"subarr\" : [ \"4\", \"5\", \"6\" ], \"subobj\" : { \"name\" : \"foo\" }, \"id\" : \"2\" }, \
+      { \"id\" : \"3\", \"subarr\" : [ \"7\", \"8\", \"9\" ], \"subobj\" : { \"id\" : \"2\" } } \
+    ] \
+  }");
+
+  auto const slice = json->slice();
+
+  std::function<AssertFieldFunc> const assertFields[] = {
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "nested.foo"); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("keys")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("keys")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("keys")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("keys")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("boost")); },
+    [](auto& server, auto const& it) { assertField<TypedAnalyzer>(server, *it, "depth", "iresearch-document-string"); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("fields.fieldA.name")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("fields.fieldA.name")); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "listValuation"); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].id")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].id")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].subobj.id")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].subobj.id")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[1].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[1].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[1].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[1].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[1].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[1].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[1].id")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[1].id")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].id")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].id")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].subarr")); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].subobj.id")); },
+    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].subobj.id")); },
+  };
+
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  it.reset(json->slice(), linkMeta);
+
+  for (auto& assertField : assertFields) {
+    ASSERT_TRUE(it.valid());
+    assertField(server, it);
+    ++it;
+  }
+
+  ASSERT_FALSE(it.valid());
 }
 
 TEST_F(IResearchDocumentTest, test_rid_encoding) {

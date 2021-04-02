@@ -328,7 +328,7 @@ void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
-  _superAnalyzer = nullptr;
+  _currentTypedAnalyzer = nullptr;
   _subBoolAnalyzer = nullptr;
   _subNumericAnalyzer = nullptr;
   _stack.clear();
@@ -465,12 +465,12 @@ bool FieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        _superAnalyzer = analyzer.get();
-        _superAnalyzerValue = irs::get<irs::term_attribute>(*analyzer);
-         TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof(bool))
+        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzerValue = irs::get<irs::term_attribute>(*analyzer);
+         TRI_ASSERT(_currentTypedAnalyzerValue->value.size() == sizeof(bool))
         arangodb::iresearch::kludge::mangleBool(_nameBuffer);
         auto stream = BoolStreamPool.emplace();
-        stream->reset(*reinterpret_cast<bool const*>(_superAnalyzerValue->value.c_str()));
+        stream->reset(*reinterpret_cast<bool const*>(_currentTypedAnalyzerValue->value.c_str()));
         _subBoolAnalyzer = stream.get();
         _value._analyzer = stream.release();  // FIXME don't use shared_ptr
         _value._features = &irs::flags::empty_instance();
@@ -482,11 +482,11 @@ bool FieldIterator::setValue(VPackSlice const value,
           return false;
         }
         arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
-        _superAnalyzer = analyzer.get();
-        _superAnalyzerValue = irs::get<irs::term_attribute>(*analyzer);
+        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzerValue = irs::get<irs::term_attribute>(*analyzer);
         auto stream = NumericStreamPool.emplace();
-        TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof(double))
-        stream->reset(*reinterpret_cast<double const*>(_superAnalyzerValue->value.c_str()));
+        TRI_ASSERT(_currentTypedAnalyzerValue->value.size() == sizeof(double))
+        stream->reset(*reinterpret_cast<double const*>(_currentTypedAnalyzerValue->value.c_str()));
         _subNumericAnalyzer = stream.get();
         _value._analyzer = stream.release();  // FIXME don't use shared_ptr
         _value._features = &NumericStreamFeatures;
@@ -515,19 +515,19 @@ bool FieldIterator::setValue(VPackSlice const value,
 void FieldIterator::next() {
   TRI_ASSERT(valid());
 
-  if (_superAnalyzer) {
-     if (_superAnalyzer->next()) {
+  if (_currentTypedAnalyzer) {
+     if (_currentTypedAnalyzer->next()) {
        TRI_ASSERT(_subBoolAnalyzer || _subNumericAnalyzer);
        if (_subNumericAnalyzer) {
-         TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof (double));
-         _subNumericAnalyzer->reset(*reinterpret_cast<double const*>(_superAnalyzerValue->value.c_str()));
+         TRI_ASSERT(_currentTypedAnalyzerValue->value.size() == sizeof (double));
+         _subNumericAnalyzer->reset(*reinterpret_cast<double const*>(_currentTypedAnalyzerValue->value.c_str()));
        } else {
-         TRI_ASSERT(_superAnalyzerValue->value.size() == sizeof (bool));
-         _subBoolAnalyzer->reset(*reinterpret_cast<bool const*>(_superAnalyzerValue->value.c_str()));
+         TRI_ASSERT(_currentTypedAnalyzerValue->value.size() == sizeof (bool));
+         _subBoolAnalyzer->reset(*reinterpret_cast<bool const*>(_currentTypedAnalyzerValue->value.c_str()));
        }
        return;
      } else {
-       _superAnalyzer = nullptr;
+       _currentTypedAnalyzer = nullptr;
        _subBoolAnalyzer = nullptr;
        _subNumericAnalyzer = nullptr;
      }
