@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed CPPCHECK warning or added suppression.
+
 * Updated ArangoDB Starter to 0.15.0-preview-3.
 
 * Fixed issue BTS-353: memleak when running into an out-of-memory situation
