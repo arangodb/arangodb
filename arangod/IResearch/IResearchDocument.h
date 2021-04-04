@@ -28,7 +28,7 @@
 #include "VocBase/voc-types.h"
 
 #include "IResearchLinkMeta.h"
-#include "IResearchVpackTermAttribute.h"
+#include "IResearchVPackTermAttribute.h"
 #include "VelocyPackHelper.h"
 
 #include "VocBase/Identifiers/IndexId.h"

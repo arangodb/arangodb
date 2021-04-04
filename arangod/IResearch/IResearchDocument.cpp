@@ -33,7 +33,7 @@
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchViewMeta.h"
-#include "IResearch/IResearchVpackTermAttribute.h"
+#include "IResearch/IResearchVPackTermAttribute.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 #include "Transaction/Helpers.h"

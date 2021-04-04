@@ -52,7 +52,7 @@
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
-#include "IResearch/IResearchVpackTermAttribute.h"
+#include "IResearch/IResearchVPackTermAttribute.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
