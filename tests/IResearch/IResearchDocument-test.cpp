@@ -52,6 +52,7 @@
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
+#include "IResearch/IResearchVpackTermAttribute.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -244,6 +245,8 @@ bool InvalidAnalyzer::returnFalseFromToString = false;
 
 REGISTER_ANALYZER_VPACK(InvalidAnalyzer, InvalidAnalyzer::make, InvalidAnalyzer::normalize);
 
+
+
 class TypedAnalyzer : public irs::analysis::analyzer {
  public:
   static constexpr irs::string_ref type_name() noexcept {
@@ -264,12 +267,14 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
     if (slice.hasKey("type")) {
       auto type = slice.get("type").stringRef();
-      if(type == "number") {
+      if (type == "number") {
         _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
-        _term.value = irs::bytes_ref(reinterpret_cast<irs::byte_type*>(&_dblVal), sizeof(_dblVal));
+        _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(1));
+        _vpackTerm.value = _typedValue.slice();
       } else if (type == "bool") {
          _returnType.value = arangodb::iresearch::AnalyzerValueType::Bool;
-         _term.value = irs::bytes_ref(reinterpret_cast<irs::byte_type*>(&_blVal), sizeof(_blVal));
+         _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(true));
+        _vpackTerm.value = _typedValue.slice();
       } else if (type == "string") {
          _returnType.value = arangodb::iresearch::AnalyzerValueType::String;
          _term.value = irs::ref_cast<irs::byte_type>(_strVal);
@@ -304,6 +309,9 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     if (type == irs::type<arangodb::iresearch::AnalyzerValueTypeAttribute>::id()) {
       return &_returnType;
     }
+    if (type == irs::type<arangodb::iresearch::VPackTermAttribute>::id()) {
+      return &_vpackTerm;
+    }
     return nullptr;
   }
 
@@ -312,9 +320,11 @@ class TypedAnalyzer : public irs::analysis::analyzer {
   std::string _strVal;
   bool _blVal{false};
   irs::term_attribute _term;
+  arangodb::iresearch::VPackTermAttribute _vpackTerm;
   irs::increment _inc;
   bool _resetted{false};
   arangodb::iresearch::AnalyzerValueTypeAttribute _returnType;
+  arangodb::aql::AqlValue _typedValue;
 };
 
 REGISTER_ANALYZER_VPACK(TypedAnalyzer, TypedAnalyzer::make, TypedAnalyzer::normalize);

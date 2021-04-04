@@ -28,6 +28,7 @@
 #include "VocBase/voc-types.h"
 
 #include "IResearchLinkMeta.h"
+#include "IResearchVpackTermAttribute.h"
 #include "VelocyPackHelper.h"
 
 #include "VocBase/Identifiers/IndexId.h"
@@ -199,10 +200,13 @@ class FieldIterator {
   irs::string_ref _collection;
   Field _value;  // iterator's value
   IndexId _linkId;
+
+  // Support for outputting primitive type from analyzer
+  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream, VPackSlice slice);
   irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
-  irs::term_attribute const* _currentTypedAnalyzerValue{nullptr};
-  irs::numeric_token_stream* _subNumericAnalyzer{nullptr};
-  irs::boolean_token_stream* _subBoolAnalyzer{nullptr};
+  VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
+  PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
+
   bool _isDBServer;
 }; // FieldIterator
 

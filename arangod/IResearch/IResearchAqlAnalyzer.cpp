@@ -28,7 +28,6 @@
 #endif
 
 #include "IResearchAqlAnalyzer.h"
-#include "IResearchAnalyzerValueTypeAttribute.h"
 
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
@@ -513,25 +512,6 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr) {
-  switch (_options.returnType) {
-    case AnalyzerValueType::Bool:
-      std::get<2>(_attrs).value =
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(&_boolVal),
-                       sizeof(_boolVal));
-      break;
-    case AnalyzerValueType::Number:
-      std::get<2>(_attrs).value =
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(&_doubleVal),
-                       sizeof(_doubleVal));
-    break;
-    case AnalyzerValueType::String:
-    case AnalyzerValueType::Undefined:
-      break; // string-like values are dynamically allocated
-    default:
-      // new return type added?
-      TRI_ASSERT(false);
-      break;
-  }
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value =
     _options.returnType == AnalyzerValueType::Undefined ?
@@ -565,34 +545,33 @@ bool AqlAnalyzer::next() {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
                 aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
-                auto converted = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
-                TRI_ASSERT(converted.isString());
-                _stringVal = converted.slice().copyString();
-                std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(_stringVal);
+                _valueBuffer = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(_valueBuffer.isString());
+                std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(_valueBuffer.slice().stringView());
               }
               break;
             case AnalyzerValueType::Number:
               if (value.isNumber()) {
-                _doubleVal = value.toDouble();
+                std::get<3>(_attrs).value = value.slice();
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
                 aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
-                auto converted = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
-                TRI_ASSERT(converted.isNumber());
-                _doubleVal = converted.toDouble();
+                _valueBuffer = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(_valueBuffer.isNumber());
+                std::get<3>(_attrs).value = _valueBuffer.slice();
               }
               break;
             case AnalyzerValueType::Bool:
               if (value.isBoolean()) {
-                _boolVal = value.toBoolean();
+                std::get<3>(_attrs).value = value.slice();
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
                 aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
-                auto converted = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
-                TRI_ASSERT(converted.isBoolean());
-                _boolVal = converted.toBoolean();
+                _valueBuffer = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(_valueBuffer.isBoolean());
+                std::get<3>(_attrs).value = _valueBuffer.slice();
               }
               break;
             default:
@@ -601,6 +580,8 @@ bool AqlAnalyzer::next() {
               LOG_TOPIC("a9ba5", WARN, iresearch::TOPIC) << "Unexpected AqlAnalyzer return type " <<
                 static_cast<std::underlying_type_t<AnalyzerValueType>>(_options.returnType);
               std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
+              _valueBuffer = AqlValue();
+              std::get<3>(_attrs).value = _valueBuffer.slice();
           }
           std::get<0>(_attrs).value = _nextIncVal;
           _nextIncVal = !_options.collapsePositions;

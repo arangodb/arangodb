@@ -38,6 +38,7 @@
 #include "Containers/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
 #include "IResearchAnalyzerValueTypeAttribute.h"
+#include "IResearchVPackTermAttribute.h"
 
 #include <string>
 
@@ -112,9 +113,11 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   using attributes = std::tuple<
     irs::increment,
     AnalyzerValueTypeAttribute,
-    irs::term_attribute>;
+    irs::term_attribute,
+    VPackTermAttribute>;
 
   Options _options;
+  arangodb::aql::AqlValue _valueBuffer;
   std::unique_ptr<arangodb::aql::QueryContext> _query;
   arangodb::containers::SmallVector<
     arangodb::aql::AqlValue>::allocator_type::arena_type _params_arena;
@@ -129,10 +132,6 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   attributes _attrs;
   size_t _resultRowIdx{ 0 };
   uint32_t _nextIncVal{0};
-
-  std::string _stringVal;
-  double _doubleVal;
-  bool _boolVal;
 }; // AqlAnalyzer
 } // namespace iresearch
 } // namespace arangodb

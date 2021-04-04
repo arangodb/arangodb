@@ -33,6 +33,7 @@
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchViewMeta.h"
+#include "IResearch/IResearchVpackTermAttribute.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 #include "Transaction/Helpers.h"
@@ -289,6 +290,8 @@ std::string getDocumentId(irs::string_ref collection,
   return resolved;
 }
 
+
+
 }  // namespace
 
 namespace arangodb {
@@ -329,8 +332,8 @@ void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   _begin = nullptr;
   _end = nullptr;
   _currentTypedAnalyzer = nullptr;
-  _subBoolAnalyzer = nullptr;
-  _subNumericAnalyzer = nullptr;
+  _currentTypedAnalyzerValue = nullptr;
+  _primitiveTypeResetter = nullptr;
   _stack.clear();
   _nameBuffer.clear();
 
@@ -466,14 +469,19 @@ bool FieldIterator::setValue(VPackSlice const value,
           return false;
         }
         _currentTypedAnalyzer = analyzer.get();
-        _currentTypedAnalyzerValue = irs::get<irs::term_attribute>(*analyzer);
-         TRI_ASSERT(_currentTypedAnalyzerValue->value.size() == sizeof(bool))
-        arangodb::iresearch::kludge::mangleBool(_nameBuffer);
-        auto stream = BoolStreamPool.emplace();
-        stream->reset(*reinterpret_cast<bool const*>(_currentTypedAnalyzerValue->value.c_str()));
-        _subBoolAnalyzer = stream.get();
-        _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-        _value._features = &irs::flags::empty_instance();
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        TRI_ASSERT(_currentTypedAnalyzerValue);
+        setBoolValue(_currentTypedAnalyzerValue->value);
+        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
+          TRI_ASSERT(bool_stream);
+#else
+          auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
+#endif
+          TRI_ASSERT(slice.isBool());
+          bool_stream->reset(slice.getBool());
+        };
       }
       break;
     case AnalyzerValueType::Number:
@@ -481,24 +489,29 @@ bool FieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
         _currentTypedAnalyzer = analyzer.get();
-        _currentTypedAnalyzerValue = irs::get<irs::term_attribute>(*analyzer);
-        auto stream = NumericStreamPool.emplace();
-        TRI_ASSERT(_currentTypedAnalyzerValue->value.size() == sizeof(double))
-        stream->reset(*reinterpret_cast<double const*>(_currentTypedAnalyzerValue->value.c_str()));
-        _subNumericAnalyzer = stream.get();
-        _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-        _value._features = &NumericStreamFeatures;
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        TRI_ASSERT(_currentTypedAnalyzerValue);
+        setNumericValue(_currentTypedAnalyzerValue->value);
+        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
+          TRI_ASSERT(number_stream);
+#else
+          auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
+#endif
+          TRI_ASSERT(slice.isNumber());
+          number_stream->reset(slice.getNumber<double>());
+        };
       }
       break;
     default:
       iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
       _value._analyzer = analyzer;
       _value._features = &(pool->features());
+      _value._name = _nameBuffer;
       break;
   }
-  _value._name = _nameBuffer;
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
     auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
@@ -517,19 +530,13 @@ void FieldIterator::next() {
 
   if (_currentTypedAnalyzer) {
      if (_currentTypedAnalyzer->next()) {
-       TRI_ASSERT(_subBoolAnalyzer || _subNumericAnalyzer);
-       if (_subNumericAnalyzer) {
-         TRI_ASSERT(_currentTypedAnalyzerValue->value.size() == sizeof (double));
-         _subNumericAnalyzer->reset(*reinterpret_cast<double const*>(_currentTypedAnalyzerValue->value.c_str()));
-       } else {
-         TRI_ASSERT(_currentTypedAnalyzerValue->value.size() == sizeof (bool));
-         _subBoolAnalyzer->reset(*reinterpret_cast<bool const*>(_currentTypedAnalyzerValue->value.c_str()));
-       }
+       TRI_ASSERT(_primitiveTypeResetter);
+       TRI_ASSERT(_currentTypedAnalyzerValue);
+       TRI_ASSERT(_value._analyzer.get());
+       _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
        return;
      } else {
        _currentTypedAnalyzer = nullptr;
-       _subBoolAnalyzer = nullptr;
-       _subNumericAnalyzer = nullptr;
      }
   }
 

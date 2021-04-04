@@ -24,6 +24,7 @@
 
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlValue.h"
 #include "IResearch/IResearchView.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -52,19 +53,30 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
                      const analyzer_tokens& expected_tokens) {
   SCOPED_TRACE(data);
   auto* term = irs::get<irs::term_attribute>(*analyzer);
+  auto* vpack_term = irs::get<arangodb::iresearch::VPackTermAttribute>(*analyzer);
+  auto* value_type = irs::get<arangodb::iresearch::AnalyzerValueTypeAttribute>(*analyzer);
   ASSERT_TRUE(term);
+  ASSERT_TRUE(vpack_term);
+  ASSERT_TRUE(value_type);
   auto* inc = irs::get<irs::increment>(*analyzer);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(analyzer->reset(data));
   uint32_t pos{std::numeric_limits<uint32_t>::max()};
   auto expected_token = expected_tokens.begin();
   while (analyzer->next()) {
-    auto term_value =
-        std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
-    SCOPED_TRACE(testing::Message("Term:") << term_value);
-    pos += inc->value;
     ASSERT_NE(expected_token, expected_tokens.end());
-    ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), term->value);
+    SCOPED_TRACE(testing::Message("Expected Term:") << expected_token->value);
+    if (value_type->value == arangodb::iresearch::AnalyzerValueType::String ||
+        value_type->value == arangodb::iresearch::AnalyzerValueType::Undefined) {
+      auto term_value =
+          std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
+      ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), term->value);
+    } else {
+      ASSERT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+        vpack_term->value, VPackSlice(reinterpret_cast<uint8_t const*>(expected_token->value.c_str())),
+                                      false));
+    }
+    pos += inc->value;
     ASSERT_EQ(expected_token->pos, pos);
     ++expected_token;
   }
@@ -742,11 +754,11 @@ TEST_F(IResearchAqlAnalyzerTest, test_numeric_return) {
       false);
   ASSERT_NE(nullptr, ptr);
 
+  arangodb::aql::AqlValue val{arangodb::aql::AqlValueHintDouble(2)};
   analyzer_tokens expected_tokens;
-  double val{2};
   analyzer_token token;
   token.pos = 0;
-  token.value.assign(reinterpret_cast<char const*>(&val), sizeof(double));
+  token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
   expected_tokens.push_back(std::move(token));
   assert_analyzer(ptr.get(), "2", expected_tokens);
 }
@@ -762,10 +774,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_numeric_return_array) {
   analyzer_tokens expected_tokens;
 
   for (uint32_t i = 1; i <= 3; ++i) {
-    double val = i;
+    arangodb::aql::AqlValue val{arangodb::aql::AqlValueHintDouble(i)};
     analyzer_token token;
     token.pos = i - 1;
-    token.value.assign(reinterpret_cast<char const*>(&val), sizeof(double));
+    token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
     expected_tokens.push_back(std::move(token));
   }
   assert_analyzer(ptr.get(), "3", expected_tokens);
@@ -780,10 +792,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_bool_return) {
   ASSERT_NE(nullptr, ptr);
 
   analyzer_tokens expected_tokens;
-  bool val{true};
+  arangodb::aql::AqlValue val{arangodb::aql::AqlValueHintBool(true)};
   analyzer_token token;
   token.pos = 0;
-  token.value.assign(reinterpret_cast<char const*>(&val), sizeof(bool));
+  token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
   expected_tokens.push_back(std::move(token));
   assert_analyzer(ptr.get(), "2", expected_tokens);
 }
@@ -799,10 +811,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array) {
   analyzer_tokens expected_tokens;
 
   for (uint32_t i = 1; i <= 3; ++i) {
-    bool val{i == 2};
+    arangodb::aql::AqlValue val{arangodb::aql::AqlValueHintBool(i == 2)};
     analyzer_token token;
     token.pos = i - 1;
-    token.value.assign(reinterpret_cast<char const*>(&val), sizeof(bool));
+    token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
     expected_tokens.push_back(std::move(token));
   }
   assert_analyzer(ptr.get(), "3", expected_tokens);
@@ -877,10 +889,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_number_return_array_keep_null) {
   analyzer_tokens expected_tokens;
 
   for (uint32_t i = 1; i <= 30; ++i) {
-    double val = i <= 5  ? i : 0;
+    arangodb::aql::AqlValue val{arangodb::aql::AqlValueHintDouble(i <= 5  ? i : 0)};
     analyzer_token token;
     token.pos = i - 1;
-    token.value.assign(reinterpret_cast<char const*>(&val), sizeof(double));
+    token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
     expected_tokens.push_back(std::move(token));
   }
   assert_analyzer(ptr.get(), "3", expected_tokens);
@@ -900,10 +912,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array_keep_null) {
   analyzer_tokens expected_tokens;
 
   for (uint32_t i = 1; i <= 30; ++i) {
-    bool val = i <= 5  ? true : false;
+    arangodb::aql::AqlValue val{arangodb::aql::AqlValueHintBool(i <= 5)};
     analyzer_token token;
     token.pos = i - 1;
-    token.value.assign(reinterpret_cast<char const*>(&val), sizeof(bool));
+    token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
     expected_tokens.push_back(std::move(token));
   }
   assert_analyzer(ptr.get(), "3", expected_tokens);
