@@ -103,8 +103,7 @@ struct OptionsValidator {
                                    .append("' should be less or equal to ")
                                    .append(std::to_string(MAX_MEMORY_LIMIT))};
     }
-    if (opts.returnType != arangodb::iresearch::AnalyzerValueType::Undefined &&
-        opts.returnType != arangodb::iresearch::AnalyzerValueType::String &&
+    if (opts.returnType != arangodb::iresearch::AnalyzerValueType::String &&
         opts.returnType != arangodb::iresearch::AnalyzerValueType::Number &&
         opts.returnType != arangodb::iresearch::AnalyzerValueType::Bool) {
        return deserialize_error{
@@ -130,7 +129,7 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
                                arangodb::iresearch::AnalyzerValueTypeEnumDeserializer,
                                values::numeric_value<arangodb::iresearch::AnalyzerValueType,
                                    static_cast<std::underlying_type_t<arangodb::iresearch::AnalyzerValueType>>(
-                                       arangodb::iresearch::AnalyzerValueType::Undefined)>>
+                                       arangodb::iresearch::AnalyzerValueType::String)>>
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
@@ -159,23 +158,21 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
     builder.add(KEEP_NULL_PARAM_NAME, VPackValue(options.keepNull));
     builder.add(BATCH_SIZE_PARAM_NAME, VPackValue(options.batchSize));
     builder.add(MEMORY_LIMIT_PARAM_NAME, VPackValue(options.memoryLimit));
-    if (options.returnType != arangodb::iresearch::AnalyzerValueType::Undefined) {
-      switch (options.returnType) {
-        case arangodb::iresearch::AnalyzerValueType::String:
-          builder.add(RETURN_TYPE_PARAM_NAME,
-            VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING));
-          break;
-        case arangodb::iresearch::AnalyzerValueType::Number:
-          builder.add(RETURN_TYPE_PARAM_NAME,
-            VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER));
-          break;
-        case arangodb::iresearch::AnalyzerValueType::Bool:
-          builder.add(RETURN_TYPE_PARAM_NAME,
-            VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL));
-          break;
-        default:
+    switch (options.returnType) {
+      case arangodb::iresearch::AnalyzerValueType::String:
+        builder.add(RETURN_TYPE_PARAM_NAME,
+          VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING));
+        break;
+      case arangodb::iresearch::AnalyzerValueType::Number:
+        builder.add(RETURN_TYPE_PARAM_NAME,
+          VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER));
+        break;
+      case arangodb::iresearch::AnalyzerValueType::Bool:
+        builder.add(RETURN_TYPE_PARAM_NAME,
+          VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL));
+        break;
+      default:
           TRI_ASSERT(false);
-      }
     }
     return true;
   }
@@ -527,17 +524,8 @@ bool AqlAnalyzer::next() {
       while (_queryResults->numRows() > _resultRowIdx) {
         AqlValue const& value =
             _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
-        if (value.isString() ||
-            (_options.keepNull && value.isNull(true) ) ||
-            (_options.returnType != AnalyzerValueType::Undefined && !value.isNull(true))) {
+        if (_options.keepNull || !value.isNull(true)) {
           switch (_options.returnType) {
-            case AnalyzerValueType::Undefined:
-              if (value.isString()) {
-                std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());
-              } else {
-                std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
-              }
-              break;
             case AnalyzerValueType::String:
               if (value.isString()) {
                 std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());

@@ -66,8 +66,7 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
   while (analyzer->next()) {
     ASSERT_NE(expected_token, expected_tokens.end());
     SCOPED_TRACE(testing::Message("Expected Term:") << expected_token->value);
-    if (value_type->value == arangodb::iresearch::AnalyzerValueType::String ||
-        value_type->value == arangodb::iresearch::AnalyzerValueType::Undefined) {
+    if (value_type->value == arangodb::iresearch::AnalyzerValueType::String) {
       auto term_value =
           std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
       ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), term->value);
@@ -229,12 +228,12 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     assert_analyzer(ptr.get(), "a", {{"", 0}, {"A2", 1}, {"", 2}, {"A4", 3}, {"", 4}});
   }
 
-  // non string
+  // only null
   {
     auto ptr = irs::analysis::analyzers::get(
         AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN 1\"}")->slice()),
+            VPackParser::fromJson("{\"queryString\": \"RETURN null\", \"keepNull\":false}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
     ASSERT_TRUE(ptr->reset("2"));
@@ -249,7 +248,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"FOR d IN ['e', 1, ['v', 'w'], null, true, @param, 'b'] RETURN d\"}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "a", {{"e", 0}, {"", 1}, {"a", 2}, {"b", 3}});
+    assert_analyzer(ptr.get(), "a", {{"e", 0}, {"1", 1}, {"[\"v\",\"w\"]", 2}, {"", 3}, {"true", 4}, {"a", 5}, {"b", 6}});
   }
 
   // nulls with collapsed positions

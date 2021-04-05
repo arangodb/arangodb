@@ -76,10 +76,8 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     uint32_t memoryLimit{ 1048576U };
 
     /// @brief target type to convert query output. Could be
-    ///        string, bool, number. If missing - backward compatible mode is used
-    ///        strings are passed verbatim, nulls discarder/replaced other types
-    ///        silently discarded.
-    AnalyzerValueType returnType{AnalyzerValueType::Undefined};
+    ///        string, bool, number.
+    AnalyzerValueType returnType{AnalyzerValueType::String};
   };
 
   static constexpr irs::string_ref type_name() noexcept {
