@@ -508,9 +508,7 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
-  std::get<AnalyzerValueTypeAttribute>(_attrs).value =
-    _options.returnType == AnalyzerValueType::Undefined ?
-    AnalyzerValueType::String : _options.returnType;
+  std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
                  .ok());
