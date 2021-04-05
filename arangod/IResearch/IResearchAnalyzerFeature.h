@@ -54,6 +54,7 @@
 #include "Basics/Result.h"
 #include "Basics/Identifier.h" // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
+#include "IResearchAnalyzerValueTypeAttribute.h"
 #include "Scheduler/SchedulerFeature.h"
 
 struct TRI_vocbase_t; // forward declaration
@@ -66,20 +67,6 @@ class ApplicationServer;
 
 namespace arangodb {
 namespace iresearch {
-
-enum class AnalyzerValueType : uint64_t {
-  Undefined = 0,
-  // Primitive types
-  String    = 1,
-  Number    = 1 << 1,
-  Bool      = 1 << 2,
-  Null      = 1 << 3,
-  // Complex types
-  Array     = 1 << 4,
-  Object    = 1 << 5,
-};
-
-ENABLE_BITMASK_ENUM(AnalyzerValueType);
 
 // thread-safe analyzer pool
 class AnalyzerPool : private irs::util::noncopyable {

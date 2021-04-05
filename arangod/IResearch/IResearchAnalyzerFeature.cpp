@@ -1112,7 +1112,9 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 // first - input type,
 // second - output type
 std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
-getAnalyzerMeta(irs::type_info::type_id type) noexcept {
+getAnalyzerMeta(irs::analysis::analyzer const* analyzer) noexcept {
+  TRI_ASSERT(analyzer);
+  auto const type = analyzer->type();
   if (type == irs::type<GeoJSONAnalyzer>::id()) {
     return { AnalyzerValueType::Object | AnalyzerValueType::Array,
              AnalyzerValueType::String,
@@ -1130,7 +1132,10 @@ getAnalyzerMeta(irs::type_info::type_id type) noexcept {
              nullptr };
   }
 #endif
-
+  auto const* value_type = irs::get<AnalyzerValueTypeAttribute>(*analyzer);
+  if (value_type) {
+    return { AnalyzerValueType::String, value_type->value, nullptr };
+  }
   return { AnalyzerValueType::String, AnalyzerValueType::String, nullptr };
 }
 
@@ -1272,7 +1277,7 @@ bool AnalyzerPool::init(
         _type = irs::string_ref(_config.c_str() + _properties.byteSize() , type.size());
       }
 
-      std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance->type());
+      std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance.get());
       _features = features;  // store only requested features
       _revision = revision;
       return true;
