@@ -316,9 +316,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
   }
 
  private:
-  double _dblVal{0};
   std::string _strVal;
-  bool _blVal{false};
   irs::term_attribute _term;
   arangodb::iresearch::VPackTermAttribute _vpackTerm;
   irs::increment _inc;
