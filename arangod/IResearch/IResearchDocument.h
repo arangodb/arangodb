@@ -156,6 +156,9 @@ class FieldIterator {
                          FieldMeta const*& rootMeta,
                          IteratorValue const& value);
 
+  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
+                                         VPackSlice slice);
+
   struct Level {
     Level(velocypack::Slice slice,
           size_t nameLength,
@@ -202,7 +205,6 @@ class FieldIterator {
   IndexId _linkId;
 
   // Support for outputting primitive type from analyzer
-  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream, VPackSlice slice);
   irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};

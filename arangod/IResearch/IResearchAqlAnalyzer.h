@@ -55,15 +55,6 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
       : queryString(query), collapsePositions(collapse),
       keepNull(keep), batchSize(batch), memoryLimit(limit), returnType(retType) {}
 
-    bool substreamInUse() const noexcept {
-      return returnType == AnalyzerValueType::Bool ||
-             returnType == AnalyzerValueType::Number;
-    }
-
-    bool substreamWillCountPositions() const noexcept {
-      return substreamInUse() && !collapsePositions;
-    }
-
     /// @brief Query string to be executed for each document.
     /// Field value is set with @param binded parameter.
     std::string queryString;
@@ -117,17 +108,17 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     VPackTermAttribute>;
 
   Options _options;
-  arangodb::aql::AqlValue _valueBuffer;
-  std::unique_ptr<arangodb::aql::QueryContext> _query;
-  arangodb::containers::SmallVector<
+  aql::AqlValue _valueBuffer;
+  std::unique_ptr<aql::QueryContext> _query;
+  containers::SmallVector<
     arangodb::aql::AqlValue>::allocator_type::arena_type _params_arena;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-  arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  arangodb::aql::ExecutionEngine _engine;
-  std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
-  arangodb::aql::SharedAqlItemBlockPtr _queryResults;
-  std::vector<arangodb::aql::AstNode*> _bindedNodes;
-  arangodb::aql::ExecutionState _executionState{arangodb::aql::ExecutionState::DONE};
+  aql::AqlItemBlockManager _itemBlockManager;
+  aql::ExecutionEngine _engine;
+  std::unique_ptr<aql::ExecutionPlan> _plan;
+  aql::SharedAqlItemBlockPtr _queryResults;
+  std::vector<aql::AstNode*> _bindedNodes;
+  aql::ExecutionState _executionState{aql::ExecutionState::DONE};
 
   attributes _attrs;
   size_t _resultRowIdx{ 0 };
