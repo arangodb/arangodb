@@ -103,16 +103,18 @@ class SmallBuffer {
     other._size = 0;
   }
   SmallBuffer& operator=(SmallBuffer const& other) {
-    if (!empty()) {
-      delete[] _start;
-    }
-    if (other.empty()) {
-      _start = nullptr;
-      _size = 0;
-    } else {
-      _start = new uint8_t[other._size];
-      _size = other._size;
-      memcpy(_start, other._start, other._size);
+    if (this != &other) {
+      if (!empty()) {
+        delete[] _start;
+      }
+      if (other.empty()) {
+        _start = nullptr;
+        _size = 0;
+      } else {
+        _start = new uint8_t[other._size];
+        _size = other._size;
+        memcpy(_start, other._start, other._size);
+      }
     }
     return *this;
   }
