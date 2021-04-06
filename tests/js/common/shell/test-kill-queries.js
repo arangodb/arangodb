@@ -174,10 +174,9 @@ function GenericQueryKillSuite() { // can be either default or stream
    * Non-Stream
    */
   // On non stream the (dump) handleQueryResult happens after query is fully processed, so it cannot be killed anymore.
-  // Here the server should throw CANCELED
   if (isServer) { // shell_server
-    testCases.push(createTestCaseEntry("Query::executeV8directKillBeforeQueryResultIsGettingHandled", false, "off", "on"));
-    testCases.push(createTestCaseEntry("Query::executeV8directKillAfterQueryResultIsGettingHandled", false, "off", "on"));
+    testCases.push(createTestCaseEntry("Query::executeV8directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
+    testCases.push(createTestCaseEntry("Query::executeV8directKillAfterQueryResultIsGettingHandled", false, "off", "off"));
   } else { // shell_client
     testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
   }
