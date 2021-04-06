@@ -197,8 +197,6 @@ function GenericQueryKillSuite() { // can be either default or stream
     // With > 1000 results this should return an error
     testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', "off"));
   }
-  // Waiting is only possible in cluster
-  testCases.push(createTestCaseEntry("Query::directKillAfterQueryExecuteReturnsWaiting", true, 'both', "on"));
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", true, 'both', "both"));

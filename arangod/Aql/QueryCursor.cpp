@@ -163,12 +163,14 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
       _exportCount(-1),
       _finalization(false) {
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
-   //LOG_DEVEL << "Found a StreamingCursor, str: " << _query->queryString().string();
-   //std::this_thread::sleep_for(std::chrono::seconds(2));
-   //LOG_DEVEL_IF(_query->state() != aql::QueryExecutionState::ValueType::EXECUTION) << QueryExecutionState::toString(_query->state()) << (void*)_query.get();
+  // TODO Add query Failure Point to kill
+  // LOG_DEVEL << "Found a StreamingCursor, str: " << _query->queryString().string();
+  // std::this_thread::sleep_for(std::chrono::seconds(2));
+  // LOG_DEVEL_IF(_query->state() != aql::QueryExecutionState::ValueType::EXECUTION) << QueryExecutionState::toString(_query->state()) << (void*)_query.get();
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
   _ctx = _query->newTrxContext();
   
+  // TODO Add query Failure Point to kill
   transaction::Methods trx(_ctx);
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 

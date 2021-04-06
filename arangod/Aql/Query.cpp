@@ -300,6 +300,7 @@ void Query::prepareQuery(SerializationFormat format) {
     }
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
+    // TODO Add query Failure Point to kill
   } catch (arangodb::basics::Exception const& ex) {
     _resultCode = ex.code();
     throw;
@@ -459,10 +460,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           // The default call asks for No skips.
           TRI_ASSERT(skipped.nothingSkipped());
           if (state == ExecutionState::WAITING) {
-            TRI_IF_FAILURE("Query::directKillAfterQueryExecuteReturnsWaiting") {
-              debugKillQuery();
-            }
-
             return state;
           }
 
