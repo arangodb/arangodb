@@ -1,6 +1,11 @@
 devel
 -----
 
+* Obsolete option `--database.old-system-collections`. This option has no
+  meaning in ArangoDB 3.9, as old system collections will not be created 
+  anymore in this version. The option was deprecated in 3.8 and announced
+  to be obsoleted.
+
 * Fix undefined behavior in dynarray constructor when running into 
   an out-of-memory exception during construction. In arangod, this can only
   happen during metrics objects construction at program start.
