@@ -728,14 +728,6 @@ endif (ASM_OPTIMIZATIONS)
 ## MAINTAINER MODE
 ################################################################################
 
-option(UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  "whether log strings should be generated regardless of active loglevel"
-  OFF
-  )
-if (UNCONDITIONALLY_BUILD_LOG_MESSAGES)
-  add_definitions("-DARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES=1")
-endif()
-
 option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features"
   OFF
@@ -1264,7 +1256,6 @@ if (USE_MAINTAINER_MODE)
 
   set(EXIT_CODE_FILES
     lib/Basics/exitcodes.h
-    lib/Basics/exitcodes.cpp
     js/common/bootstrap/exitcodes.js
     Installation/Windows/Plugins/exitcodes.nsh
   )
@@ -1278,7 +1269,7 @@ if (USE_MAINTAINER_MODE)
       COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
       COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ./utils/generateExitCodesFiles.py
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building exitcode files ${m}"
       VERBATIM

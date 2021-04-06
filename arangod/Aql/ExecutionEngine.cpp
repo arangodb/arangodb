@@ -48,21 +48,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-RegisterId findVariableRegister(RegisterPlan& plan, VariableId varId) {
-  RegisterId reg = plan.variableToOptionalRegisterId(varId);
-  if (reg.value() == RegisterId::maxRegisterId) {
-    for (auto s : plan.subqueryNodes) {
-      reg = findVariableRegister(*ExecutionNode::castTo<SubqueryNode*>(s)->getSubquery()->getRegisterPlan(), varId);
-      if (reg.value() != RegisterId::maxRegisterId) {
-        break;
-      }
-    }
-  }
-  return reg;
-}
-}  // namespace
-
 // @brief Local struct to create the
 // information required to build traverser engines
 // on DB servers.
@@ -755,7 +740,7 @@ void ExecutionEngine::initializeConstValueBlock(ExecutionPlan& plan, AqlItemBloc
     plan.getAst()->variables()->visit([plan = plan.root()->getRegisterPlan(),
                                        block = mgr.getConstValueBlock()](Variable* var) {
       if (var->type() == Variable::Type::Const) {
-        RegisterId reg = findVariableRegister(*plan, var->id);
+        RegisterId reg = plan->variableToOptionalRegisterId(var->id);
         if (reg.value() != RegisterId::maxRegisterId) {
           TRI_ASSERT(reg.isConstRegister());
           AqlValue value = var->constantValue();

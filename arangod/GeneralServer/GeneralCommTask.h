@@ -70,7 +70,6 @@ class GeneralCommTask : public CommTask {
   
   bool _reading;
   bool _writing;
-  std::string _url;
   
  private:
   

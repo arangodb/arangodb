@@ -65,7 +65,7 @@ class CollectNode : public ExecutionNode {
               std::unordered_map<VariableId, std::string const> const& variableMap,
               std::vector<GroupVarInfo> const& collectVariables,
               std::vector<AggregateVarInfo> const& aggregateVariables,
-              bool isDistinctCommand, bool count);
+              bool isDistinctCommand);
 
   ~CollectNode() override;
 
