@@ -63,6 +63,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   bool _createDatabase;
   std::string _createCollectionType;
   std::string _typeImport;
+  std::string _headersFile;
   std::vector<std::string> _translations;
   std::vector<std::string> _removeAttributes;
   bool _overwrite;
