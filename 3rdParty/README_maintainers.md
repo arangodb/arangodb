@@ -97,6 +97,52 @@ On Upgrade:
     +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
     +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
 
+We also made the following modification to gtest (included in a subdirectory of
+RocksDB):
+```
+diff --git a/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h b/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h
+index ebb16db7b09..10188c93a8c 100644
+--- a/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h
++++ b/3rdParty/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/gtest.h
+@@ -19371,7 +19371,7 @@ INSTANTIATE_TYPED_TEST_CASE_P(My, FooTest, MyTypes);
+    private:                                                                   \
+     typedef CaseName<gtest_TypeParam_> TestFixture;                           \
+     typedef gtest_TypeParam_ TypeParam;                                       \
+-    virtual void TestBody();                                                  \
++    virtual void TestBody() override;                                         \
+   };                                                                          \
+   static bool gtest_##CaseName##_##TestName##_registered_                     \
+         GTEST_ATTRIBUTE_UNUSED_ =                                             \
+```
+This change suppresses compile warnings about missing override specifiers, and
+hopefully can be removed once RocksDB upgrades their version of gtest.
+
+We also applied a small patch on top of `db/wal_manager.cc` which makes it handle
+expected errors (errors that occur when moving WAL files around while they are
+tailed) gracefully:
+```
+diff --git a/3rdParty/rocksdb/6.18/db/wal_manager.cc b/3rdParty/rocksdb/6.18/db/wal_manager.cc
+index 7e77e03618..c5bf3ee1b1 100644
+--- a/3rdParty/rocksdb/6.18/db/wal_manager.cc
++++ b/3rdParty/rocksdb/6.18/db/wal_manager.cc
+@@ -328,6 +339,15 @@ Status WalManager::GetSortedWalsOfType(const std::string& path,
+         }
+       }
+       if (!s.ok()) {
++        if (log_type == kArchivedLogFile &&
++            (s.IsNotFound() ||
++             (s.IsIOError() && env_->FileExists(ArchivedLogFileName(path, number)).IsNotFound()))) {
++          // It may happen that the iteration performed by GetChildren() found
++          // a logfile in the archive, but that this file has been deleted by
++          // another thread in the meantime. In this case just ignore it.
++          s = Status::OK();
++          continue;
++        }
+         return s;
+       }
+
+```
+
 ## s2geometry
 
 http://s2geometry.io/
@@ -106,7 +152,7 @@ http://s2geometry.io/
 Compression library
 https://github.com/google/snappy
 
-We change the target `snappy` to `snapy-dyn` so cmake doesn't interfere targets with the static library (that we need)
+We change the target `snappy` to `snappy-dyn` so cmake doesn't interfere targets with the static library (that we need)
 
 ## snowball
 
