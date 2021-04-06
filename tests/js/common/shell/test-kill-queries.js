@@ -35,7 +35,7 @@ function GenericQueryKillSuite() { // can be either default or stream
   'use strict';
 
   // generate a random collection name
-  const databaseName = "UnitTestsDBTemp"
+  const databaseName = "UnitTestsDBTemp";
   const collectionName = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const docsPerWrite = 5;
   const exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true} RETURN NEW`;
@@ -70,7 +70,7 @@ function GenericQueryKillSuite() { // can be either default or stream
     if (reportKilled === 'both') {
       assertTrue(stateForBoth);
     }
-  }
+  };
 
   let executeStreamCursorQuery = (reportKilled) => {
     // stream execution
@@ -107,7 +107,7 @@ function GenericQueryKillSuite() { // can be either default or stream
     if (reportKilled === 'both') {
       assertTrue(stateForBoth);
     }
-  }
+  };
 
   /*
    * failurePointName: <Class::Name>
@@ -148,7 +148,7 @@ function GenericQueryKillSuite() { // can be either default or stream
       onlyInCluster: onlyInCluster,
       stream: stream,
       reportKilled: reportKilled
-    }
+    };
   };
 
   const testCases = [];
@@ -215,10 +215,10 @@ function GenericQueryKillSuite() { // can be either default or stream
       db._useDatabase("_system");
       db._dropDatabase(databaseName);
     },
-  }
+  };
 
   const createTestName = (failurePoint, stream) => {
-    let typedef = '_'
+    let typedef = '_';
     if (stream === 'on') {
       typedef = '_stream_';
     } else if (stream === 'off') {
@@ -256,12 +256,12 @@ function GenericQueryKillSuite() { // can be either default or stream
         try {
           internal.debugClearFailAt(failurePointName);
         } catch (e) {
-          // Let the Test fail
-          throw `Failed to clear failurepoint ${failurePointName}`;
+          // We cannot throw in finally.
+          console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable`);
         }
       }
 
-    }.bind(this, testCase.failurePointName, testCase.stream, testCase.reportKilled, testCase.onlyInCluster)
+    }.bind(this, testCase.failurePointName, testCase.stream, testCase.reportKilled, testCase.onlyInCluster);
   };
 
   for (const testCase of testCases) {
@@ -286,8 +286,9 @@ function GenericQueryKillSuite() { // can be either default or stream
     // Most of it is covered by the above tests, but this failure-point will be right before a separate
     // branch only available in export.
     const url = `/_db/${databaseName}/_api/export?collection=${collectionName}`;
+    const failurePointName = "QueryStreamCursor::directKillAfterTrxSetup";
     try {
-      internal.debugSetFailAt("QueryStreamCursor::directKillAfterTrxSetup");
+      internal.debugSetFailAt(failurePointName);
     } catch (e) {
       // Let the Test fail
       throw `Failed to initialize failurepoint ${failurePointName}`;
@@ -307,3 +308,4 @@ function QueryKillSuite() {
 jsunity.run(QueryKillSuite);
 
 return jsunity.done();
+
