@@ -322,6 +322,24 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
+
+  switch (ServerState::instance()->getRole()) {
+  case ServerState::ROLE_SINGLE:
+    break;
+  case ServerState::ROLE_DBSERVER:
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FORBIDDEN, "may not create collections on DB-Servers");
+    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_FORBIDDEN);
+    return;
+  case ServerState::ROLE_COORDINATOR:
+    break;
+  case ServerState::ROLE_AGENT:
+    break;
+  case ServerState::ROLE_UNDEFINED:
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FORBIDDEN, "may not create collections on who am I anyways?");
+    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_FORBIDDEN);
+    return;
+  }
+
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -371,6 +389,7 @@ void RestCollectionHandler::handleCommandPost() {
   _builder.clear();
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(_context);
+
   Result res =
       methods::Collections::create(_vocbase,  // collection vocbase
                                    options,
