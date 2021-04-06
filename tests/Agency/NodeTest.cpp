@@ -132,6 +132,26 @@ TEST(SmallBufferTest, copyAssignment) {
   }
 }
 
+TEST(SmallBufferTest, copySelfAssignment) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+
+  // we want a self-assignment here, but we have
+  // to make it look complicated so compilers don't 
+  // detect it too easily
+  SmallBuffer* target = &sb1;
+  *target = sb1;
+  
+  ASSERT_NE(sb1.data(), nullptr);
+  ASSERT_FALSE(sb1.empty());
+  ASSERT_EQ(123, sb1.size());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb1.data()[i]);
+  }
+}
+
 TEST(SmallBufferTest, moveAssignment) {
   SmallBuffer sb1(123);
   for (size_t i = 0; i < 123; ++i) {
@@ -165,7 +185,26 @@ TEST(SmallBufferTest, moveAssignment) {
   for (size_t i = 0; i < 123; ++i) {
     ASSERT_EQ((uint8_t) i, sb3.data()[i]);
   }
+}
 
+TEST(SmallBufferTest, moveSelfAssignment) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+
+  // we want a self-move assignment here, but we have
+  // to make it look complicated so compilers don't 
+  // detect it too easily
+  SmallBuffer* target = &sb1;
+  *target = std::move(sb1);
+
+  ASSERT_NE(nullptr, sb1.data());
+  ASSERT_EQ(123, sb1.size());
+  ASSERT_FALSE(sb1.empty());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb1.data()[i]);
+  }
 }
 
 class NodeTest

@@ -56,7 +56,7 @@ public:
         : store( alloc( c ) ), count( c )
         { size_type i = 0;
           try {
-              for ( ; i < count; ++i )
+              for ( i = 0; i < count; ++i )
                   new (store+i) T;
           } catch ( ... ) {
               for ( ; i > 0; --i )
