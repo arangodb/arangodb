@@ -27,6 +27,8 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 const isServer = require('@arangodb').isServer;
+// Only required on client
+const arango = isServer ? {} : arangodb.arango;
 let db = arangodb.db;
 
 function GenericQueryKillSuite() { // can be either default or stream
@@ -153,13 +155,15 @@ function GenericQueryKillSuite() { // can be either default or stream
   // TODOs: check reportKilled flags for each entry
 
   // defaults
-  testCases.push(createTestCaseEntry("QueryProfile::directKillAfterQueryGotRegistered", true, "off", "on"));
+  testCases.push(createTestCaseEntry("QueryProfile::directKillAfterQueryGotRegistered", false, "both", "on"));
 
   /*
    * Stream
    */
   testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryBeforeCursorIsBeingCreated", false, "on", "on"));
   testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "on"));
+  testCases.push(createTestCaseEntry("QueryStreamCursor::directKillAfterPrepare", false, "on", "on"));
+  testCases.push(createTestCaseEntry("QueryStreamCursor::directKillAfterTrxSetup", false, "on", "on"));
 
   // On stream the dump happens during process of the query, so it can be killed
   if (isServer) { // shell_server
@@ -274,6 +278,23 @@ function GenericQueryKillSuite() { // can be either default or stream
   testSuite["test_positiveDefaultQueryExecution"] = function () {
     let localQuery = db._query(exlusiveWriteQueryString);
     assertTrue(localQuery);
+  };
+
+  testSuite["test_export_api"] = function () {
+    // Add a test for some special hack in export API, which is only allowed for SingleServer and Client
+    // This will internally create a streaming cursor, which can be killed in a bad position as well.
+    // Most of it is covered by the above tests, but this failure-point will be right before a separate
+    // branch only available in export.
+    const url = `/_db/${databaseName}/_api/export?collection=${collectionName}`;
+    try {
+      internal.debugSetFailAt("QueryStreamCursor::directKillAfterTrxSetup");
+    } catch (e) {
+      // Let the Test fail
+      throw `Failed to initialize failurepoint ${failurePointName}`;
+    }
+    const res = arango.POST(url, {count: true});
+    assertEqual(res.code, 410);
+    assertEqual(res.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
   };
 
   return testSuite;
