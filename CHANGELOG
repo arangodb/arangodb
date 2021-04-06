@@ -1,6 +1,6 @@
 v3.6.13 (XXXX-XX-XX)
 --------------------
-
+<<<<<<< HEAD
 * Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
   to specify "--ldap@2.OPTION". Authentication / Authorization will first check
   the primary LDAP server. If this server cannot authenticate an user, it will
@@ -9,6 +9,64 @@ v3.6.13 (XXXX-XX-XX)
   option "--ldap.responsible-for". This file must contain the usernames line-by-line.
 
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
+
+* Fixed issue BTS-353: memleak when running into an out-of-memory situation
+  while repurposing an existing AqlItemBlock.
+
+* Change metrics' internal `low()` and `high()` methods so that they return by
+  value, not by reference.
+
+* Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
+
+* When using connections to multiple endpoints and switching between them,
+  arangosh can now reuse existing connections by referring to an internal
+  connection cache. This helps for arangosh scripts that repeatedly connect to
+  multiple endpoints, and avoids wasting lots of ephemeral TCP ports remaining
+  in CLOSE_WAIT state.
+  This change is transparent to any arangosh scripts or commands that do not
+  reconnect to other endpoints than the one specified at arangosh start.
+
+* Put Sync/LatestID into hotbackup and restore it on hotbackup restore if it is
+  in the backup. This helps with unique key generation after a hotbackup is
+  restored to a young cluster.
+
+* Reasonably harden MoveShard against unexpected VelocyPack input.
+
+* Follower primaries respond with
+  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION to any read request. Fixes
+  a wrongly responded 404 from chaos tests.
+
+* Updated arangosync to 1.2.3.
+
+* Fixed a bug in the web interface that displayed the error "Not authorized to
+  execute this request" when trying to create an index in the web interface in a
+  database other than `_system` with a user that does not have any access
+  permissions for the `_system` database.
+  The error message previously displayed error actually came from an internal
+  request made by the web interface, but it did not affect the actual index
+  creation.
+
+* Fixed issue BTS-309: The Graph API (Gharial) did not respond with the correct
+  HTTP status code when validating edges. It now responds with 400 (Bad Request)
+  as documented and a new, more precise error code (1947) and message if a
+  vertex collection referenced in the _from or _to attribute is not part of the
+  graph.
+
+* Enable statistics in web UI in non-`_system` databases in cluster mode.
+  In cluster mode, the web UI dashboard did not display statistics properly when
+  not being logged in to the `_system` database. For all other databases than
+  `_system`, no statistics were displayed but just some "No data..."
+  placeholders.
+  Statistics for non-`_system` databases were not properly displayed since
+  3.6.10 due to an internal change in the statistics processing.
+
+  In addition, a new startup option `--server.statistics-all-databases` controls
+  whether cluster statistics are displayed in the web interface for all
+  databases (if the option is set to `true`) or just for the system database (if
+  the option is set to `false`).
+  The default value for the option is `true`, meaning statistics will be
+  displayed in the web interface for all databases.
+>>>>>>> 529f9a48c07c962bdc9301c0e3c4189f8ef32426
 
 * Cleanup old HotBackup transfer jobs in agency.
 

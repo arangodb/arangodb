@@ -286,6 +286,11 @@
     delete global.SYS_ENABLED_STATISTICS;
   }
 
+  if (global.SYS_ENABLED_STATISTICS_ALL_DATABASES) {
+    exports.enabledStatisticsInAllDatabases = global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
+    delete global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief clientStatistics
   // //////////////////////////////////////////////////////////////////////////////

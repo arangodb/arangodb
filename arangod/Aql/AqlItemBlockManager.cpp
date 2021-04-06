@@ -57,7 +57,12 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, Register
       block = _buckets[i].pop();
       TRI_ASSERT(block != nullptr);
       TRI_ASSERT(block->numEntries() == 0);
-      block->rescale(nrItems, nrRegs);
+      try {
+        block->rescale(nrItems, nrRegs);
+      } catch (...) {
+        delete block;
+        throw;
+      }
       // LOG_TOPIC("7157d", TRACE, arangodb::Logger::FIXME) << "returned cached
       // AqlItemBlock with dimensions " << block->size() << " x " <<
       // block->getNrRegs();

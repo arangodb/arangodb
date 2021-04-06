@@ -36,6 +36,38 @@
 
 using namespace arangodb;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// compare the two vectors for equality, regardless of the order
+// of their items. will trigger an assertion failure in maintainer mode
+// if the vector elements are not identical
+void checkDifference(std::vector<ServerID> const& followers,
+                     std::vector<ServerID> const& failoverCandidates) {
+  // intentionally copy the vectors here, as we don't want to modify the originals
+  auto followersCopy = followers;
+  auto failoverCandidatesCopy = failoverCandidates;
+  std::sort(failoverCandidatesCopy.begin(), failoverCandidatesCopy.end());
+  std::sort(followersCopy.begin(), followersCopy.end());
+
+  std::vector<std::string> diff;
+  std::set_symmetric_difference(failoverCandidatesCopy.begin(),
+                                failoverCandidatesCopy.end(),
+                                followersCopy.begin(),
+                                followersCopy.end(),
+                                std::back_inserter(diff));
+  if (!diff.empty()) {
+    std::stringstream s;
+    s << "Symmetric difference alert: ";
+    for (auto const& d : diff) { s << d << " "; }
+    s << "failoverCandidates: ";
+    for (auto const& d : failoverCandidates) { s << d << " "; }
+    s << "followers: ";
+    for (auto const& d : followers) { s << d << " "; }
+    LOG_DEVEL << s.str();
+  }
+  TRI_ASSERT(diff.empty());
+}
+#endif
+
 static std::string inline reportName(bool isRemove) {
   if (isRemove) {
     return "FollowerInfo::remove";
@@ -43,6 +75,7 @@ static std::string inline reportName(bool isRemove) {
     return "FollowerInfo::add";
   }
 }
+
 
 static std::string CurrentShardPath(arangodb::LogicalCollection const& col) {
   // Agency path is
@@ -309,11 +342,7 @@ bool FollowerInfo::updateFailoverCandidates() {
 // All followers can return as soon as the lock is released
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_failoverCandidates->size() == _followers->size());
-    std::vector<std::string> diff;
-    std::set_symmetric_difference(_failoverCandidates->begin(),
-                                  _failoverCandidates->end(), _followers->begin(),
-                                  _followers->end(), std::back_inserter(diff));
-    TRI_ASSERT(diff.empty());
+    checkDifference(*_followers, *_failoverCandidates);
 #endif
     return _canWrite;
   }
@@ -324,11 +353,7 @@ bool FollowerInfo::updateFailoverCandidates() {
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
   TRI_ASSERT(_failoverCandidates->size() == _followers->size());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::vector<std::string> diff;
-  std::set_symmetric_difference(_failoverCandidates->begin(),
-                                _failoverCandidates->end(), _followers->begin(),
-                                _followers->end(), std::back_inserter(diff));
-  TRI_ASSERT(diff.empty());
+  checkDifference(*_followers, *_failoverCandidates);
 #endif
   Result res = persistInAgency(true);
   if (!res.ok()) {
@@ -357,7 +382,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   int badCurrentCount = 0;
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
-      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
+      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
     AgencyReadTransaction trx(std::vector<std::string>(

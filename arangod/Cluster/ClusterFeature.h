@@ -133,6 +133,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   Counter& _followersRefused;
   Counter& _followersDropped;
   Counter& _addFollowerWrongChecksum;
+  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
 };
 
 }  // namespace arangodb
