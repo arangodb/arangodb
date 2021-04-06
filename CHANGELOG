@@ -12,6 +12,9 @@ devel
   `--fail-on-non-json` which makes arangovpack fail when trying to emit 
   non-JSON types to JSON output.
 
+* Added option `--headers-file` to arangoimport, to optionally read CSV/TSV
+  headers from a separate file.
+
 * Updated ArangoDB Starter to 0.15.0-preview-3.
 
 * Fixed issue BTS-353: memleak when running into an out-of-memory situation
