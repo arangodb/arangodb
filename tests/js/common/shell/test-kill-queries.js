@@ -181,9 +181,6 @@ function GenericQueryKillSuite() { // can be either default or stream
   } else { // shell_client
     testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
   }
-  // Non-Stream does always use dumpSync
-  testCases.push(createTestCaseEntry("QueryResultCursor::directKillBeforeQueryIsGettingDumpedSynced", false, "off", "off"));
-  testCases.push(createTestCaseEntry("QueryResultCursor::directKillAfterQueryIsGettingDumpedSynced", false, "off", "off"));
 
   /*
    * Execution in default & stream
