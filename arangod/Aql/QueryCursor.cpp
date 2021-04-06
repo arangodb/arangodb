@@ -168,7 +168,6 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
   }
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
 
-  // TODO test kill for this HACK API
   // we replaced the rocksdb export cursor with a stream AQL query
   // for this case we need to support printing the collection "count"
   // this is a hack for the export API only

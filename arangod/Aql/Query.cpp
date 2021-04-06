@@ -246,12 +246,6 @@ void Query::kill() {
   } else {
     _queryKilled = true;
   }
-  /*
-   * Old
-   *   _queryKilled = true;
-  if (ServerState::instance()->isCoordinator()) {
-    this->cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, false);
-  }*/
 }
 
 /// @brief return the start time of the query (steady clock value)
@@ -300,7 +294,6 @@ void Query::prepareQuery(SerializationFormat format) {
     }
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
-    // TODO Add query Failure Point to kill
   } catch (arangodb::basics::Exception const& ex) {
     _resultCode = ex.code();
     throw;
