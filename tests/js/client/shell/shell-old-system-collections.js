@@ -2,9 +2,7 @@
 /* global getOptions, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test for security-related server options
-///
-/// @file
+/// @brief test for old system collections
 ///
 /// DISCLAIMER
 ///
@@ -28,15 +26,10 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-if (getOptions === true) {
-  return {
-    'database.old-system-collections': "true"
-  };
-}
-let jsunity = require('jsunity');
+const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const cn = "UnitTestsCollection";
-let db = require('internal').db;
+const db = require('internal').db;
 
 function testSuite() {
   return {
@@ -45,8 +38,8 @@ function testSuite() {
 
       assertNotEqual(0, collections.length);
       assertNotEqual(-1, collections.indexOf('_graphs'));
-      assertNotEqual(-1, collections.indexOf('_fishbowl'));
-      assertNotEqual(-1, collections.indexOf('_modules'));
+      assertEqual(-1, collections.indexOf('_fishbowl'));
+      assertEqual(-1, collections.indexOf('_modules'));
       assertEqual(-1, collections.indexOf('_routing'));
     },
     
@@ -59,8 +52,8 @@ function testSuite() {
 
         assertNotEqual(0, collections.length);
         assertNotEqual(-1, collections.indexOf('_graphs'));
-        assertNotEqual(-1, collections.indexOf('_fishbowl'));
-        assertNotEqual(-1, collections.indexOf('_modules'));
+        assertEqual(-1, collections.indexOf('_fishbowl'));
+        assertEqual(-1, collections.indexOf('_modules'));
         assertEqual(-1, collections.indexOf('_routing'));
       } finally {
         db._useDatabase("_system");
