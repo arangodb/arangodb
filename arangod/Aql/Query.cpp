@@ -670,6 +670,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       ExecutionState state = ExecutionState::HASMORE;
       auto context = TRI_IGETC;
       while (state != ExecutionState::DONE) {
+        if (killed()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+        }
         auto res = engine->getSome(ExecutionBlock::DefaultBatchSize);
         state = res.first;
         while (state == ExecutionState::WAITING) {
@@ -723,10 +726,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           TRI_IF_FAILURE("Query::executeV8directKillAfterQueryResultIsGettingHandled") {
             debugKillQuery();
           }
-        }
-
-        if (killed()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
         }
       }
 
