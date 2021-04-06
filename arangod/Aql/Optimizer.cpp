@@ -378,11 +378,6 @@ void Optimizer::finalizePlans() {
     
     plan.first->findVarUsage();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
-      // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
-      continue;
-    }
-
     NoSubqueryChecker checker;
     plan.first->root()->walk(checker);
 #endif // ARANGODB_ENABLE_MAINTAINER_MODE

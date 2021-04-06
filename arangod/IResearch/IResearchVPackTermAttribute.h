@@ -2,7 +2,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,12 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+#ifndef ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE
+#define ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE
+#include <utils/attributes.hpp>
+#include <utils/bit_utils.hpp>
+#include <velocypack/Slice.h>
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REPAIRS_H
-#define ARANGOD_CLUSTER_CLUSTER_REPAIRS_H
+namespace arangodb {
+namespace iresearch {
 
-#include "ClusterRepairDistributeShardsLike.h"
+struct VPackTermAttribute final : irs::attribute {
+  static constexpr irs::string_ref type_name() noexcept { return "vpack_term_attribute"; }
 
-#endif  // ARANGOD_CLUSTER_CLUSTER_REPAIRS_H
+  ::arangodb::velocypack::Slice value;
+};
+
+} // namespace iresearch
+} // namespace arangodb
+
+#endif // ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE

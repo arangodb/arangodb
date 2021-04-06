@@ -107,10 +107,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
   }
 
-  if (en->getType() == ExecutionNode::SUBQUERY) {
-    // old-style subqueries
-    plan->addSubqueryNode(en);
-  }
+  TRI_ASSERT(en->getType() != ExecutionNode::SUBQUERY);
 
   if (en->getType() == ExecutionNode::SUBQUERY_START ||
       en->getType() == ExecutionNode::SUBQUERY_END) {
@@ -328,26 +325,6 @@ RegisterPlanT<T>::RegisterPlanT()
   nrRegs.emplace_back(0);
 }
 
-// Copy constructor used for a subquery:
-template <typename T>
-RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
-    : varInfo(v.varInfo), 
-      nrRegs(v.nrRegs), 
-      nrConstRegs(v.nrConstRegs),
-      subqueryNodes(), 
-      depth(newdepth + 1) {
-  if (depth + 1 < 8) {
-    // do a minium initial allocation to avoid frequent reallocations
-    nrRegs.reserve(8);
-  }
-  // create a copy of the last value here
-  // this is required because back returns a reference and emplace/push_back may
-  // invalidate all references
-  nrRegs.resize(depth);
-  auto regCount = nrRegs.back();
-  nrRegs.emplace_back(regCount);
-}
-
 template <typename T>
 RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
     : depth(depth) {
@@ -396,9 +373,6 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
   other->nrRegs = nrRegs;
   other->depth = depth;
   other->varInfo = varInfo;
-
-  // No need to clone subqueryNodes because this was only used during
-  // the buildup.
 
   return other;
 }
@@ -565,11 +539,6 @@ void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
   }
 
   builder.add("nrConstRegs", VPackValue(nrConstRegs));
-}
-
-template <typename T>
-void RegisterPlanT<T>::addSubqueryNode(T* subquery) {
-  subqueryNodes.emplace_back(subquery);
 }
 
 template <typename T>
