@@ -129,8 +129,20 @@ void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
   std::unordered_set<std::string> const inputTypes{{"json", "json-hex", "vpack", "vpack-hex" }};
   std::unordered_set<std::string> const outputTypes{{"json", "json-pretty", "vpack", "vpack-hex" }};
 
-  options->addOption("--input-file", "input filename", new StringParameter(&_inputFile));
-  options->addOption("--output-file", "output filename", new StringParameter(&_outputFile));
+  options->addOption("--input-file", 
+#ifdef __linux__
+                     "input filename (leave empty or use \"-\" for stdin)",
+#else
+                     "input filename"
+#endif
+                     new StringParameter(&_inputFile));
+  options->addOption("--output-file", 
+#ifdef __linux__
+                     "output filename (leave empty or use \"+\" for stdout)",
+#else
+                     "output filename", 
+#endif
+                     new StringParameter(&_outputFile));
   options->addOption("--input-type", "type of input", new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes));
   options->addOption("--output-type", "type of output", new DiscreteValuesParameter<StringParameter>(&_outputType, outputTypes));
   options->addOption("--fail-on-non-json", "fail when trying to emit non-JSON types to JSON output",
