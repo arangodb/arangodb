@@ -48,8 +48,17 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+struct ClusterFeatureScale {
+  static log_scale_t<uint64_t> scale() { return {2, 58, 120000, 10}; }
+};
+
+DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale, "Request time for Agency requests [ms]");
+
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Cluster") {
+  : ApplicationFeature(server, "Cluster"),
+    _apiJwtPolicy("jwt-compat"),
+    _agency_comm_request_time_ms(
+      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agencycomm_request_time_msec{})) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -218,6 +227,18 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                    arangodb::options::Flags::OnCoordinator,
                                    arangodb::options::Flags::Hidden));
+  
+  options
+      ->addOption("--cluster.api-jwt-policy",
+                  "access permissions required for accessing /_admin/cluster REST APIs "
+                  "(jwt-all = JWT required to access all operations, jwt-write = JWT required "
+                  "for post/put/delete operations, jwt-compat = 3.7 compatibility mode)",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_apiJwtPolicy,
+                      std::unordered_set<std::string>{"jwt-all", "jwt-write", "jwt-compat"}),
+                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                               arangodb::options::Flags::OnCoordinator))
+      .setIntroducedIn(30800);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -515,6 +536,10 @@ void ClusterFeature::prepare() {
 
 }
 
+DECLARE_COUNTER(arangodb_dropped_followers_total, "Number of drop-follower events");
+DECLARE_COUNTER(arangodb_refused_followers_total, "Number of refusal answers from a follower during synchronous replication");
+DECLARE_COUNTER(arangodb_sync_wrong_checksum_total, "Number of times a mismatching shard checksum was detected when syncing shards");
+
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
 void ClusterFeature::start() {
@@ -582,15 +607,12 @@ void ClusterFeature::start() {
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
-    _followersDroppedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
-        StaticStrings::DroppedFollowerCount, 0,
-        "Number of drop-follower events");
-    _followersRefusedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
-        "arangodb_refused_followers_count", 0,
-        "Number of refusal answers from a follower during synchronous replication");
-    _followersWrongChecksumCounter = server().getFeature<arangodb::MetricsFeature>().counter(
-        "arangodb_sync_wrong_checksum", 0,
-        "Number of times a mismatching shard checksum was detected when syncing shards");
+    _followersDroppedCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_dropped_followers_total{});
+    _followersRefusedCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_refused_followers_total{});
+    _followersWrongChecksumCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -635,6 +657,30 @@ void ClusterFeature::start() {
 
   AsyncAgencyCommManager::INSTANCE->setSkipScheduler(false);
   ServerState::instance()->setState(ServerState::STATE_SERVING);
+
+#ifdef USE_ENTERPRISE
+  // If we are on a coordinator, we want to have a callback which is called
+  // whenever a hotbackup restore is done:
+  if (role == ServerState::ROLE_COORDINATOR) {
+    auto hotBackupRestoreDone = [this](VPackSlice const& result) -> bool {
+      if (!server().isStopping()) {
+        LOG_TOPIC("12636", INFO, Logger::BACKUP) << "Got a hotbackup restore "
+          "event, getting new cluster-wide unique IDs...";
+        this->_clusterInfo->uniqid(1000000);
+      }
+      return true;
+    };
+    _hotbackupRestoreCallback =
+      std::make_shared<AgencyCallback>(
+        server(), "Sync/HotBackupRestoreDone", hotBackupRestoreDone, true, false);
+    Result r =_agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback, true);
+    if (r.fail()) {
+      LOG_TOPIC("82516", WARN, Logger::BACKUP)
+        << "Could not register hotbackup restore callback, this could lead "
+           "to problems after a restore!";
+    }
+  }
+#endif
 }
 
 void ClusterFeature::beginShutdown() {
@@ -655,6 +701,15 @@ void ClusterFeature::stop() {
   if (!_enableCluster) {
     return;
   }
+
+#ifdef USE_ENTERPRISE
+  if (_hotbackupRestoreCallback != nullptr) {
+    if (!_agencyCallbackRegistry->unregisterCallback(_hotbackupRestoreCallback)) {
+      LOG_TOPIC("84152", DEBUG, Logger::BACKUP) << "Strange, we could not "
+        "unregister the hotbackup restore callback.";
+    }
+  }
+#endif
 
   shutdownHeartbeatThread();
 
@@ -796,11 +851,6 @@ AgencyCache& ClusterFeature::agencyCache() {
 
 
 void ClusterFeature::allocateMembers() {
-  try {
-    server().getFeature<arangodb::MetricsFeature>().histogram(
-      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
-      "Request time for Agency requests");
-  } catch (...) {}
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
   _agencyCache =

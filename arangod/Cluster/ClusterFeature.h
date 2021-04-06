@@ -90,6 +90,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
   ClusterInfo& clusterInfo();
+
+  /// @brief permissions required to access /_admin/cluster REST API endpoint:
+  /// - "jwt-all"    = JWT required to access all operations
+  /// - "jwt-write"  = JWT required to access post/put/delete operations
+  /// - "jwt-compat" = compatibility mode = same permissions as in 3.7
+  std::string const& apiJwtPolicy() const noexcept { return _apiJwtPolicy; }
   
   Counter& followersDroppedCounter() { return _followersDroppedCounter->get(); }
   Counter& followersRefusedCounter() { return _followersRefusedCounter->get(); }
@@ -131,8 +137,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void waitForSyncersToStop();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setSyncerShutdownCode(int code) { _syncerShutdownCode = code; }
+  void setSyncerShutdownCode(ErrorCode code) { _syncerShutdownCode = code; }
 #endif
+
+  Histogram<log_scale_t<uint64_t>>& agency_comm_request_time_ms() { return _agency_comm_request_time_ms; }
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -147,13 +155,14 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myRole;
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
+  std::string _apiJwtPolicy;
   std::uint32_t _writeConcern = 1;             // write concern
   std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor
   std::uint32_t _systemReplicationFactor = 2;
   std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
   std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
-  int _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
+  ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;
   bool _unregisterOnShutdown = false;
@@ -166,10 +175,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
+  Histogram<log_scale_t<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
   std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
+  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
 
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;

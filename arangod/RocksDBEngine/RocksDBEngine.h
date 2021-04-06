@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
@@ -157,8 +158,8 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) override;
 
-  void getStatistics(velocypack::Builder& builder) const override;
-  void getStatistics(std::string& result) const override;
+  void getStatistics(velocypack::Builder& builder, bool v2) const override;
+  void getStatistics(std::string& result, bool v2) const override;
 
   // inventory functionality
   // -----------------------
@@ -185,10 +186,10 @@ class RocksDBEngine final : public StorageEngine {
   void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                         int& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(int& status) override;
-  int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
-  int removeReplicationApplierConfiguration() override;
+                                                         ErrorCode& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(ErrorCode& status) override;
+  ErrorCode removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
+  ErrorCode removeReplicationApplierConfiguration() override;
   ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                 velocypack::Slice slice, bool doSync) override;
   ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
@@ -225,7 +226,7 @@ class RocksDBEngine final : public StorageEngine {
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
                                                       bool isUpgrade) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
-                                                int& status) override;
+                                                ErrorCode& status) override;
   Result writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
@@ -243,6 +244,9 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief whether or not purging of WAL files is currently allowed
   RocksDBFilePurgeEnabler startPurging() noexcept;
+
+  void compactRange(RocksDBKeyBounds bounds);
+  void processCompactions();
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -369,8 +373,10 @@ class RocksDBEngine final : public StorageEngine {
 
  private:
   void shutdownRocksDBInstance() noexcept;
-  velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
-  int removeReplicationApplierConfiguration(RocksDBKey const& key);
+  void waitForCompactionJobsToFinish();
+  velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
+                                                         ErrorCode& status);
+  ErrorCode removeReplicationApplierConfiguration(RocksDBKey const& key);
   ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
                                                 arangodb::velocypack::Slice slice,
                                                 bool doSync);
@@ -429,6 +435,8 @@ class RocksDBEngine final : public StorageEngine {
                                       // intermediate commit is performed
   uint64_t _intermediateCommitCount;  // limit of transaction count
                                       // for intermediate commit
+
+  uint64_t _maxParallelCompactions;
 
   // hook-ins for recovery process
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
@@ -528,6 +536,13 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief global health data, updated periodically
   HealthData _healthData;
+
+  // lock for _pendingCompactionsLock and _runningCompactions
+  arangodb::basics::ReadWriteLock _pendingCompactionsLock;
+  // bounds for compactions that we have to process
+  std::deque<RocksDBKeyBounds> _pendingCompactions;
+  // number of currently running compaction jobs
+  size_t _runningCompactions;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

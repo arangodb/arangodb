@@ -1,0 +1,18 @@
+name: arangodb_agency_callback_registered_total
+renamedFrom: arangodb_agency_callback_registered
+introducedIn: "3.8.0"
+help: |
+  Total number of agency callbacks ever registered.
+unit: number
+type: counter
+category: Agency
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - single
+description: |
+  This metric was named `arangodb_agency_callback_registered` in previous versions 
+  of ArangoDB.
+  Note that on single servers this metrics will only have a non-zero value
+  in "active failover" deployment mode.

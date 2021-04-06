@@ -24,6 +24,9 @@
 #ifndef ARANGOD_GRAPH_PROVIDER_BASEPROVIDEROPTIONS_H
 #define ARANGOD_GRAPH_PROVIDER_BASEPROVIDEROPTIONS_H 1
 
+#include "Aql/FixedVarExpressionContext.h"
+#include "Cluster/ClusterInfo.h"
+#include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
 
 #include <optional>
@@ -53,10 +56,13 @@ struct IndexAccessor {
 
 struct BaseProviderOptions {
  public:
-  BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo);
+  BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
+                      std::map<std::string, std::string> const& collectionToShardMap);
 
   aql::Variable const* tmpVar() const;
   std::vector<IndexAccessor> const& indexInformations() const;
+
+  std::map<std::string, std::string> const& collectionToShardMap() const;
 
  private:
   // The temporary Variable used in the Indexes
@@ -64,6 +70,29 @@ struct BaseProviderOptions {
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
   std::vector<IndexAccessor> _indexInformation;
+
+  // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
+  std::map<std::string, std::string> const& _collectionToShardMap;
+};
+
+struct ClusterBaseProviderOptions {
+ public:
+  ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache,
+                             std::unordered_map<ServerID, aql::EngineId> const* engines,
+                             bool backward);
+
+  RefactoredClusterTraverserCache* getCache();
+
+  bool isBackward() const;
+
+  [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines() const;
+
+ private:
+  std::shared_ptr<RefactoredClusterTraverserCache> _cache;
+
+  std::unordered_map<ServerID, aql::EngineId> const* _engines;
+
+  bool _backward;
 };
 
 }  // namespace graph

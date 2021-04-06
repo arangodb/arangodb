@@ -61,6 +61,7 @@
 #include "Graph/ShortestPathType.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
 
@@ -625,6 +626,15 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* ex
     // subqueries
     auto visitor = [this, &previous](AstNode* node) {
       if (node->type == NODE_TYPE_COLLECTION) {
+        // collection name used inside an expression...
+
+        auto& vocbase = _ast->query().vocbase();
+        if (!vocbase.server().getFeature<QueryRegistryFeature>().allowCollectionsInExpressions()) {
+          // this is disallowed here, so fail the query
+          std::string cn = node->getString();
+          THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, cn.c_str());
+        }
+
         // create an on-the-fly subquery for a full collection access
         AstNode* rootNode = _ast->createNodeSubquery();
 
@@ -1296,9 +1306,9 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   AstNode const* target = parseTraversalVertexNode(previous, node->getMember(3));
   AstNode const* graph = node->getMember(4);
 
-  // Refactored variant shall be default on SingleServer on KPaths
-  bool defaultToRefactor = type == arangodb::graph::ShortestPathType::Type::KPaths &&
-                           ServerState::instance()->isSingleServer();
+  // Refactored variant shall be default on SingleServer and Cluster on KPaths
+  // After the whole refactoring is done, this can be removed.
+  bool defaultToRefactor = type == arangodb::graph::ShortestPathType::Type::KPaths;
 
   auto options = createShortestPathOptions(getAst(), direction, node->getMember(5), defaultToRefactor);
 
@@ -2203,7 +2213,7 @@ void ExecutionPlan::findVarUsage() {
 bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
 
 void ExecutionPlan::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
-  _root->planRegisters(nullptr, explainRegisterPlan);
+  _root->planRegisters(explainRegisterPlan);
 }
 
 /// @brief unlinkNodes, note that this does not delete the removed

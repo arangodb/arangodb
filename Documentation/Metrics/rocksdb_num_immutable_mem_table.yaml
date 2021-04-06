@@ -1,0 +1,20 @@
+name: rocksdb_num_immutable_mem_table
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "num-immutable-mem-table" - sum over column families
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "num-immutable-mem-table", 
+  which shows the number of immutable memtables that have not yet been
+  flushed. This value is the sum over all column families.
+
+  Memtables are sorted tables of key/value pairs which begin
+  to be built up in memory. At some stage they are closed and become
+  immutable, and some time later they are flushed to disk.

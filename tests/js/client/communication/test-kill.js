@@ -31,8 +31,8 @@ let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 
 let timeout = 60;
-if (global.ARANGODB_CLIENT_VERSION(true).asan  ||
-    global.ARANGODB_CLIENT_VERSION(true).tsan  ||
+if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
+    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
     process.env.hasOwnProperty('GCOV_PREFIX')) {
   timeout *= 10;
 }

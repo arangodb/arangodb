@@ -483,7 +483,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
 
 arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType type,
                                       std::vector<std::string> const& fields,
-                                      bool unique, bool sparse) {
+                                      bool unique, bool sparse, bool estimates) {
   VPackBuilder props;
 
   props.openObject();
@@ -499,6 +499,7 @@ arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType 
   props.close();
   props.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(unique));
   props.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(sparse));
+  props.add(arangodb::StaticStrings::IndexEstimates, arangodb::velocypack::Value(estimates));
   props.close();
 
   VPackBuilder ignored;

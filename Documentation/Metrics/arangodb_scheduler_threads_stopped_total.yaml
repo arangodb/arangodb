@@ -1,0 +1,17 @@
+name: arangodb_scheduler_threads_stopped_total
+renamedFrom: arangodb_scheduler_threads_stopped
+introducedIn: "3.8.0"
+help: |
+  Accumulated total number of scheduler threads stopped.
+unit: number
+type: counter
+category: Scheduler
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total accumulated number of scheduler threads stopped. Worker threads can be
+  started and stopped dynamically based on the server load.

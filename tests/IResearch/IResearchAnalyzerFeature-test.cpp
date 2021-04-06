@@ -97,7 +97,6 @@ struct TestIndex : public arangodb::Index {
   bool canBeDropped() const override { return false; }
   bool hasSelectivityEstimate() const override { return false; }
   bool isHidden() const override { return false; }
-  bool isPersistent() const override { return false; }
   bool isSorted() const override { return false; }
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* /* trx */, arangodb::aql::AstNode const* /* node */,
@@ -262,13 +261,13 @@ struct Analyzer {
   irs::flags features;
 
   Analyzer() = default;
-  Analyzer(irs::string_ref const& t, irs::string_ref const& p,
+  Analyzer(irs::string_ref const t, irs::string_ref const p,
            irs::flags const& f = irs::flags::empty_instance())
       : type(t), features(f) {
     if (p.null()) {
       properties = VPackSlice::nullSlice();
     } else {
-      propBuilder = VPackParser::fromJson(p);
+      propBuilder = VPackParser::fromJson(p.c_str(), p.size());
       properties = propBuilder->slice();
     }
   }
@@ -1301,8 +1300,6 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
         "\", \"isSystem\": true, \"shards\": { }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
     auto collectionId = std::to_string(42);
 
-    //    ClusterCommMock clusterComm(server.server());
-    //    auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
     auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
@@ -1924,7 +1921,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
         EXPECT_TRUE(irs::analysis::analyzers::normalize(
             expectedProperties, analyzer->type(), irs::type<irs::text_format::vpack>::get(),
             arangodb::iresearch::ref<char>(
-                VPackParser::fromJson(itr->second.second)->slice()),
+                VPackParser::fromJson(itr->second.second.c_str(),
+                                      itr->second.second.size())->slice()),
             false));
 
         EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
@@ -2745,7 +2743,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     bool mustDestroy;
     auto entry = result->at(0, mustDestroy, false);
     EXPECT_TRUE(entry.isString());
-    std::string value = arangodb::iresearch::getStringRef(entry.slice());
+    auto value = entry.slice().copyString();
     EXPECT_EQ(data, value);
   }
 
@@ -3066,7 +3064,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         auto textTokens = nested.at(0);
         EXPECT_TRUE(textTokens.isArray());
         EXPECT_EQ(1, textTokens.length());
-        std::string value = arangodb::iresearch::getStringRef(textTokens.at(0));
+        auto value = textTokens.at(0).copyString();
         EXPECT_STREQ("test", value.c_str());
       }
       {
@@ -3144,8 +3142,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       EXPECT_EQ(1, entry.length());
       auto textSlice = entry.at(0);
       EXPECT_TRUE(textSlice.isString());
-      std::string value = arangodb::iresearch::getStringRef(textSlice);
-      EXPECT_STREQ("jump", value.c_str());
+      auto value = textSlice.copyString();
+      EXPECT_EQ("jump", value);
     }
     {
       bool mustDestroy;
@@ -3158,8 +3156,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         EXPECT_EQ(1, subArray.length());
         auto textSlice = subArray.at(0);
         EXPECT_TRUE(textSlice.isString());
-        std::string value = arangodb::iresearch::getStringRef(textSlice);
-        EXPECT_STREQ("quick", value.c_str());
+        auto value = textSlice.copyString();
+        EXPECT_EQ("quick", value);
       }
       {
         auto subArray = entry.at(1);
@@ -3167,8 +3165,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         EXPECT_EQ(1, subArray.length());
         auto textSlice = subArray.at(0);
         EXPECT_TRUE(textSlice.isString());
-        std::string value = arangodb::iresearch::getStringRef(textSlice);
-        EXPECT_STREQ("dog", value.c_str());
+        auto value = textSlice.copyString();
+        EXPECT_EQ("dog", value);
       }
     }
   }

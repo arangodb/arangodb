@@ -24,6 +24,7 @@
 #include "ClusterHelpers.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -32,18 +33,19 @@ bool ClusterHelpers::compareServerLists(VPackSlice plan, VPackSlice current) {
   if (!plan.isArray() || !current.isArray()) {
     return false;
   }
-  std::vector<std::string> planv, currv;
+  std::vector<std::string> p;
   for (VPackSlice srv : VPackArrayIterator(plan)) {
     if (srv.isString()) {
-      planv.push_back(srv.copyString());
+      p.push_back(srv.copyString());
     }
   }
+  std::vector<std::string> c;
   for (VPackSlice srv : VPackArrayIterator(current)) {
     if (srv.isString()) {
-      currv.push_back(srv.copyString());
+      c.push_back(srv.copyString());
     }
   }
-  return compareServerLists(planv, currv);
+  return compareServerLists(p, c);
 }
 
 bool ClusterHelpers::compareServerLists(std::vector<std::string> planned,
@@ -53,4 +55,12 @@ bool ClusterHelpers::compareServerLists(std::vector<std::string> planned,
   std::sort(planned.begin(), planned.end());
   std::sort(current.begin(), current.end());
   return equalLeader && current == planned;
+}
+
+bool ClusterHelpers::isCoordinatorName(ServerID const& serverId) {
+  return serverId.compare(0, 5, "CRDN-", 5) == 0;
+}
+  
+bool ClusterHelpers::isDBServerName(ServerID const& serverId) {
+  return serverId.compare(0, 5, "PRMR-", 5) == 0;
 }

@@ -1,0 +1,14 @@
+name: arangodb_replication_synchronous_requests_total_number_total
+renamedFrom: arangodb_replication_synchronous_requests_total_number
+introducedIn: "3.8.0"
+help: |
+  Total number of synchronous replication requests.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The total amount of all synchronous replication operation requests
+  between dbservers being done.

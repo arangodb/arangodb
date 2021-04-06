@@ -1,0 +1,25 @@
+name: arangodb_scheduler_low_prio_queue_last_dequeue_time
+introducedIn: "3.8.0"
+help: |
+  Last recorded dequeue time for a low priority queue item.
+unit: ms
+type: gauge
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Last recorded dequeue time for a low priority queue item, i.e., the amount of
+  time the job was sitting in the queue. If there is nothing to do for a long
+  time, this metric will be reset to zero.
+  A large value for this metric indicates that the server is under heavy load
+  and low priority jobs cannot be dequeued in a timely manner
+threshold: Normally this time should be clearly sub-second.
+troubleshoot: If you see larger values here, in particular over a longer period
+  of time, you should consider reducing the load of the server (if possible),
+  scaling up (bigger machine) or scaling out (more coordinators). Otherwise
+  requests cannot be processed in a timely manner and you run the risk that the
+  queue becomes full and requests are declined.

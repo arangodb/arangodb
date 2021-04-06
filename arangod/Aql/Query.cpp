@@ -42,6 +42,7 @@
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -91,7 +92,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _transactionContext(ctx),
       _sharedState(std::move(sharedState)),
       _v8Context(nullptr),
-      _bindParameters(bindParameters),
+      _bindParameters(_resourceMonitor, bindParameters),
       _queryOptions(std::move(options)),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
@@ -99,9 +100,10 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _queryHash(DontCache),
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
-      _resultCode(-1), // -1 = "not set" yet
+      _resultCode(std::nullopt),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _embeddedQuery(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
+      _registeredInV8Context(false),
       _queryKilled(false),
       _queryHashCalculated(false) {
 
@@ -146,7 +148,8 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
     LOG_TOPIC("8979d", INFO, Logger::QUERIES) << "options: " << b.toJson();
   }
 
-  _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
+  // set memory limit for query
+  _resourceMonitor.memoryLimit(_queryOptions.memoryLimit);
   _warnings.updateOptions(_queryOptions);
   
   // store name of user that started the query
@@ -207,7 +210,7 @@ Query::~Query() {
   _snippets.clear(); // simon: must be before plan
   _plans.clear(); // simon: must be before AST
   _ast.reset();
-
+  
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
       << " Query::~Query this: " << (uintptr_t)this;
@@ -798,7 +801,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   
   if (!_snippets.empty()) {
     _execStats.requests += _numRequests.load(std::memory_order_relaxed);
-    _execStats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
+    _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
     _execStats.setExecutionTime(elapsedSince(_startTime));
     for (auto& engine : _snippets) {
       engine->collectExecutionStats(_execStats);
@@ -1006,10 +1009,9 @@ void Query::enterV8Context() {
       registerCtx();
     }
     TRI_ASSERT(_v8Context != nullptr);
-  } else {
-    if (!_embeddedQuery) {  // may happen for stream trx
-      registerCtx();
-    }
+  } else if (!_embeddedQuery && !_registeredInV8Context) {  // may happen for stream trx
+    registerCtx();
+    _registeredInV8Context = true;
   }
 }
 
@@ -1036,8 +1038,10 @@ void Query::exitV8Context() {
       server.getFeature<V8DealerFeature>().exitContext(_v8Context);
       _v8Context = nullptr;
     }
-  } else if (!_embeddedQuery) {
+  } else if (!_embeddedQuery && _registeredInV8Context) {
+    // prevent duplicate deregistration
     unregister();
+    _registeredInV8Context = false;
   }
 }
 
@@ -1129,9 +1133,9 @@ bool Query::canUseQueryCache() const {
   return false;
 }
 
-int Query::resultCode() const noexcept {
+ErrorCode Query::resultCode() const noexcept {
   // never return negative value from here
-  return std::max<int>(TRI_ERROR_NO_ERROR, _resultCode);
+  return _resultCode.value_or(TRI_ERROR_NO_ERROR);
 }
 
 /// @brief enter a new state
@@ -1149,12 +1153,8 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 }
 
 /// @brief cleanup plan and engine for current query
-ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync) {
-  // set the final result code (either 0 = no error, or a specific error code).
-  // this can only be changed from "not set" to either 0 ("no error") or 
-  // > 0 (a specific error)
-  TRI_ASSERT(errorCode >= TRI_ERROR_NO_ERROR);
-  if (_resultCode < TRI_ERROR_NO_ERROR) {
+ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
+  if (!_resultCode.has_value()) {
     // result code not yet set.
     _resultCode = errorCode;
   }
@@ -1239,7 +1239,7 @@ ExecutionEngine* Query::rootEngine() const {
 
 namespace {
 
-futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
+futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto& serverQueryIds = query.serverQueryIds();
   TRI_ASSERT(!serverQueryIds.empty());
@@ -1304,7 +1304,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
             }
           }
         }
-        
+
         val = res.slice().get("code");
         if (val.isNumber()) {
           return Result{ErrorCode{val.getNumericValue<int>()}};
@@ -1329,14 +1329,14 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
 }
 } // namespace
 
-aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
+aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);
   if (exp == ShutdownState::Done) {
     return ExecutionState::DONE;
   } else if (exp == ShutdownState::InProgress) {
     return ExecutionState::WAITING;
   }
-  
+
   TRI_ASSERT (exp == ShutdownState::None);
   if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress,
                                               std::memory_order_relaxed)) {
@@ -1354,14 +1354,27 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
       << " Query::finalize: before _trx->commit"
       << " this: " << (uintptr_t)this;
 
+  // Only one thread is allowed to call commit
   if (errorCode == TRI_ERROR_NO_ERROR) {
-    // simon: no need to wait here, a commit may never issue a commit
-    // request to DBServers (done by AQL layer or RestTransactionHandler)
+    ScopeGuard guard([this](){
+      // If we exit here we need to throw the error.
+      // The caller will handle the error and will call this method
+      // again using an errorCode != NO_ERROR.
+      // If we do not reset to None here, this additional call will cause endless
+      // looping.
+      _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
+    });
     futures::Future<Result> commitResult = _trx->commitAsync();
     TRI_ASSERT(commitResult.isReady());
     if (commitResult.get().fail()) {
       THROW_ARANGO_EXCEPTION(std::move(commitResult).get());
     }
+    TRI_IF_FAILURE("Query::finalize_before_done") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    // We succeeded with commit. Let us cancel the guard
+    // The state of "in progress" is now correct if we exit the method.
+    guard.cancel();
   }
 
   LOG_TOPIC("7ef18", DEBUG, Logger::QUERIES)
@@ -1376,15 +1389,62 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
   
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(_sharedState);
-  
-  ::finishDBServerParts(*this, errorCode).thenValue([ss = _sharedState, this](Result r) {
-    LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
-      << "received error from DBServer on query finalization: " << r.errorNumber() << ", '" << r.errorMessage() << "'";
-    _sharedState->executeAndWakeup([&] {
-      _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
-      return true;
+  try {
+    TRI_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+    }
+    ::finishDBServerParts(*this, errorCode).thenValue([ss = _sharedState, this](Result r) {
+      LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
+        << "received error from DBServer on query finalization: " << r.errorNumber() << ", '" << r.errorMessage() << "'";
+      _sharedState->executeAndWakeup([&] {
+        _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+        return true;
+      });
     });
-  });
-  
-  return ExecutionState::WAITING;
+    return ExecutionState::WAITING;
+  } catch (...) {
+    // In case of any error that happened in sending out the requests
+    // we simply reset to done, we tried to cleanup the engines.
+    // we only get here if something in the network stack is out of order.
+    // so there is no need to retry on cleaning up the engines, caller can continue
+    // Also note: If an error in cleanup happens the query was completed already,
+    // so this error does not need to be reported to client.
+    _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+
+    if (isModificationQuery()) {
+      // For modification queries these left-over locks will have negative side effects
+      // We will report those to the user.
+      // Lingering Read-locks should not block the system.
+      std::vector<std::string_view> writeLocked{};
+      std::vector<std::string_view> exclusiveLocked{};
+      _collections.visit([&](std::string const& name, Collection& col) -> bool {
+        switch (col.accessType()) {
+          case AccessMode::Type::WRITE: {
+            writeLocked.emplace_back(name);
+            break;
+          }
+          case AccessMode::Type::EXCLUSIVE: {
+            exclusiveLocked.emplace_back(name);
+            break;
+          }
+          default:
+            // We do not need to capture reads.
+            break;
+        }
+        return true;
+      });
+      LOG_TOPIC("63572", WARN, Logger::QUERIES)
+          << " Failed to cleanup leftovers of a query due to communication errors. "
+          << " The DBServers will eventually clean up the state. The following locks still exist: "
+          << " write: " << writeLocked << ": you may not drop these collections until the locks time out."
+          << " exclusive: " << exclusiveLocked << ": you may not be able to write into these collections until the locks time out.";
+      for (auto const& [serverDst, queryId] : _serverQueryIds) {
+        TRI_ASSERT(serverDst.substr(0, 7) == "server:");
+        auto msg = "Failed to send unlock request DELETE /_api/aql/finish/" + std::to_string(queryId) + " to " + serverDst + " in database " + vocbase().name();
+        _warnings.registerWarning(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, msg);
+        LOG_TOPIC("7c10f", WARN, Logger::QUERIES) << msg;
+      }
+    }
+    return ExecutionState::DONE;
+  }
 }

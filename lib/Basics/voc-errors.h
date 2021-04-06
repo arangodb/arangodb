@@ -699,7 +699,7 @@ constexpr auto TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED          
 constexpr auto TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = ErrorCode{1448};
 
 /// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
-/// "got a request from an unkown server"
+/// "got a request from an unknown server"
 /// Will be raised on some occasions when one server gets a request from
 /// another, which has not (yet?) been made known via the Agency.
 constexpr auto TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = ErrorCode{1449};
@@ -709,12 +709,6 @@ constexpr auto TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                 
 /// Will be raised when the number of shards for a collection is higher than
 /// allowed.
 constexpr auto TRI_ERROR_CLUSTER_TOO_MANY_SHARDS                                 = ErrorCode{1450};
-
-/// 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
-/// "collection ID already exists"
-/// Will be raised when a Coordinator in a cluster tries to create a collection
-/// and the collection ID already exists.
-constexpr auto TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS                            = ErrorCode{1453};
 
 /// 1454: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN
 /// "could not create collection in plan"
@@ -739,12 +733,6 @@ constexpr auto TRI_ERROR_CLUSTER_TIMEOUT                                        
 /// Will be raised when a Coordinator in a cluster cannot remove an entry for a
 /// collection in the Plan hierarchy in the Agency.
 constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN             = ErrorCode{1458};
-
-/// 1459: ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT
-/// "could not remove collection from current"
-/// Will be raised when a Coordinator in a cluster cannot remove an entry for a
-/// collection in the Current hierarchy in the Agency.
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT          = ErrorCode{1459};
 
 /// 1460: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN
 /// "could not create database in plan"
@@ -1012,11 +1000,6 @@ constexpr auto TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                           
 /// beyond the allowed value.
 constexpr auto TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              = ErrorCode{1522};
 
-/// 1530: ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED
-/// "document attribute '%s' is assigned multiple times"
-/// Will be raised when a document attribute is re-assigned.
-constexpr auto TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED                     = ErrorCode{1530};
-
 /// 1540: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
 /// "usage of unknown function '%s()'"
 /// Will be raised when an undefined function is called.
@@ -1063,11 +1046,6 @@ constexpr auto TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED                        
 /// Will be raised when a bind parameter has an invalid value or type.
 constexpr auto TRI_ERROR_QUERY_BIND_PARAMETER_TYPE                               = ErrorCode{1553};
 
-/// 1560: ERROR_QUERY_INVALID_LOGICAL_VALUE
-/// "invalid logical value"
-/// Will be raised when a non-boolean value is used in a logical operation.
-constexpr auto TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE                             = ErrorCode{1560};
-
 /// 1561: ERROR_QUERY_INVALID_ARITHMETIC_VALUE
 /// "invalid arithmetic value"
 /// Will be raised when a non-numeric value is used in an arithmetic operation.
@@ -1083,6 +1061,11 @@ constexpr auto TRI_ERROR_QUERY_DIVISION_BY_ZERO                                 
 /// Will be raised when a non-array operand is used for an operation that
 /// expects an array argument operand.
 constexpr auto TRI_ERROR_QUERY_ARRAY_EXPECTED                                    = ErrorCode{1563};
+
+/// 1568: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
+/// "collection '%s' used as expression operand"
+/// Will be raised when a collection is used as an operand in an AQL expression.
+constexpr auto TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     = ErrorCode{1568};
 
 /// 1569: ERROR_QUERY_FAIL_CALLED
 /// "FAIL(%s) called"
@@ -1122,12 +1105,6 @@ constexpr auto TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION                     
 /// Will be raised when an AQL data-modification query contains options that
 /// cannot be figured out at query compile time.
 constexpr auto TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              = ErrorCode{1575};
-
-/// 1576: ERROR_QUERY_EXCEPTION_OPTIONS
-/// "query options expected"
-/// Will be raised when an AQL data-modification query contains an invalid
-/// options specification.
-constexpr auto TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 = ErrorCode{1576};
 
 /// 1577: ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE
 /// "could not use forced index hint"
@@ -1353,41 +1330,10 @@ constexpr auto TRI_ERROR_TASK_NOT_FOUND                                         
 /// Will be raised when an invalid name is passed to the server.
 constexpr auto TRI_ERROR_GRAPH_INVALID_GRAPH                                     = ErrorCode{1901};
 
-/// 1902: ERROR_GRAPH_COULD_NOT_CREATE_GRAPH
-/// "could not create graph"
-/// Will be raised when an invalid name, vertices or edges is passed to the
-/// server.
-constexpr auto TRI_ERROR_GRAPH_COULD_NOT_CREATE_GRAPH                            = ErrorCode{1902};
-
-/// 1903: ERROR_GRAPH_INVALID_VERTEX
-/// "invalid vertex"
-/// Will be raised when an invalid vertex id is passed to the server.
-constexpr auto TRI_ERROR_GRAPH_INVALID_VERTEX                                    = ErrorCode{1903};
-
-/// 1904: ERROR_GRAPH_COULD_NOT_CREATE_VERTEX
-/// "could not create vertex"
-/// Will be raised when the vertex could not be created.
-constexpr auto TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX                           = ErrorCode{1904};
-
-/// 1905: ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX
-/// "could not change vertex"
-/// Will be raised when the vertex could not be changed.
-constexpr auto TRI_ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX                           = ErrorCode{1905};
-
 /// 1906: ERROR_GRAPH_INVALID_EDGE
 /// "invalid edge"
 /// Will be raised when an invalid edge id is passed to the server.
 constexpr auto TRI_ERROR_GRAPH_INVALID_EDGE                                      = ErrorCode{1906};
-
-/// 1907: ERROR_GRAPH_COULD_NOT_CREATE_EDGE
-/// "could not create edge"
-/// Will be raised when the edge could not be created.
-constexpr auto TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE                             = ErrorCode{1907};
-
-/// 1908: ERROR_GRAPH_COULD_NOT_CHANGE_EDGE
-/// "could not change edge"
-/// Will be raised when the edge could not be changed.
-constexpr auto TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE                             = ErrorCode{1908};
 
 /// 1909: ERROR_GRAPH_TOO_MANY_ITERATIONS
 /// "too many iterations - try increasing the value of 'maxIterations'"
@@ -1460,16 +1406,6 @@ constexpr auto TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                         
 /// collection _graphs does not exist.
 constexpr auto TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION                               = ErrorCode{1932};
 
-/// 1933: ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING
-/// "Invalid example type. Has to be String, Array or Object"
-/// Invalid example type. Has to be String, Array or Object.
-constexpr auto TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING               = ErrorCode{1933};
-
-/// 1934: ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT
-/// "Invalid example type. Has to be Array or Object"
-/// Invalid example type. Has to be Array or Object.
-constexpr auto TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT                      = ErrorCode{1934};
-
 /// 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
 /// "Invalid number of arguments. Expected: "
 /// Invalid number of arguments. Expected: 
@@ -1479,11 +1415,6 @@ constexpr auto TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                      
 /// "Invalid parameter type."
 /// Invalid parameter type.
 constexpr auto TRI_ERROR_GRAPH_INVALID_PARAMETER                                 = ErrorCode{1936};
-
-/// 1937: ERROR_GRAPH_INVALID_ID
-/// "Invalid id"
-/// Invalid id
-constexpr auto TRI_ERROR_GRAPH_INVALID_ID                                        = ErrorCode{1937};
 
 /// 1938: ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS
 /// "collection used in orphans"
@@ -1504,11 +1435,6 @@ constexpr auto TRI_ERROR_GRAPH_EMPTY                                            
 /// "internal graph data corrupt"
 /// The _graphs collection contains invalid data.
 constexpr auto TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT                             = ErrorCode{1941};
-
-/// 1942: ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET
-/// "edge collection already set"
-/// Tried to add an edge collection which is already defined.
-constexpr auto TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET              = ErrorCode{1942};
 
 /// 1943: ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST
 /// "malformed orphan list"
@@ -1533,6 +1459,12 @@ constexpr auto TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL                            
 /// needed initial collection. Happens if a distributeShardsLike or
 /// replicationFactor mismatch was found.
 constexpr auto TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION                             = ErrorCode{1946};
+
+/// 1947: ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED
+/// "referenced vertex collection is not part of the graph"
+/// the _from or _to collection specified for the edge refers to a vertex
+/// collection which is not used in any edge definition of the graph.
+constexpr auto TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED             = ErrorCode{1947};
 
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
@@ -1751,74 +1683,6 @@ constexpr auto TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE           
 /// Will be raised if there is an attempt to create an edge between separated
 /// graph components.
 constexpr auto TRI_ERROR_INVALID_DISJOINT_SMART_EDGE                             = ErrorCode{4010};
-
-/// 5000: ERROR_CLUSTER_REPAIRS_FAILED
-/// "error during cluster repairs"
-/// General error during cluster repairs
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_FAILED                                  = ErrorCode{5000};
-
-/// 5001: ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY
-/// "not enough (healthy) db servers"
-/// Will be raised when, during repairDistributeShardsLike, there must be a
-/// free DB-Server to move a shard, but there is no candidate or none is
-/// healthy.
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY                      = ErrorCode{5001};
-
-/// 5002: ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED
-/// "replication factor violated during cluster repairs"
-/// Will be raised on various inconsistencies regarding the replication factor
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED             = ErrorCode{5002};
-
-/// 5003: ERROR_CLUSTER_REPAIRS_NO_DBSERVERS
-/// "no dbservers during cluster repairs"
-/// Will be raised if a collection that is fixed has some shard without
-/// DB-Servers
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS                            = ErrorCode{5003};
-
-/// 5004: ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS
-/// "mismatching leaders during cluster repairs"
-/// Will be raised if a shard in collection and its prototype in the
-/// corresponding distributeShardsLike collection have mismatching leaders
-/// (when they should already have been fixed)
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS                     = ErrorCode{5004};
-
-/// 5005: ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS
-/// "mismatching followers during cluster repairs"
-/// Will be raised if a shard in collection and its prototype in the
-/// corresponding distributeShardsLike collection don't have the same followers
-/// (when they should already have been adjusted)
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS                   = ErrorCode{5005};
-
-/// 5006: ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES
-/// "inconsistent attributes during cluster repairs"
-/// Will be raised if a collection that is fixed does (not) have
-/// distributeShardsLike when it is expected, or does (not) have
-/// repairingDistributeShardsLike when it is expected
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES                 = ErrorCode{5006};
-
-/// 5007: ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS
-/// "mismatching shards during cluster repairs"
-/// Will be raised if in a collection and its distributeShardsLike prototype
-/// collection some shard and its prototype have an unequal number of DB-Servers
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS                      = ErrorCode{5007};
-
-/// 5008: ERROR_CLUSTER_REPAIRS_JOB_FAILED
-/// "move shard job failed during cluster repairs"
-/// Will be raised if a move shard job in the Agency failed during cluster
-/// repairs
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED                              = ErrorCode{5008};
-
-/// 5009: ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED
-/// "move shard job disappeared during cluster repairs"
-/// Will be raised if a move shard job in the Agency cannot be found anymore
-/// before it finished
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                         = ErrorCode{5009};
-
-/// 5010: ERROR_CLUSTER_REPAIRS_OPERATION_FAILED
-/// "agency transaction failed during cluster repairs"
-/// Will be raised if an agency transaction failed during either sending or
-/// executing it.
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED                        = ErrorCode{5010};
 
 /// 20001: ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE
 /// "malformed gossip message"

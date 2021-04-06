@@ -31,6 +31,7 @@
 
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
@@ -110,11 +111,13 @@ class MockServer {
   void stopFeatures();
 
  protected:
-  arangodb::application_features::ApplicationServer::State _oldApplicationServerState;
+  arangodb::application_features::ApplicationServer::State _oldApplicationServerState =
+      arangodb::application_features::ApplicationServer::State::UNINITIALIZED;
   arangodb::application_features::ApplicationServer _server;
   StorageEngineMock _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
   std::string _testFilesystemPath;
+  arangodb::RebootId _oldRebootId;
 
  private:
   bool _started;
@@ -151,8 +154,8 @@ class MockAqlServer : public MockServer,
                       public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
                       public IResearchLogSuppressor {
  public:
-  MockAqlServer(bool startFeatures = true);
-  ~MockAqlServer();
+  explicit MockAqlServer(bool startFeatures = true);
+  ~MockAqlServer() override;
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
   // runBeforePrepare gives an entry point to modify the list of collections one want to use within the Query.
@@ -170,7 +173,17 @@ class MockRestServer : public MockServer,
                        public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
                        public IResearchLogSuppressor {
  public:
-  MockRestServer(bool startFeatures = true);
+  explicit MockRestServer(bool startFeatures = true);
+};
+
+class MockRestAqlServer : public MockServer,
+                          public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                          public LogSuppressor<Logger::CLUSTER, LogLevel::ERR>,
+                          public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                          public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                          public IResearchLogSuppressor {
+ public:
+  explicit MockRestAqlServer();
 };
 
 class MockClusterServer : public MockServer,
@@ -184,9 +197,16 @@ class MockClusterServer : public MockServer,
   virtual void dropDatabase(std::string const& name) = 0;
   void startFeatures() override;
 
+  // Create a clusterWide Collection.
+  // This does NOT create Shards.
+  std::shared_ptr<LogicalCollection> createCollection(
+      std::string const& dbName, std::string collectionName,
+      std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
+      TRI_col_type_e type);
+
   // You can only create specialized types
  protected:
-  MockClusterServer();
+  MockClusterServer(bool useAgencyMockConnection);
   ~MockClusterServer();
 
  protected:
@@ -201,29 +221,37 @@ class MockClusterServer : public MockServer,
   void agencyCreateCollections(std::string const& name);
 
   void agencyDropDatabase(std::string const& name);
-
+protected:
+  std::unique_ptr<arangodb::network::ConnectionPool> _pool;
  private:
+  bool _useAgencyMockPool;
   arangodb::ServerState::RoleEnum _oldRole;
-  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
   int _dummy;
 };
 
 class MockDBServer : public MockClusterServer {
  public:
-  MockDBServer(bool startFeatures = true);
+  MockDBServer(bool startFeatures = true, bool useAgencyMockConnection = true);
   ~MockDBServer();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
+
+  void createShard(std::string const& dbName, std::string shardName,
+                   LogicalCollection& clusterCollection);
 };
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator(bool startFeatures = true);
+  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true);
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
+
+  std::pair<std::string, std::string> registerFakedDBServer(std::string const& serverName);
+
+  arangodb::network::ConnectionPool* getPool();
 };
 
 }  // namespace mocks

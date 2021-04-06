@@ -39,15 +39,12 @@
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
 #include "velocypack/Serializable.h"
+#include "velocypack/SharedSlice.h"
 #include "velocypack/Slice.h"
 #include "velocypack/SmallVector.h"
 #include "velocypack/StringRef.h"
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
-
-#if __cplusplus >= 201703L
-#include "velocypack/SharedSlice.h"
-#endif
 
 namespace arangodb {
 namespace velocypack {
@@ -193,7 +190,7 @@ class Builder {
 
     // Reserves len bytes at pos of the current state (top of stack)
     // or throws an exception
-    if (_pos + len < _bufferPtr->size()) {
+    if (_pos + len < _bufferPtr->capacity()) {
       return;  // All OK, we can just increase tos->pos by len
     }
 
@@ -234,7 +231,6 @@ class Builder {
     return Slice(start());
   }
 
-#if __cplusplus >= 201703L
   // Return a SharedSlice of the result (makes a copy of the slice)
   [[nodiscard]] SharedSlice sharedSlice() const& {
     if (isEmpty()) {
@@ -268,7 +264,6 @@ class Builder {
     clear();
     return rv;
   }
-#endif
 
   // Compute the actual size here, but only when sealed
   ValueLength size() const {
@@ -334,11 +329,7 @@ class Builder {
   }
 
   inline uint8_t* add(char const* attrName, Value const& sub) {
-#if __cplusplus >= 201703
     return addInternal<Value>(attrName, std::char_traits<char>::length(attrName), sub);
-#else
-    return addInternal<Value>(attrName, std::strlen(attrName), sub);
-#endif
   }
 
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Value const& sub) {
@@ -355,11 +346,7 @@ class Builder {
   }
 
   inline uint8_t* add(char const* attrName, Slice const& sub) {
-#if __cplusplus >= 201703
     return addInternal<Slice>(attrName, std::char_traits<char>::length(attrName), sub);
-#else
-    return addInternal<Slice>(attrName, std::strlen(attrName), sub);
-#endif
   }
 
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Slice const& sub) {
@@ -376,11 +363,7 @@ class Builder {
   }
 
   inline uint8_t* add(char const* attrName, ValuePair const& sub) {
-#if __cplusplus >= 201703
     return addInternal<ValuePair>(attrName, std::char_traits<char>::length(attrName), sub);
-#else
-    return addInternal<ValuePair>(attrName, strlen(attrName), sub);
-#endif
   }
 
   inline uint8_t* add(char const* attrName, std::size_t attrLength, ValuePair const& sub) {
@@ -397,11 +380,7 @@ class Builder {
   }
 
   inline uint8_t* add(char const* attrName, Serialize const& sub) {
-#if __cplusplus >= 201703
     return addInternal<Serializable>(attrName, std::char_traits<char>::length(attrName), sub._sable);
-#else
-    return addInternal<Serializable>(attrName, std::strlen(attrName), sub._sable);
-#endif
   }
 
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Serialize const& sub) {
@@ -416,6 +395,11 @@ class Builder {
   // Add a slice to an array
   inline uint8_t* add(Slice const& sub) {
     return addInternal<Slice>(sub);
+  }
+
+  // Add a shared slice to an array
+  inline uint8_t* add(SharedSlice const& sub) {
+    return addInternal<Slice>(sub.slice());
   }
 
   // Add a subvalue into an array from a ValuePair:
@@ -438,11 +422,7 @@ class Builder {
   }
 
   inline uint8_t* addTagged(char const* attrName, uint64_t tag, Value const& sub) {
-#if __cplusplus >= 201703
     return addInternalTagged<Value>(attrName, std::char_traits<char>::length(attrName), tag, sub);
-#else
-    return addInternalTagged<Value>(attrName, std::strlen(attrName), tag, sub);
-#endif
   }
 
   inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Value const& sub) {
@@ -459,11 +439,7 @@ class Builder {
   }
 
   inline uint8_t* addTagged(char const* attrName, uint64_t tag, Slice const& sub) {
-#if __cplusplus >= 201703
     return addInternalTagged<Slice>(attrName, std::char_traits<char>::length(attrName), tag, sub);
-#else
-    return addInternalTagged<Slice>(attrName, std::strlen(attrName), tag, sub);
-#endif
   }
 
   inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Slice const& sub) {
@@ -480,11 +456,7 @@ class Builder {
   }
 
   inline uint8_t* addTagged(char const* attrName, uint64_t tag, ValuePair const& sub) {
-#if __cplusplus >= 201703
     return addInternalTagged<ValuePair>(attrName, std::char_traits<char>::length(attrName), tag, sub);
-#else
-    return addInternalTagged<ValuePair>(attrName, std::strlen(attrName), tag, sub);
-#endif
   }
 
   inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, ValuePair const& sub) {
@@ -501,11 +473,7 @@ class Builder {
   }
 
   inline uint8_t* addTagged(char const* attrName, uint64_t tag, Serialize const& sub) {
-#if __cplusplus >= 201703
     return addInternalTagged<Serializable>(attrName, std::char_traits<char>::length(attrName), tag, sub._sable);
-#else
-    return addInternalTagged<Serializable>(attrName, std::strlen(attrName), tag, sub._sable);
-#endif
   }
 
   inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Serialize const& sub) {

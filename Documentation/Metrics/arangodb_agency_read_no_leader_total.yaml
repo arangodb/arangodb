@@ -1,0 +1,20 @@
+name: arangodb_agency_read_no_leader_total
+renamedFrom: arangodb_agency_read_no_leader
+introducedIn: "3.8.0"
+help: |
+  Agency read operations with no leader or on followers.
+unit: number
+type: counter
+category: Agency
+complexity: simple
+exposedBy:
+  - agent
+description: |
+  Total number of agency read operations with no leader or on followers.
+threshold: |
+  This should normally not happen. If it happens regularly, the agency
+  is reelecting its leader often.
+troubleshoot: |
+  The latency of the network between the agents might be too high or
+  the agents may be overloaded. It might help to move agent instances
+  to separate machines.

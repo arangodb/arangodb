@@ -33,12 +33,11 @@
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchViewMeta.h"
+#include "IResearch/IResearchVPackTermAttribute.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-
-#include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 
 #include "search/term_filter.hpp"
@@ -291,6 +290,8 @@ std::string getDocumentId(irs::string_ref collection,
   return resolved;
 }
 
+
+
 }  // namespace
 
 namespace arangodb {
@@ -330,6 +331,9 @@ void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
+  _currentTypedAnalyzer = nullptr;
+  _currentTypedAnalyzerValue = nullptr;
+  _primitiveTypeResetter = nullptr;
   _stack.clear();
   _nameBuffer.clear();
 
@@ -446,8 +450,6 @@ bool FieldIterator::setValue(VPackSlice const value,
     return false;
   }
 
-  iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
-
   // init stream
   auto analyzer = pool->get();
 
@@ -456,16 +458,60 @@ bool FieldIterator::setValue(VPackSlice const value,
         << "got nullptr from analyzer factory, name '" << pool->name() << "'";
     return false;
   }
-
   if (!analyzer->reset(valueRef)) {
-    return false;
+      return false;
   }
-
   // set field properties
-  _value._name = _nameBuffer;
-  _value._analyzer = analyzer;
-  _value._features = &(pool->features());
-
+  switch (pool->returnType()) {
+    case AnalyzerValueType::Bool:
+      {
+        if (!analyzer->next()) {
+          return false;
+        }
+        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        TRI_ASSERT(_currentTypedAnalyzerValue);
+        setBoolValue(_currentTypedAnalyzerValue->value);
+        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
+          TRI_ASSERT(bool_stream);
+#else
+          auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
+#endif
+          TRI_ASSERT(slice.isBool());
+          bool_stream->reset(slice.getBool());
+        };
+      }
+      break;
+    case AnalyzerValueType::Number:
+      {
+        if (!analyzer->next()) {
+          return false;
+        }
+        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        TRI_ASSERT(_currentTypedAnalyzerValue);
+        setNumericValue(_currentTypedAnalyzerValue->value);
+        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
+          TRI_ASSERT(number_stream);
+#else
+          auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
+#endif
+          TRI_ASSERT(slice.isNumber());
+          number_stream->reset(slice.getNumber<double>());
+        };
+      }
+      break;
+    default:
+      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      _value._analyzer = analyzer;
+      _value._features = &(pool->features());
+      _value._name = _nameBuffer;
+      break;
+  }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
     auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
@@ -481,6 +527,18 @@ bool FieldIterator::setValue(VPackSlice const value,
 
 void FieldIterator::next() {
   TRI_ASSERT(valid());
+
+  if (_currentTypedAnalyzer) {
+     if (_currentTypedAnalyzer->next()) {
+       TRI_ASSERT(_primitiveTypeResetter);
+       TRI_ASSERT(_currentTypedAnalyzerValue);
+       TRI_ASSERT(_value._analyzer.get());
+       _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
+       return;
+     } else {
+       _currentTypedAnalyzer = nullptr;
+     }
+  }
 
   FieldMeta const* context = top().meta;
 
@@ -557,8 +615,6 @@ setAnalyzers:
           }
         } break;
         case VPackValueType::Double:
-          setNumericValue(valueSlice);
-          return;
         case VPackValueType::Int:
         case VPackValueType::UInt:
         case VPackValueType::SmallInt:
@@ -644,7 +700,6 @@ bool StoredValue::write(irs::data_output& out) const {
               trx.resolver(), slice, document)));
       }
 
-      
       slice = builder.slice();
       // a builder is destroyed but a buffer is alive
     }

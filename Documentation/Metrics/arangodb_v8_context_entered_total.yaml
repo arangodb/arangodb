@@ -1,0 +1,18 @@
+name: arangodb_v8_context_entered_total
+renamedFrom: arangodb_v8_context_entered
+introducedIn: "3.8.0"
+help: |
+  Total number of V8 context enter events
+unit: number
+type: counter
+category: V8
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of V8 context enter events. A context receives a context
+  enter event every time it begins to execute some JavaScript. This number
+  is a rough estimate as to how much JavaScript the server executes.

@@ -1,0 +1,40 @@
+.shardDistributionContent {
+
+  .header {
+    padding: 10px;
+    margin-top: 15px;
+    margin-bottom: 20px;
+    color: #717d90;
+    font-weight: 600;
+    font-size: 12.5pt;
+    padding: 10px;
+    border-bottom: 1px solid rgba(0, 0, 0, .1);
+  }
+
+  .subHeader {
+    margin-top: 0px;
+  }
+
+  .svgWrapper {
+    margin-top: -40px;
+    height: 300px;
+  }
+
+  .pure-table {
+    margin-top: 20px;
+    display: table;
+
+    thead {
+      th {
+        height: 20px;
+      }
+    }
+
+    tbody {
+      .alignRight {
+        text-align: right;
+      }
+    }
+  }
+
+}

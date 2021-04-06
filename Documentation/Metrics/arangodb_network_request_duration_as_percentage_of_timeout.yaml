@@ -1,0 +1,23 @@
+name: arangodb_network_request_duration_as_percentage_of_timeout
+introducedIn: "3.8.0"
+help: |
+  Internal request round-trip time as a percentage of timeout.
+unit: percentage
+type: gauge
+category: Network
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Histogram providing the round-trip time of internal requests as a percentage 
+  of the respective request timeout.
+  This metric will provide values between 0 and 100.
+troubleshoot: |
+  High values indicate problems with requests that have timed out or have not been
+  far away from running into timeouts. If many requests timeout, this is normally
+  a symptom of overload. This can normally be mitigated by reducing the workload
+  or adjusting the type of operations that are causing the high response times.
+  If the timeouts happen as a result of not enough processing power, it may be
+  useful to scale up the cluster.

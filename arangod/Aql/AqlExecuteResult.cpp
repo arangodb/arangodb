@@ -24,8 +24,9 @@
 #include "AqlExecuteResult.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Basics/StaticStrings.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ResultT.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
@@ -33,6 +34,7 @@
 #include <velocypack/Iterator.h>
 
 #include <map>
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::aql;

@@ -72,6 +72,8 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 namespace arangodb {
 namespace transaction {
 
+DECLARE_COUNTER(arangodb_transactions_expired_total, "Total number of expired transactions");
+
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
@@ -79,9 +81,9 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
       _workItem(nullptr),
       _gcfunc(),
       _streamingLockTimeout(8.0),
+      _streamingIdleTimeout(defaultStreamingIdleTimeout),
       _numExpiredTransactions(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_transactions_expired", 0, "Total number of expired transactions")) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_transactions_expired_total{})) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();
@@ -110,6 +112,23 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new DoubleParameter(&_streamingLockTimeout),
 		     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30605).setIntroducedIn(30701);
+  
+  options->addOption("--transaction.streaming-idle-timeout", "idle timeout for streaming "
+         "transactions in seconds",
+                     new DoubleParameter(&_streamingIdleTimeout),
+         arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                      arangodb::options::Flags::OnCoordinator,
+                                      arangodb::options::Flags::OnSingle))
+    .setIntroducedIn(30800);
+}
+
+void ManagerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_streamingIdleTimeout > maxStreamingIdleTimeout) {
+    LOG_TOPIC("7fb2d", FATAL, Logger::TRANSACTIONS) 
+        << "invalid value for --transaction.streaming-idle-timeout. "
+        << "value should be at most " << maxStreamingIdleTimeout;
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void ManagerFeature::prepare() {

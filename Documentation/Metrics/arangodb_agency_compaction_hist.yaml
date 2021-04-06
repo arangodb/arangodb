@@ -1,0 +1,18 @@
+name: arangodb_agency_compaction_hist
+introducedIn: "3.7.1"
+help: |
+  Agency compaction time histogram.
+unit: ms
+type: histogram
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  Agency compaction time histogram. Provides a distribution
+  of agency compaction run times. Compactions are triggered after
+  `--agency.compaction-keep-size` entries have accumulated in the
+  RAFT log.
+troubleshoot: |
+  If compaction takes too long, it may be useful to reduce the number
+  of log entries to keep in `--agency.compaction-keep-size`.

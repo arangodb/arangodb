@@ -1,0 +1,16 @@
+name: arangodb_v8_context_free
+introducedIn: "3.6.7"
+help: |
+  Number of V8 contexts currently free
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This gauge reflects the number of V8 contexts that are currently free.
+  If this number drops to 0 there might be a shortage of V8 contexts.

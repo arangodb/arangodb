@@ -1,0 +1,17 @@
+name: arangodb_client_connection_statistics_client_connections
+introducedIn: "3.6.1"
+help: |
+  The number of client connections that are currently open
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The number of client connections that are currently open.
+  Note: this metric considers only HTTP and HTTP/2 connections, but not VST
+  connections.

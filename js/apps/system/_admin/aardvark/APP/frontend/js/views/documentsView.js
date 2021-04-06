@@ -1090,6 +1090,9 @@
       var self = event.currentTarget;
 
       var url;
+      if (!$(self).attr('id')) {
+        return;
+      }
       var doc = $(self).attr('id').substr(4);
 
       try {

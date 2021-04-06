@@ -72,7 +72,10 @@ jsunity.run(function dump_single_testsuite() {
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
       "testViewOnSmartEdgeCollection",
-      "testSmartGraphAttribute"
+      "testSmartGraphAttribute",
+
+      // Hotbackup tests:
+      "testLatestId"
     ]
   );
 

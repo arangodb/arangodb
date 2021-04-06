@@ -116,7 +116,7 @@ class H2CommTask final : public GeneralCommTask<T> {
  private:
 
   /// @brief used to generate the full url for debugging
-  std::string const& url(HttpRequest* req);
+  std::string url(HttpRequest const* req) const;
 
   velocypack::Buffer<uint8_t> _outbuffer;
 

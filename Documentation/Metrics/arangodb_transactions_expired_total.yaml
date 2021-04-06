@@ -1,0 +1,22 @@
+name: arangodb_transactions_expired_total
+renamedFrom: arangodb_transactions_expired
+introducedIn: "3.8.0"
+help: |
+  Total number of expired transactions.
+unit: number
+type: counter
+category: Transactions
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of expired transactions, i.e. transactions that have
+  been begun but that were automatically garbage-collected due to 
+  inactivity within the transactions' time-to-live (TTL) period.
+  In the cluster, this metric will be collected separately for transactions 
+  on coordinators and the transaction counterparts on leaders and followers.
+  This metric was named `arangodb_transactions_expired` in previous
+  versions of ArangoDB.

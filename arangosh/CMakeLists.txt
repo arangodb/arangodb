@@ -48,8 +48,10 @@ endif ()
 
 add_executable(${BIN_ARANGOBENCH}
   ${ProductVersionFiles_arangobench}
-  Benchmark/BenchFeature.cpp
   Benchmark/arangobench.cpp
+  Benchmark/BenchFeature.cpp
+  Benchmark/BenchmarkOperation.cpp
+  Benchmark/testcases/helpers.cpp
 )
 target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 

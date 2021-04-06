@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -767,7 +766,7 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
   // find the responsible shard for the data
   std::string shardId;
 
-  int res = collection->getCollection()->getResponsibleShard(builder.slice(), true, shardId);
+  auto res = collection->getCollection()->getResponsibleShard(builder.slice(), true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // some error occurred. better do not use the
@@ -8113,11 +8112,6 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
       cb(node);
     }
   };
-
-  TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
-    // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
-    subqueryNodes.clear();
-  }
 
   for (auto const& sq : subqueryNodes) {
     modified = true;

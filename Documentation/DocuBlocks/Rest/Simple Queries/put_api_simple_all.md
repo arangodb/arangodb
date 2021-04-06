@@ -32,7 +32,7 @@ as body with the following attributes:
 
 - *stream*: Create this cursor as a stream query (optional).
 
-Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result.
 
 @RESTRETURNCODES
 

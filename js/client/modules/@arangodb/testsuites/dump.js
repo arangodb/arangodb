@@ -52,6 +52,7 @@ const _ = require('lodash');
 const hb = require("@arangodb/hotbackup");
 const sleep = require("internal").sleep;
 const db = require("internal").db;
+const platform = require("internal").platform;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -62,6 +63,15 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 const encryptionKey = '01234567890123456789012345678901';
 const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b";
+
+let timeoutFactor = 1;
+if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
+    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
+    (platform.substr(0, 3) === 'win')) {
+  timeoutFactor = 8;
+} else if (process.env.hasOwnProperty('GCOV_PREFIX')) {
+    timeoutFactor = 16;
+}
 
 const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
@@ -328,11 +338,20 @@ class DumpRestoreHelper {
       this.restoreConfig.setDatabase(database);
     }
     this.restoreConfig.disableContinue();
+    let retryCount = 0;
     do {
       this.results.restore = this.arangorestore();
       if (this.results.restore.exitCode === 38) {
-        print("Failure point has terminated the application, restarting");
-        sleep(2);
+        retryCount += 1;
+        if (retryCount === 21) {
+          this.restoreConfig.deactivateFailurePoint();
+          this.restoreOldConfig.deactivateFailurePoint();
+          print("Failure point has terminated the application, restarting, continuing without.");
+        } else {
+          print("Failure point has terminated the application, restarting");
+        }
+        sleep(2 * timeoutFactor);
+        
         this.restoreConfig.enableContinue();
       }
     } while(this.results.restore.exitCode === 38);

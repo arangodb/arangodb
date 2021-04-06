@@ -43,7 +43,7 @@ class IRESEARCH_API cost final : public attribute {
     return "iresearch::cost";
   }
 
-  static constexpr cost_t MAX = integer_traits<cost_t>::const_max;
+  static constexpr cost_t MAX = std::numeric_limits<cost_t>::max();
 
   cost() = default;
 
@@ -74,7 +74,7 @@ class IRESEARCH_API cost final : public attribute {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the estimation value 
   //////////////////////////////////////////////////////////////////////////////
-  void value(cost_t value) noexcept {
+  void reset(cost_t value) noexcept {
     value_ = value;
     init_ = true;
   }
@@ -82,7 +82,7 @@ class IRESEARCH_API cost final : public attribute {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the estimation rule
   //////////////////////////////////////////////////////////////////////////////
-  void rule(cost_f&& eval) {
+  void reset(cost_f&& eval) noexcept(std::is_nothrow_move_assignable_v<cost_f>) {
     assert(eval);
     func_ = std::move(eval);
     init_ = false;

@@ -1118,7 +1118,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
       return replutils::buildHttpError(response.get(), url, _config.connection);
     }
 
-    VPackBuilder builder;
     Result r = replutils::parseResponse(builder, response.get());
 
     if (r.fail()) {
@@ -1680,7 +1679,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
       " s, " + "waited for insertions: " + std::to_string(stats.waitedForInsertions) +
       " s, " + "waited for removals: " + std::to_string(stats.waitedForRemovals) +
-      " s, " + "waited for key lookups: " + std::to_string(stats.waitedForKeyLookups) +
       " s, " + "total time: " + std::to_string(TRI_microtime() - startTime) +
       " s");
 

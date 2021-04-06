@@ -1,0 +1,20 @@
+name: arangodb_transactions_aborted_total
+renamedFrom: arangodb_transactions_aborted
+introducedIn: "3.8.0"
+help: |
+  Number of transactions aborted.
+unit: number
+type: counter
+category: Transactions
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of transactions aborted. In the cluster, this metric will 
+  be collected separately for transactions on coordinators and the
+  transaction counterparts on leaders and followers.
+  This metric was named `arangodb_transactions_aborted` in previous
+  versions of ArangoDB.

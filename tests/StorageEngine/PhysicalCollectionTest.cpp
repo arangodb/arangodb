@@ -204,7 +204,6 @@ class MockIndex : public Index {
   bool needsReversal() const override { return _needsReversal; }
   IndexType type() const override { return _type; }
   char const* typeName() const override { return "IndexMock"; }
-  bool isPersistent() const override { return true; }
   bool canBeDropped() const override { return true; }
   bool isSorted() const override { return false; }
   bool isHidden() const override { return false; }

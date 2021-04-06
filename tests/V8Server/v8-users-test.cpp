@@ -257,7 +257,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
@@ -300,7 +300,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));  // not modified from above
@@ -437,7 +437,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
@@ -488,7 +488,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));  // not modified from above

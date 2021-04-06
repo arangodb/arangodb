@@ -1,0 +1,18 @@
+name: arangodb_network_forwarded_requests_total
+renamedFrom: arangodb_network_forwarded_requests
+introducedIn: "3.8.0"
+help: |
+  Number of requests forwarded to another coordinator.
+unit: number
+type: counter
+category: Network
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  Number of requests forwarded to another coordinator.
+  Request forwarding can happen in load-balanced setups,
+  when one coordinator receives and forwards requests 
+  that can only be handled by a different coordinator.
+  This includes requests for streaming transactions,
+  AQL, query cursors, Pregel jobs and some others.

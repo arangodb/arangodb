@@ -144,6 +144,50 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 }  // namespace arangodb
 
+DECLARE_GAUGE(arangodb_scheduler_num_awake_threads, uint64_t,
+              "Number of awake worker threads");
+DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_dequeued, uint64_t,
+              "Total number of jobs dequeued");
+DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_done, uint64_t,
+              "Total number of queue jobs done");
+DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_submitted, uint64_t,
+              "Total number of jobs submitted to the scheduler");
+DECLARE_COUNTER(arangodb_scheduler_jobs_done_total,
+              "Total number of queue jobs done");
+DECLARE_COUNTER(arangodb_scheduler_jobs_submitted_total,
+              "Total number of jobs submitted to the scheduler");
+DECLARE_COUNTER(arangodb_scheduler_jobs_dequeued_total,
+              "Total number of jobs dequeued");
+DECLARE_GAUGE(
+    arangodb_scheduler_high_prio_queue_length, uint64_t,
+    "Current queue length of the high priority queue in the scheduler");
+DECLARE_GAUGE(arangodb_scheduler_low_prio_queue_last_dequeue_time, uint64_t,
+              "Last recorded dequeue time for a low priority queue item [ms]");
+DECLARE_GAUGE(
+    arangodb_scheduler_low_prio_queue_length, uint64_t,
+    "Current queue length of the low priority queue in the scheduler");
+DECLARE_GAUGE(
+    arangodb_scheduler_maintenance_prio_queue_length, uint64_t,
+    "Current queue length of the maintenance priority queue in the scheduler");
+DECLARE_GAUGE(
+    arangodb_scheduler_medium_prio_queue_length, uint64_t,
+    "Current queue length of the medium priority queue in the scheduler");
+DECLARE_GAUGE(arangodb_scheduler_num_working_threads, uint64_t,
+              "Number of working threads");
+DECLARE_GAUGE(arangodb_scheduler_num_worker_threads, uint64_t,
+              "Number of worker threads");
+DECLARE_GAUGE(
+    arangodb_scheduler_ongoing_low_prio, uint64_t,
+    "Total number of ongoing RestHandlers coming from the low prio queue");
+DECLARE_COUNTER(arangodb_scheduler_queue_full_failures_total,
+                "Tasks dropped and not added to internal queue");
+DECLARE_GAUGE(arangodb_scheduler_queue_length, uint64_t,
+              "Server's internal queue length");
+DECLARE_COUNTER(arangodb_scheduler_threads_started_total,
+                "Number of scheduler threads started");
+DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
+                "Number of scheduler threads stopped");
+
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
                                          uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize, uint64_t fifo1Size,
@@ -166,58 +210,45 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
-      _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          StaticStrings::SchedulerQueueLength, 0,
-          "Server's internal queue length")),
-      _metricsJobsDone(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_done", 0, "Total number of queue jobs done")),
-      _metricsJobsSubmitted(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_submitted", 0,
-          "Total number of jobs submitted to the queue")),
-      _metricsJobsDequeued(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_dequeued", 0,
-          "Total number of jobs dequeued")),
-      _metricsAwakeThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          StaticStrings::SchedulerAwakeWorkers, 0,
-          "Number of awake worker threads")),
-      _metricsNumWorkingThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_num_working_threads", 0,
-          "Number of working threads")),
-      _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          StaticStrings::SchedulerNumWorker, 0, "Number of worker threads")),
-      _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_threads_started", 0,
-          "Number of scheduler threads started")),
-      _metricsThreadsStopped(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_threads_stopped", 0,
-          "Number of scheduler threads stopped")),
-      _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_queue_full_failures", 0,
-          "Tasks dropped and not added to internal queue")),
-      _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
-          "Total number of ongoing RestHandlers coming from "
-          "the low prio queue")),
-      _metricsLastLowPriorityDequeueTime(_server.getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_scheduler_low_prio_queue_last_dequeue_time", uint64_t(0),
-          "Last recorded dequeue time for a low priority queue item [ms]")),
-      _metricsQueueLengths{
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
-              "Current queue length of the maintenance priority queue in "
-              "the scheduler"),
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_high_prio_queue_length", uint64_t(0),
-              "Current queue length of the high priority queue in "
-              "the scheduler"),
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_medium_prio_queue_length", uint64_t(0),
-              "Current queue length of the medium priority queue in "
-              "the scheduler"),
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_low_prio_queue_length", uint64_t(0),
-              "Current queue length of the low priority queue in "
-              "the scheduler")} {
+      _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_queue_length{})),
+      _metricsJobsDone(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_jobs_done{})),
+      _metricsJobsSubmitted(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_jobs_submitted{})),
+      _metricsJobsDequeued(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_jobs_dequeued{})),
+      _metricsJobsDoneTotal(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_jobs_done_total{})),
+      _metricsJobsSubmittedTotal(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_jobs_submitted_total{})),
+      _metricsJobsDequeuedTotal(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_jobs_dequeued_total{})),
+      _metricsNumAwakeThreads(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_num_awake_threads{})),
+      _metricsNumWorkingThreads(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_num_working_threads{})),
+      _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_num_worker_threads{})),
+      _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_threads_started_total{})),
+      _metricsThreadsStopped(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_threads_stopped_total{})),
+      _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_queue_full_failures_total{})),
+      _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_ongoing_low_prio{})),
+      _metricsLastLowPriorityDequeueTime(
+          _server.getFeature<arangodb::MetricsFeature>().add(
+              arangodb_scheduler_low_prio_queue_last_dequeue_time{})),
+      _metricsQueueLengths{_server.getFeature<arangodb::MetricsFeature>().add(
+                               arangodb_scheduler_maintenance_prio_queue_length{}),
+                           _server.getFeature<arangodb::MetricsFeature>().add(
+                               arangodb_scheduler_high_prio_queue_length{}),
+                           _server.getFeature<arangodb::MetricsFeature>().add(
+                               arangodb_scheduler_medium_prio_queue_length{}),
+                           _server.getFeature<arangodb::MetricsFeature>().add(
+                               arangodb_scheduler_low_prio_queue_length{})} {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -490,22 +521,14 @@ void SupervisedScheduler::runSupervisor() {
     startOneThread();
   }
 
-  uint64_t lastJobsDone = 0, lastJobsSubmitted = 0;
-  uint64_t jobsStallingTick = 0, lastQueueLength = 0;
-
+  uint64_t lastJobsSubmitted = 0;
+  uint64_t lastQueueLength = 0;
   uint64_t roundCount = 0;
 
   while (!_stopping) {
     uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
     uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
     uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
-
-    if (jobsDone == lastJobsDone && (jobsDequeued < jobsSubmitted)) {
-      jobsStallingTick++;
-    } else if (jobsStallingTick != 0) {
-      jobsStallingTick--;
-    }
-
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
     uint64_t numAwake = _numAwake.load(std::memory_order_relaxed);
@@ -522,7 +545,6 @@ void SupervisedScheduler::runSupervisor() {
                             ((queueLength == 0) && (lastQueueLength == 0))) &&
                            ((rand() & 0x3F) == 0) && sleeperFound;
 
-    lastJobsDone = jobsDone;
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
 
@@ -532,7 +554,10 @@ void SupervisedScheduler::runSupervisor() {
       _metricsJobsDone.operator=(jobsDone);
       _metricsJobsSubmitted.operator=(jobsSubmitted);
       _metricsJobsDequeued.operator=(jobsDequeued);
-      _metricsAwakeThreads.operator=(numAwake);
+      _metricsJobsDoneTotal.operator=(jobsDone);
+      _metricsJobsSubmittedTotal.operator=(jobsSubmitted);
+      _metricsJobsDequeuedTotal.operator=(jobsDequeued);
+      _metricsNumAwakeThreads.operator=(numAwake);
       _metricsNumWorkingThreads.operator=(numWorking);
       _metricsNumWorkerThreads.operator=(numWorkers);
       roundCount = 0;
@@ -542,7 +567,6 @@ void SupervisedScheduler::runSupervisor() {
       bool haveStartedThread = false;
 
       if (doStartOneThread && _numWorkers < _maxNumWorkers) {
-        jobsStallingTick = 0;
         startOneThread();
         haveStartedThread = true;
       } else if (doStopOneThread && _numWorkers > _minNumWorkers) {

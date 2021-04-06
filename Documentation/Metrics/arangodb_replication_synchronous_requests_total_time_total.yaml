@@ -1,0 +1,14 @@
+name: arangodb_replication_synchronous_requests_total_time_total
+renamedFrom: arangodb_replication_synchronous_requests_total_time
+introducedIn: "3.8.0"
+help: |
+  Total time needed for all synchronous replication requests.
+unit: ms
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The total time needed for all synchronous replication requests
+  between dbservers being done.

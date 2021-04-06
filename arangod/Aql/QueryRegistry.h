@@ -94,11 +94,10 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  std::unique_ptr<ClusterQuery> destroyQuery(std::string const& vocbase, QueryId qId,
-                                             int errorCode);
+  std::unique_ptr<ClusterQuery> destroyQuery(std::string const& vocbase, QueryId id, ErrorCode errorCode);
   
   /// used for a legacy shutdown
-  bool destroyEngine(EngineId qId, int errorCode);
+  bool destroyEngine(EngineId engineId, ErrorCode errorCode);
 
   /// @brief destroy all queries for the specified database. this can be used
   /// when the database gets dropped  

@@ -204,7 +204,10 @@ class SupervisedScheduler final : public Scheduler {
   Gauge<uint64_t>& _metricsJobsDone;
   Gauge<uint64_t>& _metricsJobsSubmitted;
   Gauge<uint64_t>& _metricsJobsDequeued;
-  Gauge<uint64_t>& _metricsAwakeThreads;
+  Counter& _metricsJobsDoneTotal;
+  Counter& _metricsJobsSubmittedTotal;
+  Counter& _metricsJobsDequeuedTotal;
+  Gauge<uint64_t>& _metricsNumAwakeThreads;
   Gauge<uint64_t>& _metricsNumWorkingThreads;
   Gauge<uint64_t>& _metricsNumWorkerThreads;
   

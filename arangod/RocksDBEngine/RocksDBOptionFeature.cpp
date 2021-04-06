@@ -450,8 +450,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "startup, in order to startup reduce IO",
                   new BooleanParameter(&_limitOpenFilesAtStartup),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 
   options
       ->addOption("--rocksdb.allow-fallocate",
@@ -459,8 +458,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "fallocate calls are bypassed",
                   new BooleanParameter(&_allowFAllocate),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
   options
       ->addOption("--rocksdb.exclusive-writes",
                   "if true, writes are exclusive. This allows the RocksDB engine to mimic "
@@ -468,7 +466,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "but will inhibit concurrent write operations",
                   new BooleanParameter(&_exclusiveWrites),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30504);
+      .setIntroducedIn(30504).setDeprecatedIn(30800);
 
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now

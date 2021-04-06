@@ -46,6 +46,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
+  void updateMetrics();
+
   // tracks a query start
   void trackQueryStart() noexcept;
   // tracks a query completion, using execution time
@@ -67,6 +69,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool smartJoins() const { return _smartJoins; }
   bool parallelizeTraversals() const { return _parallelizeTraversals; }
 #endif
+  bool allowCollectionsInExpressions() const { return _allowCollectionsInExpressions; }
+  uint64_t queryGlobalMemoryLimit() const { return _queryGlobalMemoryLimit; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   double queryMaxRuntime() const { return _queryMaxRuntime; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
@@ -81,10 +85,13 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool _trackDataSources;
   bool _failOnWarning;
   bool _queryCacheIncludeSystem;
+  bool _queryMemoryLimitOverride;
 #ifdef USE_ENTERPRISE
   bool _smartJoins;
   bool _parallelizeTraversals;
 #endif
+  bool _allowCollectionsInExpressions;
+  uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
   double _queryMaxRuntime;
   uint64_t _maxQueryPlans;
@@ -108,6 +115,10 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   Counter& _queriesCounter;
   Counter& _slowQueriesCounter;
   Gauge<uint64_t>& _runningQueries;
+  Gauge<uint64_t>& _globalQueryMemoryUsage;
+  Gauge<uint64_t>& _globalQueryMemoryLimit;
+  Counter& _globalQueryMemoryLimitReached; 
+  Counter& _localQueryMemoryLimitReached; 
 };
 
 }  // namespace arangodb

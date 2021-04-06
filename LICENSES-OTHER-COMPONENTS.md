@@ -599,6 +599,15 @@ License Id: ICU
 
 ### Backend libraries
 
+#### AsciiTable
+
+* Name ascii-table
+* Version: 0.0.8
+* GitHub: https://github.com/sorensen/ascii-table
+* License: https://github.com/sorensen/ascii-table/blob/master/license
+* License Name: MIT License
+* License Id: MIT
+
 #### JSUnity
 
 * Name: jsunity

@@ -1,0 +1,17 @@
+name: arangodb_scheduler_high_prio_queue_length
+introducedIn: "3.8.0"
+help: |
+  Current queue length of the high priority queue in the scheduler.
+unit: number
+type: gauge
+category: Scheduler
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The number of jobs currently queued on the scheduler's high priority queue.
+  The capacity of the high priority queue can be configured via the startup
+  option `--server.prio1-size`.
