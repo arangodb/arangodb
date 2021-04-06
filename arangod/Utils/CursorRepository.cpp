@@ -180,11 +180,6 @@ bool CursorRepository::remove(CursorId id) {
 
     cursor = (*it).second.first;
 
-    if (cursor->isDeleted()) {
-      // already deleted
-      return false;
-    }
-
     if (cursor->isUsed()) {
       // cursor is in use by someone else. now mark as deleted
       cursor->setDeleted();
