@@ -66,7 +66,6 @@ v3.6.13 (XXXX-XX-XX)
   the option is set to `false`).
   The default value for the option is `true`, meaning statistics will be
   displayed in the web interface for all databases.
->>>>>>> 529f9a48c07c962bdc9301c0e3c4189f8ef32426
 
 * Cleanup old HotBackup transfer jobs in agency.
 
