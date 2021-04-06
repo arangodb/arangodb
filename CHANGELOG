@@ -1,6 +1,10 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix undefined behavior in dynarray constructor when running into 
+  an out-of-memory exception during construction. In arangod, this can only
+  happen during metrics objects construction at program start.
+
 * Updated ArangoDB Starter to 0.15.0-preview-3.
 
 * Fixed issue BTS-353: memleak when running into an out-of-memory situation
