@@ -659,7 +659,7 @@ There are several major places where unittests live:
 | `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools
 | `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage
 | `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each
-| `js/common/modules/jsunity[.js|/jsunity.js`                  | jsunity testing framework; invoked via jsunity.js next to the module
+| `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module
 | `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb
 
 ### Filename conventions
