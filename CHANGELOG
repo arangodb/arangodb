@@ -1,6 +1,9 @@
 devel
 -----
 
+* Clean up replication code and remove a 3.2-compatibility mode that was 
+  only useful when replicating from a leader < ArangoDB version 3.3.
+
 * Make arangovpack more powerful, by supporting different input and output
   formats (json and vpack, plain or hex-encoded).
   The arangovpack options `--json` and `--pretty` have been removed and have 
