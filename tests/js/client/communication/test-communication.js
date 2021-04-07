@@ -29,9 +29,10 @@ let arangodb = require('@arangodb');
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
-const request = require('@arangodb/request');
+const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const graphModule = require('@arangodb/general-graph');
 const { expect } = require('chai');
+const primaryEndpoint = arango.getEndpoint();
 
 const getMetric = (name) => {
   let res = arango.GET_RAW("/_admin/metrics");
@@ -303,50 +304,42 @@ function GenericAqlSetupPathSuite(type) {
 
   /// @brief set failure point
   function debugCanUseFailAt(endpoint) {
-    let res = request.get({
-      url: endpoint + '/_admin/debug/failat',
-    });
+    reconnectRetry(endpoint, db._name(), "root", "");
+
+    let res = arango.GET('/_admin/debug/failat');
     return res.status === 200;
   }
 
   /// @brief set failure point
   function debugSetFailAt(endpoint, failAt) {
-    let res = request.put({
-      url: endpoint + '/_admin/debug/failat/' + failAt,
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error setting failure point";
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.PUT('/_admin/debug/failat/' + failAt, {});
+    if (res !== true) {
+      throw "Error setting failure point + " + res;
     }
   }
 
   function debugResetRaceControl(endpoint) {
-    let res = request.delete({
-      url: endpoint + '/_admin/debug/raceControl',
-      body: ""
-    });
-    if (res.status !== 200) {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.DELETE('/_admin/debug/raceControl');
+    if (res !== true) {
       throw "Error resetting race control.";
     }
   };
 
   /// @brief remove failure point
   function debugRemoveFailAt(endpoint, failAt) {
-    let res = request.delete({
-      url: endpoint + '/_admin/debug/failat/' + failAt,
-      body: ""
-    });
-    if (res.status !== 200) {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.DELETE('/_admin/debug/failat/' + failAt);
+    if (res !== true) {
       throw "Error removing failure point";
     }
   }
 
   function debugClearFailAt(endpoint) {
-    let res = request.delete({
-      url: endpoint + '/_admin/debug/failat',
-      body: ""
-    });
-    if (res.status !== 200) {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.DELETE('/_admin/debug/failat');
+    if (res !== true) {
       throw "Error removing failure points";
     }
   }
@@ -357,16 +350,19 @@ function GenericAqlSetupPathSuite(type) {
       const endpoint = getEndpointById(servers[0]);
       debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
     }
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
   };
 
 
   const deactivateShardLockingFailure = () => {
+    
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
       const endpoint = getEndpointById(servers[0]);
       debugClearFailAt(endpoint);
       debugResetRaceControl(endpoint);
     }
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
   };
 
   const docsPerWrite = 10;
@@ -470,96 +466,54 @@ function GenericAqlSetupPathSuite(type) {
     });
   `;
 
-  const apiLibs = `
-    const request = require("@arangodb/request");
-    arango.getEndpoint()
-    function sendRequest(method, endpoint, body, headers) {
-
-      const endpointToURL = (endpoint) => {
-        if (endpoint.substr(0, 6) === 'ssl://') {
-          return 'https://' + endpoint.substr(6);
-        }
-        var pos = endpoint.indexOf('://');
-        if (pos === -1) {
-          return 'http://' + endpoint;
-        }
-        return 'http' + endpoint.substr(pos);
-      };
-
-      let res;
-      try {
-        const envelope = {
-          json: true,
-          method,
-          url: endpointToURL(arango.getEndpoint()) + endpoint,
-          headers,
-        };
-        if (method !== 'GET') {
-          envelope.body = body;
-        }
-        res = request(envelope);
-      } catch (err) {
-        require("console").log(err);
-        return {};
-      }
-      if (typeof res.body === "string") {
-        if (res.body === "") {
-          res.body = {};
-        } else {
-          res.body = JSON.parse(res.body);
-        }
-      }
-      return res;
-    }
-  `;
   // Note: A different test checks that the API works this way
   const apiExclusive = `
-    ${apiLibs}
     let trx;
     const obj = { collections: { exclusive: "${twoShardColName}" } };
-    let result = sendRequest('POST', "/_api/transaction/begin", obj, {}, true);
+    let result = arango.POST("/_api/transaction/begin", obj);
     try {
       trx = result.body.result.id;
       const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
-      sendRequest('POST', "/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      arango.POST("/_api/cursor", { query }, { "x-arango-trx-id": trx });
       // Commit
-      sendRequest('PUT', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+      arango.PUT('/_api/transaction/' + encodeURIComponent(trx), {}, {});
     } catch {
       // Abort
-      sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+      arango.DELETE('/_api/transaction/' + encodeURIComponent(trx), {}, {});
     }
   `;
   const apiWrite = `
-    ${apiLibs}
     let trx;
     const obj = { collections: { write: "${twoShardColName}" } };
-    let result = sendRequest('POST', "/_api/transaction/begin", obj, {});
-    try {
+    let result = arango.POST("/_api/transaction/begin", obj, {});
+    if (false !== result) {
       trx = result.body.result.id;
       const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
-      sendRequest('POST', "/_api/cursor", { query }, { "x-arango-trx-id": trx });
-      // Commit
-      sendRequest('PUT', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
-    } catch {
-      // Abort
-      sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+      if (false !== arango.POST("/_api/cursor", { query }, { "x-arango-trx-id": trx })) {
+        // Commit
+        if (false !== arango.PUT('/_api/transaction/' + encodeURIComponent(trx), {}, {})) {
+          return;
+        }
     }
+    // Abort
+    arango.DELETE('/_api/transaction/' + encodeURIComponent(trx), {}, {});
   `;
   const apiRead = `
-    ${apiLibs}
     let trx;
     const obj = { collections: { read: "${twoShardColName}" } };
-    let result = sendRequest('POST', "/_api/transaction/begin", obj, {}, true);
-    try {
+    let result = arango.POST("/_api/transaction/begin", obj, {});
+    if (result !== false) {
       trx = result.body.result.id;
       const query = "FOR x IN ${twoShardColName} RETURN x";
-      sendRequest('POST', "/_api/cursor", { query }, { "x-arango-trx-id": trx });
-      // Commit
-      sendRequest('PUT', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
-    } catch {
-      // Abort
-      sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
-    }
+      if (false !== arango.POST("/_api/cursor", { query }, { "x-arango-trx-id": trx })) {
+        // Commit
+        if (false !== arango.PUT('/_api/transaction/' + encodeURIComponent(trx), {}, {})) {
+          return;
+        }
+      }
+   }
+   // Abort
+   arango.DELETE('/_api/transaction/' + encodeURIComponent(trx), {}, {});
   `;
 
   const documentWrite = `
@@ -586,6 +540,7 @@ function GenericAqlSetupPathSuite(type) {
 
   const singleRun = (tests) => {
     let clients = [];
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
     assertEqual(db[cn].count(), 0, "Test Reports is not empty");
     debug("starting " + tests.length + " test clients");
     try {
@@ -732,6 +687,7 @@ function GenericAqlSetupPathSuite(type) {
 
   const testSuite = {
     setUpAll: function () {
+      reconnectRetry(primaryEndpoint, "_system", "root", "");
       db._drop(cn);
       db._create(cn);
 
@@ -767,6 +723,7 @@ function GenericAqlSetupPathSuite(type) {
     },
 
     tearDownAll: function () {
+      reconnectRetry(primaryEndpoint, "_system", "root", "");
       switch (type) {
         case "Graph":
         case "NamedGraph": {
