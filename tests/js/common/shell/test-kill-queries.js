@@ -293,9 +293,18 @@ function GenericQueryKillSuite() { // can be either default or stream
       // Let the Test fail
       throw `Failed to initialize failurepoint ${failurePointName}`;
     }
-    const res = arango.POST(url, {count: true});
-    assertEqual(res.code, 410);
-    assertEqual(res.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
+    try {
+      const res = arango.POST(url, {count: true});
+      assertEqual(res.code, 410);
+      assertEqual(res.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
+    } finally {
+      try {
+        internal.debugClearFailAt(failurePointName);
+      } catch (e) {
+        // We cannot throw in finally.
+        console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable`);
+      }
+    }
   };
 
   return testSuite;
