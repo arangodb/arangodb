@@ -209,9 +209,10 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
                     result.response().header.metaByKey(arangodb::StaticStrings::Location);
                 redirectOrError(man, endpoint, location);
                 return ::agencyAsyncInquiry(man, std::move(meta), std::move(body));
+              } else if (result.statusCode() != fuerte::StatusServiceUnavailable) {
+                return futures::makeFuture(AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
-              // otherwise return error as is
-              return futures::makeFuture(AsyncAgencyCommResult{result.error, result.stealResponse()});
+              [[fallthrough]];
             case Error::ConnectionCanceled:
               if (man.server().isStopping()) {
                 return futures::makeFuture(
@@ -314,7 +315,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
                     AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
 
-              // 503 redirect
+              // 307 redirect
               if (result.statusCode() == StatusTemporaryRedirect) {
                 // get the Location header
                 std::string const& location =

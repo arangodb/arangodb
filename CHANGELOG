@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed agency inquiries in dealing with 503 responses from
+  agents, an issue with drop collection on coordinators with the
+  updated testagent.
+
 * Updated ArangoDB Starter to 0.15.0-preview-3.
 
 * Fixed issue BTS-353: memleak when running into an out-of-memory situation
