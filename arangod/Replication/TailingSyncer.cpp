@@ -1725,7 +1725,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
 
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
 
-  if (!fromIncluded && fromTick > 0 && fromTick != readTick) {
+  if (!fromIncluded && fromTick > 0) {
     Result r = handleRequiredFromPresentFailure(fromTick, readTick, "initial");
     TRI_ASSERT(_ongoingTransactions.empty());
 
@@ -1888,7 +1888,6 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
   }
 
   worked = false;
-  TRI_voc_tick_t const originalFetchTick = fetchTick;
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderCheckMore)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1967,7 +1966,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
     _applier->_state._totalFetchInstances++;
   }
 
-  if (!fromIncluded && fetchTick > 0 && originalFetchTick != tick) {
+  if (!fromIncluded && fetchTick > 0) {
     Result r = handleRequiredFromPresentFailure(fetchTick, tick, "ongoing");
     TRI_ASSERT(_ongoingTransactions.empty());
 

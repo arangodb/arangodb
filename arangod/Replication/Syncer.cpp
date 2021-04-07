@@ -554,18 +554,17 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
+
+  VPackSlice uuid;
+
+  if ((uuid = slice.get(::cuidRef)).isString()) {
+    return vocbase.lookupCollectionByUuid(uuid.copyString());
+  } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
+    return vocbase.lookupCollectionByUuid(uuid.copyString());
+  }
+  
   // extract "cid"
   DataSourceId cid = ::getCid(slice);
-
-  if (cid.empty()) {
-    VPackSlice uuid;
-
-    if ((uuid = slice.get(::cuidRef)).isString()) {
-      return vocbase.lookupCollectionByUuid(uuid.copyString());
-    } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
-      return vocbase.lookupCollectionByUuid(uuid.copyString());
-    }
-  }
 
   if (cid.empty()) {
     LOG_TOPIC("fbf1a", ERR, Logger::REPLICATION)
@@ -645,7 +644,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   // resolve collection by uuid, name, cid (in that order of preference)
   auto col = resolveCollection(vocbase, slice);
 
-  if (col != nullptr && col->type() == type && col->name() == name) {
+  if (col != nullptr && col->type() == type) {
     // collection already exists. TODO: compare attributes
     return Result();
   }
