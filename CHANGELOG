@@ -1,6 +1,8 @@
 v3.6.13 (2021-04-07)
 --------------------
 
+* Updated arangosync to 1.2.3
+
 * Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
   to specify "--ldap@2.OPTION". Authentication / Authorization will first check
   the primary LDAP server. If this server cannot authenticate an user, it will
