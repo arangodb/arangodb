@@ -57,6 +57,11 @@ RestCollectionHandler::RestCollectionHandler(application_features::ApplicationSe
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestCollectionHandler::execute() {
+  if ((_request->requestType() != rest::RequestType::GET) &&
+      ServerState::instance()->isDBServer()) {
+    generateError(Result(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR));
+    return RestStatus::DONE;
+  }
   switch (_request->requestType()) {
     case rest::RequestType::GET:
       return handleCommandGet();
@@ -322,11 +327,6 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
-  if (ServerState::instance()->isDBServer()) {
-    generateError(Result(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR));
-    return;
-  }
-
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -376,7 +376,6 @@ void RestCollectionHandler::handleCommandPost() {
   _builder.clear();
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(_context);
-
   Result res =
       methods::Collections::create(_vocbase,  // collection vocbase
                                    options,
