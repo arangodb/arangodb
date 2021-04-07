@@ -280,32 +280,34 @@ function GenericQueryKillSuite() { // can be either default or stream
     assertTrue(localQuery);
   };
 
-  testSuite["test_export_api"] = function () {
-    // Add a test for some special hack in export API, which is only allowed for SingleServer and Client
-    // This will internally create a streaming cursor, which can be killed in a bad position as well.
-    // Most of it is covered by the above tests, but this failure-point will be right before a separate
-    // branch only available in export.
-    const url = `/_db/${databaseName}/_api/export?collection=${collectionName}`;
-    const failurePointName = "QueryStreamCursor::directKillAfterTrxSetup";
-    try {
-      internal.debugSetFailAt(failurePointName);
-    } catch (e) {
-      // Let the Test fail
-      throw `Failed to initialize failurepoint ${failurePointName}`;
-    }
-    try {
-      const res = arango.POST(url, {count: true});
-      assertEqual(res.code, 410);
-      assertEqual(res.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
-    } finally {
+  if (!isServer && !isCluster) {
+    testSuite["test_export_api"] = function () {
+      // Add a test for some special hack in export API, which is only allowed for SingleServer and Client
+      // This will internally create a streaming cursor, which can be killed in a bad position as well.
+      // Most of it is covered by the above tests, but this failure-point will be right before a separate
+      // branch only available in export.
+      const url = `/_db/${databaseName}/_api/export?collection=${collectionName}`;
+      const failurePointName = "QueryStreamCursor::directKillAfterTrxSetup";
       try {
-        internal.debugClearFailAt(failurePointName);
+        internal.debugSetFailAt(failurePointName);
       } catch (e) {
-        // We cannot throw in finally.
-        console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable`);
+        // Let the Test fail
+        throw `Failed to initialize failurepoint ${failurePointName}`;
       }
-    }
-  };
+      try {
+        const res = arango.POST(url, {count: true});
+        assertEqual(res.code, 410);
+        assertEqual(res.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
+      } finally {
+        try {
+          internal.debugClearFailAt(failurePointName);
+        } catch (e) {
+          // We cannot throw in finally.
+          console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable`);
+        }
+      }
+    };
+  }
 
   return testSuite;
 }
