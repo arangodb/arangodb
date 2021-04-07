@@ -22,7 +22,7 @@
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
-
+const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
@@ -33,6 +33,7 @@ const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const graphModule = require('@arangodb/general-graph');
 const { expect } = require('chai');
 const primaryEndpoint = arango.getEndpoint();
+const toArgv = require('internal').toArgv;
 
 const getMetric = (name) => {
   let res = arango.GET_RAW("/_admin/metrics");
@@ -73,28 +74,27 @@ function getEndpointById(id) {
 
 const runShell = function (args, prefix) {
   let options = internal.options();
-  args.push('--javascript.startup-directory');
-  args.push(options['javascript.startup-directory']);
+  
+  let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+  let moreArgs = {
+    'javascript.startup-directory': options['javascript.startup-directory'],
+    'server.endpoint': endpoint,
+    'server.database': arango.getDatabaseName(),
+    'server.username': arango.connectedUser(),
+    'server.password': '',
+    'server.request-timeout': '10',
+    'log.foreground-tty': 'false',
+    'log.output': 'file://' + prefix + '.log'
+  };
+  _.assign(args, moreArgs);
+  let argv = toArgv(args);
+
   for (let o in options['javascript.module-directory']) {
-    args.push('--javascript.module-directory');
-    args.push(options['javascript.module-directory'][o]);
+    argv.push('--javascript.module-directory');
+    argv.push(options['javascript.module-directory'][o]);
   }
 
-  let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
-  args.push('--server.endpoint');
-  args.push(endpoint);
-  args.push('--server.database');
-  args.push(arango.getDatabaseName());
-  args.push('--server.username');
-  args.push(arango.connectedUser());
-  args.push('--server.password');
-  args.push('');
-  args.push('--log.foreground-tty');
-  args.push('false');
-  args.push('--log.output');
-  args.push('file://' + prefix + '.log');
-
-  let result = internal.executeExternal(arangosh, args, false /*usePipes*/);
+  let result = internal.executeExternal(arangosh, argv, false /*usePipes*/);
   assertTrue(result.hasOwnProperty('pid'));
   let status = internal.statusExternal(result.pid);
   assertEqual(status.status, "RUNNING");
@@ -128,7 +128,7 @@ function CommunicationSuite() {
 })();
     `);
 
-    let args = ['--javascript.execute', file];
+    let args = {'javascript.execute': file};
     let pid = runShell(args, file);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
     return { key, file, pid };
@@ -306,23 +306,23 @@ function GenericAqlSetupPathSuite(type) {
   function debugCanUseFailAt(endpoint) {
     reconnectRetry(endpoint, db._name(), "root", "");
 
-    let res = arango.GET('/_admin/debug/failat');
-    return res.status === 200;
+    let res = arango.GET_RAW('/_admin/debug/failat');
+    return res.code === 200;
   }
 
   /// @brief set failure point
   function debugSetFailAt(endpoint, failAt) {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.PUT('/_admin/debug/failat/' + failAt, {});
-    if (res !== true) {
+    let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
+    if (res.parsedBody !== true) {
       throw "Error setting failure point + " + res;
     }
   }
 
   function debugResetRaceControl(endpoint) {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.DELETE('/_admin/debug/raceControl');
-    if (res !== true) {
+    let res = arango.DELETE_RAW('/_admin/debug/raceControl');
+    if (res.code !== 200) {
       throw "Error resetting race control.";
     }
   };
@@ -330,16 +330,16 @@ function GenericAqlSetupPathSuite(type) {
   /// @brief remove failure point
   function debugRemoveFailAt(endpoint, failAt) {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.DELETE('/_admin/debug/failat/' + failAt);
-    if (res !== true) {
+    let res = arango.DELETE_RAW('/_admin/debug/failat/' + failAt);
+    if (res.code !== 200) {
       throw "Error removing failure point";
     }
   }
 
   function debugClearFailAt(endpoint) {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.DELETE('/_admin/debug/failat');
-    if (res !== true) {
+    let res = arango.DELETE_RAW('/_admin/debug/failat');
+    if (res.code !== 200) {
       throw "Error removing failure points";
     }
   }
@@ -470,39 +470,49 @@ function GenericAqlSetupPathSuite(type) {
   const apiExclusive = `
     let trx;
     const obj = { collections: { exclusive: "${twoShardColName}" } };
-    let result = arango.POST("/_api/transaction/begin", obj);
-    try {
-      trx = result.body.result.id;
-      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
-      arango.POST("/_api/cursor", { query }, { "x-arango-trx-id": trx });
-      // Commit
-      arango.PUT('/_api/transaction/' + encodeURIComponent(trx), {}, {});
-    } catch {
-      // Abort
-      arango.DELETE('/_api/transaction/' + encodeURIComponent(trx), {}, {});
+    let result = arango.POST_RAW("/_api/transaction/begin", obj);
+    if (result.code !== 201) {
+      print(result.parsedBody);
+      return;
     }
+    trx = result.parsedBody.result.id;
+    const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+    result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
+    if (result.code === 201) {
+        // Commit
+        result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
+        if (result.code == 200) {
+          return;
+        }
+    }
+    print(result);
+    print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
   `;
   const apiWrite = `
     let trx;
     const obj = { collections: { write: "${twoShardColName}" } };
-    let result = arango.POST("/_api/transaction/begin", obj, {});
-    if (false !== result) {
-      trx = result.body.result.id;
+    let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
+    if (result.code === 201) {
+      trx = result.parsedBody.result.id;
       const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
-      if (false !== arango.POST("/_api/cursor", { query }, { "x-arango-trx-id": trx })) {
+      result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      if (result.code === 200) {
         // Commit
-        if (false !== arango.PUT('/_api/transaction/' + encodeURIComponent(trx), {}, {})) {
+        result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
+        if (result.code === 200)  {
           return;
         }
+      }
     }
+    print(result);
     // Abort
-    arango.DELETE('/_api/transaction/' + encodeURIComponent(trx), {}, {});
+    print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
   `;
   const apiRead = `
     let trx;
     const obj = { collections: { read: "${twoShardColName}" } };
-    let result = arango.POST("/_api/transaction/begin", obj, {});
-    if (result !== false) {
+    let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
+    if (result.code === 201) {
       trx = result.body.result.id;
       const query = "FOR x IN ${twoShardColName} RETURN x";
       if (false !== arango.POST("/_api/cursor", { query }, { "x-arango-trx-id": trx })) {
@@ -512,8 +522,9 @@ function GenericAqlSetupPathSuite(type) {
         }
       }
    }
+   print(result);
    // Abort
-   arango.DELETE('/_api/transaction/' + encodeURIComponent(trx), {}, {});
+   print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
   `;
 
   const documentWrite = `
@@ -532,7 +543,7 @@ function GenericAqlSetupPathSuite(type) {
     })();
     `;
 
-    let args = ['--javascript.execute-string', cmd];
+    let args = {'javascript.execute-string': cmd};
     let pid = runShell(args, key);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
     return { key, pid };
