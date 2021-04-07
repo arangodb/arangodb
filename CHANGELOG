@@ -1,6 +1,13 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue #13169: arangoimport tsv conversion of bools and null, although
+  switched off by `--convert false`
+
+  Importing unquoted `null`, `false` and `true` literals from delimited files
+  get imported as strings now if `convert` is explicitly turned off. It
+  previously affected unquoted numbers only.
+
 * Added error handling for figures command in cluster. Previously errors
   returned by shards were ignored when aggregating the individual responses.
 
