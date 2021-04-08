@@ -3160,7 +3160,18 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     return;
   }
 
-  std::size_t constexpr sizeLimit = 16 * 1024 * 1024;
+  constexpr std::size_t sizeLimit = 16 * 1024 * 1024;
+  std::size_t chunkSize = sizeLimit;
+
+  bool found;
+  std::string const& value = _request->value("chunkSize", found);
+
+  if (found) {
+    // query parameter "chunkSize" was specified
+    chunkSize = StringUtils::uint64(value);
+  }
+  chunkSize = std::min(chunkSize, sizeLimit);
+
   std::size_t size = 0;  // running total, approximation
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
@@ -3177,11 +3188,13 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
       }
       VPackSlice res =
           it.hasMore() ? it.document() : velocypack::Slice::emptyObjectSlice();
-      if (size + res.byteSize() > sizeLimit && size > 0) {
+
+      auto byteSize = res.byteSize();
+      if (size + byteSize > chunkSize && size > 0) {
         break;
       }
       response.add(res);
-      size += res.byteSize();
+      size += byteSize;
     }
   }
 
