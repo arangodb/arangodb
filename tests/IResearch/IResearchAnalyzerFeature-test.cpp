@@ -317,6 +317,10 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
         case arangodb::iresearch::AnalyzerValueType::String:
           _term.value = irs::ref_cast<irs::byte_type>(_strVal);
           break;
+        default:
+          // New return type was added?
+          EXPECT_TRUE(false);
+          break;
       }
       _strVal.pop_back();
       return true;
