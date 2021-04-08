@@ -75,9 +75,6 @@ class ReplicationApplierConfiguration {
   bool _verbose;
   RestrictType _restrictType;
   std::set<std::string> _restrictCollections;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _force32mode = false;  // force client to act like 3.2
-#endif
   std::string _clientInfoString;
 
  public:
