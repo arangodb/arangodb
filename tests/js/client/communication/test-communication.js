@@ -485,6 +485,7 @@ function GenericAqlSetupPathSuite(type) {
           return;
         }
     }
+    print('apiExclusive: ');
     print(result);
     print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
   `;
@@ -496,7 +497,7 @@ function GenericAqlSetupPathSuite(type) {
       trx = result.parsedBody.result.id;
       const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
       result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
-      if (result.code === 200) {
+      if (result.code === 201) {
         // Commit
         result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
         if (result.code === 200)  {
@@ -504,6 +505,7 @@ function GenericAqlSetupPathSuite(type) {
         }
       }
     }
+    print('apiWrite');
     print(result);
     // Abort
     print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
@@ -513,7 +515,7 @@ function GenericAqlSetupPathSuite(type) {
     const obj = { collections: { read: "${twoShardColName}" } };
     let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
     if (result.code === 201) {
-      trx = result.body.result.id;
+      trx = result.parsedBody.result.id;
       const query = "FOR x IN ${twoShardColName} RETURN x";
       if (false !== arango.POST("/_api/cursor", { query }, { "x-arango-trx-id": trx })) {
         // Commit
@@ -522,6 +524,7 @@ function GenericAqlSetupPathSuite(type) {
         }
       }
    }
+   print('apiRead');
    print(result);
    // Abort
    print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
