@@ -1174,7 +1174,7 @@ endif ()
 ## VELOCYPACK
 ################################################################################
 
-add_definitions("-DVELOCYPACK_XXHASH=1")
+add_definitions("-DVELOCYPACK_WYHASH=1")
 
 set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 

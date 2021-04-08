@@ -1,6 +1,9 @@
 devel
 -----
 
+* Experimentally switch to wyhash (from xxhash) for velocypack. This is an
+  experiment in devel to check if it produces any observable speedups.
+
 * Upgrade velocypack to latest, C++17-only version.
 
 * Make arangovpack more powerful, by supporting different input and output
