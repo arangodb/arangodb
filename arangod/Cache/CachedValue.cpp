@@ -54,7 +54,8 @@ CachedValue* CachedValue::construct(void const* k, std::size_t kSize,
       kSize > maxKeySize || vSize > maxValueSize) {
     return nullptr;
   }
-
+  
+  // cppcheck-suppress *
   std::uint8_t* buf = new std::uint8_t[_headerAllocSize + kSize + vSize];
   std::uint8_t* aligned = reinterpret_cast<std::uint8_t*>(
       (reinterpret_cast<std::size_t>(buf) + _headerAllocOffset) & _headerAllocMask);
