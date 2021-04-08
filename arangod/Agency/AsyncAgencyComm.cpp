@@ -210,6 +210,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
                 redirectOrError(man, endpoint, location);
                 return ::agencyAsyncInquiry(man, std::move(meta), std::move(body));
               } else if (result.statusCode() != fuerte::StatusServiceUnavailable) {
+                // When hitting 503, i.e. no leader,  in multi-host agency, we need
+                // to keep inquiring until the agency becomes responsive again,
+                // i.e. 200/307 or timeout, which is correctly reported to the client.
                 return futures::makeFuture(AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
               [[fallthrough]];
