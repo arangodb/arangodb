@@ -1,8 +1,18 @@
 devel
 -----
 
-
 * Fixed CPPCHECK warning or added suppression.
+
+* Make arangovpack more powerful, by supporting different input and output
+  formats (json and vpack, plain or hex-encoded).
+  The arangovpack options `--json` and `--pretty` have been removed and have 
+  been replaced with separate options for specfiying the input and output 
+  types:
+  * `--input-type` ("json", "json-hex", "vpack", "vpack-hex")
+  * `--output-type` ("json", "json-pretty", "vpack", "vpack-hex")
+  The previous option `--print-non-json` has been replaced with the option
+  `--fail-on-non-json` which makes arangovpack fail when trying to emit 
+  non-JSON types to JSON output.
 
 * Fix undefined behavior in dynarray constructor when running into 
   an out-of-memory exception during construction. In arangod, this can only
