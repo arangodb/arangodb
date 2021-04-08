@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
 * Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
 
 * Fix undefined behavior in dynarray constructor when running into 
