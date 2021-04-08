@@ -77,6 +77,8 @@ struct IRESEARCH_API data_input {
 
   virtual size_t length() const = 0;
 
+  /// @return EOF mark
+  /// @note calling "read_byte()" on a stream in EOF state is undefined behavior
   virtual bool eof() const = 0;
 
   int16_t read_short() {
@@ -161,7 +163,7 @@ class IRESEARCH_API buffered_index_input : public index_input {
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;
 
-  virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept final;
+  virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override final;
 
   virtual size_t file_pointer() const noexcept override final {
     return start_ + offset();

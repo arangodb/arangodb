@@ -301,7 +301,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     options.buildUnindexedObjects = true;
 
     // conservatively allocate a few bytes per value to be returned
-    int res;
+    auto res = TRI_ERROR_NO_ERROR;
     if (n >= 10000) {
       res = _response->reservePayload(128 * 1024);
     } else if (n >= 1000) {
@@ -540,14 +540,15 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     return RestStatus::WAITING;
   }
 
-  builder.add(StaticStrings::Error, VPackValue(false));
-  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-  builder.close();
-
   if (r.ok()) {
+    builder.add(StaticStrings::Error, VPackValue(false));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+    builder.close();
+
     _response->setContentType(rest::ContentType::JSON);
     generateResult(code, std::move(buffer), std::move(ctx));
   } else {
+    // builder can be in a broken state here. simply return the error
     generateError(r);
   }
   

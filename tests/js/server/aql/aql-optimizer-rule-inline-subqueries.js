@@ -37,7 +37,7 @@ var ruleName = "inline-subqueries";
 function optimizerRuleTestSuite () {
   // various choices to control the optimizer: 
   var paramNone = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] }, inspectSimplePlans: true };
+  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   return {

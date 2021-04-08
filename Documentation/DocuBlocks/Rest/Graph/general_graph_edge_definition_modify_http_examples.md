@@ -62,8 +62,7 @@ The response code.
 The information about the modified graph.
 
 @RESTRETURNCODE{400}
-Returned if no edge definition with this name is found in the graph,
-or of the new definition is ill-formed and cannot be used.
+Returned if the new edge definition is ill-formed and cannot be used.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).
@@ -97,7 +96,8 @@ ArangoDB error number for the error that occurred.
 A message created for this error.
 
 @RESTRETURNCODE{404}
-Returned if no graph with this name could be found.
+Returned if no graph with this name could be found, or if no edge definition
+with this name is found in the graph.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).

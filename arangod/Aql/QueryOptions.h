@@ -89,7 +89,6 @@ struct QueryOptions {
   bool fullCount;
   bool count;
   bool verboseErrors;
-  bool inspectSimplePlans;
   bool skipAudit; // skips audit logging - used only internally
   ExplainRegisterPlan explainRegisters;
 
@@ -115,6 +114,7 @@ struct QueryOptions {
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;
+  static bool allowMemoryLimitOverride;
 };
 
 }  // namespace aql

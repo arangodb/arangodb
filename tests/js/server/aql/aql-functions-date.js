@@ -2433,7 +2433,7 @@ function ahuacatlDateFunctionsTestSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testDateUtcToLocalAndLocalToUtc: function () {
-      const values = [
+      const withoutZoneInfo = [
         [ "2020-03-15T01:00:00.000", "Europe/Berlin", "2020-03-15T00:00:00.000Z"],
         [ "2020-04-15T02:00:00.000", "Europe/Berlin", "2020-04-15T00:00:00.000Z"],
         [ "2020-10-14T21:00:00.999", "America/New_York", "2020-10-15T01:00:00.999Z"],
@@ -2449,13 +2449,95 @@ function ahuacatlDateFunctionsTestSuite () {
         [ "2020-07-07T06:00:00.333", "Etc/GMT-6", "2020-07-07T00:00:00.333Z" ]
       ];
 
-      values.forEach(function (value) {
+      withoutZoneInfo.forEach(function (value) {
         assertEqual([ value[0] ], getQueryResults("RETURN DATE_UTCTOLOCAL(@value,@tz)", { value: value[2], tz: value[1] }));
         assertEqual([ value[2] ], getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz)", { value: value[0], tz: value[1] }));
       });
             
       assertEqual([ "2020-02-29T23:00:00.000Z" ], 
-        getQueryResults("RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));      
+        getQueryResults("RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));
+
+	  const withZoneInfoToLocal = [
+        [ "2021-01-01", "Europe/Berlin", {
+            local: "2021-01-01T01:00:00.000",
+            zoneInfo: {
+              name: "CET",
+              begin: "2020-10-25T01:00:00.000Z",
+              end: "2021-03-28T01:00:00.000Z",
+              dst: false,
+              offset: 3600
+            }
+          }
+        ], [ "2021-07-01", "Europe/Berlin", {
+            local: "2021-07-01T02:00:00.000",
+            zoneInfo: {
+              name: "CEST",
+              begin: "2021-03-28T01:00:00.000Z",
+              end: "2021-10-31T01:00:00.000Z",
+              dst: true,
+              offset: 7200
+            }
+          }
+        ], [ "2021-01-01", "Etc/UTC", {
+            local: "2021-01-01T00:00:00.000Z",
+            zoneInfo: {
+              name: "UTC",
+              begin: null,
+              end: null,
+              dst: false,
+              offset: 0
+            }
+          }
+        ]
+      ];
+
+      withZoneInfoToLocal.forEach(function (value) {
+        var res = getQueryResults("RETURN DATE_UTCTOLOCAL(@value,@tz,@detail)", { value: value[0], tz: value[1], detail: true })[0];
+        // ignore tzdata version
+        delete res.tzdb;
+        assertEqual(value[2], res);
+      });
+      
+      const withZoneInfoToUTC = [
+        [ "2021-01-01T00:00:00.000Z", "America/Los_Angeles", {
+            utc: "2021-01-01T08:00:00.000Z",
+            zoneInfo: {
+              name: "PST",
+              begin: "2020-11-01T09:00:00.000Z",
+              end: "2021-03-14T10:00:00.000Z",
+              dst: false,
+              offset: -28800
+            }
+          }
+        ], [ "2021-08-01T00:00:00.000Z", "America/Los_Angeles", {
+            utc: "2021-08-01T07:00:00.000Z",
+            zoneInfo: {
+              name: "PDT",
+              begin: "2021-03-14T10:00:00.000Z",
+              end: "2021-11-07T09:00:00.000Z",
+              dst: true,
+              offset: -25200
+            }
+          }
+        ], [ "2021-01-01", "Etc/UTC", {
+            utc: "2021-01-01T00:00:00.000Z",
+            zoneInfo: {
+              name: "UTC",
+              begin: null,
+              end: null,
+              dst: false,
+              offset: 0
+            }
+          }
+        ]
+      ];
+
+      withZoneInfoToUTC.forEach(function (value) {
+        var res = getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz,@detail)", { value: value[0], tz: value[1], detail: true })[0];
+        // ignore tzdata version
+		delete res.tzdb;
+        assertEqual(value[2], res);
+      });	
     },
     
     // //////////////////////////////////////////////////////////////////////////////

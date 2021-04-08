@@ -472,8 +472,8 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
       // resolve the shard of the target vertex.
       ShardID responsibleShard;
 
-      int res = Utils::resolveShard(ci, _config, collectionName,
-                                    StaticStrings::KeyString, key, responsibleShard);
+      auto res = Utils::resolveShard(ci, _config, collectionName,
+                                     StaticStrings::KeyString, key, responsibleShard);
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("b80ba", ERR, Logger::PREGEL)
           << "Could not resolve target shard of edge '" << key
@@ -518,7 +518,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
       VPackStringRef toValue(transaction::helpers::extractToFromDocument(slice));
       allocateSpace(toValue.size());
       Edge<E>* edge = edgeBuff->appendElement();
-      int res = buildEdge(edge, toValue);
+      auto res = buildEdge(edge, toValue);
       if (res == TRI_ERROR_NO_ERROR) {
         _graphFormat->copyEdgeData(*trx.transactionContext()->getVPackOptions(),
                                    slice, edge->data());
@@ -568,7 +568,7 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
 
       OperationResult opRes = trx->update(shard, builder.slice(), options);
       if (!opRes.countErrorCodes.empty()) {
-        int code = (*(opRes.countErrorCodes.begin())).first;
+        auto code = ErrorCode{opRes.countErrorCodes.begin()->first};
         if (opRes.countErrorCodes.size() > 1) {
           // more than a single error code. let's just fail this
           THROW_ARANGO_EXCEPTION(code);

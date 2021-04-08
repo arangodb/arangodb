@@ -1,0 +1,16 @@
+name: rocksdb_num_running_compactions
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "rocksdb-num-running-compactions"
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "rocksdb-num-running-compactions".
+  It shows the number of currently running compactions.
+

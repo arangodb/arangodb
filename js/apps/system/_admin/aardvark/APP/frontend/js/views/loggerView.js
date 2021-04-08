@@ -8,38 +8,42 @@
   window.LoggerView = Backbone.View.extend({
     el: '#content',
     logsel: '#logEntries',
-    id: '#logContent',
     initDone: false,
 
+    fetchedEntries: [],
     pageSize: 20,
     currentPage: 0,
 
     logTopics: {},
     logLevels: [],
 
-    remove: function () {
-      this.$el.empty().off(); /* off to unbind the events */
-      this.stopListening();
-      this.unbind();
-      delete this.el;
-      return this;
-    },
-
     initialize: function (options) {
       var self = this;
 
       if (options) {
         this.options = options;
+
+        if (options.endpoint) {
+          this.endpoint = options.endpoint;
+        }
+
+        if (options.contentDiv) {
+          this.el = options.contentDiv;
+        }
       }
 
       this.collection.setPageSize(this.pageSize);
 
       if (!this.initDone) {
+        let url = arangoHelper.databaseUrl('/_admin/log/level');
+        if (this.endpoint) {
+          url += `?serverId=${encodeURIComponent(this.endpoint)}`;
+        }
         // first fetch all log topics + topics
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/log/level'),
+          url: url,
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -62,7 +66,8 @@
       'click #logLevelSelection': 'renderLogLevel',
       'click #logTopicSelection': 'renderLogTopic',
       'click #logFilters': 'resetFilters',
-      'click #loadMoreEntries': 'loadMoreEntries'
+      'click #loadMoreEntries': 'loadMoreEntries',
+      'click #downloadDisplayedEntries': 'downloadEntries'
     },
 
     template: templateEngine.createTemplate('loggerView.ejs'),
@@ -97,6 +102,19 @@
         multiple: true
       });
       this.logTopicView.render();
+    },
+
+    downloadEntries: function () {
+      // sort entries (primary by date, then by lid)
+      this.fetchedEntries.sort(function compare(a, b) {
+        let dateA = new Date(a.date);
+        let dateB = new Date(b.date);
+        return dateB - dateA || b.lid - a.lid;
+      });
+
+      let currentDate = new Date();
+      let fileName = `LOGS-${currentDate.toISOString()}`;
+      arangoHelper.downloadLocalBlob(JSON.stringify(this.fetchedEntries, null, 2), 'json', fileName);
     },
 
     loadMoreEntries: function () {
@@ -296,28 +314,36 @@
 
       var self = this;
       var date;
-      var entries = [];
+      var entriesToAppend = [];
+
       this.collection.fetch({
         success: function (settings) {
           self.collection.each(function (model) {
             date = new Date(model.get('timestamp') * 1000);
-            entries.push({
+            let entry = {
               status: model.getLogStatus(),
               date: arangoHelper.formatDT(date),
               timestamp: model.get('timestamp'),
               msg: model.get('text'),
               topic: model.get('topic')
-            });
+            };
+            entriesToAppend.push(entry);
+
+            // keep history for export
+            self.fetchedEntries.push(model.toJSON());
           });
           // invert order
-          self.renderLogs(self.invertArray(entries), settings.lastInverseOffset);
+          self.renderLogs(self.invertArray(entriesToAppend), settings.lastInverseOffset);
         }
       });
     },
 
-    render: function () {
+    render: function (initialRender) {
       var self = this;
-      this.currentPage = 0;
+      if (initialRender) {
+        this.currentPage = 0;
+        this.fetchedEntries = [];
+      }
 
       if (this.initDone) {
         // render static content
@@ -327,7 +353,7 @@
         this.convertModelToJSON();
       } else {
         window.setTimeout(function () {
-          self.render();
+          self.render(false);
         }, 100);
       }
       return this;
@@ -338,7 +364,7 @@
         if (entry.msg.indexOf('{' + entry.topic + '}') > -1) {
           entry.msg = entry.msg.replace('{' + entry.topic + '}', '');
         }
-        entry.msg = arangoHelper.escapeHtml(entry.msg); 
+        entry.msg = arangoHelper.escapeHtml(entry.msg);
       });
 
       if (this.currentPage === 0) {

@@ -35,11 +35,11 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-AgencyCache::AgencyCache(
-  application_features::ApplicationServer& server,
-  AgencyCallbackRegistry& callbackRegistry,
-  int shutdownCode)
-  : Thread(server, "AgencyCache"), 
+DECLARE_GAUGE(arangodb_agency_cache_callback_number, uint64_t, "Current number of entries in agency cache callbacks table");
+
+AgencyCache::AgencyCache(application_features::ApplicationServer& server,
+                         AgencyCallbackRegistry& callbackRegistry, ErrorCode shutdownCode)
+    : Thread(server, "AgencyCache"),
     _commitIndex(0), 
     _readDB(server, nullptr, "readDB"),
     _shutdownCode(shutdownCode),
@@ -47,8 +47,7 @@ AgencyCache::AgencyCache(
     _callbackRegistry(callbackRegistry), 
     _lastSnapshot(0),
     _callbacksCount(
-      _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_cache_callback_count", uint64_t(0), "Current number of entries in agency cache callbacks table")) {
+      _server.getFeature<MetricsFeature>().add(arangodb_agency_cache_callback_number{})) {
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR || _shutdownCode == TRI_ERROR_SHUTTING_DOWN);

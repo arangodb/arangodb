@@ -71,6 +71,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Methods/Upgrade.h"
+#include "VocBase/Methods/Version.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -2414,7 +2415,7 @@ class IResearchFeatureTestDBServer
     return dataPath;
   }
 
-  
+
   void createTestDatabase(TRI_vocbase_t*& vocbase, std::string const name = "testDatabase") {
     vocbase = server.createDatabase(name);
     ASSERT_NE(nullptr, vocbase);
@@ -2586,7 +2587,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
       "\"includeAllFields\": true }");
   // assume step 1 already finished
   auto versionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"version\": 1, \"tasks\": {\"upgradeArangoSearch0_1\":true} }");
+      std::string("{ \"version\": ") + std::to_string(arangodb::methods::Version::current()) + ", \"tasks\": {\"upgradeArangoSearch0_1\":true} }");
 
   server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
@@ -2599,8 +2600,6 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
   ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
-  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
   auto& engine = *static_cast<StorageEngineMock*>(
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
@@ -2608,6 +2607,11 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
 
   TRI_vocbase_t* vocbase;
   createTestDatabase(vocbase);
+
+  // rewrite file so upgrade task was not executed
+  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+
   auto& clusterInfo =
       vocbase->server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
@@ -2645,7 +2649,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
     }
   }
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, true, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, false, false).ok());  // run upgrade
 
   {
     auto indexes = logicalCollection->getIndexes();

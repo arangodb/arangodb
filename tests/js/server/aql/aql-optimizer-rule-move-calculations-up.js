@@ -38,7 +38,7 @@ var helper = require("@arangodb/aql-helper");
 function optimizerRuleTestSuite () {
   var ruleName = "move-calculations-up";
 
-  // various choices to control the optimizer: 
+  // various choices to control the optimizer:
   var paramNone   = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
@@ -50,7 +50,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleDisabled : function () {
-      var queries = [ 
+      var queries = [
         "LET a = 1 FOR i IN 1..10 FILTER a == 1 RETURN i",
         "FOR i IN 1..10 LET a = 25 RETURN i",
         "FOR i IN 1..10 LET a = 1 LET b = 2 LET c = 3 FILTER i > 3 LET d = 1 RETURN i"
@@ -67,7 +67,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
-      var queries = [ 
+      var queries = [
         "FOR i IN 1..10 FILTER i == 1 RETURN i",
         "FOR i IN 1..10 LET a = 25 + i RETURN i",
         "LET values = 1..10 FOR i IN values LET a = i + 1 FOR j IN values LET b = j + 2 RETURN i",
@@ -85,7 +85,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
-      var queries = [ 
+      var queries = [
         "FOR i IN 1..10 LET a = 1 FILTER i == 1 RETURN i",
         "FOR i IN 1..10 LET a = 1 FILTER i == 1 RETURN a",
         "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i",
@@ -104,11 +104,35 @@ function optimizerRuleTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule moves calculations out of subquery
+////////////////////////////////////////////////////////////////////////////////
+
+    testRuleMovesCalculationOutOfSubquery : function () {
+      var query = "FOR i IN 1..10 LET x = (FOR j IN 1..10 LET a = i * 2 LET b = j * 2 RETURN a + b) RETURN x";
+      var result = AQL_EXPLAIN(query, { }, paramEnabled);
+      let nodes = result.plan.nodes;
+      // calculations of variables "#7" and "a" are moved out
+      assertEqual([
+        "SingletonNode",     // ROOT
+        "CalculationNode",   // - LET #9 = 1 .. 10   /* range */   /* simple expression */
+        "CalculationNode",   // - LET #7 = 1 .. 10   /* range */   /* simple expression */
+        "EnumerateListNode", // - FOR i IN #7   /* list iteration */
+        "CalculationNode",   //   - LET a = (i * 2)   /* simple expression */
+        "SubqueryStartNode", //   - LET x = ( /* subquery begin */
+        "EnumerateListNode", //     - FOR j IN #9   /* list iteration */
+        "CalculationNode",   //       - LET b = (j * 2)   /* simple expression */
+        "CalculationNode",   //       - LET #11 = (a + b)   /* simple expression */
+        "SubqueryEndNode",   //       - RETURN  #11 ) /* subquery end */
+        "ReturnNode"         //   - RETURN x
+      ], nodes.map(n => n.type));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test generated plans
 ////////////////////////////////////////////////////////////////////////////////
 
     testPlans : function () {
-      var plans = [ 
+      var plans = [
         [ "FOR i IN 1..10 LET a = 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode"  ] ]
       ];
@@ -125,7 +149,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testResults : function () {
-      var queries = [ 
+      var queries = [
         [ "FOR i IN 1..10 LET a = 1 RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
         [ "FOR i IN 1..10 LET a = 1 RETURN a", [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ] ],
         [ "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i", [ 1 ] ],

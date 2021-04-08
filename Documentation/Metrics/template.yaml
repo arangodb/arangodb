@@ -1,0 +1,53 @@
+name: arangodb_metric
+introducedIn: "3.8.0"
+help: |
+  Put the help string here.
+unit: number
+type: gauge
+category: Health
+  # Choose one of:
+  # Health
+  # AQL
+  # V8
+  # Foxx
+  # Pregel
+  # Network
+  # Disk
+  # Errors
+  # RocksDB
+  # Hotbackup
+  # Scheduler
+  # Maintenance
+  # k8s
+  # kubearangodb
+  # Statistics
+  # Connectivity
+  # Agency
+  # Transactions
+  # Replication
+complexity: simple
+  # Choose one of:
+  # simple
+  # medium
+  # advanced
+exposedBy:
+  # choose:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Description here. Can be multiline and use markdown.
+threshold: |
+  # optional
+  Optional text to describe thresholds and normal ranges for the metrics.
+  Can be multiline markdown.
+troubleshoot: |
+  # optional
+  If at all possible describe hints for troubleshooting and how to get
+  metrics in allowable range again.
+grafana:
+  # optional, whatever information might be useful for grafana
+  json: "{}"
+  query: "rate(arangodb_metric[1m]) by (instance)"
+  

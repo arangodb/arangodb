@@ -169,7 +169,7 @@ bool parameterToTimePoint(AqlValue const& value, QueryWarnings& warnings,
     }
     return true;
   }*/
-  warnings.registerWarning(TRI_ERROR_QUERY_INVALID_DATE_VALUE, nullptr);
+  warnings.registerWarning(TRI_ERROR_QUERY_INVALID_DATE_VALUE);
   return false;
 }
 
@@ -232,7 +232,7 @@ WindowBounds::Row WindowBounds::calcRow(AqlValue const& input, QueryWarnings& w)
   bool failed;
   double val = input.toDouble(failed);
   if (failed) {
-    w.registerWarning(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, nullptr);
+    w.registerWarning(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return {0, 0, 0, /*valid*/ false};
   }
 
@@ -327,14 +327,14 @@ void WindowNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regist
     auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(outReg.isValid());
 
     RegisterId inReg = RegisterPlan::MaxRegisterId;
     if (Aggregator::requiresInput(p.type)) {
       auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
       inReg = itIn->second.registerId;
-      TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
+      TRI_ASSERT(inReg.isValid());
       readableInputRegisters.insert(inReg);
     }
     // else: no input variable required
@@ -366,7 +366,7 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
     auto itIn = getRegisterPlan()->varInfo.find(_rangeVariable->id);
     TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
     rangeRegister = itIn->second.registerId;
-    TRI_ASSERT(rangeRegister < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(rangeRegister.isValid());
     readableInputRegisters.insert(rangeRegister);
   }
 

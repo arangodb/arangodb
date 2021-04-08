@@ -113,11 +113,11 @@ class WindowNode : public ExecutionNode {
   ~WindowNode() override;
 
   /// @brief return the type of the node
-  NodeType getType() const final;
+  NodeType getType() const override final;
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const final;
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief calculate the aggregate registers
   void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
@@ -133,18 +133,18 @@ class WindowNode : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const final;
+                       bool withProperties) const override final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const final;
+  CostEstimate estimateCost() const override final;
 
   void setAggregateVariables(std::vector<AggregateVarInfo> const& aggregateVariables);
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const final;
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   // does this WINDOW need to look at rows following the current one
   bool needsFollowingRows() const;

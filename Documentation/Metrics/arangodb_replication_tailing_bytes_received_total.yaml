@@ -1,0 +1,20 @@
+name: arangodb_replication_tailing_bytes_received_total
+renamedFrom: arangodb_replication_tailing_bytes_received
+introducedIn: "3.8.0"
+help: |
+  Accumulated number of bytes received for replication tailing requests.
+unit: bytes
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description:
+  The accumulated number of bytes received from a leader for replication
+  tailing requests. The higher the amount of bytes is, the more data
+  is being processed afterwards on the follower dbserver.
+troubleshoot:
+  Compare this metric with all other related participating follower
+  dbservers. If the given value on a dbserver is considerable higher,
+  you might want to think about rebalancing your data as the overall
+  work might not be evenly distributed.

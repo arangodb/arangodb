@@ -27,6 +27,9 @@
 namespace arangodb {
 class CrashHandler {
  public:
+  /// @brief log backtrace for current thread to logfile
+  static void logBacktrace();
+
   /// @brief logs a fatal message and crashes the program
   [[noreturn]] static void crash(char const* context);
 
@@ -42,6 +45,10 @@ class CrashHandler {
 
   /// @brief installs the crash handler globally
   static void installCrashHandler();
+  
+#ifdef _WIN32
+  static void setMiniDumpDirectory(std::string path);
+#endif
 };
 
 }  // namespace arangodb

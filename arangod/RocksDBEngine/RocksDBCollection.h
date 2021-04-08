@@ -37,9 +37,11 @@ namespace arangodb {
 namespace cache {
 class Cache;
 }
+
 class LogicalCollection;
 class ManagedDocumentResult;
 class RocksDBPrimaryIndex;
+class RocksDBSavePoint;
 class RocksDBVPackIndex;
 class LocalDocumentId;
 
@@ -64,7 +66,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
-  int close() override;
+  ErrorCode close() override;
   void load() override;
   void unload() override;
 
@@ -155,16 +157,19 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   }
 
   arangodb::Result insertDocument(arangodb::transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
+                                  arangodb::velocypack::Slice doc,
+                                  OperationOptions const& options) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
                                   LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
+                                  arangodb::velocypack::Slice doc,
+                                  OperationOptions const& options) const;
 
-  arangodb::Result updateDocument(transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
+  arangodb::Result updateDocument(transaction::Methods* trx, 
+                                  RocksDBSavePoint& savepoint,
+                                  LocalDocumentId const& oldDocumentId,
                                   arangodb::velocypack::Slice const& oldDoc,
                                   LocalDocumentId const& newDocumentId,
                                   arangodb::velocypack::Slice const& newDoc,

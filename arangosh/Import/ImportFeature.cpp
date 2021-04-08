@@ -53,8 +53,8 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
       _filename(""),
       _useBackslash(false),
       _convert(true),
-      _autoChunkSize(true),
-      _chunkSize(1024 * 1024 * 1),
+      _autoChunkSize(false),
+      _chunkSize(1024 * 1024 * 8),
       _threadCount(2),
       _collectionName(""),
       _fromCollectionPrefix(""),
@@ -81,6 +81,11 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
 void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--file", "file name (\"-\" for STDIN)",
                      new StringParameter(&_filename));
+  
+  options->addOption("--auto-rate-limit",
+                     "adjust the data loading rate automatically, starting at --batch-size bytes per thread per second",
+                     new BooleanParameter(&_autoChunkSize))
+                     .setIntroducedIn(30711);
 
   options->addOption(
       "--backslash-escape",
@@ -93,7 +98,7 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption(
       "--threads",
-      "Number of parallel import threads. Most useful for the rocksdb engine",
+      "Number of parallel import threads",
       new UInt32Parameter(&_threadCount));
 
   options->addOption("--collection", "collection name", new StringParameter(&_collectionName));
@@ -115,6 +120,11 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--create-database",
                      "create the target database if it does not exist",
                      new BooleanParameter(&_createDatabase));
+  
+  options->addOption("--headers-file",
+                     "filename to read CSV or TSV headers from. if specified will not try to read headers from regular input file",
+                     new StringParameter(&_headersFile))
+                     .setIntroducedIn(30800);
 
   options->addOption("--skip-lines",
                      "number of lines to skip for formats (csv and tsv only)",
@@ -208,8 +218,6 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
       << "Unused commandline arguments: " << positionals;
     FATAL_ERROR_EXIT();
   }
-  // _chunkSize is dynamic ... unless user explicitly sets it
-  _autoChunkSize = !options->processingResult().touched("--batch-size");
 
   if (_chunkSize > arangodb::import::ImportHelper::MaxBatchSize) {
     // it's not sensible to raise the batch size beyond this value
@@ -320,7 +328,7 @@ void ImportFeature::start() {
 
   // must stay here in order to establish the connection
 
-  int err = TRI_ERROR_NO_ERROR;
+  auto err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
   auto const dbName = client.databaseName();
 
@@ -352,6 +360,7 @@ void ImportFeature::start() {
     }
     if (_typeImport == "csv" || _typeImport == "tsv") {
       std::cout << "separator:              " << _separator << std::endl;
+      std::cout << "headers file:           " << _headersFile << std::endl;
     }
     std::cout << "threads:                " << _threadCount << std::endl;
     std::cout << "on duplicate:           " << _onDuplicateAction << std::endl;
@@ -367,7 +376,7 @@ void ImportFeature::start() {
 
     client.setDatabaseName("_system");
 
-    int res = tryCreateDatabase(client, dbName);
+    auto res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("90431", ERR, arangodb::Logger::FIXME)
@@ -498,23 +507,17 @@ void ImportFeature::start() {
     // import type
     if (_typeImport == "csv") {
       std::cout << "Starting CSV import..." << std::endl;
-      ok = ih.importDelimited(_collectionName, _filename,
+      ok = ih.importDelimited(_collectionName, _filename, _headersFile,
                               arangodb::import::ImportHelper::CSV);
-    }
-
-    else if (_typeImport == "tsv") {
+    } else if (_typeImport == "tsv") {
       std::cout << "Starting TSV import..." << std::endl;
       ih.setQuote("");
-      ok = ih.importDelimited(_collectionName, _filename,
+      ok = ih.importDelimited(_collectionName, _filename, _headersFile,
                               arangodb::import::ImportHelper::TSV);
-    }
-
-    else if (_typeImport == "json" || _typeImport == "jsonl") {
+    } else if (_typeImport == "json" || _typeImport == "jsonl") {
       std::cout << "Starting JSON import..." << std::endl;
       ok = ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
-    }
-
-    else {
+    } else {
       LOG_TOPIC("8941e", FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport << "'.";
       FATAL_ERROR_EXIT();
     }
@@ -549,7 +552,7 @@ void ImportFeature::start() {
   *_result = ret;
 }
 
-int ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
+ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
   builder.add("name", VPackValue(name));

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,7 @@ class LoggerStreamBase {
   LoggerStreamBase& operator=(LoggerStreamBase const&) = delete;
 
   LoggerStreamBase();
+  explicit LoggerStreamBase(bool enabled);
 
   // intentionally not virtual, as such objects can be created _very_ often!
   ~LoggerStreamBase() = default;
@@ -79,11 +80,11 @@ class LoggerStreamBase {
  protected:
   std::stringstream _out;
   size_t _topicId;
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  LogLevel _topicLevel;
-#endif
   LogLevel _level;
   int _line;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool const _enabled;
+#endif
   char const* _logid;
   char const* _file;
   char const* _function;
@@ -91,6 +92,10 @@ class LoggerStreamBase {
 
 class LoggerStream : public LoggerStreamBase {
  public:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  explicit LoggerStream(bool enabled);
+#endif
+  LoggerStream();
   ~LoggerStream();
 };
 

@@ -97,6 +97,7 @@ let optionsDocumentation = [
   '   - `agencySupervision`: run supervision in agency',
   '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
   '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
+  '   - `memprof`: take snapshots (requries memprof enabled build)',
   '   - `test`: path to single test to execute for "single" test target, ',
   '             or pattern to filter for other suites',
   '   - `cleanup`: if set to false the data files',
@@ -188,6 +189,7 @@ const optionsDefaults = {
   'loopSleepWhen': 1,
   'minPort': 1024,
   'maxPort': 32768,
+  'memprof': false,
   'onlyNightly': false,
   'password': '',
   'protocol': 'tcp',
@@ -211,8 +213,8 @@ const optionsDefaults = {
   'onlyGrey': false,
   'oneTestTimeout': 15 * 60,
   'isAsan': (
-      global.ARANGODB_CLIENT_VERSION(true).asan  ||
-      global.ARANGODB_CLIENT_VERSION(true).tsan),
+      global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
+      global.ARANGODB_CLIENT_VERSION(true).tsan === 'true'),
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,

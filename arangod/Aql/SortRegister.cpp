@@ -50,7 +50,7 @@ void SortRegister::fill(ExecutionPlan const& /*execPlan*/, RegisterPlan const& r
     auto const varId = p.var->id;
     auto const it = vars.find(varId);
     TRI_ASSERT(it != vars.end());
-    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId.isValid());
     sortRegisters.emplace_back(it->second.registerId, p);
   }
 }

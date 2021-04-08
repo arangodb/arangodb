@@ -44,7 +44,6 @@
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -175,7 +174,7 @@ struct AsyncAgencyCommTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS, arangodb::LogLevel::FATAL> {
   AsyncAgencyCommTest() : server(false) {
-    server.addFeature<SchedulerFeature>(true);
+      server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
   }
 

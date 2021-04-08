@@ -1,0 +1,19 @@
+name: arangodb_replication_tailing_follow_tick_failures_total
+renamedFrom: arangodb_replication_tailing_follow_tick_failures
+introducedIn: "3.8.0"
+help: |
+  Number of replication tailing failures due to missing tick on leader.
+unit: number
+type: counter
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  The number of replication tailing failures due to missing tick on leader.
+troubleshoot:
+  If this is non-zero, action is required. A required follower tick is not present (potentially
+  removed) on a leader dbserver. Please check the related leader dbserver
+  log-files to identify the origin of the cause. It may be required to do
+  a full re-sync and/or increase the number of historic logfiles on the
+  leader(s).

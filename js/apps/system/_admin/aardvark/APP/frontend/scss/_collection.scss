@@ -13,7 +13,6 @@
 .collectionInfoTh {
   min-width: 60px;
   text-align: left;
-  width: 320px;
 }
 
 .addCollection {
@@ -81,7 +80,7 @@
   @extend %font-family;
   font-weight: 400 !important;
   text-align: left;
-  width: 150px;
+  width: 200px;
 }
 
 .collection-info-figures table {

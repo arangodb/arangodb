@@ -36,7 +36,6 @@
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -47,11 +46,13 @@ struct DummyConnection final : public fuerte::Connection {
   void sendRequest(std::unique_ptr<fuerte::Request> r,
                                 fuerte::RequestCallback cb) override {
     _sendRequestNum++;
-    cb(_err, std::move(r), std::move(_response));
+    auto err = _err;
+    _err = fuerte::Error::NoError;  // next time we will report OK
+    cb(err, std::move(r), std::move(_response));
   }
   
   std::size_t requestsLeft() const override {
-    return 1;
+    return 0;
   }
   
   State state() const override {
@@ -227,3 +228,54 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   ASSERT_TRUE(res.hasResponse());
   ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
 }
+
+TEST_F(NetworkMethodsTest, automatic_retry_when_from_pool) {
+  // We first create a good connection and leave it in the pool:
+  pool->_conn->_err = fuerte::Error::NoError;
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(60.0);
+
+  fuerte::ResponseHeader header;
+  header.responseCode = fuerte::StatusAccepted;
+  header.contentType(fuerte::ContentType::VPack);
+  pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
+  std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"error\":false}");
+  auto resBuffer = b->steal();
+  pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
+
+  VPackBuffer<uint8_t> buffer;
+  auto f = network::sendRequest(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
+                                "/", buffer, reqOpts);
+
+  network::Response res = std::move(f).get();
+  ASSERT_EQ(res.destination, "tcp://example.org:80");
+  ASSERT_EQ(res.error, fuerte::Error::NoError);
+  ASSERT_TRUE(res.hasResponse());
+  ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
+
+  // Now the connection is in the pool and is good
+  // Let's set the returned error to fuerte::Error::ConnectionClosed as if
+  // the connection has gone stale:
+  pool->_conn->_err = fuerte::Error::ConnectionClosed;
+
+  // Now try again, it is supposed to work without error, since the
+  // automatic retry of the stale connection should create a new connection
+  // (which in this test will be the same connection which has repaired
+  // itself, LOL).
+  b = VPackParser::fromJson("{\"error\":false}");
+  resBuffer = b->steal();
+  fuerte::ResponseHeader header2;
+  header2.responseCode = fuerte::StatusAccepted;
+  header2.contentType(fuerte::ContentType::VPack);
+  pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header2));
+  pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
+
+  f = network::sendRequest(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
+                           "/", buffer, reqOpts);
+
+  res = std::move(f).get();
+  ASSERT_EQ(res.destination, "tcp://example.org:80");
+  ASSERT_EQ(res.error, fuerte::Error::NoError);
+}
+

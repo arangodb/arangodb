@@ -1,0 +1,23 @@
+name: arangodb_collection_lock_acquisition_micros_total
+renamedFrom: arangodb_collection_lock_acquisition_micros
+introducedIn: "3.8.0"
+help: |
+  Total amount of collection lock acquisition time.
+unit: us
+type: counter
+category: Transactions
+complexity: medium
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total amount of time it took to acquire collection/shard locks for
+  write operations, summed up for all collections/shards. Will not be increased 
+  for any read operations.
+  The value is measured in microseconds.
+troubleshoot: |
+  In case this value is considered too high, check if there are AQL queries
+  or transactions that use exclusive locks on collections, and try to reduce them. 
+  Operations using exclusive locks may lock out other queries/transactions temporarily, 
+  which will lead to an increase in lock acquisition time.

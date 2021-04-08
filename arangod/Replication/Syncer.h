@@ -189,10 +189,14 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   void reloadUsers();
 
   /// @brief apply a single marker from the collection dump
+  /// If the returned Result is TRI_ERROR_ARANGO_TRY_AGAIN,
+  /// conflictingDocumentKey will be set to the key of the conflicting document.
+  /// Otherwise, it will be untouched.
   // TODO worker-safety
   Result applyCollectionDumpMarker(transaction::Methods&, LogicalCollection* coll,
                                    TRI_replication_operation_e,
-                                   arangodb::velocypack::Slice const&);
+                                   arangodb::velocypack::Slice const&,
+                                   std::string& conflictingDocumentKey);
 
   /// @brief creates a collection, based on the VelocyPack provided
   // TODO worker safety - create/drop phase

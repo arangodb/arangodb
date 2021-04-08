@@ -145,11 +145,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   // fill the Builder object with an array of collections (and their
   // corresponding indexes) that were detected by the storage engine. called at
   // server start separately for each database
-  virtual int getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Builder& result,
-                                       bool wasCleanShutdown, bool isUpgrade) = 0;
+  virtual ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+                                             arangodb::velocypack::Builder& result,
+                                             bool wasCleanShutdown, bool isUpgrade) = 0;
 
-  virtual int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) = 0;
+  virtual ErrorCode getViews(TRI_vocbase_t& vocbase,
+                             arangodb::velocypack::Builder& result) = 0;
 
   // return the absolute path for the VERSION file of a database
   virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
@@ -189,7 +190,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // entry for the database creation will be written *after* the call to
   // "createDatabase" returns no way to acquire id within this function?!
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
-                                                        int& status) = 0;
+                                                        ErrorCode& status) = 0;
 
   // @brief write create marker for database
   virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) { return {}; }
@@ -321,16 +322,17 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void cleanupReplicationContexts() = 0;
 
   virtual velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                                 int& status) = 0;
-  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int&) = 0;
+                                                                 ErrorCode& status) = 0;
+  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(ErrorCode&) = 0;
 
-  virtual int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) = 0;
-  virtual int removeReplicationApplierConfiguration() = 0;
+  virtual ErrorCode removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) = 0;
+  virtual ErrorCode removeReplicationApplierConfiguration() = 0;
 
-  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                  velocypack::Slice slice,
-                                                  bool doSync) = 0;
-  virtual int saveReplicationApplierConfiguration(velocypack::Slice slice, bool doSync) = 0;
+  virtual ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                        velocypack::Slice slice,
+                                                        bool doSync) = 0;
+  virtual ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice,
+                                                        bool doSync) = 0;
 
   virtual Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                                 std::string const& keysId) = 0;
@@ -366,12 +368,12 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.close();  // object
   }
 
-  virtual void getStatistics(VPackBuilder& builder) const {
+  virtual void getStatistics(VPackBuilder& builder, bool v2) const {
     builder.openObject();
     builder.close();
   }
 
-  virtual void getStatistics(std::string& result) const {}
+  virtual void getStatistics(std::string& result, bool v2) const {}
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;

@@ -277,7 +277,7 @@ AqlValue numberValue(double value, bool nullify) {
 /// @brief optimized version of datetime stringification
 /// string format is hard-coded to YYYY-MM-DDTHH:MM:SS.XXXZ
 AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
-                      tp_sys_clock_ms const& tp, bool utc = true) {
+                      tp_sys_clock_ms const& tp, bool utc = true, bool registerWarning = true) {
   char formatted[24];
 
   year_month_day ymd{floor<days>(tp)};
@@ -286,7 +286,9 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   auto y = static_cast<int>(ymd.year());
   // quick basic check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
-    arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    if (registerWarning) {
+      arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    }
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1370,7 +1372,7 @@ void registerWarning(ExpressionContext* expressionContext,
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, int code) {
+                     char const* functionName, ErrorCode code) {
   if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH &&
       code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
     registerWarning(expressionContext, functionName, Result(code));
@@ -1381,7 +1383,8 @@ void registerWarning(ExpressionContext* expressionContext,
   expressionContext->registerWarning(code, msg.c_str());
 }
 
-void registerError(ExpressionContext* expressionContext, char const* functionName, int code) {
+void registerError(ExpressionContext* expressionContext,
+                   char const* functionName, ErrorCode code) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
@@ -1765,13 +1768,13 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   std::vector<irs::bstring> attrNgrams;
   analyzerImpl->reset(attributeValue);
   while (analyzerImpl->next()) {
-    attrNgrams.push_back(token->value);
+    attrNgrams.emplace_back(token->value.c_str(), token->value.size());
   }
 
   std::vector<irs::bstring> targetNgrams;
   analyzerImpl->reset(targetValue);
   while (analyzerImpl->next()) {
-    targetNgrams.push_back(token->value);
+    targetNgrams.emplace_back(token->value.c_str(), token->value.size());
   }
 
   // consider only non empty ngrams sets. As no ngrams emitted - means no data in index = no match
@@ -3829,8 +3832,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_UTCTOLOCAL
-AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
-                                   AstNode const&,
+AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_UTCTOLOCAL";
   using namespace std::chrono;
@@ -3849,14 +3851,57 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  const std::string tz = timeZoneParam.slice().copyString();
-  const auto utc = floor<milliseconds>(tp_utc);
-  const auto zoned = make_zoned(tz, utc);
-  const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+  auto showDetail = false;
 
-  auto info = zoned.get_info();
+  if (parameters.size() == 3) {
+    AqlValue const& detailParam = extractFunctionParameterValue(parameters, 2);
+    if (!detailParam.isBoolean()) {  // detail type must be bool
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
 
-  return ::timeAqlValue(expressionContext, AFN, tp_local,info.offset.count() == 0 && info.save.count() == 0);
+    showDetail = detailParam.slice().getBoolean();
+  }
+
+  std::string const tz = timeZoneParam.slice().copyString();
+  auto const utc = floor<milliseconds>(tp_utc);
+  auto const zoned = make_zoned(tz, utc);
+  auto const info = zoned.get_info();
+  auto const tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+  AqlValue aqlLocal =
+      ::timeAqlValue(expressionContext, AFN, tp_local,
+                     info.offset.count() == 0 && info.save.count() == 0);
+  
+  AqlValueGuard aqlLocalGuard(aqlLocal, true);
+
+  if (showDetail) {
+    auto const tp_begin = tp_sys_clock_ms{info.begin.time_since_epoch()};
+    AqlValue aqlBegin = ::timeAqlValue(expressionContext, AFN, tp_begin, true, false);
+    AqlValueGuard aqlBeginGuard(aqlBegin, true);
+
+    auto const tp_end = tp_sys_clock_ms{info.end.time_since_epoch()};
+    AqlValue aqlEnd = ::timeAqlValue(expressionContext, AFN, tp_end, true, false);
+    AqlValueGuard aqlEndGuard(aqlEnd, true);
+
+    transaction::Methods* trx = &expressionContext->trx();
+    transaction::BuilderLeaser builder(trx);
+    builder->openObject();
+    builder->add("local", aqlLocal.slice());
+    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("zoneInfo", VPackValue(VPackValueType::Object));
+    builder->add("name", VPackValue(info.abbrev));
+    builder->add("begin", aqlBegin.slice());
+    builder->add("end", aqlEnd.slice());  
+    builder->add("dst", VPackValue(info.save.count() != 0));
+    builder->add("offset", VPackValue(info.offset.count()));
+    builder->close();
+    builder->close();
+
+    return AqlValue(builder->slice(), builder->size());
+  }
+
+  aqlLocalGuard.steal();
+  return aqlLocal;
 }
 
 /// @brief function DATE_LOCALTOUTC
@@ -3879,14 +3924,56 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
     return AqlValue(AqlValueHintNull());
   }
 
-  const std::string tz = timeZoneParam.slice().copyString();
+  auto showDetail = false;
 
-  const auto local =
+  if (parameters.size() == 3) {
+    AqlValue const& detailParam = extractFunctionParameterValue(parameters, 2);
+    if (!detailParam.isBoolean()) {  // detail type must be bool
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    showDetail = detailParam.slice().getBoolean();
+  }
+
+  std::string const tz = timeZoneParam.slice().copyString();
+  auto const local =
       local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
-  const auto zoned = make_zoned(tz, local);
-  const auto tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
+  auto const zoned = make_zoned(tz, local);
+  auto const info = zoned.get_info();
+  auto const tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
+  AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_utc);
+  
+  AqlValueGuard aqlUtcGuard(aqlUtc, true);
 
-  return ::timeAqlValue(expressionContext, AFN, tp_utc);
+  if (showDetail) {
+    auto const tp_begin = tp_sys_clock_ms{info.begin.time_since_epoch()};
+    AqlValue aqlBegin = ::timeAqlValue(expressionContext, AFN, tp_begin, true, false);
+    AqlValueGuard aqlBeginGuard(aqlBegin, true);
+
+    auto const tp_end = tp_sys_clock_ms{info.end.time_since_epoch()};
+    AqlValue aqlEnd = ::timeAqlValue(expressionContext, AFN, tp_end, true, false);
+    AqlValueGuard aqlEndGuard(aqlEnd, true);
+
+    transaction::Methods* trx = &expressionContext->trx();
+    transaction::BuilderLeaser builder(trx);
+    builder->openObject();
+    builder->add("utc", aqlUtc.slice());
+    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("zoneInfo", VPackValue(VPackValueType::Object));
+    builder->add("name", VPackValue(info.abbrev));
+    builder->add("begin", aqlBegin.slice());
+    builder->add("end", aqlEnd.slice());
+    builder->add("dst", VPackValue(info.save.count() != 0));
+    builder->add("offset", VPackValue(info.offset.count()));
+    builder->close();
+    builder->close();
+
+    return AqlValue(builder->slice(), builder->size());
+  }
+
+  aqlUtcGuard.steal();
+  return aqlUtc;
 }
 
 /// @brief function DATE_TIMEZONE
@@ -3895,7 +3982,7 @@ AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
                                  VPackFunctionParameters const& parameters) {
   using namespace date;
 
-  const auto* zone = current_zone();
+  auto const* zone = current_zone();
 
   if (zone != nullptr) {
     return AqlValue(zone->name());
@@ -3911,7 +3998,7 @@ AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode 
 
   auto& list = get_tzdb_list();
   auto& db = list.front();
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   transaction::BuilderLeaser result(trx);
   result->openArray();
@@ -6904,7 +6991,7 @@ AqlValue Functions::Pi(ExpressionContext*, AstNode const&,
   return ::numberValue(std::acos(-1.0), true);
 }
 
-template<typename T> 
+template<typename T>
 std::optional<T> bitOperationValue(VPackSlice input) {
   if (input.isNumber() && input.getNumber<double>() >= 0) {
     uint64_t result = input.getNumber<uint64_t>();
@@ -7104,7 +7191,7 @@ AqlValue Functions::BitShiftRight(ExpressionContext* expressionContext, AstNode 
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
 }
-  
+
 /// @brief function BIT_POPCOUNT
 AqlValue Functions::BitPopcount(ExpressionContext* expressionContext, AstNode const& node,
                                 VPackFunctionParameters const& parameters) {
@@ -7711,9 +7798,10 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext,
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
 
-  AqlValueMaterializer materializer(vopts);
-  VPackSlice arraySlice = materializer.slice(baseArray, false);
-  VPackSlice replaceValue = materializer.slice(newValue, false);
+  AqlValueMaterializer materializer1(vopts);
+  VPackSlice arraySlice = materializer1.slice(baseArray, false);
+  AqlValueMaterializer materializer2(vopts);
+  VPackSlice replaceValue = materializer2.slice(newValue, false);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -7730,6 +7818,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext,
 
   uint64_t pos = length;
   if (replaceOffset >= length) {
+    AqlValueMaterializer materializer(vopts);
     VPackSlice paddVpValue = materializer.slice(paddValue, false);
     while (pos < replaceOffset) {
       builder->add(paddVpValue);
@@ -8611,8 +8700,196 @@ AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionCo
   }
 }
 
-AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
-                                   AstNode const&,
+static void buildKeyObject(VPackBuilder& builder, VPackStringRef key, bool closeObject = true) {
+  builder.openObject(true);
+  builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(), VPackValueType::String));
+  if (closeObject) {
+    builder.close();
+  }
+}
+
+static AqlValue ConvertToObject(transaction::Methods& trx, VPackSlice input,
+                                bool allowKeyConversionToObject,
+                                bool canUseCustomKey, bool ignoreErrors) {
+  // input is not an object.
+  // if this happens, it must be a string key
+  if (!input.isString() || !allowKeyConversionToObject) {
+    if (ignoreErrors) {
+      return AqlValue{};
+    }
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  // check if custom keys are allowed in this context
+  if (!canUseCustomKey) {
+    if (ignoreErrors) {
+      return AqlValue{};
+    }
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+  }
+
+  // convert string key into object with { _key: "string" }
+  TRI_ASSERT(allowKeyConversionToObject);
+  transaction::BuilderLeaser builder(&trx);
+  buildKeyObject(*builder.get(), input.stringRef());
+  return AqlValue{builder->slice()};
+}
+
+AqlValue Functions::MakeDistributeInput(arangodb::aql::ExpressionContext* expressionContext,
+                                        AstNode const&,
+                                        VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  VPackSlice const input = value.slice();  // will throw when wrong type
+
+  if (!input.isObject()) {
+    transaction::Methods& trx = expressionContext->trx();
+    VPackSlice flags = extractFunctionParameterValue(parameters, 1).slice();
+    bool allowKeyConversionToObject = flags["allowKeyConversionToObject"].getBool();
+    bool canUseCustomKey = flags["canUseCustomKey"].getBool();
+    bool ignoreErrors = flags["ignoreErrors"].getBool();
+    return ConvertToObject(trx, input, allowKeyConversionToObject, canUseCustomKey, ignoreErrors);
+  }
+  TRI_ASSERT(input.isObject());
+
+  return AqlValue{input};
+}
+
+AqlValue Functions::MakeDistributeInputWithKeyCreation(
+    arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
+    VPackFunctionParameters const& parameters) {
+  transaction::Methods& trx = expressionContext->trx();
+  AqlValue value = extractFunctionParameterValue(parameters, 0);
+
+  VPackSlice opts = extractFunctionParameterValue(parameters, 2).slice();
+  bool allowSpecifiedKeys = opts["allowSpecifiedKeys"].getBool();
+  bool ignoreErrors = opts["ignoreErrors"].getBool();
+  std::string const collectionName = opts["collection"].copyString();
+
+  // if empty, check alternative input register
+  if (value.isNull(true)) {
+    // value is set, but null
+    // check if there is a second input register available (UPSERT makes use of
+    // two input registers,
+    // one for the search document, the other for the insert document)
+    value = extractFunctionParameterValue(parameters, 1);
+    allowSpecifiedKeys = false;
+  }
+
+  if (collectionName.empty()) {
+    if (ignoreErrors) {
+      return AqlValue{};
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "could not extract collection name from parameters");
+  }
+
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
+  methods::Collections::lookup(trx.vocbase(), collectionName, logicalCollection);
+  if (logicalCollection == nullptr) {
+    if (ignoreErrors) {
+      return AqlValue{};
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   "could not find collection " + collectionName);
+  }
+
+  bool canUseCustomKey = logicalCollection->usesDefaultShardKeys() || allowSpecifiedKeys;
+
+  VPackSlice const input = value.slice();  // will throw when wrong type
+  if (!input.isObject()) {
+    return ConvertToObject(trx, input, true, canUseCustomKey, ignoreErrors);
+  }
+
+  TRI_ASSERT(input.isObject());
+
+  bool buildNewObject = !input.hasKey(StaticStrings::KeyString);
+  // we are responsible for creating keys if none present
+
+  if (!buildNewObject && !canUseCustomKey) {
+    if (ignoreErrors) {
+      return AqlValue{};
+    }
+    // the collection is not sharded by _key, but there is a _key present in
+    // the data. a _key was given, but user is not allowed to specify _key
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+  }
+
+  if (buildNewObject) {
+    transaction::BuilderLeaser builder(&trx);
+    buildKeyObject(*builder.get(),
+                   VPackStringRef(logicalCollection->createKey(input)), false);
+    for (auto cur : VPackObjectIterator(input)) {
+      builder->add(cur.key.stringRef(), cur.value);
+    }
+    builder->close();
+    return AqlValue{builder->slice()};
+  }
+
+  return AqlValue{input};
+}
+
+AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* expressionContext,
+                                             AstNode const&,
+                                             VPackFunctionParameters const& parameters) {
+  transaction::Methods& trx = expressionContext->trx();
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  VPackSlice input = value.slice();  // will throw when wrong type
+  if (input.isString()) {
+    // Need to fix this document.
+    // We need id and key as input.
+
+    VPackStringRef s(input);
+    size_t pos = s.find('/');
+    if (pos == std::string::npos) {
+      transaction::BuilderLeaser builder(&trx);
+      buildKeyObject(*builder.get(), s);
+      return AqlValue{builder->slice()};
+    }
+    // s is an id string, so let's create an object with id + key
+    auto key = s.substr(pos + 1);
+    transaction::BuilderLeaser builder(&trx);
+    buildKeyObject(*builder.get(), key, false);
+    builder->add(StaticStrings::IdString, input);
+    builder->close();
+
+    return AqlValue{builder->slice()};
+  }
+
+  // check input value
+  VPackSlice idSlice;
+  bool valid = input.isObject();
+  if (valid) {
+    idSlice = input.get(StaticStrings::IdString);
+    // no _id, no cookies
+    valid = !idSlice.isNone();
+  }
+
+  if (!valid) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid start vertex. Must either be "
+                                   "an _id string value or an object with _id. "
+                                   "Instead got: " +
+                                       input.toJson());
+  }
+
+  if (!input.hasKey(StaticStrings::KeyString)) {
+    // The input is an object, but only contains an _id, not a _key value that could be extracted.
+    // We can work with _id value only however so let us do this.
+    auto keyPart = transaction::helpers::extractKeyPart(idSlice);
+    transaction::BuilderLeaser builder(&trx);
+    buildKeyObject(*builder.get(), VPackStringRef(keyPart), false);
+    for (auto cur : VPackObjectIterator(input)) {
+      builder->add(cur.key.stringRef(), cur.value);
+    }
+    builder->close();
+    return AqlValue{builder->slice()};
+  }
+
+  return AqlValue{input};
+}
+
+AqlValue Functions::NotImplemented(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& params) {
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());

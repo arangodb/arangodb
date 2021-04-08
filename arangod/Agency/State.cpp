@@ -57,6 +57,10 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 using namespace arangodb::basics;
 
+DECLARE_GAUGE(arangodb_agency_log_size_bytes, uint64_t, "Agency replicated log size [bytes]");
+DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
+              "Current number of entries in agency client id lookup table");
+
 /// Constructor:
 State::State(application_features::ApplicationServer& server)
   : _server(server),
@@ -68,11 +72,9 @@ State::State(application_features::ApplicationServer& server)
     _lastCompactionAt(0),
     _cur(0),
     _log_size(
-      _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_log_size_bytes", uint64_t(0), "Agency replicated log size [bytes]")),
+      _server.getFeature<MetricsFeature>().add(arangodb_agency_log_size_bytes{})),
     _clientIdLookupCount(
-      _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_client_lookup_table_size", uint64_t(0), "Current number of entries in agency client id lookup table")) {}
+      _server.getFeature<MetricsFeature>().add(arangodb_agency_client_lookup_table_size{})) {}
 
 /// Default dtor
 State::~State() = default;
@@ -253,11 +255,13 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
 
   if (!slice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        30000, "Agency syntax requires array of transactions [[<queries>]]");
+        TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
+        "Agency syntax requires array of transactions [[<queries>]]");
   }
 
   if (slice.length() != applicable.size()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(30000, "Invalid transaction syntax");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
+                                   "Invalid transaction syntax");
   }
 
   MUTEX_LOCKER(mutexLocker, _logLock);
@@ -266,7 +270,7 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
 
   for (auto const& i : VPackArrayIterator(slice)) {
     if (!i.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(30000,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
                                      "Transaction syntax is [{<operations>}, "
                                      "{<preconditions>}, \"clientId\"]");
     }
@@ -1045,6 +1049,7 @@ bool State::loadOrPersistConfiguration() {
       }
     }
     _agent->id(uuid);
+    ServerState::instance()->setId(uuid);
 
     auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
@@ -1548,7 +1553,7 @@ query_t State::allLogs() const {
 std::vector<index_t> State::inquire(query_t const& query) const {
   if (!query->slice().isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20001,
+        TRI_ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,
         std::string(
             "Inquiry handles a list of string clientIds: [<clientId>] ") +
             ". We got " + query->toJson());
@@ -1561,8 +1566,9 @@ std::vector<index_t> State::inquire(query_t const& query) const {
   for (auto const& i : VPackArrayIterator(query->slice())) {
     if (!i.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          210002, std::string("ClientIds must be strings. On position ") +
-                      std::to_string(pos++) + " we got " + i.toJson());
+          TRI_ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,
+          std::string("ClientIds must be strings. On position ") +
+              std::to_string(pos++) + " we got " + i.toJson());
     }
 
     auto ret = _clientIdLookupTable.equal_range(i.copyString());

@@ -25,9 +25,9 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_GEO_ANALYZER 1
 
 #include <s2/s2region_term_indexer.h>
-
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
+
 #include "analysis/analyzer.hpp"
 #include "utils/frozen_attributes.hpp"
 
@@ -52,7 +52,7 @@ class GeoAnalyzer
   : public irs::frozen_attributes<2, irs::analysis::analyzer>,
     private irs::util::noncopyable {
  public:
-  virtual bool next() noexcept final;
+  virtual bool next() noexcept override final;
   using irs::analysis::analyzer::reset;
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const = 0;

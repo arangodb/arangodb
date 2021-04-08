@@ -1,0 +1,18 @@
+name: arangodb_client_connection_statistics_total_time
+introducedIn: "3.8.0"
+help: |
+  Total time needed to answer a request
+unit: s
+type: histogram
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Histogram of the total times required to process a request. This includes
+  the time required to read the incoming request, the time the request is
+  sitting in the queue, the time to actually process the request, and the
+  time required to send the response.

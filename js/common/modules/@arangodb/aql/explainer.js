@@ -1867,7 +1867,7 @@ function processQuery(query, explain, planIndex) {
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
-        return keyword('DISTRIBUTE') + '  ' + annotation('/* create keys: ' + node.createKeys + ', variable: ') + variableName(node.variable) + ' ' + annotation('*/');
+        return keyword('DISTRIBUTE') + ' ' + variableName(node.variable);
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
@@ -2578,7 +2578,7 @@ function explainQuerysRegisters(plan) {
     } = data;
     const nrRegs = nrRegsArray[depth];
     const regIdByVarId = Object.fromEntries(
-      varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
+      varInfoList.filter(varInfo => varInfo.RegisterId < 1000).map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
 
     const meta = {id, type, depth};
     const result = [];

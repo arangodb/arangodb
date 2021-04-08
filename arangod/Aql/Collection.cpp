@@ -130,7 +130,7 @@ size_t Collection::responsibleServers(std::unordered_set<std::string>& result) c
   return n;
 }
 
-std::string Collection::distributeShardsLike() const {
+std::string const& Collection::distributeShardsLike() const {
   return getCollection()->distributeShardsLike();
 }
 

@@ -49,6 +49,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBColumnFamilyManager.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
+  RocksDBEngine/RocksDBCuckooIndexEstimator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
   RocksDBEngine/RocksDBFormat.cpp
@@ -78,6 +79,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBRestHandlers.cpp
   RocksDBEngine/RocksDBRestReplicationHandler.cpp
   RocksDBEngine/RocksDBRestWalHandler.cpp
+  RocksDBEngine/RocksDBSavePoint.cpp
   RocksDBEngine/RocksDBSettingsManager.cpp
   RocksDBEngine/RocksDBSyncThread.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp

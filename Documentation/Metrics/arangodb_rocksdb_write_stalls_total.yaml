@@ -1,0 +1,32 @@
+name: arangodb_rocksdb_write_stalls_total
+renamedFrom: rocksdb_write_stalls
+introducedIn: "3.8.0"
+help: |
+  Number of times RocksDB has entered a stalled (slowed) write state
+unit: number
+type: counter
+category: RocksDB
+complexity: simple
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This counter reflects the number of times RocksDB was observed by
+  ArangoDB to have entered a stalled (slowed) write state.
+  
+  If the RocksDB background threads which do cleanup and compaction
+  cannot keep up with the writing, then RocksDB first throttles its
+  write rate ("write stall") and later stops the writing entirely
+  ("write stop"). Both are suboptimal, since the write rate is too high.
+threshold: |
+  If this number grows, you are probably writing faster to ArangoDB than
+  RocksDB can keep up with its background processing. This is OK for
+  a while, but might eventually lead to actual write stops, which are
+  bad since they can lead to unavailability.
+troubleshoot: |
+  Quite often, RocksDB is limited by the available I/O bandwidth. Sometimes,
+  it is not the bandwidth itself, but the number of I/O operations per
+  second (IOPS) which is limited. If you are in a cloud environment,
+  IOPS are often scarce (or expensive) and you might be able to
+  deploy more.

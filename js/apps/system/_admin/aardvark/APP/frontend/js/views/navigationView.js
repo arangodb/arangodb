@@ -12,9 +12,7 @@
       'click .tab': 'navigateByTab',
       'click li': 'switchTab',
       'click .arangodbLogo': 'selectMenuItem',
-      'mouseenter .dropdown > *': 'showDropdown',
-      'click .shortcut-icons p': 'showShortcutModal',
-      'mouseleave .dropdown': 'hideDropdown'
+      'click .shortcut-icons p': 'showShortcutModal'
     },
 
     renderFirst: true,
@@ -45,6 +43,7 @@
 
       this.isCluster = options.isCluster;
       this.foxxApiEnabled = options.foxxApiEnabled;
+      this.statisticsInAllDatabases = options.statisticsInAllDatabases;
 
       this.handleKeyboardHotkeys();
 
@@ -66,6 +65,7 @@
 
     render: function () {
       $(this.subEl).html(this.templateSub.render({
+        frontendConfig: window.frontendConfig,
         currentDB: this.currentDB.toJSON()
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
@@ -76,6 +76,7 @@
 
       $(this.el).html(this.template.render({
         currentDB: this.currentDB,
+        statisticsInAllDatabases: this.statisticsInAllDatabases,
         isCluster: this.isCluster,
         foxxApiEnabled: this.foxxApiEnabled,
         readOnly: readOnly
@@ -191,13 +192,6 @@
     },
 
     subMenuConfig: {
-      cluster: [
-        {
-          name: 'Dashboard',
-          view: undefined,
-          active: true
-        }
-      ],
       collections: [
         {
           name: '',
@@ -280,6 +274,8 @@
           window.App[menu.route].resetState();
         }
         window.App[menu.route]();
+      } else if (menu.href) {
+        window.App.navigate(menu.href, {trigger: true});
       }
 
       // select active sub view entry
@@ -334,8 +330,6 @@
         this.renderSubMenu(menuItem);
       }
 
-      // this.breadcrumb(menuItem.split('-')[0])
-
       $('.navlist li').removeClass('active');
       if (typeof menuItem === 'string') {
         if (noMenuEntry) {
@@ -346,30 +340,6 @@
         }
       }
       arangoHelper.hideArangoNotifications();
-    },
-
-    showSubDropdown: function (e) {
-      $(e.currentTarget).find('.subBarDropdown').toggle();
-    },
-
-    showDropdown: function (e) {
-      var tab = e.target || e.srcElement;
-      var navigateTo = tab.id;
-      if (navigateTo === 'links' || navigateTo === 'link_dropdown' || e.currentTarget.id === 'links') {
-        $('#link_dropdown').fadeIn(1);
-      } else if (navigateTo === 'tools' || navigateTo === 'tools_dropdown' || e.currentTarget.id === 'tools') {
-        $('#tools_dropdown').fadeIn(1);
-      } else if (navigateTo === 'dbselection' || navigateTo === 'dbs_dropdown' || e.currentTarget.id === 'dbselection') {
-        $('#dbs_dropdown').fadeIn(1);
-      }
-    },
-
-    hideDropdown: function (e) {
-      // var tab = e.target || e.srcElement;
-      // tab = $(tab).parent();
-      $('#link_dropdown').fadeOut(1);
-      $('#tools_dropdown').fadeOut(1);
-      $('#dbs_dropdown').fadeOut(1);
     }
 
   });

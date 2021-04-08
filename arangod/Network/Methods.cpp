@@ -202,59 +202,34 @@ static std::unique_ptr<fuerte::Response> buildResponse(fuerte::StatusCode status
   return resp;
 }
 
-/// @brief send a request to a given destination
-FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
-                      std::string path, velocypack::Buffer<uint8_t> payload,
-                      RequestOptions const& options, Headers headers) {
-  LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
-      << "request to '" << dest << "' '" << fuerte::to_string(type) << " "
-      << path << "'";
+namespace {
 
-  // FIXME build future.reset(..)
-  try {
-    auto req = prepareRequest(pool, type, std::move(path), std::move(payload),
-                              options, std::move(headers));
-    req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(options.timeout));
+struct Pack {
+  DestinationId dest;
+  futures::Promise<network::Response> promise;
+  std::unique_ptr<fuerte::Response> tmp_res;
+  std::unique_ptr<fuerte::Request> tmp_req;
+  fuerte::Error tmp_err;
+  RequestLane continuationLane;
+  bool skipScheduler;
+  Pack(DestinationId&& dest, RequestLane lane, bool skip)
+      : dest(std::move(dest)), continuationLane(lane), skipScheduler(skip) {}
+};
 
-    if (!pool || !pool->config().clusterInfo) {
-      LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
-          << "connection pool unavailable";
-      return futures::makeFuture(Response{std::move(dest), Error::ConnectionCanceled,
-                                          std::move(req), nullptr});
-    }
-
-    arangodb::network::EndpointSpec spec;
-    int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
-    if (res != TRI_ERROR_NO_ERROR) {
-      // We fake a successful request with statusCode 503 and a backend not
-      // available error here:
-      auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
-      return futures::makeFuture(Response{std::move(dest), Error::NoError,
-                                          std::move(req), std::move(resp)});
-    }
-    TRI_ASSERT(!spec.endpoint.empty());
-
-    struct Pack {
-      DestinationId dest;
-      futures::Promise<network::Response> promise;
-      std::unique_ptr<fuerte::Response> tmp_res;
-      std::unique_ptr<fuerte::Request> tmp_req;
-      fuerte::Error tmp_err;
-      RequestLane continuationLane;
-      bool skipScheduler;
-      Pack(DestinationId&& dest, RequestLane lane, bool skip)
-          : dest(std::move(dest)), continuationLane(lane), skipScheduler(skip) {}
-    };
-    // fits in SSO of std::function
-    static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
-
-    auto& server = pool->config().clusterInfo->server();
-    auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler);
-    FutureRes f = p->promise.getFuture();
-    NetworkFeature& nf = server.getFeature<NetworkFeature>();
-    nf.sendRequest(*pool, options, spec.endpoint, std::move(req), [p(std::move(p))](fuerte::Error err, std::unique_ptr<fuerte::Request> req, std::unique_ptr<fuerte::Response> res) mutable {
+void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
+                         RequestOptions const& options, std::string endpoint,
+                         std::unique_ptr<Request>&& req) {
+  auto& server = pool->config().clusterInfo->server();
+  NetworkFeature& nf = server.getFeature<NetworkFeature>();
+  nf.sendRequest(*pool, options, endpoint, std::move(req), 
+    [p(std::move(p)), pool, &options, endpoint](fuerte::Error err, std::unique_ptr<fuerte::Request> req, std::unique_ptr<fuerte::Response> res, bool isFromPool) mutable {
       TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled); 
+
+      if (err == fuerte::Error::ConnectionClosed && isFromPool) {
+        // retry under certain conditions
+        actuallySendRequest(std::move(p), pool, options, endpoint, std::move(req));
+        return;
+      }
 
       auto* sch = SchedulerFeature::SCHEDULER;
       if (p->skipScheduler || sch == nullptr) {
@@ -278,7 +253,49 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                                      std::move(p->tmp_req), nullptr});
       }
     });
+}
 
+}
+
+/// @brief send a request to a given destination
+FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
+                      std::string path, velocypack::Buffer<uint8_t> payload,
+                      RequestOptions const& options, Headers headers) {
+  LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
+      << "request to '" << dest << "' '" << fuerte::to_string(type) << " "
+      << path << "'";
+
+  // FIXME build future.reset(..)
+  try {
+    auto req = prepareRequest(pool, type, std::move(path), std::move(payload),
+                              options, std::move(headers));
+    req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(options.timeout));
+
+    if (!pool || !pool->config().clusterInfo) {
+      LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
+          << "connection pool unavailable";
+      return futures::makeFuture(Response{std::move(dest), Error::ConnectionCanceled,
+                                          std::move(req), nullptr});
+    }
+
+    arangodb::network::EndpointSpec spec;
+    auto res = resolveDestination(*pool->config().clusterInfo, dest, spec);
+    if (res != TRI_ERROR_NO_ERROR) {
+      // We fake a successful request with statusCode 503 and a backend not
+      // available error here:
+      auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
+      return futures::makeFuture(Response{std::move(dest), Error::NoError,
+                                          std::move(req), std::move(resp)});
+    }
+    TRI_ASSERT(!spec.endpoint.empty());
+
+    // fits in SSO of std::function
+    static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
+
+    auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
+                                    options.skipScheduler);
+    FutureRes f = p->promise.getFuture();
+    actuallySendRequest(std::move(p), pool, options, spec.endpoint, std::move(req));
     return f;
 
   } catch (std::exception const& e) {
@@ -351,7 +368,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     }
 
     arangodb::network::EndpointSpec spec;
-    int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
+    auto res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
@@ -375,7 +392,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     nf.sendRequest(*_pool, _options, spec.endpoint, std::move(_tmp_req),
                    [self = shared_from_this()](fuerte::Error err,
                                                std::unique_ptr<fuerte::Request> req,
-                                               std::unique_ptr<fuerte::Response> res) {
+                                               std::unique_ptr<fuerte::Response> res,
+                                               bool isFromPool) {
                      self->_tmp_err = err;
                      self->_tmp_req = std::move(req);
                      self->_tmp_res = std::move(res);

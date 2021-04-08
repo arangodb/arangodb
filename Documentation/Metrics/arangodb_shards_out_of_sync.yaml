@@ -1,0 +1,27 @@
+name: arangodb_shards_out_of_sync
+introducedIn: "3.7.1"
+help: |
+  Number of leader shards not fully replicated.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of leader shards not fully replicated. This is counted for all
+  shards for which this server is currently the leader. The number is
+  increased by one for every shards for which not all followers are in sync.
+troubleshoot: |
+  Needless to say, such a situation is not good resilience, since we
+  do not have as many copies of the data as the `replicationFactor`
+  prescribes. If this metrics has a value larger than 0, then some
+  action is indicated. During an upgrade or when some dbserver was
+  restarted, it can happen that shard followers are out of sync.
+  Normally, shards should get in sync on their own, so observation
+  and waiting is a good measure at first. However, if the situation
+  persists, something is wrong, potentially some constant server crash
+  (maybe out of memory crashes?) or another situation preventing shards
+  to get in sync. Contact ArangoDB customer support in this case.

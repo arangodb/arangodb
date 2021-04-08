@@ -83,7 +83,6 @@
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestRedirectHandler.h"
-#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -295,7 +294,7 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
   Result res;
   for (auto& up : _servers) {
     Result res2 = up->reloadTLS();
-    if (!res2.fail()) {
+    if (res2.fail()) {
       res = res2;  // yes, we only report the last error if there is one
     }
   }
@@ -580,16 +579,11 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/statistics",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_admin/metrics",
+  _handlerFactory->addPrefixHandler("/_admin/metrics",
                               RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
-
-  if (cluster.isEnabled()) {
-    _handlerFactory->addPrefixHandler("/_admin/repair",
-                                      RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
-  }
 
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {

@@ -494,11 +494,21 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### wyhash
+
+* Name: wyhash
+* Version: commit 896d7c57f68d96938f718c0695c44866d14b48d6
+* Date: 2021-04-02 20:34:24 +08:00
+* GitHub: https://github.com/wangyi-fudan/wyhash/
+* License: https://github.com/wangyi-fudan/wyhash/blob/master/LICENSE
+* License Name: Unlicense
+* License Id: Unlicense
+
 ### xxHash
 
 * Name: xxHash
-* Version: 0.7.3 (unreleased)
-* Date: 2019-10-28 12:52:58Z
+* Version: 0.8.0
+* Date: 2021-03-17 17:51:40 +01:00
 * GitHub: https://github.com/Cyan4973/xxHash/
 * License: https://raw.githubusercontent.com/Cyan4973/xxHash/master/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -598,6 +608,15 @@ License Id: ICU
 * License Id: MIT
 
 ### Backend libraries
+
+#### AsciiTable
+
+* Name ascii-table
+* Version: 0.0.8
+* GitHub: https://github.com/sorensen/ascii-table
+* License: https://github.com/sorensen/ascii-table/blob/master/license
+* License Name: MIT License
+* License Id: MIT
 
 #### JSUnity
 

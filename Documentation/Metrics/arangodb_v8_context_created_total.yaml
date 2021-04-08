@@ -1,0 +1,19 @@
+name: arangodb_v8_context_created_total
+renamedFrom: arangodb_v8_context_created
+introducedIn: "3.8.0"
+help: |
+  Total number of V8 contexts ever created
+unit: number
+type: counter
+category: V8
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This counter reflects the total number of V8 contexts ever created. It is
+  OK if this number keeps growing since the V8 contexts are created and
+  destroyed as needed. In rare cases a high fluctuation can indicate
+  some unfortunate usage pattern.

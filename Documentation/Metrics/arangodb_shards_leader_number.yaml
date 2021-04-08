@@ -1,0 +1,30 @@
+name: arangodb_shards_leader_number
+renamedFrom: arangodb_shards_leader_count
+introducedIn: "3.8.0"
+help: |
+  Number of leader shards on this machine.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of leader shards on this machine. Every shard has a leader and
+  potentially multiple followers.
+troubleshoot: |
+  Since the leaders perform all the read and write operations and
+  the followers only replicate the writes, one should usually have a
+  relatively even distribution of leader shards across dbservers. An
+  exception can be one-shard deployments, in which every collection has
+  a single shard and all shards in a database must have the same leader.
+  If you have few databases in a one-shard deployment, then an uneven
+  distribution of leader shards is natural.
+  
+  You can either move shards manually, use the "Rebalance shards" button
+  in the UI, or use the cluster maintenance tools in [this repository]
+  (https://github.com/arangodb/cluster-maintenance) (`create-move-plan`
+  and `execute-move-plan` specifically). In the latter case, contact
+  ArangoDB customer support.

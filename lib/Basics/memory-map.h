@@ -25,6 +25,7 @@
 #define ARANGODB_BASICS_MEMORY__MAP_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ErrorCode.h"
 #include "Basics/PageSize.h"
 #include "Basics/operating-system.h"
 
@@ -60,21 +61,21 @@
 /// @brief maps a file on disk onto memory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
-               int memoryProtection, int flags, int fileDescriptor,
-               void** mmHandle, int64_t offset, void** result);
+ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
+                     int memoryProtection, int flags, int fileDescriptor,
+                     void** mmHandle, int64_t offset, void** result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 'unmaps' or removes memory associated with a memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
+ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
                  int fileDescriptor, void** mmHandle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gives hints about upcoming memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
+ErrorCode TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
 
 #endif

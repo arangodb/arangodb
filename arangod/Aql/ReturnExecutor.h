@@ -52,7 +52,7 @@ class ReturnExecutorInfos {
 
   RegisterId getInputRegisterId() const { return _inputRegisterId; }
 
-  RegisterId getOutputRegisterId() const { return 0; }
+  RegisterId getOutputRegisterId() const { return RegisterId(0); }
 
   bool doCount() const { return _doCount; }
 

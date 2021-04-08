@@ -48,24 +48,29 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-RefactoredTraverserCache::RefactoredTraverserCache(arangodb::transaction::Methods* trx,
-                                                   aql::QueryContext* query,
-                                                   arangodb::ResourceMonitor& resourceMonitor)
+RefactoredTraverserCache::RefactoredTraverserCache(
+    arangodb::transaction::Methods* trx, aql::QueryContext* query,
+    arangodb::ResourceMonitor& resourceMonitor, arangodb::aql::TraversalStats& stats,
+    std::map<std::string, std::string> const& collectionToShardMap)
     : _query(query),
       _trx(trx),
-      _stringHeap(resourceMonitor, 4096) /* arbitrary block-size may be adjusted for performance */
-{
+      _stringHeap(resourceMonitor, 4096), /* arbitrary block-size may be adjusted for performance */
+      _collectionToShardMap(collectionToShardMap),
+      _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
+RefactoredTraverserCache::~RefactoredTraverserCache() { clear(); }
+
 void RefactoredTraverserCache::clear() {
+  _resourceMonitor.decreaseMemoryUsage(
+      _persistedStrings.size() * sizeof(arangodb::velocypack::HashedStringRef));
   _persistedStrings.clear();
   _stringHeap.clear();
 }
 
 template <typename ResultType>
-bool RefactoredTraverserCache::appendEdge(aql::TraversalStats& stats,
-                                          EdgeDocumentToken const& idToken,
+bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
                                           ResultType& result) {
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
@@ -94,63 +99,67 @@ bool RefactoredTraverserCache::appendEdge(aql::TraversalStats& stats,
         << "Could not extract indexed edge document, return 'null' instead. "
         << "This is most likely a caching issue. Try: 'db." << col->name()
         << ".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
-    TRI_ASSERT(false);  // for maintainer mode
   }
   return res;
 }
 
-template <typename ResultType>
-bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
-                                            velocypack::HashedStringRef const& idHashed,
-                                            ResultType& result) {
-  velocypack::StringRef id{idHashed};
-  size_t pos = id.find('/');
-  if (pos == std::string::npos || pos + 1 == id.size()) {
+ResultT<std::pair<std::string, size_t>> RefactoredTraverserCache::extractCollectionName(
+    velocypack::HashedStringRef const& idHashed) const {
+  size_t pos = idHashed.find('/');
+  if (pos == std::string::npos) {
     // Invalid input. If we get here somehow we managed to store invalid
     // _from/_to values or the traverser did a let an illegal start through
-    TRI_ASSERT(false);  // for maintainer mode
-    return false;
+    TRI_ASSERT(false);
+    return Result{TRI_ERROR_GRAPH_INVALID_EDGE,
+                  "edge contains invalid value " + idHashed.toString()};
   }
 
-  std::string collectionName = id.substr(0, pos).toString();
+  std::string colName = idHashed.substr(0, pos).toString();
+  if (_collectionToShardMap.empty()) {
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
+    return std::make_pair(colName, pos);
+  }
+  auto it = _collectionToShardMap.find(colName);
+  if (it == _collectionToShardMap.end()) {
+    // Connected to a vertex where we do not know the Shard to.
+    return Result{TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                  "collection not known to traversal: '" + colName +
+                      "'. please add 'WITH " + colName +
+                      "' as the first line in your AQL"};
+  }
+  // We have translated to a Shard
+  return std::make_pair(it->second, pos);
+}
 
-  try {
-    Result res = _trx->documentFastPathLocal(
-        collectionName, id.substr(pos + 1),
-        [&](LocalDocumentId const&, VPackSlice doc) -> bool {
-          stats.addScannedIndex(1);
-          // copying...
-          if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-            result = aql::AqlValue(doc);
-          } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
-            result.add(doc);
-          }
-          return true;
-        });
-    if (res.ok()) {
-      return true;
-    }
+template <typename ResultType>
+bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
+                                            velocypack::HashedStringRef const& id,
+                                            ResultType& result) {
+  auto collectionNameResult = extractCollectionName(id);
+  if (collectionNameResult.fail()) {
+    THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+  }
 
-    if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-      // ok we are in a rather bad state. Better throw and abort.
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  } catch (basics::Exception const& ex) {
-    // Note: This will be only relevant if SmartGraph Provider is able to reuse SingleServerProvider.
-    if (ServerState::instance()->isDBServer()) {
-      // on a DB server, we could have got here only in the OneShard case.
-      // in this case turn the rather misleading "collection or view not found"
-      // error into a nicer "collection not known to traversal, please add WITH"
-      // message, so users know what to do
-      if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                       "collection not known to traversal: '" + collectionName +
-                                           "'. please add 'WITH " + collectionName +
-                                           "' as the first line in your AQL");
-      }
-    }
+  Result res = _trx->documentFastPathLocal(
+      collectionNameResult.get().first,
+      id.substr(collectionNameResult.get().second + 1).stringRef(),
+      [&](LocalDocumentId const&, VPackSlice doc) -> bool {
+        stats.addScannedIndex(1);
+        // copying...
+        if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+          result = aql::AqlValue(doc);
+        } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+          result.add(doc);
+        }
+        return true;
+      });
+  if (res.ok()) {
+    return true;
+  }
 
-    throw;
+  if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    // ok we are in a rather bad state. Better throw and abort.
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   // Register a warning. It is okay though but helps the user
@@ -160,10 +169,9 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
   return false;
 }
 
-void RefactoredTraverserCache::insertEdgeIntoResult(aql::TraversalStats& stats,
-                                                    EdgeDocumentToken const& idToken,
+void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
                                                     VPackBuilder& builder) {
-  if (!appendEdge(stats, idToken, builder)) {
+  if (!appendEdge(idToken, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
@@ -176,24 +184,6 @@ void RefactoredTraverserCache::insertVertexIntoResult(aql::TraversalStats& stats
   }
 }
 
-aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(aql::TraversalStats& stats,
-                                                           EdgeDocumentToken const& idToken) {
-  aql::AqlValue val;
-  if (!appendEdge(stats, idToken, val)) {
-    val = aql::AqlValue(aql::AqlValueHintNull{});
-  }
-  return val;
-}
-
-aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(
-    aql::TraversalStats& stats, arangodb::velocypack::HashedStringRef idString) {
-  aql::AqlValue val;
-  if (!appendVertex(stats, idString, val)) {
-    val = aql::AqlValue(aql::AqlValueHintNull{});
-  }
-  return val;
-}
-
 arangodb::velocypack::HashedStringRef RefactoredTraverserCache::persistString(
     arangodb::velocypack::HashedStringRef idString) {
   auto it = _persistedStrings.find(idString);
@@ -202,5 +192,6 @@ arangodb::velocypack::HashedStringRef RefactoredTraverserCache::persistString(
   }
   auto res = _stringHeap.registerString(idString);
   _persistedStrings.emplace(res);
+  _resourceMonitor.increaseMemoryUsage(sizeof(res));
   return res;
 }

@@ -1,0 +1,14 @@
+name: arangodb_replication_tailing_removals_total
+renamedFrom: arangodb_replication_tailing_removals
+introducedIn: "3.8.0"
+help: |
+  Number of replication tailing document removals processed.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The amount of document removal based marker operations on a
+  follower dbserver.

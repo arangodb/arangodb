@@ -37,8 +37,6 @@
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
 
-#include <Basics/ResourceUsage.h>
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -65,12 +63,10 @@ class Ast;
 /// @brief an AQL query basic interface
 class QueryContext {
  private:
-
   QueryContext(QueryContext const&) = delete;
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  
   explicit QueryContext(TRI_vocbase_t& vocbase);
 
   virtual ~QueryContext();
@@ -108,8 +104,6 @@ class QueryContext {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
       
- public:
-  
   virtual QueryOptions const& queryOptions() const = 0;
   
   /// @brief pass-thru a resolver object from the transaction context
@@ -131,20 +125,26 @@ class QueryContext {
   virtual double getLockTimeout() const noexcept = 0;
   virtual void setLockTimeout(double timeout) = 0;
   
-public:
-  
   virtual void enterV8Context();
   
   virtual void exitV8Context() {}
   
   virtual bool hasEnteredV8Context() const { return false; }
+  
+  // base overhead for each query. the number used here is somewhat arbitrary. 
+  // it is just that all the basics data structures of a query are not totally 
+  // free, and there is not other accounting for them. note: this value is
+  // counted up in the constructor and counted down in the destructor.
+  constexpr static std::size_t baseMemoryUsage = 8192;
 
  protected:
-  
-  TRI_voc_tick_t const _queryId;
-
   /// @brief current resources and limits used by query
   arangodb::ResourceMonitor _resourceMonitor;
+
+  /// @brief registers/unregisters query base ovehead
+  arangodb::ResourceUsageScope _baseOverHeadTracker;
+  
+  TRI_voc_tick_t const _queryId;
   
   /// @brief thread-safe query warnings collector
   QueryWarnings _warnings;
