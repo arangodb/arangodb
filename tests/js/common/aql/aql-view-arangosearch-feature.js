@@ -829,7 +829,7 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual([["oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"]],
                     result[0]);
       } finally {
-        analyzers.remove("gd");
+        analyzers.remove("gd", true);
       }
     },
 
