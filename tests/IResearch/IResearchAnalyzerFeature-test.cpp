@@ -294,31 +294,31 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
   }
 
   virtual bool reset(irs::string_ref const& data) override {
-    switch (_returnType.value) {
-      case arangodb::iresearch::AnalyzerValueType::Bool:
-        _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(!data.null()));
-        _vpackTerm.value = _typedValue.slice();
-        break;
-      case arangodb::iresearch::AnalyzerValueType::Number:
-        _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(data.null() ? 0 : 1));
-        _vpackTerm.value = _typedValue.slice();
-        break;
-      case arangodb::iresearch::AnalyzerValueType::String:
-        if (!data.null()) {
-          _strVal = data;
-        } else {
-          _strVal.clear();
-        }
-        _term.value = irs::ref_cast<irs::byte_type>(_strVal);
-        break;
+    if (!data.null()) {
+      _strVal = data;
+    } else {
+      _strVal.clear();
     }
-    _resetted = true;
     return true;
   }
 
   virtual bool next() override {
-    if (_resetted) {
-      _resetted = false;
+    if (!_strVal.empty()) {
+      switch (_returnType.value) {
+        case arangodb::iresearch::AnalyzerValueType::Bool:
+          _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(_strVal.size() % 2 == 0));
+          _vpackTerm.value = _typedValue.slice();
+          break;
+        case arangodb::iresearch::AnalyzerValueType::Number:
+          _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(
+            static_cast<double>(_strVal.size() % 2)));
+          _vpackTerm.value = _typedValue.slice();
+          break;
+        case arangodb::iresearch::AnalyzerValueType::String:
+          _term.value = irs::ref_cast<irs::byte_type>(_strVal);
+          break;
+      }
+      _strVal.pop_back();
       return true;
     } else {
       return false;
@@ -346,7 +346,6 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
   irs::term_attribute _term;
   arangodb::iresearch::VPackTermAttribute _vpackTerm;
   irs::increment _inc;
-  bool _resetted{false};
   arangodb::iresearch::AnalyzerValueTypeAttribute _returnType;
   arangodb::aql::AqlValue _typedValue;
 };
@@ -2861,20 +2860,27 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     std::string analyzer(arangodb::StaticStrings::SystemDatabase +
                          "::test_number_analyzer");
-    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    irs::string_ref data("123");
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
     AqlValueWrapper result(impl(&exprCtx, node, *args));
-    EXPECT_TRUE(result->isArray());
-    EXPECT_EQ(4, result->length());
-    std::string expected1[] = {"oL/wAAAAAAAA",
-                               "sL/wAAAAAA==", "wL/wAAA=", "0L/w"};
+    ASSERT_TRUE(result->isArray());
+    ASSERT_EQ(3, result->length());
+    std::string expected123[] = {
+      "oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w",
+      "oIAAAAAAAAAA", "sIAAAAAAAA==", "wIAAAAA=", "0IAA",
+      "oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"};
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
       auto entry = result->at(i, mustDestroy, false).slice();
-      EXPECT_TRUE(entry.isString());
-      EXPECT_EQ(expected1[i], arangodb::iresearch::getStringRef(entry));
+      ASSERT_TRUE(entry.isArray());
+      ASSERT_EQ(4, entry.length());
+      for (size_t j = 0; j < entry.length(); ++j) {
+        auto actual = entry.at(j);
+        ASSERT_TRUE(actual .isString());
+        ASSERT_EQ(expected123[i * 4 + j], actual.copyString());
+      }
     }
   }
 
@@ -2882,19 +2888,20 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     std::string analyzer(arangodb::StaticStrings::SystemDatabase +
                          "::test_bool_analyzer");
-    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    irs::string_ref data("123");
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
     AqlValueWrapper result(impl(&exprCtx, node, *args));
-    EXPECT_TRUE(result->isArray());
-    EXPECT_EQ(1, result->length());
-    std::string expected1[] = {"/w=="};
+    ASSERT_TRUE(result->isArray());
+    ASSERT_EQ(3, result->length());
+    std::string expected1[] = {"AA==", "/w==", "AA=="};
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
       auto entry = result->at(i, mustDestroy, false).slice();
-      EXPECT_TRUE(entry.isString());
-      EXPECT_EQ(expected1[i], arangodb::iresearch::getStringRef(entry));
+      ASSERT_TRUE(entry.isArray());
+      ASSERT_TRUE(entry.at(0).isString());
+      ASSERT_EQ(expected1[i], arangodb::iresearch::getStringRef(entry.at(0)));
     }
   }
 

@@ -815,6 +815,23 @@ function iResearchFeatureAqlTestSuite () {
       }
 
     },
+    
+    testTokensFunctionWithNumberAnalyzer : function() {
+      let analyzer = analyzers.save("gd","aql",
+        { queryString: "RETURN @param",
+          returnType: "number"}, []);
+      assertNotNull(analyzer);
+      try {
+        let result = db._query("RETURN TOKENS('1', 'gd')").toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(1, result[0].length);
+        assertEqual([["oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"]],
+                    result[0]);
+      } finally {
+        analyzers.remove("gd");
+      }
+    },
 
     testDefaultAnalyzers : function() {
       // invalid
