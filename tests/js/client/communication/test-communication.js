@@ -1,5 +1,6 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global fail, assertTrue, assertFalse, assertEqual,
+   assertNotEqual, arango, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -355,7 +356,6 @@ function GenericAqlSetupPathSuite(type) {
 
 
   const deactivateShardLockingFailure = () => {
-    
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
       const endpoint = getEndpointById(servers[0]);
