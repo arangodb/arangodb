@@ -79,9 +79,6 @@ class LoggerStreamBase {
  protected:
   std::stringstream _out;
   size_t _topicId;
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  LogLevel _topicLevel;
-#endif
   LogLevel _level;
   int _line;
   char const* _logid;
