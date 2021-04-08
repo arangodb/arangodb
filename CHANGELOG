@@ -1,7 +1,7 @@
 devel
 -----
 
-* added enterprise-build-repository and oskar-build-repository to `--version`
+* Added enterprise-build-repository and oskar-build-repository to `--version`
   as `enterprise-build-repository` and `oskar-build-repository`.
 
 * Added metric `arangodb_transactions_expired` to track the total number 
