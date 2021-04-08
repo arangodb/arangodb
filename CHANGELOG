@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
 * Added enterprise-build-repository and oskar-build-repository to `--version`
   as `enterprise-build-repository` and `oskar-build-repository`.
 
