@@ -74,7 +74,7 @@ function getEndpointById(id) {
 
 const runShell = function (args, prefix) {
   let options = internal.options();
-  
+
   let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
   let moreArgs = {
     'javascript.startup-directory': options['javascript.startup-directory'],
@@ -468,6 +468,7 @@ function GenericAqlSetupPathSuite(type) {
 
   // Note: A different test checks that the API works this way
   const apiExclusive = `
+  while (true) {
     let trx;
     const obj = { collections: { exclusive: "${twoShardColName}" } };
     let result = arango.POST_RAW("/_api/transaction/begin", obj);
@@ -482,14 +483,17 @@ function GenericAqlSetupPathSuite(type) {
         // Commit
         result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
         if (result.code == 200) {
-          return;
+          break;
         }
     }
-    print('apiExclusive: ');
+    print('apiExclusive failure:');
     print(result);
     print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+    return;
+  }
   `;
   const apiWrite = `
+  while (true) {
     let trx;
     const obj = { collections: { write: "${twoShardColName}" } };
     let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
@@ -501,16 +505,19 @@ function GenericAqlSetupPathSuite(type) {
         // Commit
         result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
         if (result.code === 200)  {
-          return;
+          break;
         }
       }
     }
-    print('apiWrite');
+    print('apiWrite failure:');
     print(result);
     // Abort
     print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+    return;
+  }
   `;
   const apiRead = `
+  while(true) {
     let trx;
     const obj = { collections: { read: "${twoShardColName}" } };
     let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
@@ -520,14 +527,16 @@ function GenericAqlSetupPathSuite(type) {
       if (false !== arango.POST("/_api/cursor", { query }, { "x-arango-trx-id": trx })) {
         // Commit
         if (false !== arango.PUT('/_api/transaction/' + encodeURIComponent(trx), {}, {})) {
-          return;
+          break;
         }
       }
-   }
-   print('apiRead');
-   print(result);
-   // Abort
-   print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+    }
+    print('apiRead failure:');
+    print(result);
+    // Abort
+    print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+    return;
+  }
   `;
 
   const documentWrite = `
@@ -546,6 +555,7 @@ function GenericAqlSetupPathSuite(type) {
     })();
     `;
 
+    print(cmd);
     let args = {'javascript.execute-string': cmd};
     let pid = runShell(args, key);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
