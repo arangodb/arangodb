@@ -1,6 +1,9 @@
 devel
 -----
 
+* Clean up replication code and remove a 3.2-compatibility mode that was 
+  only useful when replicating from a leader < ArangoDB version 3.3.
+
 * Obsolete option `--database.old-system-collections`. This option has no
   meaning in ArangoDB 3.9, as old system collections will not be created 
   anymore in this version. The option was deprecated in 3.8 and announced
