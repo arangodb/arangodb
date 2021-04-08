@@ -34,6 +34,7 @@
 #include "search/collectors.hpp"
 #include "search/disjunction.hpp"
 #include "search/multiterm_query.hpp"
+#include "utils/memory.hpp"
 
 #include "Basics/voc-errors.h"
 #include "Geo/GeoParams.h"
