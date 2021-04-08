@@ -3177,7 +3177,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
       }
       VPackSlice res =
           it.hasMore() ? it.document() : velocypack::Slice::emptyObjectSlice();
-      if (size + res.byteSize() > sizeLimit && !response.slice().isEmptyArray()) {
+      if (size + res.byteSize() > sizeLimit && size > 0) {
         break;
       }
       response.add(res);
