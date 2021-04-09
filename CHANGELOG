@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix cluster internal retry behavior for network communications. In particular
+  retry on 406 (leader refuses operation). This leads to the cluster letting
+  less internal errors out to clients.
+
 * Clean up replication code and remove a 3.2-compatibility mode that was 
   only useful when replicating from a leader < ArangoDB version 3.3.
 
