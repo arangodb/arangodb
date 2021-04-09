@@ -352,7 +352,7 @@ function importTestSuite () {
     testCsvImportConvert : function () {
       var expected = [ 
         { value1: "1" },
-        { value1: "2", value: "null" },
+        { value1: "2", value2: "null" },
         { value1: "3", value2: false },
         { value1: "4", value2: "false" },
         { value1: "5", value2: true },
@@ -425,7 +425,7 @@ function importTestSuite () {
         { value1: "25", value2: "0" },
         { value1: "26", value2: "0" },
         { value1: "27" },
-        { value1: "28" },
+        { value1: "28", value2: "" },
         { value1: "29", value2: "       c" },
         { value1: "30", value2: "       d" },
         { value1: "31", value2: "       1" },

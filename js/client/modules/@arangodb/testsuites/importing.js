@@ -158,7 +158,7 @@ const impTodos = [{
   type: 'csv',
   create: 'true',
   separator: ',',
-  convert: false,
+  convert: true,
   backslash: true
 }, {
   id: 'csvnoconvert',
