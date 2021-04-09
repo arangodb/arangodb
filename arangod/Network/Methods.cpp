@@ -397,12 +397,20 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
                      self->_tmp_err = err;
                      self->_tmp_req = std::move(req);
                      self->_tmp_res = std::move(res);
-                     self->handleResponse();
+                     self->handleResponse(isFromPool);
                    });
   }
 
  private:
-  void handleResponse() {
+  void handleResponse(bool isFromPool) {
+    if (_tmp_err == fuerte::Error::ConnectionClosed && isFromPool) {
+      // If this connection comes from the pool and we immediately
+      // get a connection closed, then we do want to retry. Therefore,
+      // we fake the error code here and pretend that it was connection
+      // refused. This will lead further down in the switch to a retry,
+      // as opposed to a "ConnectionClosed", which must not be retried.
+      _tmp_err = fuerte::Error::CouldNotConnect;
+    }
     switch (_tmp_err) {
       case fuerte::Error::NoError: {
         TRI_ASSERT(_tmp_res != nullptr);
@@ -412,12 +420,10 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         [[fallthrough]]; // retry case
       }
 
-      case fuerte::Error::CouldNotConnect:
-      case fuerte::Error::ConnectionClosed:
-      case fuerte::Error::RequestTimeout:
-      case fuerte::Error::ConnectionCanceled: {
+      case fuerte::Error::CouldNotConnect: {
         // Note that this case includes the refusal of a leader to accept
-        // the operation, in which case we have to flush ClusterInfo:
+        // the operation, in which case we have to retry and wait for
+        // a potential failover to happen.
 
         auto const now = std::chrono::steady_clock::now();
         auto tryAgainAfter = now - _startTime;
@@ -451,6 +457,12 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         break;
       }
 
+      case fuerte::Error::ConnectionClosed:
+      case fuerte::Error::RequestTimeout:
+      case fuerte::Error::ConnectionCanceled:
+      // In these cases we have to report an error, since we cannot know
+      // if the request actually went out and was received and executed
+      // on the other side.
       default:  // a "proper error" which has to be returned to the client
         resolvePromise();
         break;
