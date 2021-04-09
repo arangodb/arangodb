@@ -309,11 +309,9 @@ function GenericAqlSetupPathSuite(type) {
       reconnectRetry(endpoint, db._name(), "root", "");
       
       let res = arango.GET_RAW('/_admin/debug/failat');
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
       return res.code === 200;
-    } catch(ex) {
+    } finally {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
-      throw (ex);
     }
   }
 
@@ -322,14 +320,12 @@ function GenericAqlSetupPathSuite(type) {
     try {
       reconnectRetry(endpoint, db._name(), "root", "");
       let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
       if (res.parsedBody !== true) {
         throw "Error setting failure point + " + res;
       }
       return true;
-    } catch(ex) {
+    } finally {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
-      throw (ex);
     }
   }
 
@@ -337,15 +333,12 @@ function GenericAqlSetupPathSuite(type) {
     try {
       reconnectRetry(endpoint, db._name(), "root", "");
       let res = arango.DELETE_RAW('/_admin/debug/raceControl');
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
       if (res.code !== 200) {
         throw "Error resetting race control.";
       }
       return false;
-    } catch(ex) {
+    } finally {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
-      print(ex);
-      throw (ex);
     }
   };
 
@@ -354,15 +347,12 @@ function GenericAqlSetupPathSuite(type) {
     try {
       reconnectRetry(endpoint, db._name(), "root", "");
       let res = arango.DELETE_RAW('/_admin/debug/failat/' + failAt);
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
       if (res.code !== 200) {
         throw "Error removing failure point";
       }
       return true;
-    } catch(ex) {
+    } finally {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
-      print(ex);
-      throw (ex);
     }
   }
 
@@ -370,15 +360,12 @@ function GenericAqlSetupPathSuite(type) {
     try {
       reconnectRetry(endpoint, db._name(), "root", "");
       let res = arango.DELETE_RAW('/_admin/debug/failat');
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
       if (res.code !== 200) {
         throw "Error removing failure points";
       }
       return true;
-    } catch(ex) {
+    } finally {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
-      print(ex);
-      throw (ex);
     }
   }
 
@@ -590,7 +577,6 @@ function GenericAqlSetupPathSuite(type) {
 
   const singleRun = (tests) => {
     let clients = [];
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
     assertEqual(db[cn].count(), 0, "Test Reports is not empty");
     debug("starting " + tests.length + " test clients");
     try {
@@ -737,7 +723,6 @@ function GenericAqlSetupPathSuite(type) {
 
   const testSuite = {
     setUpAll: function () {
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
       db._drop(cn);
       db._create(cn);
 
@@ -773,7 +758,6 @@ function GenericAqlSetupPathSuite(type) {
     },
 
     tearDownAll: function () {
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
       switch (type) {
         case "Graph":
         case "NamedGraph": {
