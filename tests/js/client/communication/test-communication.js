@@ -314,6 +314,7 @@ function GenericAqlSetupPathSuite(type) {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
       throw (ex);
     }
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
     return false;
   }
 
@@ -330,6 +331,7 @@ function GenericAqlSetupPathSuite(type) {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
       throw (ex);
     }
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
     return false;
   }
 
@@ -346,6 +348,7 @@ function GenericAqlSetupPathSuite(type) {
       print(ex);
       throw (ex);
     }
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
     return false;
   };
 
@@ -363,6 +366,7 @@ function GenericAqlSetupPathSuite(type) {
       print(ex);
       throw (ex);
     }
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
     return false;
   }
 
