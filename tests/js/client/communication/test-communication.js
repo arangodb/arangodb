@@ -304,24 +304,20 @@ function GenericAqlSetupPathSuite(type) {
   const viewName = "UnitTestView";
 
   /// @brief set failure point
-  function debugCanUseFailAt(endpoint) {
-    reconnectRetry(endpoint, db._name(), "root", "");
-
+  function debugCanUseFailAt() {
     let res = arango.GET_RAW('/_admin/debug/failat');
     return res.code === 200;
   }
 
   /// @brief set failure point
-  function debugSetFailAt(endpoint, failAt) {
-    reconnectRetry(endpoint, db._name(), "root", "");
+  function debugSetFailAt(failAt) {
     let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
     if (res.parsedBody !== true) {
       throw "Error setting failure point + " + res;
     }
   }
 
-  function debugResetRaceControl(endpoint) {
-    reconnectRetry(endpoint, db._name(), "root", "");
+  function debugResetRaceControl() {
     let res = arango.DELETE_RAW('/_admin/debug/raceControl');
     if (res.code !== 200) {
       throw "Error resetting race control.";
@@ -329,16 +325,14 @@ function GenericAqlSetupPathSuite(type) {
   };
 
   /// @brief remove failure point
-  function debugRemoveFailAt(endpoint, failAt) {
-    reconnectRetry(endpoint, db._name(), "root", "");
+  function debugRemoveFailAt(failAt) {
     let res = arango.DELETE_RAW('/_admin/debug/failat/' + failAt);
     if (res.code !== 200) {
       throw "Error removing failure point";
     }
   }
 
-  function debugClearFailAt(endpoint) {
-    reconnectRetry(endpoint, db._name(), "root", "");
+  function debugClearFailAt() {
     let res = arango.DELETE_RAW('/_admin/debug/failat');
     if (res.code !== 200) {
       throw "Error removing failure points";
@@ -347,22 +341,30 @@ function GenericAqlSetupPathSuite(type) {
 
   const activateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
-    for (const [shard, servers] of Object.entries(shardList)) {
-      const endpoint = getEndpointById(servers[0]);
-      debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
+    try {
+      for (const [shard, servers] of Object.entries(shardList)) {
+        reconnectRetry(getEndpointById(servers[0]), "_system", "root", "");
+        debugSetFailAt(`WaitOnLock::${shard}`);
+      }
     }
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    finally {
+      reconnectRetry(primaryEndpoint, "_system", "root", "");
+    }
   };
 
 
   const deactivateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
-    for (const [shard, servers] of Object.entries(shardList)) {
-      const endpoint = getEndpointById(servers[0]);
-      debugClearFailAt(endpoint);
-      debugResetRaceControl(endpoint);
+    try {
+      for (const [shard, servers] of Object.entries(shardList)) {
+        reconnectRetry(getEndpointById(servers[0]), "_system", "root", "");
+        debugClearFailAt();
+        debugResetRaceControl();
+      }
     }
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    finally {
+      reconnectRetry(primaryEndpoint, "_system", "root", "");
+    }
   };
 
   const docsPerWrite = 10;
@@ -489,7 +491,7 @@ function GenericAqlSetupPathSuite(type) {
     print('apiExclusive failure:');
     print(result);
     print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
-    return;
+    break;
   }
   `;
   const apiWrite = `
@@ -513,7 +515,7 @@ function GenericAqlSetupPathSuite(type) {
     print(result);
     // Abort
     print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
-    return;
+    break;
   }
   `;
   const apiRead = `
@@ -535,7 +537,7 @@ function GenericAqlSetupPathSuite(type) {
     print(result);
     // Abort
     print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
-    return;
+    break;
   }
   `;
 
