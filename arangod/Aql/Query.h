@@ -208,13 +208,11 @@ class Query : public QueryContext {
   aql::ExecutionStats& executionStats() { return _execStats; }
 
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Debug method to kill a query at a specific position
   // during execution. It internally asserts that the query
   // is actually visible through other APIS (e.g. current queries)
   // so user actually has a chance to kill it here.
   void debugKillQuery() override;
-#endif
   
  protected:
   /// @brief initializes the query

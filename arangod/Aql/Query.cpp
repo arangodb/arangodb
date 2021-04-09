@@ -1470,8 +1470,11 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   }
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void Query::debugKillQuery() {
+#ifndef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_ASSERT(false);
+    return;
+#else
     if (_wasDebugKilled) {
       return;
     }
@@ -1519,5 +1522,5 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 
     TRI_ASSERT(isInList || isStreaming || isInRegistry || _execState == QueryExecutionState::ValueType::FINALIZATION);
     kill();
-  }
 #endif
+  }

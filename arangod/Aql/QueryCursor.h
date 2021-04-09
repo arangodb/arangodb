@@ -90,13 +90,11 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   void kill() override;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Debug method to kill a query at a specific position
   // during execution. It internally asserts that the query
   // is actually visible through other APIS (e.g. current queries)
   // so user actually has a chance to kill it here.
   void debugKillQuery() override;
-#endif
 
   size_t count() const override final { return 0; }
 

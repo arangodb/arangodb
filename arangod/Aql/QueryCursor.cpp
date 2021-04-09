@@ -222,13 +222,13 @@ void QueryStreamCursor::kill() {
   }
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void QueryStreamCursor::debugKillQuery() {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (_query) {
     _query->debugKillQuery();
   }
-}
 #endif
+}
 
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
