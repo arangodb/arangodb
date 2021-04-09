@@ -302,7 +302,7 @@ std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
       [pool](network::DestinationId const& d, arangodb::fuerte::RestVerb v,
              std::string const& u, velocypack::Buffer<uint8_t> b,
              network::RequestOptions const& opts, network::Headers h) -> network::FutureRes {
-        return sendRequest(pool, d, v, u, std::move(b), opts, std::move(h));
+        return sendRequestRetry(pool, d, v, u, std::move(b), opts, std::move(h));
       });
 }
 

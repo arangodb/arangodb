@@ -717,7 +717,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
 
-      responses.emplace_back(network::sendRequest(pool, "server:" + server,
+      responses.emplace_back(network::sendRequestRetry(pool, "server:" + server,
                                                   fuerte::RestVerb::Post, path,
                                                   std::move(buffer), reqOpts));
 
@@ -952,7 +952,7 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
   std::vector<futures::Future<network::Response>> responses;
 
   for (auto const& server : _dbServers) {
-    responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
+    responses.emplace_back(network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Post,
                                                 base + path, buffer, reqOpts));
   }
 

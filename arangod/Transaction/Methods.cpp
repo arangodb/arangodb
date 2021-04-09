@@ -1901,7 +1901,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       for (auto const& f : *followers) {
         network::Headers headers;
         ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-        auto future = network::sendRequest(pool, "server:" + f, fuerte::RestVerb::Put,
+        auto future = network::sendRequestRetry(pool, "server:" + f, fuerte::RestVerb::Put,
                                            path, body, reqOpts, std::move(headers));
         futures.emplace_back(std::move(future));
       }

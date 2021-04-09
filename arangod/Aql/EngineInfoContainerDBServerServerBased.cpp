@@ -333,7 +333,7 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
     return result;
   };
 
-  return network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
+  return network::sendRequestRetry(pool, serverDest, fuerte::RestVerb::Post,
                               "/_api/aql/setup", std::move(buffer), options,
                               std::move(headers))
       .then([buildCallback = std::move(buildCallback)](futures::Try<network::Response>&& resp) mutable {
@@ -636,7 +636,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   builder.close();
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId] : serverQueryIds) {
-    requests.emplace_back(network::sendRequest(pool, server, fuerte::RestVerb::Delete,
+    requests.emplace_back(network::sendRequestRetry(pool, server, fuerte::RestVerb::Delete,
                                                           url + std::to_string(queryId),
                                                           /*copy*/ body, options));
   }
@@ -649,7 +649,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   for (auto& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
-      requests.emplace_back(network::sendRequest(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
+      requests.emplace_back(network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
                            url + basics::StringUtils::itoa(engine.second), noBody, options));
     }
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));

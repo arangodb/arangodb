@@ -244,7 +244,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   
   nf.trackForwardedRequest();
  
-  auto future = network::sendRequest(pool, "server:" + serverId, requestType,
+  auto future = network::sendRequestRetry(pool, "server:" + serverId, requestType,
                                      _request->requestPath(),
                                      std::move(payload), options, std::move(headers));
   auto cb = [this, serverId, useVst,
