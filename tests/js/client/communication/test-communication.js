@@ -130,6 +130,7 @@ function CommunicationSuite() {
     `);
 
     let args = {'javascript.execute': file};
+    // print(file);
     let pid = runShell(args, file);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
     return { key, file, pid };
@@ -309,13 +310,12 @@ function GenericAqlSetupPathSuite(type) {
       reconnectRetry(endpoint, db._name(), "root", "");
       
       let res = arango.GET_RAW('/_admin/debug/failat');
+      reconnectRetry(primaryEndpoint, "_system", "root", "");
       return res.code === 200;
     } catch(ex) {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
       throw (ex);
     }
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
-    return false;
   }
 
   /// @brief set failure point
@@ -323,6 +323,7 @@ function GenericAqlSetupPathSuite(type) {
     try {
       reconnectRetry(endpoint, db._name(), "root", "");
       let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
+      reconnectRetry(primaryEndpoint, "_system", "root", "");
       if (res.parsedBody !== true) {
         throw "Error setting failure point + " + res;
       }
@@ -331,14 +332,13 @@ function GenericAqlSetupPathSuite(type) {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
       throw (ex);
     }
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
-    return false;
   }
 
   function debugResetRaceControl(endpoint) {
     try {
       reconnectRetry(endpoint, db._name(), "root", "");
       let res = arango.DELETE_RAW('/_admin/debug/raceControl');
+      reconnectRetry(primaryEndpoint, "_system", "root", "");
       if (res.code !== 200) {
         throw "Error resetting race control.";
       }
@@ -348,8 +348,6 @@ function GenericAqlSetupPathSuite(type) {
       print(ex);
       throw (ex);
     }
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
-    return false;
   };
 
   /// @brief remove failure point
@@ -357,6 +355,7 @@ function GenericAqlSetupPathSuite(type) {
     try {
       reconnectRetry(endpoint, db._name(), "root", "");
       let res = arango.DELETE_RAW('/_admin/debug/failat/' + failAt);
+      reconnectRetry(primaryEndpoint, "_system", "root", "");
       if (res.code !== 200) {
         throw "Error removing failure point";
       }
@@ -366,14 +365,13 @@ function GenericAqlSetupPathSuite(type) {
       print(ex);
       throw (ex);
     }
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
-    return false;
   }
 
   function debugClearFailAt(endpoint) {
     try {
       reconnectRetry(endpoint, db._name(), "root", "");
       let res = arango.DELETE_RAW('/_admin/debug/failat');
+      reconnectRetry(primaryEndpoint, "_system", "root", "");
       if (res.code !== 200) {
         throw "Error removing failure points";
       }
@@ -383,7 +381,6 @@ function GenericAqlSetupPathSuite(type) {
       print(ex);
       throw (ex);
     }
-    return false;
   }
 
   const activateShardLockingFailure = () => {
@@ -507,32 +504,27 @@ function GenericAqlSetupPathSuite(type) {
 
   // Note: A different test checks that the API works this way
   const apiExclusive = `
-  while (true) {
     let trx;
     const obj = { collections: { exclusive: "${twoShardColName}" } };
     let result = arango.POST_RAW("/_api/transaction/begin", obj);
-    if (result.code !== 201) {
-      print(result.parsedBody);
-      break;
-    }
-    trx = result.parsedBody.result.id;
-    const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
-    result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
     if (result.code === 201) {
+      trx = result.parsedBody.result.id;
+      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+      result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      if (result.code === 201) {
         // Commit
         result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
-        if (result.code == 200) {
-          break;
-        }
+      }
+      if (result.code !== 200) {
+        print('apiExclusive failure:');
+        print(result);
+        print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+      }
+    } else {
+      print(result.parsedBody);
     }
-    print('apiExclusive failure:');
-    print(result);
-    print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
-    break;
-  }
   `;
   const apiWrite = `
-  while (true) {
     let trx;
     const obj = { collections: { write: "${twoShardColName}" } };
     let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
@@ -543,39 +535,36 @@ function GenericAqlSetupPathSuite(type) {
       if (result.code === 201) {
         // Commit
         result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
-        if (result.code === 200)  {
-          break;
-        }
       }
+      if (result.code !== 200) {
+        print('apiWrite failure:');
+        print(result);
+        print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+      }
+    } else {
+      print(result.parsedBody);
     }
-    print('apiWrite failure:');
-    print(result);
-    // Abort
-    print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
-    break;
-  }
   `;
   const apiRead = `
-  while(true) {
     let trx;
     const obj = { collections: { read: "${twoShardColName}" } };
     let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
     if (result.code === 201) {
       trx = result.parsedBody.result.id;
       const query = "FOR x IN ${twoShardColName} RETURN x";
-      if (false !== arango.POST("/_api/cursor", { query }, { "x-arango-trx-id": trx })) {
+      result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      if (result.code === 201) {
         // Commit
-        if (false !== arango.PUT('/_api/transaction/' + encodeURIComponent(trx), {}, {})) {
-          break;
-        }
+        result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
       }
+      if (result.code !== 200) {
+        print('apiRead failure:');
+        print(result);
+        print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+      }
+    } else {
+      print(result.parsedBody);
     }
-    print('apiRead failure:');
-    print(result);
-    // Abort
-    print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
-    break;
-  }
   `;
 
   const documentWrite = `
@@ -596,6 +585,7 @@ function GenericAqlSetupPathSuite(type) {
 
     let args = {'javascript.execute-string': cmd};
     let pid = runShell(args, key);
+    // print(cmd);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
     return { key, pid };
   };
