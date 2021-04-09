@@ -1,6 +1,11 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed CPPCHECK warning or added suppression.
+
+* Added enterprise-build-repository and oskar-build-repository to `--version`
+  as `enterprise-build-repository` and `oskar-build-repository`.
+
 * Fixed a problem in document batch operations, where errors from one shard were
   reported multiple times, if the shard is completely off line.
 
