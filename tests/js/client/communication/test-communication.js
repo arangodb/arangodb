@@ -310,8 +310,9 @@ function GenericAqlSetupPathSuite(type) {
       
       let res = arango.GET_RAW('/_admin/debug/failat');
       return res.code === 200;
-    } finally {
+    } catch(ex) {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
+      throw (ex);
     }
     return false;
   }
@@ -325,8 +326,9 @@ function GenericAqlSetupPathSuite(type) {
         throw "Error setting failure point + " + res;
       }
       return true;
-    } finally {
+    } catch(ex) {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
+      throw (ex);
     }
     return false;
   }
@@ -339,8 +341,10 @@ function GenericAqlSetupPathSuite(type) {
         throw "Error resetting race control.";
       }
       return false;
-    } finally {
+    } catch(ex) {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
+      print(ex);
+      throw (ex);
     }
     return false;
   };
@@ -354,8 +358,10 @@ function GenericAqlSetupPathSuite(type) {
         throw "Error removing failure point";
       }
       return true;
-    } finally {
+    } catch(ex) {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
+      print(ex);
+      throw (ex);
     }
     return false;
   }
@@ -368,8 +374,10 @@ function GenericAqlSetupPathSuite(type) {
         throw "Error removing failure points";
       }
       return true;
-    } finally {
+    } catch(ex) {
       reconnectRetry(primaryEndpoint, "_system", "root", "");
+      print(ex);
+      throw (ex);
     }
     return false;
   }
