@@ -554,18 +554,17 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
+
+  VPackSlice uuid;
+
+  if ((uuid = slice.get(::cuidRef)).isString()) {
+    return vocbase.lookupCollectionByUuid(uuid.copyString());
+  } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
+    return vocbase.lookupCollectionByUuid(uuid.copyString());
+  }
+  
   // extract "cid"
   DataSourceId cid = ::getCid(slice);
-
-  if (!_state.leader.simulate32Client() || cid.empty()) {
-    VPackSlice uuid;
-
-    if ((uuid = slice.get(::cuidRef)).isString()) {
-      return vocbase.lookupCollectionByUuid(uuid.copyString());
-    } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
-      return vocbase.lookupCollectionByUuid(uuid.copyString());
-    }
-  }
 
   if (cid.empty()) {
     LOG_TOPIC("fbf1a", ERR, Logger::REPLICATION)
@@ -645,18 +644,9 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   // resolve collection by uuid, name, cid (in that order of preference)
   auto col = resolveCollection(vocbase, slice);
 
-  if (col != nullptr && col->type() == type &&
-      (!_state.leader.simulate32Client() || col->name() == name)) {
+  if (col != nullptr && col->type() == type) {
     // collection already exists. TODO: compare attributes
     return Result();
-  }
-
-  bool forceRemoveCid = false;
-  if (col != nullptr && _state.leader.simulate32Client()) {
-    forceRemoveCid = true;
-    LOG_TOPIC("01f9f", INFO, Logger::REPLICATION)
-        << "would have got a wrong collection!";
-    // go on now and truncate or drop/re-create the collection
   }
 
   // conflicting collections need to be dropped from 3.3 onwards
@@ -664,7 +654,6 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 
   if (col != nullptr) {
     if (col->system()) {
-      TRI_ASSERT(!_state.leader.simulate32Client() || col->guid() == col->name());
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -696,7 +685,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   s.openObject();
   s.add(StaticStrings::DataSourceSystem, VPackValue(true));
 
-  if ((uuid.isString() && !_state.leader.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 leader
+  if (uuid.isString()) {
     // if we received a globallyUniqueId from the remote, then we will always
     // use this id so we can discard the "cid" and "id" values for the
     // collection

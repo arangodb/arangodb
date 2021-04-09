@@ -244,7 +244,7 @@ class Slice {
   // hashes the binary representation of a value
   inline uint64_t hash(uint64_t seed = defaultSeed64) const {
     std::size_t const size = checkOverflow(byteSize());
-    if (seed == defaultSeed64 && size == 1) {
+    if (size == 1 && seed == defaultSeed64) {
       uint64_t h = SliceStaticData::PrecalculatedHashesForDefaultSeed[head()];
       VELOCYPACK_ASSERT(h != 0);
       return h;
