@@ -130,7 +130,6 @@ function CommunicationSuite() {
     `);
 
     let args = {'javascript.execute': file};
-    // print(file);
     let pid = runShell(args, file);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
     return { key, file, pid };
