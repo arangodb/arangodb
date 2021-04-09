@@ -584,7 +584,6 @@ function GenericAqlSetupPathSuite(type) {
 
     let args = {'javascript.execute-string': cmd};
     let pid = runShell(args, key);
-    // print(cmd);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
     return { key, pid };
   };
