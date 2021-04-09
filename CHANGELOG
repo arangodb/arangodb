@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix BTS-357: Fix processing of analyzer with return type by TOKENS function.
+
 * Updated ArangoDB Starter to 0.15.0-preview-4.
 
 * Added error handling for figures command in cluster. Previously errors
