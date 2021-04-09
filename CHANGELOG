@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.0-preview-4.
+
 * Fixed CPPCHECK warning or added suppression.
 
 * Added enterprise-build-repository and oskar-build-repository to `--version`
