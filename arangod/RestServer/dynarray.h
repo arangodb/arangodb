@@ -54,7 +54,7 @@ public:
 
     explicit dynarray(size_type c)
         : store( alloc( c ) ), count( c )
-        { size_type i;
+        { size_type i = 0;
           try {
               for ( i = 0; i < count; ++i )
                   new (store+i) T;

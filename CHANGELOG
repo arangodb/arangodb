@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed CPPCHECK warning or added suppression.
+
 * Added enterprise-build-repository and oskar-build-repository to `--version`
   as `enterprise-build-repository` and `oskar-build-repository`.
 
