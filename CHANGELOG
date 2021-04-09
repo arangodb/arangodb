@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix BTS-357: Fix processing of analyzer with return type by TOKENS function. 
+
 * Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
 
 * Fix undefined behavior in dynarray constructor when running into 
