@@ -468,6 +468,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         resolvePromise();
         return true;  // done
 
+      case fuerte::StatusNotAcceptable:
       case fuerte::StatusServiceUnavailable:
         return false;  // goto retry
 
