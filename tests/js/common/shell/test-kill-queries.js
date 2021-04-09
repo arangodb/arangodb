@@ -280,7 +280,7 @@ function GenericQueryKillSuite() { // can be either default or stream
     assertTrue(localQuery);
   };
 
-  if (!isServer && !isCluster) {
+  if (!isServer && !internal.isCluster()) {
     testSuite["test_export_api"] = function () {
       // Add a test for some special hack in export API, which is only allowed for SingleServer and Client
       // This will internally create a streaming cursor, which can be killed in a bad position as well.
