@@ -168,10 +168,16 @@ function GenericQueryKillSuite() { // can be either default or stream
   // On stream the dump happens during process of the query, so it can be killed
   if (isServer) { // shell_server
     testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced", false, "on", "on"));
-    testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumpedSynced", false, "on", "on"));
+    testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumpedSynced", false, "on", "off"));
   } else { // shell_client
     testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumped", false, "on", "on"));
-    testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "on"));
+    if (internal.isCluster()) {
+      // In cluster we can return WAITING. This will result in wakeup that will find a killed to report
+      testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "on"));
+    } else {
+      // In single server we cannot return WAITING, so once dump is finished everything is done.
+      testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "off"));
+    }
   }
 
   /*
