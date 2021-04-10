@@ -753,8 +753,8 @@ function GenericAqlSetupPathSuite(type) {
 
     tearDown: function () {
       deactivateShardLockingFailure();
-      db[twoShardColName].truncate();
-      db[cn].truncate();
+      db[twoShardColName].truncate({ compact: false });
+      db[cn].truncate({ compact: false });
     },
 
     tearDownAll: function () {
