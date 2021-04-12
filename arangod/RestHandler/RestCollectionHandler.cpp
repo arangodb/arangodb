@@ -322,6 +322,11 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
+  if (ServerState::instance()->isDBServer()) {
+    generateError(Result(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR));
+    return;
+  }
+
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -371,6 +376,7 @@ void RestCollectionHandler::handleCommandPost() {
   _builder.clear();
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(_context);
+
   Result res =
       methods::Collections::create(_vocbase,  // collection vocbase
                                    options,
