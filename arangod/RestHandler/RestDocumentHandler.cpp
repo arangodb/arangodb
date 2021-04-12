@@ -102,32 +102,6 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
-/// @brief returns the short id of the server which should handle this request
-ResultT<std::pair<std::string, bool>> RestDocumentHandler::forwardingTarget() {
-  auto base = RestVocbaseBaseHandler::forwardingTarget();
-  if (base.ok() && !std::get<0>(base.get()).empty()) {
-    return base;
-  }
-
-  bool found = false;
-  std::string const& value = _request->header(StaticStrings::TransactionId, found);
-  if (found) {
-    TransactionId tid{basics::StringUtils::uint64(value)};
-    if (!tid.isCoordinatorTransactionId()) {
-      TRI_ASSERT(tid.isLegacyTransactionId());
-      return {std::make_pair(StaticStrings::Empty, false)};
-    }
-    uint32_t sourceServer = tid.serverId();
-    if (sourceServer == ServerState::instance()->getShortId()) {
-      return {std::make_pair(StaticStrings::Empty, false)};
-    }
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
-  }
-
-  return {std::make_pair(StaticStrings::Empty, false)};
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_CREATE
 ////////////////////////////////////////////////////////////////////////////////
