@@ -1,6 +1,9 @@
 v3.6.13 (XXXX-XX-XX)
 --------------------
 
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
 * Fixed issue BTS-353: memleak when running into an out-of-memory situation
   while repurposing an existing AqlItemBlock.
 
