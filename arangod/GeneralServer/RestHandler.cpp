@@ -244,9 +244,17 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   
   nf.trackForwardedRequest();
  
+  // Should the coordinator be gone by now, we'll respond with 404.
+  // There is no point forwarding requests. This affects transactions, cursors, ...
+  if (server().getFeature<ClusterFeature>().clusterInfo().getServerEndpoint(serverId).empty()) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_CLUSTER_SERVER_UNKNOWN,
+                  std::string("cluster server ") + serverId + " unknown");
+  }
+
   auto future = network::sendRequestRetry(pool, "server:" + serverId, requestType,
-                                     _request->requestPath(),
-                                     std::move(payload), options, std::move(headers));
+                                          _request->requestPath(), std::move(payload),
+                                          options, std::move(headers));
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
     auto res = network::fuerteToArangoErrorCode(response);
