@@ -616,28 +616,6 @@ set(LIB_ARANGO_NETWORK_SOURCES
   Network/Utils.cpp
 )
 
-set(LIB_ARANGO_MAINTENANCE_SOURCES
-  Maintenance/Action.cpp
-  Maintenance/ActionBase.cpp
-  Maintenance/ActionDescription.cpp
-  Maintenance/CreateCollection.cpp
-  Maintenance/CreateDatabase.cpp
-  Maintenance/DBServerAgencySync.cpp
-  Maintenance/DropCollection.cpp
-  Maintenance/DropDatabase.cpp
-  Maintenance/DropIndex.cpp
-  Maintenance/EnsureIndex.cpp
-  Maintenance/HeartbeatThread.cpp
-  Maintenance/Maintenance.cpp
-  Maintenance/MaintenanceFeature.cpp
-  Maintenance/MaintenanceRestHandler.cpp
-  Maintenance/MaintenanceWorker.cpp
-  Maintenance/ResignShardLeadership.cpp
-  Maintenance/SynchronizeShard.cpp
-  Maintenance/TakeoverShardLeadership.cpp
-  Maintenance/UpdateCollection.cpp
-)
-
 set(LIB_ARANGOSERVER_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
@@ -688,6 +666,25 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/SslServerFeature.cpp
   GeneralServer/VstCommTask.cpp
+  Maintenance/Action.cpp
+  Maintenance/ActionBase.cpp
+  Maintenance/ActionDescription.cpp
+  Maintenance/CreateCollection.cpp
+  Maintenance/CreateDatabase.cpp
+  Maintenance/DBServerAgencySync.cpp
+  Maintenance/DropCollection.cpp
+  Maintenance/DropDatabase.cpp
+  Maintenance/DropIndex.cpp
+  Maintenance/EnsureIndex.cpp
+  Maintenance/HeartbeatThread.cpp
+  Maintenance/Maintenance.cpp
+  Maintenance/MaintenanceFeature.cpp
+  Maintenance/MaintenanceRestHandler.cpp
+  Maintenance/MaintenanceWorker.cpp
+  Maintenance/ResignShardLeadership.cpp
+  Maintenance/SynchronizeShard.cpp
+  Maintenance/TakeoverShardLeadership.cpp
+  Maintenance/UpdateCollection.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminExecuteHandler.cpp
@@ -872,10 +869,6 @@ add_library(arangoserver STATIC
   ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
 )
 
-add_library(arango_maintenance STATIC
-  ${LIB_ARANGO_MAINTENANCE_SOURCES}
-)
-
 add_library(arango_network STATIC
   ${LIB_ARANGO_NETWORK_SOURCES}
 )
@@ -979,9 +972,6 @@ target_link_libraries(arango_network llhttp)
 target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
 
-target_link_libraries(arango_maintenance arango)
-target_link_libraries(arango_maintenance arango::validation)
-
 target_link_libraries(arango_pregel arango)
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel arango_greenspun)
@@ -1041,7 +1031,6 @@ target_link_libraries(arangoserver arango_geo)
 target_link_libraries(arangoserver arango_graph)
 target_link_libraries(arangoserver arango_indexes)
 target_link_libraries(arangoserver arango_iresearch)
-target_link_libraries(arangoserver arango_maintenance)
 target_link_libraries(arangoserver arango_metrics)
 target_link_libraries(arangoserver arango_network)
 target_link_libraries(arangoserver arango_pregel)
