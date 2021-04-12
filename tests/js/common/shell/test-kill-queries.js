@@ -197,7 +197,7 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", true, 'both', "both"));
 
   const testSuite = {
-    setUp: function () {
+    setUpAll: function () {
       db._useDatabase("_system");
       db._createDatabase(databaseName);
       db._useDatabase(databaseName);
@@ -205,7 +205,7 @@ function GenericQueryKillSuite() { // can be either default or stream
       db._create(collectionName, {numberOfShards: 4});
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._useDatabase("_system");
       db._dropDatabase(databaseName);
     },
@@ -245,7 +245,7 @@ function GenericQueryKillSuite() { // can be either default or stream
         }
       } finally {
         try {
-          internal.debugClearFailAt(failurePointName);
+          internal.debugRemoveFailAt(failurePointName);
         } catch (e) {
           // We cannot throw in finally.
           console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable`);
@@ -270,35 +270,6 @@ function GenericQueryKillSuite() { // can be either default or stream
     let localQuery = db._query(exlusiveWriteQueryString);
     assertTrue(localQuery);
   };
-
-  if (!isServer && !internal.isCluster()) {
-    testSuite["test_export_api"] = function () {
-      // Add a test for some special hack in export API, which is only allowed for SingleServer and Client
-      // This will internally create a streaming cursor, which can be killed in a bad position as well.
-      // Most of it is covered by the above tests, but this failure-point will be right before a separate
-      // branch only available in export.
-      const url = `/_db/${databaseName}/_api/export?collection=${collectionName}`;
-      const failurePointName = "QueryStreamCursor::directKillAfterTrxSetup";
-      try {
-        internal.debugSetFailAt(failurePointName);
-      } catch (e) {
-        // Let the Test fail
-        throw `Failed to initialize failurepoint ${failurePointName}`;
-      }
-      try {
-        const res = arango.POST(url, {count: true});
-        assertEqual(res.code, 410);
-        assertEqual(res.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
-      } finally {
-        try {
-          internal.debugClearFailAt(failurePointName);
-        } catch (e) {
-          // We cannot throw in finally.
-          console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable`);
-        }
-      }
-    };
-  }
 
   return testSuite;
 }
