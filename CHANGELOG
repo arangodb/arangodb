@@ -1,6 +1,11 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global 
+  replication applier being started before end of database recovery procedure. 
+  Also fixed potential shut down errors due to global replication applier 
+  being shut down in parallel to a concurrent shut down attempt.
+
 * Fix BTS-357: Fix processing of analyzer with return type by TOKENS function.
 
 * Updated ArangoDB Starter to 0.15.0-preview-4.
