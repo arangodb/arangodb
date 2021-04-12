@@ -624,9 +624,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Auth/TokenCache.cpp
   Auth/User.cpp
   Auth/UserManager.cpp
-  Cluster/Action.cpp
-  Cluster/ActionBase.cpp
-  Cluster/ActionDescription.cpp
   Cluster/AgencyCache.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
@@ -639,29 +636,13 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
-  Cluster/CreateCollection.cpp
-  Cluster/CreateDatabase.cpp
-  Cluster/DBServerAgencySync.cpp
-  Cluster/DropCollection.cpp
-  Cluster/DropDatabase.cpp
-  Cluster/DropIndex.cpp
-  Cluster/EnsureIndex.cpp
   Cluster/FollowerInfo.cpp
-  Cluster/HeartbeatThread.cpp
-  Cluster/Maintenance.cpp
-  Cluster/MaintenanceFeature.cpp
-  Cluster/MaintenanceRestHandler.cpp
-  Cluster/MaintenanceWorker.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
-  Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerDefaults.cpp
   Cluster/ServerState.cpp
-  Cluster/SynchronizeShard.cpp
-  Cluster/TakeoverShardLeadership.cpp
-  Cluster/UpdateCollection.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
@@ -687,6 +668,25 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/SslServerFeature.cpp
   GeneralServer/VstCommTask.cpp
+  Maintenance/Action.cpp
+  Maintenance/ActionBase.cpp
+  Maintenance/ActionDescription.cpp
+  Maintenance/CreateCollection.cpp
+  Maintenance/CreateDatabase.cpp
+  Maintenance/DBServerAgencySync.cpp
+  Maintenance/DropCollection.cpp
+  Maintenance/DropDatabase.cpp
+  Maintenance/DropIndex.cpp
+  Maintenance/EnsureIndex.cpp
+  Maintenance/HeartbeatThread.cpp
+  Maintenance/Maintenance.cpp
+  Maintenance/MaintenanceFeature.cpp
+  Maintenance/MaintenanceRestHandler.cpp
+  Maintenance/MaintenanceWorker.cpp
+  Maintenance/ResignShardLeadership.cpp
+  Maintenance/SynchronizeShard.cpp
+  Maintenance/TakeoverShardLeadership.cpp
+  Maintenance/UpdateCollection.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminExecuteHandler.cpp

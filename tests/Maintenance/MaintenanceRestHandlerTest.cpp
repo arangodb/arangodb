@@ -26,8 +26,8 @@
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/MaintenanceRestHandler.h"
 #include "Endpoint/ConnectionInfo.h"
+#include "Maintenance/MaintenanceRestHandler.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 

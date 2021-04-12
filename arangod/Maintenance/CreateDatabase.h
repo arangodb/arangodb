@@ -18,32 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Kaveh Vahedipour
+/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterFeaturePhase.h"
+#ifndef ARANGODB_MAINTENANCE_CREATE_DATABASE_H
+#define ARANGODB_MAINTENANCE_CREATE_DATABASE_H
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ReplicationTimeoutFeature.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "Maintenance/MaintenanceFeature.h"
+#include "Maintenance/ActionBase.h"
 
 namespace arangodb {
-namespace application_features {
 
-ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ClusterPhase") {
-  setOptional(false);
-  startsAfter<DatabaseFeaturePhase>();
+namespace maintenance {
 
-  startsAfter<ClusterFeature>();
-  startsAfter<MaintenanceFeature>();
-  startsAfter<ReplicationTimeoutFeature>();
+class CreateDatabase : public ActionBase {
+ public:
+  CreateDatabase(MaintenanceFeature& feature, ActionDescription const& description);
 
-  // use before here since platform feature is in lib
-  startsBefore<V8PlatformFeature>();
-}
+  virtual ~CreateDatabase();
 
-}  // namespace application_features
+  virtual bool first() override;
+};
+
+}  // namespace maintenance
 }  // namespace arangodb
+
+#endif

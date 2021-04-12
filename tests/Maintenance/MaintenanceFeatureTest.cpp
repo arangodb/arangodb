@@ -30,9 +30,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Result.h"
-#include "Cluster/Action.h"
-#include "Cluster/Maintenance.h"
-#include "Cluster/MaintenanceFeature.h"
+#include "Maintenance/Action.h"
+#include "Maintenance/Maintenance.h"
+#include "Maintenance/MaintenanceFeature.h"
 #include "RestServer/MetricsFeature.h"
 
 #include "MaintenanceFeatureMock.h"

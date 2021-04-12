@@ -18,32 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Kaveh Vahedipour
+/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterFeaturePhase.h"
+#ifndef ARANGODB_MAINTENANCE_CREATE_COLLECTION_H
+#define ARANGODB_MAINTENANCE_CREATE_COLLECTION_H
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ReplicationTimeoutFeature.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "Maintenance/MaintenanceFeature.h"
+#include "Maintenance/ActionBase.h"
+#include "Maintenance/ActionDescription.h"
+
+#include <chrono>
 
 namespace arangodb {
-namespace application_features {
+namespace maintenance {
 
-ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ClusterPhase") {
-  setOptional(false);
-  startsAfter<DatabaseFeaturePhase>();
+class CreateCollection : public ActionBase {
+ public:
+  CreateCollection(MaintenanceFeature&, ActionDescription const& d);
 
-  startsAfter<ClusterFeature>();
-  startsAfter<MaintenanceFeature>();
-  startsAfter<ReplicationTimeoutFeature>();
+  virtual ~CreateCollection();
 
-  // use before here since platform feature is in lib
-  startsBefore<V8PlatformFeature>();
-}
+  bool first() override final;
 
-}  // namespace application_features
+  void setState(ActionState state) override final;
+
+ private:
+  bool _doNotIncrement = false;   // indicate that `setState` shall not increment the version
+};
+
+}  // namespace maintenance
 }  // namespace arangodb
+
+#endif

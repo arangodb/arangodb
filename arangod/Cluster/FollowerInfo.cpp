@@ -28,11 +28,11 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Maintenance/MaintenanceStrings.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
