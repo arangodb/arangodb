@@ -1,6 +1,11 @@
 devel
 -----
 
+* Remove deprecated HTTP REST API `/_api/export`. This API was deprecated
+  in a previous version because it was not supported in clusters and was
+  also covered completely by streaming AQL queries for the RocksDB storage
+  engine.
+
 * Added error handling for figures command in cluster. Previously errors
   returned by shards were ignored when aggregating the individual responses.
 
