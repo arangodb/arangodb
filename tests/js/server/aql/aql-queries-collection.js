@@ -849,30 +849,29 @@ function ahuacatlQueryCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testHashes : function () {
-      const expected = [ 
-        914972082389858, 
-        608240711012410, 
-        408466762233526, 
-        2246248376639490, 
-        1182943577569004, 
-        411414879373267, 
-        201707786683023, 
-        357624110658006, 
-        645101869423852, 
-        207755151351947, 
-        525466230030039, 
-        1018181894646632, 
-        1260663012457330, 
-        1935073229439632, 
-        842648450229295, 
-        2215317222455975, 
-        771511499660764, 
-        755097600972502, 
-        1323860245636972, 
-        751390497406297 
+      var expected = [
+        438613548108819, 
+        736577518779056, 
+        1997321613449496, 
+        1350231173529518, 
+        1270199420722049, 
+        317879879725550, 
+        722866072919463, 
+        1206291785257135, 
+        1552225485422317, 
+        961337730609982, 
+        369117059618668, 
+        1882233601916968, 
+        528406878048694, 
+        1954958029766941, 
+        1081655675871352, 
+        1244560085281213, 
+        2210430228027913, 
+        1550995730612121, 
+        621907927620752, 
+        957121224257198 
       ];
-
-      let actual = getQueryResults("FOR u in " + users.name() + " SORT u.id RETURN HASH(UNSET(u, ['_key', '_rev', '_id']))");
+      var actual = getQueryResults("FOR u in " + users.name() + " SORT u.id RETURN HASH(UNSET(u, ['_key', '_rev', '_id']))");
       assertEqual(expected, actual);
     },
 
@@ -881,9 +880,8 @@ function ahuacatlQueryCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testHashSubquery : function () {
-      const expected = [ 853990819685540 ];
-
-      let actual = getQueryResults("RETURN HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id']))");
+      var expected = [ 1815371496337334 ];
+      var actual = getQueryResults("RETURN HASH(FOR u in " + users.name() + " SORT u.id RETURN UNSET(u, ['_key', '_rev', '_id']))");
       assertEqual(expected, actual);
     },
 
