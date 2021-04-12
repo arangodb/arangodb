@@ -86,8 +86,8 @@
 #ifndef VELOCYPACK_XXHASH
 #ifndef VELOCYPACK_WYHASH
 #ifndef VELOCYPACK_FASTHASH
-// default to xxhash if no hash define is set
-#define VELOCYPACK_XXHASH
+// default to wyhash if no hash define is set
+#define VELOCYPACK_WYHASH
 #endif
 #endif
 #endif
