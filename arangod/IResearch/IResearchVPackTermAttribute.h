@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,18 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+#ifndef ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE
+#define ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE
+#include <utils/attributes.hpp>
+#include <utils/bit_utils.hpp>
+#include <velocypack/Slice.h>
 
-#include "velocypack/SliceStaticData.h"
+namespace arangodb {
+namespace iresearch {
 
-using namespace arangodb::velocypack;
+struct VPackTermAttribute final : irs::attribute {
+  static constexpr irs::string_ref type_name() noexcept { return "vpack_term_attribute"; }
 
-#if __cplusplus < 201703L
-constexpr uint8_t SliceStaticData::FixedTypeLengths[256];
-constexpr ValueType SliceStaticData::TypeMap[256];
-constexpr unsigned int SliceStaticData::WidthMap[32];
-constexpr unsigned int SliceStaticData::FirstSubMap[32];
-constexpr uint64_t SliceStaticData::PrecalculatedHashesForDefaultSeed[256];
-#endif
+  ::arangodb::velocypack::Slice value;
+};
+
+} // namespace iresearch
+} // namespace arangodb
+
+#endif // ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE

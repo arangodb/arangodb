@@ -527,8 +527,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   auto* token = irs::get<irs::term_attribute>(*analyzer);
+  auto* vpack_token = irs::get<VPackTermAttribute>(*analyzer);
 
-  if (ADB_UNLIKELY(!token)) {
+  if (ADB_UNLIKELY(!token && !vpack_token)) {
     auto const message =
         "failure to retrieve values from arangosearch analyzer name '"s +
         static_cast<std::string>(name) +
@@ -547,6 +548,46 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   VPackBuilder builder(buffer);
   builder.openArray();
   std::vector<VPackArrayIterator> arrayIteratorStack;
+
+  auto processNumeric = [&numeric_analyzer, &numeric_token, &builder](VPackSlice value) {
+    if (value.isNumber()) { // there are many "number" types. To adopt all current and future ones just
+                              // deal with them all here in generic way
+      if (!numeric_analyzer) {
+        numeric_analyzer = std::make_unique<irs::numeric_token_stream>();
+        numeric_token = irs::get<irs::term_attribute>(*numeric_analyzer);
+        if (ADB_UNLIKELY(!numeric_token)) {
+          auto const message =
+            "failure to retrieve values from arangosearch numeric analyzer "
+            "while computing result for function 'TOKENS'";
+          LOG_TOPIC("7d5df", WARN, arangodb::iresearch::TOPIC) << message;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+        }
+      }
+      // we read all numers as doubles because ArangoSearch indexes
+      // all numbers as doubles, so do we there, as our goal is to
+      // return same tokens as will be in index for this specific number
+      numeric_analyzer->reset(value.getNumber<double>());
+      while (numeric_analyzer->next()) {
+        builder.add(
+          arangodb::iresearch::toValuePair(
+            arangodb::basics::StringUtils::encodeBase64(
+                irs::ref_cast<char>(numeric_token->value))));
+      }
+    } else {
+      auto const message = "unexpected parameter type '"s + value.typeName() +
+        "' while computing result for function 'TOKENS'";
+      LOG_TOPIC("45a2e", WARN, arangodb::iresearch::TOPIC) << message;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
+    }
+  };
+
+  auto processBool = [&builder](VPackSlice value) {
+    builder.add(
+      arangodb::iresearch::toValuePair(
+        basics::StringUtils::encodeBase64(irs::ref_cast<char>(
+          irs::boolean_token_stream::value(value.getBoolean())))));
+  };
+
   auto current = args[0].slice();
   do {
     // stack opening non-empty arrays
@@ -583,16 +624,39 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
           LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC) << message;
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
         }
-        while (analyzer->next()) {
-          builder.add(
-            arangodb::iresearch::toValuePair(irs::ref_cast<char>(token->value)));
+        switch (pool->returnType()) {
+          case AnalyzerValueType::String:
+            TRI_ASSERT(token);
+            while (analyzer->next()) {
+              builder.add(
+                arangodb::iresearch::toValuePair(irs::ref_cast<char>(token->value)));
+            }
+            break;
+          case AnalyzerValueType::Number:
+            TRI_ASSERT(vpack_token);
+            while (analyzer->next()) {
+              VPackArrayBuilder arr(&builder);
+              TRI_ASSERT(vpack_token->value.isNumber());
+              processNumeric(vpack_token->value);
+            }
+            break;
+          case AnalyzerValueType::Bool:
+            TRI_ASSERT(vpack_token);
+            while (analyzer->next()) {
+              VPackArrayBuilder arr(&builder);
+              TRI_ASSERT(vpack_token->value.isBool());
+              processBool(vpack_token->value);
+            }
+            break;
+          default:
+            TRI_ASSERT(false);
+            LOG_TOPIC("1c838", WARN, arangodb::iresearch::TOPIC) << "Unexpected custom analyzer return type "
+              <<   static_cast<std::underlying_type_t<AnalyzerValueType>>(pool->returnType());
+            break;
         }
       } break;
       case VPackValueType::Bool:
-        builder.add(
-          arangodb::iresearch::toValuePair(
-            basics::StringUtils::encodeBase64(irs::ref_cast<char>(
-              irs::boolean_token_stream::value(current.getBoolean())))));
+        processBool(current);
         break;
       case VPackValueType::Null:
         builder.add(
@@ -607,35 +671,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
         builder.close();
         break;
       default:
-        if (current.isNumber()) { // there are many "number" types. To adopt all current and future ones just
-                                  // deal with them all here in generic way
-          if (!numeric_analyzer) {
-            numeric_analyzer = std::make_unique<irs::numeric_token_stream>();
-            numeric_token = irs::get<irs::term_attribute>(*numeric_analyzer);
-            if (ADB_UNLIKELY(!numeric_token)) {
-              auto const message =
-                "failure to retrieve values from arangosearch numeric analyzer "
-                "while computing result for function 'TOKENS'";
-              LOG_TOPIC("7d5df", WARN, arangodb::iresearch::TOPIC) << message;
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-            }
-          }
-          // we read all numers as doubles because ArangoSearch indexes
-          // all numbers as doubles, so do we there, as out goal is to
-          // return same tokens as will be in index for this specific number
-          numeric_analyzer->reset(current.getNumber<double>());
-          while (numeric_analyzer->next()) {
-            builder.add(
-              arangodb::iresearch::toValuePair(
-                arangodb::basics::StringUtils::encodeBase64(
-                    irs::ref_cast<char>(numeric_token->value))));
-          }
-        } else {
-          auto const message = "unexpected parameter type '"s + current.typeName() +
-            "' while computing result for function 'TOKENS'";
-          LOG_TOPIC("45a2e", WARN, arangodb::iresearch::TOPIC) << message;
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
-        }
+        processNumeric(current);
     }
     // de-stack all closing arrays
     while (!arrayIteratorStack.empty()) {
@@ -1112,7 +1148,9 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 // first - input type,
 // second - output type
 std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
-getAnalyzerMeta(irs::type_info::type_id type) noexcept {
+getAnalyzerMeta(irs::analysis::analyzer const* analyzer) noexcept {
+  TRI_ASSERT(analyzer);
+  auto const type = analyzer->type();
   if (type == irs::type<GeoJSONAnalyzer>::id()) {
     return { AnalyzerValueType::Object | AnalyzerValueType::Array,
              AnalyzerValueType::String,
@@ -1130,7 +1168,10 @@ getAnalyzerMeta(irs::type_info::type_id type) noexcept {
              nullptr };
   }
 #endif
-
+  auto const* value_type = irs::get<AnalyzerValueTypeAttribute>(*analyzer);
+  if (value_type) {
+    return { AnalyzerValueType::String, value_type->value, nullptr };
+  }
   return { AnalyzerValueType::String, AnalyzerValueType::String, nullptr };
 }
 
@@ -1272,7 +1313,7 @@ bool AnalyzerPool::init(
         _type = irs::string_ref(_config.c_str() + _properties.byteSize() , type.size());
       }
 
-      std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance->type());
+      std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance.get());
       _features = features;  // store only requested features
       _revision = revision;
       return true;

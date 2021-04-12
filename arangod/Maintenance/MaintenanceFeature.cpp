@@ -398,7 +398,15 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
 Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAction,
                                      bool executeNow) {
+
+  TRI_ASSERT(newAction != nullptr);
+  TRI_ASSERT(newAction->ok());
+
   Result result;
+  
+  if (newAction == nullptr) {
+    return result.reset(TRI_ERROR_INTERNAL, "invalid call of MaintenanceFeature::addAction");
+  }
 
   // the underlying routines are believed to be safe and throw free,
   //  but just in case
@@ -411,7 +419,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
-      if (newAction && newAction->ok()) {
+      if (newAction->ok()) {
         // Register action only if construction was ok
         registerAction(newAction, executeNow);
       } else {

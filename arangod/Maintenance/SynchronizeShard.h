@@ -62,7 +62,7 @@ class SynchronizeShard : public ActionBase {
   arangodb::Result getReadLock(network::ConnectionPool* pool,
                                std::string const& endpoint, std::string const& database,
                                std::string const& collection, std::string const& clientId,
-                               uint64_t rlid, bool soft, double timeout = 300.0);
+                               uint64_t rlid, bool soft, double timeout);
 
   arangodb::Result startReadLockOnLeader(std::string const& endpoint,
                                          std::string const& database,

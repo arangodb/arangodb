@@ -154,6 +154,8 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
                                       std::string const& endpoint,
                                       std::string const& database, std::string const& clientId,
                                       double timeout, uint64_t& id) {
+  TRI_ASSERT(timeout > 0);
+
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
@@ -350,7 +352,9 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
                                                std::string const& endpoint,
                                                std::string const& database, uint64_t lockJobId,
                                                std::string const& clientId,
-                                               double timeout = 10.0) {
+                                               double timeout) {
+  TRI_ASSERT(timeout > 0.0);
+
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "cancelReadLockOnLeader: Shutting down");
@@ -400,6 +404,8 @@ arangodb::Result SynchronizeShard::getReadLock(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
   uint64_t rlid, bool soft, double timeout) {
+
+  TRI_ASSERT(timeout > 0.0);
 
   // This function can be implemented in a more robust manner for server
   // versions > 3.4. Starting with 3.4 the POST requests to the read lock API
@@ -477,6 +483,8 @@ arangodb::Result SynchronizeShard::getReadLock(
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
   std::string const& endpoint, std::string const& database, std::string const& collection,
   std::string const& clientId, uint64_t& rlid, bool soft, double timeout) {
+
+  TRI_ASSERT(timeout > 0);
   // Read lock id
   rlid = 0;
   NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();

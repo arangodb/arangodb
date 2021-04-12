@@ -267,6 +267,7 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
     result._edges.emplace_back(it->_edge);
     it = right._frontier.find(it->_pred);
     TRI_ASSERT(it != nullptr);  // should run into 0 weight before
+    // cppcheck-suppress nullPointerRedundantCheck
     result._weights.emplace_back(startToJoin + (joinToEnd - it->_weight));
   }
 
