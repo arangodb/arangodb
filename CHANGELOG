@@ -4,6 +4,9 @@ devel
 * Experimentally switch to wyhash (from xxhash) for velocypack. This is an
   experiment in devel to check if it produces any observable speedups.
 
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
 * Updated ArangoDB Starter to 0.15.0-preview-4.
 
 * Fixed CPPCHECK warning or added suppression.
