@@ -576,7 +576,7 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
         << "copying replication applier file '" << source << "' to '" << dest << "'";
 
     std::string error;
-    if (!TRI_CopyFile(source.c_str(), dest.c_str(), error)) {
+    if (!TRI_CopyFile(source, dest, error)) {
       LOG_TOPIC("6c90c", WARN, Logger::STARTUP)
           << "could not copy replication applier file '" << source << "' to '"
           << dest << "'";
