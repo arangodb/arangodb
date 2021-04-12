@@ -128,7 +128,6 @@ class QueryStreamCursor final : public arangodb::Cursor {
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
   
-  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// used when cursor is owned by V8 transaction
   transaction::Methods::StatusChangeCallback _stateChangeCb;
   

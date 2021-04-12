@@ -150,7 +150,6 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
       _query(std::move(q)),
       _queryResultPos(0),
-      _exportCount(-1),
       _finalization(false) {
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
@@ -168,24 +167,6 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
   }
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
 
-  // we replaced the rocksdb export cursor with a stream AQL query
-  // for this case we need to support printing the collection "count"
-  // this is a hack for the export API only
-  auto const& exportCollection = _query->queryOptions().exportCollection;
-  if (!exportCollection.empty()) {
-    OperationOptions opOptions(ExecContext::current());
-    OperationResult opRes =
-        trx.count(exportCollection, transaction::CountType::Normal, opOptions);
-    if (opRes.fail()) {
-      THROW_ARANGO_EXCEPTION(opRes.result);
-    }
-    _exportCount = opRes.slice().getInt();
-    VPackSlice limit = _query->bindParameters()->slice().get("limit");
-    if (limit.isInteger()) {
-      _exportCount = (std::min)(limit.getInt(), _exportCount);
-    }
-  }
-   
   // ensures the cursor is cleaned up as soon as the outer transaction ends
   // otherwise we just get issues because we might still try to use the trx
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
@@ -440,9 +421,6 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   builder.add("hasMore", VPackValue(hasMore));
   if (hasMore) {
     builder.add("id", VPackValue(std::to_string(id())));
-  }
-  if (_exportCount >= 0) {  // this is coming from /_api/export
-    builder.add("count", VPackValue(_exportCount));
   }
   builder.add("cached", VPackValue(false));
 

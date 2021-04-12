@@ -696,36 +696,6 @@ describe ArangoDB do
         doc.parsed_response['cached'].should eq(false)
       end
       
-      it "calls wrong export API" do
-        cmd = api
-        body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 2 }"
-        doc = ArangoDB.log_post("#{prefix}-create-wrong-api", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_kind_of(String)
-        doc.parsed_response['id'].should match(@reId)
-        doc.parsed_response['hasMore'].should eq(true)
-        doc.parsed_response['count'].should eq(5)
-        doc.parsed_response['result'].length.should eq(2)
-        doc.parsed_response['cached'].should eq(false)
-
-        id = doc.parsed_response['id']
-
-        cmd = "/_api/export/#{id}"
-        doc = ArangoDB.log_put("#{prefix}-create-wrong-api", cmd)
-       
-        if doc.code == 404  
-          doc.code.should eq(404)
-          doc.headers['content-type'].should eq("application/json; charset=utf-8")
-          doc.parsed_response['error'].should eq(true)
-          doc.parsed_response['code'].should eq(404)
-          doc.parsed_response['errorNum'].should eq(1600)
-        end
-      end
-
       it "creates a query that survives memory limit constraints" do
         cmd = api
         body = "{ \"query\" : \"FOR i IN 1..10000 SORT i RETURN i\", \"memoryLimit\" : 10000000, \"batchSize\": 10 }"
