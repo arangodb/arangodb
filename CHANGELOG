@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.0.
+
 * Remove deprecated HTTP REST API `/_api/export`. This API was deprecated
   in a previous version because it was not supported in clusters and was
   also covered completely by streaming AQL queries for the RocksDB storage
