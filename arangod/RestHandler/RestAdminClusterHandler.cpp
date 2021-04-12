@@ -515,6 +515,7 @@ struct RemoveServerStateMachine : std::enable_shared_from_this<RemoveServerState
       return fulfillPromise(std::in_place, TRI_ERROR_HTTP_NOT_FOUND);
     }
 
+    testAndRemoveServer(agency);
   } catch (...) {
     std::move(promise).fulfill(std::current_exception());
   }
