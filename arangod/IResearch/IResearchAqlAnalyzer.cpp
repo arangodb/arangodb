@@ -290,7 +290,7 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 
   virtual bool killed() const override { return false; }
 
-  virtual void debugKillQuery() override {};
+  virtual void debugKillQuery() override {}
 
   /// @brief whether or not a query is a modification query
   virtual bool isModificationQuery() const noexcept override { return false; }
