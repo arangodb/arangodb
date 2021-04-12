@@ -295,6 +295,7 @@ velocypack::Options const& transaction::Methods::vpackOptions() const {
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
+/// by a leader.
 static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
@@ -632,7 +633,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
-      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
     }
   }
 
@@ -876,7 +877,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return futures::makeFuture(
-        OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options));
+        OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
     }
   }
 
@@ -1042,10 +1043,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
-      TRI_IF_FAILURE("insertLeaderRefuse") {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
-      }
-
       // This indicates that we believe to be the leader.
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
@@ -1068,11 +1065,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
-      TRI_IF_FAILURE("insertFollowerRefuse") {
-        return OperationResult(
-            ::buildRefusalResult(*collection, "insert", options, theLeader),
-            options);
-      }
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
@@ -1352,9 +1344,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
-      TRI_IF_FAILURE("modifyLeaderRefuse") {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
-      }
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
@@ -1376,11 +1365,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
-      TRI_IF_FAILURE("modifyFollowerRefuse") {
-        return OperationResult(
-            ::buildRefusalResult(*collection, (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? "replace" : "update"), options, theLeader),
-            options);
-      }
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
@@ -1582,9 +1566,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
-      TRI_IF_FAILURE("removeLeaderRefuse") {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
-      }
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
@@ -1606,11 +1587,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
-      TRI_IF_FAILURE("removeFollowerRefuse") {
-        return OperationResult(
-            ::buildRefusalResult(*collection, "remove", options, theLeader),
-            options);
-      }
       if (options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
@@ -1761,7 +1737,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
     std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
-      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
     }
   }
 
@@ -1822,9 +1798,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
-      TRI_IF_FAILURE("truncateLeaderRefuse") {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
-      }
       if (!options.isSynchronousReplicationFrom.empty()) {
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options));
@@ -1843,12 +1816,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
-      TRI_IF_FAILURE("truncateFollowerRefuse") {
-        return futures::makeFuture(
-            OperationResult(
-                ::buildRefusalResult(*collection, "truncate", options, theLeader),
-                options));
-      }
       if (options.isSynchronousReplicationFrom.empty()) {
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
