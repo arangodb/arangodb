@@ -303,17 +303,6 @@ void RestAqlHandler::setupClusterQuery() {
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
-// DELETE method for /_api/aql/kill/<queryId>, (internal)
-// simon: only used for <= 3.7.
-// can be removed in 3.9
-bool RestAqlHandler::killQuery(std::string const& idString) {
-  auto qid = arangodb::basics::StringUtils::uint64(idString);
-  if (qid != 0) {
-    return _queryRegistry->destroyEngine(qid, TRI_ERROR_QUERY_KILLED);
-  }
-  return false;
-}
-
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
 // see comment in header for details
 RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string const& idString) {
@@ -413,13 +402,6 @@ RestStatus RestAqlHandler::execute() {
       }
       if (suffixes[0] == "finish") {
         return handleFinishQuery(suffixes[1]);
-      } else if (suffixes[0] == "kill" && killQuery(suffixes[1])) {
-        VPackBuilder answerBody;
-        {
-          VPackObjectBuilder guard(&answerBody);
-          answerBody.add(StaticStrings::Error, VPackValue(false));
-        }
-        generateResult(rest::ResponseCode::OK, answerBody.slice());
       } else {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
                       "query with id " + suffixes[1] + " not found");

@@ -231,11 +231,13 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
 
       if (err == fuerte::Error::ConnectionClosed && isFromPool) {
         // retry under certain conditions
+        // cppcheck-suppress accessMoved
         actuallySendRequest(std::move(p), pool, options, endpoint, std::move(req));
         return;
       }
 
       auto* sch = SchedulerFeature::SCHEDULER;
+      // cppcheck-suppress accessMoved
       if (p->skipScheduler || sch == nullptr) {
         p->promise.setValue(network::Response{std::move(p->dest), err,
                                               std::move(req), std::move(res)});

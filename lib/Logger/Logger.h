@@ -302,17 +302,6 @@ class Logger {
                      std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
                          [](std::unique_ptr<LogMessage>&) -> void {});
 
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  static bool isEnabled(LogLevel level) {
-    return true;
-  }
-  static bool isEnabled(LogLevel level, LogTopic const& topic) {
-    return true;
-  }
-  static bool _isEnabled(LogLevel level, LogLevel topicLevel) {
-    return level == LogLevel::FATAL || (int)level <= (int)topicLevel;
-  }
-#else
   static bool isEnabled(LogLevel level) {
     return (int)level <= (int)_level.load(std::memory_order_relaxed);
   }
@@ -321,7 +310,6 @@ class Logger {
                                    ? _level.load(std::memory_order_relaxed)
                                    : topic.level());
   }
-#endif
 
  public:
   static void initialize(application_features::ApplicationServer&, bool);

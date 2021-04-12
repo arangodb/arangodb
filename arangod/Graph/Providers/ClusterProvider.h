@@ -63,7 +63,7 @@ class ClusterProvider {
    public:
     class Vertex {
      public:
-      explicit Vertex(VertexType v) : _vertex(v){};
+      explicit Vertex(VertexType v) : _vertex(v) {}
 
       VertexType const& getID() const;
 
@@ -72,7 +72,7 @@ class ClusterProvider {
       }
 
       bool operator>(Vertex const& other) const noexcept {
-        return !operator<(other);
+        return _vertex > other._vertex;
       }
 
       void setVertex(VertexType thisIsATest) { _vertex = thisIsATest; }
@@ -84,7 +84,7 @@ class ClusterProvider {
     class Edge {
      public:
       explicit Edge(EdgeType tkn) : _edge(std::move(tkn)) {}
-      explicit Edge() : _edge() { _edge = EdgeType(); }
+      Edge() : _edge() {}
 
       void addToBuilder(ClusterProvider& provider, arangodb::velocypack::Builder& builder) const;
       EdgeType const& getID() const;  // TODO: Performance Test compare EdgeType <-> EdgeDocumentToken
@@ -113,7 +113,7 @@ class ClusterProvider {
       return "<Step><Vertex>: " + _vertex.getID().toString();
     }
     bool isProcessable() const { return !isLooseEnd(); }
-    bool isLooseEnd() const { return _fetched ? false : true; }
+    bool isLooseEnd() const { return !_fetched; }
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
 

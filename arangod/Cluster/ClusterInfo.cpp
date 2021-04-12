@@ -6097,7 +6097,7 @@ CollectionWatcher::~CollectionWatcher() {
 ClusterInfo::SyncerThread::SyncerThread(
   application_features::ApplicationServer& server, std::string const& section,
   std::function<void()> const& f, AgencyCallbackRegistry* cregistry) :
-  arangodb::Thread(server, section + "Syncer"), _news(false), _server(server),
+  arangodb::Thread(server, section + "Syncer"), _news(false),
   _section(section), _f(f), _cr(cregistry) {}
 
 ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }

@@ -399,6 +399,35 @@ else ()
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
+if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
+  execute_process(
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+
+    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
+    OUTPUT_VARIABLE GIT_OUTPUT)
+
+  # this may fail on shallow clones that only knows about a limited number of commits.
+  # if there is an older merged revision the head, it may not be available to git.
+  if (NOT GIT_OUTPUT)
+      set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
+      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+    else()
+      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
+      set(ENTERPRISE_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+    endif()
+else ()
+  set(ENTERPRISE_BUILD_REPOSITORY "")
+  set(HAVE_ENTERPRISE_BUILD_REPOSITORY "0")
+endif()
+
+if (DEFINED OSKAR_BUILD_REPOSITITORY)
+  set(HAVE_OSKAR_BUILD_REPOSITORY "1")
+else ()
+  set(OSKAR_BUILD_REPOSITORY "")
+  set(HAVE_OSKAR_BUILD_REPOSITORY "0")
+endif ()
+
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-repository.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-repository.h"
@@ -727,14 +756,6 @@ endif (ASM_OPTIMIZATIONS)
 ################################################################################
 ## MAINTAINER MODE
 ################################################################################
-
-option(UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  "whether log strings should be generated regardless of active loglevel"
-  OFF
-  )
-if (UNCONDITIONALLY_BUILD_LOG_MESSAGES)
-  add_definitions("-DARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES=1")
-endif()
 
 option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features"
@@ -1264,7 +1285,6 @@ if (USE_MAINTAINER_MODE)
 
   set(EXIT_CODE_FILES
     lib/Basics/exitcodes.h
-    lib/Basics/exitcodes.cpp
     js/common/bootstrap/exitcodes.js
     Installation/Windows/Plugins/exitcodes.nsh
   )
@@ -1278,7 +1298,7 @@ if (USE_MAINTAINER_MODE)
       COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
       COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ./utils/generateExitCodesFiles.py
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building exitcode files ${m}"
       VERBATIM

@@ -361,7 +361,6 @@ class ClusterInfo final {
     std::mutex _m;
     std::condition_variable _cv;
     bool _news;
-    application_features::ApplicationServer& _server;
     std::string _section;
     std::function<void()> _f;
     AgencyCallbackRegistry* _cr;

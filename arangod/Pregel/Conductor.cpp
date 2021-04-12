@@ -264,10 +264,13 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
   b.add(Utils::activateAllKey, VPackValue(activateAll));
 
-  b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
+  if (!toWorkerMessages.slice().isNone()) {
+    b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
+  }
   _aggregators->serializeValues(b);
 
   b.close();
+
   LOG_TOPIC("d98de", DEBUG, Logger::PREGEL) << b.toString();
 
   _stepStartTimeSecs = TRI_microtime();

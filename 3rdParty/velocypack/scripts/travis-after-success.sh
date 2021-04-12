@@ -47,6 +47,7 @@ LCOV=(
              "$project_dir"'/examples/*' \
              "$project_dir"'/tools/*' \
              "$project_dir"'/tests/*' \
+             "$project_dir"'/include/velocypack/velocypack-xxhash*' \
              "$project_dir"'/src/*xxh*' \
              "$project_dir"'/src/*hash*' \
              "$project_dir"'/src/powers.h' \

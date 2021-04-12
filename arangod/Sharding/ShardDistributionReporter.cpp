@@ -342,7 +342,9 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             VPackBuffer<uint8_t> body;
             network::RequestOptions reqOpts;
             reqOpts.database = dbName;
-            reqOpts.timeout = network::Timeout(timeleft);
+            // make sure we have at least 1s for the timeout value. otherwise
+            // other parts of the code may fail when seeing a 0s timeout.
+            reqOpts.timeout = network::Timeout(std::max<double>(1.0, timeleft));
 
             // First Ask the leader
             network::Headers headers;
