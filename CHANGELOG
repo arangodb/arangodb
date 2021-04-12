@@ -6,6 +6,16 @@ devel
   also covered completely by streaming AQL queries for the RocksDB storage
   engine.
 
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
+* Updated ArangoDB Starter to 0.15.0-preview-4.
+
+* Fixed CPPCHECK warning or added suppression.
+
+* Added enterprise-build-repository and oskar-build-repository to `--version`
+  as `enterprise-build-repository` and `oskar-build-repository`.
+
 * Clean up replication code and remove a 3.2-compatibility mode that was 
   only useful when replicating from a leader < ArangoDB version 3.3.
 
