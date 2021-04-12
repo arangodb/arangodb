@@ -121,6 +121,7 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 ## Velocypack
 ################################################################################
 
+set(HashType "wyhash" CACHE STRING "Hash type (fasthash, xxhash, wyhash)" FORCE)
 set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
 set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
 
