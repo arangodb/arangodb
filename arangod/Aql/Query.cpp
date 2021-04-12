@@ -1489,7 +1489,6 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     });
 
     if (usingSystemCollection) {
-      LOG_DEVEL << "Using system collection: " << std::boolalpha << usingSystemCollection;
       return;
     }
 
@@ -1517,9 +1516,6 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     if (registry != nullptr) {
       isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
     }
-    LOG_DEVEL << "Query killed for debugging in current: " << std::boolalpha << isInList << " ,streaming: " << isStreaming << ", in QueryRegistry: " << isInRegistry;
-    LOG_DEVEL << "Query string is: " << queryString();
-
     TRI_ASSERT(isInList || isStreaming || isInRegistry || _execState == QueryExecutionState::ValueType::FINALIZATION);
     kill();
 #endif

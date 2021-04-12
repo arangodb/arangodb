@@ -52,11 +52,6 @@ function GenericQueryKillSuite() { // can be either default or stream
       }
     } catch (e) {
       stateForBoth = true;
-      console.warn("It might be expected to fail here (default) - reportKilled: " + reportKilled);
-      console.warn("= localQuery =");
-      console.warn(localQuery);
-      console.warn("==");
-      console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
 
@@ -79,21 +74,16 @@ function GenericQueryKillSuite() { // can be either default or stream
 
     try {
       localQuery = db._query(exlusiveWriteQueryString, null, null, {stream: true});
+      // Make sure we free the local instance of the cursor.
+      // Just to avoid that we depend on the eventual garbage collection in V8
+      // to clear up our references to the cursor.
       localQuery.dispose();
-      // 1.) dispose muss funktionieren
-      // 2.) OHNE dispose, Cursor hält noch daten: Erwartet das der Cursor lebt => timeout "rennen"
-      // 3.) OHNE DISPOSE, cursor hält KEINE weiteren Daten mehr (ist fertig) => timeout sollte nicht mehr auftreten.
 
       if (reportKilled === 'on') {
         fail();
       }
     } catch (e) {
       stateForBoth = true;
-      console.warn("It might be expected to fail here (stream) - reportKilled: " + reportKilled);
-      console.warn("= localQuery =");
-      console.warn(localQuery);
-      console.warn("==");
-      console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
 
@@ -152,7 +142,6 @@ function GenericQueryKillSuite() { // can be either default or stream
   };
 
   const testCases = [];
-  // TODOs: check reportKilled flags for each entry
 
   // defaults
   testCases.push(createTestCaseEntry("QueryProfile::directKillAfterQueryGotRegistered", false, "both", "on"));
@@ -217,7 +206,6 @@ function GenericQueryKillSuite() { // can be either default or stream
     },
 
     tearDown: function () {
-      console.warn("CALLING TEAR DOWN, DROPPING DB");
       db._useDatabase("_system");
       db._dropDatabase(databaseName);
     },
@@ -239,9 +227,6 @@ function GenericQueryKillSuite() { // can be either default or stream
     }
 
     suite[createTestName(testCase.failurePointName, testCase.stream)] = function (failurePointName, stream, reportKilled) {
-      console.warn("Failure Point: " + failurePointName);
-      console.warn("Stream type: " + stream);
-
       try {
         internal.debugSetFailAt(failurePointName);
       } catch (e) {
