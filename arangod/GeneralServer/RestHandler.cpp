@@ -250,6 +250,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_CLUSTER_SERVER_UNKNOWN,
                   std::string("cluster server ") + serverId + " unknown");
+    return Result(TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
   }
 
   auto future = network::sendRequestRetry(pool, "server:" + serverId, requestType,
