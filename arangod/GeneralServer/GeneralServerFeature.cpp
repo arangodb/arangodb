@@ -161,7 +161,8 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--http.allow-method-override",
                      "allow HTTP method override using special headers",
                      new BooleanParameter(&_allowMethodOverride),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30800);
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
@@ -170,7 +171,8 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption(
       "--http.hide-product-header",
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
-      new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
+      new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
+      .setDeprecatedIn(30800);
 
   options->addOption("--http.trusted-origin",
                      "trusted origin URLs for CORS requests with credentials",
