@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global 
+  replication applier being started before end of database recovery procedure. 
+  Also fixed potential shut down errors due to global replication applier 
+  being shut down in parallel to a concurrent shut down attempt.
+
 * Added error handling for figures command in cluster. Previously errors
   returned by shards were ignored when aggregating the individual responses.
 
