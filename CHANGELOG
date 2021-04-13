@@ -1,6 +1,99 @@
 devel
 -----
 
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global 
+  replication applier being started before end of database recovery procedure. 
+  Also fixed potential shut down errors due to global replication applier 
+  being shut down in parallel to a concurrent shut down attempt.
+
+* Experimentally switch to wyhash (from xxhash) for velocypack. This is an
+  experiment in devel to check if it produces any observable speedups.
+
+* Updated ArangoDB Starter to 0.15.0.
+
+* Remove deprecated HTTP REST API `/_api/export`. This API was deprecated
+  in a previous version because it was not supported in clusters and was
+  also covered completely by streaming AQL queries for the RocksDB storage
+  engine.
+
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
+* Updated ArangoDB Starter to 0.15.0-preview-4.
+
+* Fixed CPPCHECK warning or added suppression.
+
+* Added enterprise-build-repository and oskar-build-repository to `--version`
+  as `enterprise-build-repository` and `oskar-build-repository`.
+
+* Clean up replication code and remove a 3.2-compatibility mode that was 
+  only useful when replicating from a leader < ArangoDB version 3.3.
+
+* Obsolete option `--database.old-system-collections`. This option has no
+  meaning in ArangoDB 3.9, as old system collections will not be created 
+  anymore in this version. The option was deprecated in 3.8 and announced
+  to be obsoleted.
+
+* Upgrade velocypack to latest, C++17-only version.
+
+* Make arangovpack more powerful, by supporting different input and output
+  formats (json and vpack, plain or hex-encoded).
+  The arangovpack options `--json` and `--pretty` have been removed and have 
+  been replaced with separate options for specfiying the input and output 
+  types:
+  * `--input-type` ("json", "json-hex", "vpack", "vpack-hex")
+  * `--output-type` ("json", "json-pretty", "vpack", "vpack-hex")
+  The previous option `--print-non-json` has been replaced with the option
+  `--fail-on-non-json` which makes arangovpack fail when trying to emit 
+  non-JSON types to JSON output.
+
+* Fix undefined behavior in dynarray constructor when running into 
+  an out-of-memory exception during construction. In arangod, this can only
+  happen during metrics objects construction at program start.
+
+* Added option `--headers-file` to arangoimport, to optionally read CSV/TSV
+  headers from a separate file.
+
+* Updated ArangoDB Starter to 0.15.0-preview-3.
+
+* Fixed issue BTS-353: memleak when running into an out-of-memory situation
+  while repurposing an existing AqlItemBlock.
+
+* Fix logging of urls when using `--log.level requests=debug`. There was an
+  issue since v3.7.7 with the wrong URL being logged in request logging if
+  multiple requests were sent over the same connection. In this case, the
+  request logging only reported the first URL requested in the connection,
+  even for all subsequent requests.
+
+* Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve
+  only as a stopgap measure while porting applications from the MMFiles
+  storage engine to RocksDB.
+
+* Added startup option `--query.allow-collections-in-expressions` to control
+  whether collection names can be used in arbitrary places in AQL expressions,
+  e.g. `collection + 1`. This was allowed before, as a collection can be seen
+  as an array of documents. However, referring to a collection like this in a
+  query would materialize all the collection's documents in RAM, making such
+  constructs prohibitively expensive for medium-size to large-size collections.
+
+  The option can now be set to `false` to prohibit accidental usage of 
+  collection names in AQL expressions. With that setting, using a collection
+  inside an arbitrary expression will trigger the error `collection used as 
+  expression operand` and make the query fail.
+  Even with the option being set to `false`, it is still possible to use 
+  collection names in AQL queries where they are expected, e.g. `FOR doc IN 
+  collection RETURN doc`.
+
+* Remove obsolete API endpoint /_admin/repair/distributeShardsLike`. This
+  API was intended to correct some bad state introduced before 3.2.12 or 3.3.4,
+  respectively. It had to be invoked manually by callers and there was never
+  any driver support for it.
+
+* Remove now-unused SubqueryExecutor. This is an internal change only and
+  should not have any effect on queries, as from 3.8 onwards only spliced
+  subqueries should be used in query execution plans and during query
+  execution.
+
 * Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
   Now, any maintainer mode build will build all log messages automatically,
   so we will have full coverage of log message construction during our

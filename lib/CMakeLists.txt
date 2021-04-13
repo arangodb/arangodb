@@ -151,7 +151,6 @@ add_library(arango
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
-  Basics/exitcodes.cpp
   Containers/MerkleTree.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp

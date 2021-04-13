@@ -438,11 +438,7 @@ Result BatchInfo::finish(replutils::Connection const& connection,
   }
 }
 
-LeaderInfo::LeaderInfo(ReplicationApplierConfiguration const& applierConfig) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _force32mode = applierConfig._force32mode;
-#endif
-}
+LeaderInfo::LeaderInfo(ReplicationApplierConfiguration const& /*applierConfig*/) {}
 
 uint64_t LeaderInfo::version() const {
   return majorVersion * 10000 + minorVersion * 100;
@@ -500,17 +496,6 @@ Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSynce
   }
 
   return ::handleLeaderStateResponse(connection, *this, slice, context);
-}
-
-bool LeaderInfo::simulate32Client() const {
-  TRI_ASSERT(!endpoint.empty() && serverId.isSet() && majorVersion != 0);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // allows us to test the old replication API
-  if (_force32mode) {
-    return true;
-  }
-#endif
-  return version() < 30300;
 }
 
 std::unordered_map<std::string, std::string> createHeaders() {

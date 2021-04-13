@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for import
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,43 +26,29 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
-var ArangoError = require("@arangodb").ArangoError; 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const internal = require("internal");
+const jsunity = require("jsunity");
+const ArangoError = require("@arangodb").ArangoError; 
+const errors = internal.errors;
 
 function importTestSuite () {
   'use strict';
-  var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
 
   function getErrorCode (fn) {
     try {
       fn();
-    }
-    catch (e) {
+    } catch (e) {
       return e.errorNum;
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
   function executeQuery (query) {
-    var statement = internal.db._createStatement({"query": query});
+    let statement = internal.db._createStatement({"query": query});
     if (statement instanceof ArangoError) {
       return statement;
     }
 
-    var cursor = statement.execute();
-    return cursor;
+    return statement.execute();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,20 +84,6 @@ function importTestSuite () {
   }
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
@@ -355,6 +325,27 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportHeaders : function () {
+     let expected = [ 
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvHeaders SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+    
+    testCsvImportBrokenHeaders : function () {
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvBrokenHeaders RETURN i");
+      assertEqual([], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import without converting
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -546,15 +537,8 @@ function importTestSuite () {
       }
     },
 
-// END OF TEST DEFINITIONS /////////////////////////////////////////////////////
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(importTestSuite);
-
 return jsunity.done();
-

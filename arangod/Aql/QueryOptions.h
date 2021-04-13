@@ -92,10 +92,6 @@ struct QueryOptions {
   bool skipAudit; // skips audit logging - used only internally
   ExplainRegisterPlan explainRegisters;
 
-  /// @brief hack to be used only for /_api/export, contains the name of
-  /// the target collection
-  std::string exportCollection;
-  
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
   

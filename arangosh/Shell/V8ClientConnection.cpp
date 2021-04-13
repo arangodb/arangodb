@@ -1201,7 +1201,7 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
 
-  if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
+  if (ih.importDelimited(collectionName, fileName, "", ImportHelper::CSV)) {
     v8::Local<v8::Object> result = v8::Object::New(isolate);
 
     result->Set(context,
