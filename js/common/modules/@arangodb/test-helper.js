@@ -102,8 +102,7 @@ exports.waitForFoxxInitialized = function () {
       const coordinators = exports.getEndpointsByType('coordinator');
       let done = 0;
       coordinators.forEach((endpoint) => {
-        let res = arango.GET_RAW('/wenn-der-fuxxmann-zweimal-klingelt',
-          timeout= 5);
+        let res = arango.GET_RAW('/wenn-der-fuxxmann-zweimal-klingelt');
         if (res.code === 404) {
           // selfHeal was already executed - Foxx is ready!
           ++done;
