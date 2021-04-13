@@ -10,6 +10,9 @@ v3.6.13 (XXXX-XX-XX)
 
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
 * Fixed issue BTS-353: memleak when running into an out-of-memory situation
   while repurposing an existing AqlItemBlock.
 
