@@ -1989,7 +1989,8 @@ again:
   };
 
   if (response->contentType() != fuerte::ContentType::Custom) {
-    if ((responseBody.size() > 0) && response->isContentTypeVPack() &&
+    if ((responseBody.size() > 0) &&
+        (response->isContentTypeVPack() || response->isContentTypeJSON()) &&
       (response->contentEncoding() == fuerte::ContentEncoding::Identity)) {
       std::vector<VPackSlice> const& slices = response->slices();
       if (!slices.empty()) {
