@@ -1,6 +1,10 @@
 devel
 -----
 
+* Prevent arangod from terminating with "terminate called without an active 
+  exception" (SIGABRT) in case an out-of-memory exception occurs during 
+  creating an ASIO socket connection.
+
 * Fix BTS-350, BTS-358: Fixed potential startup errors due to global 
   replication applier being started before end of database recovery procedure. 
   Also fixed potential shut down errors due to global replication applier 
