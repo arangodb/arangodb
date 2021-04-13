@@ -46,6 +46,7 @@ set(VELOCY_SOURCE
     src/Options.cpp
     src/Parser.cpp
     src/Serializable.cpp
+    src/SharedSlice.cpp
     src/Slice.cpp
     src/StringRef.cpp
     src/Utf8Helper.cpp
@@ -59,12 +60,6 @@ set(VELOCY_SOURCE
     src/string-functions.cpp
 )
 
-if (CMAKE_CXX_STANDARD GREATER_EQUAL 17)
-    list(APPEND VELOCY_SOURCE
-        src/SharedSlice.cpp
-    )
-endif ()
-
 #Use xxhash or fasthash?
 if(HashType STREQUAL "xxhash")
     list(APPEND VELOCY_SOURCE src/xxhash.cpp)
@@ -72,10 +67,8 @@ if(HashType STREQUAL "xxhash")
 elseif(HashType STREQUAL "fasthash")
     list(APPEND VELOCY_SOURCE src/fasthash.cpp)
     add_definitions("-DVELOCYPACK_FASTHASH=1")
-elseif(HashType STREQUAL "wyhash")
-    add_definitions("-DVELOCYPACK_WYHASH=1")
 else()
-    message(FATAL_ERROR "invalid HashType value. supported values: xxhash, fasthash, wyhash")
+    message(FATAL_ERROR "invalid HashType value. supported values: xxhash, fasthash")
 endif()
 message(STATUS "Building with hash type: ${HashType}")
 

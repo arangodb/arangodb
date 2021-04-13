@@ -6,6 +6,16 @@ devel
   Also fixed potential shut down errors due to global replication applier 
   being shut down in parallel to a concurrent shut down attempt.
 
+* Experimentally switch to wyhash (from xxhash) for velocypack. This is an
+  experiment in devel to check if it produces any observable speedups.
+
+* Updated ArangoDB Starter to 0.15.0.
+
+* Remove deprecated HTTP REST API `/_api/export`. This API was deprecated
+  in a previous version because it was not supported in clusters and was
+  also covered completely by streaming AQL queries for the RocksDB storage
+  engine.
+
 * Added error handling for figures command in cluster. Previously errors
   returned by shards were ignored when aggregating the individual responses.
 
