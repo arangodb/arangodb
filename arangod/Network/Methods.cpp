@@ -420,8 +420,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         [[fallthrough]]; // retry case
       }
 
-      case fuerte::Error::ConnectionClosed:
-        // One would think that one must not retry a broken connection.
+      case fuerte::Error::ConnectionCanceled:
+        // One would think that one must not retry a cancelled connection.
         // However, in case a dbserver fails and a failover happens,
         // then we artificially break all connections to it. In that case
         // we need a retry to continue the operation with the new leader.
@@ -466,8 +466,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         break;
       }
 
+      case fuerte::Error::ConnectionClosed:
       case fuerte::Error::RequestTimeout:
-      case fuerte::Error::ConnectionCanceled:
       // In these cases we have to report an error, since we cannot know
       // if the request actually went out and was received and executed
       // on the other side.
