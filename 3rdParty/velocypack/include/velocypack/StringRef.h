@@ -221,7 +221,7 @@ namespace std {
 template <>
 struct hash<arangodb::velocypack::StringRef> {
   std::size_t operator()(arangodb::velocypack::StringRef const& value) const noexcept {
-    return VELOCYPACK_HASH(value.data(), value.size(), 0xdeadbeef); 
+    return VELOCYPACK_HASH_WYHASH(value.data(), value.size(), 0xdeadbeef); 
   }
 };
 

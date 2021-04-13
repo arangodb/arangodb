@@ -2399,162 +2399,6 @@ TEST(SliceTest, NormalizedHashObjectOrder) {
 
 #endif
 
-#ifdef VELOCYPACK_WYHASH
-
-TEST(SliceTest, HashNull) {
-  std::shared_ptr<Builder> b = Parser::fromJson("null");
-  Slice s = b->slice();
-
-  ASSERT_EQ(15824746774140724939ULL, s.hash());
-  ASSERT_EQ(15824746774140724939ULL, s.normalizedHash());
-}
-
-TEST(SliceTest, HashDouble) {
-  std::shared_ptr<Builder> b = Parser::fromJson("-345354.35532352");
-  Slice s = b->slice();
-
-  ASSERT_EQ(6761808920526616855ULL, s.hash());
-  ASSERT_EQ(3752886392484756466ULL, s.normalizedHash());
-}
-
-TEST(SliceTest, HashString) {
-  std::shared_ptr<Builder> b = Parser::fromJson("\"this is a test string\"");
-  Slice s = b->slice();
-
-  ASSERT_EQ(6980608708952405024ULL, s.hash());
-  ASSERT_EQ(6980608708952405024ULL, s.normalizedHash());
-}
-
-TEST(SliceTest, HashStringEmpty) {
-  std::shared_ptr<Builder> b = Parser::fromJson("\"\"");
-  Slice s = b->slice();
-
-  ASSERT_EQ(320496339300456582ULL, s.hash());
-  ASSERT_EQ(320496339300456582ULL, s.normalizedHash());
-}
-
-TEST(SliceTest, HashStringShort) {
-  std::shared_ptr<Builder> b = Parser::fromJson("\"123456\"");
-  Slice s = b->slice();
-
-  ASSERT_EQ(8249707569299589838ULL, s.hash());
-  ASSERT_EQ(8249707569299589838ULL, s.normalizedHash());
-  ASSERT_EQ(8249707569299589838ULL, s.hashString());
-}
-
-TEST(SliceTest, HashArray) {
-  std::shared_ptr<Builder> b = Parser::fromJson("[1,2,3,4,5,6,7,8,9,10]");
-  Slice s = b->slice();
-
-  ASSERT_EQ(18208530095070427143ULL, s.hash());
-}
-
-TEST(SliceTest, HashObject) {
-  std::shared_ptr<Builder> b = Parser::fromJson(
-      "{\"one\":1,\"two\":2,\"three\":3,\"four\":4,\"five\":5,\"six\":6,"
-      "\"seven\":7}");
-  Slice s = b->slice();
-
-  ASSERT_EQ(6457404870531647212ULL, s.hash());
-}
-
-TEST(SliceTest, NormalizedHashDouble) {
-  Builder b1;
-  b1.openArray();
-  b1.add(Value(-1.0));
-  b1.add(Value(0));
-  b1.add(Value(1.0));
-  b1.add(Value(2.0));
-  b1.add(Value(3.0));
-  b1.add(Value(42.0));
-  b1.add(Value(-42.0));
-  b1.add(Value(123456.0));
-  b1.add(Value(-123456.0));
-  b1.close();
-
-  Builder b2;
-  b2.openArray();
-  b2.add(Value(-1));
-  b2.add(Value(0));
-  b2.add(Value(1));
-  b2.add(Value(2));
-  b2.add(Value(3));
-  b2.add(Value(42));
-  b2.add(Value(-42));
-  b2.add(Value(123456));
-  b2.add(Value(-123456));
-  b2.close();
-
-  // hash values differ, but normalized hash values shouldn't!
-  ASSERT_EQ(4818112773835168348ULL, b1.slice().hash());
-  ASSERT_EQ(12966989194194709699ULL, b2.slice().hash());
-
-  ASSERT_EQ(7665406973067858677ULL, b1.slice().normalizedHash());
-  ASSERT_EQ(7665406973067858677ULL, b2.slice().normalizedHash());
-}
-
-TEST(SliceTest, NormalizedHashArray) {
-  Options options;
-
-  options.buildUnindexedArrays = false;
-  std::shared_ptr<Builder> b1 = Parser::fromJson("[1,2,3,4,5,6,7,8,9,10]", &options);
-  Slice s1 = b1->slice();
-
-  options.buildUnindexedArrays = true;
-  std::shared_ptr<Builder> b2 = Parser::fromJson("[1,2,3,4,5,6,7,8,9,10]", &options);
-  Slice s2 = b2->slice();
-
-  // hash values differ, but normalized hash values shouldn't!
-  ASSERT_EQ(18208530095070427143ULL, s1.hash());
-  ASSERT_EQ(4459115985522862126ULL, s2.hash());
-
-  ASSERT_EQ(12687829189178745330ULL, s1.normalizedHash());
-  ASSERT_EQ(12687829189178745330ULL, s2.normalizedHash());
-}
-
-TEST(SliceTest, NormalizedHashArrayNested) {
-  Options options;
-
-  options.buildUnindexedArrays = false;
-  std::shared_ptr<Builder> b1 = Parser::fromJson("[-4.0,1,2.0,-4345.0,4,5,6,7,8,9,10,[1,9,-42,45.0]]", &options);
-  Slice s1 = b1->slice();
-
-  options.buildUnindexedArrays = true;
-  std::shared_ptr<Builder> b2 = Parser::fromJson("[-4.0,1,2.0,-4345.0,4,5,6,7,8,9,10,[1,9,-42,45.0]]", &options);
-  Slice s2 = b2->slice();
-
-  // hash values differ, but normalized hash values shouldn't!
-  ASSERT_EQ(481920679374299546ULL, s1.hash());
-  ASSERT_EQ(13841768155551889409ULL, s2.hash());
-
-  ASSERT_EQ(3081255268503050102ULL, s1.normalizedHash());
-  ASSERT_EQ(3081255268503050102ULL, s2.normalizedHash());
-}
-
-TEST(SliceTest, NormalizedHashObjectOrder) {
-  Options options;
-
-  options.buildUnindexedObjects = false;
-  std::shared_ptr<Builder> b1 = Parser::fromJson(
-      "{\"one\":1,\"two\":2,\"three\":3,\"four\":4,\"five\":5,\"six\":6,"
-      "\"seven\":7}", &options);
-  Slice s1 = b1->slice();
-
-  options.buildUnindexedObjects = false;
-  std::shared_ptr<Builder> b2 = Parser::fromJson(
-      "{\"seven\":7,\"six\":6,\"five\":5,\"four\":4,\"three\":3,\"two\":2,\"one\":1}", &options);
-  Slice s2 = b2->slice();
-
-  // hash values differ, but normalized hash values shouldn't!
-  ASSERT_EQ(6457404870531647212ULL, s1.hash());
-  ASSERT_EQ(11941263562352219035ULL, s2.hash());
-
-  ASSERT_EQ(16039089241133611790ULL, s1.normalizedHash());
-  ASSERT_EQ(16039089241133611790ULL, s2.normalizedHash());
-}
-
-#endif
-
 #ifdef VELOCYPACK_FASTHASH
 
 TEST(SliceTest, HashNull) {
@@ -2755,6 +2599,136 @@ TEST(SliceTest, NormalizedHashObjectOrder) {
 }
 
 #endif
+
+TEST(SliceTest, VolatileHashNull) {
+  std::shared_ptr<Builder> b = Parser::fromJson("null");
+  Slice s = b->slice();
+
+  ASSERT_EQ(15824746774140724939ULL, s.volatileHash());
+}
+
+TEST(SliceTest, VolatileHashDouble) {
+  std::shared_ptr<Builder> b = Parser::fromJson("-345354.35532352");
+  Slice s = b->slice();
+
+  ASSERT_EQ(6761808920526616855ULL, s.volatileHash());
+}
+
+TEST(SliceTest, VolatileHashString) {
+  std::shared_ptr<Builder> b = Parser::fromJson("\"this is a test string\"");
+  Slice s = b->slice();
+
+  ASSERT_EQ(6980608708952405024ULL, s.volatileHash());
+}
+
+TEST(SliceTest, VolatileHashStringEmpty) {
+  std::shared_ptr<Builder> b = Parser::fromJson("\"\"");
+  Slice s = b->slice();
+
+  ASSERT_EQ(320496339300456582ULL, s.volatileHash());
+}
+
+TEST(SliceTest, VolatileHashStringShort) {
+  std::shared_ptr<Builder> b = Parser::fromJson("\"123456\"");
+  Slice s = b->slice();
+
+  ASSERT_EQ(8249707569299589838ULL, s.volatileHash());
+}
+
+TEST(SliceTest, VolatileHashArray) {
+  std::shared_ptr<Builder> b = Parser::fromJson("[1,2,3,4,5,6,7,8,9,10]");
+  Slice s = b->slice();
+
+  ASSERT_EQ(18208530095070427143ULL, s.volatileHash());
+}
+
+TEST(SliceTest, VolatileHashObject) {
+  std::shared_ptr<Builder> b = Parser::fromJson(
+      "{\"one\":1,\"two\":2,\"three\":3,\"four\":4,\"five\":5,\"six\":6,"
+      "\"seven\":7}");
+  Slice s = b->slice();
+
+  ASSERT_EQ(6457404870531647212ULL, s.volatileHash());
+}
+
+TEST(SliceTest, VolatileHashArrayDouble) {
+  Builder b1;
+  b1.openArray();
+  b1.add(Value(-1.0));
+  b1.add(Value(0));
+  b1.add(Value(1.0));
+  b1.add(Value(2.0));
+  b1.add(Value(3.0));
+  b1.add(Value(42.0));
+  b1.add(Value(-42.0));
+  b1.add(Value(123456.0));
+  b1.add(Value(-123456.0));
+  b1.close();
+
+  Builder b2;
+  b2.openArray();
+  b2.add(Value(-1));
+  b2.add(Value(0));
+  b2.add(Value(1));
+  b2.add(Value(2));
+  b2.add(Value(3));
+  b2.add(Value(42));
+  b2.add(Value(-42));
+  b2.add(Value(123456));
+  b2.add(Value(-123456));
+  b2.close();
+
+  ASSERT_EQ(4818112773835168348ULL, b1.slice().volatileHash());
+  ASSERT_EQ(12966989194194709699ULL, b2.slice().volatileHash());
+}
+
+TEST(SliceTest, VolatileHashArrayIndexed) {
+  Options options;
+
+  options.buildUnindexedArrays = false;
+  std::shared_ptr<Builder> b1 = Parser::fromJson("[1,2,3,4,5,6,7,8,9,10]", &options);
+  Slice s1 = b1->slice();
+
+  options.buildUnindexedArrays = true;
+  std::shared_ptr<Builder> b2 = Parser::fromJson("[1,2,3,4,5,6,7,8,9,10]", &options);
+  Slice s2 = b2->slice();
+
+  ASSERT_EQ(18208530095070427143ULL, s1.volatileHash());
+  ASSERT_EQ(4459115985522862126ULL, s2.volatileHash());
+}
+
+TEST(SliceTest, VolatileHashArrayNested) {
+  Options options;
+
+  options.buildUnindexedArrays = false;
+  std::shared_ptr<Builder> b1 = Parser::fromJson("[-4.0,1,2.0,-4345.0,4,5,6,7,8,9,10,[1,9,-42,45.0]]", &options);
+  Slice s1 = b1->slice();
+
+  options.buildUnindexedArrays = true;
+  std::shared_ptr<Builder> b2 = Parser::fromJson("[-4.0,1,2.0,-4345.0,4,5,6,7,8,9,10,[1,9,-42,45.0]]", &options);
+  Slice s2 = b2->slice();
+
+  ASSERT_EQ(481920679374299546ULL, s1.volatileHash());
+  ASSERT_EQ(13841768155551889409ULL, s2.volatileHash());
+}
+
+TEST(SliceTest, VolatileHashObjectOrder) {
+  Options options;
+
+  options.buildUnindexedObjects = false;
+  std::shared_ptr<Builder> b1 = Parser::fromJson(
+      "{\"one\":1,\"two\":2,\"three\":3,\"four\":4,\"five\":5,\"six\":6,"
+      "\"seven\":7}", &options);
+  Slice s1 = b1->slice();
+
+  options.buildUnindexedObjects = false;
+  std::shared_ptr<Builder> b2 = Parser::fromJson(
+      "{\"seven\":7,\"six\":6,\"five\":5,\"four\":4,\"three\":3,\"two\":2,\"one\":1}", &options);
+  Slice s2 = b2->slice();
+
+  ASSERT_EQ(6457404870531647212ULL, s1.volatileHash());
+  ASSERT_EQ(11941263562352219035ULL, s2.volatileHash());
+}
 
 TEST(SliceTest, GetNumericValueIntNoLoss) {
   Builder b;
