@@ -35,7 +35,7 @@ rules documented in [Document Schema Validation](https://www.arangodb.com/docs/d
 
 @RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
 additional options for key generation. If specified, then *keyOptions*
-should be a JSON array containing the following attributes:
+should be a JSON object containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
