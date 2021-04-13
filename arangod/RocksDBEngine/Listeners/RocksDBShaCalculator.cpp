@@ -208,11 +208,14 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
 
   std::string temppath, tempname;
   for (auto iter = filelist.begin(); filelist.end() != iter; ++iter) {
+    // cppcheck-suppress derefInvalidIteratorRedundantCheck
     std::string::size_type shaIdx = iter->find(".sha.");
     if (std::string::npos != shaIdx) {
       // two cases: 1. its .sst follows so skip both, 2. no matching .sst, so delete
       bool match = false;
+      // cppcheck-suppress derefInvalidIteratorRedundantCheck
       auto next = iter + 1;
+      // cppcheck-suppress derefInvalidIteratorRedundantCheck
       if (filelist.end() != next) {
         tempname = iter->substr(0, shaIdx);
         tempname += ".sst";

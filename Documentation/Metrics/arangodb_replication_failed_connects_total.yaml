@@ -14,7 +14,7 @@ description: |
   over to new shards. Whenever there is a communication issue between the follower and
   the leader of the shard it will be counted here for the follower. This communication
   issues cover failed connections or http errors, but they also cover invalid or
-  unexpected data formats revieved on the follower.
+  unexpected data formats received on the follower.
 threshold: |
   In ideal situation this counter should be 0. It is expected to increase if there is
   server or network outage. However it is not guaranteed that this metric increases

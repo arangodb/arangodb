@@ -61,6 +61,7 @@
 #include "Graph/ShortestPathType.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
 
@@ -625,6 +626,15 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* ex
     // subqueries
     auto visitor = [this, &previous](AstNode* node) {
       if (node->type == NODE_TYPE_COLLECTION) {
+        // collection name used inside an expression...
+
+        auto& vocbase = _ast->query().vocbase();
+        if (!vocbase.server().getFeature<QueryRegistryFeature>().allowCollectionsInExpressions()) {
+          // this is disallowed here, so fail the query
+          std::string cn = node->getString();
+          THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, cn.c_str());
+        }
+
         // create an on-the-fly subquery for a full collection access
         AstNode* rootNode = _ast->createNodeSubquery();
 

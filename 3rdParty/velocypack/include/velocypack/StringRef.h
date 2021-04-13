@@ -47,7 +47,7 @@ class StringRef {
   /// @brief create an empty StringRef
   constexpr StringRef() noexcept : _data(""), _length(0) {}
   
-  /// @brief create a StringRef from a std::string_view
+  /// @brief create a StringRef from an std::string_view
   explicit StringRef(std::string_view sv) noexcept : StringRef(sv.data(), sv.size()) {}
 
   /// @brief create a StringRef from an std::string
@@ -221,7 +221,7 @@ namespace std {
 template <>
 struct hash<arangodb::velocypack::StringRef> {
   std::size_t operator()(arangodb::velocypack::StringRef const& value) const noexcept {
-    return VELOCYPACK_HASH(value.data(), value.size(), 0xdeadbeef); 
+    return VELOCYPACK_HASH_WYHASH(value.data(), value.size(), 0xdeadbeef); 
   }
 };
 
