@@ -152,10 +152,6 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
 //////////////////////////////////////////////////////////////////////////////
 
 Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
-  TRI_IF_FAILURE("CursorRepository::directKillStreamQueryBeforeCursorIsBeingCreated") {
-    q->debugKillQuery();
-  }
-
   auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
   cursor->use();
 

@@ -149,7 +149,6 @@ function GenericQueryKillSuite() { // can be either default or stream
   /*
    * Stream
    */
-  testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryBeforeCursorIsBeingCreated", false, "on", "on"));
   testCases.push(createTestCaseEntry("CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated", false, "on", "on"));
   testCases.push(createTestCaseEntry("QueryStreamCursor::directKillAfterPrepare", false, "on", "on"));
   testCases.push(createTestCaseEntry("QueryStreamCursor::directKillAfterTrxSetup", false, "on", "on"));
