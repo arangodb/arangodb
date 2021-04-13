@@ -1,6 +1,12 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Added option `--query.require-with` to make AQL in single server mode also
+  require `WITH` clauses where the cluster would need them.
+  The option is turned off by default, but can be turned on in single servers
+  to remove this behavior difference between single servers and clusters,
+  making later a transition from single server to cluster easier.
+
 * Updated ArangoDB Starter to 0.15.0.
 
 * Fix BTS-357: Fix processing of analyzer with return type by TOKENS function.
