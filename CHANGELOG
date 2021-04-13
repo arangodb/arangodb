@@ -1,6 +1,13 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix BTS-346: Improved handling of AQL query kill command in unlikely
+  places, before the query starts to execute and after the query is done
+  but the result is still beeing written. Now the cleanup of queries works
+  more reliably. This unreliable kil time-frames are very small and unlikely
+  to hit, if one was hit transactions were not aborted, and locks could be
+  left until query timeout.
+
 * Updated ArangoDB Starter to 0.15.0.
 
 * Fix BTS-357: Fix processing of analyzer with return type by TOKENS function.
