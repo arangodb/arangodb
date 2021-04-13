@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global 
+  replication applier being started before end of database recovery procedure. 
+  Also fixed potential shut down errors due to global replication applier 
+  being shut down in parallel to a concurrent shut down attempt.
+
 * Experimentally switch to wyhash (from xxhash) for velocypack. This is an
   experiment in devel to check if it produces any observable speedups.
 
