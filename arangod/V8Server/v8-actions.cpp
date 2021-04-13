@@ -1722,7 +1722,7 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8::HandleScope scope(isolate);
 
   // extract arguments
-  if (args.Length() > 1) {
+  if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("debugClearFailAt()");
   }
 
@@ -1738,16 +1738,8 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
     }
     std::string dbname(v8g->_vocbase->name());
 
-    std::string pathUrl;
-    if (args.Length() == 0) {
-      pathUrl = "_admin/debug/failat";
-    } else {
-      std::string const point = TRI_ObjectToString(isolate, args[0]);
-      pathUrl = "_admin/debug/failat/" + point;
-    }
-
     auto res =
-        clusterSendToAllServers(isolate, dbname, pathUrl,
+        clusterSendToAllServers(isolate, dbname, "_admin/debug/failat",
                                 arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1874,7 +1866,7 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
-
+  
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_CREATE_HOTBACKUP"),
