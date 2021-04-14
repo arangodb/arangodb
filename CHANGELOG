@@ -1,6 +1,9 @@
 devel
 -----
 
+* Removed assertion for success of a RocksDB function. Throw a proper 
+  exception instead.
+
 * Fixed issue #13169: arangoimport tsv conversion of bools and null, although
   switched off by `--convert false`.
 
