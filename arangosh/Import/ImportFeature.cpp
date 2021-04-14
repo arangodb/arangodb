@@ -117,9 +117,8 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new UInt64Parameter(&_rowsToSkip));
 
   options->addOption("--convert",
-                     "convert the strings 'null', 'false', 'true' and strings "
-                     "containing numbers into non-string types (csv and tsv "
-                     "only)",
+                     "convert strings containing numbers into non-string types "
+                     "(csv and tsv only)",
                      new BooleanParameter(&_convert));
 
   options->addOption("--translate",
