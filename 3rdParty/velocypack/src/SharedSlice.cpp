@@ -124,6 +124,8 @@ ValueType SharedSlice::type() const noexcept { return slice().type(); }
 
 char const* SharedSlice::typeName() const { return slice().typeName(); }
 
+uint64_t SharedSlice::volatileHash() const { return slice().volatileHash(); }
+
 uint64_t SharedSlice::hash(uint64_t seed) const { return slice().hash(seed); }
 
 uint32_t SharedSlice::hash32(uint32_t seed) const {

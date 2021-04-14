@@ -84,11 +84,9 @@
 #endif
 
 #ifndef VELOCYPACK_XXHASH
-#ifndef VELOCYPACK_WYHASH
 #ifndef VELOCYPACK_FASTHASH
 // default to xxhash if no hash define is set
 #define VELOCYPACK_XXHASH
-#endif
 #endif
 #endif
 
@@ -102,17 +100,6 @@
 #define VELOCYPACK_HASH32(mem, size, seed) XXH32(mem, size, seed)
 #endif
 
-#ifdef VELOCYPACK_WYHASH
-// forward for wy hash functions declared elsewhere
-#include "velocypack/velocypack-wyhash.h"
-
-//the default secret parameters
-static constexpr uint64_t _wyp[4] = {0xa0761d6478bd642full, 0xe7037ed1a0b428dbull, 0x8ebc6af09c88c6e3ull, 0x589965cc75374cc3ull};
-
-#define VELOCYPACK_HASH(mem, size, seed) wyhash(mem, size, seed, _wyp)
-#define VELOCYPACK_HASH32(mem, size, seed) static_cast<uint32_t>(wyhash(mem, size, seed, _wyp))
-#endif
-
 #ifdef VELOCYPACK_FASTHASH
 // forward for fasthash functions declared elsewhere
 uint64_t fasthash64(void const*, std::size_t, uint64_t);
@@ -121,6 +108,15 @@ uint64_t fasthash32(void const*, std::size_t, uint32_t);
 #define VELOCYPACK_HASH(mem, size, seed) fasthash64(mem, size, seed)
 #define VELOCYPACK_HASH32(mem, size, seed) fasthash32(mem, size, seed)
 #endif
+
+// always define wy hash function, in addition to other configured
+// hash function
+#include "velocypack/velocypack-wyhash.h"
+
+// the default secret parameters
+static constexpr uint64_t _wyp[4] = {0xa0761d6478bd642full, 0xe7037ed1a0b428dbull, 0x8ebc6af09c88c6e3ull, 0x589965cc75374cc3ull};
+
+#define VELOCYPACK_HASH_WYHASH(mem, size, seed) wyhash(mem, size, seed, _wyp)
 
 #ifdef __APPLE__
 #include <libkern/OSByteOrder.h>

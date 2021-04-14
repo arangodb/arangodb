@@ -35,8 +35,6 @@ if (getOptions === true) {
   };
 }
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 if (runSetup === true) {
   let users = require("@arangodb/users");
   
@@ -47,6 +45,8 @@ if (runSetup === true) {
   users.grantDatabase("test_ro", "_system", "ro");
   return true;
 }
+
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 var jsunity = require('jsunity');
 

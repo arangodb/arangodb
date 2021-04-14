@@ -61,7 +61,7 @@ CachedValue* CachedValue::construct(void const* k, std::size_t kSize,
       (reinterpret_cast<std::size_t>(buf) + _headerAllocOffset) & _headerAllocMask);
   std::size_t offset = buf - aligned;
   // ctor of CachedValue is noexcept
-  // cppcheck-suppress *
+  // cppcheck-suppress memleak
   return new (aligned) CachedValue(offset, k, kSize, v, vSize);
 }
 
