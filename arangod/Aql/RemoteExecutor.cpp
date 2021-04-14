@@ -73,10 +73,10 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _server(server),
       _distributeId(distributeId),
       _queryId(queryId),
-      _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
       _lastError(TRI_ERROR_NO_ERROR),
-      _lastTicket(0),
-      _requestInFlight(false) {
+      _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
+      _requestInFlight(false),
+      _lastTicket(0) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && distributeId.empty()) ||
              (!arangodb::ServerState::instance()->isCoordinator() && !distributeId.empty()));
@@ -314,7 +314,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
+auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
@@ -328,12 +328,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
   return res;
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
-    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  return executeViaNewApi(stack);
-}
-
-auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack)
+auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
@@ -388,8 +383,8 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack
   }
 
   // We need to send a request here
-  auto buffer = serializeExecuteCallBody(callStack);
-  this->traceExecuteRequest(VPackSlice(buffer.data()), callStack);
+  auto buffer = serializeExecuteCallBody(stack);
+  this->traceExecuteRequest(VPackSlice(buffer.data()), stack);
 
   auto res = sendAsyncRequest(fuerte::RestVerb::Put,
                               RestAqlHandler::Route::execute(), std::move(buffer));
@@ -541,7 +536,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   return {TRI_ERROR_NO_ERROR};
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice const slice,
+void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice slice,
                                                              AqlCallStack const& callStack) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
@@ -551,8 +546,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice const sl
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice const slice,
-                                                             size_t const atMost) {
+void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice slice,
+                                                             size_t atMost) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -561,8 +556,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice const sl
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const slice,
-                                                              size_t const atMost) {
+void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice slice,
+                                                              size_t atMost) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -571,7 +566,7 @@ void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const s
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice const slice) {
+void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice slice) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
@@ -580,8 +575,8 @@ void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
-                                                      VPackSlice const slice,
+void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* rpc,
+                                                      VPackSlice slice,
                                                       std::string const& args) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {

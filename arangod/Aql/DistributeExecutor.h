@@ -88,7 +88,7 @@ class DistributeExecutor {
    * @param skipped The rows that have been skipped from upstream
    * @param blockMap Map client => Data. Will provide the required data to the correct client.
    */
-  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                        std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
 
  private:
@@ -103,7 +103,7 @@ class DistributeExecutor {
    * @param rowIndex
    * @return std::string Identifier used by the client
    */
-  auto getClient(SharedAqlItemBlockPtr block, size_t rowIndex) -> std::string;
+  auto getClient(SharedAqlItemBlockPtr const& block, size_t rowIndex) const -> std::string;
 
  private:
   DistributeExecutorInfos const& _infos;

@@ -81,6 +81,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
+        
+namespace {
+AqlCallStack const defaultStack{AqlCallList{AqlCall{}}};
+}
 
 /// @brief internal constructor, Used to construct a full query or a ClusterQuery
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
@@ -448,8 +452,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // In case of WAITING we return, this function is repeatable!
         // In case of HASMORE we loop
         while (true) {
-          AqlCallStack defaultStack{AqlCallList{AqlCall{}}};
-          auto const& [state, skipped, block] = engine->execute(defaultStack);
+          auto const& [state, skipped, block] = engine->execute(::defaultStack);
           // The default call asks for No skips.
           TRI_ASSERT(skipped.nothingSkipped());
           if (state == ExecutionState::WAITING) {
