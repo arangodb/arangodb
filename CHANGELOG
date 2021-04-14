@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Web UI: Highlight binary and hexadecimal integer literals in AQL queries.
+
 * Prevent arangod from terminating with "terminate called without an active
   exception" (SIGABRT) in case an out-of-memory exception occurs during creating
   an ASIO socket connection.
