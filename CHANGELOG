@@ -1,6 +1,8 @@
 devel
 -----
 
+* Web UI: Highlight binary and hexadecimal integer literals in AQL queries.
+
 * Fix BTS-350, BTS-358: Fixed potential startup errors due to global 
   replication applier being started before end of database recovery procedure. 
   Also fixed potential shut down errors due to global replication applier 
