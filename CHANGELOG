@@ -2,11 +2,46 @@ devel
 -----
 
 * Fixed issue #13169: arangoimport tsv conversion of bools and null, although
-  switched off by `--convert false`
+  switched off by `--convert false`.
 
   Importing unquoted `null`, `false` and `true` literals from delimited files
   get imported as strings now if `convert` is explicitly turned off. It
   previously affected unquoted numbers only.
+
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global 
+  replication applier being started before end of database recovery procedure. 
+  Also fixed potential shut down errors due to global replication applier 
+  being shut down in parallel to a concurrent shut down attempt.
+
+* Experimentally switch to wyhash (from xxhash) for velocypack. This is an
+  experiment in devel to check if it produces any observable speedups.
+
+* Updated ArangoDB Starter to 0.15.0.
+
+* Remove deprecated HTTP REST API `/_api/export`. This API was deprecated
+  in a previous version because it was not supported in clusters and was
+  also covered completely by streaming AQL queries for the RocksDB storage
+  engine.
+
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
+* Updated ArangoDB Starter to 0.15.0-preview-4.
+
+* Fixed CPPCHECK warning or added suppression.
+
+* Added enterprise-build-repository and oskar-build-repository to `--version`
+  as `enterprise-build-repository` and `oskar-build-repository`.
+
+* Clean up replication code and remove a 3.2-compatibility mode that was 
+  only useful when replicating from a leader < ArangoDB version 3.3.
+
+* Obsolete option `--database.old-system-collections`. This option has no
+  meaning in ArangoDB 3.9, as old system collections will not be created 
+  anymore in this version. The option was deprecated in 3.8 and announced
+  to be obsoleted.
+
+* Upgrade velocypack to latest, C++17-only version.
 
 * Make arangovpack more powerful, by supporting different input and output
   formats (json and vpack, plain or hex-encoded).
