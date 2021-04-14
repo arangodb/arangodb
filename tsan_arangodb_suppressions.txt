@@ -1,2 +1,10 @@
 race:boost/lockfree/queue.hpp
 race:boost/lockfree/detail/freelist.hpp
+
+# these operators contain an assertion that checks the refCount,
+# but that read operation is racy.
+race:SharedAqlItemBlockPtr::operator*
+race:SharedAqlItemBlockPtr::operator->
+
+# logCrashInfo calls LOG_TOPIC which in turn calls std::string::reserve
+signal:lib/Basics/CrashHandler.cpp

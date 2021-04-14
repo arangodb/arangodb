@@ -36,9 +36,9 @@
 #include "Aql/Stats.h"
 #include "Aql/RegisterInfos.h"
 
-#include <functional>
+#include <condition_variable>
 #include <memory>
-#include <queue>
+#include <mutex>
 
 namespace arangodb::aql {
 
@@ -219,6 +219,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 #endif
 
  private:
+  struct Context {
+    Context(ExecutionBlockImpl& block, AqlCallStack& stack);
+    AqlCallStack& stack;
+    AqlCallList clientCallList;
+    AqlCall clientCall;
+  };
+
   /**
    * @brief Inner execute() part, without the tracing calls.
    */
@@ -226,6 +233,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
       AqlCallStack& stack, AqlCallType const& aqlCall, bool wasCalledWithContinueCall);
+
+  std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> doProduceRows(Context& ctx);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);
@@ -248,12 +257,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
   // Allocate an output block and install a call in it
-  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
+  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call)
       -> std::unique_ptr<OutputAqlItemRow>;
 
   // Ensure that we have an output block of the desired dimensions
   // Will as a side effect modify _outputItemRow
-  void ensureOutputBlock(AqlCall&& call, DataRange const& inputRange);
+  void ensureOutputBlock(AqlCall&& call);
 
   // Compute the next state based on the given call.
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
@@ -291,6 +300,27 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
 
  private:
+  struct PrefetchTask {
+    enum class State {
+      Pending,
+      InProgress,
+      Finished,
+      Consumed
+    };
+    std::atomic<State> state{State::Pending};
+    std::unique_ptr<OutputAqlItemRow> output;
+
+    std::mutex lock;
+    std::condition_variable bell;
+    std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> result;
+    
+    bool isConsumed() const;
+    bool tryClaim();
+    void waitFor();
+    
+    void execute(ExecutionBlockImpl& block);
+  };
+
   RegisterInfos _registerInfos;
 
   /**
@@ -335,6 +365,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   typename Executor::Stats _blockStats;
 
   AqlCallStack _stackBeforeWaiting;
+  
+  std::shared_ptr<PrefetchTask> _prefetchTask;
   
   bool _hasMemoizedCall{false};
 
