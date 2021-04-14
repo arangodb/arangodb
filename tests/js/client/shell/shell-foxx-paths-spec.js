@@ -2,7 +2,6 @@
 'use strict';
 const expect = require('chai').expect;
 const fm = require('@arangodb/foxx/manager');
-const request = require('@arangodb/request');
 const fs = require('fs');
 const internal = require('internal');
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
@@ -100,7 +99,7 @@ describe('Foxx service path handling', () => {
   });
 
   it('serves static files', () => {
-    const res = arango.GET_RAW(`${mount}/static/public.txt`, {json: false});
+    const res = arango.GET_RAW(`${mount}/static/public.txt`, {'accept-content-type': 'text/plain'});
     expect(res.body).to.equal('Hello');
   });
 

@@ -921,14 +921,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       break;
 
       case Endpoint::TransportType::VST: {
-        VPackBuffer<uint8_t> buffer;
-        VPackBuilder builder(buffer);
-        builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
-        TRI_FreeString(content);
-
-        // create vpack from file
-        response->setContentType(rest::ContentType::VPACK);
-        response->setPayload(std::move(buffer));
+        response->addRawPayload(velocypack::StringRef(content, length));
       }
       break;
 
