@@ -2,7 +2,7 @@ v3.7.11 (XXXX-XX-XX)
 --------------------
 
 * Fixed issue #13169: arangoimport tsv conversion of bools and null, although
-  switched off by `--convert false`
+  switched off by `--convert false`.
 
   Importing unquoted `null`, `false` and `true` literals from delimited files
   get imported as strings now if `convert` is explicitly turned off. It
