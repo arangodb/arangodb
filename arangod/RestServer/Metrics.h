@@ -230,7 +230,7 @@ struct scale_t {
   /**
    * @brief number of buckets
    */
-  std::string const delim(size_t const& s) const {
+  std::string const delim(size_t s) const {
     return (s < _n - 1) ? std::to_string(_delim.at(s)) : "+Inf";
   }
   /**
@@ -337,7 +337,7 @@ struct log_scale_t : public scale_t<T> {
    * @param val value
    * @return    index
    */
-  size_t pos(T const& val) const {
+  size_t pos(T val) const {
     return static_cast<size_t>(1+std::floor(log((val - this->_low)/_div)/_lbase));
   }
   /**
@@ -388,7 +388,7 @@ struct lin_scale_t : public scale_t<T> {
    * @param val value
    * @return    index
    */
-  size_t pos(T const& val) const {
+  size_t pos(T val) const {
     return static_cast<size_t>(std::floor((val - this->_low)/ _div));
   }
 
@@ -440,19 +440,19 @@ template<typename Scale> class Histogram : public Metric {
 
   virtual std::string type() const override { return "histogram"; }
   
-  Scale const& scale() {
+  Scale const& scale() const {
     return _scale;
   }
 
-  size_t pos(value_type const& t) const {
+  size_t pos(value_type t) const {
     return _scale.pos(t);
   }
 
-  void count(value_type const& t) {
+  void count(value_type t) {
     count(t, 1);
   }
 
-  void count(value_type const& t, uint64_t n) {
+  void count(value_type t, uint64_t n) {
     if (t < _scale.delims().front()) {
       _c[0] += n;
     } else if (t >= _scale.delims().back()) {
@@ -470,13 +470,13 @@ template<typename Scale> class Histogram : public Metric {
     records(t);
   }
 
-  value_type const& low() const { return _scale.low(); }
-  value_type const& high() const { return _scale.high(); }
+  value_type low() const { return _scale.low(); }
+  value_type high() const { return _scale.high(); }
 
   Metrics::hist_type::value_type& operator[](size_t n) {
     return _c[n];
   }
-
+  
   std::vector<uint64_t> load() const {
     std::vector<uint64_t> v(size());
     for (size_t i = 0; i < size(); ++i) {
@@ -485,7 +485,7 @@ template<typename Scale> class Histogram : public Metric {
     return v;
   }
 
-  uint64_t load(size_t i) const { return _c.load(i); };
+  uint64_t load(size_t i) const { return _c.load(i); }
 
   size_t size() const { return _c.size(); }
 

@@ -12,7 +12,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Mo
 option(BuildVelocyPackExamples "Build examples" ON)
 option(Maintainer "Build maintainer tools" OFF)
 
-set(HashType "xxhash" CACHE STRING "Hash type (fasthash, xxhash)" )
+set(HashType "xxhash" CACHE STRING "Hash type (fasthash, xxhash, wyhash)" )
 
 # Set Build Type
 if(NOT CMAKE_BUILD_TYPE)
@@ -46,8 +46,8 @@ set(VELOCY_SOURCE
     src/Options.cpp
     src/Parser.cpp
     src/Serializable.cpp
+    src/SharedSlice.cpp
     src/Slice.cpp
-    src/SliceStaticData.cpp
     src/StringRef.cpp
     src/Utf8Helper.cpp
     src/Validator.cpp
@@ -60,12 +60,6 @@ set(VELOCY_SOURCE
     src/string-functions.cpp
 )
 
-if (CMAKE_CXX_STANDARD GREATER_EQUAL 17)
-    list(APPEND VELOCY_SOURCE
-        src/SharedSlice.cpp
-    )
-endif ()
-
 #Use xxhash or fasthash?
 if(HashType STREQUAL "xxhash")
     list(APPEND VELOCY_SOURCE src/xxhash.cpp)
@@ -74,7 +68,7 @@ elseif(HashType STREQUAL "fasthash")
     list(APPEND VELOCY_SOURCE src/fasthash.cpp)
     add_definitions("-DVELOCYPACK_FASTHASH=1")
 else()
-    message(FATAL_ERROR "invalid HashType value. supported values: xxhash or fasthash")
+    message(FATAL_ERROR "invalid HashType value. supported values: xxhash, fasthash")
 endif()
 message(STATUS "Building with hash type: ${HashType}")
 

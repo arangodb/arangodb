@@ -279,7 +279,6 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
-      _useOldSystemCollections(false),
       _started(false) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
@@ -318,14 +317,10 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_ignoreDatafileErrors),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption(
+  // the following option was obsoleted in 3.9
+  options->addObsoleteOption(
       "--database.old-system-collections",
-      "create and use deprecated system collection (_modules, _fishbowl)",
-      new BooleanParameter(&_useOldSystemCollections),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30609)
-      .setIntroducedIn(30705)
-      .setDeprecatedIn(30800);
+      "create and use deprecated system collection (_modules, _fishbowl)", false);
   
   // the following option was obsoleted in 3.8
   options->addObsoleteOption(
@@ -834,6 +829,11 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name, bool removeApps
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());
+    }
+    // TODO Temporary fix, this full method needs to be unified.
+    try {
+      vocbase->cursorRepository()->garbageCollect(true);
+    } catch (...) {
     }
 
     res = engine.prepareDropDatabase(*vocbase).errorNumber();

@@ -1201,7 +1201,7 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
 
-  if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
+  if (ih.importDelimited(collectionName, fileName, "", ImportHelper::CSV)) {
     v8::Local<v8::Object> result = v8::Object::New(isolate);
 
     result->Set(context,
@@ -1763,7 +1763,7 @@ again:
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
       req->header.acceptType(fu::ContentType::Custom);
     }
-    req->header.addMeta(pair.first, pair.second);
+    req->header.addMeta(basics::StringUtils::tolower(pair.first), pair.second);
   }
   if (isFile) {
     std::string const infile = TRI_ObjectToString(isolate, body);
@@ -1867,7 +1867,7 @@ again:
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
       req->header.acceptType(fu::ContentType::Custom);
     }
-    req->header.addMeta(pair.first, pair.second);
+    req->header.addMeta(basics::StringUtils::tolower(pair.first), pair.second);
   }
   if (body->IsString() || body->IsStringObject()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
