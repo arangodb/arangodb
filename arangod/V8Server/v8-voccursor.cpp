@@ -159,6 +159,8 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   builder.openObject(true);  // conversion uses sequential iterator, no indexing
   Result r = cursor->dumpSync(builder);
   if (r.fail()) {
+    // On any error the cursor needs to be deleted
+    TRI_ASSERT(cursor->isDeleted());
     TRI_V8_THROW_EXCEPTION_MEMORY();  // for compatibility
   }
   builder.close();
@@ -255,6 +257,8 @@ struct V8Cursor final {
     _tmpResult.openObject();
     Result r = cursor->dumpSync(_tmpResult);
     if (r.fail()) {
+      // On any error the cursor needs to be deleted
+      TRI_ASSERT(cursor->isDeleted());
       return r;
     }
     _tmpResult.close();
@@ -349,12 +353,20 @@ struct V8Cursor final {
     
     // specify ID 0 so it uses the external V8 context
     auto cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
-    TRI_DEFER(cc->release());
+    arangodb::ScopeGuard releaseCursorGuard([&]() {
+      cc->release();
+    });
     // args.Holder() is supposedly better than args.This()
     auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());
-    Result r = self->fetchData(cc);
-    self.release();  // args.Holder() owns the pointer
+    V8Cursor* v8Cursor = self.release();  // args.Holder() owns the pointer
+    Result r = v8Cursor->fetchData(cc);
     if (r.fail()) {
+      // Try to free the cursor from cursor repository.
+      // We are in NEW so the caller has no chance to do this operation
+      // as neither the cursor nor the id is known.
+      cursors->release(cc);
+      // cursors->release does cc->release() for us.
+      releaseCursorGuard.cancel();
       TRI_V8_THROW_EXCEPTION(r);
     } else {
       TRI_V8_RETURN(args.This());

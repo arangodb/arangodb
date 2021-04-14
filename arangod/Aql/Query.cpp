@@ -36,6 +36,8 @@
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryExecutionState.h"
+#include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
@@ -180,10 +182,10 @@ Query::~Query() {
     ExecutionState state = cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
     TRI_ASSERT(state != ExecutionState::WAITING);
   } catch (...) {
-    // unfortunately we cannot do anything here, as we are in 
-    // a destructor
+    // unfortunately we cannot do anything here, as we are in
+    // the destructor
   }
-  
+
   unregisterSnippets();
 
   exitV8Context();
@@ -196,7 +198,7 @@ Query::~Query() {
       << elapsedSince(_startTime)
       << " Query::~Query this: " << (uintptr_t)this;
 }
-  
+
 /// @brief return the user that started the query
 std::string const& Query::user() const {
   return _user;
@@ -234,7 +236,7 @@ void Query::kill() {
     }
   }
 }
-  
+
 /// @brief return the start time of the query (steady clock value)
 double Query::startTime() const noexcept { return _startTime; }
 
@@ -348,7 +350,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES) << elapsedSince(_startTime)
                                              << " Query::execute"
                                              << " this: " << (uintptr_t)this;
-    
+
   try {
     if (killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -539,7 +541,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
                                  QueryExecutionState::toStringWithPrefix(_execState)));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
   }
-  
+
   return ExecutionState::DONE;
 }
 
@@ -662,6 +664,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       ExecutionState state = ExecutionState::HASMORE;
       auto context = TRI_IGETC;
       while (state != ExecutionState::DONE) {
+        if (killed()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+        }
         auto res = engine->getSome(ExecutionBlock::DefaultBatchSize);
         state = res.first;
         while (state == ExecutionState::WAITING) {
@@ -679,6 +684,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
 
         if (!_queryOptions.silent) {
+          TRI_IF_FAILURE("Query::executeV8directKillBeforeQueryResultIsGettingHandled") {
+            debugKillQuery();
+          }
           size_t memoryUsage = 0;
           size_t const n = value->size();
 
@@ -706,10 +714,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           // this may throw
           _resourceMonitor.increaseMemoryUsage(memoryUsage);
           _resultMemoryUsage += memoryUsage;
-        }
 
-        if (killed()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+          TRI_IF_FAILURE("Query::executeV8directKillAfterQueryResultIsGettingHandled") {
+            debugKillQuery();
+          }
         }
       }
 
@@ -746,6 +754,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     ss->resetWakeupHandler();
+
     // will set warnings, stats, profile and cleanup plan and engine
     ExecutionState state = finalize(queryResult);
     while (state == ExecutionState::WAITING) {
@@ -1465,6 +1474,10 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
   
+  TRI_IF_FAILURE("Query::directKillBeforeQueryWillBeFinalized") {
+    debugKillQuery();
+  }
+
   LOG_TOPIC("fc33c", DEBUG, Logger::QUERIES)
        << elapsedSince(_startTime)
        << " Query::finalizeSnippets: before _trx->commit, errorCode: "
@@ -1472,7 +1485,6 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
   
   for (auto& [eId, engine] : _snippets) { // simon: no need to pass through shutdown
     engine->setShutdown(ExecutionEngine::ShutdownState::Done);
-
     engine->sharedState()->invalidate();
     engine->collectExecutionStats(stats);
   }
@@ -1495,6 +1507,10 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
 
   enterState(QueryExecutionState::ValueType::FINALIZATION);
   
+  TRI_IF_FAILURE("Query::directKillAfterQueryWillBeFinalized") {
+    debugKillQuery();
+  }
+
   stats.requests += _numRequests.load(std::memory_order_relaxed);
   stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
   stats.setExecutionTime(elapsedSince(_startTime));
@@ -1508,4 +1524,58 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
       << " this: " << (uintptr_t)this;
   
   return finishResult;
+}
+
+void Query::debugKillQuery() {
+#ifndef ARANGODB_ENABLE_FAILURE_TESTS
+  TRI_ASSERT(false);
+  return;
+#else
+  // Not there is a shared code path that triggers kill unintentionally
+  // on DBServer where it is not possible to be triggered, so ignore debugKill on DBServer
+  if (_wasDebugKilled || _trx->state()->isDBServer()) {
+    return;
+  }
+  bool usingSystemCollection = false;
+  // Ignore queries on System collections, we do not want them to hit failure points
+  collections().visit([&usingSystemCollection](std::string const&, Collection& col) -> bool {
+    if (col.getCollection()->system()) {
+      usingSystemCollection = true;
+      return false;
+    }
+    return true;
+  });
+
+  if (usingSystemCollection) {
+    return;
+  }
+  LOG_DEVEL << "Killing query";
+
+  _wasDebugKilled = true;
+  // A query can only be killed under certain circumstances.
+  // We assert here that one of those is true.
+  // a) Query is in the list of current queries, this can be requested by the user and the query can be killed by user
+  // b) Query is in the query registry. In this case the query registry can hit a timeout, which triggers the kill
+  // c) The query id has been handed out to the user (stream query only)
+  bool isStreaming = queryOptions().stream;
+  bool isInList = false;
+  bool isInRegistry = false;
+  auto const& queryList = vocbase().queryList();
+  if (queryList->enabled()) {
+    auto const& current = queryList->listCurrent();
+    for (auto const& it : current) {
+      if (it.id == _queryId) {
+        isInList = true;
+        break;
+      }
+    }
+  }
+
+  QueryRegistry* registry = QueryRegistryFeature::registry();
+  if (registry != nullptr) {
+    isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
+  }
+  TRI_ASSERT(isInList || isStreaming || isInRegistry || _execState == QueryExecutionState::ValueType::FINALIZATION);
+  kill();
+#endif
 }
