@@ -66,19 +66,19 @@ function shellCommunicationsFailureSuite () {
       assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
       let id = res.headers["x-arango-async-id"];
       let inq = db._connection.PUT_RAW("/_api/job/" + id, {});
-      console.error("Habakuk0", inq);
+      print("Expecting delay with 204:", inq);
       assertEqual(204, inq.code);
       assertFalse(inq.error);
       internal.wait(2.0);
       inq = db._connection.PUT_RAW("/_api/job/" + id, {});
-      console.error("Habakuk1", inq);
+      print("Expecting delay with 204:", inq);
       assertEqual(204, inq.code);
       assertFalse(inq.error);
       internal.debugClearFailAt("documents::insertLeaderRefusal");
       let startTime = new Date();
       while (new Date() - startTime < 10000) {
         inq = db._connection.PUT_RAW("/_api/job/" + id, {});
-        console.error("Habakuk2", inq);
+        print("Expecting delay with 204 followed by 202:", inq);
         if (inq.code !== 204) {
           break;
         }
