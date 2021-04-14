@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, assertTrue, assertFalse */
+/*global fail, assertEqual, assertTrue, assertFalse, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure scenarios
