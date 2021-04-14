@@ -1,4 +1,5 @@
 name: arangodb_aql_global_memory_limit
+introducedIn: "3.8.0"
 help: |
   Total memory limit for all AQL queries combined.
 unit: bytes

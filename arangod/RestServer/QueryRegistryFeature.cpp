@@ -49,14 +49,14 @@ using namespace arangodb::options;
 
 namespace {
 
-uint64_t defaultMemoryLimit(uint64_t available) {
+uint64_t defaultMemoryLimit(uint64_t available, double reserveFraction, double percentage) {
   if (available == 0) {
     // we don't know how much memory is available, so we cannot do any sensible calculation
     return 0;
   }
 
-  // this function will produce the following results for some
-  // common available memory values:
+  // this function will produce the following results for a reserveFraction of 0.2 and a 
+  // percentage of 0.75 for some common available memory values:
   //
   //    Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
   //    Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
@@ -77,14 +77,35 @@ uint64_t defaultMemoryLimit(uint64_t available) {
   //    Available memory: 274877906944 (262144MiB)  Limit: 164926744167 (157286MiB), %mem: 60.0
   //    Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
   
-    // 20% of RAM will be considered as a reserve
-  uint64_t reserve = static_cast<uint64_t>(available * 0.2);
+  // for a reserveFraction of 0.05 and a percentage of 0.95 it will produce:
+  //
+  //    Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+  //    Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+  //    Available memory:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
+  //    Available memory:    536870912    (512MiB)  Limit:    255013683    (243MiB), %mem: 47.5
+  //    Available memory:    805306368    (768MiB)  Limit:    510027366    (486MiB), %mem: 63.3
+  //    Available memory:   1073741824   (1024MiB)  Limit:    765041049    (729MiB), %mem: 71.2
+  //    Available memory:   2147483648   (2048MiB)  Limit:   1785095782   (1702MiB), %mem: 83.1
+  //    Available memory:   4294967296   (4096MiB)  Limit:   3825205248   (3648MiB), %mem: 89.0
+  //    Available memory:   8589934592   (8192MiB)  Limit:   7752415969   (7393MiB), %mem: 90.2
+  //    Available memory:  17179869184  (16384MiB)  Limit:  15504831938  (14786MiB), %mem: 90.2
+  //    Available memory:  25769803776  (24576MiB)  Limit:  23257247908  (22179MiB), %mem: 90.2
+  //    Available memory:  34359738368  (32768MiB)  Limit:  31009663877  (29573MiB), %mem: 90.2
+  //    Available memory:  42949672960  (40960MiB)  Limit:  38762079846  (36966MiB), %mem: 90.2
+  //    Available memory:  68719476736  (65536MiB)  Limit:  62019327755  (59146MiB), %mem: 90.2
+  //    Available memory: 103079215104  (98304MiB)  Limit:  93028991631  (88719MiB), %mem: 90.2
+  //    Available memory: 137438953472 (131072MiB)  Limit: 124038655509 (118292MiB), %mem: 90.2
+  //    Available memory: 274877906944 (262144MiB)  Limit: 248077311017 (236584MiB), %mem: 90.2
+  //    Available memory: 549755813888 (524288MiB)  Limit: 496154622034 (473169MiB), %mem: 90.2
+  
+    // reserveFraction% of RAM will be considered as a reserve
+  uint64_t reserve = static_cast<uint64_t>(available * reserveFraction);
 
   // minimum reserve memory is 256MB
   reserve = std::max<uint64_t>(reserve, static_cast<uint64_t>(256) << 20);
 
   double f = double(1.0) - (double(reserve) / double(available));
-  double dyn = (double(available) * f * 0.75);
+  double dyn = (double(available) * f * percentage);
   if (dyn < 0.0) {
     dyn = 0.0;
   }
@@ -123,6 +144,10 @@ DECLARE_GAUGE(
         std::to_string(ResourceMonitor::chunkSize) + " bytes steps");
 DECLARE_GAUGE(arangodb_aql_global_memory_limit, uint64_t,
               "Total memory limit for all AQL queries combined [bytes]");
+DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached,
+                "Number of global AQL query memory limit violations");
+DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached,
+                "Number of local AQL query memory limit violations");
 
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "QueryRegistry"),
@@ -138,8 +163,9 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _smartJoins(true),
       _parallelizeTraversals(true),
 #endif
-      _queryGlobalMemoryLimit(0),
-      _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue())),
+      _allowCollectionsInExpressions(false),
+      _queryGlobalMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
+      _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue(), 0.2, 0.75)),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _queryCacheMaxResultsCount(0),
@@ -165,7 +191,11 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _globalQueryMemoryUsage(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_usage{})),
       _globalQueryMemoryLimit(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_limit{})) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_limit{})),
+      _globalQueryMemoryLimitReached(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_query_memory_limit_reached{})),
+      _localQueryMemoryLimitReached(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_local_query_memory_limit_reached{})) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -298,6 +328,12 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                                               arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30701);
 #endif
+  
+  options->addOption("--query.allow-collections-in-expressions",
+                     "allow full collections to be used in AQL expressions",
+                     new BooleanParameter(&_allowCollectionsInExpressions),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800).setDeprecatedIn(30900);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -402,6 +438,10 @@ void QueryRegistryFeature::updateMetrics() {
   GlobalResourceMonitor const& global = GlobalResourceMonitor::instance();
   _globalQueryMemoryUsage = global.current();
   _globalQueryMemoryLimit = global.memoryLimit();
+
+  auto stats = global.stats();
+  _globalQueryMemoryLimitReached = stats.globalLimitReached;
+  _localQueryMemoryLimitReached = stats.localLimitReached;
 }
 
 void QueryRegistryFeature::trackQueryStart() noexcept {

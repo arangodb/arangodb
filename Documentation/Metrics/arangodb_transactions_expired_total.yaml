@@ -1,4 +1,6 @@
 name: arangodb_transactions_expired_total
+renamedFrom: arangodb_transactions_expired
+introducedIn: "3.8.0"
 help: |
   Total number of expired transactions.
 unit: number

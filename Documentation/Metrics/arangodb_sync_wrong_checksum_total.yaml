@@ -1,4 +1,6 @@
 name: arangodb_sync_wrong_checksum_total
+renamedFrom: arangodb_sync_wrong_checksum
+introducedIn: "3.8.0"
 help: |
   Number of times a mismatching shard checksum was detected when syncing shards.
 unit: number

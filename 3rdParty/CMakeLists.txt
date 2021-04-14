@@ -31,16 +31,24 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 ## SNAPPY
 ################################################################################
 
-set(SNAPPY_VERSION "1.1.8")
-set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+function (add_snappy)
+    # use the function to open a scope so CMAKE_CXX_FLAGS is only changed for
+    # snappy
+    add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override -Wno-sign-compare)
+    add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override -Wno-sign-compare)
+    set(SNAPPY_VERSION "1.1.8")
+    set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+    set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
+    set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}" PARENT_SCOPE)
+    set(SNAPPY_LIB "snappy" PARENT_SCOPE)
+    set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests")
+    set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
+    add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
+endfunction ()
+add_snappy()
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
-set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
 set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
-set(SNAPPY_LIB "snappy")
 set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
-set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests")
-set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
-add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## LIBUNWIND
@@ -111,6 +119,7 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 ## Velocypack
 ################################################################################
 
+set(HashType "xxhash" CACHE STRING "Hash type (fasthash, xxhash)" FORCE)
 set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
 set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
 

@@ -1,4 +1,6 @@
 name: arangodb_http_request_statistics_async_requests_total
+renamedFrom: arangodb_http_request_statistics_async_requests
+introducedIn: "3.8.0"
 help: |
   Number of asynchronously executed HTTP requests
 unit: number

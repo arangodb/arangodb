@@ -789,10 +789,16 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
 }
 
 std::string ServerState::getShortName() const {
+  if (_role == ROLE_AGENT) {
+    return getId().substr(0, 13);
+  }
   std::stringstream ss;  // ShortName
   auto num = getShortId();
-  size_t width = std::max(std::to_string(num + 1).size(), static_cast<size_t>(4));
-  ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0') << num + 1;
+  if (num == 0) {
+    return std::string{};   // not yet known
+  }
+  size_t width = std::max(std::to_string(num).size(), static_cast<size_t>(4));
+  ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0') << num;
   return ss.str();
 }
 

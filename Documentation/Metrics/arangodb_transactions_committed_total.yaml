@@ -1,4 +1,6 @@
 name: arangodb_transactions_committed_total
+renamedFrom: arangodb_transactions_committed
+introducedIn: "3.8.0"
 help: |
   Number of transactions committed.
 unit: number

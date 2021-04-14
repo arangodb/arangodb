@@ -105,6 +105,9 @@
       }
     });
   };
+
+  // On server side the API with failurePointName is called removeFailAt
+  exports.debugRemoveFailAt = exports.debugClearFailAt;
   
   exports.debugSetFailAt = function(failAt) {
     const request = require('@arangodb/request');

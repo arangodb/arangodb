@@ -69,6 +69,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool smartJoins() const { return _smartJoins; }
   bool parallelizeTraversals() const { return _parallelizeTraversals; }
 #endif
+  bool allowCollectionsInExpressions() const { return _allowCollectionsInExpressions; }
   uint64_t queryGlobalMemoryLimit() const { return _queryGlobalMemoryLimit; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   double queryMaxRuntime() const { return _queryMaxRuntime; }
@@ -89,6 +90,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool _smartJoins;
   bool _parallelizeTraversals;
 #endif
+  bool _allowCollectionsInExpressions;
   uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
   double _queryMaxRuntime;
@@ -115,6 +117,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   Gauge<uint64_t>& _runningQueries;
   Gauge<uint64_t>& _globalQueryMemoryUsage;
   Gauge<uint64_t>& _globalQueryMemoryLimit;
+  Counter& _globalQueryMemoryLimitReached; 
+  Counter& _localQueryMemoryLimitReached; 
 };
 
 }  // namespace arangodb

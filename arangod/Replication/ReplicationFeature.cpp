@@ -36,9 +36,12 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -75,7 +78,7 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 } // namespace
 
 
-DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "Number of cluster replication inventory requests received");
+DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "(DC-2-DC only) Number of times the database and collection overviews have been requested.");
 
 namespace arangodb {
 
@@ -97,6 +100,9 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
   startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<DatabaseFeature>();
+  startsAfter<RocksDBEngine>();
+  startsAfter<RocksDBRecoveryManager>();
+  startsAfter<ServerIdFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 }
@@ -111,7 +117,6 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      new BooleanParameter(&_replicationApplierAutoStart),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
@@ -185,8 +190,8 @@ void ReplicationFeature::prepare() {
 }
 
 void ReplicationFeature::start() {
-  _globalReplicationApplier.reset(new GlobalReplicationApplier(
-      GlobalReplicationApplier::loadConfiguration(server())));
+  _globalReplicationApplier = std::make_unique<GlobalReplicationApplier>(
+      GlobalReplicationApplier::loadConfiguration(server()));
 
   try {
     _globalReplicationApplier->loadState();
@@ -219,6 +224,7 @@ void ReplicationFeature::stop() {
   try {
     if (_globalReplicationApplier != nullptr) {
       _globalReplicationApplier->stop();
+      _globalReplicationApplier->stopAndJoin();
     }
   } catch (...) {
     // ignore any error
