@@ -700,10 +700,22 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
 
   // check for literals null, false and true
   if (fieldLength == 4 && (memcmp(field, "true", 4) == 0 || memcmp(field, "null", 4) == 0)) {
-    _lineBuffer.appendText(field, fieldLength);
+    if (_convert) {
+      _lineBuffer.appendText(field, fieldLength);
+    } else {
+      _lineBuffer.appendChar('"');
+      _lineBuffer.appendText(field, fieldLength);
+      _lineBuffer.appendChar('"');
+    }
     return;
   } else if (fieldLength == 5 && memcmp(field, "false", 5) == 0) {
-    _lineBuffer.appendText(field, fieldLength);
+    if (_convert) {
+      _lineBuffer.appendText(field, fieldLength);
+    } else {
+      _lineBuffer.appendChar('"');
+      _lineBuffer.appendText(field, fieldLength);
+      _lineBuffer.appendChar('"');
+    }
     return;
   }
 
