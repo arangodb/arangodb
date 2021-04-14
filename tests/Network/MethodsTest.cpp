@@ -185,6 +185,44 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
 }
 
+TEST_F(NetworkMethodsTest, request_with_retry_after_421) {
+  // Step 1: Provoke a 421 response
+  fuerte::ResponseHeader header;
+  header.contentType(fuerte::ContentType::VPack);
+  header.responseCode = fuerte::StatusMisdirectedRequest;
+  pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(5.0);
+
+  VPackBuffer<uint8_t> buffer;
+  auto f = network::sendRequestRetry(pool.get(), "tcp://example.org:80",
+                                     fuerte::RestVerb::Get, "/", buffer,
+                                     reqOpts);
+
+  // the default behaviour should be to retry after 200 ms
+  std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  ASSERT_FALSE(f.isReady());
+  ASSERT_EQ(pool->_conn->_sendRequestNum, 1);
+
+  // Step 2: Now respond with no error
+  header.responseCode = fuerte::StatusAccepted;
+  header.contentType(fuerte::ContentType::VPack);
+  pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
+  auto b = VPackParser::fromJson("{\"error\":false}");
+  auto resBuffer = b->steal();
+  pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
+
+  auto status = f.wait_for(std::chrono::milliseconds(350));
+  ASSERT_EQ(futures::FutureStatus::Ready, status);
+  
+  network::Response res = std::move(f).get();
+  ASSERT_EQ(res.destination, "tcp://example.org:80");
+  ASSERT_EQ(res.error, fuerte::Error::NoError);
+  ASSERT_TRUE(res.hasResponse());
+  ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
+}
+
 TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   // Step 1: Provoke a data source not found error
   pool->_conn->_err = fuerte::Error::NoError;
