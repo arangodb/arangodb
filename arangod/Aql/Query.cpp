@@ -1549,7 +1549,6 @@ void Query::debugKillQuery() {
   if (usingSystemCollection) {
     return;
   }
-  LOG_DEVEL << "Killing query";
 
   _wasDebugKilled = true;
   // A query can only be killed under certain circumstances.
