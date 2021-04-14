@@ -1,8 +1,12 @@
-v3.6.13 (XXXX-XX-XX)
+v3.6.14 (XXXX-XX-XX)
 --------------------
 
 * Adjust help text of arangoimport's `--convert` option to actual behavior.
   Unquoted null, false and true literals are always converted.
+
+
+v3.6.13 (XXXX-XX-XX)
+--------------------
 
 * Added error handling for figures command in cluster. Previously errors
   returned by shards were ignored when aggregating the individual responses.
