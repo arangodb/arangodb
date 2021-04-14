@@ -5,7 +5,7 @@ devel
   - Added a few useful attributes to Pregel HTTP API docs.
   - Added "parallelism" attribute to the result of Pregel job status responses,
     so that the effective parallelism is reported back.
-  - Make sure "computationTime" in Pregel job status response does not 
+  - Make sure "computationTime" in Pregel job status response does not
     underflow in case of errors.
 
 * Fix BTS-350, BTS-358: Fixed potential startup errors due to global 
