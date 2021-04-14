@@ -1,6 +1,13 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Micro improvements for Pregel job API and documentation:
+  - Added a few useful attributes to Pregel HTTP API docs.
+  - Added "parallelism" attribute to the result of Pregel job status responses,
+    so that the effective parallelism is reported back.
+  - Make sure "computationTime" in Pregel job status response does not underflow
+    in case of errors.
+
 * Fix BTS-350, BTS-358: Fixed potential startup errors due to global replication
   applier being started before end of database recovery procedure.
   Also fixed potential shutdown errors due to global replication applier being
