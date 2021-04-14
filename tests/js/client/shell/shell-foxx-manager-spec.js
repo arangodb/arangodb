@@ -11,7 +11,7 @@ const aql = arangodb.aql;
 const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 const expect = require('chai').expect;
 
-require("@arangodb/2").waitForFoxxInitialized();
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 describe('Foxx Manager', function () {
   describe('(CRUD operation) ', function () {
