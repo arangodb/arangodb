@@ -899,6 +899,53 @@ add_definitions(-DNDEBUG)
 ## FLAGS
 ################################################################################
 
+include(CheckCCompilerFlag)
+include(CheckCXXCompilerFlag)
+
+# Tests whether an argument can be passed to the C compiler without diagnostics,
+# and appends it to the first variable if possible.
+# If called with multiple arguments, they are tested and possibly appended
+# independently.
+function(add_c_flags_if_supported var)
+  foreach(flag ${ARGN})
+    set(flag_var_name "C_COMPILER_SUPPORTS_${flag}")
+    # Note that this compiles a test file, also using CMAKE_C_FLAGS, which
+    # may thus affect the result.
+    # Also note that check_c_compiler_flag *internally caches* the result for
+    # per *var_name*, forcing us to use a unique variable for each call with the
+    # same option.
+    # An alternative (albeit more costly) would be to unset the variable each time.
+    check_c_compiler_flag(${flag} "${flag_var_name}")
+    set(is_supported ${${flag_var_name}})
+    if(is_supported)
+      set(${var} "${${var}} ${flag}")
+    endif()
+  endforeach()
+  set(${var} "${${var}}" PARENT_SCOPE)
+endfunction()
+
+# Tests whether an argument can be passed to the C++ compiler without diagnostics,
+# and appends it to the first variable if possible.
+# If called with multiple arguments, they are tested and possibly appended
+# independently.
+function(add_cxx_flags_if_supported var)
+  foreach(flag ${ARGN})
+    set(flag_var_name "CXX_COMPILER_SUPPORTS_${flag}")
+    # Note that this compiles a test file, also using CMAKE_CXX_FLAGS, which
+    # may thus affect the result.
+    # Also note that check_cxx_compiler_flag *internally caches* the result for
+    # per *var_name*, forcing us to use a unique variable for each call with the
+    # same option.
+    # An alternative (albeit more costly) would be to unset the variable each time.
+    check_cxx_compiler_flag(${flag} "${flag_var_name}")
+    set(is_supported ${${flag_var_name}})
+    if(is_supported)
+      set(${var} "${${var}} ${flag}")
+    endif()
+  endforeach()
+  set(${var} "${${var}}" PARENT_SCOPE)
+endfunction()
+
 if (VERBOSE)
   message(STATUS)
 endif ()
@@ -1033,7 +1080,6 @@ if(ARANGODB_DEBUG_CMAKE)
   endforeach()
   message( STATUS "DirDefs: ${DirDefs}" )
 endif()
-
 
 ################################################################################
 ## OpenSSL

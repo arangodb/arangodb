@@ -58,6 +58,10 @@ void QueryProfile::registerInQueryList() {
   auto queryList = _query->vocbase().queryList();
   if (queryList) {
     _tracked = queryList->insert(_query);
+
+    TRI_IF_FAILURE("QueryProfile::directKillAfterQueryGotRegistered") {
+      _query->debugKillQuery();
+    }
   }
 }
 
