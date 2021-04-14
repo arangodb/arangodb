@@ -33,6 +33,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <Basics/ScopeGuard.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -117,6 +118,11 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
     _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
   }
 
+  TRI_IF_FAILURE(
+      "CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated") {
+    cursor->debugKillQuery();
+  }
+
   return cursor.release();
 }
 
@@ -169,11 +175,6 @@ bool CursorRepository::remove(CursorId id) {
     }
 
     cursor = (*it).second.first;
-
-    if (cursor->isDeleted()) {
-      // already deleted
-      return false;
-    }
 
     if (cursor->isUsed()) {
       // cursor is in use by someone else. now mark as deleted
@@ -326,6 +327,7 @@ bool CursorRepository::garbageCollect(bool force) {
 
   // remove cursors outside the lock
   for (auto it : found) {
+    TRI_ASSERT(it != nullptr);
     delete it;
   }
 
