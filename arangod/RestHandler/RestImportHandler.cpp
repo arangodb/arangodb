@@ -868,6 +868,10 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
     if (resultSlice.isArray()) {
       size_t pos = 0;
 
+      if (resultSlice.length() != babies.slice().length()) {
+        LOG_TOPIC("b9729", ERR, Logger::FIXME) << "Unequal length in import result. resultSlice: " <<
+          resultSlice.toJson() << " babies.slice()" << babies.slice().toJson();
+      }
       for (VPackSlice it : VPackArrayIterator(resultSlice)) {
         VPackSlice s = it.get(StaticStrings::Error);
         if (!s.isBool() || !s.getBool()) {
