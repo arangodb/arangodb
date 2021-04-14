@@ -1,6 +1,8 @@
 devel
 -----
 
+* Show peak memory usage in AQL query profiling output.
+
 * UI builds are now using the yarn package manager instead of the previously
   used node package manager.
 
