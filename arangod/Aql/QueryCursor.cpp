@@ -152,13 +152,21 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
       _queryResultPos(0),
       _exportCount(-1),
       _finalization(false) {
-
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
-  TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
+  TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
+    debugKillQuery();
+  }
+  // In all the following ASSERTs it is valid (though unlikely) that the query is already killed
+  // In the cluster this kill operation will trigger cleanup side-effects, such as changing the STATE
+  // and commiting / aborting the transaction here
+  TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION || _query->killed());
   _ctx = _query->newTrxContext();
   
   transaction::Methods trx(_ctx);
-  TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
+  TRI_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
+    debugKillQuery();
+  }
+  TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
 
   // we replaced the rocksdb export cursor with a stream AQL query
   // for this case we need to support printing the collection "count"
@@ -180,7 +188,7 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
    
   // ensures the cursor is cleaned up as soon as the outer transaction ends
   // otherwise we just get issues because we might still try to use the trx
-  TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
+  TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
   // things break if the Query outlives a V8 transaction
   _stateChangeCb = [this](transaction::Methods& /*trx*/, transaction::Status status) {
     if (status == transaction::Status::COMMITTED ||
@@ -214,7 +222,27 @@ void QueryStreamCursor::kill() {
   }
 }
 
+void QueryStreamCursor::debugKillQuery() {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  if (_query) {
+    _query->debugKillQuery();
+  }
+#endif
+}
+
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
+  TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
+    debugKillQuery();
+  }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  TRI_DEFER(
+    TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumped") {
+      debugKillQuery();
+    }
+  )
+#endif
+
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
     << "executing query " << _id << ": '"
@@ -261,6 +289,16 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
 }
 
 Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
+  TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced") {
+    debugKillQuery();
+  }
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  TRI_DEFER(
+    TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumpedSynced") {
+      debugKillQuery();
+    }
+  )
+#endif
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9dada", TRACE, Logger::QUERIES)
       << "executing query " << _id << ": '"
