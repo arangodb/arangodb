@@ -1,5 +1,5 @@
 v3.7.11 (XXXX-XX-XX)
-=======
+--------------------
 
 * Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
   to specify "--ldap@2.OPTION". Authentication / Authorization will first check
