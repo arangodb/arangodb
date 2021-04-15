@@ -46,6 +46,7 @@ cppcheck "$@" \
   --suppress="*:lib/V8/v8-json.ll" \
   --suppress="*:lib/Zip/*" \
   --suppress="constStatement" \
+  --suppress="cppcheckError" \
   --suppress="duplicateCondition" \
   --suppress="duplicateConditionalAssign" \
   --suppress="internalAstError" \
