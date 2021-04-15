@@ -1,6 +1,31 @@
 devel
 -----
 
+* Added option `--query.require-with` to make AQL in single server mode also
+  require `WITH` clauses where the cluster would need them.
+  The option is turned off by default, but can be turned on in single servers
+  to remove this behavior difference between single servers and clusters,
+  making later a transition from single server to cluster easier.
+
+* Fixed a problem in document batch operations, where errors from one shard
+  were reported multiple times, if the shard is completely off line.
+
+* Removed assertion for success of a RocksDB function. Throw a proper 
+  exception instead.
+
+* Show peak memory usage in AQL query profiling output.
+
+* Micro improvements for Pregel job API and documentation:
+  - Added a few useful attributes to Pregel HTTP API docs.
+  - Added "parallelism" attribute to the result of Pregel job status responses,
+    so that the effective parallelism is reported back.
+  - Make sure "computationTime" in Pregel job status response does not
+    underflow in case of errors.
+
+* Prevent arangod from terminating with "terminate called without an active 
+  exception" (SIGABRT) in case an out-of-memory exception occurs during 
+  creating an ASIO socket connection.
+
 * UI builds are now using the yarn package manager instead of the previously
   used node package manager.
 
