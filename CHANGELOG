@@ -4,6 +4,9 @@ devel
 * Fixed a problem in document batch operations, where errors from one shard
   were reported multiple times, if the shard is completely off line.
 
+* Removed assertion for success of a RocksDB function. Throw a proper 
+  exception instead.
+
 * Show peak memory usage in AQL query profiling output.
 
 * Micro improvements for Pregel job API and documentation:
