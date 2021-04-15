@@ -7,6 +7,14 @@ v3.8.0 (XXXX-XX-XX)
   remove this behavior difference between single servers and clusters, making
   later a transition from single server to cluster easier.
 
+* Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
+  to specify "--ldap2.OPTION". Authentication / Authorization will first check
+  the primary LDAP server. If this server cannot authenticate a user, it will
+  try the secondary one. It is possible to specify a file containing all users
+  that the primary (or secondary) LDAP server is handling by specifying the
+  option "--ldap.responsible-for". This file must contain the usernames
+  line-by-line.
+
 * Fixed a problem in document batch operations, where errors from one shard were
   reported multiple times, if the shard is completely off line.
 
