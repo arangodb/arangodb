@@ -1,6 +1,9 @@
 v3.8.0-beta.1 (2021-04-20)
 --------------------------
 
+* Fix BTS-340: AQL expressions similar to `x < 3 || x` are no longer erroneously
+  be reduced to `x < 3` by the optimizer rule remove-redundant-or.
+
 * Fix BTS-374: thread race between ArangoSearch link unloading and storage
   engine WAL flushing.
 
