@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Web UI - Added missing HTML escaping inside the file upload plugin used in
+  the section of deploying a new Foxx application when uploading a zip file.
+
 * Fixed a problem in document batch operations, where errors from one shard were
   reported multiple times, if the shard is completely off line.
 
