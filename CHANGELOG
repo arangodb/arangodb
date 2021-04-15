@@ -1,6 +1,9 @@
 v3.6.14 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-340: AQL expressions similar to `x < 3 || x` are no longer erroneously
+  be reduced to `x < 3` by the optimizer rule remove-redundant-or.
+
 * Fix crashes during arangorestore operations due to usage of wrong pointer
   value for updating user permissions.
 
