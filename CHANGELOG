@@ -3,9 +3,46 @@ v3.8.0 (XXXX-XX-XX)
 
 * Added option `--query.require-with` to make AQL in single server mode also
   require `WITH` clauses where the cluster would need them.
-  The option is turned off by default, but can be turned on in single servers
-  to remove this behavior difference between single servers and clusters,
-  making later a transition from single server to cluster easier.
+  The option is turned off by default, but can be turned on in single servers to
+  remove this behavior difference between single servers and clusters, making
+  later a transition from single server to cluster easier.
+
+* Fixed a problem in document batch operations, where errors from one shard were
+  reported multiple times, if the shard is completely off line.
+
+* Fixed issue #13169: arangoimport tsv conversion of bools and null, although
+  switched off by `--convert false`.
+
+  Importing unquoted `null`, `false` and `true` literals from delimited files
+  get imported as strings now if `convert` is explicitly turned off. It
+  previously affected unquoted numbers only.
+
+* Web UI: Highlight binary and hexadecimal integer literals in AQL queries.
+
+* Prevent arangod from terminating with "terminate called without an active
+  exception" (SIGABRT) in case an out-of-memory exception occurs during creating
+  an ASIO socket connection.
+
+* Micro improvements for Pregel job API and documentation:
+  - Added a few useful attributes to Pregel HTTP API docs.
+  - Added "parallelism" attribute to the result of Pregel job status responses,
+    so that the effective parallelism is reported back.
+  - Make sure "computationTime" in Pregel job status response does not underflow
+    in case of errors.
+
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global replication
+  applier being started before end of database recovery procedure.
+  Also fixed potential shutdown errors due to global replication applier being
+  shut down in parallel to a concurrent shut down attempt.
+
+* Fix BTS-357: Fix processing of analyzer with return type by TOKENS function.
+
+* Fix BTS-346: Improved handling of AQL query kill command in unlikely places,
+  before the query starts to execute and after the query is done but the result
+  is still being written. Now the cleanup of queries works more reliably. This
+  unreliable kill time windows were very short and unlikely to hit, although if
+  one was hit transactions were not aborted, and collection locks could be
+  lingering until query timeout.
 
 * Updated ArangoDB Starter to 0.15.0.
 
