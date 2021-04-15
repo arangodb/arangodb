@@ -1,6 +1,12 @@
 devel
 -----
 
+* Added option `--query.require-with` to make AQL in single server mode also
+  require `WITH` clauses where the cluster would need them.
+  The option is turned off by default, but can be turned on in single servers
+  to remove this behavior difference between single servers and clusters,
+  making later a transition from single server to cluster easier.
+
 * Fixed a problem in document batch operations, where errors from one shard
   were reported multiple times, if the shard is completely off line.
 

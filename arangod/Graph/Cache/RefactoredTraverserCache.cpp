@@ -34,8 +34,11 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "Transaction/Options.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -48,6 +51,25 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+namespace {
+bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
+  if (ServerState::instance()->isDBServer() &&
+      ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+    // on a DB server, we could have got here only in the OneShard case.
+    // in this case turn the rather misleading "collection or view not found"
+    // error into a nicer "collection not known to traversal, please add WITH"
+    // message, so users know what to do
+    return true;
+  }
+  if (ServerState::instance()->isSingleServer() &&
+      ex.code() == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+    return true;
+  }
+
+  return false;
+}
+} // namespace
+
 RefactoredTraverserCache::RefactoredTraverserCache(
     arangodb::transaction::Methods* trx, aql::QueryContext* query,
     arangodb::ResourceMonitor& resourceMonitor, arangodb::aql::TraversalStats& stats,
@@ -56,7 +78,9 @@ RefactoredTraverserCache::RefactoredTraverserCache(
       _trx(trx),
       _stringHeap(resourceMonitor, 4096), /* arbitrary block-size may be adjusted for performance */
       _collectionToShardMap(collectionToShardMap),
-      _resourceMonitor(resourceMonitor) {
+      _resourceMonitor(resourceMonitor),
+      _allowImplicitCollections(ServerState::instance()->isSingleServer() &&
+                                !_query->vocbase().server().getFeature<QueryRegistryFeature>().requireWith()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
@@ -139,27 +163,43 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
   if (collectionNameResult.fail()) {
     THROW_ARANGO_EXCEPTION(collectionNameResult.result());
   }
+    
+  std::string const& collectionName = collectionNameResult.get().first;
 
-  Result res = _trx->documentFastPathLocal(
-      collectionNameResult.get().first,
-      id.substr(collectionNameResult.get().second + 1).stringRef(),
-      [&](LocalDocumentId const&, VPackSlice doc) -> bool {
-        stats.addScannedIndex(1);
-        // copying...
-        if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-          result = aql::AqlValue(doc);
-        } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
-          result.add(doc);
-        }
-        return true;
-      });
-  if (res.ok()) {
-    return true;
-  }
+  try {
+    transaction::AllowImplicitCollectionsSwitcher disallower(_trx->state()->options(), _allowImplicitCollections);
 
-  if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-    // ok we are in a rather bad state. Better throw and abort.
-    THROW_ARANGO_EXCEPTION(res);
+    Result res = _trx->documentFastPathLocal(
+        collectionName,
+        id.substr(collectionNameResult.get().second + 1).stringRef(),
+        [&](LocalDocumentId const&, VPackSlice doc) -> bool {
+          stats.addScannedIndex(1);
+          // copying...
+          if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+            result = aql::AqlValue(doc);
+          } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+            result.add(doc);
+          }
+          return true;
+        });
+    if (res.ok()) {
+      return true;
+    }
+
+    if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      // ok we are in a rather bad state. Better throw and abort.
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  } catch (basics::Exception const& ex) {
+    if (isWithClauseMissing(ex)) {
+      // turn the error into a different error 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "collection not known to traversal: '" +
+                                     collectionName + "'. please add 'WITH " + collectionName +
+                                     "' as the first line in your AQL");
+    }
+    // rethrow original error
+    throw;
   }
 
   // Register a warning. It is okay though but helps the user
