@@ -32,7 +32,6 @@ var jsunity = require('jsunity');
 var internal = require('internal');
 var arangodb = require('@arangodb');
 var db = arangodb.db;
-var testHelper = require('@arangodb/test-helper').Helper;
 var analyzers = require("@arangodb/analyzers");
 let ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
@@ -73,20 +72,24 @@ function transactionRevisionsSuite () {
 
   return {
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop(cn);
       c = db._create(cn, {numberOfShards: 4});
     },
 
+    setUp: function () {
+      c.truncate({ compact: false });
+    },
+
     tearDown: function () {
-
-      if (c !== null) {
-        c.drop();
-      }
-
-      c = null;
+      c.truncate({ compact: false });
       internal.wait(0);
     },
+    tearDownAll: function () {
+      c.drop();
+      c = null;
+      internal.wait(0);
+     },
 
     testInsertUniqueFailing: function () {
       c.insert({ _key: 'test', value: 1 });
@@ -297,6 +300,8 @@ function transactionRevisionsSuite () {
 function transactionInvocationSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
+  const cn2 = "UnitTestsCollection2";
+  const cn4 = "UnitTestsCollection4";
   
   let assertInList = function(list, trx) {
     assertTrue(list.filter(function(data) { return data.id === trx._id; }).length > 0,
@@ -314,12 +319,28 @@ function transactionInvocationSuite () {
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
+      db._create(cn);
+      db._create(cn2, {numberOfShards: 2});
+      db._create(cn4, {numberOfShards: 4});
+    },
+
+    tearDownAll: function () {
       db._drop(cn);
+      db._drop(cn2);
+      db._drop(cn4);
+    },
+    
+    setUp: function () {
+      db[cn].truncate({ compact: false });
+      db[cn2].truncate({ compact: false });
+      db[cn4].truncate({ compact: false });
     },
 
     tearDown: function () {
-      db._drop(cn);
+      db[cn].truncate({ compact: false });
+      db[cn2].truncate({ compact: false });
+      db[cn4].truncate({ compact: false });
     },
     
     // //////////////////////////////////////////////////////////////////////////////
@@ -429,12 +450,11 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testListTransactions: function () {
-      db._create(cn, {numberOfShards: 4});
       let trx1, trx2, trx3;
       
       let obj = {
         collections: {
-          read: [ cn ]
+          read: [ cn4 ]
         }
       };
      
@@ -515,12 +535,11 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAbortTransaction: function () {
-      db._create(cn, {numberOfShards: 4});
       let cleanup = [];
       
       let obj = {
         collections: {
-          read: [ cn ]
+          read: [ cn4 ]
         }
       };
      
@@ -562,12 +581,11 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCommitTransaction: function () {
-      db._create(cn, {numberOfShards: 4});
       let cleanup = [];
       
       let obj = {
         collections: {
-          read: [ cn ]
+          read: [ cn4 ]
         }
       };
      
@@ -608,12 +626,11 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testStatusTransaction: function () {
-      db._create(cn, {numberOfShards: 4});
       let cleanup = [];
       
       let obj = {
         collections: {
-          read: [ cn ]
+          read: [ cn4 ]
         }
       };
      
@@ -659,12 +676,11 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAbortWriteTransactions: function () {
-      db._create(cn, {numberOfShards: 2});
       let trx1, trx2, trx3;
       
       let obj = {
         collections: {
-          write: [ cn ]
+          write: [ cn2 ]
         }
       };
      
@@ -706,19 +722,18 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAbortWriteTransactionAQL: function () {
-      db._create(cn, {numberOfShards: 2});
       let trx1;
       
       let obj = {
         collections: {
-          write: [ cn ]
+          write: [ cn2 ]
         }
       };
      
       try {
         trx1 = db._createTransaction(obj);
         let result = arango.POST_RAW("/_api/cursor", {
-          query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
+          query: "FOR i IN 1..10000000 INSERT {} INTO " + cn2
         }, { 
           "x-arango-trx-id" : trx1._id,
           "x-arango-async" : "store"
@@ -786,7 +801,7 @@ function transactionCollectionsSuite () {
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop(cn1);
       c1 = db._create(cn1, {numberOfShards: 4});
 
@@ -798,18 +813,27 @@ function transactionCollectionsSuite () {
     // / @brief tear down
     // //////////////////////////////////////////////////////////////////////////////
 
+    tearDownAll: function () {
+      c1.drop();
+      c2.drop();
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      c1.truncate({ compact: false });
+      c2.truncate({ compact: false });
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
+
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
-      c1 = null;
-
-      if (c2 !== null) {
-        c2.drop();
-      }
-
-      c2 = null;
+      c1.truncate({ compact: false });
+      c2.truncate({ compact: false });
       internal.wait(0);
     },
 
@@ -1572,11 +1596,11 @@ function transactionCollectionsSuite () {
 
 function transactionOperationsSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
-  var cn2 = 'UnitTestsTransaction2';
+  var cn32 = 'UnitTestsTransaction32';
+  var cn42 = 'UnitTestsTransaction42';
 
-  var c1 = null;
-  var c2 = null;
+  var c32 = null;
+  var c42 = null;
 
   return {
 
@@ -1584,9 +1608,15 @@ function transactionOperationsSuite () {
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
 
+    setUpAll: function () {
+      c32 = db._create(cn32, {numberOfShards: 3, replicationFactor: 2});
+      c42 = db._create(cn42, {numberOfShards: 4, replicationFactor: 2});
+    },
+
+
     setUp: function () {
-      db._drop(cn1);
-      db._drop(cn2);
+      c32.truncate({ compact: false });
+      c42.truncate({ compact: false });
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1594,30 +1624,24 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
-      c1 = null;
-
-      if (c2 !== null) {
-        c2.drop();
-      }
-
-      c2 = null;
+      c32.truncate({ compact: false });
+      c42.truncate({ compact: false });
       internal.wait(0);
     },
-        
+
+    tearDownAll: function () {
+      db._drop(cn32);
+      db._drop(cn42);
+    },
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx with negative lock timeout
     // //////////////////////////////////////////////////////////////////////////////
 
     testNegativeLockTimeout: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
       let obj = {
         collections: {
-          read: [ cn1 ],
+          read: [ cn32 ],
         },
         lockTimeout: -1
       };
@@ -1635,19 +1659,18 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testSingleRead1: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c1.save({ _key: 'foo', a: 1 });
+      c32.save({ _key: 'foo', a: 1 });
 
       let obj = {
         collections: {
-          read: [ cn1 ]
+          read: [ cn32 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc1 = trx.collection(c32.name());
         assertEqual(1, tc1.document('foo').a);
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -1657,8 +1680,8 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(1, c32.count());
+      assertEqual([ 'foo' ], sortedKeys(c32));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1666,20 +1689,19 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testSingleRead2: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c1.save({ _key: 'foo', a: 1 });
+      c32.save({ _key: 'foo', a: 1 });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
-        assertEqual(1, tc1.document('foo').a);
+        let tc32 = trx.collection(c32.name());
+        assertEqual(1, tc32.document('foo').a);
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
@@ -1688,8 +1710,8 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(1, c32.count());
+      assertEqual([ 'foo' ], sortedKeys(c32));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1697,26 +1719,27 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testScan1: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c1.save({ _key: 'foo' + i, a: i });
+        docs.push({ _key: 'foo' + i, a: i });
       }
+      c32.save(docs);
 
       let obj = {
         collections: {
-          read: [ cn1 ]
+          read: [ cn32 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(c32.name());
         // TODO enable with cursor el-cheapification
-        //assertEqual(100, c1.toArray().length);
-        assertEqual(100, tc1.count());
+        //assertEqual(100, c32.toArray().length);
+        assertEqual(100, tc32.count());
         for (let i = 0; i < 100; ++i) {
-          assertEqual(i, tc1.document('foo' + i).a);
+          assertEqual(i, tc32.document('foo' + i).a);
         }
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -1726,7 +1749,7 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(100, c1.count());
+      assertEqual(100, c32.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1734,27 +1757,28 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testScan2: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c1.save({ _key: 'foo' + i, a: i });
+        docs.push({ _key: 'foo' + i, a: i });
       }
+      c32.save(docs);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(c32.name());
         
-        //assertEqual(100, tc1.toArray().length);
-        assertEqual(100, tc1.count());
+        //assertEqual(100, tc32.toArray().length);
+        assertEqual(100, tc32.count());
 
         for (let i = 0; i < 100; ++i) {
-          assertEqual(i, tc1.document('foo' + i).a);
+          assertEqual(i, tc32.document('foo' + i).a);
         }
 
       } catch(err) {
@@ -1765,7 +1789,7 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(100, c1.count());
+      assertEqual(100, c32.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1773,20 +1797,18 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testSingleInsert: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         
-        tc1.save({ _key: 'foo' });
+        tc32.save({ _key: 'foo' });
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -1796,8 +1818,8 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(1, c32.count());
+      assertEqual([ 'foo' ], sortedKeys(c32));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1805,21 +1827,19 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testMultiInsert: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
       
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(c32.name());
         
-        tc1.save({ _key: 'foo' });
-        tc1.save({ _key: 'bar' });
+        tc32.save({ _key: 'foo' });
+        tc32.save({ _key: 'bar' });
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -1829,8 +1849,8 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(2, c1.count());
-      assertEqual([ 'bar', 'foo' ], sortedKeys(c1));
+      assertEqual(2, c32.count());
+      assertEqual([ 'bar', 'foo' ], sortedKeys(c32));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1838,23 +1858,23 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testInsertWithExisting: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c1.save({ _key: 'foo' });
-      c1.save({ _key: 'bar' });
+      c32.save([
+        { _key: 'foo' },
+        { _key: 'bar' }]);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         
-        tc1.save({ _key: 'baz' });
-        tc1.save({ _key: 'bam' });
+        tc32.save({ _key: 'baz' });
+        tc32.save({ _key: 'bam' });
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -1864,8 +1884,8 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(4, c1.count());
-      assertEqual([ 'bam', 'bar', 'baz', 'foo' ], sortedKeys(c1));
+      assertEqual(4, c32.count());
+      assertEqual([ 'bam', 'bar', 'baz', 'foo' ], sortedKeys(c32));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1873,27 +1893,26 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testReplace: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c1.save({ _key: 'foo', a: 1 });
-      c1.save({ _key: 'bar', b: 2, c: 3 });
+      c32.save([{ _key: 'foo', a: 1 },
+                { _key: 'bar', b: 2, c: 3 }]);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(c32.name());
         
-        assertEqual(1, tc1.document('foo').a);
-        tc1.replace('foo', { a: 3 });
+        assertEqual(1, tc32.document('foo').a);
+        tc32.replace('foo', { a: 3 });
 
-        assertEqual(2, tc1.document('bar').b);
-        assertEqual(3, tc1.document('bar').c);
-        tc1.replace('bar', { b: 9 });
+        assertEqual(2, tc32.document('bar').b);
+        assertEqual(3, tc32.document('bar').c);
+        tc32.replace('bar', { b: 9 });
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -1903,11 +1922,11 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(2, c1.count());
-      assertEqual([ 'bar', 'foo' ], sortedKeys(c1));
-      assertEqual(3, c1.document('foo').a);
-      assertEqual(9, c1.document('bar').b);
-      assertEqual(undefined, c1.document('bar').c);
+      assertEqual(2, c32.count());
+      assertEqual([ 'bar', 'foo' ], sortedKeys(c32));
+      assertEqual(3, c32.document('foo').a);
+      assertEqual(9, c32.document('bar').b);
+      assertEqual(undefined, c32.document('bar').c);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1915,30 +1934,29 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testReplaceReplace: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c1.save({ _key: 'foo', a: 1 });
+      c32.save({ _key: 'foo', a: 1 });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(c32.name());
         
-        assertEqual(1, tc1.document('foo').a);
-        tc1.replace('foo', { a: 3 });
-        assertEqual(3, tc1.document('foo').a);
-        tc1.replace('foo', { a: 4 });
-        assertEqual(4, tc1.document('foo').a);
-        tc1.replace('foo', { a: 5 });
-        assertEqual(5, tc1.document('foo').a);
-        tc1.replace('foo', { a: 6, b: 99 });
-        assertEqual(6, tc1.document('foo').a);
-        assertEqual(99, tc1.document('foo').b);
+        assertEqual(1, tc32.document('foo').a);
+        tc32.replace('foo', { a: 3 });
+        assertEqual(3, tc32.document('foo').a);
+        tc32.replace('foo', { a: 4 });
+        assertEqual(4, tc32.document('foo').a);
+        tc32.replace('foo', { a: 5 });
+        assertEqual(5, tc32.document('foo').a);
+        tc32.replace('foo', { a: 6, b: 99 });
+        assertEqual(6, tc32.document('foo').a);
+        assertEqual(99, tc32.document('foo').b);
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -1948,9 +1966,9 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(1, c1.count());
-      assertEqual(6, c1.document('foo').a);
-      assertEqual(99, c1.document('foo').b);
+      assertEqual(1, c32.count());
+      assertEqual(6, c32.document('foo').a);
+      assertEqual(99, c32.document('foo').b);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1958,33 +1976,33 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUpdate: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo', a: 1 });
-      c1.save({ _key: 'bar', b: 2 });
-      c1.save({ _key: 'baz', c: 3 });
-      c1.save({ _key: 'bam', d: 4 });
+      c42.save([
+        { _key: 'foo', a: 1 },
+        { _key: 'bar', b: 2 },
+        { _key: 'baz', c: 3 },
+        { _key: 'bam', d: 4 }]);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
       
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        assertEqual(1, tc1.document('foo').a);
-        tc1.update('foo', { a: 3 });
+        assertEqual(1, tc42.document('foo').a);
+        tc42.update('foo', { a: 3 });
 
-        assertEqual(2, tc1.document('bar').b);
-        tc1.update('bar', { b: 9 });
+        assertEqual(2, tc42.document('bar').b);
+        tc42.update('bar', { b: 9 });
 
-        assertEqual(3, tc1.document('baz').c);
-        tc1.update('baz', { b: 9, c: 12 });
+        assertEqual(3, tc42.document('baz').c);
+        tc42.update('baz', { b: 9, c: 12 });
 
-        assertEqual(4, tc1.document('bam').d);
+        assertEqual(4, tc42.document('bam').d);
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -1994,13 +2012,13 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(4, c1.count());
-      assertEqual([ 'bam', 'bar', 'baz', 'foo' ], sortedKeys(c1));
-      assertEqual(3, c1.document('foo').a);
-      assertEqual(9, c1.document('bar').b);
-      assertEqual(9, c1.document('baz').b);
-      assertEqual(12, c1.document('baz').c);
-      assertEqual(4, c1.document('bam').d);
+      assertEqual(4, c42.count());
+      assertEqual([ 'bam', 'bar', 'baz', 'foo' ], sortedKeys(c42));
+      assertEqual(3, c42.document('foo').a);
+      assertEqual(9, c42.document('bar').b);
+      assertEqual(9, c42.document('baz').b);
+      assertEqual(12, c42.document('baz').c);
+      assertEqual(4, c42.document('bam').d);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2008,24 +2026,23 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRemove: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo', a: 1 });
-      c1.save({ _key: 'bar', b: 2 });
-      c1.save({ _key: 'baz', c: 3 });
+      c42.save([{ _key: 'foo', a: 1 },
+                { _key: 'bar', b: 2 },
+                { _key: 'baz', c: 3 }]);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
       
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(c42.name());
         
-        tc1.remove('foo');
-        tc1.remove('baz');
+        tc42.remove('foo');
+        tc42.remove('baz');
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -2035,8 +2052,8 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(1, c1.count());
-      assertEqual([ 'bar' ], sortedKeys(c1));
+      assertEqual(1, c42.count());
+      assertEqual([ 'bar' ], sortedKeys(c42));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2044,11 +2061,9 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTruncateEmpty: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
@@ -2056,9 +2071,9 @@ function transactionOperationsSuite () {
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        tc1.truncate({ compact: false });
+        tc42.truncate({ compact: false });
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -2068,8 +2083,8 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(0, c1.count());
-      assertEqual([ ], sortedKeys(c1));
+      assertEqual(0, c42.count());
+      assertEqual([ ], sortedKeys(c42));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2077,24 +2092,24 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTruncateNonEmpty: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c1.save({ a: i });
+        docs.push({ a: i });
       }
+      c42.save(docs);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
       
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        tc1.truncate({ compact: false });
+        tc42.truncate({ compact: false });
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -2104,8 +2119,8 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(0, c1.count());
-      assertEqual([ ], sortedKeys(c1));
+      assertEqual(0, c42.count());
+      assertEqual([ ], sortedKeys(c42));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2113,25 +2128,25 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTruncateAndAdd: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c1.save({ a: i });
+        docs.push({ a: i });
       }
+      c42.save(docs);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        tc1.truncate({ compact: false });
-        tc1.save({ _key: 'foo' });
+        tc42.truncate({ compact: false });
+        tc42.save({ _key: 'foo' });
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -2141,29 +2156,28 @@ function transactionOperationsSuite () {
         }
       }
 
-      assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(1, c42.count());
+      assertEqual([ 'foo' ], sortedKeys(c42));
     },
 
     testAQLDocumentModify: function() {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({_key:"1"});
+      c42.save({_key:"1"});
 
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       let trx;
       try {
         trx = db._createTransaction(obj);
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        trx.query(`LET g = NOOPT(DOCUMENT("${cn1}/1")) UPDATE g WITH {"updated":1} IN ${cn1}`);
+        trx.query(`LET g = NOOPT(DOCUMENT("${cn42}/1")) UPDATE g WITH {"updated":1} IN ${cn42}`);
 
-        let doc = tc1.document("1");
+        let doc = tc42.document("1");
         assertEqual(doc.updated, 1);
 
       } catch(err) {
@@ -2173,8 +2187,8 @@ function transactionOperationsSuite () {
           trx.commit();
         }
       }
-      assertEqual(1, c1.count());
-      let doc = c1.document("1");
+      assertEqual(1, c42.count());
+      let doc = c42.document("1");
       assertEqual(doc.updated, 1);
     }
 
@@ -2187,11 +2201,9 @@ function transactionOperationsSuite () {
 
 function transactionBarriersSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
-  var cn2 = 'UnitTestsTransaction2';
+  var cn32 = 'UnitTestsTransaction32';
 
-  var c1 = null;
-  var c2 = null;
+  var c32 = null;
 
   return {
 
@@ -2199,9 +2211,13 @@ function transactionBarriersSuite () {
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
 
+    setUpAll: function () {
+      c32 = db._create(cn32, {numberOfShards: 3, replicationFactor: 2});
+    },
+
+
     setUp: function () {
-      db._drop(cn1);
-      db._drop(cn2);
+      c32.truncate({ compact: false });
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2209,18 +2225,12 @@ function transactionBarriersSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
-      c1 = null;
-
-      if (c2 !== null) {
-        c2.drop();
-      }
-
-      c2 = null;
+      c32.truncate({ compact: false });
       internal.wait(0);
+    },
+
+    tearDownAll: function () {
+      db._drop(cn32);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2228,13 +2238,11 @@ function transactionBarriersSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testBarriersOutsideCommit: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
       let docs = [ ];
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
@@ -2242,16 +2250,16 @@ function transactionBarriersSuite () {
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         
         for (let i = 0; i < 100; ++i) {
-          tc1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
+          tc32.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
         }
 
         for (let i = 0; i < 100; ++i) {
-          docs.push(tc1.document('foo' + i));
+          docs.push(tc32.document('foo' + i));
         }
-        result = tc1.document('foo0');
+        result = tc32.document('foo0');
 
       } finally {
         trx.commit();
@@ -2259,7 +2267,7 @@ function transactionBarriersSuite () {
       // end trx
 
       assertEqual(100, docs.length);
-      assertEqual(100, c1.count());
+      assertEqual(100, c32.count());
 
       assertEqual('foo0', result._key);
       assertEqual(0, result.value1);
@@ -2277,12 +2285,10 @@ function transactionBarriersSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testBarriersOutsideRollback: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
       let docs = [ ];
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
@@ -2290,14 +2296,14 @@ function transactionBarriersSuite () {
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         
         for (let i = 0; i < 100; ++i) {
-          tc1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
+          tc32.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
         }
 
         for (let i = 0; i < 100; ++i) {
-          docs.push(tc1.document('foo' + i));
+          docs.push(tc32.document('foo' + i));
         }
 
       } finally {
@@ -2312,7 +2318,7 @@ function transactionBarriersSuite () {
         assertEqual(i, docs[i].value1);
         assertEqual('foo' + i + 'x', docs[i].value2);
       }
-      assertEqual(c1.count(), 0);
+      assertEqual(c32.count(), 0);
     }
 
   };
@@ -2324,9 +2330,19 @@ function transactionBarriersSuite () {
 
 function transactionRollbackSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
+  var cn12 = 'UnitTestsTransaction12';
+  var cn22s = 'UnitTestsTransaction22s';
+  var cn32 = 'UnitTestsTransaction32';
+  var cn42 = 'UnitTestsTransaction42';
+  var cn42i = 'UnitTestsTransaction42i';
+  var cn42s = 'UnitTestsTransaction42s';
 
-  var c1 = null;
+  var c12 = null;
+  var c22s = null;
+  var c32 = null;
+  var c42 = null;
+  var c42s = null;
+  var c42i = null;
 
   return {
 
@@ -2334,8 +2350,31 @@ function transactionRollbackSuite () {
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
 
+    setUpAll: function () {
+      c12 = db._create(cn12, {numberOfShards: 1, replicationFactor: 2});
+      c12.ensureUniqueConstraint('name');
+      c22s = db._create(cn22s, {numberOfShards: 2, replicationFactor: 2, shardKeys:['name']});
+      c22s.ensureUniqueConstraint('name');
+      c32 = db._create(cn32, {numberOfShards: 3, replicationFactor: 2});
+      c42 = db._create(cn42, {numberOfShards: 4, replicationFactor: 2});
+      c42s = db._create(cn42s, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
+      // todo: mmfiles isn't here anymore. does this make sense?:
+      c42s.ensureHashIndex('value');
+      c42s.ensureSkiplist('value');
+      c42i = db._create(cn42i, {numberOfShards: 4, replicationFactor: 2});
+      // TODO: mmfiles isn't here anymore. does this make sense?:
+      c42i.ensureHashIndex('value');
+      c42i.ensureSkiplist('value');
+      
+    },
+
     setUp: function () {
-      db._drop(cn1);
+      c12.truncate({ compact: false });
+      c22s.truncate({ compact: false });
+      c32.truncate({ compact: false });
+      c42.truncate({ compact: false });
+      c42s.truncate({ compact: false });
+      c42i.truncate({ compact: false });
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2343,11 +2382,24 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
+      c12.truncate({ compact: false });
+      c22s.truncate({ compact: false });
+      c32.truncate({ compact: false });
+      c42.truncate({ compact: false });
+      c42s.truncate({ compact: false });
+      c42i.truncate({ compact: false });
 
-      c1 = null;
+      internal.wait(0);
+    },
+
+    tearDownAll: function () {
+      c12.drop();
+      c22s.drop();
+      c32.drop();
+      c42.drop();
+      c42s.drop();
+      c42i.drop();
+
       internal.wait(0);
     },
 
@@ -2356,33 +2408,28 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackAfterFlush: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-
       // begin trx
       let trx = db._createTransaction({
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       });
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        tc1.save({ _key: 'tom' });
-        tc1.save({ _key: 'tim' });
-        tc1.save({ _key: 'tam' });
+        tc42.save([{ _key: 'tom' },
+                   { _key: 'tim' },
+                   { _key: 'tam' }]);
 
         internal.wal.flush(true);
-        assertEqual(3, tc1.count());
+        assertEqual(3, tc42.count());
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(0, c1.count());
+      assertEqual(0, c42.count());
 
-      testHelper.waitUnload(c1);
-
-      assertEqual(0, c1.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2391,46 +2438,45 @@ function transactionRollbackSuite () {
 
     // TODO revision is not a supported El-Cheapo API
     /*testRollbackRevision: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c1.save({ _key: 'foo' });
+      c32.save({ _key: 'foo' });
 
-      let r = c1.revision();
+      let r = c32.revision();
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(c32);
         
         var _r = r;
 
-        tc1.save({ _key: 'tom' });
-        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        tc32.save({ _key: 'tom' });
+        assertEqual(1, compareStringIds(tc32.revision(), _r));
         _r = tc1.revision();
 
-        tc1.save({ _key: 'tim' });
-        assertEqual(1, compareStringIds(tc1.revision(), _r));
-        _r = tc1.revision();
+        tc32.save({ _key: 'tim' });
+        assertEqual(1, compareStringIds(tc32.revision(), _r));
+        _r = tc32.revision();
 
-        tc1.save({ _key: 'tam' });
-        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        tc32.save({ _key: 'tam' });
+        assertEqual(1, compareStringIds(tc32.revision(), _r));
         _r = c1.revision();
 
-        tc1.remove('tam');
-        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        tc32.remove('tam');
+        assertEqual(1, compareStringIds(tc32.revision(), _r));
         _r = c1.revision();
 
-        tc1.update('tom', { 'bom': true });
-        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        tc32.update('tom', { 'bom': true });
+        assertEqual(1, compareStringIds(tc32.revision(), _r));
         _r = tc1.revision();
 
-        tc1.remove('tom');
-        assertEqual(1, compareStringIds(tc1.revision(), _r));
+        tc32.remove('tom');
+        assertEqual(1, compareStringIds(tc32.revision(), _r));
         // _r = c1.revision();
         
       } finally {
@@ -2438,8 +2484,8 @@ function transactionRollbackSuite () {
       }
       // end trx
 
-      assertEqual(1, c1.count());
-      assertEqual(r, c1.revision());
+      assertEqual(1, c32.count());
+      assertEqual(r, c32.revision());
     },*/
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2447,35 +2493,34 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackInsert: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo' });
-      c1.save({ _key: 'bar' });
-      c1.save({ _key: 'meow' });
+      c42.save([{ _key: 'foo' },
+                { _key: 'bar' },
+                { _key: 'meow' }]);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        tc1.save({ _key: 'tom' });
-        tc1.save({ _key: 'tim' });
-        tc1.save({ _key: 'tam' });
+        tc42.save({ _key: 'tom' });
+        tc42.save({ _key: 'tim' });
+        tc42.save({ _key: 'tam' });
 
-        assertEqual(6, tc1.count());
+        assertEqual(6, tc42.count());
         
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
+      assertEqual(3, c42.count());
+      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c42));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2483,33 +2528,32 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackInsertSecondaryIndexes: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo', value: 'foo', a: 1 });
-      c1.save({ _key: 'bar', value: 'bar', a: 1 });
-      c1.save({ _key: 'meow', value: 'meow' });
+      c42.save([{ _key: 'foo', value: 'foo', a: 1 },
+                { _key: 'bar', value: 'bar', a: 1 },
+                { _key: 'meow', value: 'meow' }]);
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
+      c42.ensureHashIndex('value');
+      c42.ensureSkiplist('value');
       let good = false;
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        tc1.save({ _key: 'tom', value: 'tom' });
-        tc1.save({ _key: 'tim', value: 'tim' });
-        tc1.save({ _key: 'tam', value: 'tam' });
-        tc1.save({ _key: 'troet', value: 'foo', a: 2 });
-        tc1.save({ _key: 'floxx', value: 'bar', a: 2 });
+        tc42.save({ _key: 'tom', value: 'tom' });
+        tc42.save({ _key: 'tim', value: 'tim' });
+        tc42.save({ _key: 'tam', value: 'tam' });
+        tc42.save({ _key: 'troet', value: 'foo', a: 2 });
+        tc42.save({ _key: 'floxx', value: 'bar', a: 2 });
 
-        assertEqual(8, tc1.count());
+        assertEqual(8, tc42.count());
 
         good = true;
       } finally {
@@ -2519,7 +2563,7 @@ function transactionRollbackSuite () {
 
       assertEqual(true, good);
 
-      assertEqual(3, c1.count());
+      assertEqual(3, c42.count());
     },
 
 
@@ -2528,33 +2572,30 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackInsertSecondaryIndexesCustomSharding: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
-      let d1 = c1.save({ value: 'foo', a: 1 });
-      let d2 = c1.save({ value: 'bar', a: 1 });
-      let d3 = c1.save({ value: 'meow' });
+      let d1 = c42s.save({ value: 'foo', a: 1 });
+      let d2 = c42s.save({ value: 'bar', a: 1 });
+      let d3 = c42s.save({ value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
       let good = false;
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42s ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42s = trx.collection(cn42s);
         
-        tc1.save({ value: 'tom' });
-        tc1.save({ value: 'tim' });
-        tc1.save({ value: 'tam' });
-        tc1.save({ value: 'troet', a: 2 });
-        tc1.save({ value: 'floxx', a: 2 });
+        tc42s.save({ value: 'tom' });
+        tc42s.save({ value: 'tim' });
+        tc42s.save({ value: 'tam' });
+        tc42s.save({ value: 'troet', a: 2 });
+        tc42s.save({ value: 'floxx', a: 2 });
 
-        assertEqual(8, tc1.count());
+        assertEqual(8, tc42s.count());
 
         good = true;
       } finally {
@@ -2564,10 +2605,10 @@ function transactionRollbackSuite () {
 
       assertEqual(true, good);
 
-      assertEqual(3, c1.count());
-      assertEqual(d1._rev, c1.document(d1._key)._rev);
-      assertEqual(d2._rev, c1.document(d2._key)._rev);
-      assertEqual(d3._rev, c1.document(d3._key)._rev);
+      assertEqual(3, c42s.count());
+      assertEqual(d1._rev, c42s.document(d1._key)._rev);
+      assertEqual(d2._rev, c42s.document(d2._key)._rev);
+      assertEqual(d3._rev, c42s.document(d3._key)._rev);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2575,43 +2616,42 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackInsertUpdate: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo' });
-      c1.save({ _key: 'bar' });
-      c1.save({ _key: 'meow' });
+      c42.save([{ _key: 'foo' },
+                { _key: 'bar' },
+                { _key: 'meow' }]);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        tc1.save({ _key: 'tom' });
-        tc1.save({ _key: 'tim' });
-        tc1.save({ _key: 'tam' });
+        tc42.save({ _key: 'tom' });
+        tc42.save({ _key: 'tim' });
+        tc42.save({ _key: 'tam' });
 
-        tc1.update('tom', { });
-        tc1.update('tim', { });
-        tc1.update('tam', { });
-        tc1.update('bar', { });
-        tc1.remove('foo');
-        tc1.remove('bar');
-        tc1.remove('meow');
-        tc1.remove('tom');
+        tc42.update('tom', { });
+        tc42.update('tim', { });
+        tc42.update('tam', { });
+        tc42.update('bar', { });
+        tc42.remove('foo');
+        tc42.remove('bar');
+        tc42.remove('meow');
+        tc42.remove('tom');
 
-        assertEqual(2, tc1.count());
+        assertEqual(2, tc42.count());
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
+      assertEqual(3, c42.count());
+      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c42));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2619,45 +2659,45 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackInsertUpdateCustomSharding: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
-      let d1 = c1.save({ value: 'foo' });
-      let d2 = c1.save({ value: 'bar' });
-      let d3 = c1.save({ value: 'meow' });
+      // TODO review: do the 2 indices hurt here? 
+      let d1 = c42s.save({ value: 'foo' });
+      let d2 = c42s.save({ value: 'bar' });
+      let d3 = c42s.save({ value: 'meow' });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42s ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42s = trx.collection(cn42s);
         
-        let d4 = tc1.save({ value: 'tom' });
-        let d5 = tc1.save({ value: 'tim' });
-        let d6 = tc1.save({ value: 'tam' });
+        let d4 = tc42s.save({ value: 'tom' });
+        let d5 = tc42s.save({ value: 'tim' });
+        let d6 = tc42s.save({ value: 'tam' });
 
-        tc1.update(d4._key, { });
-        tc1.update(d5._key, { });
-        tc1.update(d6._key, { });
-        tc1.update(d2._key, { });
-        tc1.remove(d1._key);
-        tc1.remove(d2._key);
-        tc1.remove(d3._key);
-        tc1.remove(d4._key);
+        tc42s.update(d4._key, { });
+        tc42s.update(d5._key, { });
+        tc42s.update(d6._key, { });
+        tc42s.update(d2._key, { });
+        tc42s.remove(d1._key);
+        tc42s.remove(d2._key);
+        tc42s.remove(d3._key);
+        tc42s.remove(d4._key);
 
-        assertEqual(2, tc1.count());
+        assertEqual(2, tc42s.count());
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(3, c1.count());
-      assertEqual(d1._rev, c1.document(d1._key)._rev);
-      assertEqual(d2._rev, c1.document(d2._key)._rev);
-      assertEqual(d3._rev, c1.document(d3._key)._rev);
+      assertEqual(3, c42s.count());
+      assertEqual(d1._rev, c42s.document(d1._key)._rev);
+      assertEqual(d2._rev, c42s.document(d2._key)._rev);
+      assertEqual(d3._rev, c42s.document(d3._key)._rev);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2667,38 +2707,37 @@ function transactionRollbackSuite () {
     testRollbackUpdate: function () {
       var d1, d2, d3;
 
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      d1 = c1.save({ _key: 'foo', a: 1 });
-      d2 = c1.save({ _key: 'bar', a: 2 });
-      d3 = c1.save({ _key: 'meow', a: 3 });
+      d1 = c42.save({ _key: 'foo', a: 1 });
+      d2 = c42.save({ _key: 'bar', a: 2 });
+      d3 = c42.save({ _key: 'meow', a: 3 });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        tc1.update(d1, { a: 4 });
-        tc1.update(d2, { a: 5 });
-        tc1.update(d3, { a: 6 });
+        tc42.update(d1, { a: 4 });
+        tc42.update(d2, { a: 5 });
+        tc42.update(d3, { a: 6 });
 
-        assertEqual(3, tc1.count());
+        assertEqual(3, tc42.count());
 
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
-      assertEqual(d1._rev, c1.document('foo')._rev);
-      assertEqual(d2._rev, c1.document('bar')._rev);
-      assertEqual(d3._rev, c1.document('meow')._rev);
+      assertEqual(3, c42.count());
+      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c42));
+      assertEqual(d1._rev, c42.document('foo')._rev);
+      assertEqual(d2._rev, c42.document('bar')._rev);
+      assertEqual(d3._rev, c42.document('meow')._rev);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2706,39 +2745,38 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackUpdateCustomSharding: function () {
-
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
-      let d1 = c1.save({ value: 'foo', a: 1 });
-      let d2 = c1.save({ value: 'bar', a: 2 });
-      let d3 = c1.save({ value: 'meow', a: 3 });
+      // todo review: does the additional index hurt here?
+      let d1 = c42s.save({ value: 'foo', a: 1 });
+      let d2 = c42s.save({ value: 'bar', a: 2 });
+      let d3 = c42s.save({ value: 'meow', a: 3 });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42s ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42s = trx.collection(cn42s);
         
-        tc1.update(d1, { a: 4 });
-        tc1.update(d2, { a: 5 });
-        tc1.update(d3, { a: 6 });
+        tc42s.update(d1, { a: 4 });
+        tc42s.update(d2, { a: 5 });
+        tc42s.update(d3, { a: 6 });
 
-        assertEqual(3, tc1.count());
+        assertEqual(3, tc42s.count());
 
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(3, c1.count());
-      assertEqual([ d1._key, d2._key, d3._key ], sortedKeys(c1));
-      assertEqual(d1._rev, c1.document(d1._key)._rev);
-      assertEqual(d2._rev, c1.document(d2._key)._rev);
-      assertEqual(d3._rev, c1.document(d3._key)._rev);
+      assertEqual(3, c42s.count());
+      assertEqual([ d1._key, d2._key, d3._key ].sort(), sortedKeys(c42s));
+      assertEqual(d1._rev, c42s.document(d1._key)._rev);
+      assertEqual(d2._rev, c42s.document(d2._key)._rev);
+      assertEqual(d3._rev, c42s.document(d3._key)._rev);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2748,47 +2786,46 @@ function transactionRollbackSuite () {
     testRollbackUpdateUpdate: function () {
       var d1, d2, d3;
 
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      d1 = c1.save({ _key: 'foo', a: 1 });
-      d2 = c1.save({ _key: 'bar', a: 2 });
-      d3 = c1.save({ _key: 'meow', a: 3 });
+      d1 = c42.save({ _key: 'foo', a: 1 });
+      d2 = c42.save({ _key: 'bar', a: 2 });
+      d3 = c42.save({ _key: 'meow', a: 3 });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
         for (let i = 0; i < 100; ++i) {
-          tc1.replace('foo', { a: i });
-          tc1.replace('bar', { a: i + 42 });
-          tc1.replace('meow', { a: i + 23 });
+          tc42.replace('foo', { a: i });
+          tc42.replace('bar', { a: i + 42 });
+          tc42.replace('meow', { a: i + 23 });
 
-          assertEqual(i, tc1.document('foo').a);
-          assertEqual(i + 42, tc1.document('bar').a);
-          assertEqual(i + 23, tc1.document('meow').a);
+          assertEqual(i, tc42.document('foo').a);
+          assertEqual(i + 42, tc42.document('bar').a);
+          assertEqual(i + 23, tc42.document('meow').a);
         }
 
-        assertEqual(3, tc1.count());
+        assertEqual(3, tc42.count());
 
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
-      assertEqual(1, c1.document('foo').a);
-      assertEqual(2, c1.document('bar').a);
-      assertEqual(3, c1.document('meow').a);
-      assertEqual(d1._rev, c1.document('foo')._rev);
-      assertEqual(d2._rev, c1.document('bar')._rev);
-      assertEqual(d3._rev, c1.document('meow')._rev);
+      assertEqual(3, c42.count());
+      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c42));
+      assertEqual(1, c42.document('foo').a);
+      assertEqual(2, c42.document('bar').a);
+      assertEqual(3, c42.document('meow').a);
+      assertEqual(d1._rev, c42.document('foo')._rev);
+      assertEqual(d2._rev, c42.document('bar')._rev);
+      assertEqual(d3._rev, c42.document('meow')._rev);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2796,31 +2833,28 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackUpdateSecondaryIndexes: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo', value: 'foo', a: 1 });
-      c1.save({ _key: 'bar', value: 'bar', a: 1 });
-      c1.save({ _key: 'meow', value: 'meow' });
+      c42i.save([{ _key: 'foo', value: 'foo', a: 1 },
+                 { _key: 'bar', value: 'bar', a: 1 },
+                 { _key: 'meow', value: 'meow' }]);
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
       let good = false;
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42i ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42i = trx.collection(cn42i);
         
-        tc1.update('foo', { value: 'foo', a: 2 });
-        tc1.update('bar', { value: 'bar', a: 2 });
-        tc1.update('meow', { value: 'troet' });
+        tc42i.update('foo', { value: 'foo', a: 2 });
+        tc42i.update('bar', { value: 'bar', a: 2 });
+        tc42i.update('meow', { value: 'troet' });
 
-        assertEqual(3, tc1.count());
+        assertEqual(3, tc42i.count());
         good = true;
 
       } finally {
@@ -2829,7 +2863,7 @@ function transactionRollbackSuite () {
       // end trx
 
       assertEqual(true, good);
-      assertEqual(3, c1.count());
+      assertEqual(3, c42i.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2837,35 +2871,34 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackRemove: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo' });
-      c1.save({ _key: 'bar' });
-      c1.save({ _key: 'meow' });
+      c42.save([{ _key: 'foo' },
+                { _key: 'bar' },
+                { _key: 'meow' }]);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
-        tc1.remove('meow');
-        tc1.remove('foo');
+        tc42.remove('meow');
+        tc42.remove('foo');
 
-        assertEqual(1, tc1.count());
-        assertTrue(tc1.document('bar') !== undefined);
+        assertEqual(1, tc42.count());
+        assertTrue(tc42.document('bar') !== undefined);
 
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
+      assertEqual(3, c42.count());
+      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c42));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2873,37 +2906,37 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackRemoveCustomSharding: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
-      let d1 = c1.save({ value: 'foo' });
-      let d2 = c1.save({ value: 'bar' });
-      let d3 = c1.save({ value: 'meow' });
+/// TODO: will the indices harm this case?
+      let d1 = c42s.save({ value: 'foo' });
+      let d2 = c42s.save({ value: 'bar' });
+      let d3 = c42s.save({ value: 'meow' });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42s ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42s = trx.collection(cn42s);
         
-        tc1.remove(d3._key);
-        tc1.remove(d1._key);
+        tc42s.remove(d3._key);
+        tc42s.remove(d1._key);
 
-        assertEqual(1, tc1.count());
-        assertTrue(tc1.document(d2._key) !== undefined);
+        assertEqual(1, tc42s.count());
+        assertTrue(tc42s.document(d2._key) !== undefined);
 
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(3, c1.count());
-      assertEqual(d1._rev, c1.document(d1._key)._rev);
-      assertEqual(d2._rev, c1.document(d2._key)._rev);
-      assertEqual(d3._rev, c1.document(d3._key)._rev);
+      assertEqual(3, c42s.count());
+      assertEqual(d1._rev, c42s.document(d1._key)._rev);
+      assertEqual(d2._rev, c42s.document(d2._key)._rev);
+      assertEqual(d3._rev, c42s.document(d3._key)._rev);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2911,32 +2944,31 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackRemoveMulti: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo' });
+      c42.save({ _key: 'foo' });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
         for (let i = 0; i < 100; ++i) {
-          tc1.save({ _key: 'foo' + i });
+          tc42.save({ _key: 'foo' + i });
         }
 
-        assertEqual(101, tc1.count());
+        assertEqual(101, tc42.count());
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(1, c42.count());
+      assertEqual([ 'foo' ], sortedKeys(c42));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2944,32 +2976,32 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackRemoveMultiCustomSharding: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
-      let d1 = c1.save({ value: 'foo' });
+      // TODO: do indices hurt this case?
+      let d1 = c42s.save({ value: 'foo' });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42s ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42s = trx.collection(cn42s);
         
         for (let i = 0; i < 100; ++i) {
-          tc1.save({ value: 'foo' + i });
+          tc42s.save({ value: 'foo' + i });
         }
 
-        assertEqual(101, tc1.count());
+        assertEqual(101, tc42s.count());
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(1, c1.count());
-      assertEqual([ d1._key ], sortedKeys(c1));
+      assertEqual(1, c42s.count());
+      assertEqual([ d1._key ], sortedKeys(c42s));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2977,31 +3009,28 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackRemoveSecondaryIndexes: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo', value: 'foo', a: 1 });
-      c1.save({ _key: 'bar', value: 'bar', a: 1 });
-      c1.save({ _key: 'meow', value: 'meow' });
+      c42i.save([{ _key: 'foo', value: 'foo', a: 1 },
+                 { _key: 'bar', value: 'bar', a: 1 },
+                 { _key: 'meow', value: 'meow' }]);
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
       var good = false;
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42i ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42i = trx.collection(cn42i);
         
-        tc1.remove('meow');
-        tc1.remove('bar');
-        tc1.remove('foo');
+        tc42i.remove('meow');
+        tc42i.remove('bar');
+        tc42i.remove('foo');
 
-        assertEqual(0, tc1.count());
+        assertEqual(0, tc42i.count());
 
         good = true;
         
@@ -3011,7 +3040,7 @@ function transactionRollbackSuite () {
       // end trx
 
       assertEqual(true, good);
-      assertEqual(3, c1.count());
+      assertEqual(3, c42i.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3019,34 +3048,31 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackRemoveInsertSecondaryIndexes: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-      c1.save({ _key: 'foo', value: 'foo', a: 1 });
-      c1.save({ _key: 'bar', value: 'bar', a: 1 });
-      c1.save({ _key: 'meow', value: 'meow' });
+      c42i.save([{ _key: 'foo', value: 'foo', a: 1 },
+                 { _key: 'bar', value: 'bar', a: 1 },
+                 { _key: 'meow', value: 'meow' }]);
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
       let good = false;
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42i ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42i = trx.collection(c42i);
         
-        tc1.remove('meow');
-        tc1.remove('bar');
-        tc1.remove('foo');
-        assertEqual(0, tc1.count());
+        tc42i.remove('meow');
+        tc42i.remove('bar');
+        tc42i.remove('foo');
+        assertEqual(0, tc42i.count());
 
-        tc1.save({ _key: 'foo2', value: 'foo', a: 2 });
-        tc1.save({ _key: 'bar2', value: 'bar', a: 2 });
-        assertEqual(2, tc1.count());
+        tc42i.save({ _key: 'foo2', value: 'foo', a: 2 });
+        tc42i.save({ _key: 'bar2', value: 'bar', a: 2 });
+        assertEqual(2, tc42i.count());
 
         good = true;
       
@@ -3056,7 +3082,7 @@ function transactionRollbackSuite () {
       // end trx
 
       assertEqual(true, good);
-      assertEqual(3, c1.count());
+      assertEqual(3, c42i.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3064,22 +3090,20 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackTruncateEmpty: function () {
-      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
-
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn42 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc42 = trx.collection(cn42);
         
         // truncate often...
         for (let i = 0; i < 100; ++i) {
-          tc1.truncate({ compact: false });
+          tc42.truncate({ compact: false });
         }
       
       } finally {
@@ -3087,8 +3111,8 @@ function transactionRollbackSuite () {
       }
       // end trx
 
-      assertEqual(0, c1.count());
-      assertEqual([ ], sortedKeys(c1));
+      assertEqual(0, c42.count());
+      assertEqual([ ], sortedKeys(c42));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3096,35 +3120,36 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackTruncateNonEmpty: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c1.save({ _key: 'foo' + i });
+        docs.push({ _key: 'foo' + i });
       }
-      assertEqual(100, c1.count());
+      c32.save(docs);
+      assertEqual(100, c32.count());
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         
         // truncate often...
         for (let i = 0; i < 100; ++i) {
-          tc1.truncate({ compact: false });
+          tc32.truncate({ compact: false });
         }
-        tc1.save({ _key: 'bar' });
+        tc32.save({ _key: 'bar' });
       
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(100, c1.count());
+      assertEqual(100, c32.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3132,22 +3157,21 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackUniquePrimary: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      let d1 = c1.save({ _key: 'foo' });
+      let d1 = c32.save({ _key: 'foo' });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         
-        tc1.save({ _key: 'bar' });
-        tc1.save({ _key: 'foo' });
+        tc32.save({ _key: 'bar' });
+        tc32.save({ _key: 'foo' });
         fail();
 
       } catch (err) {
@@ -3157,9 +3181,9 @@ function transactionRollbackSuite () {
       }
       // end trx
 
-      assertEqual(1, c1.count());
-      assertEqual('foo', c1.toArray()[0]._key);
-      assertEqual(d1._rev, c1.toArray()[0]._rev);
+      assertEqual(1, c32.count());
+      assertEqual('foo', c32.toArray()[0]._key);
+      assertEqual(d1._rev, c32.toArray()[0]._rev);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3167,24 +3191,22 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackUniqueSecondary: function () {
-      c1 = db._create(cn1, {numberOfShards: 1, replicationFactor: 2});
-      c1.ensureUniqueConstraint('name');
-      let d1 = c1.save({ name: 'foo' });
+      let d1 = c12.save({ name: 'foo' });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn12 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc12 = trx.collection(cn12);
         
-        tc1.save({ name: 'bar' });
-        tc1.save({ name: 'baz' });
-        tc1.save({ name: 'foo' });
+        tc12.save({ name: 'bar' });
+        tc12.save({ name: 'baz' });
+        tc12.save({ name: 'foo' });
         fail();
       
       } catch (err) {
@@ -3194,9 +3216,9 @@ function transactionRollbackSuite () {
       }
       // end trx
       
-      assertEqual(1, c1.count());
-      assertEqual('foo', c1.toArray()[0].name);
-      assertEqual(d1._rev, c1.toArray()[0]._rev);
+      assertEqual(1, c12.count());
+      assertEqual('foo', c12.toArray()[0].name);
+      assertEqual(d1._rev, c12.toArray()[0]._rev);
     },
 
 
@@ -3205,24 +3227,22 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackUniqueSecondaryCustomShard: function () {
-      c1 = db._create(cn1, {numberOfShards: 2, replicationFactor: 2, shardKeys:['name']});
-      c1.ensureUniqueConstraint('name');
-      let d1 = c1.save({ name: 'foo' });
+      let d1 = c22s.save({ name: 'foo' });
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn22s ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc22s = trx.collection(c22s);
         
-        tc1.save({ name: 'bar' });
-        tc1.save({ name: 'baz' });
-        tc1.save({ name: 'foo' });
+        tc22s.save({ name: 'bar' });
+        tc22s.save({ name: 'baz' });
+        tc22s.save({ name: 'foo' });
         fail();
       
       } catch (err) {
@@ -3232,9 +3252,9 @@ function transactionRollbackSuite () {
       }
       // end trx
       
-      assertEqual(1, c1.count());
-      assertEqual('foo', c1.toArray()[0].name);
-      assertEqual(d1._rev, c1.toArray()[0]._rev);
+      assertEqual(1, c22s.count());
+      assertEqual('foo', c22s.toArray()[0].name);
+      assertEqual(d1._rev, c22s.toArray()[0]._rev);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3242,39 +3262,39 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackMixed1: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c1.save({ _key: 'key' + i, value: i });
+        docs.push({ _key: 'key' + i, value: i });
       }
+      c32.save(docs);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         
         for (let i = 0; i < 50; ++i) {
-          tc1.remove('key' + i);
+          tc32.remove('key' + i);
         }
 
         for (let i = 50; i < 100; ++i) {
-          tc1.update('key' + i, { value: i - 50 });
+          tc32.update('key' + i, { value: i - 50 });
         }
 
-        tc1.remove('key50');
+        tc32.remove('key50');
       
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(100, c1.count());
+      assertEqual(100, c32.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3282,42 +3302,40 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackMixed2: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
-      c1.save({ _key: 'foo' });
-      c1.save({ _key: 'bar' });
+      c32.save([{ _key: 'foo' },
+                { _key: 'bar' }]);
 
       // begin trx
       let trx = db._createTransaction({
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       });
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         
         for (let i = 0; i < 10; ++i) {
-          tc1.save({ _key: 'key' + i, value: i });
+          tc32.save({ _key: 'key' + i, value: i });
         }
 
         for (let i = 0; i < 5; ++i) {
-          tc1.remove('key' + i);
+          tc32.remove('key' + i);
         }
 
         for (let i = 5; i < 10; ++i) {
-          tc1.update('key' + i, { value: i - 5 });
+          tc32.update('key' + i, { value: i - 5 });
         }
 
-        tc1.remove('key5');
+        tc32.remove('key5');
       
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(2, c1.count());
-      assertEqual('foo', c1.document('foo')._key);
-      assertEqual('bar', c1.document('bar')._key);
+      assertEqual(2, c32.count());
+      assertEqual('foo', c32.document('foo')._key);
+      assertEqual('bar', c32.document('bar')._key);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3325,48 +3343,46 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackMixed3: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
-      c1.save({ _key: 'foo' });
-      c1.save({ _key: 'bar' });
+      c32.save([{ _key: 'foo' },
+                { _key: 'bar' }]);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         
         for (let i = 0; i < 10; ++i) {
-          tc1.save({ _key: 'key' + i, value: i });
+          tc32.save({ _key: 'key' + i, value: i });
         }
 
         for (let i = 0; i < 10; ++i) {
-          tc1.remove('key' + i);
+          tc32.remove('key' + i);
         }
 
         for (let i = 0; i < 10; ++i) {
-          tc1.save({ _key: 'key' + i, value: i });
+          tc32.save({ _key: 'key' + i, value: i });
         }
 
         for (let i = 0; i < 10; ++i) {
-          tc1.update('key' + i, { value: i - 5 });
+          tc32.update('key' + i, { value: i - 5 });
         }
 
         for (let i = 0; i < 10; ++i) {
-          tc1.update('key' + i, { value: i + 5 });
+          tc32.update('key' + i, { value: i + 5 });
         }
 
         for (let i = 0; i < 10; ++i) {
-          tc1.remove('key' + i);
+          tc32.remove('key' + i);
         }
 
         for (let i = 0; i < 10; ++i) {
-          tc1.save({ _key: 'key' + i, value: i });
+          tc32.save({ _key: 'key' + i, value: i });
         }
       
       } finally {
@@ -3374,9 +3390,9 @@ function transactionRollbackSuite () {
       }
       // end trx
 
-      assertEqual(2, c1.count());
-      assertEqual('foo', c1.document('foo')._key);
-      assertEqual('bar', c1.document('bar')._key);
+      assertEqual(2, c32.count());
+      assertEqual('foo', c32.document('foo')._key);
+      assertEqual('bar', c32.document('bar')._key);
     }
 
   };
@@ -3388,9 +3404,9 @@ function transactionRollbackSuite () {
 
 function transactionCountSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
+  var cn32 = 'UnitTestsTransaction32';
 
-  var c1 = null;
+  var c32 = null;
 
   return {
 
@@ -3398,8 +3414,12 @@ function transactionCountSuite () {
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
 
+    setUpAll: function () {
+      c32 = db._create(cn32, {numberOfShards: 3, replicationFactor: 2});
+    },
+
     setUp: function () {
-      db._drop(cn1);
+      c32.truncate({ compact: false });
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3407,11 +3427,12 @@ function transactionCountSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
+      c32.truncate({ compact: false });
+      internal.wait(0);
+    },
 
-      c1 = null;
+    tearDownAll: function () {
+      c32.drop();
       internal.wait(0);
     },
 
@@ -3420,47 +3441,46 @@ function transactionCountSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCountDuring: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      assertEqual(0, c1.count());
+      assertEqual(0, c32.count());
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
         var d1, d2;
 
-        tc1.save({ a: 1 });
-        assertEqual(1, tc1.count());
+        tc32.save({ a: 1 });
+        assertEqual(1, tc32.count());
 
-        d1 = tc1.save({ a: 2 });
-        assertEqual(2, tc1.count());
+        d1 = tc32.save({ a: 2 });
+        assertEqual(2, tc32.count());
 
-        d2 = tc1.update(d1, { a: 3 });
-        assertEqual(2, tc1.count());
+        d2 = tc32.update(d1, { a: 3 });
+        assertEqual(2, tc32.count());
 
-        assertEqual(3, tc1.document(d2).a);
+        assertEqual(3, tc32.document(d2).a);
 
-        tc1.remove(d2);
-        assertEqual(1, tc1.count());
+        tc32.remove(d2);
+        assertEqual(1, tc32.count());
 
-        tc1.truncate({ compact: false });
-        assertEqual(0, tc1.count());
+        tc32.truncate({ compact: false });
+        assertEqual(0, tc32.count());
 
-        tc1.truncate({ compact: false });
-        assertEqual(0, tc1.count());
+        tc32.truncate({ compact: false });
+        assertEqual(0, tc32.count());
       } finally {
         trx.commit();
       }
       
       // end trx
       
-      assertEqual(0, c1.count());
+      assertEqual(0, c32.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3468,40 +3488,39 @@ function transactionCountSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCountCommitAfterFlush: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c1.save({ _key: 'foo' });
-      c1.save({ _key: 'bar' });
-      assertEqual(2, c1.count());
+      c32.save([{ _key: 'foo' },
+                { _key: 'bar' }]);
+      assertEqual(2, c32.count());
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
 
-        tc1.save({ _key: 'baz' });
-        assertEqual(3, tc1.count());
-
-        internal.wal.flush(true, false);
-
-        tc1.save({ _key: 'meow' });
-        assertEqual(4, tc1.count());
+        tc32.save({ _key: 'baz' });
+        assertEqual(3, tc32.count());
 
         internal.wal.flush(true, false);
 
-        tc1.remove('foo');
-        assertEqual(3, tc1.count());
+        tc32.save({ _key: 'meow' });
+        assertEqual(4, tc32.count());
+
+        internal.wal.flush(true, false);
+
+        tc32.remove('foo');
+        assertEqual(3, tc32.count());
       } finally {
         trx.commit();
       }
       // end trx
 
-      assertEqual(3, c1.count());
+      assertEqual(3, c32.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3509,36 +3528,35 @@ function transactionCountSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCountCommit: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c1.save({ _key: 'foo' });
-      c1.save({ _key: 'bar' });
-      assertEqual(2, c1.count());
+      c32.save([{ _key: 'foo' },
+                { _key: 'bar' }]);
+      assertEqual(2, c32.count());
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
 
-        tc1.save({ _key: 'baz' });
-        assertEqual(3, tc1.count());
+        tc32.save({ _key: 'baz' });
+        assertEqual(3, tc32.count());
 
-        tc1.save({ _key: 'meow' });
-        assertEqual(4, tc1.count());
+        tc32.save({ _key: 'meow' });
+        assertEqual(4, tc32.count());
 
-        tc1.remove('foo');
-        assertEqual(3, tc1.count());
+        tc32.remove('foo');
+        assertEqual(3, tc32.count());
       } finally {
         trx.commit();
       }
       // end trx
 
-      assertEqual(3, c1.count());
+      assertEqual(3, c32.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3546,39 +3564,38 @@ function transactionCountSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCountRollback: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c1.save({ _key: 'foo' });
-      c1.save({ _key: 'bar' });
-      assertEqual(2, c1.count());
+      c32.save([{ _key: 'foo' },
+                { _key: 'bar' }]);
+      assertEqual(2, c32.count());
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
+        let tc32 = trx.collection(cn32);
 
-        tc1.save({ _key: 'baz' });
-        assertEqual(3, tc1.count());
+        tc32.save({ _key: 'baz' });
+        assertEqual(3, tc32.count());
 
-        tc1.save({ _key: 'meow' });
-        assertEqual(4, tc1.count());
+        tc32.save({ _key: 'meow' });
+        assertEqual(4, tc32.count());
 
-        tc1.remove('foo');
-        assertEqual(3, tc1.count());
+        tc32.remove('foo');
+        assertEqual(3, tc32.count());
       } finally {
         trx.abort(); // rollback
       }
       // end trx
 
-      assertEqual(2, c1.count());
+      assertEqual(2, c32.count());
 
       var keys = [ ];
-      c1.toArray().forEach(function (d) {
+      c32.toArray().forEach(function (d) {
         keys.push(d._key);
       });
       keys.sort();
@@ -3594,10 +3611,10 @@ function transactionCountSuite () {
 
 function transactionCrossCollectionSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
+  var cn32 = 'UnitTestsTransaction32';
   var cn2 = 'UnitTestsTransaction2';
 
-  var c1 = null;
+  var c32 = null;
   var c2 = null;
 
   return {
@@ -3606,9 +3623,13 @@ function transactionCrossCollectionSuite () {
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
 
+    setUpAll: function () {
+      c32 = db._create(cn32, {numberOfShards: 3, replicationFactor: 2});
+      c2 = db._create(cn2, {numberOfShards: 2});
+    },
     setUp: function () {
-      db._drop(cn1);
-      db._drop(cn2);
+      c32.truncate({ compact: false });
+      c2.truncate({ compact: false });
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3616,42 +3637,35 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
-      c1 = null;
-
-      if (c2 !== null) {
-        c2.drop();
-      }
-
-      c2 = null;
+      c32.truncate({ compact: true });
+      c2.truncate({ compact: true });
       internal.wait(0);
     },
 
+    tearDownAll: function () {
+      c32.drop();
+      c2.drop();
+      internal.wait(0);
+    },
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: test cross collection commit
     // //////////////////////////////////////////////////////////////////////////////
 
     testInserts: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c2 = db._create(cn2, {numberOfShards: 2});
-
       let obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [ cn32, cn2 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
+        let tc32 = trx.collection(cn32);
+        let tc2 = trx.collection(cn2);
 
         for (let i = 0; i < 10; ++i) {
-          tc1.save({ _key: 'a' + i });
+          tc32.save({ _key: 'a' + i });
           tc2.save({ _key: 'b' + i });
         }
       } finally {
@@ -3659,7 +3673,7 @@ function transactionCrossCollectionSuite () {
       }
       // end trx
 
-      assertEqual(10, c1.count());
+      assertEqual(10, c32.count());
       assertEqual(10, c2.count());
     },
 
@@ -3668,29 +3682,30 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUpdates: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c2 = db._create(cn2, {numberOfShards: 2});
-
       var i;
+      var docs32 = [];
+      var docs2 = [];
       for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'a' + i, a: i });
-        c2.save({ _key: 'b' + i, b: i });
+        docs32.push({ _key: 'a' + i, a: i });
+        docs2.push({ _key: 'b' + i, b: i });
       }
-
+      c32.save(docs32);
+      c2.save(docs2);
+      
       let obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [ cn32, cn2 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
+        let tc32 = trx.collection(cn32);
+        let tc2 = trx.collection(cn2);
 
         for (i = 0; i < 10; ++i) {
-          tc1.update('a' + i, { a: i + 20 });
+          tc32.update('a' + i, { a: i + 20 });
 
           tc2.update('b' + i, { b: i + 20 });
           tc2.remove('b' + i);
@@ -3700,7 +3715,7 @@ function transactionCrossCollectionSuite () {
       }
       // end trx
 
-      assertEqual(10, c1.count());
+      assertEqual(10, c32.count());
       assertEqual(0, c2.count());
     },
 
@@ -3709,29 +3724,30 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testDeletes: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c2 = db._create(cn2, {numberOfShards: 2});
-
       var i;
+      var docs32 = [];
+      var docs2 = [];
       for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'a' + i, a: i });
-        c2.save({ _key: 'b' + i, b: i });
+        docs32.push({ _key: 'a' + i, a: i });
+        docs2.push({ _key: 'b' + i, b: i });
       }
+      c32.save(docs32);
+      c2.save(docs2);
 
       let obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [ cn32, cn2 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
+        let tc32 = trx.collection(cn32);
+        let tc2 = trx.collection(cn2);
 
         for (i = 0; i < 10; ++i) {
-          tc1.remove('a' + i);
+          tc32.remove('a' + i);
           tc2.remove('b' + i);
         }
 
@@ -3740,7 +3756,7 @@ function transactionCrossCollectionSuite () {
       }
       // end trx
 
-      assertEqual(0, c1.count());
+      assertEqual(0, c32.count());
       assertEqual(0, c2.count());
     },
 
@@ -3749,29 +3765,30 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testDeleteReload: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c2 = db._create(cn2, {numberOfShards: 2});
-
       var i;
+      var docs32 = [];
+      var docs2 = [];
       for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'a' + i, a: i });
-        c2.save({ _key: 'b' + i, b: i });
+        docs32.push({ _key: 'a' + i, a: i });
+        docs2.push({ _key: 'b' + i, b: i });
       }
+      c32.save(docs32);
+      c2.save(docs2);
 
       let obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [ cn32, cn2 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
+        let tc32 = trx.collection(cn32);
+        let tc2 = trx.collection(cn2);
 
         for (i = 0; i < 10; ++i) {
-          tc1.remove('a' + i);
+          tc32.remove('a' + i);
           tc2.remove('b' + i);
         }
 
@@ -3780,13 +3797,7 @@ function transactionCrossCollectionSuite () {
       }
       // end trx
 
-      assertEqual(0, c1.count());
-      assertEqual(0, c2.count());
-
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
-
-      assertEqual(0, c1.count());
+      assertEqual(0, c32.count());
       assertEqual(0, c2.count());
     },
 
@@ -3795,47 +3806,33 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCommitReload: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c2 = db._create(cn2, {numberOfShards: 2});
-
       let obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [ cn32, cn2 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
+        let tc32 = trx.collection(cn32);
+        let tc2 = trx.collection(cn2);
 
         for (let i = 0; i < 10; ++i) {
-          tc1.save({ _key: 'a' + i });
+          tc32.save({ _key: 'a' + i });
         }
-
         for (let i = 0; i < 10; ++i) {
           tc2.save({ _key: 'b' + i });
         }
-
-        assertEqual(10, tc1.count());
+        assertEqual(10, tc32.count());
         assertEqual(10, tc2.count());
-
-        tc1.remove('a4');
+        tc32.remove('a4');
         tc2.remove('b6');
-
       } finally {
         trx.commit();
       }
       // end trx
-
-      assertEqual(9, c1.count());
-      assertEqual(9, c2.count());
-
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
-
-      assertEqual(9, c1.count());
+      assertEqual(9, c32.count());
       assertEqual(9, c2.count());
     },
 
@@ -3844,26 +3841,23 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackReload: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c2 = db._create(cn2, {numberOfShards: 2});
-
-      c1.save({ _key: 'a1' });
+      c32.save({ _key: 'a1' });
       c2.save({ _key: 'b1', a: 1 });
 
       let obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [ cn32, cn2 ]
         }
       };
 
       // begin trx
       let trx = db._createTransaction(obj);
       try {
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
+        let tc32 = trx.collection(cn32);
+        let tc2 = trx.collection(cn2);
 
-        tc1.save({ _key: 'a2' });
-        tc1.save({ _key: 'a3' });
+        tc32.save({ _key: 'a2' });
+        tc32.save({ _key: 'a3' });
 
         tc2.save({ _key: 'b2' });
         tc2.update('b1', { a: 2 });
@@ -3876,22 +3870,20 @@ function transactionCrossCollectionSuite () {
       }
       // end trx
 
-      assertEqual(1, c1.count());
+      assertEqual(1, c32.count());
       assertEqual(1, c2.count());
 
-      assertEqual([ 'a1' ], sortedKeys(c1));
+      assertEqual([ 'a1' ], sortedKeys(c32));
       assertEqual([ 'b1' ], sortedKeys(c2));
       assertEqual(1, c2.document('b1').a);
 
-      c1.unload();
+      c32.unload();
       c2.unload();
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
 
-      assertEqual(1, c1.count());
+      assertEqual(1, c32.count());
       assertEqual(1, c2.count());
 
-      assertEqual([ 'a1' ], sortedKeys(c1));
+      assertEqual([ 'a1' ], sortedKeys(c32));
       assertEqual([ 'b1' ], sortedKeys(c2));
       assertEqual(1, c2.document('b1').a);
     },
@@ -3901,27 +3893,26 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUnloadReloadAbortedTrx: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
+      let docs = [];
       for (let i = 0; i < 10; ++i) {
-        c1.save({ _key: 'a' + i, a: i });
+        docs.push({ _key: 'a' + i, a: i });
       }
+      c32.save(docs);
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [ cn32 ]
         }
       };
 
       for (let i = 0; i < 50; ++i) {
-
         // begin trx
         let trx = db._createTransaction(obj);
         try {
-          let tc1 = trx.collection(c1.name());
+          let tc32 = trx.collection(cn32);
 
           for (let x = 0; x < 100; ++x) {
-            tc1.save({ _key: 'test' + x });
+            tc32.save({ _key: 'test' + x });
           }
   
         } catch (err) {
@@ -3932,11 +3923,7 @@ function transactionCrossCollectionSuite () {
         // end trx
       }
 
-      assertEqual(10, c1.count());
-
-      testHelper.waitUnload(c1);
-
-      assertEqual(10, c1.count());
+      assertEqual(10, c32.count());
     }
 
   };
@@ -3949,36 +3936,51 @@ function transactionCrossCollectionSuite () {
 function transactionTraversalSuite () {
   'use strict';
   var cn = 'UnitTestsTransaction';
-
+  var cne = cn + 'Edge';
+  var cnv = cn + 'Vertex';
+  var ce = null;
+  var cv = null;
   return {
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
-
-    setUp: function () {
-      db._drop(cn + 'Vertex');
-      db._drop(cn + 'Edge');
-      db._create(cn + 'Vertex');
-      db._createEdgeCollection(cn + 'Edge');
-
-      var i;
-      for (i = 0; i < 100; ++i) {
-        db.UnitTestsTransactionVertex.insert({ _key: String(i) });
-      }
-
-      for (i = 1; i < 100; ++i) {
-        db.UnitTestsTransactionEdge.insert(cn + 'Vertex/' + i, cn + 'Vertex/' + (i + 1), { });
-      }
+    setUpAll: function () {
+      db._drop(cnv);
+      db._drop(cne);
+      cv = db._create(cnv);
+      ce = db._createEdgeCollection(cne);
     },
-
+    setUp: function() {
+      cv.truncate({ compact: false });
+      ce.truncate({ compact: false });
+      var i;
+      var docs = []
+      for (i = 0; i < 100; ++i) {
+        docs.push({ _key: String(i) });
+      }
+      cv.insert(docs);
+      docs = [];
+      for (i = 1; i < 100; ++i) {
+        docs.push({
+          '_from': cnv + '/' + i,
+          '_to': cnv + '/' + (i + 1)
+        });
+      }
+      ce.insert(docs);
+    },
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief tear down
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      db._drop(cn + 'Vertex');
-      db._drop(cn + 'Edge');
+      cv.truncate({ compact: false });
+      ce.truncate({ compact: false });
+    },
+
+    tearDownAll: function () {
+      db._drop(cnv);
+      db._drop(cne);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3991,16 +3993,16 @@ function transactionTraversalSuite () {
       // begin trx
       let trx = db._createTransaction({
         collections: {
-          read: [ cn + 'Edge' ],
-          write: [ cn + 'Edge' ]
+          read: [ cne ],
+          write: [ cne ]
         }
       });
       try {
-        let tedge = trx.collection(cn + 'Edge');
+        let tedge = trx.collection(cne);
 
-        let results = trx.query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' + 
-                            cn + 'Edge FILTER v._id == "' + cn + 
-                            'Vertex/21" LIMIT 1 RETURN e').toArray();
+        let results = trx.query('WITH ' + cnv + ' FOR v, e IN ANY "' + cnv + '/20" ' + 
+                            cne + ' FILTER v._id == "' + cnv + 
+                            '/21" LIMIT 1 RETURN e').toArray();
 
         if (results.length > 0) {
           result = results[0];
@@ -4022,24 +4024,26 @@ function transactionTraversalSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTestCount: function () {
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        db[cn + 'Edge'].insert(cn + 'Edge/test' + (i % 21), cn + 'Edge/test' + (i % 7), { });
+        docs.push({'_from': cne + '/test' + (i % 21), '_to': cne + '/test' + (i % 7)});
       }
+      ce.insert(docs);
 
       let result;
       // begin trx
       let trx = db._createTransaction({
         collections: {
-          read: [ cn + 'Edge' ],
-          write: [ cn + 'Edge' ]
+          read: [ cne ],
+          write: [ cne ]
         }
       });
       try {
-        let tedge = trx.collection(cn + 'Edge');
-        const qq = "FOR e IN " + cn + "Edge FILTER e._from == @a AND e.request == false RETURN e";
+        let tedge = trx.collection(cne);
+        const qq = "FOR e IN " + cne + " FILTER e._from == @a AND e.request == false RETURN e";
 
-        let from = cn + 'Edge/test1';
-        let to = cn + 'Edge/test8';
+        let from = cne + '/test1';
+        let to = cne + '/test8';
 
         let newDoc = tedge.insert({_from: from, _to: to, request: true});
         let fromCount1 = trx.query(qq, {a:from}, {count:true}).count();
@@ -4076,14 +4080,18 @@ function transactionAQLStreamSuite () {
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief set up
     // //////////////////////////////////////////////////////////////////////////////
-
-    setUp: function () {
-      db._drop(cn);
-      db._drop(cn + 'Vertex');
-      db._drop(cn + 'Edge');
+    setUpAll: function() {
       c = db._create(cn, {numberOfShards: 2, replicationFactor: 2});
       db._create(cn + 'Vertex', {numberOfShards: 2, replicationFactor: 2});
       db._createEdgeCollection(cn + 'Edge', {numberOfShards: 2, replicationFactor: 2});
+      c.ensureIndex({ type: 'skiplist', fields: ["value1"]});
+      c.ensureIndex({ type: 'skiplist', fields: ["value2"]});
+    },
+    
+    setUp: function () {
+      c.truncate({ compact: false });
+      db[cn + 'Vertex'].truncate({ compact: false });
+      db[cn + 'Edge'].truncate({ compact: false });
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
@@ -4097,9 +4105,6 @@ function transactionAQLStreamSuite () {
       }
       db.UnitTestsTransactionEdge.insert(docs);
 
-      c.ensureIndex({ type: 'skiplist', fields: ["value1"]});
-      c.ensureIndex({ type: 'skiplist', fields: ["value2"]});
-
       docs = [];
       for (let i = 0; i < 5000; i++) {
         docs.push({value1: i % 10, value2: i % 25 , value3: i % 25 });
@@ -4112,6 +4117,11 @@ function transactionAQLStreamSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
+      c.truncate({ compact: false });
+      db[cn + 'Vertex'].truncate({ compact: false });
+      db[cn + 'Edge'].truncate({ compact: false });
+    },
+    tearDownAll: function () {
       db._drop(cn);
       db._drop(cn + 'Vertex');
       db._drop(cn + 'Edge');
@@ -4444,12 +4454,17 @@ function transactionOverlapSuite() {
 
   return {
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop(cn);
       db._create(cn, { numberOfShards: 4 });
     },
-
+    setUp: function () {
+      db[cn].truncate({ compact: false });
+    },
     tearDown: function () {
+      db[cn].truncate({ compact: false });
+    },
+    tearDownAll: function () {
       db._drop(cn);
     },
 
