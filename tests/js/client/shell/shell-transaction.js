@@ -3955,7 +3955,7 @@ function transactionTraversalSuite () {
       cv.truncate({ compact: false });
       ce.truncate({ compact: false });
       var i;
-      var docs = []
+      var docs = [];
       for (i = 0; i < 100; ++i) {
         docs.push({ _key: String(i) });
       }
