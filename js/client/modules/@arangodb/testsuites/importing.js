@@ -152,6 +152,15 @@ const impTodos = [{
   separator: ',',
   ignoreMissing: true
 }, {
+  id: 'csvconvert',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noconvert.csv')),
+  coll: 'UnitTestsImportCsvConvert',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  backslash: true
+}, {
   id: 'csvnoconvert',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noconvert.csv')),
   coll: 'UnitTestsImportCsvNoConvert',
