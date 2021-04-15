@@ -93,6 +93,12 @@ class Cursor {
 
   virtual void kill() {}
 
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  virtual void debugKillQuery() {}
+
   virtual size_t count() const = 0;
 
   virtual std::shared_ptr<transaction::Context> context() const = 0;
