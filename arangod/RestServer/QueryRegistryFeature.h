@@ -65,6 +65,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
     return _slowStreamingQueryThreshold;
   }
   bool failOnWarning() const { return _failOnWarning; }
+  bool requireWith() const { return _requireWith; }
 #ifdef USE_ENTERPRISE
   bool smartJoins() const { return _smartJoins; }
   bool parallelizeTraversals() const { return _parallelizeTraversals; }
@@ -84,6 +85,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool _trackBindVars;
   bool _trackDataSources;
   bool _failOnWarning;
+  bool _requireWith;
   bool _queryCacheIncludeSystem;
   bool _queryMemoryLimitOverride;
 #ifdef USE_ENTERPRISE

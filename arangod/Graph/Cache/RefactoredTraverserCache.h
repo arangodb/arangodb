@@ -151,7 +151,10 @@ class RefactoredTraverserCache {
  private:
   std::map<std::string, std::string> const& _collectionToShardMap;
   arangodb::ResourceMonitor& _resourceMonitor;
-
+  
+  /// @brief whether or not to allow adding of previously unknown collections
+  /// during the traversal
+  bool const _allowImplicitCollections;
 };
 
 }  // namespace graph
