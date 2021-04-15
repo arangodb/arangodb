@@ -416,25 +416,33 @@ template<typename Scale> class Histogram : public Metric {
   Histogram(Scale&& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
+      _n(_scale.n() - 1),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
-      _n(_scale.n() - 1),
       _sum(0) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
+      _n(_scale.n() - 1),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
-      _n(_scale.n() - 1) {}
+      _sum(0) {}
 
   ~Histogram() = default;
 
   void records(value_type const& val) {
-    if (val < _lowr) {
-      _lowr = val;
-    } else if (val > _highr) {
-      _highr = val;
+    auto expected = _lowr.load(std::memory_order_relaxed);
+    while (val < expected) {
+      if (_lowr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+        return;
+      }
+    }
+    expected = _highr.load(std::memory_order_relaxed);
+    while (val > expected) {
+      if (_highr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+        return;
+      }
     }
   }
 
@@ -539,9 +547,10 @@ template<typename Scale> class Histogram : public Metric {
 
  private:
   Metrics::hist_type _c;
-  Scale _scale;
-  value_type _lowr, _highr;
-  size_t _n;
+  Scale const _scale;
+  size_t const _n;
+  std::atomic<value_type> _lowr;
+  std::atomic<value_type> _highr;
   std::atomic<value_type> _sum;
 };
 
