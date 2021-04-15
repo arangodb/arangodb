@@ -845,6 +845,11 @@ int DatabaseFeature::dropDatabase(std::string const& name,
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());
     }
+    // TODO Temporary fix, this full method needs to be unified.
+    try {
+      vocbase->cursorRepository()->garbageCollect(true);
+    } catch (...) {
+    }
 
     res = engine->prepareDropDatabase(*vocbase).errorNumber();
   }

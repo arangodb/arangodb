@@ -44,6 +44,7 @@
 #include "Utils/CollectionNameResolver.h"
 
 #include <set>
+#include <velocypack/Collection.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -507,8 +508,17 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       serverBefore = server;
 #endif
       VPackSlice infoSlice{buffer->data()};
+      // We need to rewrite the request.
+      // We have modified the options locally so we need to update the VPack representation of Options here.
+      // Note: There may be a more optimized variant, but we have just waited 2 seconds and will linearly
+      // lock all servers, any performance optimization here will not have measureable impact.
+      VPackBuilder overwrittenOptions;
+      overwrittenOptions.openObject();
+      addOptionsPart(overwrittenOptions, server);
+      overwrittenOptions.close();
+      auto newRequest = arangodb::velocypack::Collection::merge(infoSlice, overwrittenOptions.slice(), false);
 
-      auto request = buildSetupRequest(trx, std::move(server), infoSlice,
+      auto request = buildSetupRequest(trx, std::move(server), newRequest.slice(),
                                        std::move(didCreateEngine), snippetIds, serverToQueryId,
                                        serverToQueryIdLock, pool, options);
       _query.incHttpRequests(unsigned(1));

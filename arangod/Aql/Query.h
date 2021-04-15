@@ -206,6 +206,12 @@ class Query : public QueryContext {
     return _snippets;
   }
 
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  void debugKillQuery() override;
+  
  protected:
   /// @brief initializes the query
   void init(bool createProfile);
@@ -318,6 +324,15 @@ class Query : public QueryContext {
   
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // Intentionally initialized here to not
+  // be present in production constructors
+  // Indicator if a query was already killed
+  // via a debug failure. This should not
+  // retrigger a kill.
+  bool _wasDebugKilled{false};
+#endif
 };
 
 // additonally allows TraversalEngines
@@ -347,6 +362,7 @@ class ClusterQuery final : public Query {
  private:
   /// @brief first one should be the local one
   traverser::GraphEngineList _traversers;
+
 };
 
 }  // namespace aql

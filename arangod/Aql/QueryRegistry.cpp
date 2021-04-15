@@ -480,3 +480,19 @@ QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double 
 {}
 
 QueryRegistry::QueryInfo::~QueryInfo() = default;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+bool QueryRegistry::queryIsRegistered(std::string const& dbName, QueryId id) {
+  READ_LOCKER(readLocker, _lock);
+
+  auto const& m = _queries.find(dbName);
+
+  if (m == _queries.end()) {
+    return false;
+  }
+  
+  auto const& q = m->second.find(id);
+  return q != m->second.end();
+}
+#endif
+
