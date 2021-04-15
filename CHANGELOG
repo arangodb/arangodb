@@ -2,7 +2,7 @@ devel
 -----
 
 * Don't display obsoleted startup options and sections in `--help` and
-  `--help-.` commands.
+  `--help-.` commands. Also rename "global" to "general" options.
 
 * Fixed a problem in document batch operations, where errors from one shard
   were reported multiple times, if the shard is completely off line.
