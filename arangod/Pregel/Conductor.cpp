@@ -128,9 +128,7 @@ Conductor::~Conductor() {
 
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _callbackMutex.assertLockedByCurrentThread();
   _startTimeSecs = TRI_microtime();
-
   _computationStartTimeSecs = _startTimeSecs;
   _finalizationStartTimeSecs = _startTimeSecs;
   _endTimeSecs = _startTimeSecs;
@@ -803,6 +801,11 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   _aggregators->serializeValues(debugOut);
   debugOut.close();
 
+  if (_finalizationStartTimeSecs < _computationStartTimeSecs) {
+    // prevent negative computation times from being reported
+    _finalizationStartTimeSecs = _computationStartTimeSecs;
+  }
+
   double compTime = _finalizationStartTimeSecs - _computationStartTimeSecs;
   TRI_ASSERT(compTime >= 0);
   if (didStore) {
@@ -884,6 +887,7 @@ VPackBuilder Conductor::toVelocyPack() const {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
+  result.add("parallelism", _userParams.slice().get(Utils::parallelismKey));
   if (_masterContext) {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
