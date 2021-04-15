@@ -124,7 +124,7 @@ class ClusterCollection final : public PhysicalCollection {
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
 
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
+  Result readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
                                 IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,

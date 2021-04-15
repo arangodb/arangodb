@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Removed assertion for success of a RocksDB function. Throw a proper 
+  exception instead.
+
 * Fix BTS-346: Improved handling of AQL query kill command in unlikely places,
   before the query starts to execute and after the query is done but the result
   is still being written. Now the cleanup of queries works more reliably. This

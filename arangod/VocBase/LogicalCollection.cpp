@@ -1130,7 +1130,7 @@ bool LogicalCollection::readDocument(transaction::Methods* trx, LocalDocumentId 
 bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
                                                  LocalDocumentId const& token,
                                                  IndexIterator::DocumentCallback const& cb) const {
-  return getPhysical()->readDocumentWithCallback(trx, token, cb);
+  return getPhysical()->readDocumentWithCallback(trx, token, cb).ok();
 }
 
 /// @brief a method to skip certain documents in AQL write operations,
