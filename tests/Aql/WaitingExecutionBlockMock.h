@@ -82,7 +82,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
       arangodb::aql::InputAqlItemRow const& input) override;
 
   std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
-      arangodb::aql::AqlCallStack stack) override;
+      arangodb::aql::AqlCallStack const& stack) override;
 
  private:
   // Implementation of execute
