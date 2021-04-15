@@ -397,12 +397,20 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
                      self->_tmp_err = err;
                      self->_tmp_req = std::move(req);
                      self->_tmp_res = std::move(res);
-                     self->handleResponse();
+                     self->handleResponse(isFromPool);
                    });
   }
 
  private:
-  void handleResponse() {
+  void handleResponse(bool isFromPool) {
+    if (_tmp_err == fuerte::Error::ConnectionClosed && isFromPool) {
+      // If this connection comes from the pool and we immediately
+      // get a connection closed, then we do want to retry. Therefore,
+      // we fake the error code here and pretend that it was connection
+      // refused. This will lead further down in the switch to a retry,
+      // as opposed to a "ConnectionClosed", which must not be retried.
+      _tmp_err = fuerte::Error::CouldNotConnect;
+    }
     switch (_tmp_err) {
       case fuerte::Error::NoError: {
         TRI_ASSERT(_tmp_res != nullptr);
@@ -412,12 +420,19 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         [[fallthrough]]; // retry case
       }
 
-      case fuerte::Error::CouldNotConnect:
-      case fuerte::Error::ConnectionClosed:
-      case fuerte::Error::RequestTimeout:
-      case fuerte::Error::ConnectionCanceled: {
+      case fuerte::Error::ConnectionCanceled:
+        // One would think that one must not retry a cancelled connection.
+        // However, in case a dbserver fails and a failover happens,
+        // then we artificially break all connections to it. In that case
+        // we need a retry to continue the operation with the new leader.
+        // This is not without problems: It is now possible that a request
+        // is retried which has actually already happened. This can lead
+        // to wrong replies to the customer, but there is nothing we seem
+        // to be able to do against this without larger changes.
+      case fuerte::Error::CouldNotConnect: {
         // Note that this case includes the refusal of a leader to accept
-        // the operation, in which case we have to flush ClusterInfo:
+        // the operation, in which case we have to retry and wait for
+        // a potential failover to happen.
 
         auto const now = std::chrono::steady_clock::now();
         auto tryAgainAfter = now - _startTime;
@@ -451,6 +466,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         break;
       }
 
+      case fuerte::Error::ConnectionClosed:
+      case fuerte::Error::RequestTimeout:
+      // In these cases we have to report an error, since we cannot know
+      // if the request actually went out and was received and executed
+      // on the other side.
       default:  // a "proper error" which has to be returned to the client
         resolvePromise();
         break;
@@ -468,6 +488,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         resolvePromise();
         return true;  // done
 
+      case fuerte::StatusMisdirectedRequest:
+        // This is an expected leader refusing to execute an operation
+        // (which could consider itself a follower in the meantime).
+        // We need to retry to eventually wait for a failover and for us
+        // recognizing the new leader.
       case fuerte::StatusServiceUnavailable:
         return false;  // goto retry
 
@@ -477,6 +502,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
           return false;  // goto retry
         }
         [[fallthrough]];
+      case fuerte::StatusNotAcceptable:
+        // This is, for example, a follower refusing to do the bidding
+        // of a leader. Or, it could be a leader refusing a to do a
+        // replication. In both cases, we must not retry because we must
+        // drop the follower.
       default:  // a "proper error" which has to be returned to the client
         _tmp_err = Error::NoError;
         resolvePromise();
