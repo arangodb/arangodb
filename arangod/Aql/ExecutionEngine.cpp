@@ -516,10 +516,9 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlIte
     inputRow = InputAqlItemRow{std::move(items), pos};
   }
   auto res = _root->initializeCursor(inputRow);
-  if (res.first == ExecutionState::WAITING) {
-    return res;
+  if (res.first != ExecutionState::WAITING) {
+    _initializeCursorCalled = true;
   }
-  _initializeCursorCalled = true;
   return res;
 }
 

@@ -64,7 +64,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) override;
 
   std::string const& distributeId() const { return _distributeId; }
 
@@ -83,10 +83,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
-  auto executeWithoutTrace(AqlCallStack stack)
-      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
-
-  auto executeViaNewApi(AqlCallStack stack)
+  auto executeWithoutTrace(AqlCallStack const& stack)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   [[nodiscard]] auto deserializeExecuteCallResultBody(velocypack::Slice) const
@@ -110,7 +107,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceInitializeCursorRequest(velocypack::Slice slice);
-  void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
+  void traceRequest(char const* rpc, velocypack::Slice slice, std::string const& args);
 
  private:
 
@@ -128,10 +125,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief the ID of the query on the server as a string
   std::string const _queryId;
 
-  /// @brief whether or not this block will forward initialize,
-  /// initializeCursor requests
-  bool const _isResponsibleForInitializeCursor;
-
   std::mutex _communicationMutex;
 
   /// @brief the last unprocessed result. Make sure to reset it
@@ -141,9 +134,13 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
 
-  unsigned _lastTicket;  /// used to check for canceled requests
+  /// @brief whether or not this block will forward initialize,
+  /// initializeCursor requests
+  bool const _isResponsibleForInitializeCursor;
 
   bool _requestInFlight;
+  
+  unsigned _lastTicket;  /// used to check for canceled requests
 };
 
 }  // namespace arangodb::aql
