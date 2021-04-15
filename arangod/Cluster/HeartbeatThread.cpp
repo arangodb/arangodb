@@ -252,11 +252,9 @@ void HeartbeatThread::run() {
 
   std::vector<std::shared_ptr<AgencyCallback>> serverCallbacks{};
   if (!ServerState::instance()->isAgent(role)) {
-    std::function<bool(VPackSlice const& result)> updbs = [w = weak_from_this()] (VPackSlice const& result) {
+    std::function<bool(VPackSlice const& result)> updbs = [self = shared_from_this()] (VPackSlice const& result) {
       LOG_TOPIC("fe092", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current db servers";
-      if (auto self = w.lock()) {
-        self->updateDBServers();
-      }
+      self->updateDBServers();
       return true;
     };
     std::vector<std::string> const dbServerAgencyPaths{
@@ -269,11 +267,9 @@ void HeartbeatThread::run() {
           << "Failed to register agency cache callback to " << path << " degrading performance";
       }
     }
-    std::function<bool(VPackSlice const& result)> upsrv = [w = weak_from_this()] (VPackSlice const& result) {
+    std::function<bool(VPackSlice const& result)> upsrv = [self = shared_from_this()] (VPackSlice const& result) {
       LOG_TOPIC("2e09f", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current servers and rebootIds";
-      if (auto self = w.lock()) {
-        self->server().getFeature<ClusterFeature>().clusterInfo().loadServers();
-      }
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadServers();
       return true;
     };
     std::vector<std::string> const serverAgencyPaths{
