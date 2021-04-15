@@ -24,7 +24,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const arangodb = require('@arangodb');
 
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const primaryEndpoint = arango.getEndpoint();
@@ -65,9 +64,39 @@ function leaderTestSuite () {
 
     // In all tests our arango is connected to the leader of our collection.
 
-    testDummy: function () {
-      const result = arango.GET_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test");
-      assertEqual(404, result.code);
+    testLeaderCodePost: function () {
+      // This fakes an insert replication request to a leader, which
+      // must respond with 406 FORBIDDEN:
+      let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(shardName) + "?isSynchronousReplication=someServer", {"Hallo":1});
+      assertEqual(406, result.code);
+    },
+
+    testLeaderCodeDelete: function () {
+      // This fakes a remove replication request to a leader, which
+      // must respond with 406 FORBIDDEN:
+      let result = arango.DELETE_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test?isSynchronousReplication=someServer");
+      assertEqual(406, result.code);
+    },
+
+    testLeaderCodePut: function () {
+      // This fakes a replace replication request to a leader, which
+      // must respond with 406 FORBIDDEN:
+      let result = arango.PUT_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test?isSynchronousReplication=someServer", {});
+      assertEqual(406, result.code);
+    },
+
+    testLeaderCodePatch: function () {
+      // This fakes an update replication request to a leader, which
+      // must respond with 406 FORBIDDEN:
+      let result = arango.PATCH_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test?isSynchronousReplication=someServer", {});
+      assertEqual(406, result.code);
+    },
+
+    testLeaderCodeTruncate: function () {
+      // This fakes a truncate replication request to a leader, which
+      // must respond with 406 FORBIDDEN:
+      let result = arango.PUT_RAW("/_api/collection/" + encodeURIComponent(shardName) + "/truncate?isSynchronousReplication=someServer", {});
+      assertEqual(406, result.code);
     },
   };
 }
@@ -82,6 +111,7 @@ function followerTestSuite () {
       db._drop(cn);
       // We create only one shard so we have exactly 1 leader and 1 follower.
       const c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      c.insert({_key: "test"});
       const shards = c.shards(true);
       // We create exactly one shard
       assertEqual(Object.entries(shards).length, 1);
@@ -107,10 +137,83 @@ function followerTestSuite () {
 
     // In all tests our arango is connected to the follower of our collection.
 
-    testDummy2: function () {
-      const result = arango.GET_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test");
+    testFollowerReplCodePost: function () {
+      // This fakes an insert replication request to a follower from the
+      // wrong leader, which must respond with 406 FORBIDDEN:
+      let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(shardName) + "?isSynchronousReplication=someServer", {"Hallo":1});
+      assertEqual(406, result.code);
+    },
+
+    testFollowerReplCodeDelete: function () {
+      // This fakes a remove replication request to a follower from the
+      // wrong leader, which must respond with 406 FORBIDDEN:
+      let result = arango.DELETE_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test?isSynchronousReplication=someServer");
+      assertEqual(406, result.code);
+    },
+
+    testFollowerReplCodePut: function () {
+      // This fakes a replace replication request to a follower from the
+      // wrong leader, which must respond with 406 FORBIDDEN:
+      let result = arango.PUT_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test?isSynchronousReplication=someServer", {});
+      assertEqual(406, result.code);
+    },
+
+    testFollowerReplCodePatch: function () {
+      // This fakes an update replication request to a follower from the
+      // wrong leader, which must respond with 406 FORBIDDEN:
+      let result = arango.PATCH_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test?isSynchronousReplication=someServer", {});
+      assertEqual(406, result.code);
+    },
+
+    testFollowerReplCodeTruncate: function () {
+      // This fakes a truncate replication request to a follower from the
+      // wrong leader, which must respond with 406 FORBIDDEN:
+      let result = arango.PUT_RAW("/_api/collection/" + encodeURIComponent(shardName) + "/truncate?isSynchronousReplication=someServer", {});
+      assertEqual(406, result.code);
+    },
+
+    testFollowerCodePost: function () {
+      // This fakes an insert request to a follower, which must respond
+      // with 421 MISDIRECTED REQUEST:
+      let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(shardName), {"Hallo":1});
       assertEqual(421, result.code);
     },
+
+    testFollowerCodeDelete: function () {
+      // This fakes a remove request to a follower, which must respond
+      // with 421 MISDIRECTED REQUEST:
+      let result = arango.DELETE_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test");
+      assertEqual(421, result.code);
+    },
+
+    testFollowerCodePut: function () {
+      // This fakes a replace request to a follower, which must respond
+      // with 421 MISDIRECTED REQUEST:
+      let result = arango.PUT_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test", {});
+      assertEqual(421, result.code);
+    },
+
+    testFollowerCodePatch: function () {
+      // This fakes an update request to a follower, which must respond
+      // with 421 MISDIRECTED REQUEST:
+      let result = arango.PATCH_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test", {});
+      assertEqual(421, result.code);
+    },
+
+    testFollowerCodeTruncate: function () {
+      // This fakes a truncate request to a follower, which must respond
+      // with 421 MISDIRECTED REQUEST:
+      let result = arango.PUT_RAW("/_api/collection/" + encodeURIComponent(shardName) + "/truncate", {});
+      assertEqual(421, result.code);
+    },
+
+    testFollowerCodeRead: function () {
+      // This fakes a read request to a follower, which must respond
+      // with 421 MISDIRECTED REQUEST:
+      let result = arango.GET_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test");
+      assertEqual(421, result.code);
+    },
+
   };
 }
 
