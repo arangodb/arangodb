@@ -1179,7 +1179,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
  */
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack callStack) {
+ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack) {
   // We can only work on a Stack that has valid calls for all levels.  
   TRI_ASSERT(callStack.hasAllValidCalls());
   Context ctx(*this, callStack);
@@ -1849,8 +1849,8 @@ auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range, SkipRes
 #endif
 
 template <class Executor>
-ExecutionBlockImpl<Executor>::Context::Context(ExecutionBlockImpl& block, AqlCallStack& stack)
-    : stack(stack), clientCallList(stack.popCall()) {
+ExecutionBlockImpl<Executor>::Context::Context(ExecutionBlockImpl& block, AqlCallStack const& callstack)
+    : stack(callstack), clientCallList(this->stack.popCall()) {
   if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     // In subqeryEndExecutor we actually manage two calls.
     // The clientCall defines what will go into the Executor.
