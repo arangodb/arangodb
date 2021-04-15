@@ -87,6 +87,23 @@ struct Options {
   arangodb::cluster::RebootTracker::PeerState origin;
 };
 
+struct AllowImplicitCollectionsSwitcher {
+  AllowImplicitCollectionsSwitcher(Options& options, bool allow) noexcept
+      : _options(options), 
+        _oldValue(options.allowImplicitCollectionsForRead) {
+    // previous value has been saved, now override value in options with disallow
+    options.allowImplicitCollectionsForRead = allow;
+  }
+
+  ~AllowImplicitCollectionsSwitcher() {
+    // restore old value
+    _options.allowImplicitCollectionsForRead = _oldValue;
+  }
+
+  Options& _options;
+  bool const _oldValue;
+};
+
 }  // namespace transaction
 }  // namespace arangodb
 
