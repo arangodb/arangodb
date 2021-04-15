@@ -1863,7 +1863,11 @@ again:
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
     if (boost::iequals(StaticStrings::ContentTypeHeader, pair.first)) {
-      req->header.contentType(fu::ContentType::Custom);
+      if (pair.second == StaticStrings::MimeTypeJsonNoEncoding) {
+        req->header.contentType(fu::ContentType::Json);
+      } else {
+        req->header.contentType(fu::ContentType::Custom);
+      }
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
       req->header.acceptType(fu::ContentType::Custom);
     }
@@ -1987,16 +1991,25 @@ again:
                 TRI_V8_ASCII_STRING(isolate, "body"),
                 bufObj).FromMaybe(false);
   };
-
   if (response->contentType() != fuerte::ContentType::Custom) {
     if ((responseBody.size() > 0) &&
         (response->isContentTypeVPack() || response->isContentTypeJSON()) &&
       (response->contentEncoding() == fuerte::ContentEncoding::Identity)) {
-      std::vector<VPackSlice> const& slices = response->slices();
-      if (!slices.empty()) {
+
+      if (response->contentType() == fu::ContentType::VPack) {
+        std::vector<VPackSlice> const& slices = response->slices();
+        if (!slices.empty()) {
+          result->Set(context,
+                      TRI_V8_ASCII_STRING(isolate, "parsedBody"),
+                      TRI_VPackToV8(isolate, slices[0])).FromMaybe(false);
+        }
+      } else if (response->contentType() == fu::ContentType::Json) {
+        auto parsedBody =
+          VPackParser::fromJson(reinterpret_cast<char const*>(responseBody.data()),
+                                responseBody.size());
         result->Set(context,
                     TRI_V8_ASCII_STRING(isolate, "parsedBody"),
-                    TRI_VPackToV8(isolate, slices[0])).FromMaybe(false);
+                    TRI_VPackToV8(isolate, parsedBody->slice())).FromMaybe(false);
       }
     }
     
