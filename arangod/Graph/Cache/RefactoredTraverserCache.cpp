@@ -92,7 +92,7 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
           result.add(edge);
         }
         return true;
-      });
+      }).ok();
   if (ADB_UNLIKELY(!res)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("daac5", ERR, arangodb::Logger::GRAPHS)
