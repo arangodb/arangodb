@@ -64,7 +64,6 @@ function adminClusterSuite() {
       
       // this is assumed to be an invalid server id, so the operation must fail
       try {
-        const request = require('@arangodb/request')
         reconnectRetry(coords[0], db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer", new Buffer('"testmann123456"'), {
           "content-type": "application/json"
