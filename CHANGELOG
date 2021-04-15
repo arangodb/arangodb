@@ -2,11 +2,32 @@ v3.7.11 (XXXX-XX-XX)
 --------------------
 
 * Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
-  to specify "--ldap@2.OPTION". Authentication / Authorization will first check
+  to specify "--ldap2.OPTION". Authentication / Authorization will first check
   the primary LDAP server. If this server cannot authenticate a user, it will
   try the secondary one. It is possible to specify a file containing all users
   that the primary (or secondary) LDAP server is handling by specifying the
-  option "--ldap.responsible-for". This file must contain the usernames line-by-line.
+  option "--ldap.responsible-for". This file must contain the usernames
+  line-by-line.
+
+* Fixed a problem in document batch operations, where errors from one shard were
+  reported multiple times, if the shard is completely off line.
+
+* Fix BTS-346: Improved handling of AQL query kill command in unlikely places,
+  before the query starts to execute and after the query is done but the result
+  is still being written. Now the cleanup of queries works more reliably. This
+  unreliable kill time windows were very short and unlikely to hit, although if
+  one was hit transactions were not aborted, and collection locks could be
+  lingering until query timeout.
+
+* Fixed issue #13169: arangoimport tsv conversion of bools and null, although
+  switched off by `--convert false`.
+
+  Importing unquoted `null`, `false` and `true` literals from delimited files
+  get imported as strings now if `convert` is explicitly turned off. It
+  previously affected unquoted numbers only.
+
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
 
 * Fixed issue BTS-353: memleak when running into an out-of-memory situation
   while repurposing an existing AqlItemBlock.

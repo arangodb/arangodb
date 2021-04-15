@@ -736,6 +736,9 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
 
   return std::move(figures)
       .thenValue([=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
+        if (figures.fail()) {
+          THROW_ARANGO_EXCEPTION(figures.result);
+        }
         if (figures.buffer) {
           _builder.add("figures", figures.slice());
         }

@@ -335,17 +335,10 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
     if (it == resultMap.end()) { // no answer from this shard
       auto const& it2 = shardError.find(sId);
       TRI_ASSERT(it2 != shardError.end());
-
-      auto weSend = opCtx.shardMap.find(sId);
-      TRI_ASSERT(weSend != opCtx.shardMap.end());  // We send sth there earlier.
-      size_t count = weSend->second.size();
-      for (size_t i = 0; i < count; ++i) {
-        resultBody.openObject(/*unindexed*/ true);
-        resultBody.add(StaticStrings::Error, VPackValue(true));
-        resultBody.add(StaticStrings::ErrorNum, VPackValue(it2->second));
-        resultBody.close();
-      }
-
+      resultBody.openObject(/*unindexed*/ true);
+      resultBody.add(StaticStrings::Error, VPackValue(true));
+      resultBody.add(StaticStrings::ErrorNum, VPackValue(it2->second));
+      resultBody.close();
     } else {
       VPackSlice arr = it->second;
       // we expect an array of baby-documents, but the response might
@@ -1115,15 +1108,20 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   auto cb = [details](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
     auto handler = [details](Result& result, VPackBuilder& builder, ShardID&,
                              VPackSlice answer) mutable -> void {
-      if (answer.isObject()) {
-        VPackSlice figures = answer.get("figures");
-        // add to the total
-        if (figures.isObject()) {
-          aggregateClusterFigures(details, false, figures, builder);
-        }
-      } else {
+      if (!answer.isObject()) {
         // didn't get the expected response
         result.reset(TRI_ERROR_INTERNAL);
+      } else if (!result.fail()) {
+        Result r = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
+        if (r.fail()) {
+          result.reset(r);
+        } else {
+          VPackSlice figures = answer.get("figures");
+          // add to the total
+          if (figures.isObject()) {
+            aggregateClusterFigures(details, false, figures, builder);
+          }
+        }
       }
     };
     auto pre = [](Result&, VPackBuilder& builder) -> void {
