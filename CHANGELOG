@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed a problem in document batch operations, where errors from one shard were
+  reported multiple times, if the shard is completely off line.
+
 * Fix BTS-346: Improved handling of AQL query kill command in unlikely places,
   before the query starts to execute and after the query is done but the result
   is still being written. Now the cleanup of queries works more reliably. This
