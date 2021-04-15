@@ -985,14 +985,18 @@ void IResearchFeature::start() {
         << "[" << _commitThreadsIdle << ".." << _commitThreads << "] commit thread(s), "
         << "[" << _consolidationThreadsIdle << ".." << _consolidationThreads << "] consolidation thread(s)";
 
-    auto lock = irs::make_unique_lock(_startState->mtx);
-    if (!_startState->cv.wait_for(lock, 60s,
-                                  [this](){ return _startState->counter == 2; })) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_SYS_ERROR,
-        "failed to start ArangoSearch maintenance threads");
+    {
+      auto lock = irs::make_unique_lock(_startState->mtx);
+      if (!_startState->cv.wait_for(lock, 60s,
+                                    [this](){ return _startState->counter == 2; })) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_SYS_ERROR,
+          "failed to start ArangoSearch maintenance threads");
+      }
     }
 
+    // this can destroy the state instance, so we have to ensure that our lock on
+    // _startState->mutex is already destroyed here!
     _startState = nullptr;
   }
 
