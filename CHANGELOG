@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed a problem in document batch operations, where errors from one shard were
+  reported multiple times, if the shard is completely off line.
+
 * Fixed issue #13169: arangoimport tsv conversion of bools and null, although
   switched off by `--convert false`.
 
