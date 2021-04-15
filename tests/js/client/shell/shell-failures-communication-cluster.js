@@ -61,7 +61,7 @@ function shellCommunicationsFailureSuite () {
       // This tests if the coordinator retries an insert request if
       // a leader refuses to do the insert by sending a 421:
       internal.debugSetFailAt("documents::insertLeaderRefusal");
-      let res = db._connection.POST_RAW("/_api/document/" + cn, {Hallo:12},
+      let res = db._connection.POST_RAW("/_api/document/" + cn, {ThisIsTheRetryOnLeaderRefusalTest:12},
                                         {"x-arango-async": "store"});
       assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
       let id = res.headers["x-arango-async-id"];
