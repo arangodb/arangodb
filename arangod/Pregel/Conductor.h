@@ -104,7 +104,7 @@ class Conductor {
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;
   /// some tracking info
-  double _startTimeSecs = 0;
+  double _startTimeSecs = 0.0;
   double _computationStartTimeSecs = 0.0;
   double _finalizationStartTimeSecs = 0.0;
   double _storeTimeSecs = 0.0;
@@ -144,7 +144,7 @@ class Conductor {
   VPackBuilder toVelocyPack() const;
 
   double totalRuntimeSecs() const {
-    return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs : _endTimeSecs - _startTimeSecs;
+    return _endTimeSecs == 0.0 ? TRI_microtime() - _startTimeSecs : _endTimeSecs - _startTimeSecs;
   }
 
  private:

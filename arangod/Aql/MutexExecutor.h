@@ -66,7 +66,7 @@ class MutexExecutor {
    * @param skipped The rows that have been skipped from upstream
    * @param blockMap Map client => Data. Will provide the required data to the correct client.
    */
-  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                        std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
   
   void acquireLock() {
