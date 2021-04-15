@@ -1,6 +1,8 @@
 devel
 -----
 
+* Show peak memory usage in AQL query profiling output.
+
 * Micro improvements for Pregel job API and documentation:
   - Added a few useful attributes to Pregel HTTP API docs.
   - Added "parallelism" attribute to the result of Pregel job status responses,
