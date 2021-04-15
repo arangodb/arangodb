@@ -1,5 +1,7 @@
 devel
 -----
+* Timely updates of rebootId / cluster membership of DB servers and
+  coordinators in ClusterInfo. Fixes BTS-386 detected in chaos tests.
 
 * Micro improvements for Pregel job API and documentation:
   - Added a few useful attributes to Pregel HTTP API docs.

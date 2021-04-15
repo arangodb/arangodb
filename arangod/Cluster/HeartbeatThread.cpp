@@ -219,6 +219,7 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _lastPlanVersionNoticed(0),
       _lastCurrentVersionNoticed(0),
       _updateCounter(0),
+      _updateDBServers(false),
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(_server, this),
       _heartbeat_send_time_ms(
@@ -248,6 +249,38 @@ HeartbeatThread::~HeartbeatThread() {
 
 void HeartbeatThread::run() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
+
+  std::vector<std::shared_ptr<AgencyCallback>> serverCallbacks{};
+  if (!ServerState::instance()->isAgent(role)) {
+    std::function<bool(VPackSlice const& result)> updbs = [self = shared_from_this()] (VPackSlice const& result) {
+      self->updateDBServers();
+      return true;
+    };
+    std::vector<std::string> const dbServerAgencyPaths{
+      "Current/DBServers", "Target/FailedServers", "Target/CleanedServers", "Target/ToBeCleanedServers"};
+    for (auto const& path : dbServerAgencyPaths) {
+      serverCallbacks.push_back(std::make_shared<AgencyCallback>(_server, path, updbs, true, false));
+      auto res = _agencyCallbackRegistry->registerCallback(serverCallbacks.back());
+      if (!res.ok()) {
+        LOG_TOPIC("9788a", WARN, Logger::HEARTBEAT)
+          << "Failed to register agency cache callback to " << path << " degrading performance";
+      }
+    }
+    std::function<bool(VPackSlice const& result)> upsrv = [self = shared_from_this()] (VPackSlice const& result) {
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadServers();
+      return true;
+    };
+    std::vector<std::string> const serverAgencyPaths{
+      "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown"};
+    for (auto const& path : serverAgencyPaths) {
+      serverCallbacks.push_back(std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
+      auto res = _agencyCallbackRegistry->registerCallback(serverCallbacks.back());
+      if (!res.ok()) {
+        LOG_TOPIC("9788a", WARN, Logger::HEARTBEAT)
+          << "Failed to register agency cache callback to " << path << " degrading performance";
+      }
+    }
+  }
 
   // mop: the heartbeat thread itself is now ready
   setReady();
@@ -284,6 +317,10 @@ void HeartbeatThread::run() {
     LOG_TOPIC("8291e", ERR, Logger::HEARTBEAT)
         << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
+  }
+
+  for (auto const& acb : serverCallbacks) {
+    _agencyCallbackRegistry->unregisterCallback(acb);
   }
 
   LOG_TOPIC("eab40", TRACE, Logger::HEARTBEAT)
@@ -374,15 +411,24 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
     }
   }
 
-  // Periodically update the list of DBServers and prune agency comm
-  // connection pool:
-  if (++_updateCounter >= 60) {
+  // Periodical or event-based update of DBServers and pruning of
+  // agency comm connection pool:
+  if (_updateDBServers.load() || ++_updateCounter >= 60) {
     auto& clusterFeature = server().getFeature<ClusterFeature>();
     auto& ci = clusterFeature.clusterInfo();
     ci.loadCurrentDBServers();
     _updateCounter = 0;
+    _updateDBServers.store(false);
     clusterFeature.pruneAsyncAgencyConnectionPool();
   }
+}
+
+void HeartbeatThread::updateDBServers() {
+  _updateDBServers.store(true);
+}
+
+void HeartbeatThread::updateServers() {
+
 }
 
 DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
