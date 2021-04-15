@@ -207,7 +207,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
 }
 
 void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("query", "Configure queries");
+  options->addSection("query", "AQL queries");
 
   options->addOldOption("database.query-cache-mode", "query.cache-mode");
   options->addOldOption("database.query-cache-max-results",

@@ -191,7 +191,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
 }
 
 void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("rocksdb", "Configure the RocksDB engine");
+  options->addSection("rocksdb", "RocksDB engine");
 
   options->addObsoleteOption("--rocksdb.enabled",
                              "obsolete always active - Whether or not the "

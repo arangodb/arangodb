@@ -105,7 +105,7 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
 }
 
 void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("transaction", "Transaction features");
+  options->addSection("transaction", "transactions");
 
   options->addOption("--transaction.streaming-lock-timeout", "lock timeout in seconds "
 		     "in case of parallel access to the same streaming transaction",

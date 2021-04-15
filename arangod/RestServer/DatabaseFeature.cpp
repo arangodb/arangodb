@@ -297,7 +297,7 @@ DatabaseFeature::~DatabaseFeature() {
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
+  options->addSection("database", "database");
 
   options->addOption("--database.wait-for-sync",
                      "default wait-for-sync behavior, can be overwritten "

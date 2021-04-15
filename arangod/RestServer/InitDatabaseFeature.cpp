@@ -70,8 +70,6 @@ InitDatabaseFeature::InitDatabaseFeature(application_features::ApplicationServer
 }
 
 void InitDatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
-
   options->addOption("--database.init-database", "initializes an empty database",
                      new BooleanParameter(&_initDatabase),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,

@@ -41,7 +41,7 @@ FrontendFeature::FrontendFeature(application_features::ApplicationServer& server
 }
 
 void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("frontend", "Configure the frontend");
+  options->addSection("frontend", "frontend");
 
   options->addOption("--frontend.version-check",
                      "alert the user if new versions are available",
