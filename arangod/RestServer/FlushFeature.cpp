@@ -56,6 +56,7 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
+  startsAfter<DatabaseFeature>();
   startsAfter<StorageEngineFeature>();
 }
 
