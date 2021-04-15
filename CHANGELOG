@@ -1,6 +1,9 @@
 devel
 -----
 
+* Web UI - Added missing HTML escaping inside the file upload plugin used in
+  the section of deploying a new Foxx application when uploading a zip file.
+
 * Added option `--query.require-with` to make AQL in single server mode also
   require `WITH` clauses where the cluster would need them.
   The option is turned off by default, but can be turned on in single servers
