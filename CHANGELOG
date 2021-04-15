@@ -1,9 +1,34 @@
 devel
 -----
 
-* Fix BTS-350, BTS-358: Fixed potential startup errors due to global 
-  replication applier being started before end of database recovery procedure. 
-  Also fixed potential shut down errors due to global replication applier 
+* Show peak memory usage in AQL query profiling output.
+
+* Micro improvements for Pregel job API and documentation:
+  - Added a few useful attributes to Pregel HTTP API docs.
+  - Added "parallelism" attribute to the result of Pregel job status responses,
+    so that the effective parallelism is reported back.
+  - Make sure "computationTime" in Pregel job status response does not
+    underflow in case of errors.
+
+* Prevent arangod from terminating with "terminate called without an active 
+  exception" (SIGABRT) in case an out-of-memory exception occurs during 
+  creating an ASIO socket connection.
+
+* UI builds are now using the yarn package manager instead of the previously
+  used node package manager.
+
+* Fixed issue #13169: arangoimport tsv conversion of bools and null, although
+  switched off by `--convert false`.
+
+  Importing unquoted `null`, `false` and `true` literals from delimited files
+  get imported as strings now if `convert` is explicitly turned off. It
+  previously affected unquoted numbers only.
+
+* Web UI: Highlight binary and hexadecimal integer literals in AQL queries.
+
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global
+  replication applier being started before end of database recovery procedure.
+  Also fixed potential shut down errors due to global replication applier
   being shut down in parallel to a concurrent shut down attempt.
 
 * Experimentally switch to wyhash (from xxhash) for velocypack. This is an
@@ -26,11 +51,11 @@ devel
 * Added enterprise-build-repository and oskar-build-repository to `--version`
   as `enterprise-build-repository` and `oskar-build-repository`.
 
-* Clean up replication code and remove a 3.2-compatibility mode that was 
+* Clean up replication code and remove a 3.2-compatibility mode that was
   only useful when replicating from a leader < ArangoDB version 3.3.
 
 * Obsolete option `--database.old-system-collections`. This option has no
-  meaning in ArangoDB 3.9, as old system collections will not be created 
+  meaning in ArangoDB 3.9, as old system collections will not be created
   anymore in this version. The option was deprecated in 3.8 and announced
   to be obsoleted.
 
@@ -38,16 +63,16 @@ devel
 
 * Make arangovpack more powerful, by supporting different input and output
   formats (json and vpack, plain or hex-encoded).
-  The arangovpack options `--json` and `--pretty` have been removed and have 
-  been replaced with separate options for specfiying the input and output 
+  The arangovpack options `--json` and `--pretty` have been removed and have
+  been replaced with separate options for specifying the input and output
   types:
   * `--input-type` ("json", "json-hex", "vpack", "vpack-hex")
   * `--output-type` ("json", "json-pretty", "vpack", "vpack-hex")
   The previous option `--print-non-json` has been replaced with the option
-  `--fail-on-non-json` which makes arangovpack fail when trying to emit 
+  `--fail-on-non-json` which makes arangovpack fail when trying to emit
   non-JSON types to JSON output.
 
-* Fix undefined behavior in dynarray constructor when running into 
+* Fix undefined behavior in dynarray constructor when running into
   an out-of-memory exception during construction. In arangod, this can only
   happen during metrics objects construction at program start.
 
@@ -76,12 +101,12 @@ devel
   query would materialize all the collection's documents in RAM, making such
   constructs prohibitively expensive for medium-size to large-size collections.
 
-  The option can now be set to `false` to prohibit accidental usage of 
+  The option can now be set to `false` to prohibit accidental usage of
   collection names in AQL expressions. With that setting, using a collection
-  inside an arbitrary expression will trigger the error `collection used as 
+  inside an arbitrary expression will trigger the error `collection used as
   expression operand` and make the query fail.
-  Even with the option being set to `false`, it is still possible to use 
-  collection names in AQL queries where they are expected, e.g. `FOR doc IN 
+  Even with the option being set to `false`, it is still possible to use
+  collection names in AQL queries where they are expected, e.g. `FOR doc IN
   collection RETURN doc`.
 
 * Remove obsolete API endpoint /_admin/repair/distributeShardsLike`. This
@@ -116,9 +141,9 @@ devel
   so that a global memory limit is now effective by default.
 
   The default global memory limit value is calculated by a formula depending on
-  the amount of available RAM and will result in the following values for 
+  the amount of available RAM and will result in the following values for
   common RAM sizes:
-  
+
   RAM:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
   RAM:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
   RAM:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
@@ -149,7 +174,7 @@ devel
     * arangodb_scheduler_jobs_done_total
   These counters are only visible in the new v2 metrics API and replace the old
   metrics which are suppressed for v2.
-  
+
 * Fix connectionTime statistic. This statistic should provide the distribution
   of the connection lifetimes, but in previous versions the tracking was broken
   and no values were reported.
@@ -175,10 +200,10 @@ devel
     are still in effect with this setting, meaning that all operations may
     still require dedicated other permissions (as in 3.7).
 
-  The default value for the option is `jwt-compat`, which means this option 
+  The default value for the option is `jwt-compat`, which means this option
   will not cause any extra JWT checks compared to 3.7.
 
-* Increase default idle timeout in streaming transactions from 10 seconds to 
+* Increase default idle timeout in streaming transactions from 10 seconds to
   60 seconds, and make the timeout configurable via a startup parameter
   `--transaction.streaming-idle-timeout`.
 

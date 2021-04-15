@@ -282,8 +282,8 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
 
 /// @brief use the already set collection 
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
-  TRI_ASSERT(_collection != nullptr);
   ensureCollection();
+  TRI_ASSERT(_collection != nullptr);
   return _collection;
 }
   
