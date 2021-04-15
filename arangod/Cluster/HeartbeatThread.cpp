@@ -250,7 +250,7 @@ HeartbeatThread::~HeartbeatThread() {
 void HeartbeatThread::run() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
-  std::vector<std::shared_ptr<AgencyCallback>> serverCallbacks{};
+  std::unordered_map<std::string, std::shared_ptr<AgencyCallback>> serverCallbacks{};
   if (!ServerState::instance()->isAgent(role)) {
     std::function<bool(VPackSlice const& result)> updbs = [self = shared_from_this()] (VPackSlice const& result) {
       LOG_TOPIC("fe092", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current db servers";
@@ -260,12 +260,7 @@ void HeartbeatThread::run() {
     std::vector<std::string> const dbServerAgencyPaths{
       "Current/DBServers", "Target/FailedServers", "Target/CleanedServers", "Target/ToBeCleanedServers"};
     for (auto const& path : dbServerAgencyPaths) {
-      serverCallbacks.push_back(std::make_shared<AgencyCallback>(_server, path, updbs, true, false));
-      auto res = _agencyCallbackRegistry->registerCallback(serverCallbacks.back());
-      if (!res.ok()) {
-        LOG_TOPIC("9788a", WARN, Logger::HEARTBEAT)
-          << "Failed to register agency cache callback to " << path << " degrading performance";
-      }
+      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, updbs, true, false));
     }
     std::function<bool(VPackSlice const& result)> upsrv = [self = shared_from_this()] (VPackSlice const& result) {
       LOG_TOPIC("2e09f", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current servers and rebootIds";
@@ -276,11 +271,21 @@ void HeartbeatThread::run() {
       "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown",
       "Current/ServersKnown/" + ServerState::instance()->getId()};
     for (auto const& path : serverAgencyPaths) {
-      serverCallbacks.push_back(std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
-      auto res = _agencyCallbackRegistry->registerCallback(serverCallbacks.back());
+      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
+    }
+    std::function<bool(VPackSlice const& result)> upcrd = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("2e09f", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current coordinators";
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadCurrentCoordinators();
+      return true;
+    };
+    std::string const path = "Current/Coordinators";
+    serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upcrd, true, false));
+
+    for (auto const& cb : serverCallbacks) {
+      auto res = _agencyCallbackRegistry->registerCallback(cb.second);
       if (!res.ok()) {
         LOG_TOPIC("97aa8", WARN, Logger::HEARTBEAT)
-          << "Failed to register agency cache callback to " << path << " degrading performance";
+          << "Failed to register agency cache callback to " << cb.first << " degrading performance";
       }
     }
   }
@@ -323,7 +328,7 @@ void HeartbeatThread::run() {
   }
 
   for (auto const& acb : serverCallbacks) {
-    _agencyCallbackRegistry->unregisterCallback(acb);
+    _agencyCallbackRegistry->unregisterCallback(acb.second);
   }
 
   LOG_TOPIC("eab40", TRACE, Logger::HEARTBEAT)
