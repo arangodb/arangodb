@@ -250,7 +250,6 @@ HeartbeatThread::~HeartbeatThread() {
 void HeartbeatThread::run() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
-    LOG_DEVEL << "Current/ServersKnown/" + ServerState::instance()->getId();
   std::vector<std::shared_ptr<AgencyCallback>> serverCallbacks{};
   if (!ServerState::instance()->isAgent(role)) {
     std::function<bool(VPackSlice const& result)> updbs = [w = weak_from_this()] (VPackSlice const& result) {
