@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global arango */
+/*global arango, db */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
@@ -365,4 +365,119 @@ exports.compareStringIds = function (l, r) {
     return l < r ? -1 : 1;
   }
   return 0;
+};
+
+const primaryEndpoint = arango.getEndpoint();
+
+let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
+
+/// @brief set failure point
+exports.debugCanUseFailAt = function (endpoint) {
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    
+    let res = arango.GET_RAW('/_admin/debug/failat');
+    return res.code === 200;
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
+};
+
+/// @brief set failure point
+exports.debugSetFailAt = function (endpoint, failAt) {
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
+    if (res.parsedBody !== true) {
+      throw "Error setting failure point + " + res;
+    }
+    return true;
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
+};
+
+exports.debugResetRaceControl = function (endpoint) {
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.DELETE_RAW('/_admin/debug/raceControl');
+    if (res.code !== 200) {
+      throw "Error resetting race control.";
+    }
+    return false;
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
+};
+
+/// @brief remove failure point
+exports.debugRemoveFailAt = function (endpoint, failAt) {
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.DELETE_RAW('/_admin/debug/failat/' + failAt);
+    if (res.code !== 200) {
+      throw "Error removing failure point";
+    }
+    return true;
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
+};
+
+exports.debugClearFailAt = function (endpoint) {
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.DELETE_RAW('/_admin/debug/failat');
+    if (res.code !== 200) {
+      throw "Error removing failure points";
+    }
+    return true;
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
+};
+
+
+exports.debugClearFailAt = function (endpoint) {
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.DELETE_RAW('/_admin/debug/failat');
+    if (res.code !== 200) {
+      throw "Error removing failure points";
+    }
+    return true;
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
+};
+
+exports.getChecksum = function (endpoint, name) {
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.GET_RAW( '/_api/collection/' + name + '/checksum');
+    if (res.code !== 200) {
+      throw "Error getting collection checksum";
+    }
+    return res.parsedBody.checksum;
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
+};
+
+exports.getMetric = function (endpoint, name) {
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.GET_RAW( '/_admin/metrics');
+    if (res.code !== 200) {
+      throw "error fetching metric";
+    }
+    let re = new RegExp("^" + name);
+    let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+    if (!matches.length) {
+      throw "Metric " + name + " not found";
+    }
+    return Number(matches[0].replace(/^.* (\d+)$/, '$1'));
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
 };

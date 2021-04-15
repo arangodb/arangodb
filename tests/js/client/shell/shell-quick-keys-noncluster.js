@@ -30,25 +30,14 @@ let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 
-function debugCanUseFailAt() {
-  let res = arango.GET('/_admin/debug/failat');
-  return res === true;
-}
-
-/// @brief set failure point
-function debugSetFailAt(failAt) {
-  let res = arango.PUT('/_admin/debug/failat/' + encodeURIComponent(failAt), {});
-  if (res !== true) {
-    throw "Error setting failure point";
-  }
-}
-
-function debugClearFailAt(endpoint) {
-  let res = arango.DELETE('/_admin/debug/failat');
-  if (res !== true) {
-    throw "Error removing failure points";
-  }
-}
+let { getEndpointById,
+      getEndpointsByType,
+      getServersByType,
+      debugCanUseFailAt,
+      debugSetFailAt,
+      debugClearFailAt,
+      reconnectRetry
+    } = require('@arangodb/test-helper');
 
 function quickKeysSuite() {
   'use strict';
