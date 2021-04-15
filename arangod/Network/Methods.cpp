@@ -225,7 +225,9 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
     [p(std::move(p)), pool, &options, endpoint](fuerte::Error err, std::unique_ptr<fuerte::Request> req, std::unique_ptr<fuerte::Response> res, bool isFromPool) mutable {
       TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled); 
 
-      if (err == fuerte::Error::ConnectionClosed && isFromPool) {
+      if (isFromPool &&
+          (err == fuerte::Error::ConnectionClosed ||
+           err == fuerte::Error::WriteError)) {
         // retry under certain conditions
         // cppcheck-suppress accessMoved
         actuallySendRequest(std::move(p), pool, options, endpoint, std::move(req));
@@ -405,7 +407,9 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
  private:
   void handleResponse(bool isFromPool) {
-    if (_tmp_err == fuerte::Error::ConnectionClosed && isFromPool) {
+    if (isFromPool &&
+        (_tmp_err == fuerte::Error::ConnectionClosed ||
+         _tmp_err == fuerte::Error::WriteError)) {
       // If this connection comes from the pool and we immediately
       // get a connection closed, then we do want to retry. Therefore,
       // we fake the error code here and pretend that it was connection
