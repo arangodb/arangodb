@@ -669,6 +669,20 @@ function NewAqlRemoveRedundantORTestSuite () {
         + " FILTER 1 <= i || 1 >= i RETURN i";
       ruleIsNotUsed(query, {});
     },
+
+// Regression test of https://arangodb.atlassian.net/browse/BTS-340
+// Previously, `val <= true || val` was erroneously reduced to `val <= true`.
+    testBts340 : function () {
+      const query = `FOR val IN [false, true, 0, 1]
+        FILTER val <= true || val
+        RETURN val`;
+      ruleIsNotUsed(query, {});
+      var expected = [ false, true, 1 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
+    }
+
   };
 }
 
