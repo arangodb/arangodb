@@ -250,10 +250,14 @@ HeartbeatThread::~HeartbeatThread() {
 void HeartbeatThread::run() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
+    LOG_DEVEL << "Current/ServersKnown/" + ServerState::instance()->getId();
   std::vector<std::shared_ptr<AgencyCallback>> serverCallbacks{};
   if (!ServerState::instance()->isAgent(role)) {
-    std::function<bool(VPackSlice const& result)> updbs = [self = shared_from_this()] (VPackSlice const& result) {
-      self->updateDBServers();
+    std::function<bool(VPackSlice const& result)> updbs = [w = weak_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("fe092", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current db servers";
+      if (auto self = w.lock()) {
+        self->updateDBServers();
+      }
       return true;
     };
     std::vector<std::string> const dbServerAgencyPaths{
@@ -266,12 +270,16 @@ void HeartbeatThread::run() {
           << "Failed to register agency cache callback to " << path << " degrading performance";
       }
     }
-    std::function<bool(VPackSlice const& result)> upsrv = [self = shared_from_this()] (VPackSlice const& result) {
-      self->server().getFeature<ClusterFeature>().clusterInfo().loadServers();
+    std::function<bool(VPackSlice const& result)> upsrv = [w = weak_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("2e09f", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current servers and rebootIds";
+      if (auto self = w.lock()) {
+        self->server().getFeature<ClusterFeature>().clusterInfo().loadServers();
+      }
       return true;
     };
     std::vector<std::string> const serverAgencyPaths{
-      "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown"};
+      "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown",
+      "Current/ServersKnown/" + ServerState::instance()->getId()};
     for (auto const& path : serverAgencyPaths) {
       serverCallbacks.push_back(std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
       auto res = _agencyCallbackRegistry->registerCallback(serverCallbacks.back());
