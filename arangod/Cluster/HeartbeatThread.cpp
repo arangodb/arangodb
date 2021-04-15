@@ -284,7 +284,7 @@ void HeartbeatThread::run() {
       serverCallbacks.push_back(std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
       auto res = _agencyCallbackRegistry->registerCallback(serverCallbacks.back());
       if (!res.ok()) {
-        LOG_TOPIC("9788a", WARN, Logger::HEARTBEAT)
+        LOG_TOPIC("97aa8", WARN, Logger::HEARTBEAT)
           << "Failed to register agency cache callback to " << path << " degrading performance";
       }
     }
@@ -308,7 +308,7 @@ void HeartbeatThread::run() {
     }
   }
 
-  LOG_TOPIC("9788a", TRACE, Logger::HEARTBEAT)
+  LOG_TOPIC("978a8", TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
   if (ServerState::instance()->isCoordinator(role)) {
