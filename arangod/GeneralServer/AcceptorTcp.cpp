@@ -126,6 +126,7 @@ void AcceptorTcp<T>::open() {
 
 template <SocketType T>
 void AcceptorTcp<T>::close() {
+  std::unique_lock<std::mutex> guard(_mutex);
   if (_asioSocket) {
     _asioSocket->timer.cancel();
   }
@@ -151,7 +152,10 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   // _asioSocket is nullptr.
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
 
-  _asioSocket.reset(new AsioSocket<SocketType::Tcp>(_server.selectIoContext()));
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _asioSocket = std::make_unique<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
+  }
   auto handler = [this](asio_ns::error_code const& ec) {
     if (ec) {
       handleError(ec);
@@ -165,8 +169,12 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     info.encryptionType = _endpoint->encryption();
     info.serverAddress = _endpoint->host();
     info.serverPort = _endpoint->port();
-
-    std::unique_ptr<AsioSocket<SocketType::Tcp>> as = std::move(_asioSocket);
+    
+    std::unique_ptr<AsioSocket<SocketType::Tcp>> as;
+    {
+      std::unique_lock<std::mutex> guard(_mutex);
+      as = std::move(_asioSocket);
+    }
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
 
@@ -265,14 +273,22 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   // select the io context for this socket
   auto& ctx = _server.selectIoContext();
 
-  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
+  }
   auto handler = [this](asio_ns::error_code const& ec) {
     if (ec) {
       handleError(ec);
       return;
     }
 
-    performHandshake(std::move(_asioSocket));
+    decltype(_asioSocket) as;
+    {
+      std::unique_lock<std::mutex> guard(_mutex);
+      as = std::move(_asioSocket);
+    }
+    performHandshake(std::move(as));
     this->asyncAccept();
   };
 

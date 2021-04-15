@@ -69,7 +69,10 @@ void AcceptorUnixDomain::asyncAccept() {
   // _asioSocket is nullptr.
   IoContext& context = _server.selectIoContext();
 
-  _asioSocket.reset(new AsioSocket<SocketType::Unix>(context));
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _asioSocket = std::make_unique<AsioSocket<SocketType::Unix>>(context);
+  }
 
   auto handler = [this](asio_ns::error_code const& ec) {
     if (ec) {
@@ -87,10 +90,15 @@ void AcceptorUnixDomain::asyncAccept() {
     info.clientAddress = "local";
     info.clientPort = 0;
 
+    decltype(_asioSocket) as;
+    {
+      std::unique_lock<std::mutex> guard(_mutex);
+      as = std::move(_asioSocket);
+    }
     auto commTask =
         std::make_shared<HttpCommTask<SocketType::Unix>>(_server,
                                                          std::move(info),
-                                                         std::move(_asioSocket));
+                                                         std::move(as));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
   };
