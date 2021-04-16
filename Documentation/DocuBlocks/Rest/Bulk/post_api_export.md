@@ -9,7 +9,7 @@
 This endpoint should no longer be used. It is deprecated in version 3.8.0 and
 removed in 3.9.0.
 
-You may use streaming AQL queries instead (`POST /_api/cursor` with
+Use streaming AQL queries instead (`POST /_api/cursor` with
 `{ "options": { "stream": true } }`.
 {% endhint %}
 
