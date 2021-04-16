@@ -157,6 +157,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackBindVars(true),
       _trackDataSources(false),
       _failOnWarning(aql::QueryOptions::defaultFailOnWarning),
+      _requireWith(false),
       _queryCacheIncludeSystem(false),
       _queryMemoryLimitOverride(true),
 #ifdef USE_ENTERPRISE
@@ -207,7 +208,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
 }
 
 void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("query", "Configure queries");
+  options->addSection("query", "AQL queries");
 
   options->addOldOption("database.query-cache-mode", "query.cache-mode");
   options->addOldOption("database.query-cache-max-results",
@@ -258,6 +259,12 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "whether AQL queries should fail with errors even for "
                      "recoverable warnings",
                      new BooleanParameter(&_failOnWarning));
+  
+  options->addOption("--query.require-with",
+                     "whether AQL queries should require the `WITH collection-name` clause even on single servers "
+                     "(enable this to remove this behavior difference between single server and cluster)",
+                     new BooleanParameter(&_requireWith))
+                     .setIntroducedIn(30800);
 
   options->addOption("--query.slow-threshold",
                      "threshold for slow AQL queries (in seconds)",

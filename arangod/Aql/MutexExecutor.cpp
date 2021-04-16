@@ -51,7 +51,7 @@ MutexExecutorInfos::MutexExecutorInfos(
 MutexExecutor::MutexExecutor(MutexExecutorInfos const& infos)
   : _infos(infos), _numClient(0) {}
 
-auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                                     std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
 
