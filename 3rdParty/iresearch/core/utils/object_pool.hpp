@@ -90,7 +90,8 @@ class concurrent_stack : private util::noncopyable {
 
   struct node_type {
     element_type value{};
-    node_type* next{};
+    // next needs to be atomic because nodes are kept in a free-list and reused!
+    std::atomic<node_type*> next{};
   };
 
   explicit concurrent_stack(node_type* head = nullptr) noexcept
@@ -131,7 +132,7 @@ class concurrent_stack : private util::noncopyable {
         return nullptr;
       }
 
-      new_head.node = head.node->next;
+      new_head.node = head.node->next.load(std::memory_order_relaxed);
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(head, new_head));
 
@@ -144,7 +145,7 @@ class concurrent_stack : private util::noncopyable {
     concurrent_node new_head;
 
     do {
-      new_node.next = head.node;
+      new_node.next.store(head.node, std::memory_order_relaxed);
 
       new_head.node = &new_node;
       new_head.version = head.version + 1;
