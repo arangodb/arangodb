@@ -1,6 +1,10 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix cluster internal retry behavior for network communications. In particular
+  retry on 421 (leader refuses operation). This leads to the cluster letting
+  less internal errors out to clients.
+
 * Fixed CPPCHECK warning or added suppression.
 
 * Web UI - Added missing HTML escaping inside the file upload plugin used in the
