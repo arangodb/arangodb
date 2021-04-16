@@ -414,7 +414,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortingGatherExecutor.cpp
   Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryEndExecutor.cpp
-  Aql/SubqueryExecutor.cpp
   Aql/SubqueryStartExecutionNode.cpp
   Aql/SubqueryStartExecutor.cpp
   Aql/Timing.cpp
@@ -638,8 +637,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterFeature.cpp
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
-  Cluster/ClusterRepairDistributeShardsLike.cpp
-  Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
@@ -720,7 +717,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestRedirectHandler.cpp
-  RestHandler/RestRepairHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp

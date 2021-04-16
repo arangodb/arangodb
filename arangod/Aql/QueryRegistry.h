@@ -122,6 +122,10 @@ class QueryRegistry {
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  bool queryIsRegistered(std::string const& dbName, QueryId id);
+#endif
+
  private:
   
   /// @brief a struct for all information regarding one query in the registry

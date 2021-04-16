@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for import
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,43 +26,29 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
-var ArangoError = require("@arangodb").ArangoError; 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const internal = require("internal");
+const jsunity = require("jsunity");
+const ArangoError = require("@arangodb").ArangoError; 
+const errors = internal.errors;
 
 function importTestSuite () {
   'use strict';
-  var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
 
   function getErrorCode (fn) {
     try {
       fn();
-    }
-    catch (e) {
+    } catch (e) {
       return e.errorNum;
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
   function executeQuery (query) {
-    var statement = internal.db._createStatement({"query": query});
+    let statement = internal.db._createStatement({"query": query});
     if (statement instanceof ArangoError) {
       return statement;
     }
 
-    var cursor = statement.execute();
-    return cursor;
+    return statement.execute();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,20 +84,6 @@ function importTestSuite () {
   }
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
@@ -355,27 +325,118 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportHeaders : function () {
+     let expected = [ 
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvHeaders SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+    
+    testCsvImportBrokenHeaders : function () {
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvBrokenHeaders RETURN i");
+      assertEqual([], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import with converting
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportConvert : function () {
+      var expected = [ 
+        { value1: 1 },
+        { value1: 2, value2: "null" },
+        { value1: 3, value2: false },
+        { value1: 4, value2: "false" },
+        { value1: 5, value2: true },
+        { value1: 6, value2: "true" },
+        { value1: 7, value2: 1 },
+        { value1: 8, value2: 2 },
+        { value1: 9, value2: "3" },
+        { value1: 10, value2: "a" },
+        { value1: 11, value2: "b" },
+        { value1: 12, value2: "c" },
+        { value1: 13, value2: " a" },
+        { value1: 14, value2: " b" },
+        { value1: 15, value2: -1 },
+        { value1: 16, value2: "-2" },
+        { value1: 17, value2: -0.5 },
+        { value1: 18, value2: "-.7" },
+        { value1: 19, value2: 0.8 },
+        { value1: 20, value2: ".9" },
+        { value1: 21, value2: 3.566 },
+        { value1: 22, value2: "7.899" },
+        { value1: 23, value2: 5000000 },
+        { value1: 24, value2: "5e6" },
+        { value1: 25, value2: 0 },
+        { value1: 26, value2: "0" },
+        { value1: 27 },
+        { value1: 28, value2: "" },
+        { value1: 29, value2: "       c" },
+        { value1: 30, value2: "       d" },
+        { value1: 31, value2: "       1" },
+        { value1: 32, value2: "       2" },
+        { value1: 33, value2: "e       " },
+        { value1: 34, value2: "d       " },
+        { value1: 35, value2: "       " },
+        { value1: 36, value2: "       " },
+        { value1: 37, value2: "\"true\"" }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsvConvert SORT i.value1 RETURN i");
+      assertEqual(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import without converting
 ////////////////////////////////////////////////////////////////////////////////
     
     testCsvImportNoConvert : function () {
       var expected = [ 
-        { value1: "1" },
-        { value1: "2", value2: false },
-        { value1: "3", value2: true },
-        { value1: "4", value2: "1" },
-        { value1: "5", value2: "2" },
-        { value1: "6", value2: "3" },
-        { value1: "7", value2: "a" },
-        { value1: "8", value2: "b" },
-        { value1: "9", value2: " a" },
-        { value1: "10", value2: "-1" },
-        { value1: "11", value2: "-.5" },
-        { value1: "12", value2: "3.566" },
-        { value1: "13", value2: "0" },
-        { value1: "14" },
-        { value1: "15", value2: "       c" },
-        { value1: "16", value2: "       1" }
+        { value1: "1", value2: "null" },
+        { value1: "2", value2: "null" },
+        { value1: "3", value2: "false" },
+        { value1: "4", value2: "false" },
+        { value1: "5", value2: "true" },
+        { value1: "6", value2: "true" },
+        { value1: "7", value2: "1" },
+        { value1: "8", value2: "2" },
+        { value1: "9", value2: "3" },
+        { value1: "10", value2: "a" },
+        { value1: "11", value2: "b" },
+        { value1: "12", value2: "c" },
+        { value1: "13", value2: " a" },
+        { value1: "14", value2: " b" },
+        { value1: "15", value2: "-1" },
+        { value1: "16", value2: "-2" },
+        { value1: "17", value2: "-.5" },
+        { value1: "18", value2: "-.7" },
+        { value1: "19", value2: ".8" },
+        { value1: "20", value2: ".9" },
+        { value1: "21", value2: "3.566" },
+        { value1: "22", value2: "7.899" },
+        { value1: "23", value2: "5e6" },
+        { value1: "24", value2: "5e6" },
+        { value1: "25", value2: "0" },
+        { value1: "26", value2: "0" },
+        { value1: "27" },
+        { value1: "28", value2: "" },
+        { value1: "29", value2: "       c" },
+        { value1: "30", value2: "       d" },
+        { value1: "31", value2: "       1" },
+        { value1: "32", value2: "       2" },
+        { value1: "33", value2: "e       " },
+        { value1: "34", value2: "d       " },
+        { value1: "35", value2: "       " },
+        { value1: "36", value2: "       " },
+        { value1: "37", value2: "\"true\"" }
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportCsvNoConvert SORT TO_NUMBER(i.value1) RETURN i");
@@ -546,15 +607,8 @@ function importTestSuite () {
       }
     },
 
-// END OF TEST DEFINITIONS /////////////////////////////////////////////////////
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(importTestSuite);
-
 return jsunity.done();
-

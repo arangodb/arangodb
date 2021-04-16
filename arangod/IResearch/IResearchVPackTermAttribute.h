@@ -2,7 +2,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,26 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_EXPORT_HANDLER_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_EXPORT_HANDLER_H 1
-
-#include "Basics/Common.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#ifndef ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE
+#define ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE
+#include <utils/attributes.hpp>
+#include <utils/bit_utils.hpp>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
-class ClusterRestExportHandler : public RestVocbaseBaseHandler {
- public:
-  ClusterRestExportHandler(application_features::ApplicationServer&,
-                           GeneralRequest*, GeneralResponse*);
+namespace iresearch {
 
- public:
-  char const* name() const override final { return "ClusterRestExportHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
+struct VPackTermAttribute final : irs::attribute {
+  static constexpr irs::string_ref type_name() noexcept { return "vpack_term_attribute"; }
+
+  ::arangodb::velocypack::Slice value;
 };
-}  // namespace arangodb
 
-#endif
+} // namespace iresearch
+} // namespace arangodb
+
+#endif // ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE

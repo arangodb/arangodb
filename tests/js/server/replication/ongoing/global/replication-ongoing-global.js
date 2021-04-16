@@ -33,25 +33,25 @@ const arangodb = require('@arangodb');
 const db = arangodb.db;
 
 const replication = require('@arangodb/replication');
-var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const compareTicks = replication.compareTicks;
 const console = require('console');
 const internal = require('internal');
 
-const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
+const leaderEndpoint = arango.getEndpoint();
+const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
 
-const connectToMaster = function () {
-  reconnectRetry(masterEndpoint, db._name(), 'root', '');
+const connectToLeader = function () {
+  reconnectRetry(leaderEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
-const connectToSlave = function () {
-  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
+const connectToFollower = function () {
+  reconnectRetry(followerEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
@@ -64,13 +64,13 @@ const collectionCount = function (name) {
   return db._collection(name).count();
 };
 
-const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
+const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, followerFuncFinal, applierConfiguration) {
   var state = {};
 
   db._flushCache();
-  masterFunc(state);
+  leaderFunc(state);
 
-  connectToSlave();
+  connectToFollower();
   replication.globalApplier.stop();
   replication.globalApplier.forget();
 
@@ -79,7 +79,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   }
 
   applierConfiguration = applierConfiguration || {};
-  applierConfiguration.endpoint = masterEndpoint;
+  applierConfiguration.endpoint = leaderEndpoint;
   applierConfiguration.username = 'root';
   applierConfiguration.password = '';
   applierConfiguration.includeSystem = false;
@@ -87,7 +87,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   applierConfiguration.requireFromPresent = true;
 
   var syncResult = replication.syncGlobal({
-    endpoint: masterEndpoint,
+    endpoint: leaderEndpoint,
     username: 'root',
     password: '',
     verbose: true,
@@ -99,8 +99,8 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
 
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
-  connectToMaster();
-  masterFunc2(state);
+  connectToLeader();
+  leaderFunc2(state);
 
   // use lastLogTick as of now
   state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
@@ -109,7 +109,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     applierConfiguration.chunkSize = 16384;
   }
 
-  connectToSlave();
+  connectToFollower();
 
   replication.globalApplier.properties(applierConfiguration);
   replication.globalApplier.start(syncResult.lastLogTick, syncResult.barrierId);
@@ -119,7 +119,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
 
   while (true) {
     if (!handled) {
-      var r = slaveFuncOngoing(state);
+      var r = followerFuncOngoing(state);
       if (r === 'wait') {
         // special return code that tells us to hang on
         internal.wait(0.5, false);
@@ -129,28 +129,28 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
       handled = true;
     }
 
-    var slaveState = replication.globalApplier.state();
+    var followerState = replication.globalApplier.state();
 
-    if (slaveState.state.lastError.errorNum > 0) {
-      console.topic('replication=error', 'slave has errored:', JSON.stringify(slaveState.state.lastError));
-      throw JSON.stringify(slaveState.state.lastError);
+    if (followerState.state.lastError.errorNum > 0) {
+      console.topic('replication=error', 'follower has errored:', JSON.stringify(followerState.state.lastError));
+      throw JSON.stringify(followerState.state.lastError);
     }
 
-    if (!slaveState.state.running) {
-      console.topic('replication=error', 'slave is not running');
+    if (!followerState.state.running) {
+      console.topic('replication=error', 'follower is not running');
       break;
     }
-    if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
-        compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
+    if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
+        compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
       console.topic('replication=debug',
-                    'slave has caught up. state.lastLogTick:', state.lastLogTick,
-                    'slaveState.lastAppliedContinuousTick:', slaveState.state.lastAppliedContinuousTick,
-                    'slaveState.lastProcessedContinuousTick:', slaveState.state.lastProcessedContinuousTick);
+                    'follower has caught up. state.lastLogTick:', state.lastLogTick,
+                    'followerState.lastAppliedContinuousTick:', followerState.state.lastAppliedContinuousTick,
+                    'followerState.lastProcessedContinuousTick:', followerState.state.lastProcessedContinuousTick);
       break;
     }
 
     if (!printed) {
-      console.topic('replication=debug', 'waiting for slave to catch up');
+      console.topic('replication=debug', 'waiting for follower to catch up');
       printed = true;
     }
     internal.wait(0.5, false);
@@ -158,7 +158,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
 
   internal.wait(1.0, false);
   db._flushCache();
-  slaveFuncFinal(state);
+  followerFuncFinal(state);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -170,7 +170,7 @@ function BaseTestConfig () {
 
   return {
     testIncludeCollection: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -209,7 +209,7 @@ function BaseTestConfig () {
     },
 
     testExcludeCollection: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -252,7 +252,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCreateCollection: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -283,7 +283,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testDropCollection: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -315,7 +315,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCreateIndex: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -350,7 +350,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testDropIndex: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -382,7 +382,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRenameCollection: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -409,7 +409,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testChangeCollection: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -438,7 +438,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTruncateCollectionSmall: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -470,7 +470,7 @@ function BaseTestConfig () {
     },
     
     testTruncateCollectionBiggerAndThenSome: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -513,7 +513,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTruncateCollectionBigger: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -554,7 +554,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testLongTransactionBlocking: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -598,7 +598,7 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          // stop and restart replication on the slave
+          // stop and restart replication on the follower
           assertTrue(replication.globalApplier.state().state.running);
           replication.globalApplier.stop();
           assertFalse(replication.globalApplier.state().state.running);
@@ -624,7 +624,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testLongTransactionAsync: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -674,11 +674,11 @@ function BaseTestConfig () {
         function (state) {
           assertTrue(replication.globalApplier.state().state.running);
 
-          connectToMaster();
+          connectToLeader();
           try {
             require('@arangodb/tasks').get(state.task);
             // task exists
-            connectToSlave();
+            connectToFollower();
             return 'wait';
           } catch (err) {
             // task does not exist. we're done
@@ -686,7 +686,7 @@ function BaseTestConfig () {
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
-            connectToSlave();
+            connectToFollower();
             return true;
           }
         },
@@ -702,8 +702,8 @@ function BaseTestConfig () {
     // / @brief test long transaction, asynchronous
     // //////////////////////////////////////////////////////////////////////////////
 
-    testLongTransactionAsyncWithSlaveRestarts: function () {
-      connectToMaster();
+    testLongTransactionAsyncWithFollowerRestarts: function () {
+      connectToLeader();
 
       compare(
         function (state) {
@@ -723,12 +723,12 @@ function BaseTestConfig () {
               for (var i = 0; i < 10; ++i) {
                 c.save({
                   test1: i,
-                  type: 'longTransactionAsyncWithSlaveRestarts',
+                  type: 'longTransactionAsyncWithFollowerRestarts',
                   coll: 'UnitTestsReplication'
                 });
                 c.save({
                   test2: i,
-                  type: 'longTransactionAsyncWithSlaveRestarts',
+                  type: 'longTransactionAsyncWithFollowerRestarts',
                   coll: 'UnitTestsReplication'
                 });
 
@@ -751,16 +751,16 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          // stop and restart replication on the slave
+          // stop and restart replication on the follower
           assertTrue(replication.globalApplier.state().state.running);
           replication.globalApplier.stop();
           assertFalse(replication.globalApplier.state().state.running);
 
-          connectToMaster();
+          connectToLeader();
           try {
             require('@arangodb/tasks').get(state.task);
             // task exists
-            connectToSlave();
+            connectToFollower();
 
             internal.wait(0.5, false);
             replication.globalApplier.start();
@@ -772,7 +772,7 @@ function BaseTestConfig () {
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
-            connectToSlave();
+            connectToFollower();
             replication.globalApplier.start();
             assertTrue(replication.globalApplier.state().state.running);
             return true;
@@ -786,7 +786,7 @@ function BaseTestConfig () {
     },
 
     testViewBasic: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function () {},
@@ -825,7 +825,7 @@ function BaseTestConfig () {
     },
 
     testViewRename: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -850,7 +850,7 @@ function BaseTestConfig () {
           if (!state.arangoSearchEnabled) {
             return;
           }
-          // rename view on master
+          // rename view on leader
           let view = db._view('UnitTestsSyncView');
           view.rename('UnitTestsSyncViewRenamed');
           view = db._view('UnitTestsSyncViewRenamed');
@@ -878,7 +878,7 @@ function BaseTestConfig () {
     },
 
     testViewDrop: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -891,7 +891,7 @@ function BaseTestConfig () {
           if (!state.arangoSearchEnabled) {
             return;
           }
-          // drop view on master
+          // drop view on leader
           let view = db._view('UnitTestsSyncView');
           view.drop();
         },
@@ -929,14 +929,14 @@ function ReplicationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      connectToSlave();
+      connectToFollower();
       try {
         replication.global.stop();
         replication.global.forget();
       } catch (err) {
       }
 
-      connectToMaster();
+      connectToLeader();
 
       db._drop(cn);
       db._drop(cn2);
@@ -948,14 +948,14 @@ function ReplicationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      connectToMaster();
+      connectToLeader();
 
       db._dropView('UnitTestsSyncView');
       db._dropView('UnitTestsSyncViewRenamed');
       db._drop(cn);
       db._drop(cn2);
 
-      connectToSlave();
+      connectToFollower();
       replication.globalApplier.stop();
       replication.globalApplier.forget();
 
@@ -979,7 +979,7 @@ function ReplicationOtherDBSuite () {
   'use strict';
   const dbName = 'UnitTestDB';
 
-  // Setup documents to be stored on the master.
+  // Setup documents to be stored on the leader.
 
   let docs = [];
   for (let i = 0; i < 50; ++i) {
@@ -991,15 +991,15 @@ function ReplicationOtherDBSuite () {
   // Shared function that sets up replication
   // of the collection and inserts 50 documents.
   const setupReplication = function () {
-    // Section - Master
-    connectToMaster();
+    // Section - Leader
+    connectToLeader();
 
     // Create the collection
     db._flushCache();
     db._create(cn);
 
     // Section - Follower
-    connectToSlave();
+    connectToFollower();
 
     // Setup Replication
     replication.globalApplier.stop();
@@ -1010,7 +1010,7 @@ function ReplicationOtherDBSuite () {
     }
 
     let config = {
-      endpoint: masterEndpoint,
+      endpoint: leaderEndpoint,
       username: 'root',
       password: '',
       verbose: true,
@@ -1022,8 +1022,8 @@ function ReplicationOtherDBSuite () {
 
     replication.setupReplicationGlobal(config);
 
-    // Section - Master
-    connectToMaster();
+    // Section - Leader
+    connectToLeader();
     // Insert some documents
     db._collection(cn).save(docs);
     // Flush wal to trigger replication
@@ -1033,8 +1033,8 @@ function ReplicationOtherDBSuite () {
     let count = collectionCount(cn);
     assertEqual(50, count);
 
-    // Section - Slave
-    connectToSlave();
+    // Section - Follower
+    connectToFollower();
 
     // Give it some time to sync
     internal.wait(6, false);
@@ -1049,7 +1049,7 @@ function ReplicationOtherDBSuite () {
 
     setUp: function () {
       db._useDatabase('_system');
-      connectToSlave();
+      connectToFollower();
       try {
         replication.globalApplier.stop();
         replication.globalApplier.forget();
@@ -1063,7 +1063,7 @@ function ReplicationOtherDBSuite () {
 
       db._createDatabase(dbName);
 
-      connectToMaster();
+      connectToLeader();
 
       try {
         db._dropDatabase(dbName);
@@ -1080,7 +1080,7 @@ function ReplicationOtherDBSuite () {
     tearDown: function () {
       db._useDatabase('_system');
 
-      connectToSlave();
+      connectToFollower();
       db._useDatabase(dbName);
 
       replication.globalApplier.stop();
@@ -1092,7 +1092,7 @@ function ReplicationOtherDBSuite () {
       } catch (e) {
       }
 
-      connectToMaster();
+      connectToLeader();
 
       db._useDatabase('_system');
       try {
@@ -1102,14 +1102,14 @@ function ReplicationOtherDBSuite () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test dropping a database on slave while replication is ongoing
+    // / @brief test dropping a database on follower while replication is ongoing
     // //////////////////////////////////////////////////////////////////////////////
 
-    testDropDatabaseOnSlaveDuringReplication: function () {
+    testDropDatabaseOnFollowerDuringReplication: function () {
       setupReplication();
 
-      // Section - Slave
-      connectToSlave();
+      // Section - Follower
+      connectToFollower();
 
       assertTrue(replication.globalApplier.state().state.running);
 
@@ -1119,8 +1119,8 @@ function ReplicationOtherDBSuite () {
       // This shall not fail.
       db._dropDatabase(dbName);
 
-      // Section - Master
-      connectToMaster();
+      // Section - Leader
+      connectToLeader();
 
       // Just write some more
       db._useDatabase(dbName);
@@ -1130,8 +1130,8 @@ function ReplicationOtherDBSuite () {
 
       db._useDatabase('_system');
 
-      // Section - Slave
-      connectToSlave();
+      // Section - Follower
+      connectToFollower();
 
       // The DB should be gone and the server should be running.
       let dbs = db._databases();
@@ -1141,7 +1141,7 @@ function ReplicationOtherDBSuite () {
       try {
         db._createDatabase(dbName);
       } catch (e) {
-        assertFalse(true, 'Could not recreate database on slave: ' + e);
+        assertFalse(true, 'Could not recreate database on follower: ' + e);
       }
 
       db._useDatabase(dbName);
@@ -1149,7 +1149,7 @@ function ReplicationOtherDBSuite () {
       try {
         db._createDocumentCollection(cn);
       } catch (e) {
-        assertFalse(true, 'Could not recreate collection on slave: ' + e);
+        assertFalse(true, 'Could not recreate collection on follower: ' + e);
       }
 
       // Collection should be empty
@@ -1158,15 +1158,15 @@ function ReplicationOtherDBSuite () {
       // now test if the replication is actually
       // switched off
 
-      // Section - Master
-      connectToMaster();
+      // Section - Leader
+      connectToLeader();
       // Insert some documents
       db._collection(cn).save(docs);
       // Flush wal to trigger replication
       internal.wal.flush(true, true);
 
-      // Section - Slave
-      connectToSlave();
+      // Section - Follower
+      connectToFollower();
 
       // Give it some time to sync (eventually, should not do anything...)
       internal.wait(6, false);
@@ -1177,7 +1177,7 @@ function ReplicationOtherDBSuite () {
       assertFalse(replication.globalApplier.state().state.running);
     },
 
-    testDropDatabaseOnMasterDuringReplication: function () {
+    testDropDatabaseOnLeaderDuringReplication: function () {
       var waitUntil = function (cb) {
         var tries = 0;
         while (tries++ < 60 * 2) {
@@ -1192,56 +1192,56 @@ function ReplicationOtherDBSuite () {
       setupReplication();
 
       db._useDatabase('_system');
-      connectToSlave();
-      // wait until database is present on slave as well
+      connectToFollower();
+      // wait until database is present on follower as well
       waitUntil(function () { return (db._databases().indexOf(dbName) !== -1); });
 
-      // Section - Master
+      // Section - Leader
       // Now do the evil stuff: drop the database that is replicating from right now.
-      connectToMaster();
+      connectToLeader();
       // This shall not fail.
       db._dropDatabase(dbName);
 
       db._useDatabase('_system');
-      connectToSlave();
+      connectToFollower();
       waitUntil(function () { return (db._databases().indexOf(dbName) === -1); });
 
       // Now recreate a new database with this name
-      connectToMaster();
+      connectToLeader();
       db._createDatabase(dbName);
 
       db._useDatabase(dbName);
       db._createDocumentCollection(cn);
       db._collection(cn).save(docs);
 
-      // Section - Slave
+      // Section - Follower
       db._useDatabase('_system');
-      connectToSlave();
+      connectToFollower();
       waitUntil(function () { return (db._databases().indexOf(dbName) !== -1); });
-      // database now present on slave
+      // database now present on follower
 
-      // Now test if the Slave did replicate the new database...
+      // Now test if the Follower did replicate the new database...
       db._useDatabase(dbName);
       // wait for collection to appear
       waitUntil(function () {
         let cc = db._collection(cn);
         return cc !== null && cc.count() >= 50;
       });
-      assertEqual(50, collectionCount(cn), 'The slave inserted the new collection data into the old one, it skipped the drop.');
+      assertEqual(50, collectionCount(cn), 'The follower inserted the new collection data into the old one, it skipped the drop.');
 
       assertTrue(replication.globalApplier.state().state.running);
     },
 
     testSplitUpLargeTransactions: function () {
-      // Section - Master
-      connectToMaster();
+      // Section - Leader
+      connectToLeader();
 
       // Create the collection
       db._flushCache();
       db._create(cn);
 
       // Section - Follower
-      connectToSlave();
+      connectToFollower();
 
       // Setup Replication
       replication.globalApplier.stop();
@@ -1252,7 +1252,7 @@ function ReplicationOtherDBSuite () {
       }
 
       let config = {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         username: 'root',
         password: '',
         verbose: true,
@@ -1265,7 +1265,7 @@ function ReplicationOtherDBSuite () {
 
       replication.setupReplicationGlobal(config);
 
-      connectToMaster();
+      connectToLeader();
 
       let coll = db._collection(cn);
       const count = 100000;
@@ -1288,31 +1288,31 @@ function ReplicationOtherDBSuite () {
       let lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
       // Section - Follower
-      connectToSlave();
+      connectToFollower();
 
       let printed = false;
       while (true) {
-        let slaveState = replication.globalApplier.state();
-        if (slaveState.state.lastError.errorNum > 0) {
-          console.topic('replication=error', 'slave has errored:', JSON.stringify(slaveState.state.lastError));
-          throw JSON.stringify(slaveState.state.lastError);
+        let followerState = replication.globalApplier.state();
+        if (followerState.state.lastError.errorNum > 0) {
+          console.topic('replication=error', 'follower has errored:', JSON.stringify(followerState.state.lastError));
+          throw JSON.stringify(followerState.state.lastError);
         }
 
-        if (!slaveState.state.running) {
-          console.topic('replication=error', 'slave is not running');
+        if (!followerState.state.running) {
+          console.topic('replication=error', 'follower is not running');
           break;
         }
-        if (compareTicks(slaveState.state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
-            compareTicks(slaveState.state.lastProcessedContinuousTick, lastLogTick) >= 0) {
+        if (compareTicks(followerState.state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
+            compareTicks(followerState.state.lastProcessedContinuousTick, lastLogTick) >= 0) {
           console.topic('replication=debug',
-                        'slave has caught up. state.lastLogTick:', slaveState.state.lastLogTick,
-                        'slaveState.lastAppliedContinuousTick:', slaveState.state.lastAppliedContinuousTick,
-                        'slaveState.lastProcessedContinuousTick:', slaveState.state.lastProcessedContinuousTick);
+                        'follower has caught up. state.lastLogTick:', followerState.state.lastLogTick,
+                        'followerState.lastAppliedContinuousTick:', followerState.state.lastAppliedContinuousTick,
+                        'followerState.lastProcessedContinuousTick:', followerState.state.lastProcessedContinuousTick);
           break;
         }
 
         if (!printed) {
-          console.topic('replication=debug', 'waiting for slave to catch up');
+          console.topic('replication=debug', 'waiting for follower to catch up');
           printed = true;
         }
         internal.wait(0.5, false);
