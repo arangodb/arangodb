@@ -348,7 +348,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 
     while (body.hasKey("id")) {
       std::string const url = "/_api/cursor/" + body.get("id").copyString();
-      parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+      parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
       body = parsedBody->slice();
 
       writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
@@ -402,7 +402,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
 
   while (body.hasKey("id")) {
     std::string const url = "/_api/cursor/" + body.get("id").copyString();
-    parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+    parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
     body = parsedBody->slice();
 
     writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
@@ -684,7 +684,7 @@ directed="1">
 
     while (body.hasKey("id")) {
       std::string const url = "/_api/cursor/" + body.get("id").copyString();
-      parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+      parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
       body = parsedBody->slice();
 
       writeGraphBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
