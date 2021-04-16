@@ -1862,10 +1862,9 @@ bool setPostBody(fu::Request& request,
 }
 
 bool canParseResponse(fu::Response const& response) {
-  return (response.contentType() != fuerte::ContentType::Custom) &&
-    (response.isContentTypeVPack() || response.isContentTypeJSON()) &&
-    (response.contentEncoding() == fuerte::ContentEncoding::Identity) &&
-    (response.payload().size() > 0);
+  return (response.isContentTypeVPack() || response.isContentTypeJSON()) &&
+         response.contentEncoding() == fuerte::ContentEncoding::Identity &&
+         response.payload().size() > 0;
 }
 
 v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
