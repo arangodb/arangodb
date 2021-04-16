@@ -1,6 +1,18 @@
 devel
 -----
 
+* Improve performance of batch CRUD operations (insert, update, replace, 
+  remove) if some of the documents in the batch run into write-write conflicts.
+  Rolling back partial operations in case of a failure is very expensive 
+  because it requires rebuilding RocksDB write batches for the transaction 
+  from scratch. Rebuilding write batches takes time proportional to the number
+  of operations in the batch, and for larger batches the cost can be 
+  prohibitive. 
+  Now we are not rolling back write batches in some situations when this is
+  not required, so that in many cases running into a conflict does not have 
+  that high overhead. There can still be issues when conflicts happen for index
+  entries, but a lot of previously problematic cases should now work better.
+
 * Fix cluster internal retry behavior for network communications. In particular
   retry on 421 (leader refuses operation). This leads to the cluster letting
   less internal errors out to clients.
