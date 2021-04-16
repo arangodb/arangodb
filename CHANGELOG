@@ -1,3 +1,19 @@
+v3.7.12 (XXXX-XX-XX)
+--------------------
+
+* Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
+  replacement for PUT `/_api/cursor/<cursor-id>`. The POST API is functionally
+  equivalent to the existing PUT API. The benefit of using the POST API is
+  that HTTP POST requests will not be considered as idempotent, so proxies
+  may not retry them if they fail. This was the case with the existing PUT
+  API, as HTTP PUT requests can be considered idempotent according to the
+  HTTP specification.
+
+  The POST API is not used internally by ArangoDB's own requests in this version.
+  This means that compatibility to older versions of ArangoDB that do not
+  provide the new API is ensured.
+
+
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
