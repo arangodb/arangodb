@@ -71,7 +71,12 @@ RestStatus RestCursorHandler::execute() {
   rest::RequestType const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
-    return createQueryCursor();
+    if (_request->suffixes().size() == 0) {
+      // POST /_api/cursor
+      return createQueryCursor();
+    }
+    // POST /_api/cursor/cursor-id
+    return modifyQueryCursor();
   } else if (type == rest::RequestType::PUT) {
     return modifyQueryCursor();
   } else if (type == rest::RequestType::DELETE_REQ) {
@@ -95,9 +100,14 @@ RestStatus RestCursorHandler::continueExecute() {
       return processQuery(/*continuation*/ true);
     }
   } else if (_cursor) {  // stream cursor query
-
     if (type == rest::RequestType::POST) {
-      return generateCursorResult(rest::ResponseCode::CREATED);
+      if (_request->suffixes().size() == 0) {
+        // POST /_api/cursor
+        return generateCursorResult(rest::ResponseCode::CREATED);
+      } else {
+        // POST /_api/cursor/cursor-id
+        return generateCursorResult(ResponseCode::OK);
+      }
     } else if (type == rest::RequestType::PUT) {
       if (_request->requestPath() == SIMPLE_QUERY_ALL_PATH) {
         // RestSimpleQueryHandler::allDocuments uses PUT for cursor creation
@@ -129,7 +139,8 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   }
   
   // only trace create cursor requests
-  if (_request->requestType() != rest::RequestType::POST) {
+  if (_request->requestType() != rest::RequestType::POST ||
+      _request->suffixes().size() > 0) {
     return;
   }
   
@@ -370,7 +381,13 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
   }
 
   rest::RequestType const type = _request->requestType();
-  if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
+  if (type != rest::RequestType::POST &&
+      type != rest::RequestType::PUT && 
+      type != rest::RequestType::DELETE_REQ) {
+    // request forwarding only exists for
+    // POST /_api/cursor/cursor-id
+    // PUT /_api/cursor/cursor-id
+    // DELETE /_api/cursor/cursor-id
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -603,7 +620,7 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting PUT /_api/cursor/<cursor-id>");
+                  "expecting POST /_api/cursor/<cursor-id>");
     return RestStatus::DONE;
   }
 
