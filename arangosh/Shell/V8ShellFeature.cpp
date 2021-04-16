@@ -95,7 +95,7 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the JavaScript engine");
+  options->addSection("javascript", "JavaScript engine");
 
   options->addOption("--javascript.startup-directory",
                      "startup paths containing the JavaScript files",

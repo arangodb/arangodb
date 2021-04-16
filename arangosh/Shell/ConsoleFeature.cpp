@@ -112,7 +112,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--quiet", "silent startup", new BooleanParameter(&_quiet));
 
-  options->addSection("console", "Configure the console");
+  options->addSection("console", "console");
 
   options->addOption("--console.colors", "enable color support",
                      new BooleanParameter(&_colors),

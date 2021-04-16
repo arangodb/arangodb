@@ -132,8 +132,6 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
 }
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOption(
       "--server.maintenance-threads",
       "maximum number of threads available for maintenance actions",

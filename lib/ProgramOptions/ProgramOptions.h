@@ -140,13 +140,13 @@ class ProgramOptions {
   }
 
   // adds a (regular) section to the program options
-  auto addSection(std::string const& name, std::string const& description, std::string const& link = "") {
-    return addSection(Section(name, description, link, "", false, false));
+  auto addSection(std::string const& name, std::string const& description, std::string const& link = "", bool hidden = false, bool obsolete = false) {
+    return addSection(Section(name, description, link, "", hidden, obsolete));
   }
 
   // adds an enterprise-only section to the program options
-  auto addEnterpriseSection(std::string const& name, std::string const& description, std::string const& link = "") {
-    return addSection(EnterpriseSection(name, description, link, "", false, false));
+  auto addEnterpriseSection(std::string const& name, std::string const& description, std::string const& link = "", bool hidden = false, bool obsolete = false) {
+    return addSection(EnterpriseSection(name, description, link, "", hidden, obsolete));
   }
 
   // adds an option to the program options
