@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 
 #include <Basics/application-exit.h>
+#include <velocypack/velocypack-aliases.h>
 #include <utility>
 
 using namespace arangodb;
@@ -416,3 +417,18 @@ auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
 
 QuorumData::QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum)
     : index(index), term(term), quorum(std::move(quorum)) {}
+
+void AppendEntriesResult::toVelocyPack(velocypack::Builder& builder) {
+  {
+    velocypack::ObjectBuilder ob(&builder);
+    builder.add("term", VPackValue(logTerm.value));
+    builder.add("success", VPackValue(success));
+  }
+}
+
+auto AppendEntriesResult::fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult {
+  bool success = slice.get("success").getBool();
+  auto logTerm = LogTerm{slice.get("term").getNumericValue<size_t>()};
+
+  return AppendEntriesResult{success, logTerm};
+}
