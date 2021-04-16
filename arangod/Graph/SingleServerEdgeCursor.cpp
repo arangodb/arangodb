@@ -244,7 +244,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
             _opts->cache()->increaseCounter();
             callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
             return true;
-          });
+          }).ok();
         });
       }
     }
