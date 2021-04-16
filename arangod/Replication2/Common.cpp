@@ -22,6 +22,8 @@
 
 #include "Common.h"
 
+#include <Basics/debugging.h>
+
 #include <utility>
 
 using namespace arangodb;
@@ -41,6 +43,15 @@ LogTerm LogEntry::logTerm() const { return _logTerm; }
 LogIndex LogEntry::logIndex() const { return _logIndex; }
 
 LogPayload const& LogEntry::logPayload() const { return _payload; }
+
+void LogEntry::toVelocyPack(velocypack::Builder& builder) const {
+  TRI_ASSERT(false);
+}
+auto LogEntry::fromVelocyPack(velocypack::Slice slice) -> LogEntry {
+  TRI_ASSERT(false);
+  return LogEntry(replication2::LogTerm(), replication2::LogIndex(),
+                  replication2::LogPayload(""));
+}
 
 auto LogTerm::operator<=(LogTerm other) const -> bool {
   return value <= other.value;
