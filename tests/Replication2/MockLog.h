@@ -21,8 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef ARANGODB3_MOCKLOG_H
 #define ARANGODB3_MOCKLOG_H
-#include <Logger/LogMacros.h>
+
 #include <Replication2/PersistedLog.h>
+
 #include <map>
 
 namespace arangodb {

@@ -233,7 +233,7 @@ auto InMemoryLog::GuardedInMemoryLog::runAsyncStep() -> void {
 void InMemoryLog::GuardedInMemoryLog::persistRemainingLogEntries() {
   if (_persistedLogEnd < nextIndex()) {
     auto it = getLogIterator(_persistedLogEnd);
-    auto const endIdx = nextIndex();
+    auto const endIdx = getLastIndex();
     auto res = _persistedLog->insert(std::move(it));
     if (res.ok()) {
       _persistedLogEnd = endIdx;
@@ -359,7 +359,7 @@ void InMemoryLog::GuardedInMemoryLog::checkCommitIndex() {
   std::transform(conf.follower.begin(), conf.follower.end(), std::back_inserter(indexes),
                  [](Follower const& f) { return std::make_pair(f.lastAckedIndex, f._impl->participantId()); });
   TRI_ASSERT(_persistedLogEnd.value > 0);
-  indexes.emplace_back(LogIndex{_persistedLogEnd.value - 1}, participantId());
+  indexes.emplace_back(_persistedLogEnd, participantId());
   TRI_ASSERT(indexes.size() == conf.follower.size() + 1);
 
   if (quorum_size <= 0 || quorum_size > indexes.size()) {
