@@ -1,6 +1,11 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global replication
+  applier being started before end of database recovery procedure.
+  Also fixed potential shutdown errors due to global replication applier being
+  shut down in parallel to a concurrent shut down attempt.
+
 * Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
   to specify "--ldap2.OPTION". Authentication / Authorization will first check
   the primary LDAP server. If this server cannot authenticate a user, it will
