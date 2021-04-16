@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertEqual, arango */
+/* global assertEqual, assertTrue, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,6 +27,7 @@ const jsunity = require('jsunity');
 
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const primaryEndpoint = arango.getEndpoint();
+const db = require('@arango').db;
 let { getEndpointById } = require('@arangodb/test-helper');
 
 function leaderTestSuite () {
@@ -48,7 +49,7 @@ function leaderTestSuite () {
         reconnectRetry(leader, "_system", "root", "");
 
         // Memorize the shardName for network connection
-        shardName = shardId
+        shardName = shardId;
         // Stop the loop, we will only have one anyways, however it is clear that we no talk to a leader
         break;
       }
@@ -121,7 +122,7 @@ function followerTestSuite () {
         reconnectRetry(follower, "_system", "root", "");
 
         // Memorize the shardName for network connection
-        shardName = shardId
+        shardName = shardId;
         // Stop the loop, we will only have one anyways, however it is clear that we no talk to a follower
         break;
       }
