@@ -249,7 +249,7 @@ void ClusterProvider::destroyEngines() {
   auto const* engines = _opts.engines();
   for (auto const& engine : *engines) {
     _stats.addHttpRequests(1);
-    auto res = network::sendRequest(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
+    auto res = network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
                                     "/_internal/traverser/" +
                                     arangodb::basics::StringUtils::itoa(engine.second),
                                     VPackBuffer<uint8_t>(), options)
