@@ -123,6 +123,9 @@ class GraphNode : public ExecutionNode {
   /// @brief flag, if the graph is a Disjoint SmartGraph (Enterprise Edition only!)
   bool isDisjoint() const;
 
+  /// @brief flag, if the graph is a Hybrid SmartGraph (Enterprise Edition only!)
+  bool isHybrid() const;
+
   /// @brief return the database
   TRI_vocbase_t* vocbase() const;
 
@@ -255,6 +258,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
   bool _isDisjoint;
+
+  /// @brief flag, if graph is smart *and* hybrid (Enterprise Edition only!)
+  bool _isHybrid;
 
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;

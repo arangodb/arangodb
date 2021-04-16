@@ -107,6 +107,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _optionsBuilt(false),
       _isSmart(false),
       _isDisjoint(false),
+      _isHybrid(false),
       _options(std::move(options)) {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
@@ -809,6 +810,8 @@ std::vector<aql::Collection const*> GraphNode::collections() const {
 bool GraphNode::isSmart() const { return _isSmart; }
 
 bool GraphNode::isDisjoint() const { return _isDisjoint; }
+
+bool GraphNode::isHybrid() const { return _isHybrid; }
 
 TRI_vocbase_t* GraphNode::vocbase() const { return _vocbase; }
 
