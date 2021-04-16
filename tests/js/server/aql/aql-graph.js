@@ -1336,7 +1336,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
       var m = vn + "/B";
       var t = vn + "/C";
 
-      var query = `FOR v IN OUTBOUND SHORTEST_PATH "${s}" TO "${t}" ${en} RETURN v._id`;
+      var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${s}" TO "${t}" ${en} RETURN v._id`;
 
       var actual = getQueryResults(query);
       // Positive Check
