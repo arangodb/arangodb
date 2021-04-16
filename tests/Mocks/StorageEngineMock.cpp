@@ -1250,7 +1250,7 @@ bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,
   return false;
 }
 
-bool PhysicalCollectionMock::readDocumentWithCallback(
+arangodb::Result PhysicalCollectionMock::readDocumentWithCallback(
     arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
     arangodb::IndexIterator::DocumentCallback const& cb) const {
   before();
@@ -1258,10 +1258,10 @@ bool PhysicalCollectionMock::readDocumentWithCallback(
     auto& doc = entry.second;
     if (doc.docId() == token) {
       cb(token, doc.data());
-      return true;
+      return arangodb::Result{};
     }
   }
-  return false;
+  return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 arangodb::Result PhysicalCollectionMock::remove(

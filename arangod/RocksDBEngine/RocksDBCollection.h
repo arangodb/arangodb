@@ -112,7 +112,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                     ManagedDocumentResult& result) const override;
 
   /// @brief lookup with callback, not thread-safe on same transaction::Context
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
+  Result readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
                                 IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
@@ -188,7 +188,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                        bool readCache,
                                        bool fillCache) const;
 
-  bool lookupDocumentVPack(transaction::Methods*,
+  Result lookupDocumentVPack(transaction::Methods*,
                            LocalDocumentId const& documentId,
                            IndexIterator::DocumentCallback const& cb,
                            bool withCache) const;
