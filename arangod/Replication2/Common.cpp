@@ -24,6 +24,8 @@
 
 #include <Basics/debugging.h>
 
+#include <velocypack/Value.h>
+
 #include <utility>
 
 using namespace arangodb;
@@ -45,12 +47,18 @@ LogIndex LogEntry::logIndex() const { return _logIndex; }
 LogPayload const& LogEntry::logPayload() const { return _payload; }
 
 void LogEntry::toVelocyPack(velocypack::Builder& builder) const {
-  TRI_ASSERT(false);
+  builder.openObject();
+  builder.add("logTerm", velocypack::Value(_logTerm.value));
+  builder.add("logIndex", velocypack::Value(_logIndex.value));
+  builder.add("payload", velocypack::Value(_payload.dummy));
+  builder.close();
 }
+
 auto LogEntry::fromVelocyPack(velocypack::Slice slice) -> LogEntry {
-  TRI_ASSERT(false);
-  return LogEntry(replication2::LogTerm(), replication2::LogIndex(),
-                  replication2::LogPayload(""));
+  auto const logTerm = LogTerm{slice.get("logTerm").getNumericValue<std::size_t>()};
+  auto const logIndex = LogIndex{slice.get("logIndex").getNumericValue<std::size_t>()};
+  auto payload = LogPayload{slice.get("payload").copyString()};
+  return LogEntry{logTerm, logIndex, std::move(payload)};
 }
 
 auto LogTerm::operator<=(LogTerm other) const -> bool {
