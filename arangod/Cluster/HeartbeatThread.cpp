@@ -290,8 +290,7 @@ void HeartbeatThread::run() {
     serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upcrd, true, false));
 
     for (auto const& cb : serverCallbacks) {
-      auto res = _agencyCallbackRegistry->registerCallback(cb.second);
-      if (!res.ok()) {
+      if (!_agencyCallbackRegistry->registerCallback(cb.second)) {
         LOG_TOPIC("97aa8", WARN, Logger::HEARTBEAT)
           << "Failed to register agency cache callback to " << cb.first << " degrading performance";
       }
