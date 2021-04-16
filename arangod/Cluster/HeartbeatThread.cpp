@@ -421,12 +421,13 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
 
   // Periodical or event-based update of DBServers and pruning of
   // agency comm connection pool:
-  if (_updateDBServers.load() || ++_updateCounter >= 60) {
+  auto updateDBServers = _updateDBServers.load();
+  if (updateDBServers || ++_updateCounter >= 60) {
     auto& clusterFeature = server().getFeature<ClusterFeature>();
     auto& ci = clusterFeature.clusterInfo();
     ci.loadCurrentDBServers();
     _updateCounter = 0;
-    _updateDBServers.store(false);
+    _updateDBServers.compare_exchange_strong(updateDBServers, false);
     clusterFeature.pruneAsyncAgencyConnectionPool();
   }
 }
