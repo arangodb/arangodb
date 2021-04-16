@@ -254,7 +254,7 @@ void HeartbeatThread::run() {
   if (!ServerState::instance()->isAgent(role)) {
     std::function<bool(VPackSlice const& result)> updbs = [self = shared_from_this()] (VPackSlice const& result) {
       LOG_TOPIC("fe092", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current db servers";
-      self->updateDBServers();
+      self->_updateDBServers.store(true);
       return true;
     };
     std::vector<std::string> const dbServerAgencyPaths{
@@ -430,14 +430,6 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
     _updateDBServers.compare_exchange_strong(updateDBServers, false);
     clusterFeature.pruneAsyncAgencyConnectionPool();
   }
-}
-
-void HeartbeatThread::updateDBServers() {
-  _updateDBServers.store(true);
-}
-
-void HeartbeatThread::updateServers() {
-
 }
 
 DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }

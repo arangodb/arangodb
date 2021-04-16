@@ -170,13 +170,6 @@ class HeartbeatThread : public Thread,
 
   void getNewsFromAgencyForCoordinator();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update the server mode from the slice
-  //////////////////////////////////////////////////////////////////////////////
-
-  void updateDBServers();
-  void updateServers();
-
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
@@ -318,7 +311,6 @@ class HeartbeatThread : public Thread,
   std::atomic<int> _updateCounter;
   // For event-based update of the current DBServer list:
   std::atomic<bool> _updateDBServers;
-  std::atomic<bool> _updateCoordinators;
 
   /// @brief point in time the server last reported itself as unhealthy (used
   /// to prevent log spamming on every occurrence of unhealthiness)
