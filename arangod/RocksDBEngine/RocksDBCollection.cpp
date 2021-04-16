@@ -1415,13 +1415,13 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
 }
 
 // read using a token!
-bool RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
+Result RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
                                                  LocalDocumentId const& documentId,
                                                  IndexIterator::DocumentCallback const& cb) const {
-  if (documentId.isSet()) {
-    return lookupDocumentVPack(trx, documentId, cb, /*withCache*/true);
+  if (!documentId.isSet()) {
+    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "invalid local document id"};
   }
-  return false;
+  return lookupDocumentVPack(trx, documentId, cb, /*withCache*/true);
 }
 
 Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
@@ -2356,7 +2356,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
   return res;
 }
 
-bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
+Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                                             LocalDocumentId const& documentId,
                                             IndexIterator::DocumentCallback const& cb,
                                             bool withCache) const {
@@ -2373,7 +2373,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                           static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
-      return true;
+      return Result{};
     }
   }
 
@@ -2384,7 +2384,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
 
   if (!s.ok()) {
-    return false;
+    return rocksutils::convertStatus(s);
   }
 
   TRI_ASSERT(ps.size() > 0);
@@ -2410,7 +2410,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
     }
   }
 
-  return true;
+  return Result{};
 }
 
 void RocksDBCollection::createCache() const {
