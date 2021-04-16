@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed CPPCHECK warning or added suppression.
+
 * Web UI - Added missing HTML escaping inside the file upload plugin used in the
   section of deploying a new Foxx application when uploading a zip file.
 

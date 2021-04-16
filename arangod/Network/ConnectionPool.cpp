@@ -259,20 +259,20 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         if (c->fuerte->requestsLeft() <= limit &&
             c->fuerte->state() != fuerte::Connection::State::Closed) {
           c->lastLeased = std::chrono::steady_clock::now();
-          _successSelect++;
+          ++_successSelect;
           _leaseHistMSec.count(
               duration<float, std::micro>(c->lastLeased - start).count());
           return {c};
         } else {  // too many requests,
           c->leases.fetch_sub(1, std::memory_order_relaxed);
-          _noSuccessSelect++;
+          ++_noSuccessSelect;
           break;
         }
       }
     }
   }
   
-  _connectionsCreated++;
+  ++_connectionsCreated;
   isFromPool = false;
   
   // no free connection found, so we add one
