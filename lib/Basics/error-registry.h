@@ -16,11 +16,7 @@ struct elsa<ErrorCode> {
 #include <frozen/unordered_map.h>
 
 namespace arangodb::error {
-<<<<<<< HEAD
-constexpr static frozen::unordered_map<ErrorCode, const char*, 353> ErrorMessages = {
-=======
-constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessages = {
->>>>>>> devel
+constexpr static frozen::unordered_map<ErrorCode, const char*, 343> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
