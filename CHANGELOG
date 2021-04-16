@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Timely updates of rebootId / cluster membership of DB servers and coordinators
+  in ClusterInfo. Fixes BTS-368 detected in chaos tests.
+
 * Fix BTS-350, BTS-358: Fixed potential startup errors due to global replication
   applier being started before end of database recovery procedure.
   Also fixed potential shutdown errors due to global replication applier being
