@@ -29,6 +29,7 @@
 let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
+const primaryEndpoint = arango.getEndpoint();
 
 let { getEndpointById,
       getEndpointsByType,
@@ -53,12 +54,12 @@ function quickKeysSuite() {
   };
 
   let runTestForCount = function(n, quick, adjustQuickLimit) {
-    debugSetFailAt("disableRevisionsAsDocumentIds");
+    debugSetFailAt(primaryEndpoint, "disableRevisionsAsDocumentIds");
     createCollection(n);
     
     let quickLimit = 1000000;
     if (adjustQuickLimit) {
-      debugSetFailAt("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100");
+      debugSetFailAt(primaryEndpoint, "RocksDBRestReplicationHandler::quickKeysNumDocsLimit100");
       quickLimit = 100;
     }
 
@@ -84,12 +85,12 @@ function quickKeysSuite() {
   return {
 
     setUp: function () {
-      debugClearFailAt();
+      debugClearFailAt(primaryEndpoint);
       db._drop(cn);
     },
 
     tearDown: function () {
-      debugClearFailAt();
+      debugClearFailAt(primaryEndpoint);
       db._drop(cn);
     },
     
@@ -143,7 +144,7 @@ function quickKeysSuite() {
   };
 }
 
-if (debugCanUseFailAt()) {
+if (debugCanUseFailAt(primaryEndpoint)) {
   // only execute if failure tests are available
   jsunity.run(quickKeysSuite);
 }
