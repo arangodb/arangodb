@@ -516,10 +516,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_service_unavailable) {
   AsyncAgencyCommPoolMock pool(config());
   pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post,
                      "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-      .returnError(fuerte::Error::ReuqestTimeout);
+      .returnError(fuerte::Error::RequestTimeout);
   pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post,
                      "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
-      .returnError(fuerte::Error::ServiceUnavailable);
+    .returnResponse(fuerte::StatusServiceUnavailable,  R"=({"error": 503})="_vpack);
   pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post,
                      "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
       .returnResponse(fuerte::StatusNotFound, R"=({"error": 404, "results": [0]})="_vpack);
