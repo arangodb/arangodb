@@ -23,6 +23,7 @@
 #ifndef ARANGOD_REPLICATION2_INMEMORYLOG_H
 #define ARANGOD_REPLICATION2_INMEMORYLOG_H
 
+#include <Basics/Guarded.h>
 #include <Futures/Future.h>
 #include <velocypack/SharedSlice.h>
 #include <immer/map.hpp>
@@ -125,15 +126,11 @@ class InMemoryLog : public LogFollower {
 
   [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
 
- protected:
-  LogIndex nextIndex();
-  LogIndex getLastIndex();
-  void assertLeader() const;
-  void assertFollower() const;
-
-  void checkCommitIndex();
-  void updateCommitIndexLeader(LogIndex newIndex, std::shared_ptr<QuorumData>);
  private:
+  struct GuardedInMemoryLog;
+  using Guard = MutexGuard<GuardedInMemoryLog, std::unique_lock<std::mutex>>;
+  using ConstGuard = MutexGuard<GuardedInMemoryLog const, std::unique_lock<std::mutex>>;
+
   struct Follower {
     explicit Follower(std::shared_ptr<LogFollower> impl)
         : _impl(std::move(impl)) {}
@@ -144,10 +141,6 @@ class InMemoryLog : public LogFollower {
     bool requestInFlight = false;
   };
 
-  auto getLogIterator(LogIndex from) -> std::shared_ptr<LogIterator>;
-
-  void sendAppendEntries(Follower&);
-
   struct Unconfigured {};
   struct LeaderConfig {
     std::vector<Follower> follower{};
@@ -157,19 +150,77 @@ class InMemoryLog : public LogFollower {
     ParticipantId leaderId{};
   };
 
-  std::variant<Unconfigured, LeaderConfig, FollowerConfig> _role;
-  ParticipantId _id{};
-  std::shared_ptr<PersistedLog> _persistedLog;
-  LogIndex _persistedLogEnd{1};
-  LogTerm _currentTerm = LogTerm{};
-  std::deque<LogEntry> _log;
-  std::shared_ptr<InMemoryState> _state;
-  LogIndex _commitIndex{0};
-  std::shared_ptr<QuorumData> _lastQuorum;
-
   using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
-  std::multimap<LogIndex, WaitForPromise> _waitForQueue;
-  void persistRemainingLogEntries();
+
+  struct GuardedInMemoryLog {
+    GuardedInMemoryLog() = delete;
+    GuardedInMemoryLog(GuardedInMemoryLog const&) = delete;
+    GuardedInMemoryLog(GuardedInMemoryLog&&) = delete;
+    GuardedInMemoryLog& operator=(GuardedInMemoryLog const&) = delete;
+    GuardedInMemoryLog& operator=(GuardedInMemoryLog&&) = delete;
+    ~GuardedInMemoryLog() = default;
+    GuardedInMemoryLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
+                   std::shared_ptr<PersistedLog> persistedLog, LogIndex logIndex)
+        : _id(id), _persistedLog(std::move(persistedLog)), _state(std::move(state)), _commitIndex{logIndex} {}
+
+    // follower only
+    auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult>;
+
+    // leader only
+    auto insert(LogPayload) -> LogIndex;
+
+    // leader only
+    auto createSnapshot() -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
+
+    // leader only
+    auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
+
+    // Set to follower, and (strictly increase) term to the given value
+    auto becomeFollower(LogTerm, ParticipantId leaderId) -> void;
+
+    // Set to leader, and (strictly increase) term to the given value
+    auto becomeLeader(LogTerm term, std::vector<std::shared_ptr<LogFollower>> const& follower,
+                      std::size_t writeConcern) -> void;
+
+    [[nodiscard]] auto getStatistics() const -> LogStatistics;
+
+    auto runAsyncStep() -> void;
+
+    [[nodiscard]] auto participantId() const noexcept -> ParticipantId;
+    [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
+
+    LogIndex nextIndex() const;
+    LogIndex getLastIndex() const;
+    void assertLeader() const;
+    void assertFollower() const;
+
+    void checkCommitIndex();
+    void updateCommitIndexLeader(LogIndex newIndex, std::shared_ptr<QuorumData>);
+
+    auto getLogIterator(LogIndex from) -> std::shared_ptr<LogIterator>;
+
+    void sendAppendEntries(Follower&);
+
+    void persistRemainingLogEntries();
+
+    std::variant<Unconfigured, LeaderConfig, FollowerConfig> _role;
+    ParticipantId _id{};
+    std::shared_ptr<PersistedLog> _persistedLog;
+    LogIndex _persistedLogEnd{1};
+    LogTerm _currentTerm = LogTerm{};
+    std::deque<LogEntry> _log;
+    std::shared_ptr<InMemoryState> _state;
+    LogIndex _commitIndex{0};
+    std::shared_ptr<QuorumData> _lastQuorum;
+    std::multimap<LogIndex, WaitForPromise> _waitForQueue;
+  };
+
+  // make this thread safe in the most simple way possible, wrap everything in
+  // a single mutex.
+  Guarded<GuardedInMemoryLog> _joermungandr;
+
+  auto acquireMutex() -> Guard;
+  auto acquireMutex() const -> ConstGuard;
 };
 
 struct DelayedFollowerLog : InMemoryLog {

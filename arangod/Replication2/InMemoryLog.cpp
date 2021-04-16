@@ -69,8 +69,9 @@ class InMemoryLogIterator : public LogIterator {
 
 InMemoryLog::InMemoryLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
                          std::shared_ptr<PersistedLog> persistedLog)
-    : _id(id), _persistedLog(std::move(persistedLog)), _state(std::move(state)), _commitIndex{LogIndex{0}} {
-  if (ADB_UNLIKELY(_persistedLog == nullptr)) {
+    : _joermungandr(id, std::move(state), std::move(persistedLog), LogIndex{0}) {
+  auto self = acquireMutex();
+  if (ADB_UNLIKELY(self->_persistedLog == nullptr)) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -79,6 +80,12 @@ InMemoryLog::InMemoryLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
 }
 
 auto InMemoryLog::appendEntries(AppendEntriesRequest req)
+    -> arangodb::futures::Future<AppendEntriesResult> {
+  auto self = acquireMutex();
+  return self->appendEntries(std::move(req));
+}
+
+auto InMemoryLog::GuardedInMemoryLog::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
   assertFollower();
 
@@ -119,21 +126,37 @@ auto InMemoryLog::appendEntries(AppendEntriesRequest req)
 }
 
 auto InMemoryLog::insert(LogPayload payload) -> LogIndex {
+  auto self = acquireMutex();
+  return self->insert(std::move(payload));
+}
+auto InMemoryLog::GuardedInMemoryLog::insert(LogPayload payload) -> LogIndex {
   assertLeader();
   auto const index = nextIndex();
   _log.emplace_back(LogEntry{_currentTerm, index, std::move(payload)});
   return index;
 }
 
-LogIndex InMemoryLog::nextIndex() { return LogIndex{_log.size() + 1}; }
-LogIndex InMemoryLog::getLastIndex() { return LogIndex{_log.size()}; }
+LogIndex InMemoryLog::GuardedInMemoryLog::nextIndex() const { return LogIndex{_log.size() + 1}; }
+LogIndex InMemoryLog::GuardedInMemoryLog::getLastIndex() const { return LogIndex{_log.size()}; }
 
 auto InMemoryLog::createSnapshot()
+    -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>> {
+  auto self = acquireMutex();
+  return self->createSnapshot();
+
+}
+auto InMemoryLog::GuardedInMemoryLog::createSnapshot()
     -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>> {
   return std::make_pair(_commitIndex, _state->createSnapshot());
 }
 
 auto InMemoryLog::waitFor(LogIndex index) -> futures::Future<std::shared_ptr<QuorumData>> {
+  auto self = acquireMutex();
+  return self->waitFor(index);
+}
+
+auto InMemoryLog::GuardedInMemoryLog::waitFor(LogIndex index)
+    -> futures::Future<std::shared_ptr<QuorumData>> {
   assertLeader();
   auto it = _waitForQueue.emplace(index, WaitForPromise{});
   auto& promise = it->second;
@@ -143,6 +166,11 @@ auto InMemoryLog::waitFor(LogIndex index) -> futures::Future<std::shared_ptr<Quo
 }
 
 auto InMemoryLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
+  auto self = acquireMutex();
+  return self->becomeFollower(term, id);
+
+}
+auto InMemoryLog::GuardedInMemoryLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
   TRI_ASSERT(_currentTerm < term);
   _currentTerm = term;
   _role = FollowerConfig{id};
@@ -151,6 +179,13 @@ auto InMemoryLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
 auto InMemoryLog::becomeLeader(LogTerm term,
                                std::vector<std::shared_ptr<LogFollower>> const& follower,
                                std::size_t writeConcern) -> void {
+  auto self = acquireMutex();
+  return self->becomeLeader(term, follower, writeConcern);
+}
+
+auto InMemoryLog::GuardedInMemoryLog::becomeLeader(
+    LogTerm term, std::vector<std::shared_ptr<LogFollower>> const& follower,
+    std::size_t writeConcern) -> void {
   TRI_ASSERT(_currentTerm < term);
   std::vector<Follower> follower_vec;
   follower_vec.reserve(follower.size());
@@ -164,6 +199,10 @@ auto InMemoryLog::becomeLeader(LogTerm term,
 }
 
 [[nodiscard]] auto InMemoryLog::getStatistics() const -> LogStatistics {
+  auto self = acquireMutex();
+  return self->getStatistics();
+}
+[[nodiscard]] auto InMemoryLog::GuardedInMemoryLog::getStatistics() const -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
   result.spearHead = LogIndex{_log.size()};
@@ -171,12 +210,16 @@ auto InMemoryLog::becomeLeader(LogTerm term,
 }
 
 auto InMemoryLog::runAsyncStep() -> void {
+  auto self = acquireMutex();
+  return self->runAsyncStep();
+}
+
+auto InMemoryLog::GuardedInMemoryLog::runAsyncStep() -> void {
   assertLeader();
   auto& conf = std::get<LeaderConfig>(_role);
   for (auto& follower : conf.follower) {
     sendAppendEntries(follower);
   }
-
 
   /*if (_log.size() > _commitIndex.value) {
     ++_commitIndex.value;
@@ -187,7 +230,7 @@ auto InMemoryLog::runAsyncStep() -> void {
   /**/
 }
 
-void InMemoryLog::persistRemainingLogEntries() {
+void InMemoryLog::GuardedInMemoryLog::persistRemainingLogEntries() {
   if (_persistedLogEnd < nextIndex()) {
     auto it = getLogIterator(_persistedLogEnd);
     auto const endIdx = nextIndex();
@@ -202,26 +245,33 @@ void InMemoryLog::persistRemainingLogEntries() {
   }
 }
 
-void InMemoryLog::assertLeader() const {
+void InMemoryLog::GuardedInMemoryLog::assertLeader() const {
   if (ADB_UNLIKELY(!std::holds_alternative<LeaderConfig>(_role))) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
   }
 }
 
-void InMemoryLog::assertFollower() const {
+void InMemoryLog::GuardedInMemoryLog::assertFollower() const {
   if (ADB_UNLIKELY(!std::holds_alternative<FollowerConfig>(_role))) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
   }
 }
+
 auto InMemoryLog::participantId() const noexcept -> ParticipantId {
+  auto self = acquireMutex();
+  return self->participantId();
+}
+
+auto InMemoryLog::GuardedInMemoryLog::participantId() const noexcept -> ParticipantId {
   return _id;
 }
 
-auto InMemoryState::createSnapshot() -> std::shared_ptr<InMemoryState const> {
-  return std::make_shared<InMemoryState>(_state);
+auto InMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry> {
+  auto self = acquireMutex();
+  return self->getEntryByIndex(idx);
 }
 
-auto InMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry> {
+auto InMemoryLog::GuardedInMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry> {
   if (_log.size() < idx.value || idx.value == 0) {
     return std::nullopt;
   }
@@ -231,7 +281,7 @@ auto InMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>
   return e;
 }
 
-void InMemoryLog::updateCommitIndexLeader(LogIndex newIndex, std::shared_ptr<QuorumData> quorum) {
+void InMemoryLog::GuardedInMemoryLog::updateCommitIndexLeader(LogIndex newIndex, std::shared_ptr<QuorumData> quorum) {
   TRI_ASSERT(_commitIndex < newIndex);
   _commitIndex = newIndex;
   _lastQuorum = quorum;
@@ -241,7 +291,7 @@ void InMemoryLog::updateCommitIndexLeader(LogIndex newIndex, std::shared_ptr<Quo
   }
 }
 
-void InMemoryLog::sendAppendEntries(Follower& follower) {
+void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(Follower& follower) {
   if (follower.requestInFlight) {
     return; // wait for the request to return
   }
@@ -289,7 +339,7 @@ void InMemoryLog::sendAppendEntries(Follower& follower) {
   });
 }
 
-auto InMemoryLog::getLogIterator(LogIndex fromIdx) -> std::shared_ptr<LogIterator> {
+auto InMemoryLog::GuardedInMemoryLog::getLogIterator(LogIndex fromIdx) -> std::shared_ptr<LogIterator> {
   auto from = _log.cbegin();
   auto const endIdx = nextIndex();
   TRI_ASSERT(fromIdx < endIdx);
@@ -298,7 +348,7 @@ auto InMemoryLog::getLogIterator(LogIndex fromIdx) -> std::shared_ptr<LogIterato
   return std::make_shared<InMemoryLogIterator>(from, to);
 }
 
-void InMemoryLog::checkCommitIndex() {
+void InMemoryLog::GuardedInMemoryLog::checkCommitIndex() {
 
   auto& conf = std::get<LeaderConfig>(_role);
 
@@ -331,6 +381,17 @@ void InMemoryLog::checkCommitIndex() {
     auto quorum_data = std::make_shared<QuorumData>(commitIndex, _currentTerm, std::move(quorum));
     updateCommitIndexLeader(commitIndex, std::move(quorum_data));
   }
+}
+
+auto InMemoryLog::acquireMutex() -> MutexGuard<GuardedInMemoryLog, std::unique_lock<std::mutex>> {
+  return _joermungandr.getLockedGuard();
+}
+auto InMemoryLog::acquireMutex() const -> MutexGuard<GuardedInMemoryLog const, std::unique_lock<std::mutex>> {
+  return _joermungandr.getLockedGuard();
+}
+
+auto InMemoryState::createSnapshot() -> std::shared_ptr<InMemoryState const> {
+  return std::make_shared<InMemoryState>(_state);
 }
 
 InMemoryState::InMemoryState(InMemoryState::state_container state)
