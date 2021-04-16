@@ -250,8 +250,6 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Reports.cpp
   Pregel/Reports.h
   Pregel/Utils.cpp
-  Pregel/Worker-templates-algorithms.cpp
-  Pregel/Worker-templates-native-types.cpp
   Pregel/Worker.cpp
   Pregel/WorkerConfig.cpp
   RestHandler/RestControlPregelHandler.cpp
