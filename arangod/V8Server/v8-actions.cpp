@@ -922,6 +922,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
       case Endpoint::TransportType::VST: {
         response->addRawPayload(velocypack::StringRef(content, length));
+        TRI_FreeString(content);
       }
       break;
 
