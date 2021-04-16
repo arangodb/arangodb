@@ -40,30 +40,30 @@ TEST(InMemoryLogTest, test) {
 
   {
     auto stats = log.getStatistics();
-    ASSERT_EQ(LogIndex{0}, stats.commitIndex);
-    ASSERT_EQ(LogIndex{0}, stats.spearHead);
+    EXPECT_EQ(LogIndex{0}, stats.commitIndex);
+    EXPECT_EQ(LogIndex{0}, stats.spearHead);
   }
 
   auto const payload = LogPayload{"myLogEntry 1"};
   auto index = log.insert(payload);
-  ASSERT_EQ(LogIndex{1}, index);
+  EXPECT_EQ(LogIndex{1}, index);
 
   auto f = log.waitFor(index);
 
   {
     auto stats = log.getStatistics();
-    ASSERT_EQ(LogIndex{0}, stats.commitIndex);
-    ASSERT_EQ(LogIndex{1}, stats.spearHead);
+    EXPECT_EQ(LogIndex{0}, stats.commitIndex);
+    EXPECT_EQ(LogIndex{1}, stats.spearHead);
   }
 
   log.runAsyncStep();
 
-  ASSERT_TRUE(f.isReady());
+  EXPECT_TRUE(f.isReady());
 
   {
     auto stats = log.getStatistics();
-    ASSERT_EQ(LogIndex{1}, stats.commitIndex);
-    ASSERT_EQ(LogIndex{1}, stats.spearHead);
+    EXPECT_EQ(LogIndex{1}, stats.commitIndex);
+    EXPECT_EQ(LogIndex{1}, stats.spearHead);
   }
 
   auto it = persistedLog->read(LogIndex{1});

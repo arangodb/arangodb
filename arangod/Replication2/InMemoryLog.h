@@ -160,7 +160,7 @@ class InMemoryLog : public LogFollower {
   std::variant<Unconfigured, LeaderConfig, FollowerConfig> _role;
   ParticipantId _id{};
   std::shared_ptr<PersistedLog> _persistedLog;
-  LogIndex _persistedLogEnd{};
+  LogIndex _persistedLogEnd{1};
   LogTerm _currentTerm = LogTerm{};
   std::deque<LogEntry> _log;
   std::shared_ptr<InMemoryState> _state;

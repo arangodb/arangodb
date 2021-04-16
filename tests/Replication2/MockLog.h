@@ -21,8 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef ARANGODB3_MOCKLOG_H
 #define ARANGODB3_MOCKLOG_H
-#include <map>
+#include <Logger/LogMacros.h>
 #include <Replication2/PersistedLog.h>
+#include <map>
 
 namespace arangodb {
 
@@ -40,8 +41,6 @@ struct MockLog : replication2::PersistedLog {
   auto removeFront(replication2::LogIndex stop) -> Result override;
   auto removeBack(replication2::LogIndex start) -> Result override;
   auto drop() -> Result override;
-
-
 
   [[nodiscard]] storeType getStorage() const { return _storage; }
  private:

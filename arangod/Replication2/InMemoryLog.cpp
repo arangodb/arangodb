@@ -308,7 +308,8 @@ void InMemoryLog::checkCommitIndex() {
   std::vector<std::pair<LogIndex, ParticipantId>> indexes;
   std::transform(conf.follower.begin(), conf.follower.end(), std::back_inserter(indexes),
                  [](Follower const& f) { return std::make_pair(f.lastAckedIndex, f._impl->participantId()); });
-  indexes.push_back(std::make_pair(_persistedLogEnd, participantId()));
+  TRI_ASSERT(_persistedLogEnd.value > 0);
+  indexes.emplace_back(LogIndex{_persistedLogEnd.value - 1}, participantId());
   TRI_ASSERT(indexes.size() == conf.follower.size() + 1);
 
   if (quorum_size <= 0 || quorum_size > indexes.size()) {
