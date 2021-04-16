@@ -274,7 +274,7 @@ void HeartbeatThread::run() {
       serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
     }
     std::function<bool(VPackSlice const& result)> upcrd = [self = shared_from_this()] (VPackSlice const& result) {
-      LOG_TOPIC("2e09f", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current coordinators";
+      LOG_TOPIC("2f09e", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current coordinators";
       self->server().getFeature<ClusterFeature>().clusterInfo().loadCurrentCoordinators();
       return true;
     };
