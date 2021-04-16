@@ -80,7 +80,7 @@ auto DistributeExecutorInfos::getResponsibleClient(arangodb::velocypack::Slice v
 DistributeExecutor::DistributeExecutor(DistributeExecutorInfos const& infos)
     : _infos(infos) {}
 
-auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                                          std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
   std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
@@ -123,12 +123,10 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult
   }
 }
 
-auto DistributeExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex)
+auto DistributeExecutor::getClient(SharedAqlItemBlockPtr const& block, size_t rowIndex) const
     -> std::string {
-  InputAqlItemRow row{block, rowIndex};
-   
   // check first input register
-  AqlValue val = row.getValue(_infos.registerId());
+  AqlValue val = InputAqlItemRow{block, rowIndex}.getValue(_infos.registerId());
 
   VPackSlice input = val.slice();  // will throw when wrong type
   if (input.isNone()) {

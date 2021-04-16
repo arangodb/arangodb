@@ -83,7 +83,7 @@ ClusterFeature::~ClusterFeature() {
 }
 
 void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("cluster", "Configure the cluster");
+  options->addSection("cluster", "cluster");
 
   options->addObsoleteOption("--cluster.username",
                              "username used for cluster-internal communication", true);

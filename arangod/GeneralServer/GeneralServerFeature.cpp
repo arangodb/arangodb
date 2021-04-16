@@ -140,8 +140,6 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
 }
 
 void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOldOption("server.allow-method-override",
                         "http.allow-method-override");
   options->addOldOption("server.hide-product-header",
@@ -155,7 +153,7 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_numIoThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addSection("http", "HttpServer features");
+  options->addSection("http", "HTTP server features");
 
   options->addOption("--http.allow-method-override",
                      "allow HTTP method override using special headers",
@@ -176,8 +174,6 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--http.trusted-origin",
                      "trusted origin URLs for CORS requests with credentials",
                      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
-
-  options->addSection("frontend", "Frontend options");
 
   options->addOption("--frontend.proxy-request-check",
                      "enable proxy request checking",

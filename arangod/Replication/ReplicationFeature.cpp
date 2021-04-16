@@ -110,7 +110,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
 ReplicationFeature::~ReplicationFeature() = default;
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("replication", "Configure the replication");
+  options->addSection("replication", "replication");
   options->addOption("--replication.auto-start",
                      "switch to enable or disable the automatic start "
                      "of replication appliers",

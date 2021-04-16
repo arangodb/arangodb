@@ -830,8 +830,7 @@ void IResearchFeature::beginShutdown() {
 
 void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
   _running.store(false);
-  options->addSection("arangosearch",
-                      std::string("Configure the ") + FEATURE_NAME + " feature");
+  options->addSection("arangosearch", FEATURE_NAME + " feature");
   options->addOption(THREADS_PARAM,
                      "the exact number of threads to use for asynchronous "
                      "tasks (0 == autodetect)",
