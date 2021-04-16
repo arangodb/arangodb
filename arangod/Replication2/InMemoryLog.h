@@ -26,6 +26,7 @@
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
 #include <velocypack/SharedSlice.h>
+#include <velocypack/Builder.h>
 #include <immer/map.hpp>
 
 #include <deque>
@@ -44,6 +45,9 @@ namespace arangodb::replication2 {
 struct AppendEntriesResult {
   bool success = false;
   LogTerm logTerm = LogTerm{};
+
+  void toVelocyPack(velocypack::Builder& builder);
+  static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 };
 
 struct AppendEntriesRequest {
@@ -54,6 +58,9 @@ struct AppendEntriesRequest {
   LogIndex prevLogIndex;
   LogIndex leaderCommit;
   std::vector<LogEntry> entries;
+
+  void toVelocyPack(velocypack::Builder& builder);
+  static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
 };
 
 /**

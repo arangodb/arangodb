@@ -43,6 +43,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
+#include "Replication2/Common.h"
 
 #include <velocypack/Slice.h>
 
@@ -52,6 +53,9 @@ class ApplicationServer;
 }
 namespace aql {
 class QueryList;
+}
+namespace replication2 {
+class InMemoryLog;
 }
 namespace velocypack {
 class Builder;
@@ -157,6 +161,9 @@ struct TRI_vocbase_t {
 
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
+
+ public:
+  std::unordered_map<arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::InMemoryLog>> _logs;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;
@@ -289,6 +296,9 @@ struct TRI_vocbase_t {
   /// @brief looks up a data-source by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(std::string const& nameOrId) const
       noexcept;
+
+  std::shared_ptr<arangodb::replication2::InMemoryLog> lookupLog(
+      arangodb::replication2::LogId id) const noexcept;
 
   /// @brief looks up a view by identifier
   std::shared_ptr<arangodb::LogicalView> lookupView(arangodb::DataSourceId id) const;

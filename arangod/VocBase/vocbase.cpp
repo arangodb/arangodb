@@ -75,6 +75,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
+#include "Replication2/InMemoryLog.h"
 
 #include <thread>
 

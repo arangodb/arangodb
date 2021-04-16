@@ -81,7 +81,7 @@ struct LogPayload {
   std::string dummy;
 };
 // just a placeholder for now, must have a hash<>
-using ParticipantId = std::size_t;
+using ParticipantId = std::string;
 struct LogStatistics {
   LogIndex spearHead{};
   LogIndex commitIndex{};
@@ -112,5 +112,12 @@ struct LogIterator {
 };
 
 }  // namespace arangodb::replication2
+
+template<>
+struct std::hash<arangodb::replication2::LogId> {
+  auto operator()(arangodb::replication2::LogId const& v) const noexcept -> std::size_t {
+    return std::hash<arangodb::basics::Identifier>{}(v);
+  }
+};
 
 #endif  // ARANGODB3_REPLICATION_COMMON_H
