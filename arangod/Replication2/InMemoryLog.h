@@ -46,7 +46,7 @@ struct AppendEntriesResult {
   bool success = false;
   LogTerm logTerm = LogTerm{};
 
-  void toVelocyPack(velocypack::Builder& builder);
+  void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 };
 
@@ -59,7 +59,7 @@ struct AppendEntriesRequest {
   LogIndex leaderCommit;
   std::vector<LogEntry> entries;
 
-  void toVelocyPack(velocypack::Builder& builder);
+  void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
 };
 

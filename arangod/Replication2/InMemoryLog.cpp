@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 
 #include <Basics/application-exit.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <utility>
 
@@ -137,14 +138,17 @@ auto InMemoryLog::GuardedInMemoryLog::insert(LogPayload payload) -> LogIndex {
   return index;
 }
 
-LogIndex InMemoryLog::GuardedInMemoryLog::nextIndex() const { return LogIndex{_log.size() + 1}; }
-LogIndex InMemoryLog::GuardedInMemoryLog::getLastIndex() const { return LogIndex{_log.size()}; }
+LogIndex InMemoryLog::GuardedInMemoryLog::nextIndex() const {
+  return LogIndex{_log.size() + 1};
+}
+LogIndex InMemoryLog::GuardedInMemoryLog::getLastIndex() const {
+  return LogIndex{_log.size()};
+}
 
 auto InMemoryLog::createSnapshot()
     -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>> {
   auto self = acquireMutex();
   return self->createSnapshot();
-
 }
 auto InMemoryLog::GuardedInMemoryLog::createSnapshot()
     -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>> {
@@ -169,7 +173,6 @@ auto InMemoryLog::GuardedInMemoryLog::waitFor(LogIndex index)
 auto InMemoryLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
   auto self = acquireMutex();
   return self->becomeFollower(term, id);
-
 }
 auto InMemoryLog::GuardedInMemoryLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
   TRI_ASSERT(_currentTerm < term);
@@ -272,7 +275,8 @@ auto InMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>
   return self->getEntryByIndex(idx);
 }
 
-auto InMemoryLog::GuardedInMemoryLog::getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry> {
+auto InMemoryLog::GuardedInMemoryLog::getEntryByIndex(LogIndex idx) const
+    -> std::optional<LogEntry> {
   if (_log.size() < idx.value || idx.value == 0) {
     return std::nullopt;
   }
@@ -282,7 +286,8 @@ auto InMemoryLog::GuardedInMemoryLog::getEntryByIndex(LogIndex idx) const -> std
   return e;
 }
 
-void InMemoryLog::GuardedInMemoryLog::updateCommitIndexLeader(LogIndex newIndex, std::shared_ptr<QuorumData> quorum) {
+void InMemoryLog::GuardedInMemoryLog::updateCommitIndexLeader(LogIndex newIndex,
+                                                              std::shared_ptr<QuorumData> quorum) {
   TRI_ASSERT(_commitIndex < newIndex);
   _commitIndex = newIndex;
   _lastQuorum = quorum;
@@ -294,17 +299,16 @@ void InMemoryLog::GuardedInMemoryLog::updateCommitIndexLeader(LogIndex newIndex,
 
 void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(Follower& follower) {
   if (follower.requestInFlight) {
-    return; // wait for the request to return
+    return;  // wait for the request to return
   }
 
   auto currentCommitIndex = _commitIndex;
   auto lastIndex = getLastIndex();
   if (follower.lastAckedIndex == lastIndex && _commitIndex == follower.lastAckedCommitIndex) {
-    return; // nothing to replicate
+    return;  // nothing to replicate
   }
 
   auto const lastAcked = getEntryByIndex(follower.lastAckedIndex);
-
 
   AppendEntriesRequest req;
   req.leaderCommit = _commitIndex;
@@ -326,21 +330,24 @@ void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(Follower& follower) {
   }
 
   follower.requestInFlight = true;
-  follower._impl->appendEntries(std::move(req)).thenFinal([this, &follower, lastIndex, currentCommitIndex](futures::Try<AppendEntriesResult>&& res) {
-    TRI_ASSERT(res.hasValue());
-    follower.requestInFlight = false;
-    auto& response = res.get();
-    if (response.success) {
-      follower.lastAckedIndex = lastIndex;
-      follower.lastAckedCommitIndex = currentCommitIndex;
-      checkCommitIndex();
-    }
-    // try sending the next batch
-    sendAppendEntries(follower);
-  });
+  follower._impl->appendEntries(std::move(req))
+      .thenFinal([this, &follower, lastIndex,
+                  currentCommitIndex](futures::Try<AppendEntriesResult>&& res) {
+        TRI_ASSERT(res.hasValue());
+        follower.requestInFlight = false;
+        auto& response = res.get();
+        if (response.success) {
+          follower.lastAckedIndex = lastIndex;
+          follower.lastAckedCommitIndex = currentCommitIndex;
+          checkCommitIndex();
+        }
+        // try sending the next batch
+        sendAppendEntries(follower);
+      });
 }
 
-auto InMemoryLog::GuardedInMemoryLog::getLogIterator(LogIndex fromIdx) -> std::shared_ptr<LogIterator> {
+auto InMemoryLog::GuardedInMemoryLog::getLogIterator(LogIndex fromIdx)
+    -> std::shared_ptr<LogIterator> {
   auto from = _log.cbegin();
   auto const endIdx = nextIndex();
   TRI_ASSERT(fromIdx < endIdx);
@@ -350,15 +357,16 @@ auto InMemoryLog::GuardedInMemoryLog::getLogIterator(LogIndex fromIdx) -> std::s
 }
 
 void InMemoryLog::GuardedInMemoryLog::checkCommitIndex() {
-
   auto& conf = std::get<LeaderConfig>(_role);
 
   auto quorum_size = conf.writeConcern;
 
   // TODO make this so that we can place any predicate here
   std::vector<std::pair<LogIndex, ParticipantId>> indexes;
-  std::transform(conf.follower.begin(), conf.follower.end(), std::back_inserter(indexes),
-                 [](Follower const& f) { return std::make_pair(f.lastAckedIndex, f._impl->participantId()); });
+  std::transform(conf.follower.begin(), conf.follower.end(),
+                 std::back_inserter(indexes), [](Follower const& f) {
+                   return std::make_pair(f.lastAckedIndex, f._impl->participantId());
+                 });
   TRI_ASSERT(_persistedLogEnd.value > 0);
   indexes.emplace_back(_persistedLogEnd, participantId());
   TRI_ASSERT(indexes.size() == conf.follower.size() + 1);
@@ -367,10 +375,8 @@ void InMemoryLog::GuardedInMemoryLog::checkCommitIndex() {
     return;
   }
 
-  std::nth_element(indexes.begin(), indexes.begin() + (quorum_size - 1),
-                   indexes.end(), [](auto& a, auto& b) {
-                     return a.first > b.first;
-                   });
+  std::nth_element(indexes.begin(), indexes.begin() + (quorum_size - 1), indexes.end(),
+                   [](auto& a, auto& b) { return a.first > b.first; });
 
   auto& [commitIndex, participant] = indexes.at(quorum_size - 1);
   TRI_ASSERT(commitIndex >= _commitIndex);
@@ -379,15 +385,18 @@ void InMemoryLog::GuardedInMemoryLog::checkCommitIndex() {
     std::transform(indexes.begin(), indexes.end(), std::back_inserter(quorum),
                    [](auto& p) { return p.second; });
 
-    auto quorum_data = std::make_shared<QuorumData>(commitIndex, _currentTerm, std::move(quorum));
+    auto quorum_data =
+        std::make_shared<QuorumData>(commitIndex, _currentTerm, std::move(quorum));
     updateCommitIndexLeader(commitIndex, std::move(quorum_data));
   }
 }
 
-auto InMemoryLog::acquireMutex() -> MutexGuard<GuardedInMemoryLog, std::unique_lock<std::mutex>> {
+auto InMemoryLog::acquireMutex()
+    -> MutexGuard<GuardedInMemoryLog, std::unique_lock<std::mutex>> {
   return _joermungandr.getLockedGuard();
 }
-auto InMemoryLog::acquireMutex() const -> MutexGuard<GuardedInMemoryLog const, std::unique_lock<std::mutex>> {
+auto InMemoryLog::acquireMutex() const
+    -> MutexGuard<GuardedInMemoryLog const, std::unique_lock<std::mutex>> {
   return _joermungandr.getLockedGuard();
 }
 
@@ -418,7 +427,7 @@ auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
 QuorumData::QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum)
     : index(index), term(term), quorum(std::move(quorum)) {}
 
-void AppendEntriesResult::toVelocyPack(velocypack::Builder& builder) {
+void AppendEntriesResult::toVelocyPack(velocypack::Builder& builder) const {
   {
     velocypack::ObjectBuilder ob(&builder);
     builder.add("term", VPackValue(logTerm.value));
@@ -431,4 +440,39 @@ auto AppendEntriesResult::fromVelocyPack(velocypack::Slice slice) -> AppendEntri
   auto logTerm = LogTerm{slice.get("term").getNumericValue<size_t>()};
 
   return AppendEntriesResult{success, logTerm};
+}
+
+void AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
+  {
+    velocypack::ObjectBuilder ob(&builder);
+    builder.add("leaderTerm", VPackValue(leaderTerm.value));
+    builder.add("leaderId", VPackValue(leaderId));
+    builder.add("prevLogTerm", VPackValue(prevLogTerm.value));
+    builder.add("prevLogIndex", VPackValue(prevLogIndex.value));
+    builder.add("leaderCommit", VPackValue(leaderCommit.value));
+    builder.add("entries", VPackValue(VPackValueType::Array));
+    for (auto const& it : entries) {
+      it.toVelocyPack(builder);
+    }
+    builder.close();  // close entries
+  }
+}
+
+auto AppendEntriesRequest::fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest {
+  auto leaderTerm = LogTerm{slice.get("leaderTerm").getNumericValue<size_t>()};
+  auto leaderId = ParticipantId{slice.get("leaderId").copyString()};
+  auto prevLogTerm = LogTerm{slice.get("prevLogTerm").getNumericValue<size_t>()};
+  auto prevLogIndex = LogIndex{slice.get("prevLogIndex").getNumericValue<size_t>()};
+  auto leaderCommit = LogIndex{slice.get("leaderCommit").getNumericValue<size_t>()};
+  auto entries = std::invoke([&] {
+    auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
+    auto entries = std::vector<LogEntry>{};
+    entries.reserve(entriesVp.size());
+    std::transform(entriesVp.begin(), entriesVp.end(), std::back_inserter(entries),
+                   [](auto const& it) { return LogEntry::fromVelocyPack(it); });
+    return entries;
+  });
+
+  return AppendEntriesRequest{leaderTerm,   leaderId,     prevLogTerm,
+                              prevLogIndex, leaderCommit, std::move(entries)};
 }

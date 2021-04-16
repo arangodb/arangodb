@@ -96,6 +96,9 @@ class LogEntry {
   [[nodiscard]] LogIndex logIndex() const;
   [[nodiscard]] LogPayload const& logPayload() const;
 
+  void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice slice) -> LogEntry;
+
  private:
   LogTerm _logTerm{};
   LogIndex _logIndex{};
