@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-340: AQL expressions similar to `x < 3 || x` are no longer erroneously
+  be reduced to `x < 3` by the optimizer rule remove-redundant-or.
+
 * Micro improvements for Pregel job API and documentation:
   - Added a few useful attributes to Pregel HTTP API docs.
   - Added "parallelism" attribute to the result of Pregel job status responses,
