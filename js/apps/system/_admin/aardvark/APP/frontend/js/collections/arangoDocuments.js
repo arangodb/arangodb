@@ -142,7 +142,7 @@
 
     moveDocument: function (key, fromCollection, toCollection, callback) {
       var queryObj1 = {
-        query: 'FOR x IN @@fromCollection FILTER x._key == @filterid INSERT x IN @@toCollection';
+        query: 'FOR x IN @@fromCollection FILTER x._key == @filterid INSERT x IN @@toCollection',
         bindVars: {
           '@fromCollection': fromCollection,
           '@toCollection': toCollection,
@@ -151,7 +151,7 @@
       };
 
       var queryObj2 = {
-        query: 'FOR x in @@collection FILTER x._key == @filterid REMOVE x IN @@collection';
+        query: 'FOR x in @@collection FILTER x._key == @filterid REMOVE x IN @@collection',
         bindVars: {
           '@collection': fromCollection,
           'filterid': key
