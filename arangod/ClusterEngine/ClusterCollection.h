@@ -122,7 +122,7 @@ class ClusterCollection final : public PhysicalCollection {
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               IndexIterator::DocumentCallback const& cb) const override;
   
-  bool read(transaction::Methods* trx, LocalDocumentId const& token,
+  Result read(transaction::Methods* trx, LocalDocumentId const& token,
             IndexIterator::DocumentCallback const& cb) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,

@@ -332,7 +332,7 @@ Result ClusterCollection::read(transaction::Methods* /*trx*/,
 }
 
 // read using a token!
-bool ClusterCollection::read(transaction::Methods* /*trx*/,
+Result ClusterCollection::read(transaction::Methods* /*trx*/,
                              LocalDocumentId const& /*documentId*/,
                              IndexIterator::DocumentCallback const& /*cb*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
