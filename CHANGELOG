@@ -1,6 +1,11 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global replication
+  applier being started before end of database recovery procedure.
+  Also fixed potential shutdown errors due to global replication applier being
+  shut down in parallel to a concurrent shut down attempt.
+
 * Web UI - Added missing HTML escaping inside the file upload plugin used in the
   section of deploying a new Foxx application when uploading a zip file.
 
