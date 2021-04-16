@@ -111,7 +111,7 @@ class RDBNearIterator final : public IndexIterator {
                 cb(gdoc.token, doc);  // return document
                 result = true;
                 return true;
-              })) {
+              }).ok()) {
             return false;  // ignore document
           }
           return result;
@@ -138,7 +138,7 @@ class RDBNearIterator final : public IndexIterator {
                     return false;
                   }
                   return true;
-                })) {
+                }).ok()) {
               return false;
             }
             if (!result) {

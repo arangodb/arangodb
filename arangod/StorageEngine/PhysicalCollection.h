@@ -174,7 +174,7 @@ class PhysicalCollection {
                       IndexIterator::DocumentCallback const& cb) const = 0;
   
   /// @brief read a documument referenced by token (internal method)
-  virtual bool read(transaction::Methods* trx,
+  virtual Result read(transaction::Methods* trx,
                     LocalDocumentId const& token,
                     IndexIterator::DocumentCallback const& cb) const = 0;
 
