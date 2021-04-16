@@ -27,7 +27,7 @@ const jsunity = require('jsunity');
 
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const primaryEndpoint = arango.getEndpoint();
-const db = require('@arango').db;
+const db = require('@arangodb').db;
 let { getEndpointById } = require('@arangodb/test-helper');
 
 function leaderTestSuite () {
