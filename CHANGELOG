@@ -4,6 +4,14 @@ devel
 * Fix cluster internal retry behavior for network communications. In particular
   retry on 421 (leader refuses operation). This leads to the cluster letting
   less internal errors out to clients.
+* Don't display obsoleted startup options and sections in `--help` and
+  `--help-.` commands. Also rename "global" to "general" options.
+
+* Added option `--query.require-with` to make AQL in single server mode also
+  require `WITH` clauses where the cluster would need them.
+  The option is turned off by default, but can be turned on in single servers
+  to remove this behavior difference between single servers and clusters,
+  making later a transition from single server to cluster easier.
 
 * Fixed a problem in document batch operations, where errors from one shard
   were reported multiple times, if the shard is completely off line.
@@ -60,7 +68,6 @@ devel
 
 * Added enterprise-build-repository and oskar-build-repository to `--version`
   as `enterprise-build-repository` and `oskar-build-repository`.
->>>>>>> origin/devel
 
 * Clean up replication code and remove a 3.2-compatibility mode that was
   only useful when replicating from a leader < ArangoDB version 3.3.

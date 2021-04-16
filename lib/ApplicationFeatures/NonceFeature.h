@@ -37,9 +37,6 @@ class NonceFeature : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
-
- private:
-  uint64_t _size;
 };
 
 }  // namespace arangodb
