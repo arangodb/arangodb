@@ -24,7 +24,7 @@
 #include "token_attributes.hpp"
 #include "store/store_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 struct empty_position final : irs::position {
   virtual void reset() override { }
@@ -37,15 +37,14 @@ struct empty_position final : irs::position {
 empty_position NO_POSITION;
 const irs::document INVALID_DOCUMENT;
 
-NS_END
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
 /// already created indexes !!!
-/// FIXME: write test
 ////////////////////////////////////////////////////////////////////////////////
 
-NS_ROOT
+namespace iresearch {
 
 REGISTER_ATTRIBUTE(offset);
 REGISTER_ATTRIBUTE(increment);
@@ -115,4 +114,4 @@ float_t norm::read() const {
 
 REGISTER_ATTRIBUTE(position);
 
-NS_END
+}

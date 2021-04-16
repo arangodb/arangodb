@@ -1,0 +1,20 @@
+name: arangodb_connection_leases_successful_total
+renamedFrom: arangodb_connection_leases_successful
+introducedIn: "3.8.0"
+help: |
+  Total number of successful connection leases from connection pool
+unit: number
+type: counter
+category: Connectivity
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  Total number of successful connection leases from connection pool.
+  There are two pools, one for the agency communication with label
+  `AgencyComm` and one for the other cluster internal communication with
+  label `ClusterComm`.
+threshold: |
+  It is normal that this number is growing rapidly when there is any
+  kind of activity in the cluster.

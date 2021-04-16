@@ -42,8 +42,8 @@ const statusExternal = internal.statusExternal;
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
@@ -85,7 +85,7 @@ function jsDriver (options) {
       enterprise = 'true';
     }
     process.env['ARANGO_VERSION']='30700'; // todo db._version(),
-    process.env['TEST_ARANGODB_URL'] = instanceInfo.url;
+    process.env['TEST_ARANGODB_URL'] = instanceInfo.endpoints.join(',');
     process.env['TEST_ARANGODB_URL_SELF_REACHABLE'] = instanceInfo.url;
     
     // testResultsDir
@@ -151,7 +151,8 @@ function jsDriver (options) {
     });
     results['timeout'] = false;
     results['status'] = totalSuccess;
-    results['message'] = '';
+    results['message'] = totalSuccess?'':'did you remember running yarn in the source?';
+    // pu.dumpAgency(instanceInfo, options);
     return results;
   }
   runInJsTest.info = 'runInJsTest';
@@ -162,7 +163,9 @@ function jsDriver (options) {
   }
   localOptions['server.jwt-secret'] = 'haxxmann';
 
-  return tu.performTests(localOptions, [ 'js_test.js'], 'js_test', runInJsTest);
+  let rc = tu.performTests(localOptions, [ 'js_test.js'], 'js_test', runInJsTest);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 

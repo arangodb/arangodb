@@ -30,11 +30,16 @@
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class pipeline_token_stream
+/// @brief an analyser capable of chaining other analyzers
+////////////////////////////////////////////////////////////////////////////////
 class pipeline_token_stream final
-  : public frozen_attributes<4, analyzer>, private util::noncopyable {
+  : public analyzer,
+    private util::noncopyable {
  public:
   using options_t = std::vector<irs::analysis::analyzer::ptr>;
 
@@ -42,6 +47,9 @@ class pipeline_token_stream final
   static void init(); // for triggering registration in a static build
 
   explicit pipeline_token_stream(options_t&& options);
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+    return irs::get_mutable(attrs_, id);
+  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
@@ -54,7 +62,7 @@ class pipeline_token_stream final
       data_size = data.size();
       data_start = start;
       data_end = end;
-      pos = irs::integer_traits<uint32_t>::const_max;
+      pos = std::numeric_limits<uint32_t>::max();
       return analyzer->reset(data);
     }
     bool next() {
@@ -72,9 +80,9 @@ class pipeline_token_stream final
 
     uint32_t end() const noexcept {
       assert(offs);
-      return offs->end == data_size ?
-        data_end :
-        start() + offs->end - offs->start;
+      return offs->end == data_size
+        ? data_end
+        : start() + offs->end - offs->start;
     }
     const term_attribute* term;
     const increment* inc;
@@ -82,7 +90,7 @@ class pipeline_token_stream final
     size_t data_size{ 0 };
     uint32_t data_start{ 0 };
     uint32_t data_end{ 0 };
-    uint32_t pos{ irs::integer_traits<uint32_t>::const_max };
+    uint32_t pos{ std::numeric_limits<uint32_t>::max() };
 
    private:
     // sub analyzer should be operated through provided next/release
@@ -90,15 +98,21 @@ class pipeline_token_stream final
     irs::analysis::analyzer::ptr analyzer;
   };
   using pipeline_t = std::vector<sub_analyzer_t>;
+  using attributes = std::tuple<
+    increment,
+    attribute_ptr<term_attribute>,
+    attribute_ptr<offset>,
+    attribute_ptr<payload>>;
+
   pipeline_t pipeline_;
   pipeline_t::iterator current_;
   pipeline_t::iterator top_;
   pipeline_t::iterator bottom_;
   offset offs_;
-  increment inc_;
+  attributes attrs_;
 };
 
-NS_END
-NS_END
+}
+}
 
 #endif // IRESEARCH_PIPELINE_TOKEN_STREAM_H

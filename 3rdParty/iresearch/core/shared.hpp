@@ -24,6 +24,12 @@
 #ifndef IRESEARCH_SHARED_H
 #define IRESEARCH_SHARED_H
 
+#ifdef __APPLE__
+#include <machine/endian.h>
+#elif __linux__
+#include <endian.h>
+#endif
+
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
@@ -31,6 +37,8 @@
 #include <stdint.h>
 #include <math.h>
 #include <string>
+
+#include "types.hpp" // iresearch types
 
 #if (defined(__GNUC__) && __GNUC__ == 8 && __GNUC_MINOR__ < 1)
   // protection against broken GCC 8.0 from Ubuntu 18.04 official repository
@@ -177,6 +185,13 @@
   #undef FLOAT_T_IS_DOUBLE_T
 #endif
 
+// Windows uses wchar_t for unicode handling
+#if defined(_WIN32)
+  #define IR_NATIVE_STRING(s) L##s
+#else
+  #define IR_NATIVE_STRING(s) s
+#endif
+
 // IRESEARCH_API is used for the public API symbols. It either DLL imports or DLL exports (or does nothing for static build)
 // IRESEARCH_LOCAL is used for non-api symbols.
 // IRESEARCH_PLUGIN is used for public API symbols of plugin modules
@@ -238,18 +253,33 @@
 
 // define function name used for pretty printing
 // NOTE: the alias points to a compile time finction not a preprocessor macro
-#if defined(__GNUC__)
-  #define CURRENT_FUNCTION __PRETTY_FUNCTION__
-#elif defined(_MSC_VER)
-  #define CURRENT_FUNCTION __FUNCSIG__
+#if defined(__FUNCSIG__)
+  #define IRESEARCH_CURRENT_FUNCTION __FUNCSIG__
+#elif defined(__PRETTY_FUNCTION__) || defined(__GNUC__)
+  #define IRESEARCH_CURRENT_FUNCTION __PRETTY_FUNCTION__
 #else
-  #define CURRENT_FUNCTION __FUNCTION__
+  #error "compiler is not supported"
 #endif
 
+// IRESEARCH_COMPILER_HAS_FEATURE
 #ifndef __has_feature
   #define IRESEARCH_COMPILER_HAS_FEATURE(x) 0 // Compatibility with non-clang compilers.
 #else
   #define IRESEARCH_COMPILER_HAS_FEATURE(x) __has_feature(x)
+#endif
+
+// IRESEARCH_HAS_ATTRIBUTE
+#ifndef __has_attribute
+#define IRESEARCH_HAS_ATTRIBUTE(x) 0
+#else
+#define IRESEARCH_HAS_ATTRIBUTE(x) __has_attribute(x)
+#endif
+
+// IRESEARCH_ATTRIBUTE_NONNULL
+#if IRESEARCH_HAS_ATTRIBUTE(nonnull) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index) __attribute__((nonnull(arg_index)))
+#else
+#define IRESEARCH_ATTRIBUTE_NONNULL(...)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,6 +308,24 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// Endianess
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __APPLE__
+#if BYTE_ORDER == BIG_ENDIAN
+#define IRESEARCH_BIG_ENDIAN
+#endif
+#elif _WIN32
+// always LE
+#elif __linux__
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define IRESEARCH_BIG_ENDIAN
+#endif
+#elif !defined(_MSC_VER)
+#error "unsupported os or compiler"
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 
 // likely/unlikely branch indicator
 // macro definitions similar to the ones at
@@ -299,12 +347,14 @@
 
 #define UNUSED(par) (void)(par)
 
-#define NS_BEGIN(ns) namespace ns {
-#define NS_LOCAL namespace {
-#define NS_ROOT NS_BEGIN(iresearch)
-#define NS_END }
-
-NS_ROOT NS_END // ROOT namespace predeclaration
+namespace iresearch_absl { }
+namespace iresearch {
+// we are using custom absl namespace (and also prefixed macros names)
+// as absl does not support side-by-side compiling in single project
+// with another target also using another version of absl. So with this custom
+// namespace/macros we have isolated our absl copy.
+namespace absl = ::iresearch_absl; 
+}
 namespace irs = ::iresearch;
 
 #define STRINGIFY(x) #x
@@ -313,7 +363,5 @@ namespace irs = ::iresearch;
 // CMPXCHG16B requires that the destination
 // (memory) operand be 16-byte aligned
 #define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
-
-#include "types.hpp" // iresearch types
 
 #endif // IRESEARCH_SHARED_H

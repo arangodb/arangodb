@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
-/*global arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup collections for dump/reload tests
@@ -22,79 +21,30 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Wilfried Goesgens
+/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+
+const base = require("fs").join(
+  require('internal').pathForTesting('server'),
+  'dump',
+  'dump-setup-common.inc');
+const setup = require(base);
+
 (function () {
-  'use strict';
-  var db = require("@arangodb").db;
-  var i, c;
-
-  try {
-    db._dropDatabase("UnitTestsDumpSrc");
-  } catch (err1) {
-  }
-  db._createDatabase("UnitTestsDumpSrc");
-
-  // create user in _system database
-  var users = require("@arangodb/users");
-  users.save("foobaruser", "foobarpasswd", true);
-  users.grantDatabase("foobaruser", "_system");
-  users.grantCollection("foobaruser", "_system", "*");
-  users.grantDatabase("foobaruser", "UnitTestsDumpSrc");
-  users.grantCollection("foobaruser", "UnitTestsDumpSrc", "*");
-  db._useDatabase("UnitTestsDumpSrc");
-
-  var endpoint = arango.getEndpoint();
-
-  arango.reconnect(endpoint, "UnitTestsDumpSrc", "foobaruser", "foobarpasswd");
-
-  // this remains empty
-  db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
-
-  // create lots of documents
-  c = db._create("UnitTestsDumpMany");
-  let docs = [];
-  for (i = 0; i < 100000; ++i) {
-    docs.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
-    if (docs.length === 10000) {
-      c.save(docs);
-      docs = [];
-    }
-  }
-
-  c = db._createEdgeCollection("UnitTestsDumpEdges");
-  for (i = 0; i < 10; ++i) {
-    c.save("UnitTestsDumpMany/test" + i,
-           "UnitTestsDumpMany/test" + (i + 1),
-           { _key: "test" + i, what: i + "->" + (i + 1) });
-  }
-
-  // we update & modify the order
-  c = db._create("UnitTestsDumpOrder", { indexBuckets: 16 });
-  c.save({ _key: "one", value: 1 });
-  c.save({ _key: "two", value: 2 });
-  c.save({ _key: "three", value: 3 });
-  c.save({ _key: "four", value: 4 });
-
-  c.update("three", { value: 3, value2: 123 });
-  c.update("two", { value: 2, value2: 456 });
-  c.update("one", { value: 1, value2: 789 });
-  c.remove("four");
+  setup.cleanup();
+  setup.createEmpty();
+  setup.createUsers();
+  setup.createMany();
+  setup.createOrder();
   
-  // Install Foxx
-  const fs = require('fs');
-  const SERVICE_PATH = fs.makeAbsolute(fs.join(
-    require('internal').pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service'
-  ));
-  const FoxxManager = require('@arangodb/foxx/manager');
-  FoxxManager.install(SERVICE_PATH, '/test');
+  setup.createFoxx();
 })();
 
 return {
   status: true
 };
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H
-#define ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H 1
+#define ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -36,23 +36,17 @@ namespace arangodb {
 template <typename T>
 class FixedSizeAllocator {
  private:
+  // sizeof(T) is always a multiple of alignof(T) unless T is packed (which should never be the case here)!
+  static_assert((sizeof(T) % alignof(T)) == 0);
+
   class MemoryBlock {
    public:
     MemoryBlock(MemoryBlock const&) = delete;
     MemoryBlock& operator=(MemoryBlock const&) = delete;
 
-    MemoryBlock(size_t numItems)
-        : _numAllocated(0), _numUsed(0), _alloc(nullptr), _data(nullptr) {
+    MemoryBlock(size_t numItems, T* data) noexcept
+        : _numAllocated(numItems), _numUsed(0), _data(data), _next() {
       TRI_ASSERT(numItems >= 32);
-      // assumption is that the size of a cache line is at least 64,
-      // so we are allocating 64 bytes in addition
-      _alloc = new char[(std::max<size_t>(sizeof(T), alignof(T)) * numItems) + 64];
-
-      _numAllocated = numItems;
-
-      // adjust memory address to cache line offset (assumed to be 64 bytes)
-      _data = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(_alloc) + 63u) &
-                                      ~(uintptr_t(63u)));
 
       // the result should at least be 8-byte aligned
       TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % sizeof(void*) == 0);
@@ -62,18 +56,24 @@ class FixedSizeAllocator {
     ~MemoryBlock() noexcept { 
       // destroy all items
       for (size_t i = 0; i < _numUsed; ++i) {
-        T* p =  reinterpret_cast<T*>(_data + (std::max<size_t>(sizeof(T), alignof(T)) * i));
+        T* p =  _data + i;
         // call destructor for each item
         p->~T();
       }
-      // free storage
-      delete[] _alloc; 
+    }
+
+    MemoryBlock* getNextBlock() const noexcept {
+      return _next;
+    }
+
+    void setNextBlock(MemoryBlock* next) noexcept {
+      _next = next;
     }
 
     /// @brief return memory address for next in-place object construction.
     T* nextSlot() noexcept {
       TRI_ASSERT(_numUsed < _numAllocated);
-      return reinterpret_cast<T*>(_data + (sizeof(T) * _numUsed++));
+      return _data + _numUsed++;
     }
 
     /// @brief roll back the effect of nextSlot()
@@ -89,8 +89,8 @@ class FixedSizeAllocator {
    private:
     size_t _numAllocated;
     size_t _numUsed;
-    char* _alloc;
-    char* _data;
+    T* _data;
+    MemoryBlock* _next;
   };
 
  public:
@@ -98,34 +98,45 @@ class FixedSizeAllocator {
   FixedSizeAllocator& operator=(FixedSizeAllocator const&) = delete;
 
   FixedSizeAllocator() = default;
-  ~FixedSizeAllocator() = default;
+  ~FixedSizeAllocator() noexcept {
+    clear();
+  }
 
   template <typename... Args>
   T* allocate(Args&&... args) {
-    if (_blocks.empty() || _blocks.back()->full()) {
+    if (_head == nullptr || _head->full()) {
       allocateBlock();
     }
-    TRI_ASSERT(!_blocks.empty());
-    TRI_ASSERT(!_blocks.back()->full());
+    TRI_ASSERT(_head != nullptr);
+    TRI_ASSERT(!_head->full());
    
     try {
-      T* p = _blocks.back()->nextSlot();
+      T* p = _head->nextSlot();
       return new (p) T(std::forward<Args>(args)...);
     } catch (...) {
-      _blocks.back()->rollbackSlot();
+      _head->rollbackSlot();
       throw;
     }
   }
 
-  void clear() {
-    _blocks.clear();
+  void clear() noexcept {
+    auto* block = _head;
+    while (block != nullptr) {
+      auto* next = block->getNextBlock();
+      block->~MemoryBlock();
+      ::operator delete(block);
+      block = next;
+    }
+    _head = nullptr;
   }
 
   /// @brief return the total number of used elements, in all blocks
   size_t numUsed() const noexcept {
     size_t used = 0;
-    for (auto const& block : _blocks) {
+    auto* block = _head;
+    while (block != nullptr) {
       used += block->numUsed();
+      block = block->getNextBlock();
     }
     return used;
   }
@@ -134,11 +145,28 @@ class FixedSizeAllocator {
   void allocateBlock() {
     // minimum block size is for 64 items
     // maximum block size is for 4096 items
-    size_t const numItems = 64 << std::min<size_t>(6, _blocks.size() + 1);
-    _blocks.emplace_back(std::make_unique<MemoryBlock>(numItems));
+    size_t const numItems = 64 << std::min<size_t>(6, _numBlocks);
+
+    // assumption is that the size of a cache line is at least 64,
+    // so we are allocating 64 bytes in addition
+    auto const dataSize = sizeof(T) * numItems + 64;
+    void* p = ::operator new(sizeof(MemoryBlock) + dataSize);
+
+    // adjust memory address to cache line offset (assumed to be 64 bytes)
+    auto* data = reinterpret_cast<T*>(
+      (reinterpret_cast<uintptr_t>(p) + sizeof(MemoryBlock) + 63u) & ~(uintptr_t(63u)));
+
+    // creating a MemoryBlock is noexcept, it should not fail
+    new (p)MemoryBlock(numItems, data);
+
+    MemoryBlock* block = static_cast<MemoryBlock*>(p);
+    block->setNextBlock(_head);
+    _head = block;
+    ++_numBlocks;
   }
 
-  std::vector<std::unique_ptr<MemoryBlock>> _blocks;
+  MemoryBlock* _head{nullptr};
+  std::size_t _numBlocks{0};
 };
 
 }  // namespace arangodb

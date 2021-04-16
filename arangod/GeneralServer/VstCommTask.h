@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,6 +103,9 @@ class VstCommTask final : public GeneralCommTask<T> {
   static constexpr size_t maxChunkSize = 30 * 1024;
 
  private:
+
+  std::string url(VstRequest const* req) const;
+
   std::map<uint64_t, Message> _messages;
 
   // the queue is dynamically sized because we can't guarantee that

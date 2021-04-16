@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,9 +75,6 @@ class ReplicationApplierConfiguration {
   bool _verbose;
   RestrictType _restrictType;
   std::set<std::string> _restrictCollections;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _force32mode = false;  // force client to act like 3.2
-#endif
   std::string _clientInfoString;
 
  public:

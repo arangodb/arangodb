@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,10 +24,17 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_HELPERS_H
 #define ARANGOD_CLUSTER_CLUSTER_HELPERS_H 1
 
-#include <velocypack/Slice.h>
 #include "Basics/Common.h"
+#include "Cluster/ClusterTypes.h"
+
+#include <string>
+#include <vector>
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
 class ClusterHelpers {
  public:
   static bool compareServerLists(arangodb::velocypack::Slice plan,
@@ -36,7 +43,15 @@ class ClusterHelpers {
   // values are passed by value intentionally, as they will be sorted inside the
   // function
   static bool compareServerLists(std::vector<std::string>, std::vector<std::string>);
+  
+  /// @brief whether or not the passed in name is a coordinator server name, i.e. "CRDN-..."
+  static bool isCoordinatorName(ServerID const& serverId);
+     
+  /// @brief whether or not the passed in name is a DB server name, i.e. "PRMR-..."
+  static bool isDBServerName(ServerID const& serverId);
+  
 };
+
 }  // namespace arangodb
 
 #endif

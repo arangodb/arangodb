@@ -26,16 +26,18 @@
 
 #include <functional>
 #include <memory>
-#include <unordered_set>
 #include <mutex>
+
+#include <absl/container/flat_hash_set.h>
+
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/thread_utils.hpp"
 #include "utils/memory.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-template<typename Key, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
+template<typename Key, typename Hash = absl::Hash<Key>, typename Equal = std::equal_to<Key>>
 class ref_counter : public util::noncopyable { // noncopyable because shared_ptr refs hold reference to internal map keys
  public:
   typedef std::shared_ptr<const Key> ref_t;
@@ -55,7 +57,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   }; // hash
 
   ref_t add(Key&& key) {
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
 
     auto res = refs_.emplace(ref_t(), &key);
 
@@ -75,34 +77,34 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   bool remove(const Key& key) {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     return refs_.erase(ref) > 0;
   }
 
   bool contains(const Key& key) const noexcept {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     return refs_.find(ref) != refs_.end();
   }
 
   size_t find(const Key& key) const noexcept {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     auto itr = refs_.find(ref);
 
     return itr == refs_.end() ? 0 : (itr->use_count() - 1); // -1 for usage by refs_ itself
   }
 
   bool empty() const noexcept {
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     return refs_.empty();
   }
 
   template<typename Visitor>
   bool visit(const Visitor& visitor, bool remove_unused = false) {
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
 
     for (auto itr = refs_.begin(), end = refs_.end(); itr != end;) {
       auto& ref = *itr;
@@ -111,7 +113,8 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
       auto visit_next = visitor(*ref, ref.use_count() - 1); // -1 for usage by refs_ itself
 
       if (remove_unused && ref.unique()) {
-        itr = refs_.erase(itr);
+        const auto erase_me = itr++;
+        refs_.erase(erase_me);
       } else {
         ++itr;
       }
@@ -126,9 +129,9 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
 
  private:
   mutable std::recursive_mutex lock_; // recursive to allow usage for 'this' from withing visit(...)
-  std::unordered_set<ref_t, hash, equal_to> refs_;
+  absl::flat_hash_set<ref_t, hash, equal_to> refs_;
 }; // ref_counter
 
-NS_END
+}
 
 #endif

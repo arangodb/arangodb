@@ -22,39 +22,24 @@
 
 #include <chrono>
 
-#include "MurmurHash/MurmurHash3.h"
-#include "integer.hpp"
+#include <absl/hash/internal/city.h>
+
 #include "string.hpp"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     hash function
 // -----------------------------------------------------------------------------
 
-NS_LOCAL
-
-inline uint32_t get_seed() noexcept {
-  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::high_resolution_clock::now().time_since_epoch()
-  );
-
-  return static_cast<uint32_t>(ms.count());
-}
-
+namespace {
+using namespace irs;
 template<typename T>
-inline size_t get_hash(const T* value, size_t size) noexcept {
-  static const auto seed = get_seed();
-  size_t length = std::min(size, size_t(irs::integer_traits<int>::const_max));
-  uint32_t code;
-
-  // hash as much as possible if length greater than std::numeric_limits<int>::max
-  MurmurHash3_x86_32(value, int(length), seed, &code);
-
-  return code;
+size_t get_hash(const T* value, size_t size) noexcept {
+  return absl::hash_internal::CityHash64(reinterpret_cast<const char*>(value), size);
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   basic_string_ref implementation
@@ -67,7 +52,7 @@ template class IRESEARCH_API basic_string_ref<byte_type>;
 
 #endif
 
-NS_BEGIN(hash_utils)
+namespace hash_utils {
 
 size_t hash(const std::string& value) noexcept {
   return get_hash(value.c_str(), value.size());
@@ -93,5 +78,5 @@ size_t hash(const string_ref& value) noexcept {
   return get_hash(value.c_str(), value.size());
 }
 
-NS_END // hash_utils
-NS_END
+} // hash_utils
+}

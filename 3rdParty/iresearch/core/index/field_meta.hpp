@@ -27,7 +27,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/attributes.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct field_meta 
@@ -88,6 +88,6 @@ struct IRESEARCH_API column_meta {
 static_assert(std::is_nothrow_move_constructible<column_meta>::value,
               "default move constructor expected");
 
-NS_END
+}
 
 #endif

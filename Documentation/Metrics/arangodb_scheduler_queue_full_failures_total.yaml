@@ -1,0 +1,18 @@
+name: arangodb_scheduler_queue_full_failures_total
+renamedFrom: arangodb_scheduler_queue_full_failures
+introducedIn: "3.8.0"
+help: |
+  Number of tasks dropped and not added to internal queue.
+unit: number
+type: counter
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of tasks dropped because the queue was already full. The queue capacities
+  can be configured via the startup options `--server.scheduler-queue-size`,
+  `--server.prio1-size`, `--server.prio2-size` and `--server.maximal-queue-size`.

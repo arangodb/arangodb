@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +23,6 @@
 
 #ifndef VELOCYPACK_SHAREDSLICE_H
 #define VELOCYPACK_SHAREDSLICE_H
-
-#if __cplusplus < 201703L
-#error "This file can only be used with at least C++17. Set CMAKE_CXX_STANDARD=17."
-#endif
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
@@ -126,6 +123,11 @@ class SharedSlice {
   // void set(uint8_t const* s);
   // If necessary, it should probably be implemented as
   // void set(std::shared_ptr<uint8_t const>) instead.
+  
+  // hashes the binary representation of a value. this value is only suitable
+  // to be stored in memory, but should not be persisted, as its implementation
+  // may change in the future
+  [[nodiscard]] uint64_t volatileHash() const;
 
   [[nodiscard]] uint64_t hash(uint64_t seed = defaultSeed64) const;
 

@@ -130,12 +130,12 @@ class directory_test_case_base : public virtual test_param_base<tests::dir_facto
 
 } // tests
 
-NS_ROOT
+namespace iresearch {
 
 template<>
 struct type<tests::rot13_encryption> : type<encryption> {  };
 
-NS_END
+}
 
 #endif
 

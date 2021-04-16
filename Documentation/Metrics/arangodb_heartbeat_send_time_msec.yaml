@@ -1,0 +1,24 @@
+name: arangodb_heartbeat_send_time_msec
+introducedIn: "3.7.1"
+help: |
+  Time required to send a heartbeat.
+unit: ms
+type: histogram
+category: Health
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - single
+description: |
+  Histogram of times required to send heartbeats. For every heartbeat
+  sent the time is measured and an event is put into the histogram.
+  In the single server, this counter is only used in active failover mode.
+threshold: |
+  It is a bad sign for health if heartbeat transmissions are not fast. 
+  If there are heartbeats which frequently take longer than a few hundred
+  milliseconds, or even seconds, this can eventually lead to failover actions 
+  which are ultimately bad for the service.
+troubleshoot: |
+  High heartbeat send times can be a sign of overload or of bad network 
+  connectivity. Potentially move the agent instances to separate machines.

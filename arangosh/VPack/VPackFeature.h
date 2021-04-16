@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,10 +41,9 @@ class VPackFeature final : public application_features::ApplicationFeature {
   int* _result;
   std::string _inputFile;
   std::string _outputFile;
-  bool _prettyPrint;
-  bool _jsonInput;
-  bool _hexInput;
-  bool _printNonJson;
+  std::string _inputType;
+  std::string _outputType;
+  bool _failOnNonJson;
 };
 
 }  // namespace arangodb

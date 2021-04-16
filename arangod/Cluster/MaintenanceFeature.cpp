@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,6 +56,47 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
+DECLARE_COUNTER(arangodb_maintenance_action_duplicate_total, "Counter of actions that have been discarded because of a duplicate");
+DECLARE_COUNTER(arangodb_maintenance_action_registered_total, "Counter of actions that have been registered in the action registry");
+DECLARE_COUNTER(arangodb_maintenance_action_failure_total, "Failure counter for the maintenance actions");
+
+
+////////////////////////////////////////////////////////////////////////////////
+// FAKE DECLARATIONS - remove when v1 is removed
+////////////////////////////////////////////////////////////////////////////////
+
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase1_accum_runtime_msec_total,
+    "Accumulated runtime of phase one [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase2_accum_runtime_msec_total,
+    "Accumulated runtime of phase two [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_agency_sync_accum_runtime_msec_total,
+    "Accumulated runtime of agency sync phase [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_runtime_msec_total,
+    "Accumulated action runtime");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total,
+    "Accumulated action queue time");
+
+struct MaintenanceScale {
+  static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
+};
+struct MaintenanceActionRuntimeScale {
+  static log_scale_t<uint64_t> scale() { return {4, 82, 86400000, 10}; }
+};
+struct MaintenanceActionQueueTimeScale {
+  static log_scale_t<uint64_t> scale() { return {2, 82, 3600000, 12}; }
+};
+
+DECLARE_HISTOGRAM(arangodb_maintenance_phase1_runtime_msec, MaintenanceScale, "Maintenance Phase 1 runtime histogram [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_phase2_runtime_msec, MaintenanceScale, "Maintenance Phase 2 runtime histogram [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_agency_sync_runtime_msec, MaintenanceScale, "Total time spent on agency sync [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_action_runtime_msec, MaintenanceActionRuntimeScale, "Time spent executing a maintenance action [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_action_queue_time_msec, MaintenanceActionQueueTimeScale, "Time spent in the queue before execution for maintenance actions [ms]");
+DECLARE_COUNTER(arangodb_maintenance_action_done_total, "Counter of actions that are done and have been removed from the registry");
+DECLARE_GAUGE(arangodb_shards_out_of_sync, uint64_t, "Number of leader shards not fully replicated");
+DECLARE_GAUGE(arangodb_shards_number, uint64_t, "Number of shards on this machine");
+DECLARE_GAUGE(arangodb_shards_leader_number, uint64_t, "Number of leader shards on this machine");
+DECLARE_GAUGE(arangodb_shards_not_replicated, uint64_t, "Number of shards not replicated at all");
+
 namespace {
 
 bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
@@ -91,8 +132,6 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
 }
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOption(
       "--server.maintenance-threads",
       "maximum number of threads available for maintenance actions",
@@ -151,79 +190,41 @@ void MaintenanceFeature::initializeMetrics() {
   auto& metricsFeature = server().getFeature<arangodb::MetricsFeature>();
 
   _phase1_runtime_msec =
-      metricsFeature.histogram(StaticStrings::MaintenancePhaseOneRuntimeMs,
-                               log_scale_t<uint64_t>(2, 50, 8000, 10),
-                               "Maintenance Phase 1 runtime histogram [ms]");
+    metricsFeature.add(arangodb_maintenance_phase1_runtime_msec{});
   _phase2_runtime_msec =
-      metricsFeature.histogram(StaticStrings::MaintenancePhaseTwoRuntimeMs,
-                               log_scale_t<uint64_t>(2, 50, 8000, 10),
-                               "Maintenance Phase 2 runtime histogram [ms]");
-
+    metricsFeature.add(arangodb_maintenance_phase2_runtime_msec{});
   _agency_sync_total_runtime_msec =
-      metricsFeature.histogram(StaticStrings::MaintenanceAgencySyncRuntimeMs,
-                               log_scale_t<uint64_t>(2, 50, 8000, 10),
-                               "Total time spend on agency sync [ms]");
+    metricsFeature.add(arangodb_maintenance_agency_sync_runtime_msec{});
 
   _phase1_accum_runtime_msec =
-      metricsFeature.counter(StaticStrings::MaintenancePhaseOneAccumRuntimeMs,
-                             0, "Accumulated runtime of phase one [ms]");
+    metricsFeature.add(arangodb_maintenance_phase1_accum_runtime_msec_total{});
   _phase2_accum_runtime_msec =
-      metricsFeature.counter(StaticStrings::MaintenancePhaseTwoAccumRuntimeMs,
-                             0, "Accumulated runtime of phase two [ms]");
+    metricsFeature.add(arangodb_maintenance_phase2_accum_runtime_msec_total{});
   _agency_sync_total_accum_runtime_msec =
-      metricsFeature.counter(StaticStrings::MaintenanceAgencySyncAccumRuntimeMs,
-                             0, "Accumulated runtime of agency sync phase [ms]");
+    metricsFeature.add(arangodb_maintenance_agency_sync_accum_runtime_msec_total{});
 
-  _shards_out_of_sync = metricsFeature.gauge<uint64_t>(
-      StaticStrings::ShardsOutOfSync, 0,
-      "Number of leader shards not fully replicated");
-  _shards_total_count =
-      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsTotalCount, 0,
-                                     "Number of shards on this machine");
-  _shards_leader_count =
-      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsLeaderCount, 0,
-                                     "Number of leader shards on this machine");
-  _shards_not_replicated_count =
-      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsNotReplicated, 0,
-                                     "Number of shards not replicated at all");
+  _shards_out_of_sync = metricsFeature.add(arangodb_shards_out_of_sync{});
+  _shards_total_count = metricsFeature.add(arangodb_shards_number{});
+  _shards_leader_count = metricsFeature.add(arangodb_shards_leader_number{});
+  _shards_not_replicated_count = metricsFeature.add(arangodb_shards_not_replicated{});
 
-  _action_duplicated_counter = metricsFeature.counter(
-      StaticStrings::ActionDuplicateCounter, 0,
-      "Counter of action that have been discarded because of a duplicate");
-  _action_registered_counter = metricsFeature.counter(
-      StaticStrings::ActionRegisteredCounter, 0,
-      "Counter of action that have been registered in the action registry");
-  _action_done_counter =
-      metricsFeature.counter(StaticStrings::ActionDoneCounter, 0,
-                             "Counter of action that are done and have been "
-                             "removed from the registry");
+  _action_duplicated_counter = metricsFeature.add(arangodb_maintenance_action_duplicate_total{});
+  _action_registered_counter = metricsFeature.add(arangodb_maintenance_action_registered_total{});
+  _action_done_counter = metricsFeature.add(arangodb_maintenance_action_done_total{});
 
-  const char* instrumentedActions[] = {CREATE_COLLECTION, CREATE_DATABASE,
-                                       UPDATE_COLLECTION, SYNCHRONIZE_SHARD,
-                                       DROP_COLLECTION,   DROP_DATABASE,
-                                       DROP_INDEX};
+  const char* instrumentedActions[] =
+    {CREATE_COLLECTION, CREATE_DATABASE, UPDATE_COLLECTION, SYNCHRONIZE_SHARD, DROP_COLLECTION, DROP_DATABASE, DROP_INDEX};
 
+  std::string key("action");
   for (const char* action : instrumentedActions) {
-    std::string action_label = std::string{"action=\""} + action + '"';
 
     _maintenance_job_metrics_map.try_emplace(
-        action,
-        metricsFeature.histogram({StaticStrings::MaintenanceActionRuntimeMs, action_label},
-                                 log_scale_t<uint64_t>(4, 82, 86400000, 10),
-                                 "Time spend execution the action [ms]"),
-        metricsFeature.histogram(
-            {StaticStrings::MaintenanceActionQueueTimeMs, action_label},
-            log_scale_t<uint64_t>(2, 82, 3600000, 12),
-            "Time spend in the queue before execution [ms]"),
-
-        metricsFeature.counter({StaticStrings::MaintenanceActionAccumRuntimeMs, action_label},
-                               0, "Accumulated action runtime"),
-
-        metricsFeature.counter({StaticStrings::MaintenanceActionAccumQueueTimeMs, action_label},
-                               0, "Accumulated action queue time"),
-
-        metricsFeature.counter({StaticStrings::MaintenanceActionFailureCounter, action_label},
-                               0, "Failure counter for the action"));
+      action,
+      metricsFeature.add(arangodb_maintenance_action_runtime_msec{}.withLabel(key, action)),
+      metricsFeature.add(arangodb_maintenance_action_queue_time_msec{}.withLabel(key, action)),
+      metricsFeature.add(arangodb_maintenance_action_accum_runtime_msec_total{}.withLabel(key, action)),
+      metricsFeature.add(arangodb_maintenance_action_accum_queue_time_msec_total{}.withLabel(key, action)),
+      metricsFeature.add(arangodb_maintenance_action_failure_total{}.withLabel(key, action)));
   }
 }
 
@@ -267,7 +268,7 @@ void MaintenanceFeature::start() {
 void MaintenanceFeature::beginShutdown() {
   if (_resignLeadershipOnShutdown && ServerState::instance()->isDBServer()) {
     struct callback_data {
-      uint64_t _jobId;  // initialised before callback
+      uint64_t _jobId;  // initialized before callback
       bool _completed;  // populated by the callback
       std::mutex _mutex;  // mutex used by callback and loop to sync access to callback_data
       std::condition_variable _cv;  // signaled if callback has found something
@@ -395,7 +396,15 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
 Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAction,
                                      bool executeNow) {
+
+  TRI_ASSERT(newAction != nullptr);
+  TRI_ASSERT(newAction->ok());
+
   Result result;
+  
+  if (newAction == nullptr) {
+    return result.reset(TRI_ERROR_INTERNAL, "invalid call of MaintenanceFeature::addAction");
+  }
 
   // the underlying routines are believed to be safe and throw free,
   //  but just in case
@@ -408,7 +417,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
-      if (newAction && newAction->ok()) {
+      if (newAction->ok()) {
         // Register action only if construction was ok
         registerAction(newAction, executeNow);
       } else {
@@ -996,7 +1005,7 @@ std::unordered_set<std::string> MaintenanceFeature::dirty(
     _firstRun = false;
   } else {
     if (!more.empty()) {
-      ret.insert(std::make_move_iterator(more.begin()),std::make_move_iterator(more.end()));
+      ret.insert(more.begin(), more.end());
     }
   }
   return ret;
@@ -1006,18 +1015,30 @@ std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
   return server().getFeature<ClusterFeature>().allDatabases();
 }
 
-size_t MaintenanceFeature::lastNumberOfDatabases() {
+size_t MaintenanceFeature::lastNumberOfDatabases() const {
   // This number is not guarded relies on single threadedness of the maintenance
   return _lastNumberOfDatabases;
 }
 
-std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(
-  ShardID const& shardId) const {
-  auto it = _shardActionMap.find(shardId);
-  if (it == _shardActionMap.end()) {
-    return nullptr;
+bool MaintenanceFeature::hasAction(ActionState state,  ShardID const& shardId, std::string const& type) const {
+  READ_LOCKER(rLock, _actionRegistryLock);
+
+  // this is not ideal, as it needs to do a linear scan of all maintenance jobs in the
+  // registry. however, this is our best bet, as we don't have active a struct with
+  // currently running jobs which allows quick access by shard id. the only thing we
+  // have is the ShardActionMap, but it also contains _planned_ actions, which are
+  // currently not executing. we want all actions with a specific status, so we need
+  // to do the linear scan here.
+  for (auto const& action : _actionRegistry) {
+    if (action->getState() != state) {
+      continue;
+    }
+    ActionDescription const& desc = action->describe();
+    if (desc.name() == type && desc.has(SHARD, shardId)) {
+      return true;
+    }
   }
-  return it->second;
+  return false;
 }
 
 bool MaintenanceFeature::isDirty(std::string const& dbName) const {

@@ -38,7 +38,7 @@
 #include "utils/utf8_utils.hpp"
 #include "utils/std.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -222,7 +222,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
     const parametric_description& d) {
   field_collectors field_stats(order);
   term_collectors term_stats(order, 1);
-  multiterm_query::states_t states(index.size());
+  multiterm_query::states_t states(index);
 
   if (!terms_limit) {
     all_terms_collector<decltype(states)> term_collector(states, field_stats, term_stats);
@@ -255,9 +255,9 @@ filter::prepared::ptr prepare_levenshtein_filter(
     boost, sort::MergeType::MAX);
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   by_edit_distance implementation
@@ -337,4 +337,4 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
   );
 }
 
-NS_END
+}

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,6 +55,7 @@
 #include "types.h"
 
 #include <velocypack/Iterator.h>
+#include "frozen/map.h"
 
 namespace {
 
@@ -66,9 +67,7 @@ using namespace arangodb::iresearch;
 ////////////////////////////////////////////////////////////////////////////////
 aql::AstNode const ALL(aql::AstNodeValue(true));
 
-inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
-  return filterCondition == &ALL;
-}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--       helpers for std::vector<arangodb::iresearch::IResearchSort>
@@ -134,12 +133,19 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice c
 // --SECTION--                            helpers for IResearchViewNode::Options
 // -----------------------------------------------------------------------------
 namespace {
-std::map<std::string, arangodb::aql::ConditionOptimization> const conditionOptimizationTypeMap = {
+static constexpr frozen::map<irs::string_ref, arangodb::aql::ConditionOptimization, 4> conditionOptimizationTypeMap = {
     {"auto", arangodb::aql::ConditionOptimization::Auto},
     {"nodnf", arangodb::aql::ConditionOptimization::NoDNF},
     {"noneg", arangodb::aql::ConditionOptimization::NoNegation},
     {"none", arangodb::aql::ConditionOptimization::None}};
+
+static constexpr frozen::map<irs::string_ref, arangodb::iresearch::CountApproximate, 2> countApproximationTypeMap = {
+    {"exact", arangodb::iresearch::CountApproximate::Exact},
+    {"cost", arangodb::iresearch::CountApproximate::Cost}};
 }
+
+
+
 
 void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
@@ -164,6 +170,15 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
 
   if (!options.noMaterialization) {
     builder.add("noMaterialization", VPackValue(options.noMaterialization));
+  }
+
+  if (options.countApproximate != CountApproximate::Exact) { // to be backward compatible - do not write default value
+    for (auto const& r : countApproximationTypeMap) {
+      if (r.second == options.countApproximate) {
+        builder.add("countApproximate", VPackValue(r.first));
+        break;
+      }
+    }
   }
 }
 
@@ -248,6 +263,25 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
       }
 
       options.noMaterialization = optionSlice.getBool();
+    }
+  }
+
+  // countApproximate
+  {
+    auto const countApproximateSlice =
+        optionsSlice.get("countApproximate");
+    if (!countApproximateSlice.isNone()) {
+      if (!countApproximateSlice.isString()) {
+        return false;
+      }
+      VPackValueLength l;
+      auto type = countApproximateSlice.getString(l);
+      irs::string_ref typeStr(type, l);
+      auto conditionTypeIt = countApproximationTypeMap.find(typeStr);
+      if (conditionTypeIt == countApproximationTypeMap.end()) {
+        return false;
+      }
+      options.countApproximate = conditionTypeIt->second;
     }
   }
 
@@ -370,8 +404,26 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          options.noMaterialization = value.getBoolValue();
          return true;
        }},
-     // cppcheck-suppress constStatement
-     {"conditionOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+       // cppcheck-suppress constStatement
+       {"countApproximate", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+                               aql::AstNode const& value,
+                               IResearchViewNode::Options& options, std::string& error) {
+         if (!value.isValueType(aql::VALUE_TYPE_STRING)) {
+           error = "string value expected for option 'countApproximate'";
+           return false;
+         }
+         auto type = value.getString();
+         auto countTypeIt = countApproximationTypeMap.find(type);
+         if (countTypeIt == countApproximationTypeMap.end()) {
+           error =
+               "unknown value '" + type + "' for option 'countApproximate'";
+           return false;
+         }
+         options.countApproximate = countTypeIt->second;
+         return true;
+       }},
+       // cppcheck-suppress constStatement
+       {"conditionOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
                                   aql::AstNode const& value,
                                   IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_STRING)) {
@@ -653,9 +705,6 @@ typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
 SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
-  static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::FindOrCreate,
-                                                      IResearchView::SnapshotMode::SyncAndReplace};
-
   auto& view = LogicalView::cast<IResearchView>(*node.view());
   auto& options = node.options();
   auto* resolver = trx.resolver();
@@ -686,9 +735,12 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods
     snapshotKey = &node;
   }
 
+  IResearchView::SnapshotMode const mode = !options.forceSync
+    ? IResearchView::SnapshotMode::FindOrCreate
+    : IResearchView::SnapshotMode::SyncAndReplace;
+
   // use aliasing ctor
-  return {SnapshotPtr(), view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)],
-                                       &collections, snapshotKey)};
+  return {SnapshotPtr(), view.snapshot(trx, mode, &collections, snapshotKey)};
 }
 
 /// @brief Since single-server is transactional we do the following:
@@ -706,15 +758,19 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods
 SnapshotPtr snapshotSingleServer(IResearchViewNode const& node, transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isSingleServer());
 
-  static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::Find,
-                                                      IResearchView::SnapshotMode::SyncAndReplace};
-
   auto& view = LogicalView::cast<IResearchView>(*node.view());
   auto& options = node.options();
 
+  IResearchView::SnapshotMode mode = IResearchView::SnapshotMode::Find;
+
+  if (options.forceSync) {
+    mode = IResearchView::SnapshotMode::SyncAndReplace;
+  } else if (!trx.isMainTransaction()) {
+    mode = IResearchView::SnapshotMode::FindOrCreate;
+  }
+
   // use aliasing ctor
-  auto reader = SnapshotPtr(SnapshotPtr(),
-                            view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)]));
+  auto reader = SnapshotPtr(SnapshotPtr(), view.snapshot(trx, mode));
 
   if (options.restrictSources && reader) {
     // reassemble reader
@@ -845,11 +901,13 @@ constexpr size_t getExecutorIndex(bool sorted, bool ordered) {
 namespace arangodb {
 namespace iresearch {
 
+bool filterConditionIsEmpty(aql::AstNode const* filterCondition) noexcept {
+  return filterCondition == &ALL;
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                  IResearchViewNode implementation
 // -----------------------------------------------------------------------------
 
-const ptrdiff_t IResearchViewNode::SortColumnNumber = -1;
 
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
                                      aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
@@ -1213,7 +1271,7 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 
 std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::collections() const {
   TRI_ASSERT(_plan && _plan->getAst());
- auto const& collections = _plan->getAst()->query().collections();
+  auto const& collections = _plan->getAst()->query().collections();
 
   std::vector<std::reference_wrapper<aql::Collection const>> viewCollections;
 
@@ -1398,7 +1456,7 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
     for (auto const& it : vars) {
       aql::RegisterId reg = variableToRegisterId(it);
       // The filter condition may refer to registers that are written here
-      if (reg < getNrInputRegisters()) {
+      if (reg.isConstRegister() || reg < getNrInputRegisters()) {
         inputRegs.emplace(reg);
       }
     }
@@ -1409,10 +1467,6 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
 
 void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
   _filterCondition = !node ? &ALL : node;
-}
-
-bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
-  return ::filterConditionIsEmpty(_filterCondition);
 }
 
 #if defined(__GNUC__)
@@ -1533,7 +1587,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         return aql::IResearchViewExecutorInfos::NoMaterializeRegisters{};
       } else {
         auto outReg = variableToRegisterId(_outVariable);
-
         writableOutputRegisters.emplace(outReg);
         return aql::IResearchViewExecutorInfos::MaterializeRegisters{outReg};
       }
@@ -1556,7 +1609,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
         auto const it = varInfos.find(fieldsVars.var->id);
         TRI_ASSERT(it != varInfos.cend());
-
         auto const regId = it->second.registerId;
         writableOutputRegisters.emplace(regId);
         fields.emplace(fieldsVars.fieldNum, regId);
@@ -1564,7 +1616,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     }
 
     TRI_ASSERT(writableOutputRegisters.size() ==
-               numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
+               static_cast<std::size_t>(numDocumentRegs) + numScoreRegisters + numViewVarsRegisters);
 
     aql::RegisterInfos registerInfos =
         createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
@@ -1583,7 +1635,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         volatility(),
                                         getRegisterPlan()->varInfo,   // ??? do we need this?
                                         getDepth(),
-                                        std::move(outNonMaterializedViewRegs)};
+                                        std::move(outNonMaterializedViewRegs),
+                                        _options.countApproximate};
 
     return std::make_tuple(materializeType, std::move(executorInfos), std::move(registerInfos));
   };

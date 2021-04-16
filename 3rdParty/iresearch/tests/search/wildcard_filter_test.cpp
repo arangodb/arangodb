@@ -31,7 +31,7 @@
 #include "search/multiterm_query.hpp"
 #endif
 
-NS_LOCAL
+namespace {
 
 template<typename Filter = irs::by_wildcard>
 Filter make_filter(
@@ -43,7 +43,7 @@ Filter make_filter(
   return q;
 }
 
-NS_END
+}
 
 TEST(by_wildcard_test, options) {
   irs::by_wildcard_options opts;

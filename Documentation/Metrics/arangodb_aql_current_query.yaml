@@ -1,0 +1,15 @@
+name: arangodb_aql_current_query
+introducedIn: "3.8.0"
+help: |
+  Current number of AQL queries executing.
+unit: number
+type: gauge
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Current number of AQL queries executing.

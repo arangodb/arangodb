@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,7 @@ class HandlerResult {
   explicit HandlerResult(arangodb::auth::Source const& source)
       : HandlerResult(TRI_ERROR_FAILED, source) {}
 
-  HandlerResult(int errorNumber, arangodb::auth::Source const& source)
+  HandlerResult(ErrorCode errorNumber, arangodb::auth::Source const& source)
       : _result(errorNumber), _authSource(source) {}
 
   HandlerResult(std::set<std::string> const& roles, auth::Source const& source)
@@ -54,8 +54,8 @@ class HandlerResult {
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  ErrorCode errorNumber() const { return _result.errorNumber(); }
+  std::string_view errorMessage() const { return _result.errorMessage(); }
 
  protected:
   Result _result;

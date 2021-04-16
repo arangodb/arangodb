@@ -25,7 +25,7 @@
 #include "formats/empty_term_reader.hpp"
 #include "search/disjunction.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -132,9 +132,9 @@ class column_prefix_existence_query final : public column_existence_query {
   }
 }; // column_prefix_existence_query
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                by_column_existence implementation
@@ -162,4 +162,4 @@ filter::prepared::ptr by_column_existence::prepare(
     : memory::make_managed<column_existence_query>(field(), std::move(stats), filter_boost);
 }
 
-NS_END // ROOT
+} // ROOT

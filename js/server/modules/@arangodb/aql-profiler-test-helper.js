@@ -67,7 +67,6 @@ const ScatterNode = 'ScatterNode';
 const ShortestPathNode = 'ShortestPathNode';
 const SingletonNode = 'SingletonNode';
 const SortNode = 'SortNode';
-const SubqueryNode = 'SubqueryNode';
 const TraversalNode = 'TraversalNode';
 const UpdateNode = 'UpdateNode';
 const UpsertNode = 'UpsertNode';
@@ -77,7 +76,7 @@ const nodeTypesList = [
   EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
   InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
   ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-  SubqueryNode, TraversalNode, UpdateNode, UpsertNode
+  TraversalNode, UpdateNode, UpsertNode
 ];
 
 const AsyncBlock = 'AsyncNode';
@@ -100,7 +99,6 @@ const SingletonBlock = 'SingletonNode';
 const SortBlock = 'SortNode';
 const SortedCollectBlock = 'SortedCollectNode';
 const SortingGatherBlock = 'SortingGatherNode';
-const SubqueryBlock = 'SubqueryNode';
 const TraversalBlock = 'TraversalNode';
 const UnsortingGatherBlock = 'UnsortingGatherNode';
 const RemoveBlock = 'RemoveNode';
@@ -119,7 +117,7 @@ const blockTypesList = [
   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
   HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
   ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-  SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+  SortedCollectBlock, SortingGatherBlock, TraversalBlock,
   UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
   UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
   IResearchViewBlock, IResearchViewOrderedBlock
@@ -127,7 +125,7 @@ const blockTypesList = [
 
 let translateType = function(nodes, node) {
   let types = {};
-  nodes.forEach(function(node) { 
+  nodes.forEach(function(node) {
     let type = node.type;
     if (type === 'CollectNode') {
       if (node.collectOptions.method === 'sorted') {
@@ -201,14 +199,14 @@ function zipPlanNodesIntoStatsNodes (profile) {
     },
     {}
   );
-  
+
   // Note: We need to take the order plan.nodes here, not stats.nodes,
   // as stats.nodes is sorted by id.
   return profile.plan.nodes.map(node => (
-    { 
-      id: node.id, 
-      type: translateType(profile.plan.nodes, node), 
-      fromStats: statsNodesById[node.id], fromPlan: node 
+    {
+      id: node.id,
+      type: translateType(profile.plan.nodes, node),
+      fromStats: statsNodesById[node.id], fromPlan: node
     }
   ));
 }
@@ -377,10 +375,10 @@ function assertIsProfilePlanObject (plan) {
   // TODO add deep checks for plan.collections
 
   for (let variable of plan.variables) {
-    expect(variable).to.have.all.keys([
+    expect(variable).to.include.all.keys([
       'id',
       'name',
-      'isDataFromCollection'
+      'isDataFromCollection',
     ]);
 
     expect(variable.id).to.be.a('number');
@@ -761,7 +759,6 @@ exports.ScatterNode = ScatterNode;
 exports.ShortestPathNode = ShortestPathNode;
 exports.SingletonNode = SingletonNode;
 exports.SortNode = SortNode;
-exports.SubqueryNode = SubqueryNode;
 exports.TraversalNode = TraversalNode;
 exports.UpdateNode = UpdateNode;
 exports.UpsertNode = UpsertNode;
@@ -786,7 +783,6 @@ exports.SingletonBlock = SingletonBlock;
 exports.SortBlock = SortBlock;
 exports.SortedCollectBlock = SortedCollectBlock;
 exports.SortingGatherBlock = SortingGatherBlock;
-exports.SubqueryBlock = SubqueryBlock;
 exports.TraversalBlock = TraversalBlock;
 exports.UnsortingGatherBlock = UnsortingGatherBlock;
 exports.RemoveBlock = RemoveBlock;

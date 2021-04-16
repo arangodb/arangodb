@@ -23,7 +23,7 @@
 #include "shared.hpp"
 #include "error.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 //                                                                   error_base
@@ -39,14 +39,6 @@ const char* error_base::what() const noexcept {
 
 const char* not_supported::what() const noexcept {
   return "Operation not supported."; 
-}
-
-// ----------------------------------------------------------------------------
-//                                                                    eof_error
-// ----------------------------------------------------------------------------
-
-const char* eof_error::what() const noexcept { 
-  return "Read past EOF."; 
 }
 
 // ----------------------------------------------------------------------------
@@ -119,4 +111,4 @@ const char* illegal_state::what() const noexcept{
   return "Illegal state."; 
 }
 
-NS_END // NS_ROOT
+} // namespace iresearch {

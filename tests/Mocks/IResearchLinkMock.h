@@ -43,17 +43,6 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
  public:
   IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection);
 
-//  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
-//    IResearchLink::afterTruncate();
-//  };
-/*
-  void batchInsert(
-      arangodb::transaction::Methods& trx,
-      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override {
-    IResearchLink::batchInsert(trx, documents, queue);
-  }
-*/
   [[nodiscard]] static auto setCallbakForScope(std::function<void(irs::directory&)> callback) {
     InitCallback = callback;
     return irs::make_finally([]() {InitCallback = nullptr; });
@@ -74,8 +63,6 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
                           arangodb::velocypack::Slice const doc) {
     return IResearchLink::insert(trx, documentId, doc);
   }
-
-  bool isPersistent() const override;
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
 

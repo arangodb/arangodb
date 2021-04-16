@@ -1,0 +1,22 @@
+name: arangodb_aql_global_memory_usage
+introducedIn: "3.8.0"
+help: |
+  Total memory usage of all AQL queries executing; granularity: 32768 bytes steps.
+unit: bytes
+type: gauge
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total memory usage of all AQL queries currently executing.
+  The granularity of this metric is steps of 32768 bytes. The current
+  memory usage of all AQL queries will be compared against the configured
+  limit in the `--query.global-memory-limit` startup option. 
+  If the startup option has a value of `0`, then no global memory limit
+  will be enforced. If the startup option has a non-zero value, queries
+  will be aborted once the total query memory usage goes above the configured
+  limit.

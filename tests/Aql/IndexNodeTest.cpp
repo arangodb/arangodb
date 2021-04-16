@@ -57,7 +57,7 @@ arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::Applicat
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load("testVocbase", 2);
   if (rv.fail()) {
-    throw std::runtime_error(rv.errorMessage());
+    throw std::runtime_error(rv.errorMessage().data());
   }
   return info;
 }
@@ -70,7 +70,7 @@ arangodb::aql::QueryResult executeQuery(const std::shared_ptr<arangodb::transact
   arangodb::aql::Query query(ctx,
                              arangodb::aql::QueryString(queryString),
                              bindVars,
-                             arangodb::velocypack::Parser::fromJson(optionsString));
+                             arangodb::velocypack::Parser::fromJson(optionsString)->slice());
 
   arangodb::aql::QueryResult result;
   while (true) {
@@ -427,7 +427,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     "      \"depth\" : 1"
     "    }"
     "  ],"
-    "  \"varsUsedLater\" : ["
+    "  \"varsUsedLaterStack\" : [ ["
     "    {"
     "      \"id\" : 0,"
     "      \"name\" : \"d\""
@@ -444,8 +444,8 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     "      \"id\" : 6,"
     "      \"name\" : \"5\""
     "    }"
-    "  ],"
-    "  \"varsValid\" : ["
+    "  ] ],"
+    "  \"varsValidStack\" : [ ["
     "    {"
     "      \"id\" : 8,"
     "      \"name\" : \"7\""
@@ -454,15 +454,15 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     "      \"id\" : 6,"
     "      \"name\" : \"5\""
     "    }"
-    "  ],"
-    "  \"regsToKeepStack\" : [[]]"
+    "  ] ],"
+    "  \"regsToKeepStack\" : [[ ]]"
     "}"
   );
 
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(
                                "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 RETURN d"),
-                             nullptr, arangodb::velocypack::Parser::fromJson("{}"));
+                             nullptr);
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   {
@@ -523,7 +523,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
         arangodb::aql::Query queryClone(ctx, arangodb::aql::QueryString(
                                           "RETURN 1"),
-                                        nullptr, arangodb::velocypack::Parser::fromJson("{}"));
+                                        nullptr);
         queryClone.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
         indNode.invalidateVarUsage();
         auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(
@@ -560,7 +560,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(
                                "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 RETURN d"),
-                             nullptr, arangodb::velocypack::Parser::fromJson("{}"));
+                             nullptr);
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   auto vars = query.plan()->getAst()->variables();
@@ -605,10 +605,10 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "  \"totalNrRegs\" : 0,"
       "  \"varInfoList\" : ["
       "  ],"
-      "  \"varsUsedLater\" : ["
-      "  ],"
-      "  \"varsValid\" : ["
-      "  ]"
+      "  \"varsUsedLaterStack\" : [ ["
+      "  ] ],"
+      "  \"varsValidStack\" : [ ["
+      "  ] ]"
       "}"
     );
     // deserialization
@@ -652,10 +652,10 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "  \"totalNrRegs\" : 0,"
       "  \"varInfoList\" : ["
       "  ],"
-      "  \"varsUsedLater\" : ["
-      "  ],"
-      "  \"varsValid\" : ["
-      "  ]"
+      "  \"varsUsedLaterStack\" : [ ["
+      "  ] ],"
+      "  \"varsValidStack\" : [ ["
+      "  ] ]"
       "}"
     );
     // deserialization
@@ -707,10 +707,10 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "  \"totalNrRegs\" : 0,"
       "  \"varInfoList\" : ["
       "  ],"
-      "  \"varsUsedLater\" : ["
-      "  ],"
-      "  \"varsValid\" : ["
-      "  ]"
+      "  \"varsUsedLaterStack\" : [ ["
+      "  ] ],"
+      "  \"varsValidStack\" : [ ["
+      "  ] ]"
       "}"
     );
     // deserialization
@@ -762,10 +762,10 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "  \"totalNrRegs\" : 0,"
       "  \"varInfoList\" : ["
       "  ],"
-      "  \"varsUsedLater\" : ["
-      "  ],"
-      "  \"varsValid\" : ["
-      "  ]"
+      "  \"varsUsedLaterStack\" : [ ["
+      "  ] ],"
+      "  \"varsValidStack\" : [ ["
+      "  ] ]"
       "}"
     );
     // deserialization
@@ -817,10 +817,10 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "  \"totalNrRegs\" : 0,"
       "  \"varInfoList\" : ["
       "  ],"
-      "  \"varsUsedLater\" : ["
-      "  ],"
-      "  \"varsValid\" : ["
-      "  ]"
+      "  \"varsUsedLaterStack\" : [ ["
+      "  ] ],"
+      "  \"varsValidStack\" : [ ["
+      "  ] ]"
       "}"
     );
     arangodb::aql::IndexNode indNode(
@@ -865,10 +865,10 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "  \"totalNrRegs\" : 0,"
       "  \"varInfoList\" : ["
       "  ],"
-      "  \"varsUsedLater\" : ["
-      "  ],"
-      "  \"varsValid\" : ["
-      "  ]"
+      "  \"varsUsedLaterStack\" : [ ["
+      "  ] ],"
+      "  \"varsValidStack\" : [ ["
+      "  ] ]"
       "}"
     );
     // deserialization
@@ -916,10 +916,10 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "  \"totalNrRegs\" : 0,"
       "  \"varInfoList\" : ["
       "  ],"
-      "  \"varsUsedLater\" : ["
-      "  ],"
-      "  \"varsValid\" : ["
-      "  ]"
+      "  \"varsUsedLaterStack\" : [ ["
+      "  ] ],"
+      "  \"varsValidStack\" : [ ["
+      "  ] ]"
       "}"
     );
     // deserialization

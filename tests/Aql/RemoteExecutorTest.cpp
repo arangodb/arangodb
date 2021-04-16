@@ -25,6 +25,8 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 #include "AqlItemBlockHelper.h"
 
@@ -101,7 +103,7 @@ TEST_P(DeSerializeAqlCallTest, testSuite) {
     } catch (std::exception const& ex) {
       EXPECT_TRUE(false) << ex.what();
     }
-    return ResultT<AqlCall>::error(-1);
+    return ResultT<AqlCall>::error(TRI_ERROR_INTERNAL);
   });
 
   ASSERT_TRUE(maybeDeSerializedCall.ok()) << maybeDeSerializedCall.errorMessage();
@@ -147,7 +149,7 @@ TEST_P(DeSerializeAqlCallStackTest, testSuite) {
     } catch (std::exception const& ex) {
       EXPECT_TRUE(false) << ex.what();
     }
-    return ResultT<AqlCallStack>::error(-1);
+    return ResultT<AqlCallStack>::error(TRI_ERROR_INTERNAL);
   });
 
   ASSERT_TRUE(maybeDeSerializedCallStack.ok())
@@ -179,8 +181,9 @@ auto MakeSkipResult(size_t const i) -> SkipResult {
 
 TEST(DeSerializeAqlExecuteResultTest, test) {
   
-  ResourceMonitor resourceMonitor{};
-  AqlItemBlockManager manager{&resourceMonitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
+  AqlItemBlockManager manager{resourceMonitor, SerializationFormat::SHADOWROWS};
 
   auto const testingAqlExecuteResults = std::array{
       AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), nullptr},
@@ -203,7 +206,7 @@ TEST(DeSerializeAqlExecuteResultTest, test) {
       } catch (std::exception const& ex) {
         EXPECT_TRUE(false) << ex.what();
       }
-      return ResultT<AqlExecuteResult>::error(-1);
+      return ResultT<AqlExecuteResult>::error(TRI_ERROR_INTERNAL);
     });
 
     ASSERT_TRUE(maybeAqlExecuteResult.ok()) << maybeAqlExecuteResult.errorMessage();

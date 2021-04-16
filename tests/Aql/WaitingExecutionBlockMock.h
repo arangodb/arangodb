@@ -26,7 +26,6 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ScatterExecutor.h"
 
 #include <velocypack/Builder.h>
@@ -36,7 +35,6 @@ namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
-struct ResourceMonitor;
 class SkipResult;
 }  // namespace aql
 
@@ -84,7 +82,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
       arangodb::aql::InputAqlItemRow const& input) override;
 
   std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
-      arangodb::aql::AqlCallStack stack) override;
+      arangodb::aql::AqlCallStack const& stack) override;
 
  private:
   // Implementation of execute

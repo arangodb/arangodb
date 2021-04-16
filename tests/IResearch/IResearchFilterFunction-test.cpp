@@ -106,8 +106,9 @@ class IResearchFilterFunctionTest
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -119,8 +120,9 @@ class IResearchFilterFunctionTest
         arangodb::aql::Function::makeFlags(
             // fake deterministic
             arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -6714,7 +6716,8 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
+    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
       vocbase(),
@@ -6736,7 +6739,8 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
+    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
       vocbase(),
@@ -6756,7 +6760,8 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
+    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
       vocbase(),
@@ -6775,7 +6780,8 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.8f;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
+    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
       vocbase(),
@@ -6797,7 +6803,8 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.8f;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
+    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
       vocbase(),
@@ -6815,10 +6822,10 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleString("name.foo", "test_analyzer");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.5;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back({static_cast<irs::byte_type>('f')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{ 0.5 }));
@@ -6844,9 +6851,9 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back({static_cast<irs::byte_type>('f')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
     assertFilterSuccess(
       vocbase(),
@@ -6865,9 +6872,9 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back({static_cast<irs::byte_type>('f')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
     assertFilterSuccess(
       vocbase(),
@@ -6886,9 +6893,9 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.25f;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back({static_cast<irs::byte_type>('f')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
     assertFilterSuccess(
       vocbase(),
@@ -6907,9 +6914,9 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.25f;
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
-    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back({static_cast<irs::byte_type>('f')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
+    opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
     assertFilterSuccess(
       vocbase(),
@@ -7119,5 +7126,4 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   assertFilterFail(
     vocbase(),
     "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, RAND() ? 'identity' : 'test_analyzer') RETURN d");
-
 }

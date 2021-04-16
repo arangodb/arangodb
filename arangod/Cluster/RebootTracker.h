@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,8 @@
 #ifndef ARANGOD_CLUSTER_REBOOTTRACKER_H
 #define ARANGOD_CLUSTER_REBOOTTRACKER_H
 
-#include "Cluster/CallbackGuard.h"
 #include "Basics/Mutex.h"
+#include "Cluster/CallbackGuard.h"
 
 #include <map>
 #include <memory>
@@ -36,6 +36,11 @@
 namespace arangodb {
 
 class SupervisedScheduler;
+
+namespace velocypack {
+class Builder;
+class Slice;
+}
 
 namespace cluster {
 
@@ -54,6 +59,9 @@ class RebootTracker {
 
     ServerID const& serverId() const noexcept { return _serverId; }
     RebootId rebootId() const noexcept { return _rebootId; }
+
+    void toVelocyPack(velocypack::Builder& builder) const;
+    static PeerState fromVelocyPack(velocypack::Slice);
 
    private:
     ServerID _serverId;

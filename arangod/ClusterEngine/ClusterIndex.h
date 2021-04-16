@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,8 +78,6 @@ class ClusterIndex : public Index {
   void unload() override {}
   size_t memory() const override { return 0; }
   
-  bool isPersistent() const override;
-
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
   bool hasCoveringIterator() const override;
@@ -108,6 +106,7 @@ class ClusterIndex : public Index {
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
+  bool _estimates;
   double _clusterSelectivity;
 
   // Only used in RocksDB edge index.

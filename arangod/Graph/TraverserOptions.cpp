@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,16 +78,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
 
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                    VPackSlice obj)
-    : BaseOptions(query),
-      _baseVertexExpression(nullptr),
-      _traverser(nullptr),
-      minDepth(1),
-      maxDepth(1),
-      useNeighbors(false),
-      uniqueVertices(UniquenessLevel::NONE),
-      uniqueEdges(UniquenessLevel::PATH),
-      mode(Order::DFS),
-      defaultWeight(1.0) {
+    : TraverserOptions(query) {
   TRI_ASSERT(obj.isObject());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -99,6 +90,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   minDepth = VPackHelper::getNumericValue<uint64_t>(obj, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
   _parallelism = VPackHelper::getNumericValue<size_t>(obj, "parallelism", 1);
+  _refactor = VPackHelper::getBooleanValue(obj, StaticStrings::GraphRefactorFlag, false);
   TRI_ASSERT(minDepth <= maxDepth);
 
   std::string tmp = VPackHelper::getStringValue(obj, StaticStrings::GraphQueryOrder, "");
@@ -448,6 +440,8 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("parallelism", VPackValue(_parallelism));
+  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
+  
   builder.add("neighbors", VPackValue(useNeighbors));
 
   switch (uniqueVertices) {
@@ -543,6 +537,7 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
   result.add("parallelism", VPackValue(_parallelism));
+  result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
   result.add("neighbors", VPackValue(useNeighbors));
 
   result.add(VPackValue("uniqueVertices"));

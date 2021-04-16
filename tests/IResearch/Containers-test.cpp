@@ -53,14 +53,12 @@ TEST(ContainersTest, testResourceMutex) {
     Value value(&i);
     std::condition_variable cond;
     std::mutex cond_mutex;
-    SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
-    auto mutex = value.mutex();
-    SCOPED_LOCK(mutex);  // read lock
+    auto cond_lock = irs::make_unique_lock(cond_mutex);
+    auto lock = irs::make_lock_guard(value.mutex());  // read lock
 
     std::thread thread([&value, &cond, &cond_mutex]() -> void {
-      SCOPED_LOCK(cond_mutex);
-      auto mutex = value.mutex();
-      SCOPED_LOCK(mutex);
+      auto condLock = irs::make_lock_guard(cond_mutex);
+      auto mutexLlock = irs::make_lock_guard(value.mutex());
       cond.notify_all();
     });
     auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000));  // assume thread finishes in 1000ms
@@ -75,13 +73,13 @@ TEST(ContainersTest, testResourceMutex) {
     Value value(&i);
     std::condition_variable cond;
     std::mutex cond_mutex;
-    SCOPED_LOCK_NAMED(value.mutex(), lock);
-    SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
+    auto lock = irs::make_unique_lock(value.mutex());
+    auto cond_lock = irs::make_unique_lock(cond_mutex);
     std::atomic<bool> reset(false);
     std::thread thread([&cond, &cond_mutex, &value, &reset]() -> void {
       value.reset();
       reset = true;
-      SCOPED_LOCK(cond_mutex);
+      auto lock = irs::make_lock_guard(cond_mutex);
       cond.notify_all();
     });
 
@@ -311,7 +309,7 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     std::set<std::string> expected({"abc", "def", "ghi"});
 
     for (auto& entry : map) {
-      EXPECT_TRUE((1 == expected.erase(entry.key())));
+      EXPECT_TRUE((1 == expected.erase(static_cast<std::string>(entry.key())))); // FIXME: after C++20 remove cast and use heterogeneous lookup
     }
 
     EXPECT_TRUE((expected.empty()));

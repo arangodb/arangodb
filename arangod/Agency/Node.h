@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,6 +74,69 @@ typedef std::chrono::system_clock::time_point TimePoint;
 typedef std::chrono::steady_clock::time_point SteadyTimePoint;
 
 class Store;
+
+class SmallBuffer {
+  uint8_t* _start;
+  size_t _size;
+ public:
+  SmallBuffer() noexcept : _start(nullptr), _size(0) {}
+  explicit SmallBuffer(size_t size) : SmallBuffer() {
+    if (size > 0) {
+      _start = new uint8_t[size];
+      _size = size;
+    }
+  }
+  explicit SmallBuffer(uint8_t const* data, size_t size) : SmallBuffer(size) {
+    memcpy(_start, data, size);
+  }
+  SmallBuffer(SmallBuffer const& other) 
+      : SmallBuffer() {
+    if (!other.empty()) {
+      _start = new uint8_t[other._size];
+      _size = other._size;
+      memcpy(_start, other._start, other._size);
+    }
+  }
+  SmallBuffer(SmallBuffer&& other) noexcept
+      : _start(other._start), _size(other._size) {
+    other._start = nullptr;
+    other._size = 0;
+  }
+  SmallBuffer& operator=(SmallBuffer const& other) {
+    if (this != &other) {
+      if (!empty()) {
+        delete[] _start;
+      }
+      if (other.empty()) {
+        _start = nullptr;
+        _size = 0;
+      } else {
+        _start = new uint8_t[other._size];
+        _size = other._size;
+        memcpy(_start, other._start, other._size);
+      }
+    }
+    return *this;
+  }
+  SmallBuffer& operator=(SmallBuffer&& other) noexcept {
+    if (this != &other) {
+      if (!empty()) {
+        delete[] _start;
+      }
+      _start = other._start;
+      other._start = nullptr;
+      _size = other._size;
+      other._size = 0;
+    }
+    return *this;
+  }
+  ~SmallBuffer() {
+    delete[] _start;
+  }
+  uint8_t* data() const { return _start; }
+  size_t size() const { return _size; }
+  bool empty() const { return _start == nullptr || _size == 0; }
+};
 
 /// @brief Simple tree implementation
 
@@ -174,7 +237,9 @@ class Node final {
   VPackBuilder toBuilder() const;
 
   /// @brief Access children
-  Children& children();
+
+  /// @brief Access for unit tests:
+  void addChild(std::string const& name, std::shared_ptr<Node>& node);
 
   /// @brief Access children
   Children const& children() const;
@@ -358,10 +423,10 @@ class Node final {
   std::string _nodeName;                ///< @brief my name
   Node* _parent;                        ///< @brief parent
   Store* _store;                        ///< @brief Store
-  Children _children;                   ///< @brief child nodes
+  mutable std::unique_ptr<Children> _children;  ///< @brief child nodes
   TimePoint _ttl;                       ///< @brief my expiry
-  std::vector<Buffer<uint8_t>> _value;  ///< @brief my value
-  mutable Buffer<uint8_t> _vecBuf;
+  std::unique_ptr<std::vector<SmallBuffer>> _value;  ///< @brief my value
+  mutable std::unique_ptr<SmallBuffer> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
   static Children const dummyChildren;

@@ -38,7 +38,7 @@ const optionsDocumentation = [
 ];
 
 const _ = require('lodash');
-const tu = require('@arangodb/test-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/http'), tu.pathForTesting('client/shell') ],
@@ -67,7 +67,10 @@ function shellClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(ensureServers(options, 3), testCases, 'shell_client', tu.runInLocalArangosh);
+  let opts = ensureServers(options, 3);
+  let rc = tu.performTests(opts, testCases, 'shell_client', tu.runInLocalArangosh);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -81,7 +84,10 @@ function shellServer (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(ensureServers(options, 3), testCases, 'shell_server', tu.runThere);
+  let opts = ensureServers(options, 3);
+  let rc = tu.performTests(opts, testCases, 'shell_server', tu.runThere);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -93,7 +99,10 @@ function shellServerOnly (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(ensureServers(options, 3), testCases, 'shell_server_only', tu.runThere);
+  let opts = ensureServers(options, 3);
+  let rc = tu.performTests(opts, testCases, 'shell_server_only', tu.runThere);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -114,7 +123,10 @@ function shellServerAql (options) {
 
     testCases = tu.splitBuckets(options, testCases);
 
-    return tu.performTests(ensureServers(options, 3), testCases, name, tu.runThere);
+    let opts = ensureServers(options, 3);
+    let rc = tu.performTests(opts, testCases, name, tu.runThere);
+    options.cleanup = options.cleanup && opts.cleanup;
+    return rc;
   }
 
   return {
@@ -143,7 +155,10 @@ function shellClientAql (options) {
 
     testCases = tu.splitBuckets(options, testCases);
 
-    return tu.performTests(ensureServers(options, 3), testCases, name, tu.runInLocalArangosh);
+    let opts = ensureServers(options, 3);
+    let rc = tu.performTests(opts, testCases, name, tu.runInLocalArangosh);
+    options.cleanup = options.cleanup && opts.cleanup;
+    return rc;
   }
 
   return {

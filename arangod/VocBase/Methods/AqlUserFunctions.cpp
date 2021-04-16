@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,10 +66,11 @@ bool isValidFunctionNameFilter(std::string const& testName) {
   return std::regex_match(testName, funcFilterRegEx);
 }
 
-void reloadAqlUserFunctions() {
-  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled()) {
+void reloadAqlUserFunctions(application_features::ApplicationServer& server) {
+  if (server.hasFeature<V8DealerFeature>() && server.isEnabled<V8DealerFeature>() &&
+      server.getFeature<V8DealerFeature>().isEnabled()) {
     std::string const def("reloadAql");
-    V8DealerFeature::DEALER->addGlobalContextMethod(def);
+    server.getFeature<V8DealerFeature>().addGlobalContextMethod(def);
   }
 }
 
@@ -106,7 +107,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
   }
 
   if (res.ok()) {
-    reloadAqlUserFunctions();
+    reloadAqlUserFunctions(vocbase.server());
   } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     return res.reset(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
                   std::string("no AQL user function with name '") +
@@ -150,7 +151,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
 
   {
     arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                               arangodb::aql::QueryString(aql), binds, nullptr);
+                               arangodb::aql::QueryString(aql), binds);
     aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
@@ -170,7 +171,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
     deleteCount = static_cast<int>(countSlice.length());
   }
 
-  reloadAqlUserFunctions();
+  reloadAqlUserFunctions(vocbase.server());
   return Result();
 }
 
@@ -179,8 +180,10 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   replacedExisting = false;
 
   Result res;
-  
-  if (!V8DealerFeature::DEALER || !V8DealerFeature::DEALER->isEnabled()) {
+
+  auto& server = vocbase.server();
+  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>() ||
+      !server.getFeature<V8DealerFeature>().isEnabled()) {
     return res.reset(TRI_ERROR_DISABLED, "JavaScript operations are not available");
   }
 
@@ -311,7 +314,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   }
 
   if (res.ok()) {
-    reloadAqlUserFunctions();
+    reloadAqlUserFunctions(vocbase.server());
   }
 
   return res;
@@ -347,7 +350,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   binds->close();
 
   arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                             arangodb::aql::QueryString(aql), binds, nullptr);
+                             arangodb::aql::QueryString(aql), binds);
   aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -247,6 +247,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
                         registerInfos.registersToClear(), std::move(sortRegs),
                         _limit, engine.itemBlockManager(),
                         &engine.getQuery().vpackOptions(),
+                        engine.getQuery().resourceMonitor(),
                         _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this,

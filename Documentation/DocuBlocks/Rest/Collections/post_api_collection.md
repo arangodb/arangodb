@@ -21,34 +21,12 @@ The name of the collection.
 If *true* then the data is synchronized to disk before returning from a
 document create, update, replace or removal operation. (default: false)
 
-@RESTBODYPARAM{doCompact,boolean,optional,}
-whether or not the collection will be compacted (default is *true*)
-This option is meaningful for the MMFiles storage engine only.
-
-@RESTBODYPARAM{journalSize,integer,optional,int64}
-The maximal size of a journal or datafile in bytes. The value
-must be at least `1048576` (1 MiB). (The default is a configuration parameter)
-This option is meaningful for the MMFiles storage engine only.
-
 @RESTBODYPARAM{isSystem,boolean,optional,}
 If *true*, create a  system collection. In this case *collection-name*
 should start with an underscore. End users should normally create non-system
 collections only. API implementors may be required to create system
 collections in very special occasions, but normally a regular collection will do.
 (The default is *false*)
-
-@RESTBODYPARAM{isVolatile,boolean,optional,}
-If *true* then the collection data is kept in-memory only and not made persistent.
-Unloading the collection will cause the collection data to be discarded. Stopping
-or re-starting the server will also cause full loss of data in the
-collection. Setting this option will make the resulting collection be
-slightly faster than regular collections because ArangoDB does not
-enforce any synchronization to disk and does not calculate any CRC
-checksums for datafiles (as there are no datafiles). This option
-should therefore be used for cache-type collections only, and not
-for data that cannot be re-created otherwise.
-(The default is *false*)
-This option is meaningful for the MMFiles storage engine only.
 
 @RESTBODYPARAM{schema,object,optional,}
 Optional object that specifies the collection level schema for
@@ -57,14 +35,15 @@ rules documented in [Document Schema Validation](https://www.arangodb.com/docs/d
 
 @RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
 additional options for key generation. If specified, then *keyOptions*
-should be a JSON array containing the following attributes:
+should be a JSON object containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
 *traditional*, *autoincrement*, *uuid* and *padded*.<br>
-The *traditional* key generator generates numerical keys in ascending order.
+The *traditional* key generator generates numerical keys in ascending order.<br>
 The *autoincrement* key generator generates numerical keys in ascending order,
-the initial offset and the spacing can be configured
+the initial offset and the spacing can be configured (**note**: *autoincrement* is currently only 
+supported for non-sharded collections).<br>
 The *padded* key generator generates keys of a fixed length (16 bytes) in
 ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
 engine, which will slightly benefit keys that are inserted in lexicographically

@@ -1,0 +1,18 @@
+name: arangodb_v8_context_exited_total
+renamedFrom: arangodb_v8_context_exited
+introducedIn: "3.8.0"
+help: |
+  Total number of V8 context exit events
+unit: number
+type: counter
+category: V8
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This counter reflects the total number of V8 context exit events.
+  A context receives a context exit event every time it finishes to
+  execute some JavaScript.

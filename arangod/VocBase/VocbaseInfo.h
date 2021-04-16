@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,6 +122,9 @@ class CreateDatabaseInfo {
   std::string const& sharding() const {
     TRI_ASSERT(_valid);
     return _sharding;
+  }
+  void sharding(std::string const& sharding) {
+    _sharding = sharding;
   }
 
   ShardingPrototype shardingPrototype() const;

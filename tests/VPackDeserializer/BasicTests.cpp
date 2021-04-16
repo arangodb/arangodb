@@ -198,7 +198,7 @@ struct graph_options_validator {
 /* clang-format off */
 
 using graph_options_deserializer = utilities::constructing_deserializer<graph_options, parameter_list<
-    factory_optional_parameter<str_smart_graph_attribute, std::string_view>,
+    factory_optional_value_parameter<str_smart_graph_attribute, std::string_view>,
     factory_simple_parameter<str_number_of_shards, uint32_t, false, values::numeric_value<uint32_t, 1>>,
     factory_simple_parameter<str_replication_factor, uint32_t, false, values::numeric_value<uint32_t, 1>>,
     factory_simple_parameter<str_min_replication_factor, uint32_t, false, values::numeric_value<uint32_t, 1>>
@@ -291,6 +291,55 @@ TEST_F(VPackDeserializerBasicTest, test06) {
   auto result = deserialize<MyEnum_deserializer>(slice.slice);
 
   ASSERT_FALSE(result.ok());
+}
+
+constexpr const char field1_name[] = "field1";
+constexpr const char field2_name[] = "field1";
+
+TEST_F(VPackDeserializerBasicTest, test_ignore_unknown_hint) {
+  {
+    struct TestStruct {
+      int field1;
+      int field2;
+    };
+    using TestDeserializer = utilities::constructing_deserializer<
+        TestStruct, parameter_list<factory_simple_parameter<field1_name, int, true, values::numeric_value<int, 0>>,
+                                   factory_simple_parameter<field2_name, int, false, values::numeric_value<int, 0>>>>;
+
+    {
+      auto vPackWithUnknown = arangodb::velocypack::Parser::fromJson(
+          "{\"unknown\":true, \"field1\":1, \"field2\":2}");
+      {
+        auto const res = deserialize<TestDeserializer>(vPackWithUnknown->slice());
+        ASSERT_FALSE(res.ok());
+      }
+      {
+        auto const res =
+            deserialize<TestDeserializer, hints::hint_list<hints::ignore_unknown>>(
+                vPackWithUnknown->slice());
+        ASSERT_TRUE(res.ok());
+      }
+    }
+    // missing of mandatory parameter should still fail!
+    {
+      auto vPackWithUnknown = arangodb::velocypack::Parser::fromJson(
+          "{\"unknown\":true, \"field2\":2}");
+      auto const res =
+          deserialize<TestDeserializer, hints::hint_list<hints::ignore_unknown>>(
+              vPackWithUnknown->slice());
+      ASSERT_FALSE(res.ok());
+    }
+    // missing of optionsl parameter should be ok
+    {
+      auto vPackWithUnknown = arangodb::velocypack::Parser::fromJson(
+          "{\"unknown\":true, \"field1\":2}");
+      auto const res =
+          deserialize<TestDeserializer, hints::hint_list<hints::ignore_unknown>>(
+              vPackWithUnknown->slice());
+      ASSERT_TRUE(res.ok());
+    }
+
+  }
 }
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");

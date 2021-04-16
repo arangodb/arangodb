@@ -27,7 +27,7 @@
 
 #include "index_tests.hpp"
 
-NS_LOCAL
+namespace {
 
 class sorted_europarl_doc_template : public tests::templates::europarl_doc_template {
  public:
@@ -104,7 +104,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
     [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         );
 
@@ -266,7 +266,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
     [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         );
 
@@ -601,7 +601,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
     [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         );
 
@@ -849,7 +849,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         );
 
@@ -1005,7 +1005,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         );
 
@@ -1210,7 +1210,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         );
 
@@ -1372,4 +1372,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}

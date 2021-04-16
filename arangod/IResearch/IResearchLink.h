@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,10 +45,37 @@ struct FlushSubscription;
 
 namespace iresearch {
 
-class AsyncMeta; // forward declaration
-class IResearchFeature; // forward declaration
-class IResearchView; // forward declaration
-template<typename T> class TypedResourceMutex; // forward declaration
+struct MaintenanceState;
+class IResearchFeature;
+class IResearchView;
+class IResearchLink;
+template<typename T> class TypedResourceMutex;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief IResarchLink handle to use with asynchronous tasks
+////////////////////////////////////////////////////////////////////////////////
+class AsyncLinkHandle {
+ public:
+  explicit AsyncLinkHandle(IResearchLink* link);
+  ~AsyncLinkHandle();
+  IResearchLink* get() noexcept { return _link.get(); }
+  bool empty() const { return _link.empty(); }
+  std::unique_lock<ReadMutex> lock() { return _link.lock(); }
+  std::unique_lock<ReadMutex> try_lock() noexcept { return _link.try_lock(); }
+  bool terminationRequested() const noexcept { return _asyncTerminate.load(); }
+
+ private:
+  AsyncLinkHandle(AsyncLinkHandle const&) = delete;
+  AsyncLinkHandle(AsyncLinkHandle&&) = delete;
+  AsyncLinkHandle& operator=(AsyncLinkHandle const&) = delete;
+  AsyncLinkHandle& operator=(AsyncLinkHandle&&) = delete;
+
+  friend class IResearchLink;
+  void reset();
+
+  ResourceMutexT<IResearchLink> _link;
+  std::atomic<bool> _asyncTerminate{false}; // trigger termination of long-running async jobs
+}; // AsyncLinkHandle
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
@@ -56,7 +83,7 @@ template<typename T> class TypedResourceMutex; // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchLink {
  public:
-  typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
+  using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the data-store
@@ -64,17 +91,32 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   class Snapshot {
    public:
-    Snapshot() noexcept {}  // non-default implementation required for MacOS
-    Snapshot(std::unique_lock<irs::async_utils::read_write_mutex::read_mutex>&& lock,
+    Snapshot() = default;
+    Snapshot(std::unique_lock<ReadMutex>&& lock,
              irs::directory_reader&& reader) noexcept
         : _lock(std::move(lock)), _reader(std::move(reader)) {
       TRI_ASSERT(_lock.owns_lock());
     }
-    operator irs::directory_reader const&() const noexcept { return _reader; }
+    Snapshot(Snapshot&& rhs) noexcept
+      : _lock(std::move(rhs._lock)),
+        _reader(std::move(rhs._reader)) {
+      TRI_ASSERT(_lock.owns_lock());
+    }
+    Snapshot& operator=(Snapshot&& rhs) noexcept {
+      if (this != &rhs) {
+        _lock = std::move(rhs._lock);
+        _reader = std::move(rhs._reader);
+      }
+      TRI_ASSERT(_lock.owns_lock());
+      return *this;
+    }
+    operator irs::directory_reader const&() const noexcept {
+      return _reader;
+    }
 
    private:
-    std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _lock;  // lock preventing data store dealocation
-    const irs::directory_reader _reader;
+    std::unique_lock<ReadMutex> _lock; // lock preventing data store dealocation
+    irs::directory_reader _reader;
   };
 
   virtual ~IResearchLink();
@@ -96,17 +138,7 @@ class IResearchLink {
   }
 
   void afterTruncate(TRI_voc_tick_t tick,
-                     arangodb::transaction::Methods* trx); // arangodb::Index override
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert a set of ArangoDB documents into an iResearch View using
-  ///        '_meta' params
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual void batchInsert(
-      transaction::Methods& trx,
-      std::vector<std::pair<LocalDocumentId, velocypack::Slice>> const& batch,
-      std::shared_ptr<basics::LocalTaskQueue> queue);
+                     transaction::Methods* trx); // arangodb::Index override
 
   bool canBeDropped() const {
     // valid for a link to be dropped from an ArangoSearch view
@@ -237,7 +269,15 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get stored values
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchViewStoredValues const& storedValues() const;
+  IResearchViewStoredValues const& storedValues() const noexcept;
+
+  /// @brief sets the _collectionName in Link meta. Used in cluster only to store
+  /// linked collection name (as shard name differs from the cluster-wide collection name)
+  /// @param name  collectioName to set. Should match existing value of  the _collectionName
+  /// if it is not empty. 
+  /// @return true if name not existed in link before and was actually set by this call,
+  /// false otherwise
+  bool setCollectionName(irs::string_ref name) noexcept;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -270,13 +310,41 @@ class IResearchLink {
   Stats stats() const;
 
  private:
+  friend struct CommitTask;
+  friend struct ConsolidationTask;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief detailed commit result
+  //////////////////////////////////////////////////////////////////////////////
+  enum class CommitResult {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief undefined state
+    ////////////////////////////////////////////////////////////////////////////
+    UNDEFINED = 0,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief no changes were made
+    ////////////////////////////////////////////////////////////////////////////
+    NO_CHANGES,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief another commit is in progress
+    ////////////////////////////////////////////////////////////////////////////
+    IN_PROGRESS,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief commit is done
+    ////////////////////////////////////////////////////////////////////////////
+    DONE
+  }; // CommitResult
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
     IResearchViewMeta _meta; // runtime meta for a data store (not persisted)
     irs::directory::ptr _directory;
-    irs::async_utils::read_write_mutex _mutex; // for use with member '_meta'
+    basics::ReadWriteLock _mutex; // for use with member '_meta'
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
@@ -288,7 +356,7 @@ class IResearchLink {
       _reader.reset(); 
       _writer.reset();
       _directory.reset();
-    } 
+    }
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -302,16 +370,16 @@ class IResearchLink {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafe(bool wait);
+  Result commitUnsafe(bool wait, CommitResult* code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result consolidateUnsafe( // consolidate segments
-    IResearchViewMeta::ConsolidationPolicy const& policy, // policy to apply
-    irs::merge_writer::flush_progress_t const& progress // policy progress to use
-  );
+  Result consolidateUnsafe(
+    IResearchViewMeta::ConsolidationPolicy const& policy,
+    irs::merge_writer::flush_progress_t const& progress,
+    bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
@@ -322,18 +390,23 @@ class IResearchLink {
     irs::type_info::type_id primarySortCompression);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief set up asynchronous maintenance tasks
+  /// @brief schedule a commit job
   //////////////////////////////////////////////////////////////////////////////
-  void setupMaintenance();
+  void scheduleCommit(std::chrono::milliseconds delay);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief schedule a consolidation job
+  //////////////////////////////////////////////////////////////////////////////
+  void scheduleConsolidation(std::chrono::milliseconds delay);
 
   StorageEngine* _engine;
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   LogicalCollection& _collection; // the linked collection
   DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
   std::shared_ptr<FlushSubscription> _flushSubscription;
+  std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;                 // the index identifier
   TRI_voc_tick_t _lastCommittedTick; // protected by _commitMutex
   IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
@@ -343,8 +416,8 @@ class IResearchLink {
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
 
-irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
-                                arangodb::iresearch::IResearchLink const& link);
+irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                iresearch::IResearchLink const& link);
 
 }  // namespace iresearch
 }  // namespace arangodb

@@ -35,9 +35,10 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 #include "AqlItemBlockHelper.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -59,10 +60,11 @@ class EnumerateListExecutorTest : public ::testing::Test {
   NoStats stats;
   AqlCall call;
 
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   EnumerateListExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
 };
 
 TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
@@ -153,7 +155,7 @@ class EnumerateListExecutorTestProduce
   EnumerateListExecutorTestProduce() : executorInfos(0, 1) {}
 
   auto makeRegisterInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1,
-                         RegisterId nrInputRegister = 1, RegisterId nrOutputRegister = 2,
+                         RegisterCount nrInputRegister = 1, RegisterCount nrOutputRegister = 2,
                          RegIdSet regToClear = {},
                          RegIdSetStack regToKeep = {RegIdSet{0}}) -> RegisterInfos {
     auto infos = RegisterInfos{RegIdSet{inputRegister},
@@ -201,8 +203,8 @@ TEST_P(EnumerateListExecutorTestProduce, invalid_value_1) {
         .expectedState(ExecutionState::DONE)
         .run();
     FAIL();
-  } catch (const arangodb::basics::Exception& e) {
-    ASSERT_EQ(e.code(), 1563);
+  } catch (arangodb::basics::Exception const& e) {
+    ASSERT_EQ(e.code(), TRI_ERROR_QUERY_ARRAY_EXPECTED);
   }
 }
 

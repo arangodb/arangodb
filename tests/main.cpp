@@ -133,6 +133,9 @@ int main(int argc, char* argv[]) {
   ctx.exit(0);  // set "good" exit code by default
 
   arangodb::ServerIdFeature::setId(arangodb::ServerId{12345});
+  // many other places rely on the reboot id being initialized, 
+  // so we do it here in a central place
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1}); 
   IcuInitializer::setup(ARGV0);
 
   // Run tests in subthread such that it has a larger stack size in libmusl,

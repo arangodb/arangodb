@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -145,20 +145,32 @@ class TraversalNode : public virtual GraphNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> vars;
-    if (usesVertexOutVariable()) {
+    if (isVertexOutVariableUsedLater()) {
       vars.emplace_back(vertexOutVariable());
     }
-    if (usesEdgeOutVariable()) {
+    if (isEdgeOutVariableUsedLater()) {
       vars.emplace_back(edgeOutVariable());
     }
-    if (usesPathOutVariable()) {
+    if (isPathOutVariableUsedLater()) {
       vars.emplace_back(pathOutVariable());
     }
     return vars;
   }
 
-  /// @brief checks if the path out variable is used
-  bool usesPathOutVariable() const;
+  /// @brief checks if the path out variable is used by other nodes
+  bool isPathOutVariableUsedLater() const;
+
+  /// @brief checks if the path out variable is used by other nodes
+  /// or accessed in a prune expression
+  bool isPathOutVariableAccessed() const;
+
+  /// @brief checks if the edge out variable is used by other nodes
+  /// or accessed in a prune expression
+  bool isEdgeOutVariableAccessed() const;
+
+  /// @brief checks if the vertex out variable is used by other nodes
+  /// or accessed in a prune expression
+  bool isVertexOutVariableAccessed() const;
 
   /// @brief return the path out variable
   Variable const* pathOutVariable() const;

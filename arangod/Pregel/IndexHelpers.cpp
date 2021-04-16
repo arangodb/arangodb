@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,33 +42,29 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
   if (!trx->isEdgeCollection(collectionName)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
-}
-
-/// @brief Get edges for the given direction and start vertex.
-std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::string const& vertexId) {
-  
-  /// @brief index used for iteration
-  transaction::Methods::IndexHandle indexId;
  
   _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
   auto doc = _trx->documentCollection(_collectionName);
   
   for (std::shared_ptr<arangodb::Index> const& idx : doc->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      auto fields = idx->fieldNames();
+      auto const& fields = idx->fieldNames();
       if (fields.size() == 1 && fields[0].size() == 1 &&
           fields[0][0] == StaticStrings::FromString) {
-        indexId = idx;
+        _index = idx;
         break;
       }
     }
   }
-  TRI_ASSERT(indexId != nullptr);  // We always have an edge Index
-  
+  TRI_ASSERT(_index != nullptr);  // We always have an edge Index
+}
+
+/// @brief Get edges for the given direction and start vertex.
+std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::string const& vertexId) {  
   _searchBuilder.setVertexId(vertexId);
   IndexIteratorOptions opts;
   opts.enableCache = false;
-  return _trx->indexScanForCondition(indexId, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts);
+  return _trx->indexScanForCondition(_index, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts);
 }
 
 /// @brief Return name of the wrapped collection

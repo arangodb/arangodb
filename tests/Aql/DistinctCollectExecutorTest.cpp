@@ -36,6 +36,8 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "ExecutorTestHelper.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
@@ -60,8 +62,8 @@ class DistinctCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<std::tuple<DistinctCollectSplitType>> {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
-  // arangodb::transaction::Methods* trx;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
 
   RegIdSet readableInputRegisters = RegIdSet{0};
   RegIdSet writeableOutputRegisters = RegIdSet{1};
@@ -76,7 +78,7 @@ class DistinctCollectExecutorTest
   DistinctCollectExecutorTest()
       : registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
                       1, 2, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
-        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults) {}
+        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults, monitor) {}
 };
 
 TEST_P(DistinctCollectExecutorTest, split_1) {

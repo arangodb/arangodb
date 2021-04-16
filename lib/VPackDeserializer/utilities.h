@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,16 +45,28 @@ struct make_unique_factory {
   }
 };
 
-template <typename T, typename P = void>
+template <typename T>
 struct constructor_factory {
   using constructed_type = T;
-  using plan = P;
 
   template <typename... S>
   T operator()(S&&... s) const {
     static_assert(detail::gadgets::is_braces_constructible_v<T, S...>,
-                  "the type is not constructible with the given types");
+                  "the type is not constructable with the given types");
     return T{std::forward<S>(s)...};
+  }
+};
+
+template<typename F>
+struct visiting_factory {
+  using constructed_type = typename F::constructed_type;
+
+  template <typename... S>
+  auto operator()(std::variant<S...>&& s) const {
+    return std::visit([](auto&& p) {
+      F f;
+      return f(std::forward<decltype(p)>(p));
+    }, std::move(s));
   }
 };
 

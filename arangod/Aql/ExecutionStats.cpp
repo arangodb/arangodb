@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -145,6 +145,10 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
 
   if (slice.hasKey("httpRequests")) {
     requests = slice.get("httpRequests").getNumber<int64_t>();
+  }
+
+  if (slice.hasKey("peakMemoryUsage")) {
+    peakMemoryUsage = std::max<size_t>(peakMemoryUsage, slice.get("peakMemoryUsage").getNumber<int64_t>());
   }
 
   // note: fullCount is an optional attribute!

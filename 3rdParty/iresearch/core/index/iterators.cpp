@@ -20,15 +20,15 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "iterators.hpp"
-#include "field_meta.hpp"
-#include "formats/formats.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/iterators.hpp"
+#include "index/field_meta.hpp"
+#include "formats/empty_term_reader.hpp"
 #include "search/cost.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/singleton.hpp"
 
-NS_LOCAL
+namespace {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_doc_iterator
@@ -36,8 +36,8 @@ NS_LOCAL
 //////////////////////////////////////////////////////////////////////////////
 struct empty_doc_iterator final : irs::doc_iterator {
   empty_doc_iterator() noexcept
-    : doc{irs::doc_limits::eof()} {
-    cost.value(0);
+    : cost(0),
+      doc{irs::doc_limits::eof()} {
   }
 
   virtual irs::doc_id_t value() const override {
@@ -68,15 +68,15 @@ empty_doc_iterator EMPTY_DOC_ITERATOR;
 /// @brief represents an iterator without terms
 //////////////////////////////////////////////////////////////////////////////
 struct empty_term_iterator : irs::term_iterator {
-  virtual const irs::bytes_ref& value() const noexcept final {
+  virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept final {
+  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept override final {
     return irs::doc_iterator::empty();
   }
-  virtual void read() noexcept final { }
-  virtual bool next() noexcept final { return false; }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
+  virtual void read() noexcept override final { }
+  virtual bool next() noexcept override final { return false; }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override final {
     return nullptr;
   }
 }; // empty_term_iterator
@@ -88,15 +88,15 @@ empty_term_iterator EMPTY_TERM_ITERATOR;
 /// @brief represents an iterator without terms
 //////////////////////////////////////////////////////////////////////////////
 struct empty_seek_term_iterator final : irs::seek_term_iterator {
-  virtual const irs::bytes_ref& value() const noexcept final {
+  virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept final {
+  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept override final {
     return irs::doc_iterator::empty();
   }
-  virtual void read() noexcept final { }
-  virtual bool next() noexcept final { return false; }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
+  virtual void read() noexcept override final { }
+  virtual bool next() noexcept override final { return false; }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override final {
     return nullptr;
   }
   virtual irs::SeekResult seek_ge(const irs::bytes_ref&) noexcept override {
@@ -111,49 +111,14 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   virtual seek_cookie::ptr cookie() const noexcept override {
     return nullptr;
   }
-}; // empty_term_iterator
+}; // empty_seek_term_iterator
 
 empty_seek_term_iterator EMPTY_SEEK_TERM_ITERATOR;
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class empty_term_reader
 /// @brief represents a reader with no terms
 //////////////////////////////////////////////////////////////////////////////
-struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_reader {
-  virtual iresearch::seek_term_iterator::ptr iterator() const override {
-    return irs::seek_term_iterator::empty(); // no terms in reader
-  }
-
-  virtual iresearch::seek_term_iterator::ptr iterator(irs::automaton_table_matcher&) const override {
-    return irs::seek_term_iterator::empty(); // no terms in reader
-  }
-
-  virtual const iresearch::field_meta& meta() const override {
-    return irs::field_meta::EMPTY;
-  }
-
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
-    return nullptr;
-  }
-
-  // total number of terms
-  virtual size_t size() const override { return 0; }
-
-  // total number of documents
-  virtual uint64_t docs_count() const override { return 0; }
-
-  // less significant term
-  virtual const iresearch::bytes_ref& (min)() const override {
-    return iresearch::bytes_ref::NIL;
-  }
-
-  // most significant term
-  virtual const iresearch::bytes_ref& (max)() const override {
-    return iresearch::bytes_ref::NIL;
-  }
-}; // empty_term_reader
-
-empty_term_reader EMPTY_TERM_READER;
+const irs::empty_term_reader EMPTY_TERM_READER{0};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_field_iterator
@@ -161,7 +126,7 @@ empty_term_reader EMPTY_TERM_READER;
 //////////////////////////////////////////////////////////////////////////////
 struct empty_field_iterator final : irs::field_iterator {
   virtual const irs::term_reader& value() const override {
-    return empty_term_reader::instance();
+    return EMPTY_TERM_READER;
   }
 
   virtual bool seek(const irs::string_ref&) override {
@@ -196,9 +161,9 @@ struct empty_column_iterator final : irs::column_iterator {
 
 empty_column_iterator EMPTY_COLUMN_ITERATOR;
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                    term_iterator
@@ -240,4 +205,4 @@ column_iterator::ptr column_iterator::empty() {
   return memory::to_managed<irs::column_iterator, false>(&EMPTY_COLUMN_ITERATOR);
 }
 
-NS_END // ROOT 
+} // ROOT 

@@ -21,24 +21,28 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "composite_reader_impl.hpp"
+#include "directory_reader.hpp"
+
+#include <absl/container/flat_hash_map.h>
+
+#include "index/segment_reader.hpp"
+#include "index/composite_reader_impl.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/singleton.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/hash_utils.hpp"
 
-#include "directory_reader.hpp"
-#include "segment_reader.hpp"
 
-NS_LOCAL
+namespace {
+using namespace irs;
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
 irs::index_file_refs::ref_t load_newest_index_meta(
-  irs::index_meta& meta,
-  const irs::directory& dir,
-  const irs::format* codec
-) noexcept {
+    irs::index_meta& meta,
+    const irs::directory& dir,
+    const irs::format* codec) noexcept {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -69,14 +73,21 @@ irs::index_file_refs::ref_t load_newest_index_meta(
       }
 
       return ref;
+    } catch (const std::exception& e) {
+      IR_FRMT_ERROR(
+        "Caught exception while reading index meta with codec '%s', error '%s'",
+        codec->type().name().c_str(),
+        e.what());
     } catch (...) {
-      IR_LOG_EXCEPTION();
+      IR_FRMT_ERROR(
+        "Caught exception while reading index meta with codec '%s'",
+        codec->type().name().c_str());
 
       return nullptr;
     }
   }
 
-  std::unordered_set<irs::string_ref> codecs;
+  absl::flat_hash_set<irs::string_ref> codecs;
   auto visitor = [&codecs](const irs::string_ref& name)->bool {
     codecs.insert(name);
     return true;
@@ -92,7 +103,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     irs::index_file_refs::ref_t ref;
   } newest;
 
-  newest.mtime = (irs::integer_traits<time_t>::min)();
+  newest.mtime = (std::numeric_limits<time_t>::min)();
 
   try {
     for (auto& name: codecs) {
@@ -141,17 +152,20 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     newest.reader->read(dir, meta, *(newest.ref));
 
     return newest.ref;
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR("Caught exception while loading the newest index meta, error '%s'",
+                  e.what());
   } catch (...) {
-    IR_LOG_EXCEPTION();
+    IR_FRMT_ERROR("Caught exception while loading the newest index meta");
   }
 
   return nullptr;
 }
 MSVC_ONLY(__pragma(warning(pop)))
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -------------------------------------------------------------------
 // directory_reader
@@ -176,8 +190,8 @@ class directory_reader_impl :
   );
 
  private:
-  typedef std::unordered_set<index_file_refs::ref_t> segment_file_refs_t;
-  typedef std::vector<segment_file_refs_t> reader_file_refs_t;
+  using segment_file_refs_t = absl::flat_hash_set<index_file_refs::ref_t>;
+  using reader_file_refs_t = std::vector<segment_file_refs_t>;
 
   directory_reader_impl(
     const directory& dir,
@@ -286,14 +300,15 @@ directory_reader_impl::directory_reader_impl(
     return cached; // no changes to refresh
   }
 
-  const auto INVALID_CANDIDATE = integer_traits<size_t>::const_max;
-  std::unordered_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
+  constexpr size_t INVALID_CANDIDATE{std::numeric_limits<size_t>::max()};
+  const size_t count = cached_impl ? cached_impl->meta_.meta.size() : 0;
+  absl::flat_hash_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
+  reuse_candidates.reserve(count);
 
-  for(size_t i = 0, count = cached_impl ? cached_impl->meta_.meta.size() : 0; i < count; ++i) {
+  for(size_t i = 0; i < count; ++i) {
     assert(cached_impl); // ensured by loop condition above
     auto itr = reuse_candidates.emplace(
-      cached_impl->meta_.meta.segment(i).meta.name, i
-    );
+      cached_impl->meta_.meta.segment(i).meta.name, i);
 
     if (!itr.second) {
       itr.first->second = INVALID_CANDIDATE; // treat collisions as invalid
@@ -361,4 +376,4 @@ directory_reader_impl::directory_reader_impl(
   return reader;
 }
 
-NS_END
+}

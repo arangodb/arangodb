@@ -31,9 +31,11 @@ set(IReSearch_tests_sources
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/ngram_token_stream_test.cpp
   ./analysis/pipeline_stream_tests.cpp
+  ./analysis/segmentation_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
-  ./analysis/token_masking_stream_tests.cpp
+  ./analysis/token_stopwords_stream_tests.cpp
+  ./analysis/token_attributes_test.cpp
   ./analysis/token_stream_tests.cpp
   ./formats/formats_tests.cpp
   ./formats/formats_test_case_base.cpp
@@ -109,6 +111,7 @@ set(IReSearch_tests_sources
   ./utils/ebo_tests.cpp
   ./utils/math_utils_test.cpp
   ./utils/std_test.cpp
+  ./utils/thread_pool_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_utils_test.cpp
   ./utils/utf8_path_tests.cpp
@@ -119,6 +122,8 @@ set(IReSearch_tests_sources
   ./tests_param.cpp
   ./tests_main.cpp
 )
+
+
 
 set(IReSearch_tests_headers
   ./index/assert_format.hpp
@@ -173,7 +178,9 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-analyzer-norm-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
-  ${IResearch_TARGET_NAME}-analyzer-mask-shared
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
@@ -185,7 +192,9 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
-  ${IResearch_TARGET_NAME}-analyzer-mask-static
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-static
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -229,7 +238,9 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-analyzer-norm-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
-  ${IResearch_TARGET_NAME}-analyzer-mask-shared
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
@@ -261,10 +272,12 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
+  $<TARGET_PROPERTY:absl-static,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 include_directories(${IResearchTests_TARGET_NAME}-static
+  ${EXTERNAL_INCLUDE_DIRS}
   ${IResearchTests_INCLUDE_DIR}
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
@@ -272,6 +285,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
+  $<TARGET_PROPERTY:absl-static,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>

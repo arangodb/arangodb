@@ -46,6 +46,8 @@ if (runSetup === true) {
   return true;
 }
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 var jsunity = require('jsunity');
 
 function testSuite() {

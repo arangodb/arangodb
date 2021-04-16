@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,10 +82,10 @@ struct QueryResult {
   // Result-like interface
   bool ok() const { return result.ok(); }
   bool fail() const { return result.fail(); }
-  int errorNumber() const { return result.errorNumber(); }
-  bool is(int errorNumber) const { return result.errorNumber() == errorNumber; }
-  bool isNot(int errorNumber) const { return !is(errorNumber); }
-  std::string errorMessage() const { return result.errorMessage(); }
+  ErrorCode errorNumber() const { return result.errorNumber(); }
+  bool is(ErrorCode errorNumber) const { return result.errorNumber() == errorNumber; }
+  bool isNot(ErrorCode errorNumber) const { return !is(errorNumber); }
+  std::string_view errorMessage() const { return result.errorMessage(); }
 
  public:
   Result result;

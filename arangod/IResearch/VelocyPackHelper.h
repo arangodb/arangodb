@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -209,8 +209,8 @@ inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice) noexcept
 //////////////////////////////////////////////////////////////////////////////
 template <typename T>
 inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice,
-                      std::string const& fieldName, bool& seen, T fallback) noexcept {
-  seen = slice.hasKey(fieldName);
+                      std::string_view fieldName, bool& seen, T fallback) noexcept {
+  seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
     buf = fallback;
@@ -226,9 +226,9 @@ inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice,
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
 inline bool getString(std::string& buf, arangodb::velocypack::Slice const& slice,
-                      std::string const& fieldName, bool& seen,
+                      std::string_view fieldName, bool& seen,
                       std::string const& fallback) noexcept {
-  seen = slice.hasKey(fieldName);
+  seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
     buf = fallback;
@@ -252,9 +252,9 @@ inline bool getString(std::string& buf, arangodb::velocypack::Slice const& slice
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
 inline bool getString(irs::string_ref& buf, arangodb::velocypack::Slice const& slice,
-                      std::string const& fieldName, bool& seen,
+                      std::string_view fieldName, bool& seen,
                       irs::string_ref const& fallback) noexcept {
-  seen = slice.hasKey(fieldName);
+  seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
     buf = fallback;

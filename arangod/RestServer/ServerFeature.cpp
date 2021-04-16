@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"
@@ -79,7 +78,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console", "start a JavaScript emergency console",
                      new BooleanParameter(&_console));
 
-  options->addSection("server", "Server features");
+  options->addSection("server", "server features");
 
   options->addOption("--server.rest-server", "start a rest-server",
                      new BooleanParameter(&_restServer),
@@ -88,8 +87,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.validate-utf8-strings", "perform UTF-8 string validation for incoming JSON and VelocyPack data",
                      new BooleanParameter(&_validateUtf8Strings),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden)).setIntroducedIn(30700);
-
-  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
@@ -102,7 +99,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
 
   // add several obsoleted options here
-  options->addSection("vst", "Configure the VelocyStream protocol");
+  options->addSection("vst", "VelocyStream protocol", "", true, true);
   options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
                              "for a VelocyPack chunk", true);
   
@@ -111,7 +108,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "timeout of web interface server sessions (in seconds)", true);
 
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
-  options->addSection("wal", "Configure the WAL of the MMFiles engine");
+  options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
   options->addObsoleteOption("--wal.allow-oversize-entries",
                              "allow entries that are bigger than '--wal.logfile-size'", false);
   options->addObsoleteOption("--wal.use-mlock",

@@ -25,6 +25,7 @@
 
 #include <fuerte/asio_ns.h>
 #include <fuerte/loop.h>
+#include "debugging.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -39,12 +40,21 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
       return;
     }
 
-    // A successful resolve operation is guaranteed to pass a
-    // non-empty range to the handler.
-    asio_ns::async_connect(socket, it,
-                           [done(std::move(done))](auto ec, auto it) mutable {
-                             std::forward<F>(done)(ec);
-                           });
+    try {
+      // A successful resolve operation is guaranteed to pass a
+      // non-empty range to the handler.
+      asio_ns::async_connect(socket, it,
+                             [done(std::move(done))](auto ec, auto it) mutable {
+                               std::forward<F>(done)(ec);
+                             });
+    } catch (std::bad_alloc const&) {
+      // definitely an OOM error
+      done(boost::system::errc::make_error_code(boost::system::errc::not_enough_memory));
+    } catch (...) {
+      // probably not an OOM error, but we don't know what it actually is.
+      // there is no code for a generic error that we could use here
+      done(boost::system::errc::make_error_code(boost::system::errc::not_enough_memory));
+    }
   };
 
   // windows does not like async_resolve
@@ -111,7 +121,7 @@ struct Socket<SocketType::Tcp> {
 template <>
 struct Socket<fuerte::SocketType::Ssl> {
   Socket(EventLoopService& loop, asio_ns::io_context& ctx)
-      : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx) {}
+    : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), cleanupDone(false) {}
 
   ~Socket() { this->cancel(); }
 
@@ -129,6 +139,15 @@ struct Socket<fuerte::SocketType::Ssl> {
           try {
             // Perform SSL handshake and verify the remote host's certificate.
             socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+
+            // Set SNI Hostname (many hosts need this to handshake successfully)
+            if (!SSL_set_tlsext_host_name(socket.native_handle(), config._host.c_str())) {
+              boost::system::error_code ec{
+                static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
+              done(ec);
+              return;
+            }
+
             if (verify) {
               socket.set_verify_mode(asio_ns::ssl::verify_peer);
               socket.set_verify_callback(
@@ -136,7 +155,13 @@ struct Socket<fuerte::SocketType::Ssl> {
             } else {
               socket.set_verify_mode(asio_ns::ssl::verify_none);
             }
+          } catch (std::bad_alloc const&) {
+            // definitely an OOM error
+            done(boost::system::errc::make_error_code(boost::system::errc::not_enough_memory));
+            return;
           } catch (boost::system::system_error const& exc) {
+            // probably not an OOM error, but we don't know what it actually is.
+            // there is no code for a generic error that we could use here
             done(exc.code());
             return;
           }
@@ -151,6 +176,8 @@ struct Socket<fuerte::SocketType::Ssl> {
       resolver.cancel();
       if (socket.lowest_layer().is_open()) {  // non-graceful shutdown
         asio_ns::error_code ec;
+        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+        ec.clear();
         socket.lowest_layer().close(ec);
       }
     } catch (...) {
@@ -159,25 +186,41 @@ struct Socket<fuerte::SocketType::Ssl> {
 
   template <typename F>
   void shutdown(F&& cb) {
+    // The callback cb plays two roles here:
+    //   1. As a callback to be called back.
+    //   2. It captures by value a shared_ptr to the connection object of which this
+    //      socket is a member. This means that the allocation of the connection and
+    //      this of the socket is kept until all asynchronous operations are completed
+    //      (or aborted).
     asio_ns::error_code ec;  // prevents exceptions
     socket.lowest_layer().cancel(ec);
+
     if (!socket.lowest_layer().is_open()) {
       timer.cancel(ec);
       std::forward<F>(cb)(ec);
       return;
     }
+    cleanupDone = false;
     timer.expires_from_now(std::chrono::seconds(3));
-    timer.async_wait([this](asio_ns::error_code ec) {
-      if (!ec) {
+    timer.async_wait([cb, this](asio_ns::error_code ec) {
+      // Copy in callback such that the connection object is kept alive long
+      // enough, please do not delete, although it is not used here!
+      if (!cleanupDone && !ec) {
+        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+        ec.clear();
         socket.lowest_layer().close(ec);
+        cleanupDone = true;
       }
     });
     socket.async_shutdown([cb(std::forward<F>(cb)), this](auto const& ec) {
       timer.cancel();
 #ifndef _WIN32
-      if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
+      if (!cleanupDone && (!ec || ec == asio_ns::error::basic_errors::not_connected)) {
         asio_ns::error_code ec2;
+        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec2);
+        ec2.clear();
         socket.lowest_layer().close(ec2);
+        cleanupDone = true;
       }
 #endif
       cb(ec);
@@ -187,6 +230,7 @@ struct Socket<fuerte::SocketType::Ssl> {
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::steady_timer timer;
+  std::atomic<bool> cleanupDone;
 };
 
 #ifdef ASIO_HAS_LOCAL_SOCKETS

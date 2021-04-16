@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,15 +52,17 @@ void TRI_InitCsvParser(
 
   parser->_begin = static_cast<char*>(TRI_Allocate(length));
 
-  if (parser->_begin == nullptr) {
-    length = 0;
-  }
-
   parser->_start = parser->_begin;
   parser->_written = parser->_begin;
   parser->_current = parser->_begin;
   parser->_stop = parser->_begin;
-  parser->_end = parser->_begin + length;
+
+  if (parser->_begin == nullptr) {
+    length = 0;
+    parser->_end = nullptr;
+  } else {
+    parser->_end = parser->_begin + length;
+  }
 
   parser->_dataBegin = nullptr;
   parser->_dataAdd = nullptr;
@@ -116,7 +118,7 @@ void TRI_UseBackslashCsvParser(TRI_csv_parser_t* parser, bool value) {
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length) {
+ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length) {
   char* ptr;
   char* qtr;
 
@@ -196,7 +198,7 @@ int TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length
           if (ptr == parser->_stop) {
             parser->_written = ptr;
             parser->_current = ptr;
-            return false;
+            return TRI_ERROR_NO_ERROR;
           }
 
           parser->begin(parser, parser->_row);
@@ -210,7 +212,7 @@ int TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length
           if (ptr == parser->_stop) {
             parser->_written = ptr;
             parser->_current = ptr;
-            return false;
+            return TRI_ERROR_NO_ERROR;
           }
 
           if (*ptr == '\n') {
@@ -399,7 +401,7 @@ int TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length
           else {
             parser->_written = qtr;
             parser->_current = ptr;
-            return true;
+            return TRI_ERROR_NO_ERROR;
           }
 
           break;

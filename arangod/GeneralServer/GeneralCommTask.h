@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,8 @@
 #include "GeneralServer/CommTask.h"
 
 namespace arangodb {
+class GeneralServerFeature;
+
 namespace rest {
 
 template <SocketType T>
@@ -52,21 +54,19 @@ class GeneralCommTask : public CommTask {
   
   bool stopped() const { return _stopped.load(std::memory_order_acquire); }
     
-  protected:
-
   /// called to process data in _readBuffer, return false to stop
   virtual bool readCallback(asio_ns::error_code ec) = 0;
   
   /// set / reset connection timeout
   virtual void setIOTimeout() = 0;
   
- protected:
-  
   /// default max chunksize is 30kb in arangodb (each read fits)
   static constexpr size_t ReadBlockSize = 1024 * 32;
   static constexpr double WriteTimeout = 300.0;
     
   std::unique_ptr<AsioSocket<T>> _protocol;
+          
+  GeneralServerFeature const& _generalServerFeature;
   
   bool _reading;
   bool _writing;

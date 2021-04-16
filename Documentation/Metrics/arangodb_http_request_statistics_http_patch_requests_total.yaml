@@ -1,0 +1,26 @@
+name: arangodb_http_request_statistics_http_patch_requests_total
+renamedFrom: arangodb_http_request_statistics_http_patch_requests
+introducedIn: "3.8.0"
+help: |
+  Number of HTTP PATCH requests
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This counter reflects the total number of HTTP (or VST) **PATCH** 
+  requests which have hit this particular instance of `arangod`.
+  
+  Note that this counter is ever growing during the lifetime of the
+  `arangod` process. However, when the process is restarted, it starts
+  from scratch. In the Grafana dashboards, it is usually visualized as a
+  rate per second, averaged with a sliding window of a minute.
+threshold: |
+  This metrics reflects the performance of an instance in a certain way.
+  Note that your mileage may vary according to available resources as well
+  as to complexity of the requests the client sends.

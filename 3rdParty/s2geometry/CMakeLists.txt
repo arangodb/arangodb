@@ -3,6 +3,9 @@
 set (PYTHON_INCLUDE_DIR "")
 project(s2-geometry C CXX)
 
+add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function)
+add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function)
+
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
 set(ARANGO_S2GEOMETRY_VERSION "dfefe0c")

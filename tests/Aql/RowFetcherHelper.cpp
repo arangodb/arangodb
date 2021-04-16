@@ -88,8 +88,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
       _vPackBuffer(std::move(vPackBuffer)),
       _nrItems(0),
       _nrRegs(0),
-      _resourceMonitor(),
-      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _matrix(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
@@ -107,7 +106,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
     VPackToAqlItemBlock(_data, _nrRegs, *itemBlock);
     // Add all registers as valid input registers:
     auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-    for (RegisterId i = 0; i < _nrRegs; i++) {
+    for (RegisterId::value_t i = 0; i < _nrRegs; i++) {
       inputRegisters->emplace(i);
     }
     _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
@@ -140,7 +139,7 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
       arangodb::aql::RegisterCount nrRegs =
           static_cast<arangodb::aql::RegisterCount>(oneRow.length());
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-      for (RegisterId i = 0; i < nrRegs; i++) {
+      for (RegisterId::value_t i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);
       }
       SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};

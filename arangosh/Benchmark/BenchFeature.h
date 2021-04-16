@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,21 +28,23 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 
 class ClientFeature;
 
 struct BenchRunResult {
-  double time;
-  size_t failures;
-  size_t incomplete;
-  double requestTime;
+  double _time;
+  uint64_t _failures;
+  uint64_t _incomplete;
+  double _requestTime;
 
-  void update(double _time, size_t _failures, size_t _incomplete, double _requestTime) {
-    time = _time;
-    failures = _failures;
-    incomplete = _incomplete;
-    requestTime = _requestTime;
+  void update(double time, uint64_t failures, uint64_t incomplete, double requestTime) {
+    _time = time;
+    _failures = failures;
+    _incomplete = incomplete;
+    _requestTime = requestTime;
   }
 };
 
@@ -52,7 +54,6 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override final;
-  void unprepare() override final;
 
   bool async() const { return _async; }
   uint64_t concurrency() const { return _concurrency; }
@@ -71,6 +72,9 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t replicationFactor() const { return _replicationFactor; }
   uint64_t numberOfShards() const { return _numberOfShards; }
   bool waitForSync() const { return _waitForSync; }
+  
+  std::string const& customQuery() const { return _customQuery; }
+  std::string const& customQueryFile() const { return _customQueryFile; }
 
  private:
   void status(std::string const& value);
@@ -81,11 +85,14 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool _async;
   uint64_t _concurrency;
   uint64_t _operations;
+  uint64_t _realOperations;
   uint64_t _batchSize;
+  uint64_t _duration;
   bool _keepAlive;
   std::string _collection;
   std::string _testCase;
   uint64_t _complexity;
+  bool _createDatabase;
   bool _delay;
   bool _progress;
   bool _verbose;
@@ -96,6 +103,9 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t _replicationFactor;
   uint64_t _numberOfShards;
   bool _waitForSync;
+  
+  std::string _customQuery;
+  std::string _customQueryFile;
 
   int* _result;
 

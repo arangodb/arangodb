@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,13 +52,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   /// after
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLinkCoordinator(IndexId id, arangodb::LogicalCollection& collection);
-
-  virtual void batchInsert(
-      transaction::Methods& trx,
-      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override {
-    TRI_ASSERT(false);  // should not be called
-  }
 
   virtual bool canBeDropped() const override {
     return IResearchLink::canBeDropped();
@@ -126,7 +119,8 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
 
    public:
     bool equal(arangodb::velocypack::Slice const& lhs,
-               arangodb::velocypack::Slice const& rhs) const override;
+               arangodb::velocypack::Slice const& rhs,
+               std::string const& dbname) const override;
 
     std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                  arangodb::velocypack::Slice const& definition,

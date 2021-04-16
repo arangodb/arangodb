@@ -33,6 +33,9 @@ intermediate commits and will not increase the value.
 @RESTRETURNCODE{200}
 Statistics were returned successfully.
 
+@RESTRETURNCODE{404}
+Statistics are disabled on the instance.
+
 @RESTREPLYBODY{error,boolean,required,}
 boolean flag to indicate whether an error occurred (*false* in this case)
 

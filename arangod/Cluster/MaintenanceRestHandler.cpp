@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,8 +74,7 @@ RestStatus MaintenanceRestHandler::execute() {
       break;
 
     default:
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       break;
   }  // switch
 
@@ -174,11 +173,10 @@ void MaintenanceRestHandler::putAction() {
   }    // if
 
   if (good) {
-    Result result;
-
     // build the action
+    TRI_ASSERT(_actionDesc != nullptr);
     auto& maintenance = server().getFeature<MaintenanceFeature>();
-    result = maintenance.addAction(_actionDesc);
+    Result result = maintenance.addAction(_actionDesc);
 
     if (!result.ok()) {
       // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -65,16 +66,15 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
       _info(info),
       _selectivityEstimates(collection) {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
-    VPackSlice s = info.get("isVolatile");
-    if (s.isBoolean() && s.getBoolean()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "volatile collections are unsupported in the RocksDB engine");
-    }
-  } else if (_engineType != ClusterEngineType::MockEngine) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+    return;
   }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (_engineType == ClusterEngineType::MockEngine) {
+    return;
+  }
+#endif
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
 }
 
 ClusterCollection::ClusterCollection(LogicalCollection& collection,
@@ -115,7 +115,11 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     if (!validators.isNone()) {
       merge.add(StaticStrings::Schema, validators);
     }
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    // do nothing
+#endif
+  } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
@@ -132,7 +136,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
 
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto& idx : _indexes) {
     static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
   }
@@ -153,8 +157,11 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add(StaticStrings::CacheEnabled,
                VPackValue(Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled, false)));
-
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    // do nothing
+#endif
+  } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
@@ -174,8 +181,8 @@ void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::
 }
 
 /// @brief closes an open collection
-int ClusterCollection::close() {
-  READ_LOCKER(guard, _indexesLock);
+ErrorCode ClusterCollection::close() {
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -183,14 +190,14 @@ int ClusterCollection::close() {
 }
 
 void ClusterCollection::load() {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->load();
   }
 }
 
 void ClusterCollection::unload() {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -208,18 +215,18 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
 size_t ClusterCollection::memory() const { return 0; }
 
 void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
-  WRITE_LOCKER(guard, _indexesLock);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   TRI_ASSERT(indexesSlice.isArray());
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
   std::vector<std::shared_ptr<Index>> indexes;
 
   if (indexesSlice.length() == 0 && _indexes.empty()) {
-    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
+    engine.indexFactory().fillSystemIndexes(_logicalCollection, indexes);
 
   } else {
-    engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
+    engine.indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
   }
 
   for (std::shared_ptr<Index>& idx : indexes) {
@@ -255,7 +262,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
   WRITE_LOCKER(guard, _exclusiveLock);
   std::shared_ptr<Index> idx;
 
-  WRITE_LOCKER(guard2, _indexesLock);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   idx = lookupIndex(info);
   if (idx) {
     created = false;
@@ -263,12 +270,12 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
     return idx;
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
-  idx = engine->indexFactory().prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = engine.indexFactory().prepareIndexFromSlice(info, true, _logicalCollection, false);
   TRI_ASSERT(idx != nullptr);
 
   // In the coordinator case we do not fill the index
@@ -285,7 +292,7 @@ bool ClusterCollection::dropIndex(IndexId iid) {
     return true;
   }
 
-  WRITE_LOCKER(guard, _indexesLock);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it  : _indexes) {
     if (iid == it->id()) {
       _indexes.erase(it);
@@ -313,11 +320,6 @@ Result ClusterCollection::truncate(transaction::Methods& /*trx*/, OperationOptio
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief compact-data operation
-Result ClusterCollection::compact() {
-  return {};
-}
-
 Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
                                     std::pair<LocalDocumentId, RevisionId>& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -325,21 +327,21 @@ Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRe
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                arangodb::velocypack::StringRef const& /*key*/,
-                               ManagedDocumentResult& /*result*/) {
+                               IndexIterator::DocumentCallback const& /*cb*/) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+// read using a token!
+Result ClusterCollection::read(transaction::Methods* /*trx*/,
+                             LocalDocumentId const& /*documentId*/,
+                             IndexIterator::DocumentCallback const& /*cb*/) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
 bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
                                      LocalDocumentId const& /*documentId*/,
                                      ManagedDocumentResult& /*result*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-// read using a token!
-bool ClusterCollection::readDocumentWithCallback(transaction::Methods* /*trx*/,
-                                                 LocalDocumentId const& /*documentId*/,
-                                                 IndexIterator::DocumentCallback const& /*cb*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

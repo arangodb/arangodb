@@ -1,0 +1,15 @@
+name: arangodb_agency_write_hist
+introducedIn: "3.7.1"
+help: |
+  Agency write time histogram.
+unit: ms
+type: histogram
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  Agency write time histogram. This histogram provides the distribution
+  of the times spent in agency write operations, in milliseconds. This only
+  includes the time required to write the data into the leader's log, but
+  does not include the time required to replicate the writes to the followers.

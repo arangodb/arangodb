@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,6 +80,7 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
     AstNode* sub = root->getMemberUnchecked(i);
 
     TRI_ASSERT(sub != nullptr && sub->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+    // cppcheck-suppress nullPointerRedundantCheck
     size_t const nAnd = sub->numMembers();
 
     if (nAnd != 1) {
@@ -345,7 +346,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
-      // must be sorted in the direction
+      // must be sorted in the same direction
       Index::SortCosts sc =
           idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
       if (sc.supportsCondition) {
@@ -379,19 +380,26 @@ std::pair<bool, bool> findIndexHandleForAndNode(
         totalCost += sortCost;
       } else {
         totalCost +=
-            Index::SortCosts::defaultCosts(itemsInIndex, idx->isPersistent()).estimatedCosts;
+            Index::SortCosts::defaultCosts(itemsInIndex).estimatedCosts;
       }
     }
 
+    // the more attributes an index contains, the more useful it will be for projections.
+    double projectionsFactor = 1.0 - ((idx->fields().size() - 1) * 0.02);
+    totalCost *= projectionsFactor;
+
     LOG_TOPIC("7278d", TRACE, Logger::FIXME)
-        << "looking at index: " << idx.get()
+        << "looked at candidate index: " << idx.get()
         << ", isSorted: " << idx->isSorted()
         << ", isSparse: " << idx->sparse()
         << ", fields: " << idx->fields().size()
+        << ", hasSelectivityEstimate: " << idx->hasSelectivityEstimate()
+        << ", selectivityEstimate: " << (idx->hasSelectivityEstimate() ? std::to_string(idx->selectivityEstimate()) : "n/a")
         << ", supportsFilter: " << supportsFilter
         << ", supportsSort: " << supportsSort
-        << ", filterCost: " << (supportsFilter ? filterCost : 0.0)
-        << ", sortCost: " << (supportsSort ? sortCost : 0.0)
+        << ", projectionsFactor: " << projectionsFactor
+        << ", filterCost: " << filterCost
+        << ", sortCost: " << sortCost
         << ", totalCost: " << totalCost
         << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess
         << ", isUnidirectional: " << sortCondition.isUnidirectional()
@@ -439,8 +447,13 @@ std::pair<bool, bool> findIndexHandleForAndNode(
   }
 
   if (bestIndex == nullptr) {
+    // intentionally commented out here. can be enabled during development
+    // LOG_TOPIC("3aac4", TRACE, Logger::FIXME) << "- no index used";
     return std::make_pair(false, false);
   }
+
+  // intentionally commented out here. can be enabled during development
+  // LOG_TOPIC("4b655", TRACE, Logger::FIXME) << "- picked: " << bestIndex.get();
 
   specializedCondition = bestIndex->specializeCondition(node, reference);
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,7 @@ struct Collection {
   std::unordered_set<std::string> responsibleServers() const;
 
   /// @brief returns the "distributeShardsLike" attribute for the collection
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
 
   /// @brief fills the set with the responsible servers for the collection
   /// returns the number of responsible servers found for the collection

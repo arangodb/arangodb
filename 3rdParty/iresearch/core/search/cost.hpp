@@ -28,7 +28,7 @@
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class cost
@@ -43,7 +43,7 @@ class IRESEARCH_API cost final : public attribute {
     return "iresearch::cost";
   }
 
-  static constexpr cost_t MAX = integer_traits<cost_t>::const_max;
+  static constexpr cost_t MAX = std::numeric_limits<cost_t>::max();
 
   cost() = default;
 
@@ -64,7 +64,7 @@ class IRESEARCH_API cost final : public attribute {
   template<typename Provider>
   static cost_t extract(const Provider& src, cost_t def = MAX) noexcept {
     cost::cost_t est = def;
-    auto* attr = irs::get<::iresearch::cost>(src);
+    auto* attr = irs::get<irs::cost>(src);
     if (attr) {
       est = attr->estimate();
     }
@@ -74,7 +74,7 @@ class IRESEARCH_API cost final : public attribute {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the estimation value 
   //////////////////////////////////////////////////////////////////////////////
-  void value(cost_t value) noexcept {
+  void reset(cost_t value) noexcept {
     value_ = value;
     init_ = true;
   }
@@ -82,7 +82,7 @@ class IRESEARCH_API cost final : public attribute {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the estimation rule
   //////////////////////////////////////////////////////////////////////////////
-  void rule(cost_f&& eval) {
+  void reset(cost_f&& eval) noexcept(std::is_nothrow_move_assignable_v<cost_f>) {
     assert(eval);
     func_ = std::move(eval);
     init_ = false;
@@ -109,6 +109,6 @@ class IRESEARCH_API cost final : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_COST_H

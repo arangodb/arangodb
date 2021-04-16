@@ -26,7 +26,7 @@
 #include "search/prefix_filter.hpp"
 #include "search/filter_visitor.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::by_prefix make_filter(
     const irs::string_ref& field,
@@ -363,4 +363,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}

@@ -29,7 +29,9 @@
 #include "utils/file_utils.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_LOCAL
+using namespace std::chrono_literals;
+
+namespace {
 
 class utf8_path_tests: public test_base {
   irs::utf8_path cwd_;
@@ -51,7 +53,7 @@ class utf8_path_tests: public test_base {
   }
 };
 
-NS_END
+}
 
 TEST_F(utf8_path_tests, current) {
   // absolute path
@@ -869,7 +871,7 @@ TEST_F(utf8_path_tests, directory) {
             break;
           }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(1000ms);
       }
       for (auto& thread : pool) {
         thread.join();
@@ -1648,7 +1650,7 @@ TEST_F(utf8_path_tests, visit) {
   std::time_t tmpTime;
   uint64_t tmpUint;
   size_t actual_count = 0;
-  auto visit_max = irs::integer_traits<size_t>::max();
+  auto visit_max = std::numeric_limits<size_t>::max();
   auto visitor = [&actual_count, &visit_max](const file_path_t name)->bool {
     ++actual_count;
 
@@ -1679,7 +1681,7 @@ TEST_F(utf8_path_tests, visit) {
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_TRUE(path.file_size(tmpUint));
   actual_count = 0;
-  visit_max = irs::integer_traits<size_t>::max();
+  visit_max = std::numeric_limits<size_t>::max();
   ASSERT_TRUE(path.visit_directory(visitor) && actual_count > 1);
   actual_count = 0;
   visit_max = 1;
@@ -1700,7 +1702,7 @@ TEST_F(utf8_path_tests, visit) {
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_TRUE(path.file_size(tmpUint));
   actual_count = 0;
-  visit_max = irs::integer_traits<size_t>::max();
+  visit_max = std::numeric_limits<size_t>::max();
   ASSERT_TRUE(path.visit_directory(visitor, false) && actual_count == 0);
 
   // create file
@@ -1718,7 +1720,7 @@ TEST_F(utf8_path_tests, visit) {
   ASSERT_TRUE(path.mtime(tmpTime) && tmpTime > 0);
   ASSERT_TRUE(path.file_size(tmpUint));
   actual_count = 0;
-  visit_max = irs::integer_traits<size_t>::max();
+  visit_max = std::numeric_limits<size_t>::max();
   ASSERT_TRUE(path.visit_directory(visitor, false) && actual_count > 0);
 
   path /= file1;

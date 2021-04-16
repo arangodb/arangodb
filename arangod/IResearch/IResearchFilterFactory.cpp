@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -349,6 +349,10 @@ Result getLatLong(
       auto const latValue = value.at(1);
       auto const lonValue = value.at(0);
 
+      if (!latValue.isDouble() || !lonValue.isDouble()) {
+        return error::failedToEvaluate(funcName, argIdx);
+      }
+
       double_t lat, lon;
 
       if (!latValue.getDouble(lat) || !lonValue.getDouble(lon)) {
@@ -399,17 +403,8 @@ Result getAnalyzerByName(
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-  auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
-    ? server.getFeature<SystemDatabaseFeature>().use()
-    : nullptr;
-
-  if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase,
-                                   ctx.trx->state()->analyzersRevision());
-
-    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-      analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
-  }
+  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),	
+                                 ctx.trx->state()->analyzersRevision());
 
   if (!analyzer) {
     return {
@@ -418,6 +413,10 @@ Result getAnalyzerByName(
           .append(analyzerId.c_str(), analyzerId.size()).append("'")
     };
   }
+
+  shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
+    analyzerId, ctx.trx->vocbase().name(), false);
+
   return {};
 }
 
@@ -1058,7 +1057,7 @@ Result fromFuncGeoInRange(
     }
 
     if (argc > 5) {
-      rv = evaluateArg(includeMax, tmpValue, funcName, args, 4, buildFilter, ctx);
+      rv = evaluateArg(includeMax, tmpValue, funcName, args, 5, buildFilter, ctx);
 
       if (rv.fail()) {
         return rv;
@@ -1080,10 +1079,12 @@ Result fromFuncGeoInRange(
     setupGeoFilter(filterCtx.analyzer, options->options);
 
     options->origin = centroid.ToPoint();
-    options->range.min = minDistance;
-    options->range.min_type = includeMin
-      ? irs::BoundType::INCLUSIVE
-      : irs::BoundType::EXCLUSIVE;
+    if (minDistance != 0.) {
+      options->range.min = minDistance;
+      options->range.min_type = includeMin
+        ? irs::BoundType::INCLUSIVE
+        : irs::BoundType::EXCLUSIVE;
+    }
     options->range.max = maxDistance;
     options->range.max_type = includeMax
       ? irs::BoundType::INCLUSIVE
@@ -1097,7 +1098,7 @@ Result fromFuncGeoInRange(
   return {};
 }
 
-// GEO_DISTANCE(.. , ..) <|<=|>|>= Distance
+// GEO_DISTANCE(.. , ..) <|<=|==|>|>= Distance
 Result fromGeoDistanceInterval(
     irs::boolean_filter* filter,
     arangodb::iresearch::NormalizedCmpNode const& node,
@@ -1155,12 +1156,20 @@ Result fromGeoDistanceInterval(
   ScopedAqlValue distanceValue(*node.value);
   if (filter || distanceValue.isConstant()) {
     if (!distanceValue.execute(ctx)) {
-      return error::failedToEvaluate(GEO_DISTANCE_FUNC, 3); // FIXME
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to evaluate an argument denoting a distance near '"s +
+        GEO_DISTANCE_FUNC + "' function"
+      };
     }
 
     if (SCOPED_VALUE_TYPE_DOUBLE != distanceValue.type() ||
         !distanceValue.getDouble(distance)) {
-      return error::failedToParse(GEO_DISTANCE_FUNC, 3, SCOPED_VALUE_TYPE_DOUBLE); // FIXME
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to parse an argument denoting a distance as a number near '"s +
+        GEO_DISTANCE_FUNC + "' function"
+      };
     }
   }
 
@@ -1171,24 +1180,42 @@ Result fromGeoDistanceInterval(
       return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
     }
 
-    auto& geo_filter = filter->add<GeoDistanceFilter>();
+    auto& geo_filter = (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp
+                       ? filter->add<irs::Not>().filter<GeoDistanceFilter>()
+                       : filter->add<GeoDistanceFilter>());
+
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
+    setupGeoFilter(filterCtx.analyzer, options->options);
+
     options->origin = centroid.ToPoint();
 
-    auto const type = (aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp ||
-                       aql::NODE_TYPE_OPERATOR_BINARY_LE == node.cmp)
-      ? irs::BoundType::INCLUSIVE
-      : irs::BoundType::EXCLUSIVE;
-
-    if (aql::NODE_TYPE_OPERATOR_BINARY_GT == node.cmp ||
-        aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp) {
-      options->range.min = distance;
-      options->range.min_type = type;
-    } else {
-      options->range.max = distance;
-      options->range.max_type = type;
+    switch (node.cmp) {
+      case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      case aql::NODE_TYPE_OPERATOR_BINARY_NE:
+        options->range.min = distance;
+        options->range.min_type = irs::BoundType::INCLUSIVE;
+        options->range.max = distance;
+        options->range.max_type = irs::BoundType::INCLUSIVE;
+        break;
+      case aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_LE:
+        options->range.max = distance;
+        options->range.max_type = aql::NODE_TYPE_OPERATOR_BINARY_LE == node.cmp
+          ? irs::BoundType::INCLUSIVE
+          : irs::BoundType::EXCLUSIVE;
+        break;
+      case aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_GE:
+        options->range.min = distance;
+        options->range.min_type = aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp
+          ? irs::BoundType::INCLUSIVE
+          : irs::BoundType::EXCLUSIVE;
+        break;
+      default:
+        TRI_ASSERT(false);
+        return {TRI_ERROR_BAD_PARAMETER};
     }
 
     TRI_ASSERT(filterCtx.analyzer);
@@ -1236,8 +1263,18 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
   arangodb::iresearch::NormalizedCmpNode normalized;
 
   if (!arangodb::iresearch::normalizeCmpNode(node, *ctx.ref, normalized)) {
+    if (arangodb::iresearch::normalizeGeoDistanceCmpNode(node, *ctx.ref, normalized)) {
+      if (fromGeoDistanceInterval(filter, normalized, ctx, filterCtx).ok()) {
+        return {};
+      }
+    }
+
     auto rv = fromExpression(filter, ctx, filterCtx, node);
-    return rv.reset(rv.errorNumber(), "in from binary equation" + rv.errorMessage());
+    return rv.withError([&](result::Error& err) {
+      err.resetErrorMessage(
+          arangodb::basics::StringUtils::concatT("in from binary equation",
+                                                 rv.errorMessage()));
+    });
   }
 
   irs::by_term* termFilter = nullptr;
@@ -1257,7 +1294,9 @@ Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ctx*/,
 
   if (node.numMembers() != 2) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "wrong number of arguments in range expression: " + rv.errorMessage());
+    return rv.reset(TRI_ERROR_BAD_PARAMETER,
+                    arangodb::basics::StringUtils::concatT(
+                        "wrong number of arguments in range expression: ", rv.errorMessage()));
   }
 
   // ranges are always true
@@ -1510,7 +1549,9 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
              aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type);
   if (node.numMembers() != 3) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(rv.errorNumber(), "error in Array comparison operator: " + rv.errorMessage());
+    return rv.reset(rv.errorNumber(),
+                    arangodb::basics::StringUtils::concatT(
+                        "error in Array comparison operator: ", rv.errorMessage()));
   }
 
   auto const* valueNode = node.getMemberUnchecked(0);
@@ -1588,12 +1629,16 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
         // not supported by IResearch, but could be handled by ArangoDB
         auto rv = fromExpression(filter, ctx, subFilterCtx, std::move(exprNode));
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+          return rv.reset(rv.errorNumber(),
+                          arangodb::basics::StringUtils::concatT(
+                              "while getting array: ", rv.errorMessage()));
         }
       } else {
         auto rv = SubFilterFactory::byNodeSubFilter(filter, normalized, ctx, subFilterCtx);
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+          return rv.reset(rv.errorNumber(),
+                          arangodb::basics::StringUtils::concatT(
+                              "while getting array: ", rv.errorMessage()));
         }
       }
     }
@@ -1646,7 +1691,9 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
       for (size_t i = 0; i < n; ++i) {
         auto rv = SubFilterFactory::byValueSubFilter(filter, fieldName, value.at(i), arrayExpansionNodeType, ctx, subFilterCtx);
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(), "failed to create filter because: " + rv.errorMessage());
+          return rv.reset(rv.errorNumber(),
+                          arangodb::basics::StringUtils::concatT(
+                              "failed to create filter because: ", rv.errorMessage()));
         }
       }
       return {};
@@ -1753,14 +1800,16 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
       // not supported by IResearch, but could be handled by ArangoDB
       auto rv = fromExpression(filter, ctx, subFilterCtx, std::move(exprNode));
       if (rv.fail()) {
-        return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+        return rv.reset(rv.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                              "while getting array: ", rv.errorMessage()));
       }
     } else {
       auto* termFilter = filter ? &filter->add<irs::by_term>() : nullptr;
 
       auto rv = byTerm(termFilter, normalized, ctx, subFilterCtx);
       if (rv.fail()) {
-        return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+        return rv.reset(rv.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                              "while getting array: ", rv.errorMessage()));
       }
     }
   }
@@ -1775,7 +1824,9 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (node.numMembers() != 2) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(rv.errorNumber(), "error in from In" + rv.errorMessage());
+    return rv.reset(rv.errorNumber(),
+                    arangodb::basics::StringUtils::concatT("error in from In",
+                                                           rv.errorMessage()));
   }
 
   auto const* valueNode = node.getMemberUnchecked(1);
@@ -1858,7 +1909,9 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
         // failed to create a filter
         auto rv = byTerm(&filter->add<irs::by_term>(), *attributeNode, value.at(i), ctx, subFilterCtx);
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(), "failed to create filter because: " + rv.errorMessage());
+          return rv.reset(rv.errorNumber(),
+                          arangodb::basics::StringUtils::concatT(
+                              "failed to create filter because: ", rv.errorMessage()));
         }
       }
 
@@ -1893,7 +1946,8 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (node.numMembers() != 1) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(rv.errorNumber(), "Bad node in negation" + rv.errorMessage());
+    return rv.reset(rv.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                          "Bad node in negation", rv.errorMessage()));
   }
 
   auto const* member = node.getMemberUnchecked(0);
@@ -1997,11 +2051,8 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
     auto const* valueNode = node.getMemberUnchecked(i);
     TRI_ASSERT(valueNode);
 
-    auto rv = ::filter(filter, ctx, subFilterCtx, *valueNode);
+    auto const rv = ::filter(filter, ctx, subFilterCtx, *valueNode);
     if (rv.fail()) {
-      auto node = aql::AstNode::toString(valueNode);
-      //return rv.reset(rv.errorNumber(), "error checking subNodes in node: " + node + ": " + rv.errorMessage());
-      //probably too much for the user
       return rv;
     }
   }
@@ -2060,21 +2111,8 @@ Result fromFuncAnalyzer(
     }
 
     auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-
-    shortName = analyzerId;
-
-    auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
-                          ? server.getFeature<SystemDatabaseFeature>().use()
-                          : nullptr;
-
-    if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase,
-                                     ctx.trx->state()->analyzersRevision());
-
-      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-          analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
-    }
-
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
+                                   ctx.trx->state()->analyzersRevision());
     if (!analyzer) {
       return {
         TRI_ERROR_BAD_PARAMETER,
@@ -2082,6 +2120,10 @@ Result fromFuncAnalyzer(
             .append(analyzerId.c_str()).append("'")
       };
     }
+
+    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+      analyzerId, ctx.trx->vocbase().name(), false);  // args
+
   }
 
   FilterContext const subFilterContext(analyzerValue, filterCtx.boost); // override analyzer
@@ -2137,7 +2179,8 @@ Result fromFuncBoost(
   rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
 
   if (rv.fail()) {
-    return {rv.errorNumber(), "error in sub-filter context: " + rv.errorMessage()};
+    return {rv.errorNumber(), arangodb::basics::StringUtils::concatT(
+                                  "error in sub-filter context: ", rv.errorMessage())};
   }
 
   return {};
@@ -2562,17 +2605,13 @@ std::string getSubFuncErrorSuffix(char const* funcName, size_t const funcArgumen
       .append(std::to_string(funcArgumentPosition + 1)).append("')");
 }
 
-Result oneArgumentfromFuncPhrase(char const* funcName,
-                                 size_t const funcArgumentPosition,
-                                 char const* subFuncName,
-                                 VPackSlice elem,
+Result oneArgumentfromFuncPhrase(char const* funcName, size_t const funcArgumentPosition,
+                                 char const* subFuncName, VPackSlice elem,
                                  irs::string_ref& term) {
   if (elem.isArray() && elem.length() != 1) {
-    auto res = error::invalidArgsCount<error::ExactValue<1>>(subFuncName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
+    return error::invalidArgsCount<error::ExactValue<1>>(subFuncName).withError([&](result::Error& err) {
+      err.appendErrorMessage(getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+    });
   }
   auto actualArg = elem.isArray() ? elem.at(0) : elem;
 
@@ -2655,33 +2694,25 @@ Result fromFuncPhraseLike(char const* funcName,
   return {};
 }
 
-template<size_t First, typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
-Result getLevenshteinArguments(char const* funcName, bool isFilter,
-                               QueryContext const& ctx,
-                               ElementType const& args,
-                               aql::AstNode const** field,
+template <size_t First, typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
+Result getLevenshteinArguments(char const* funcName, bool isFilter, QueryContext const& ctx,
+                               ElementType const& args, aql::AstNode const** field,
                                typename ElementTraits::ValueType& targetValue,
                                irs::by_edit_distance_options& opts,
                                std::string const& errorSuffix = std::string()) {
   if (!ElementTraits::isDeterministic(args)) {
-    auto res = error::nondeterministicArgs(funcName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::nondeterministicArgs(funcName).withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
   auto const argc = ElementTraits::numMembers(args);
   constexpr size_t min = 3 - First;
   constexpr size_t max = 5 - First;
   if (argc < min || argc > max) {
-    auto res = error::invalidArgsCount<error::Range<min, max>>(funcName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::invalidArgsCount<error::Range<min, max>>(funcName).withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
-  if constexpr (0 == First) { // this is done only for AstNode so don`t bother with traits
+  if constexpr (0 == First) {  // this is done only for AstNode so don`t bother with traits
     static_assert(std::is_same_v<aql::AstNode, ElementType>, "Only AstNode supported for parsing attribute");
     TRI_ASSERT(field);
     // (0 - First) argument defines a field
@@ -2694,26 +2725,24 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
 
   // (1 - First) argument defines a target
   irs::string_ref target;
-  auto res = ElementTraits::evaluateArg(target, targetValue, funcName, args, 1 - First, isFilter, ctx);
+  auto res = ElementTraits::evaluateArg(target, targetValue, funcName, args,
+                                        1 - First, isFilter, ctx);
 
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return res.withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
-  typename ElementTraits::ValueType tmpValue; // can reuse value for int64_t and bool
+  typename ElementTraits::ValueType tmpValue;  // can reuse value for int64_t and bool
 
   // (2 - First) argument defines a max distance
   int64_t maxDistance = 0;
-  res = ElementTraits::evaluateArg(maxDistance, tmpValue, funcName, args, 2 - First, isFilter, ctx);
+  res = ElementTraits::evaluateArg(maxDistance, tmpValue, funcName, args,
+                                   2 - First, isFilter, ctx);
 
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return res.withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   if (maxDistance < 0) {
@@ -2727,13 +2756,12 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   // optional (3 - First) argument defines transpositions
   bool withTranspositions = true;
   if (3 - First < argc) {
-    res = ElementTraits::evaluateArg(withTranspositions, tmpValue, funcName, args, 3 - First, isFilter, ctx);
+    res = ElementTraits::evaluateArg(withTranspositions, tmpValue, funcName,
+                                     args, 3 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(errorSuffix)
-      };
+      return res.withError(
+          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
     }
   }
 
@@ -2758,13 +2786,12 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   // optional (4 - First) argument defines terms limit
   int64_t maxTerms = FilterConstants::DefaultLevenshteinTermsLimit;
   if (4 - First < argc) {
-    res = ElementTraits::evaluateArg(maxTerms, tmpValue, funcName, args, 4 - First, isFilter, ctx);
+    res = ElementTraits::evaluateArg(maxTerms, tmpValue, funcName, args,
+                                     4 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(errorSuffix)
-      };
+      return res.withError(
+          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
     }
   }
 
@@ -2818,11 +2845,11 @@ Result fromFuncPhraseLevenshteinMatch(char const* funcName,
 
         virtual void prepare(const irs::sub_reader& segment,
                              const irs::term_reader& field,
-                             const irs::seek_term_iterator& terms) {
+                             const irs::seek_term_iterator& terms) override {
           collector.prepare(segment, field, terms);
         }
 
-        virtual void visit(irs::boost_t boost) {
+        virtual void visit(irs::boost_t boost) override {
           collector.visit(boost);
         }
 
@@ -2868,33 +2895,30 @@ Result fromFuncPhraseTerms(char const* funcName,
   }
 
   if (!ElementTraits::isDeterministic(array)) {
-    auto res = error::nondeterministicArgs(subFuncName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
+    return error::nondeterministicArgs(subFuncName).withError([&](result::Error& err) {
+      err.appendErrorMessage(getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+    });
   }
 
   auto const argc = ElementTraits::numMembers(array);
   if (0 == argc) {
-    auto res = error::invalidArgsCount<error::OpenRange<false, 1>>(subFuncName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-    };
+    return error::invalidArgsCount<error::OpenRange<false, 1>>(subFuncName)
+        .withError([&](result::Error& err) {
+          err.appendErrorMessage(getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+        });
   }
 
   irs::by_terms_options::search_terms terms;
   typename ElementTraits::ValueType termValue;
   irs::string_ref term;
   for (size_t i = 0; i < argc; ++i) {
-    auto res = ElementTraits::evaluateArg(term, termValue, subFuncName, array, i, filter != nullptr, ctx);
+    auto res = ElementTraits::evaluateArg(term, termValue, subFuncName, array,
+                                          i, filter != nullptr, ctx);
 
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(getSubFuncErrorSuffix(funcName, funcArgumentPosition))
-      };
+      return res.withError([&](result::Error& err) {
+        err.appendErrorMessage(getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+      });
     }
     if (analyzer != nullptr) {
       // reset analyzer
@@ -2917,31 +2941,21 @@ Result fromFuncPhraseTerms(char const* funcName,
   return {};
 }
 
-template<size_t First, typename ElementType,
-         typename ElementTraits = ArgsTraits<ElementType>>
-Result getInRangeArguments(char const* funcName, bool isFilter,
-                           QueryContext const& ctx,
-                           ElementType const& args,
-                           aql::AstNode const** field,
+template <size_t First, typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
+Result getInRangeArguments(char const* funcName, bool isFilter, QueryContext const& ctx,
+                           ElementType const& args, aql::AstNode const** field,
                            typename ElementTraits::ValueType& min, bool& minInclude,
                            typename ElementTraits::ValueType& max, bool& maxInclude,
-                           bool& ret,
-                           std::string const& errorSuffix = std::string()) {
+                           bool& ret, std::string const& errorSuffix = std::string()) {
   if (!ElementTraits::isDeterministic(args)) {
-    auto res = error::nondeterministicArgs(funcName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::nondeterministicArgs(funcName).withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
   auto const argc = ElementTraits::numMembers(args);
 
   if (5 - First != argc) {
-    auto res = error::invalidArgsCount<error::ExactValue<5 - First>>(funcName);
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::invalidArgsCount<error::ExactValue<5 - First>>(funcName).withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   if constexpr (0 == First) {
@@ -2957,41 +2971,37 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
 
   // (3 - First) argument defines inclusion of lower boundary
   typename ElementTraits::ValueType includeValue;
-  auto res = ElementTraits::evaluateArg(minInclude, includeValue, funcName, args, 3 - First, isFilter, ctx);
+  auto res = ElementTraits::evaluateArg(minInclude, includeValue, funcName,
+                                        args, 3 - First, isFilter, ctx);
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return res.withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   // (4 - First) argument defines inclusion of upper boundary
-  res = ElementTraits::evaluateArg(maxInclude, includeValue, funcName, args, 4 - First, isFilter, ctx);
+  res = ElementTraits::evaluateArg(maxInclude, includeValue, funcName, args,
+                                   4 - First, isFilter, ctx);
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return res.withError(
+        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
 
   // (1 - First) argument defines a lower boundary
   {
-    auto res = ElementTraits::getMemberValue(args, 1 - First, funcName, min, isFilter, ctx, ret);
+    auto res = ElementTraits::getMemberValue(args, 1 - First, funcName, min,
+                                             isFilter, ctx, ret);
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(errorSuffix)
-      };
+      return res.withError(
+          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
     }
   }
   // (2 - First) argument defines an upper boundary
   {
-    auto res = ElementTraits::getMemberValue(args, 2 - First, funcName, max, isFilter, ctx, ret);
+    auto res = ElementTraits::getMemberValue(args, 2 - First, funcName, max,
+                                             isFilter, ctx, ret);
     if (res.fail()) {
-      return {
-        res.errorNumber(),
-        res.errorMessage().append(errorSuffix)
-      };
+      return res.withError(
+          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
     }
   }
 
@@ -3040,24 +3050,20 @@ Result fromFuncPhraseInRange(char const* funcName,
   }
 
   if (!min.isString()) {
-    res = error::typeMismatch(subFuncName, 1, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
-                              ArgsTraits<VPackSlice>::scopedType(min));
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::typeMismatch(subFuncName, 1, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
+                               ArgsTraits<VPackSlice>::scopedType(min))
+        .withError(
+            [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
   irs::string_ref const minStrValue = getStringRef(min);
 
   if (!max.isString()) {
-    res = error::typeMismatch(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
-                              ArgsTraits<VPackSlice>::scopedType(max));
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
+    return error::typeMismatch(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
+                               ArgsTraits<VPackSlice>::scopedType(max))
+        .withError(
+            [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
   }
-irs::string_ref const maxStrValue = getStringRef(max);
+  irs::string_ref const maxStrValue = getStringRef(max);
 
   if (filter) {
     auto& opts = filter->mutable_options()->push_back<irs::by_range_options>(firstOffset);
@@ -3462,7 +3468,7 @@ Result fromFuncNgramMatch(
     irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
     TRI_ASSERT(token);
     while (analyzer->next()) {
-      opts->ngrams.push_back(token->value);
+      opts->ngrams.emplace_back(token->value.c_str(), token->value.size());
     }
   }
   return {};
@@ -3639,10 +3645,8 @@ Result fromFuncInRange(
 
   res = ::byRange(filter, *field, min, minInclude, max, maxInclude, ctx, filterCtx);
   if (res.fail()) {
-    return {
-      res.errorNumber(),
-      "error in byRange: " + res.errorMessage()
-    };
+    return {res.errorNumber(),
+            arangodb::basics::StringUtils::concatT("error in byRange: ", res.errorMessage())};
   }
   return {};
 }
@@ -3958,7 +3962,9 @@ Result fromFilter(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (node.numMembers() != 1) {
     auto rv = error::malformedNode(node.type);
-    return rv.reset(rv.errorNumber(), "wrong number of parameters: " + rv.errorMessage());
+    return rv.reset(rv.errorNumber(),
+                    arangodb::basics::StringUtils::concatT(
+                        "wrong number of parameters: ", rv.errorMessage()));
   }
 
   auto const* member = node.getMemberUnchecked(0);

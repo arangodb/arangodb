@@ -1,0 +1,25 @@
+name: arangodb_agency_cache_callback_number
+renamedFrom: arangodb_agency_cache_callback_count
+introducedIn: "3.8.0"
+help: |
+  Current number of entries in agency cache callbacks table.
+unit: number
+type: gauge
+category: Agency
+complexity: advanced
+exposedBy:
+  - dbserver
+  - coordinator
+  - single
+description: |
+  This reflects the current number of callbacks the local `AgencyCache`
+  has registered.
+  This metric was named `arangodb_agency_cache_callback_count` in
+  previous versions of ArangoDB.
+  Note that on single servers this metrics will only have a non-zero value
+  in "active failover" deployment mode.
+threshold: |
+  This number will usually be very low, something like 2 or 3.
+troubleshoot: |
+  If this number is considerably higher, this should be investigated.
+  Please contact support.

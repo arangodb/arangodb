@@ -34,7 +34,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/iterator.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class offset 
@@ -180,7 +180,7 @@ class IRESEARCH_API position
     return pos ? *pos : *empty();
   }
 
-  value_t seek(value_t target) {
+  virtual value_t seek(value_t target) {
     while ((value_< target) && next());
     return value_;
   }
@@ -228,6 +228,6 @@ class attribute_provider_change final : public attribute {
   mutable callback_f callback_{&noop};
 }; // attribute_provider_change
 
-NS_END // ROOT
+} // ROOT
 
 #endif

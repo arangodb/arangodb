@@ -1,0 +1,23 @@
+name: arangodb_v8_context_alive
+introducedIn: "3.6.7"
+help: |
+  Number of V8 contexts currently alive
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of V8 contexts currently alive. Normally, only coordinators and
+  single servers should have V8 contexts, for dbservers and agents the
+  value is always zero.
+threshold: |
+  If this number is close to the maximum allowed number of V8 contexts,
+  there might be a shortage. This can delay Foxx queries and AQL
+  user defined functions. On the other hand, V8 contexts can use
+  quite a lot of memory, so one should not have too many if RAM
+  is scarce.

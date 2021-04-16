@@ -1,0 +1,15 @@
+name: arangodb_agency_client_lookup_table_size
+introducedIn: "3.6.11"
+help: |
+  Current number of entries in agency client id lookup table.
+unit: number
+type: gauge
+category: Agency
+complexity: advanced
+exposedBy:
+  - agent
+description: |
+  Current number of entries in agency client id lookup table.
+  The lookup table is used internally for agency inquire operations
+  and should be compacted at the same time when the agency's in-memory
+  log is compacted. 

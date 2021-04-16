@@ -57,8 +57,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramNone);
-        assertEqual([ ], result.plan.rules);
+        let result = AQL_EXPLAIN(query, { }, paramNone);
+        assertEqual([], result.plan.rules.filter((r) => r !== "splice-subqueries"));
       });
     },
 
@@ -114,7 +114,7 @@ function optimizerRuleTestSuite () {
     testPlans : function () {
       var plans = [ 
         [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "SubqueryNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "FilterNode", "SubqueryStartNode", "EnumerateListNode", "SubqueryEndNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i == 1 FILTER j == 2 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ] ]
       ];

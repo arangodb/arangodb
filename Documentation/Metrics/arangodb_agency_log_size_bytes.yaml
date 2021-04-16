@@ -1,0 +1,17 @@
+name: arangodb_agency_log_size_bytes
+introducedIn: "3.6.9"
+help: |
+  Agency replicated log size.
+unit: bytes
+type: gauge
+category: Agency
+complexity: simple
+exposedBy:
+  - agent
+description: |
+  Size of the agency's in-memory part of replicated log in bytes.
+  The replicated log will grow in memory until a certain number of
+  log entries have been accumulated. Then the in-memory log will
+  be compacted. The number of in-memory log entries to keep before
+  log compaction kicks in can be controlled via the startup option
+  ` --agency.compaction-keep-size`.

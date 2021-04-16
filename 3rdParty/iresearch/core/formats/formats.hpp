@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_FORMAT_H
 #define IRESEARCH_FORMAT_H
 
+#include <absl/container/flat_hash_set.h>
+
 #include "shared.hpp"
 #include "store/data_output.hpp"
 #include "store/directory.hpp"
@@ -33,11 +35,11 @@
 
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
-#include "utils/type_id.hpp"
+#include "utils/type_info.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/automaton_decl.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct segment_meta;
 struct field_meta;
@@ -47,9 +49,11 @@ struct reader_state;
 struct index_output;
 struct data_input;
 struct index_input;
-typedef std::unordered_set<doc_id_t> document_mask;
 struct postings_writer;
-typedef std::vector<doc_id_t> doc_map;
+
+using document_mask = absl::flat_hash_set<doc_id_t> ;
+using doc_map = std::vector<doc_id_t>;
+using callback_f = std::function<bool(doc_iterator&)>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_meta
@@ -60,9 +64,7 @@ struct IRESEARCH_API term_meta : attribute {
     return "iresearch::term_meta";
   }
 
-  virtual ~term_meta() = default;
-
-  virtual void clear() {
+  void clear() noexcept {
     docs_count = 0;
     freq = 0;
   }
@@ -132,28 +134,48 @@ struct IRESEARCH_API field_writer {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API postings_reader {
   using ptr = std::unique_ptr<postings_reader>;
+  using term_provider_f = std::function<const term_meta*()>;
 
   virtual ~postings_reader() = default;
   
-  // in - corresponding stream
-  // features - the set of features available for segment
+  //////////////////////////////////////////////////////////////////////////////
+  /// @arg in - corresponding stream
+  /// @arg features - the set of features available for segment
+  //////////////////////////////////////////////////////////////////////////////
   virtual void prepare(
     index_input& in, 
     const reader_state& state,
     const flags& features) = 0;
 
-  // parses input block "in" and populate "attrs" collection with attributes
-  // returns number of bytes read from in
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief parses input block "in" and populate "attrs" collection with attributes
+  /// @returns number of bytes read from in
+  //////////////////////////////////////////////////////////////////////////////
   virtual size_t decode(
     const byte_type* in,
     const flags& features,
-    attribute_provider& attrs,
     term_meta& state) = 0;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns a document iterator for a specified 'cookie' and 'features'
+  //////////////////////////////////////////////////////////////////////////////
   virtual doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_provider& attrs,
-    const flags& features) = 0;
+    const flags& features,
+    const term_meta& meta) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief evaluates a union of all docs denoted by attribute supplied via a
+  ///        speciified 'provider'. Each doc is represented by a bit in a
+  ///        specified 'bitset'.
+  /// @returns a number of bits set
+  /// @note it's up to the caller to allocate enough space for a bitset
+  /// @note this API is experimental
+  //////////////////////////////////////////////////////////////////////////////
+  virtual size_t bit_union(
+    const flags& field,
+    const term_provider_f& provider,
+    size_t* set) = 0;
 }; // postings_reader
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,28 +201,54 @@ struct IRESEARCH_API basic_term_reader : public attribute_provider {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public attribute_provider {
   using ptr = std::unique_ptr<term_reader>;
+  using cookie_provider = std::function<const seek_term_iterator::seek_cookie*()>;
 
   virtual ~term_reader() = default;
 
-  // returns an iterator over terms for a field
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns an iterator over terms for a field
+  //////////////////////////////////////////////////////////////////////////////
   virtual seek_term_iterator::ptr iterator() const = 0;
 
-  // returns an intersection of a specified automaton and term reader
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns an intersection of a specified automaton and term reader
+  //////////////////////////////////////////////////////////////////////////////
   virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const = 0;
 
-  // returns field metadata
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief evaluates a union of all docs denoted by cookies supplied via a
+  ///        speciified 'provider'. Each doc is represented by a bit in a
+  ///        specified 'bitset'.
+  /// @returns a number of bits set
+  /// @note it's up to the caller to allocate enough space for a bitset
+  /// @note this API is experimental
+  //////////////////////////////////////////////////////////////////////////////
+  virtual size_t bit_union(const cookie_provider& provider,
+                           size_t* bitset) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns field metadata
+  //////////////////////////////////////////////////////////////////////////////
   virtual const field_meta& meta() const = 0;
 
-  // total number of terms
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns total number of terms
+  //////////////////////////////////////////////////////////////////////////////
   virtual size_t size() const = 0;
 
-  // total number of documents with at least 1 term in a field
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns total number of documents with at least 1 term in a field
+  //////////////////////////////////////////////////////////////////////////////
   virtual uint64_t docs_count() const = 0;
 
-  // less significant term
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns the least significant term
+  //////////////////////////////////////////////////////////////////////////////
   virtual const bytes_ref& (min)() const = 0;
 
-  // most significant term
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns the most significant term
+  //////////////////////////////////////////////////////////////////////////////
   virtual const bytes_ref& (max)() const = 0;
 };
 
@@ -215,8 +263,7 @@ struct IRESEARCH_API field_reader {
   virtual void prepare(
     const directory& dir,
     const segment_meta& meta,
-    const document_mask& mask
-  ) = 0;
+    const document_mask& mask) = 0;
 
   virtual const term_reader* field(const string_ref& field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
@@ -246,12 +293,12 @@ struct IRESEARCH_API columnstore_writer {
   virtual bool commit() = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
-NS_END
+}
 
 MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>;) // columnstore_reader::values_reader_f
-MSVC_ONLY(template class IRESEARCH_API std::function<iresearch::columnstore_writer::column_output&(iresearch::doc_id_t)>;) // columnstore_writer::values_writer_f
+MSVC_ONLY(template class IRESEARCH_API std::function<irs::columnstore_writer::column_output&(irs::doc_id_t)>;) // columnstore_writer::values_writer_f
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct column_meta_writer
@@ -277,9 +324,8 @@ struct IRESEARCH_API column_meta_reader {
   virtual bool prepare(
     const directory& dir, 
     const segment_meta& meta,
-    size_t& count, // out parameter
-    field_id& max_id // out parameter
-  ) = 0;
+    /*out*/ size_t& count,
+    /*out*/ field_id& max_id) = 0;
 
   // returns false if there is no more data to read
   virtual bool read(column_meta& column) = 0;
@@ -320,8 +366,7 @@ struct IRESEARCH_API columnstore_reader {
   /// @throws index_error
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta
-  ) = 0;
+    const segment_meta& meta) = 0;
 
   virtual const column_reader* column(field_id field) const = 0;
 
@@ -329,9 +374,9 @@ struct IRESEARCH_API columnstore_reader {
   virtual size_t size() const = 0;
 }; // columnstore_reader
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct document_mask_writer
@@ -341,15 +386,12 @@ struct IRESEARCH_API document_mask_writer {
 
   virtual ~document_mask_writer() = default;
 
-  virtual std::string filename(
-    const segment_meta& meta
-  ) const = 0;
+  virtual std::string filename(const segment_meta& meta) const = 0;
 
   virtual void write(
     directory& dir,
     const segment_meta& meta,
-    const document_mask& docs_mask
-  ) = 0;
+    const document_mask& docs_mask) = 0;
 }; // document_mask_writer
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -367,8 +409,7 @@ struct IRESEARCH_API document_mask_reader {
   virtual bool read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask
-  ) = 0;
+    document_mask& docs_mask) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -382,8 +423,7 @@ struct IRESEARCH_API segment_meta_writer {
   virtual void write(
     directory& dir,
     std::string& filename,
-    const segment_meta& meta
-  ) = 0;
+    const segment_meta& meta) = 0;
 }; // segment_meta_writer
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -479,11 +519,11 @@ class IRESEARCH_API format {
   type_info type_;
 }; // format
 
-NS_END
+}
 
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<iresearch::format>;) // format::ptr
+MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<irs::format>;) // format::ptr
 
-NS_ROOT
+namespace iresearch {
 
 struct IRESEARCH_API flush_state {
   directory* dir;
@@ -565,6 +605,6 @@ class IRESEARCH_API format_registrar {
 #define REGISTER_FORMAT_MODULE(format_name, module_name) REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
 #define REGISTER_FORMAT(format_name) REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)
 
-NS_END
+}
 
 #endif

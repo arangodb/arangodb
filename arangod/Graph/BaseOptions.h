@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,8 @@
 #ifndef ARANGOD_GRAPH_BASE_OPTIONS_H
 #define ARANGOD_GRAPH_BASE_OPTIONS_H 1
 
-#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -34,6 +34,7 @@
 #include <memory>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace aql {
 struct AstNode;
@@ -73,8 +74,7 @@ struct BaseOptions {
     LookupInfo(LookupInfo const&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    LookupInfo(arangodb::aql::QueryContext&,
-               arangodb::velocypack::Slice const&,
+    LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
 
     /// @brief Build a velocypack containing all relevant information
@@ -86,8 +86,7 @@ struct BaseOptions {
 
  public:
   static std::unique_ptr<BaseOptions> createOptionsFromSlice(
-      arangodb::aql::QueryContext& query,
-      arangodb::velocypack::Slice const& definition);
+      arangodb::aql::QueryContext& query, arangodb::velocypack::Slice const& definition);
 
   explicit BaseOptions(arangodb::aql::QueryContext& query);
 
@@ -99,8 +98,7 @@ struct BaseOptions {
   BaseOptions(BaseOptions const&, bool allowAlreadyBuiltCopy = false);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
-  BaseOptions(aql::QueryContext&,
-              arangodb::velocypack::Slice, arangodb::velocypack::Slice);
+  BaseOptions(aql::QueryContext&, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
 
@@ -131,7 +129,7 @@ struct BaseOptions {
   void setProduceEdges(bool value) { _produceEdges = value; }
 
   transaction::Methods* trx() const;
-  
+
   aql::QueryContext& query() const;
 
   /// @brief Build a velocypack for cloning in the plan.
@@ -150,24 +148,38 @@ struct BaseOptions {
     return false;
   }
 
+  arangodb::ResourceMonitor& resourceMonitor() const;
+
   TraverserCache* cache();
+
   TraverserCache* cache() const;
   void ensureCache();
 
   void activateCache(bool enableDocumentCache,
                      std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
-  
-  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
-
-  virtual auto estimateDepth() const noexcept -> uint64_t = 0;
-  
-  void setParallelism(size_t p) noexcept {
-    _parallelism = p;
+  std::map<std::string, std::string> const& collectionToShard() const {
+    return _collectionToShard;
   }
 
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() {
+    return _aqlFunctionsInternalCache;
+  }
+
+  virtual auto estimateDepth() const noexcept -> uint64_t = 0;
+
+  void setParallelism(size_t p) noexcept { _parallelism = p; }
+
   size_t parallelism() const { return _parallelism; }
+
+  void isQueryKilledCallback() const;
+
+  void setRefactor(bool r) noexcept { _refactor = r; }
+
+  bool refactor() const { return _refactor; }
+
+  aql::Variable const* tmpVar();  // TODO check public
+  arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -188,14 +200,14 @@ struct BaseOptions {
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
-  
   mutable arangodb::transaction::Methods _trx;
-  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache; // needed for expression evaluation
+
+  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;  // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
   std::vector<LookupInfo> _baseLookupInfos;
-  
+
   aql::QueryContext& _query;
 
   aql::Variable const* _tmpVar;
@@ -205,10 +217,10 @@ struct BaseOptions {
 
   // @brief - translations for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
-  
+
   /// @brief a value of 1 (which is the default) means "no parallelism"
   size_t _parallelism;
-  
+
   /// @brief whether or not the traversal will produce vertices
   bool _produceVertices;
 
@@ -217,6 +229,10 @@ struct BaseOptions {
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
+
+  /// @brief whether or not we are running the refactored version
+  /// TODO: This must be removed prior release - (is currently needed for the refactoring)
+  bool _refactor;
 };
 
 }  // namespace graph

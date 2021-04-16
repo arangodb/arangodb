@@ -1,0 +1,15 @@
+name: arangodb_collection_truncates_replication_total
+renamedFrom: arangodb_collection_truncates_replication
+introducedIn: "3.8.0"
+help: |
+  Total number of collection truncate operations by synchronous replication.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Total number of collection truncate operations by synchronous
+  replication on followers. Note that this metric is only present when the command
+  line option `--server.export-read-write-metrics` is set to `true`.

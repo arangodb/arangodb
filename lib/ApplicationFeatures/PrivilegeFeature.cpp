@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,8 +64,6 @@ PrivilegeFeature::PrivilegeFeature(application_features::ApplicationServer& serv
 }
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
 #ifdef ARANGODB_HAVE_SETUID
   options->addOption("--uid", "switch to user-id after reading config files",
                      new StringParameter(&_uid),

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,8 @@
 
 #ifndef ARANGOD_AQL_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
+
+#include "Basics/ErrorCode.h"
 
 #include <unicode/regex.h>
 
@@ -55,8 +57,8 @@ class ExpressionContext {
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
                                     bool& mustDestroy) const = 0;
 
-  virtual void registerWarning(int errorCode, char const* msg) = 0;
-  virtual void registerError(int errorCode, char const* msg) = 0;
+  virtual void registerWarning(ErrorCode errorCode, char const* msg) = 0;
+  virtual void registerError(ErrorCode errorCode, char const* msg) = 0;
 
   virtual icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                                bool caseInsensitive) = 0;

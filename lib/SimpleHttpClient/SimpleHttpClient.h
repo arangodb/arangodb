@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -285,7 +285,7 @@ class SimpleHttpClient {
   /// @brief register and dump an error message
   //////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(std::string const& message, bool forceWarn = false) {
+  void setErrorMessage(std::string_view message, bool forceWarn = false) {
     _errorMessage = message;
 
     if (_params._warn || forceWarn) {
@@ -297,9 +297,9 @@ class SimpleHttpClient {
   /// @brief register an error message
   //////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(std::string const& message, int error) {
+  void setErrorMessage(std::string_view message, ErrorCode error) {
     if (error != TRI_ERROR_NO_ERROR) {
-      _errorMessage = message + ": " + TRI_errno_string(error);
+      _errorMessage = basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
     } else {
       setErrorMessage(message);
     }
@@ -315,13 +315,14 @@ class SimpleHttpClient {
   /// @brief fetch the version from the server
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getServerVersion(int* errorCode = nullptr);
+  std::string getServerVersion(ErrorCode* errorCode = nullptr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract an error message from a response
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHttpErrorMessage(SimpleHttpResult const*, int* errorCode = nullptr);
+  std::string getHttpErrorMessage(SimpleHttpResult const* result,
+                                  ErrorCode* errorCode = nullptr);
 
   SimpleHttpClientParams& params() { return _params; };
 

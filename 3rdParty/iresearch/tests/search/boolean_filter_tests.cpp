@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -21,7 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <functional>
+
 #include "tests_shared.hpp"
+#include "filter_test_case_base.hpp"
 #include "search/all_filter.hpp"
 #include "search/all_iterator.hpp"
 #include "search/boolean_filter.hpp"
@@ -31,15 +34,12 @@
 #include "search/exclusion.hpp"
 #include "search/bm25.hpp"
 #include "search/tfidf.hpp"
-#include "filter_test_case_base.hpp"
 #include "index/iterators.hpp"
-#include "formats/formats.hpp"
+#include "formats/empty_term_reader.hpp"
 #include "search/term_filter.hpp"
 #include "search/term_query.hpp"
 
-#include <functional>
-
-NS_LOCAL
+namespace {
 
 template<typename Filter>
 Filter make_filter(
@@ -61,20 +61,16 @@ Filter& append(irs::boolean_filter& root,
   return sub;
 }
 
-NS_END
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   Iterator tests
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(tests)
-NS_BEGIN(detail)
+namespace tests {
+namespace detail {
 
 struct basic_sort : irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   static irs::sort::ptr make(size_t i) {
     return irs::sort::ptr(new basic_sort(i));
   }
@@ -148,7 +144,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       last_(last),
       stats_(stats),
       doc_(irs::doc_limits::invalid()) {
-    est_.value(std::distance(first_, last_));
+    est_.reset(std::distance(first_, last_));
     attrs_[irs::type<irs::cost>::id()] = &est_;
     attrs_[irs::type<irs::document>::id()] = &doc_;
 
@@ -158,7 +154,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       scorers_ = irs::order::prepared::scorers(
         ord,
         irs::sub_reader::empty(),
-        empty_term_reader::instance(),
+        irs::empty_term_reader{0},
         stats_,
         score_.realloc(ord),
         *this,
@@ -278,13 +274,13 @@ struct seek_doc {
   irs::doc_id_t expected;
 };
 
-NS_END // detail
+} // detail
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                              Boolean query boost
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(detail)
+namespace detail {
 
 struct boosted: public irs::filter {
   struct prepared: irs::filter::prepared {
@@ -318,10 +314,6 @@ struct boosted: public irs::filter {
     return irs::memory::make_managed<boosted::prepared>(docs, this->boost()*boost);
   }
 
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   boosted(): filter(irs::type<boosted>::get()) { }
 
   basic_doc_iterator::docids_t docs;
@@ -332,7 +324,7 @@ DEFINE_FACTORY_DEFAULT(boosted)
 
 unsigned boosted::execute_count{ 0 };
 
-NS_END // detail
+} // detail
 
 TEST(boolean_query_boost, hierarchy) {
   // hierarchy of boosted subqueries
@@ -610,7 +602,7 @@ TEST(boolean_query_boost, hierarchy) {
   }
 }
 
-TEST(boolean_query_boost, and) {
+TEST(boolean_query_boost, and_filter) {
   // empty boolean unboosted query
   {
     irs::And root;
@@ -891,7 +883,7 @@ TEST(boolean_query_boost, and) {
   }
 }
 
-TEST(boolean_query_boost, or) {
+TEST(boolean_query_boost, or_filter) {
   // single unboosted query
   {
     const irs::boost_t value = 5;
@@ -1220,7 +1212,7 @@ TEST(boolean_query_boost, or) {
 // --SECTION--                                         Boolean query estimation
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(detail)
+namespace detail {
 
 struct unestimated: public irs::filter {
   struct doc_iterator : irs::doc_iterator {
@@ -1258,10 +1250,6 @@ struct unestimated: public irs::filter {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   DECLARE_FACTORY();
 
   unestimated() : filter(irs::type<unestimated>::get()) {}
@@ -1272,7 +1260,7 @@ DEFINE_FACTORY_DEFAULT(unestimated)
 struct estimated: public irs::filter {
   struct doc_iterator : irs::doc_iterator {
     doc_iterator(irs::cost::cost_t est, bool* evaluated) {
-      cost.rule([est, evaluated]() {
+      cost.reset([est, evaluated]() {
         *evaluated = true;
         return est;
       });
@@ -1325,9 +1313,6 @@ struct estimated: public irs::filter {
     return irs::memory::make_managed<estimated::prepared>(est,&evaluated);
   }
 
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
   DECLARE_FACTORY();
 
   explicit estimated()
@@ -1340,9 +1325,9 @@ struct estimated: public irs::filter {
 
 DEFINE_FACTORY_DEFAULT(estimated)
 
-NS_END // detail
+} // detail
 
-TEST( boolean_query_estimation, or ) {
+TEST( boolean_query_estimation, or_filter) {
   // estimated subqueries
   {
     irs::Or root;
@@ -1487,7 +1472,7 @@ TEST( boolean_query_estimation, or ) {
   }
 }
 
-TEST( boolean_query_estimation, and ) {
+TEST( boolean_query_estimation, and_filter) {
   // estimated subqueries
   {
     irs::And root;
@@ -9359,6 +9344,51 @@ TEST(block_disjunction_test, seek_next_no_readahead) {
   }
 }
 
+TEST(block_disjunction_test, next_seek_no_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29, 54, 61 },
+      { 1, 5, 6, 67, 80, 84 }
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score, no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.is_default());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(5, it.seek(4));
+    ASSERT_EQ(5, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(67, it.seek(64));
+    ASSERT_EQ(67, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(80, it.value());
+    ASSERT_EQ(84, it.seek(83));
+    ASSERT_EQ(84, it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+}
+
 TEST(block_disjunction_test, seek_next_no_readahead_two_blocks) {
   using disjunction = irs::block_disjunction<
     irs::doc_iterator::ptr,
@@ -10895,7 +10925,7 @@ TEST(min_match_disjunction_test, next) {
     }
 
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> expected{};
       std::vector<irs::doc_id_t> result;
       {
@@ -11056,7 +11086,7 @@ TEST(min_match_disjunction_test, next) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> expected{};
       std::vector<irs::doc_id_t> result;
       {
@@ -11216,7 +11246,7 @@ TEST(min_match_disjunction_test, next) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> expected{ 1, 5 };
       std::vector<irs::doc_id_t> result;
       {
@@ -11372,7 +11402,7 @@ TEST(min_match_disjunction_test, next) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
@@ -11441,7 +11471,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
           );
           auto* doc = irs::get<irs::document>(it);
           ASSERT_TRUE(bool(doc));
@@ -11567,7 +11597,7 @@ TEST(min_match_disjunction_test, seek) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<detail::seek_doc> expected{
           {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
@@ -11697,7 +11727,7 @@ TEST(min_match_disjunction_test, seek) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<detail::seek_doc> expected{
         {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, irs::doc_limits::eof()},
@@ -11753,7 +11783,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -11819,7 +11849,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -11934,7 +11964,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
         );
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
@@ -15114,4 +15144,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END // tests
+} // tests

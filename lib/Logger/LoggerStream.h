@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,13 +33,18 @@
 #include "Logger/Logger.h"
 
 namespace arangodb {
+/// @brief base class for regular logging and audit logging streams.
+/// do _not_ add virtual methods here, as this will be bad for efficiency.
 class LoggerStreamBase {
  public:
   LoggerStreamBase(LoggerStreamBase const&) = delete;
   LoggerStreamBase& operator=(LoggerStreamBase const&) = delete;
 
   LoggerStreamBase();
-  virtual ~LoggerStreamBase() = default;
+  explicit LoggerStreamBase(bool enabled);
+
+  // intentionally not virtual, as such objects can be created _very_ often!
+  ~LoggerStreamBase() = default;
 
  public:
   LoggerStreamBase& operator<<(LogLevel const& level) noexcept;
@@ -63,7 +68,7 @@ class LoggerStreamBase {
   LoggerStreamBase& operator<<(Logger::LOGID const& logid) noexcept;
 
   template <typename T>
-  LoggerStreamBase& operator<<(T const& obj) {
+  LoggerStreamBase& operator<<(T const& obj) noexcept {
     try {
       _out << obj;
     } catch (...) {
@@ -77,6 +82,9 @@ class LoggerStreamBase {
   size_t _topicId;
   LogLevel _level;
   int _line;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool const _enabled;
+#endif
   char const* _logid;
   char const* _file;
   char const* _function;
@@ -84,6 +92,10 @@ class LoggerStreamBase {
 
 class LoggerStream : public LoggerStreamBase {
  public:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  explicit LoggerStream(bool enabled);
+#endif
+  LoggerStream();
   ~LoggerStream();
 };
 

@@ -36,13 +36,15 @@
 #include "utils/locale_utils.hpp"
 #include "utils/timer_utils.hpp"
 
-NS_ROOT
+using namespace std::chrono_literals;
+
+namespace iresearch {
 
 struct term_attribute;
 
-NS_END // NS_ROOT
+} // namespace iresearch {
 
-NS_BEGIN(tests)
+namespace tests {
 
 class directory_mock: public irs::directory {
  public:
@@ -123,12 +125,12 @@ struct blocking_directory : directory_mock {
 
     if (name == blocker) {
       {
-        SCOPED_LOCK_NAMED(policy_lock, guard);
+        auto guard = irs::make_unique_lock(policy_lock);
         policy_applied.notify_all();
       }
 
       // wait for intermediate commits to be applied
-      SCOPED_LOCK_NAMED(intermediate_commits_lock, guard);
+      auto guard = irs::make_unique_lock(intermediate_commits_lock);
     }
 
     return stream;
@@ -141,8 +143,8 @@ struct blocking_directory : directory_mock {
     while (!has) {
       exists(has, blocker);
 
-      SCOPED_LOCK_NAMED(policy_lock, policy_guard);
-      policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+      auto policy_guard = irs::make_unique_lock(policy_lock);
+      policy_applied.wait_for(policy_guard, 1000ms);
     }
   }
 
@@ -286,7 +288,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::format::ptr codec_;
 }; // index_test_base
 
-NS_BEGIN(templates)
+namespace templates {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class token_stream_payload
@@ -313,7 +315,7 @@ template<typename T>
 class text_field : public tests::field_base {
  public:
   text_field(
-      const irs::string_ref& name, bool payload = false
+      const std::string& name, bool payload = false
   ): token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\", \"stopwords\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
@@ -325,7 +327,7 @@ class text_field : public tests::field_base {
   }
 
   text_field(
-      const irs::string_ref& name, const T& value, bool payload = false
+      const std::string& name, const T& value, bool payload = false
   ): token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\", \"stopwords\":[]}")),
      value_(value) {
     if (payload) {
@@ -378,11 +380,11 @@ class text_field : public tests::field_base {
 class string_field : public tests::field_base {
  public:
   string_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::flags& extra_features = irs::flags::empty_instance()
   );
   string_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
     const irs::flags& extra_features = irs::flags::empty_instance()
   );
@@ -407,11 +409,11 @@ class string_field : public tests::field_base {
 class string_ref_field : public tests::field_base {
  public:
   string_ref_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::flags& extra_features = irs::flags::empty_instance()
   );
   string_ref_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
     const irs::flags& extra_features = irs::flags::empty_instance()
   );
@@ -448,7 +450,7 @@ class europarl_doc_template: public delim_doc_generator::doc_template {
   irs::doc_id_t idval_ = 0;
 }; // europarl_doc_template
 
-NS_END // templates
+} // templates
 
 void generic_json_field_factory(
   tests::document& doc,
@@ -468,6 +470,6 @@ void normalized_string_json_field_factory(
   const json_doc_generator::json_value& data
 );
 
-NS_END // tests
+} // tests
 
 #endif // IRESEARCH_INDEX_TESTS_H

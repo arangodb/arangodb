@@ -25,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -59,17 +61,16 @@ class InRangeFunctionTest : public ::testing::Test {
     std::set<int>* warnings = nullptr) {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
-    fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([warnings](int c, char const*) {
+    fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([warnings](ErrorCode c, char const*) {
       if (warnings) {
-        warnings->insert(c);
+        warnings->insert(static_cast<int>(c));
       }});
-    fakeit::Mock<transaction::Context> trxCtxMock;
-    fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([]() {
-      static VPackOptions options;
-      return &options;
-      });
     TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
+      return *trx;
+    });
+    
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{ arena };
     if (attribute) {
@@ -87,7 +88,12 @@ class InRangeFunctionTest : public ::testing::Test {
     if (includeUpper) {
       params.emplace_back(*includeUpper);
     }
-    return Functions::InRange(&expressionContext, trx.get(), params);
+  
+    arangodb::aql::Function f("IN_RANGE", &Functions::InRange);
+    arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+    node.setData(static_cast<void const*>(&f));
+
+    return Functions::InRange(&expressionContext, node, params);
   }
 
   void assertInRangeFail(size_t line,
@@ -200,8 +206,8 @@ TEST_F(InRangeFunctionTest, testValidArgs) {
 }
 
 TEST_F(InRangeFunctionTest, testInvalidArgs) {
-  const std::set<int> typeMismatchWarning{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH };
-  const std::set<int> invalidArgsCount{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH };
+  const std::set<int> typeMismatchWarning{ static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) };
+  const std::set<int> invalidArgsCount{ static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) };
   AqlValue const ValidString{ "ValidString" };
   AqlValue const ValidBool{ AqlValueHintBool{true} };
   assertInRangeFail(__LINE__, invalidArgsCount, &ValidString, &ValidString, &ValidString, &ValidBool, nullptr);

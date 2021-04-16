@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,8 +54,8 @@ class BenchmarkThread : public arangodb::Thread {
  public:
   BenchmarkThread(application_features::ApplicationServer& server,
                   BenchmarkOperation* operation, basics::ConditionVariable* condition,
-                  void (*callback)(), int threadNumber, const unsigned long batchSize,
-                  BenchmarkCounter<unsigned long>* operationsCounter,
+                  void (*callback)(), int threadNumber, uint64_t const batchSize,
+                  BenchmarkCounter<uint64_t>* operationsCounter,
                   ClientFeature& client, bool keepAlive, bool async, bool verbose,
                   double histogramIntervalSize, uint64_t histogramNumIntervals )
       : Thread(server, "BenchmarkThread"),
@@ -115,13 +115,10 @@ class BenchmarkThread : public arangodb::Thread {
     _histogram[bucket] ++;
   }
 
-  void aggregateValues(double& minTime, double& maxTime, double& avgTime, size_t& counter) {
-      if (minTime == -1.0 || minTime < _minTime) {
-        minTime = _minTime;
-      }
-      if (_maxTime > maxTime) {
-        maxTime = _maxTime;
-      }
+  void aggregateValues(double& minTime, double& maxTime, double& avgTime, uint64_t& counter) {
+      minTime = std::min(_minTime, minTime);
+      maxTime = std::max(_maxTime, maxTime);
+
       if (counter == 0) {
         avgTime = _avgTime;
         counter = _counter;
@@ -219,7 +216,7 @@ class BenchmarkThread : public arangodb::Thread {
     }
 
     while (!isStopping()) {
-      unsigned long numOps = _operationsCounter->next(_batchSize);
+      uint64_t numOps = _operationsCounter->next(_batchSize);
 
       if (numOps == 0) {
         break;
@@ -279,19 +276,19 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief execute a batch request with numOperations parts
   //////////////////////////////////////////////////////////////////////////////
 
-  void executeBatchRequest(const unsigned long numOperations) {
+  void executeBatchRequest(const uint64_t numOperations) {
     static char const boundary[] = "XXXarangobench-benchmarkXXX";
     size_t blen = strlen(boundary);
 
     basics::StringBuffer batchPayload(true);
-    int ret = batchPayload.reserve(numOperations * 1024);
+    auto ret = batchPayload.reserve(numOperations * 1024);
     if (ret != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("bd98d", FATAL, arangodb::Logger::FIXME)
           << "Failed to reserve " << numOperations * 1024 << " bytes for "
           << numOperations << " batch operations: " << ret;
       FATAL_ERROR_EXIT();
     }
-    for (unsigned long i = 0; i < numOperations; ++i) {
+    for (uint64_t i = 0; i < numOperations; ++i) {
       // append boundary
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("--"));
       batchPayload.appendText(boundary, blen);
@@ -509,7 +506,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief batch size
   //////////////////////////////////////////////////////////////////////////////
 
-  unsigned long const _batchSize;
+  uint64_t const _batchSize;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief warning counter
@@ -521,7 +518,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief benchmark counter
   //////////////////////////////////////////////////////////////////////////////
 
-  arangobench::BenchmarkCounter<unsigned long>* _operationsCounter;
+  arangobench::BenchmarkCounter<uint64_t>* _operationsCounter;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief client feature
@@ -575,14 +572,15 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief thread offset value
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t _offset;
+  uint64_t _offset;
 
 public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief thread counter value
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t _counter;
+  uint64_t _counter;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief time

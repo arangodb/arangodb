@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 
 #include "VstCommTask.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
@@ -138,7 +139,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
 
 template <SocketType T>
 void VstCommTask<T>::setIOTimeout() {
-  double secs = GeneralServerFeature::keepAliveTimeout();
+  double secs = this->_generalServerFeature.keepAliveTimeout();
   if (secs <= 0) {
     return;
   }
@@ -234,6 +235,15 @@ static void __attribute__((noinline)) DTraceVstCommTaskProcessMessage(size_t th)
 static void DTraceVstCommTaskProcessMessage(size_t) {}
 #endif
 
+template <SocketType T>
+std::string VstCommTask<T>::url(VstRequest const* req) const {
+  if (req != nullptr) {
+    return std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
+  }
+  return "";
+}
+
 /// process a VST message
 template <SocketType T>
 void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t messageId) {
@@ -295,10 +305,7 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
     LOG_TOPIC("92fd6", INFO, Logger::REQUESTS)
         << "\"vst-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << VstRequest::translateMethod(req->requestType()) << "\",\""
-        << (req->databaseName().empty() ? "" : "/_db/" + req->databaseName())
-        << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
-        << "\"";
+        << VstRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
     // TODO use different token if authentication header is present
     CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
@@ -366,14 +373,12 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
         << this->_connectionInfo.clientAddress << "\"," << stat.timingsCsv();
   }
 
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
-
   // and give some request information
   LOG_TOPIC("92fd7", DEBUG, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << response.messageId()
       << "\",\"" << this->_connectionInfo.clientAddress << "\",\""
-      << static_cast<int>(response.responseCode()) << ","
-      << "\"," << Logger::FIXED(totalTime, 6);
+      << url(nullptr) << "\",\"" << static_cast<int>(response.responseCode()) << "\","
+      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6) ;
 
   resItem->stat = std::move(stat);
 
@@ -485,7 +490,7 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   }
 
   _authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
-  
+
   // Separate superuser traffic:
   // Note that currently, velocystream traffic will never come from
   // a forwarding, since we always forward with HTTP.

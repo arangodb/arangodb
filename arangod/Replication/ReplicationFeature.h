@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/Metrics.h"
 
 struct TRI_vocbase_t;
 
@@ -73,7 +74,7 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// timeout via configuration. otherwise it will return the configured
   /// timeout value
   double checkConnectTimeout(double value) const;
-  
+
   /// @brief returns the request timeout for replication requests
   /// this will return the provided value if the user has not adjusted the
   /// timeout via configuration. otherwise it will return the configured
@@ -94,25 +95,28 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// must only be called after a successful call to trackTailingstart
   void trackTailingEnd() noexcept;
 
+  void trackInventoryRequest() { ++_inventoryRequests; }
+
   /// @brief set the x-arango-endpoint header
-  static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
+  void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
 
   /// @brief fill a response object with correct response for a follower
-  static void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
+  void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
 
-  static ReplicationFeature* INSTANCE;
+  /// @brief get max document num for quick call to _api/replication/keys to get actual keys or only doc count
+  uint64_t quickKeysLimit() const { return _quickKeysLimit; }
 
  private:
   /// @brief connection timeout for replication requests
   double _connectTimeout;
-  
+
   /// @brief request timeout for replication requests
   double _requestTimeout;
 
   /// @brief whether or not the user-defined connect timeout is forced to be used
   /// this is true only if the user set the connect timeout at startup
   bool _forceConnectTimeout;
-  
+
   /// @brief whether or not the user-defined request timeout is forced to be used
   /// this is true only if the user set the request timeout at startup
   bool _forceRequestTimeout;
@@ -132,6 +136,11 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   uint64_t _maxParallelTailingInvocations;
 
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
+
+  /// @brief quick replication keys limit
+  uint64_t _quickKeysLimit;
+
+  Counter& _inventoryRequests;
 };
 
 }  // namespace arangodb

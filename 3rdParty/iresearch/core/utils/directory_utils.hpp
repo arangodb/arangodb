@@ -30,13 +30,13 @@
 #include "store/directory.hpp"
 #include "store/directory_cleaner.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class format;
 class index_meta;
 struct segment_meta;
 
-NS_BEGIN(directory_utils)
+namespace directory_utils {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           memory_allocator utils
@@ -98,14 +98,14 @@ IRESEARCH_API directory_cleaner::removal_acceptor_t remove_except_current_segmen
   const directory& dir, const format& codec
 );
 
-NS_END
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class tracking_directory
 /// @brief track files created/opened via file names
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API tracking_directory final : public directory {
-  typedef std::unordered_set<std::string> file_set;
+  using file_set = absl::flat_hash_set<std::string>;
 
   // @param track_open - track file refs for calls to open(...)
   explicit tracking_directory(
@@ -246,11 +246,10 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const;
 
  private:
-  typedef std::unordered_set<
+  using refs_t = absl::flat_hash_set<
     index_file_refs::ref_t,
     index_file_refs::counter_t::hash,
-    index_file_refs::counter_t::equal_to
-  > refs_t;
+    index_file_refs::counter_t::equal_to> ;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   index_file_refs::attribute_t& attribute_;
@@ -261,6 +260,6 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // ref_tracking_directory
 
-NS_END
+}
 
 #endif

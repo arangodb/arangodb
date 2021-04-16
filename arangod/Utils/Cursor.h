@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,7 @@ class Cursor {
 
   Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount)
       : _id(id),
-        _batchSize(batchSize),
+        _batchSize(batchSize == 0 ? 1 : batchSize),
         _ttl(ttl),
         _expires(TRI_microtime() + _ttl),
         _hasCount(hasCount),
@@ -92,6 +92,12 @@ class Cursor {
   }
 
   virtual void kill() {}
+
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  virtual void debugKillQuery() {}
 
   virtual size_t count() const = 0;
 

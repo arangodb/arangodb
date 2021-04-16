@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,13 +102,14 @@ class Parser {
   QueryResult parseWithDetails();
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int, char const*, char const*, int, int);
+  void registerParseError(ErrorCode errorCode, char const* format,
+                          std::string_view data, int line, int column);
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int, char const*, int, int);
-  
+  void registerParseError(ErrorCode errorCode, std::string_view data, int line, int column);
+
   /// @brief register a warning
-  void registerWarning(int, char const*, int, int);
+  void registerWarning(ErrorCode errorCode, std::string_view data, int line, int column);
 
   /// @brief push an AstNode array element on top of the stack
   /// the array must be removed from the stack via popArray

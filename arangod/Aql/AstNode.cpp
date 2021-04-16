@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -136,7 +136,6 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_FCALL_USER), "user function call"},
     {static_cast<int>(NODE_TYPE_RANGE), "range"},
     {static_cast<int>(NODE_TYPE_NOP), "no-op"},
-    {static_cast<int>(NODE_TYPE_COLLECT_COUNT), "collect with count"},
     {static_cast<int>(NODE_TYPE_CALCULATED_OBJECT_ELEMENT),
      "calculated object element"},
     {static_cast<int>(NODE_TYPE_EXAMPLE), "example"},
@@ -487,7 +486,8 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       break;
     }
     case NODE_TYPE_FCALL: {
-      setData(AqlFunctionFeature::getFunctionByName(slice.get("name").copyString()));
+      auto& server = ast->query().vocbase().server();
+      setData(server.getFeature<AqlFunctionFeature>().byName(slice.get("name").copyString()));
       break;
     }
     case NODE_TYPE_OBJECT_ELEMENT: {
@@ -547,7 +547,6 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_REPLACE:
     case NODE_TYPE_UPSERT:
     case NODE_TYPE_COLLECT:
-    case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
@@ -593,6 +592,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_WITH:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_WINDOW:
       break;
   }
 
@@ -693,7 +693,6 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
     case NODE_TYPE_REPLACE:
     case NODE_TYPE_UPSERT:
     case NODE_TYPE_COLLECT:
-    case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
@@ -711,7 +710,8 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_WITH:
-    case NODE_TYPE_FOR_VIEW: { 
+    case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_WINDOW: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -895,8 +895,7 @@ void AstNode::dump(int indent) const { toStream(std::cout, indent); }
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
 VPackSlice AstNode::computeValue(VPackBuilder* builder) const {
-  TRI_ASSERT(isConstant());
-
+  TRI_ASSERT(isConstant() || isStringValue()); // only strings could be mutable
   if (_computedValue == nullptr) {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
 
@@ -1488,7 +1487,7 @@ bool AstNode::isAttributeAccessForVariable(
 }
 
 /// @brief recursively clear flags
-void AstNode::clearFlagsRecursive() {
+void AstNode::clearFlagsRecursive() noexcept {
   clearFlags();
   size_t const n = numMembers();
 
@@ -1610,7 +1609,8 @@ bool AstNode::willUseV8() const {
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
     
-    if (func->implementation == nullptr) {
+    if (func->hasV8Implementation()) {
+      TRI_ASSERT(!func->hasCxxImplementation());
       // a function without a C++ implementation
       setFlag(DETERMINED_V8, VALUE_V8);
       return true;
@@ -1687,9 +1687,7 @@ bool AstNode::isConstant() const {
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto value = member->getMember(0);
-
-        if (!value->isConstant()) {
+        if (!member->getMember(0)->isConstant()) {
           setFlag(DETERMINED_CONSTANT);
           return false;
         }
@@ -1748,7 +1746,7 @@ bool AstNode::isArrayComparisonOperator() const {
 
 /// @brief whether or not a node (and its subnodes) can safely be executed on
 /// a DB server
-bool AstNode::canRunOnDBServer() const {
+bool AstNode::canRunOnDBServer(bool isOneShard) const {
   if (hasFlag(DETERMINED_RUNONDBSERVER)) {
     // fast track exit
     return hasFlag(VALUE_RUNONDBSERVER);
@@ -1758,7 +1756,7 @@ bool AstNode::canRunOnDBServer() const {
   size_t const n = numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = getMember(i);
-    if (!member->canRunOnDBServer()) {
+    if (!member->canRunOnDBServer(isOneShard)) {
       // if any sub-node cannot run on a DB server, we can't either
       setFlag(DETERMINED_RUNONDBSERVER);
       return false;
@@ -1769,7 +1767,14 @@ bool AstNode::canRunOnDBServer() const {
   if (type == NODE_TYPE_FCALL) {
     // built-in function
     auto func = static_cast<Function*>(getData());
-    if (func->hasFlag(Function::Flags::CanRunOnDBServer)) {
+  
+    // currently being able to run on a DB server in cluster always includes being able to run
+    // on a DB server in OneShard mode. this may change at some point in the future.
+    TRI_ASSERT(!func->hasFlag(Function::Flags::CanRunOnDBServerCluster) || 
+               func->hasFlag(Function::Flags::CanRunOnDBServerOneShard));
+
+    if ((isOneShard && func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)) ||
+        (!isOneShard && func->hasFlag(Function::Flags::CanRunOnDBServerCluster))) {
       setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
       return true;
     }
@@ -2385,7 +2390,6 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
-    case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
     case NODE_TYPE_UPSERT:
@@ -2408,6 +2412,7 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_WINDOW:
       break;
   }
 
@@ -2559,7 +2564,6 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
-    case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_AGGREGATIONS:
     case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
     case NODE_TYPE_UPSERT:
@@ -2584,6 +2588,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
+    case NODE_TYPE_WINDOW:
       break;
   }
   return ret;
@@ -2647,64 +2652,64 @@ void AstNode::markFinalized(AstNode* subtreeRoot) {
 
 template <typename... Args>
 std::underlying_type<AstNodeFlagType>::type AstNode::makeFlags(AstNodeFlagType flag,
-                                                               Args... args) {
+                                                               Args... args) noexcept {
   return static_cast<std::underlying_type<AstNodeFlagType>::type>(flag) +
          makeFlags(args...);
 }
 
-std::underlying_type<AstNodeFlagType>::type AstNode::makeFlags() {
+std::underlying_type<AstNodeFlagType>::type AstNode::makeFlags() noexcept {
   return static_cast<std::underlying_type<AstNodeFlagType>::type>(0);
 }
 
-bool AstNode::hasFlag(AstNodeFlagType flag) const {
+bool AstNode::hasFlag(AstNodeFlagType flag) const noexcept {
   return ((flags & static_cast<decltype(flags)>(flag)) != 0);
 }
 
-void AstNode::clearFlags() { 
+void AstNode::clearFlags() noexcept { 
   // clear all flags but this one
   flags &= AstNodeFlagType::FLAG_INTERNAL_CONST; 
 }
 
-void AstNode::setFlag(AstNodeFlagType flag) const { flags |= flag; }
+void AstNode::setFlag(AstNodeFlagType flag) const noexcept { flags |= flag; }
 
-void AstNode::setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const {
+void AstNode::setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const noexcept {
   flags |= (typeFlag | valueFlag);
 }
 
-void AstNode::removeFlag(AstNodeFlagType flag) const { flags &= ~flag; }
+void AstNode::removeFlag(AstNodeFlagType flag) const noexcept { flags &= ~flag; }
 
-bool AstNode::isSorted() const {
+bool AstNode::isSorted() const noexcept {
   return ((flags & (DETERMINED_SORTED | VALUE_SORTED)) == (DETERMINED_SORTED | VALUE_SORTED));
 }
 
-bool AstNode::isNullValue() const {
+bool AstNode::isNullValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_NULL);
 }
 
-bool AstNode::isIntValue() const {
+bool AstNode::isIntValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_INT);
 }
 
-bool AstNode::isDoubleValue() const {
+bool AstNode::isDoubleValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_DOUBLE);
 }
 
-bool AstNode::isNumericValue() const {
+bool AstNode::isNumericValue() const noexcept {
   return (type == NODE_TYPE_VALUE &&
           (value.type == VALUE_TYPE_INT || value.type == VALUE_TYPE_DOUBLE));
 }
 
-bool AstNode::isBoolValue() const {
+bool AstNode::isBoolValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_BOOL);
 }
 
-bool AstNode::isStringValue() const {
+bool AstNode::isStringValue() const noexcept {
   return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_STRING);
 }
 
-bool AstNode::isArray() const { return (type == NODE_TYPE_ARRAY); }
+bool AstNode::isArray() const noexcept { return (type == NODE_TYPE_ARRAY); }
 
-bool AstNode::isObject() const { return (type == NODE_TYPE_OBJECT); }
+bool AstNode::isObject() const noexcept { return (type == NODE_TYPE_OBJECT); }
 
 AstNode const* AstNode::getAttributeAccessForVariable(bool allowIndexedAccess) const {
   if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION &&
@@ -2931,7 +2936,7 @@ void AstNode::setData(void const* v) {
   setData(const_cast<void*>(v));
 }
 
-void AstNode::freeComputedValue() {
+void AstNode::freeComputedValue() noexcept {
   if (_computedValue != nullptr && !hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST)) {
     delete[] _computedValue;
     _computedValue = nullptr;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -166,10 +166,10 @@ class ApplicationServer {
    bool isPrepared();
 
    /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
-   bool isStopping();
+   bool isStopping() const;
 
    /// @brief whether or not state is the shutting down state or further (i.e. stopped, aborted etc.)
-   bool isStoppingState(State state);
+   bool isStoppingState(State state) const;
 
    // this method will initialize and validate options
    // of all feature, start them and wait for a shutdown
@@ -231,6 +231,7 @@ class ApplicationServer {
          _features.try_emplace(std::type_index(typeid(As)),
                            std::make_unique<Type>(*this, std::forward<Args>(args)...));
      TRI_ASSERT(result.second);
+     result.first->second->setRegistration(std::type_index(typeid(As)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
      auto obj = dynamic_cast<As*>(result.first->second.get());
      TRI_ASSERT(obj != nullptr);

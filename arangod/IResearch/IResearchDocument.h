@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,17 +28,23 @@
 #include "VocBase/voc-types.h"
 
 #include "IResearchLinkMeta.h"
+#include "IResearchVPackTermAttribute.h"
 #include "VelocyPackHelper.h"
 
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "analysis/token_attributes.hpp"
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
 
+
 namespace iresearch {
 
-class boolean_filter;  // forward declaration
-struct data_output;    // forward declaration
-class token_stream;    // forward declaration
+class boolean_filter;
+struct data_output;
+class token_stream;
+class numeric_token_stream;
+class boolean_token_stream;
 
 }  // namespace iresearch
 
@@ -125,7 +131,7 @@ struct Field {
 ////////////////////////////////////////////////////////////////////////////////
 class FieldIterator {
  public:
-  explicit FieldIterator(arangodb::transaction::Methods& trx);
+  explicit FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection, IndexId linkId);
 
   Field const& operator*() const noexcept { return _value; }
 
@@ -150,6 +156,9 @@ class FieldIterator {
                          FieldMeta const*& rootMeta,
                          IteratorValue const& value);
 
+  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
+                                         VPackSlice slice);
+
   struct Level {
     Level(velocypack::Slice slice,
           size_t nameLength,
@@ -169,8 +178,6 @@ class FieldIterator {
     TRI_ASSERT(!_stack.empty());
     return _stack.back();
   }
-
-  IteratorValue const& topValue() noexcept { return top().it.value(); }
 
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
@@ -193,7 +200,16 @@ class FieldIterator {
   std::string _valueBuffer;  // need temporary buffer for custom types in VelocyPack
   VPackBuffer<uint8_t> _buffer; // buffer for stored values
   arangodb::transaction::Methods* _trx;
+  irs::string_ref _collection;
   Field _value;  // iterator's value
+  IndexId _linkId;
+
+  // Support for outputting primitive type from analyzer
+  irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
+  VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
+  PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
+
+  bool _isDBServer;
 }; // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +234,25 @@ struct DocumentPrimaryKey {
 
   DocumentPrimaryKey() = delete;
 };  // DocumentPrimaryKey
+
+struct StoredValue {
+  StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const doc, IndexId lid);
+
+  bool write(irs::data_output& out) const;
+
+  irs::string_ref const& name() const noexcept {
+    return fieldName;
+  }
+
+  mutable VPackBuffer<uint8_t> buffer;
+  transaction::Methods const& trx;
+  velocypack::Slice const document;
+  irs::string_ref fieldName;
+  irs::string_ref collection;
+  std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const* fields;
+  IndexId linkId;
+  bool isDBServer;
+}; // StoredValue
 
 }  // namespace iresearch
 }  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,17 +27,17 @@
 #include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchViewMeta.h"
+#include "IResearch/IResearchVPackTermAttribute.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-
-#include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 
 #include "search/term_filter.hpp"
@@ -276,6 +276,22 @@ inline Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& 
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions + meta._includeAllFields];
 }
 
+std::string getDocumentId(irs::string_ref collection,
+                          VPackSlice document) {
+  VPackStringRef const key = arangodb::transaction::helpers::extractKeyPart(document);
+  if (key.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to extract key value from document");
+  }
+  std::string resolved;
+  resolved.reserve(collection.size() + 1 + key.size());
+  resolved += collection;
+  resolved.push_back('/');
+  resolved.append(key.data(), key.size());
+  return resolved;
+}
+
+
+
 }  // namespace
 
 namespace arangodb {
@@ -304,8 +320,10 @@ namespace iresearch {
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
 
-FieldIterator::FieldIterator(arangodb::transaction::Methods& trx)
-    : _trx(&trx) {
+FieldIterator::FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection,  IndexId linkId)
+    : _trx(&trx), _collection(collection), _linkId(linkId),
+      _isDBServer(ServerState::instance()->isDBServer()) {
+
   // initialize iterator's value
 }
 
@@ -313,6 +331,9 @@ void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
+  _currentTypedAnalyzer = nullptr;
+  _currentTypedAnalyzerValue = nullptr;
+  _primitiveTypeResetter = nullptr;
   _stack.clear();
   _nameBuffer.clear();
 
@@ -403,10 +424,20 @@ bool FieldIterator::setValue(VPackSlice const value,
     } break;
     case VPackValueType::Custom: {
       TRI_ASSERT(!_slice.isNone());
-
-      _valueBuffer = transaction::helpers::extractIdString(
-        _trx->resolver(), value, _slice);
-
+      if (_isDBServer) {
+        if (!_collection.empty()) {
+          _valueBuffer = getDocumentId(_collection, _slice);
+        } else {
+          LOG_TOPIC("fb53c", WARN, arangodb::iresearch::TOPIC)
+            << "Value for `_id` attribute could not be indexed for document "
+            << transaction::helpers::extractKeyFromDocument(_slice).toString()
+            << ". To recover please recreate corresponding ArangoSearch link '" << _linkId << "'";
+          return false;
+        }
+      } else {
+         _valueBuffer = transaction::helpers::extractIdString(
+             _trx->resolver(), value, _slice);
+      }
       valueRef = _valueBuffer;
       valueType = AnalyzerValueType::String;
     } break;
@@ -419,8 +450,6 @@ bool FieldIterator::setValue(VPackSlice const value,
     return false;
   }
 
-  iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
-
   // init stream
   auto analyzer = pool->get();
 
@@ -429,16 +458,60 @@ bool FieldIterator::setValue(VPackSlice const value,
         << "got nullptr from analyzer factory, name '" << pool->name() << "'";
     return false;
   }
-
   if (!analyzer->reset(valueRef)) {
-    return false;
+      return false;
   }
-
   // set field properties
-  _value._name = _nameBuffer;
-  _value._analyzer = analyzer;
-  _value._features = &(pool->features());
-
+  switch (pool->returnType()) {
+    case AnalyzerValueType::Bool:
+      {
+        if (!analyzer->next()) {
+          return false;
+        }
+        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        TRI_ASSERT(_currentTypedAnalyzerValue);
+        setBoolValue(_currentTypedAnalyzerValue->value);
+        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
+          TRI_ASSERT(bool_stream);
+#else
+          auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
+#endif
+          TRI_ASSERT(slice.isBool());
+          bool_stream->reset(slice.getBool());
+        };
+      }
+      break;
+    case AnalyzerValueType::Number:
+      {
+        if (!analyzer->next()) {
+          return false;
+        }
+        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        TRI_ASSERT(_currentTypedAnalyzerValue);
+        setNumericValue(_currentTypedAnalyzerValue->value);
+        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
+          TRI_ASSERT(number_stream);
+#else
+          auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
+#endif
+          TRI_ASSERT(slice.isNumber());
+          number_stream->reset(slice.getNumber<double>());
+        };
+      }
+      break;
+    default:
+      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      _value._analyzer = analyzer;
+      _value._features = &(pool->features());
+      _value._name = _nameBuffer;
+      break;
+  }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
     auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
@@ -454,6 +527,18 @@ bool FieldIterator::setValue(VPackSlice const value,
 
 void FieldIterator::next() {
   TRI_ASSERT(valid());
+
+  if (_currentTypedAnalyzer) {
+     if (_currentTypedAnalyzer->next()) {
+       TRI_ASSERT(_primitiveTypeResetter);
+       TRI_ASSERT(_currentTypedAnalyzerValue);
+       TRI_ASSERT(_value._analyzer.get());
+       _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
+       return;
+     } else {
+       _currentTypedAnalyzer = nullptr;
+     }
+  }
 
   FieldMeta const* context = top().meta;
 
@@ -492,8 +577,8 @@ setAnalyzers:
       _nameBuffer.resize(level.nameLength);
 
       // check if we're in object scope
-      if (auto const parent = _stack.end() - 2;
-          parent >= _stack.begin() && parent->it.value().value.isObject()) {
+      if (auto const parent = _stack.data() + _stack.size() - 2;
+          parent >= _stack.data() && parent->it.value().value.isObject()) {
         _nameBuffer += NESTING_LEVEL_DELIMITER;
       }
 
@@ -530,8 +615,6 @@ setAnalyzers:
           }
         } break;
         case VPackValueType::Double:
-          setNumericValue(valueSlice);
-          return;
         case VPackValueType::Int:
         case VPackValueType::UInt:
         case VPackValueType::SmallInt:
@@ -580,6 +663,48 @@ setAnalyzers:
   value = arangodb::LocalDocumentId(PrimaryKeyEndianness<Endianness>::pkToHost(
       *reinterpret_cast<arangodb::LocalDocumentId::BaseType const*>(in.c_str())));
 
+  return true;
+}
+
+  StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn,
+                           VPackSlice const doc, IndexId lid)
+    : trx(t), document(doc), collection(cn),
+      linkId(lid), isDBServer(ServerState::instance()->isDBServer()) {}
+
+bool StoredValue::write(irs::data_output& out) const {
+  auto size = fields->size();
+  for (auto const& storedValue : *fields) {
+    auto slice = get(document, storedValue.second, VPackSlice::nullSlice());
+    // null value optimization
+    if (1 == size && slice.isNull()) {
+      return true;
+    }
+    // _id field
+    if (slice.isCustom()) {
+      TRI_ASSERT(1 == storedValue.second.size() &&
+                  storedValue.second[0].name == arangodb::StaticStrings::IdString);
+      buffer.reset();
+      VPackBuilder builder(buffer);
+      if (isDBServer) {
+        if (!collection.empty()) {
+          builder.add(VPackValue(getDocumentId(collection, document)));
+        } else {
+          LOG_TOPIC("bf98c", WARN, arangodb::iresearch::TOPIC)
+            << "Value for `_id` attribute could not be stored for document "
+            << transaction::helpers::extractKeyFromDocument(document).toString()
+            << ". To recover please recreate corresponding ArangoSearch link '" << linkId << "'";
+           return false;
+        }
+      } else {
+          builder.add(VPackValue(transaction::helpers::extractIdString(
+              trx.resolver(), slice, document)));
+      }
+
+      slice = builder.slice();
+      // a builder is destroyed but a buffer is alive
+    }
+    out.write_bytes(slice.start(), slice.byteSize());
+  }
   return true;
 }
 

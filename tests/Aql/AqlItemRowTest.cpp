@@ -30,7 +30,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/ShadowAqlItemRow.h"
-
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
@@ -46,8 +47,9 @@ namespace aql {
 
 class AqlItemRowsTest : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 
   void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
@@ -58,7 +60,7 @@ class AqlItemRowsTest : public ::testing::Test {
       VPackSlice row = result.at(rowIdx);
       ASSERT_TRUE(row.isArray());
       ASSERT_EQ(in->numRegisters(), row.length());
-      for (RegisterId regId = 0; regId < in->numRegisters(); ++regId) {
+      for (RegisterId::value_t regId = 0; regId < in->numRegisters(); ++regId) {
         AqlValue v = in->getValueReference(rowIdx, regId);
         if (regsToKeep.find(regId) == regsToKeep.end()) {
           // If this should not be kept it has to be set to NONE!
@@ -245,8 +247,8 @@ TEST_F(AqlItemRowsTest, dropping_a_register_from_source_while_writing_to_target)
 }
 
 TEST_F(AqlItemRowsTest, writing_rows_to_target) {
-  RegisterId nrInputRegisters = 0;
-  RegisterId nrOutputRegisters = 0;
+  RegisterCount nrInputRegisters = 0;
+  RegisterCount nrOutputRegisters = 0;
 
   auto outputRegisters = RegIdSet{3, 4};
   auto registersToClear = RegIdFlatSet{1, 2};
@@ -276,7 +278,7 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
     for (size_t i = 0; i < 3; ++i) {
       // Iterate over source rows
       InputAqlItemRow source{inputBlock, i};
-      for (RegisterId j = 3; j < 5; ++j) {
+      for (RegisterId::value_t j = 3; j < 5; ++j) {
         AqlValue v{AqlValueHintInt{(int64_t)(j + 5)}};
         testee.cloneValueInto(j, source, v);
         if (j == 3) {
@@ -309,8 +311,9 @@ static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 template <class RowType>
 class AqlItemRowsCommonEqTest : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
 
@@ -403,8 +406,9 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
 
 class AqlShadowRowsEqTest : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
 

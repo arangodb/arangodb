@@ -1,0 +1,33 @@
+name: arangodb_intermediate_commits_total
+renamedFrom: arangodb_intermediate_commits
+introducedIn: "3.8.0"
+help: |
+  Number of intermediate commits performed in transactions.
+unit: number
+type: counter
+category: Statistics
+complexity: medium
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of intermediate commits performed in transactions.
+  An intermediate commit happens if a logical transaction needs to be
+  split into multiple physical transaction because of the volume of data
+  handled in the transaction. The thresholds for when to perform an
+  intermediate commit can be controlled by startup options 
+  `--rocksdb.intermediate-commit-count` (number of write operations after
+  which an intermediate commit is triggered) and `--rocksdb.intermediate-commit-size`
+  (cumulated size of write operations after which an intermediate commit is triggered).
+  The values can also be overridden for individual transactions.
+  This metric was named `arangodb_intermediate_commits` in previous
+  versions of ArangoDb.
+troubleshoot: |
+  If this value is non-zero, it doesn't necessarily indicate a problem. It can
+  happen for large transactions and large data-loading jobs. However, as modifications
+  performed by intermediate commits are persisted and cannot simply be rolled back in 
+  memory, it should be monitored whether the intermediate commits only happen for
+  operations where they are expected. If they also happen for operations that are
+  supposed to be atomic, then the intermediate commit size and count parameters need
+  to be adjusted, or larger operations should be broken up into smaller ones in the
+  client application.

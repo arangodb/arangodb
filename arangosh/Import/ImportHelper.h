@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -94,7 +94,9 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   bool importDelimited(std::string const& collectionName,
-                       std::string const& fileName, DelimitedImportType typeImport);
+                       std::string const& fileName, 
+                       std::string const& headersFile, 
+                       DelimitedImportType typeImport);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief imports a file with JSON objects
@@ -263,8 +265,8 @@ class ImportHelper {
 
   std::vector<std::string> getErrorMessages() { return _errorMessages; }
 
-  uint64_t getMaxUploadSize() { return (_maxUploadSize.load()); }
-  void setMaxUploadSize(uint64_t newSize) { _maxUploadSize.store(newSize); }
+  uint64_t getMaxUploadSize() { return (_maxUploadSize.load(std::memory_order_relaxed)); }
+  void setMaxUploadSize(uint64_t newSize) { _maxUploadSize.store(newSize, std::memory_order_relaxed); }
 
   uint64_t rotatePeriodByteCount() { return (_periodByteCount.exchange(0)); }
   void addPeriodByteCount(uint64_t add) { _periodByteCount.fetch_add(add); }
@@ -274,6 +276,11 @@ class ImportHelper {
   static unsigned const MaxBatchSize;
 
  private:
+  // read headers from separate file
+  bool readHeadersFile(std::string const& headersFile, 
+                       DelimitedImportType typeImport,
+                       char separator);
+
   static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
   static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
   static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
@@ -340,6 +347,7 @@ class ImportHelper {
   std::unordered_set<std::string> _removeAttributes;
 
   bool _hasError;
+  bool _headersSeen;
   std::vector<std::string> _errorMessages;
 
   static double const ProgressStep;

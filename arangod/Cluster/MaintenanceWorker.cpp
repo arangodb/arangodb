@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,10 +42,7 @@ MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
       _curAction(nullptr),
       _loopState(eFIND_ACTION),
       _directAction(false),
-      _labels(labels) {
-  return;
-
-}  // MaintenanceWorker::MaintenanceWorker
+      _labels(labels) {}
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
                                      std::shared_ptr<Action>& directAction)
@@ -53,10 +50,7 @@ MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
       _feature(feature),
       _curAction(directAction),
       _loopState(eRUN_FIRST),
-      _directAction(true) {
-  return;
-
-}  // MaintenanceWorker::MaintenanceWorker
+      _directAction(true) {}
 
 void MaintenanceWorker::run() {
   bool more(false);
@@ -71,6 +65,9 @@ void MaintenanceWorker::run() {
             break;
 
           case eRUN_FIRST:
+            if (_curAction->getState() == READY) {
+              _curAction->setState(EXECUTING);
+            }
             _curAction->startStats();
             more = _curAction->first();
             break;

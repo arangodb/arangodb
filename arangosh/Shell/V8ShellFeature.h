@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,9 +61,10 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   uint64_t _gcInterval;
 
  public:
-  int runShell(std::vector<std::string> const&);
+  ErrorCode runShell(std::vector<std::string> const& positionals);
   bool runScript(std::vector<std::string> const& files,
-                 std::vector<std::string> const&, bool);
+                 std::vector<std::string> const&, bool,
+                 std::vector<std::string> const& mainArgs, bool);
   bool runString(std::vector<std::string> const& files, std::vector<std::string> const&);
   bool runUnitTests(std::vector<std::string> const& files,
                     std::vector<std::string> const& positionals,

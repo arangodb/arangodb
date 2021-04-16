@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -109,10 +109,10 @@ class ShortestPathNode : public virtual GraphNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> vars;
-    if (usesVertexOutVariable()) {
+    if (isVertexOutVariableUsedLater()) {
       vars.emplace_back(vertexOutVariable());
     }
-    if (usesEdgeOutVariable()) {
+    if (isEdgeOutVariableUsedLater()) {
       vars.emplace_back(edgeOutVariable());
     }
     return vars;

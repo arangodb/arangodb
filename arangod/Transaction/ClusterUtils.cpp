@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterUtils.h"
-
+#include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -47,8 +47,9 @@ void abortTransactions(LogicalCollection& coll) {
     TransactionCollection* tcoll = state.collection(coll.id(), AccessMode::Type::NONE);
         return tcoll != nullptr;
       });
-  LOG_TOPIC_IF("7eda2", INFO, Logger::TRANSACTIONS, didWork) <<
-  "aborted leader transactions on shard '" << coll.id() << "'";
+
+  LOG_TOPIC_IF("7eda2", INFO, Logger::TRANSACTIONS, didWork) 
+      << "aborted leader transactions on shard " << coll.id() << "'";
 }
 
 void abortLeaderTransactionsOnShard(DataSourceId cid) {
@@ -64,8 +65,9 @@ void abortLeaderTransactionsOnShard(DataSourceId cid) {
         }
         return false;
       });
-  LOG_TOPIC_IF("7edb3", INFO, Logger::TRANSACTIONS, didWork) <<
-  "aborted leader transactions on shard '" << cid << "'";
+
+  LOG_TOPIC_IF("7edb3", INFO, Logger::TRANSACTIONS, didWork) 
+     <<  "aborted leader transactions on shard '" << cid << "'";
 }
 
 void abortFollowerTransactionsOnShard(DataSourceId cid) {
@@ -81,8 +83,9 @@ void abortFollowerTransactionsOnShard(DataSourceId cid) {
         }
         return false;
       });
-  LOG_TOPIC_IF("7dcff", INFO, Logger::TRANSACTIONS, didWork) <<
-  "aborted follower transactions on shard '" << cid << "'";
+
+  LOG_TOPIC_IF("7dcff", INFO, Logger::TRANSACTIONS, didWork) 
+      << "aborted follower transactions on shard '" << cid << "'";
 }
 
 void abortTransactionsWithFailedServers(ClusterInfo& ci) {
@@ -109,7 +112,7 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
     
     // only care about failed coordinators
     failed.erase(std::remove_if(failed.begin(), failed.end(), [](ServerID const& str) {
-      return str.compare(0, 4, "CRDN") != 0;
+      return !ClusterHelpers::isDBServerName(str);
     }), failed.end());
     if (failed.empty()) {
       return;
@@ -127,8 +130,8 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
         });
   }
   
-  LOG_TOPIC_IF("b59e3", INFO, Logger::TRANSACTIONS, didWork) <<
-  "aborting transactions for servers '" << failed << "'";
+  LOG_TOPIC_IF("b59e3", INFO, Logger::TRANSACTIONS, didWork)
+      << "aborting transactions for servers '" << failed << "'";
 }
 
 }  // namespace cluster

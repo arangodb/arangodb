@@ -24,6 +24,10 @@
 #ifndef IRESEARCH_INDEX_WRITER_H
 #define IRESEARCH_INDEX_WRITER_H
 
+#include <atomic>
+
+#include <absl/container/flat_hash_map.h>
+
 #include "field_meta.hpp"
 #include "column_info.hpp"
 #include "index_meta.hpp"
@@ -41,9 +45,7 @@
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
 
-#include <atomic>
-
-NS_ROOT
+namespace iresearch {
 
 class comparer;
 class bitvector;
@@ -55,11 +57,6 @@ class readers_cache final : util::noncopyable {
   struct key_t {
     key_t(const segment_meta& meta); // implicit constructor
 
-    bool operator<(const key_t& other) const noexcept {
-      return name < other.name
-        || (name == other.name && version < other.version);
-    }
-
     bool operator==(const key_t& other) const noexcept {
       return name == other.name && version == other.version;
     }
@@ -70,19 +67,20 @@ class readers_cache final : util::noncopyable {
 
   struct key_hash_t {
     size_t operator()(const key_t& key) const noexcept {
-      return std::hash<std::string>()(key.name);
+      return hash_utils::hash(key.name);
     }
   };
 
-  readers_cache(directory& dir): dir_(dir) {}
+  explicit readers_cache(directory& dir) noexcept
+    : dir_(dir) {}
 
   void clear() noexcept;
   segment_reader emplace(const segment_meta& meta);
-  size_t purge(const std::unordered_set<key_t, key_hash_t>& segments) noexcept;
+  size_t purge(const absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept;
 
  private:
   std::mutex lock_;
-  std::unordered_map<key_t, segment_reader, key_hash_t> cache_;
+  absl::flat_hash_map<key_t, segment_reader, key_hash_t> cache_;
   directory& dir_;
 }; // readers_cache
 
@@ -140,7 +138,7 @@ class IRESEARCH_API index_writer
         segment_context_ptr ctx,
         std::atomic<size_t>& segments_active,
         flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
-        size_t pending_segment_context_offset = integer_traits<size_t>::const_max // the segment offset in flush_ctx_->pending_segments_
+        size_t pending_segment_context_offset = std::numeric_limits<size_t>::max() // the segment offset in flush_ctx_->pending_segments_
     ) noexcept;
     active_segment_context(active_segment_context&&)  = default;
     ~active_segment_context();
@@ -289,7 +287,7 @@ class IRESEARCH_API index_writer
 
       auto clear_busy = make_finally([ctx, segment]()->void {
         if (!--segment->active_count_) {
-          SCOPED_LOCK(ctx->mutex_); // lock due to context modification and notification
+          auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification and notification
           ctx->pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
         }
       });
@@ -312,7 +310,7 @@ class IRESEARCH_API index_writer
 
           rollback.reserve(writer.docs_cached() + 1); // reserve space for rollback
 
-          if (integer_traits<doc_id_t>::const_max <= writer.docs_cached() + doc_limits::min()
+          if (std::numeric_limits<doc_id_t>::max() <= writer.docs_cached() + doc_limits::min()
               || doc_limits::eof(writer.begin(update, rollback_extra))) {
             break; // the segment cannot fit any more docs, must roll back
           }
@@ -345,7 +343,7 @@ class IRESEARCH_API index_writer
       for (auto i = rollback.size(); i && rollback.any();) {
         if (rollback.test(--i)) {
           rollback.unset(i); // if new doc_ids at end this allows to terminate 'for' earlier
-          assert(integer_traits<doc_id_t>::const_max >= i + doc_limits::min());
+          assert(std::numeric_limits<doc_id_t>::max() >= i + doc_limits::min());
           writer.remove(doc_id_t(i + doc_limits::min())); // convert to doc_id
         }
       }
@@ -493,16 +491,60 @@ class IRESEARCH_API index_writer
     }
   }; // segment_equal
 
-  // works faster than std::unordered_set<string_ref>
-  typedef std::unordered_set<
+  // segments that are under consolidation
+  using consolidating_segments_t = absl::flat_hash_set<
     const segment_meta*,
     segment_hash,
-    segment_equal
-  > consolidating_segments_t; // segments that are under consolidation
+    segment_equal>;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @enum ConsolidationError
+  //////////////////////////////////////////////////////////////////////////////
+  enum class ConsolidationError : uint32_t {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief consolidation failed
+    ////////////////////////////////////////////////////////////////////////////
+    FAIL = 0,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief consolidation succesfully finished
+    ////////////////////////////////////////////////////////////////////////////
+    OK,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief consolidation was scheduled for the upcoming commit
+    ////////////////////////////////////////////////////////////////////////////
+    PENDING
+  }; // ConsolidationError
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief represents result of a consolidation
+  //////////////////////////////////////////////////////////////////////////////
+  struct consolidation_result {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief number of candidates
+    ////////////////////////////////////////////////////////////////////////////
+    size_t size;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief error code
+    ////////////////////////////////////////////////////////////////////////////
+    ConsolidationError error;
+
+    // intentionally implicit
+    operator bool() const noexcept {
+      return error != ConsolidationError::FAIL;
+    }
+  }; // consolidation_result
 
   using ptr = std::shared_ptr<index_writer>;
 
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief a set of candidates denoting an instance of consolidation
+  //////////////////////////////////////////////////////////////////////////////
+  using consolidation_t = std::vector<const segment_meta*>;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief mark consolidation candidate segments matching the current policy
   /// @param candidates the segments that should be consolidated
   ///        in: segment candidates that may be considered by this policy
@@ -512,12 +554,11 @@ class IRESEARCH_API index_writer
   /// @param consolidating_segments segments that are currently in progress
   ///        of consolidation
   /// @note final candidates are all segments selected by at least some policy
-  ////////////////////////////////////////////////////////////////////////////
-  typedef std::function<void(
-    std::set<const segment_meta*>& candidates,
+  //////////////////////////////////////////////////////////////////////////////
+  using consolidation_policy_t = std::function<void(
+    consolidation_t& candidates,
     const index_meta& meta,
-    const consolidating_segments_t& consolidating_segments
-  )> consolidation_policy_t;
+    const consolidating_segments_t& consolidating_segments)>;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief name of the lock for index repository 
@@ -556,11 +597,10 @@ class IRESEARCH_API index_writer
   ///       commit, however, the resulting acceptor will only be segments not
   ///       yet marked for consolidation by other policies in the same commit
   ////////////////////////////////////////////////////////////////////////////
-  bool consolidate(
+  consolidation_result consolidate(
     const consolidation_policy_t& policy,
     format::ptr codec = nullptr,
-    const merge_writer::flush_progress_t& progress = {}
-  );
+    const merge_writer::flush_progress_t& progress = {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return returns a context allowing index modification operations
@@ -622,7 +662,7 @@ class IRESEARCH_API index_writer
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
   bool begin() {
-    SCOPED_LOCK(commit_lock_);
+    auto lock = make_lock_guard(commit_lock_);
 
     return start();
   }
@@ -631,7 +671,7 @@ class IRESEARCH_API index_writer
   /// @brief rollbacks the two-phase transaction 
   ////////////////////////////////////////////////////////////////////////////
   void rollback() {
-    SCOPED_LOCK(commit_lock_);
+    auto lock = make_lock_guard(commit_lock_);
 
     abort();
   }
@@ -639,15 +679,17 @@ class IRESEARCH_API index_writer
   ////////////////////////////////////////////////////////////////////////////
   /// @brief make all buffered changes visible for readers
   /// @param payload arbitrary user supplied data to store in the index
+  /// @return whether any changes were committed
   ///
   /// @note that if begin() has been already called commit() is
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit() {
-    SCOPED_LOCK(commit_lock_);
+  bool commit() {
+    auto lock = make_lock_guard(commit_lock_);
 
-    start();
+    const bool modified = start();
     finish();
+    return modified;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -668,7 +710,7 @@ class IRESEARCH_API index_writer
 
     consolidation_context_t(
         std::shared_ptr<index_meta>&& consolidaton_meta,
-        std::set<const segment_meta*>&& candidates,
+        consolidation_t&& candidates,
         merge_writer&& merger) noexcept
       : consolidaton_meta(std::move(consolidaton_meta)),
         candidates(std::move(candidates)),
@@ -677,52 +719,52 @@ class IRESEARCH_API index_writer
 
     consolidation_context_t(
         std::shared_ptr<index_meta>&& consolidaton_meta,
-        std::set<const segment_meta*>&& candidates) noexcept
+        consolidation_t&& candidates) noexcept
       : consolidaton_meta(std::move(consolidaton_meta)),
         candidates(std::move(candidates)) {
     }
 
     std::shared_ptr<index_meta> consolidaton_meta;
-    std::set<const segment_meta*> candidates;
+    consolidation_t candidates;
     merge_writer merger;
   }; // consolidation_context_t
 
-  static_assert(std::is_move_constructible_v<consolidation_context_t>);
+  static_assert(std::is_nothrow_move_constructible_v<consolidation_context_t>);
 
   struct import_context {
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,
         file_refs_t&& refs,
-        std::set<const segment_meta*>&& consolidation_candidates,
+        consolidation_t&& consolidation_candidates,
         std::shared_ptr<index_meta>&& consolidation_meta,
-        merge_writer&& merger
-    ) noexcept
+        merge_writer&& merger) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
-        consolidation_ctx(std::move(consolidation_meta), std::move(consolidation_candidates), std::move(merger)) {
+        consolidation_ctx(std::move(consolidation_meta),
+                          std::move(consolidation_candidates),
+                          std::move(merger)) {
     }
 
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,
         file_refs_t&& refs,
-        std::set<const segment_meta*>&& consolidation_candidates,
-        std::shared_ptr<index_meta>&& consolidation_meta
-    ) noexcept
+        consolidation_t&& consolidation_candidates,
+        std::shared_ptr<index_meta>&& consolidation_meta) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
-        consolidation_ctx(std::move(consolidation_meta), std::move(consolidation_candidates)) {
+        consolidation_ctx(std::move(consolidation_meta),
+                          std::move(consolidation_candidates)) {
     }
 
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,
         file_refs_t&& refs,
-        std::set<const segment_meta*>&& consolidation_candidates
-    ) noexcept
+        consolidation_t&& consolidation_candidates) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
@@ -756,7 +798,7 @@ class IRESEARCH_API index_writer
     consolidation_context_t consolidation_ctx;
   }; // import_context
 
-  static_assert(std::is_move_constructible_v<import_context>);
+  static_assert(std::is_nothrow_move_constructible_v<import_context>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the segment writer and its associated ref tracing directory
@@ -792,7 +834,7 @@ class IRESEARCH_API index_writer
   //////////////////////////////////////////////////////////////////////////////
   struct IRESEARCH_API segment_context { // IRESEARCH_API because of make_update_context(...)/remove(...) used by documents_context::replace(...)/documents_context::remove(...)
     struct flushed_t: public index_meta::index_segment_t {
-      doc_id_t docs_mask_tail_doc_id{integer_traits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
+      doc_id_t docs_mask_tail_doc_id{std::numeric_limits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
       flushed_t() = default;
       flushed_t(segment_meta&& meta)
         : index_meta::index_segment_t(std::move(meta)) {}
@@ -896,9 +938,9 @@ class IRESEARCH_API index_writer
         const segment_context::ptr& segment,
         size_t pending_segment_context_offset
       ): doc_id_begin_(segment->uncomitted_doc_id_begin_),
-         doc_id_end_(integer_traits<size_t>::const_max),
+         doc_id_end_(std::numeric_limits<size_t>::max()),
          modification_offset_begin_(segment->uncomitted_modification_queries_),
-         modification_offset_end_(integer_traits<size_t>::const_max),
+         modification_offset_end_(std::numeric_limits<size_t>::max()),
          segment_(segment) {
         assert(segment);
         value = pending_segment_context_offset;
@@ -914,7 +956,7 @@ class IRESEARCH_API index_writer
     std::condition_variable pending_segment_context_cond_; // notified when a segment has been freed (guarded by mutex_)
     std::deque<pending_segment_context> pending_segment_contexts_; // segment writers with data pending for next commit (all segments that have been used by this flush_context) must be std::deque to garantee that element memory location does not change for use with 'pending_segment_contexts_freelist_'
     freelist_t pending_segment_contexts_freelist_; // entries from 'pending_segment_contexts_' that are available for reuse
-    std::unordered_set<readers_cache::key_t, readers_cache::key_hash_t> segment_mask_; // set of segment names to be removed from the index upon commit
+    absl::flat_hash_set<readers_cache::key_t, readers_cache::key_hash_t> segment_mask_; // set of segment names to be removed from the index upon commit
 
     flush_context() = default;
 
@@ -964,7 +1006,7 @@ class IRESEARCH_API index_writer
           // partial update
           assert(begin <= files.end());
 
-          if (integer_traits<size_t>::const_max == entry.second) {
+          if (std::numeric_limits<size_t>::max() == entry.second) {
             // skip invalid segments
             begin += entry.second;
             continue;
@@ -1069,6 +1111,6 @@ class IRESEARCH_API index_writer
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 
-NS_END
+}
 
 #endif // IRESEARCH_INDEX_WRITER_H

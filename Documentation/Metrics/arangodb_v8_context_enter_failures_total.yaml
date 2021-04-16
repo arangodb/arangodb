@@ -1,0 +1,26 @@
+name: arangodb_v8_context_enter_failures_total
+renamedFrom: arangodb_v8_context_enter_failures
+introducedIn: "3.8.0"
+help: |
+  Total number of V8 context enter failures
+unit: number
+type: counter
+category: V8
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of V8 context enter failures. A context receives a context
+  enter event every time it begins to execute some JavaScript. If no
+  context is available at such a time the system waits for 60s for a
+  context to become free. If this does not happen within the 60s, the
+  context enter event fails, a warning is logged and this counter is
+  increased by one.
+threshold: |
+  If you see V8 context enter failures, then you do not have enough
+  V8 contexts or the server is overloaded by JavaScript tasks. If some
+  JavaScript code blocks V8 contexts for too long, the free V8 contexts
+  can run out and these failures begin to happen.

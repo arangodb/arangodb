@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,6 @@ class EndpointSrv final : public Endpoint {
   bool isConnected() const override;
   TRI_socket_t connect(double, double) override;
   void disconnect() override;
-  bool initIncoming(TRI_socket_t) override;
   int domain() const override;
   int port() const override;
   std::string host() const override;

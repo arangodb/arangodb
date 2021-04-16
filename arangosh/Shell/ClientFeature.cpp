@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,7 +81,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Configure a connection to the server");
+  options->addSection("server", "server connection");
 
   options->addOption("--server.database", "database name to use when connecting",
                      new StringParameter(&_databaseName));
@@ -155,7 +155,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
-  options->addSection("ssl", "Configure SSL communication");
+  options->addSection("ssl", "SSL communication");
   options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(&_sslProtocol, sslProtocols));
 #if _WIN32
@@ -234,7 +234,20 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "multiple jwt secret sources specified";
     FATAL_ERROR_EXIT();
   }
-
+  
+  if (!_endpoint.empty() &&
+      (_endpoint != "none") &&
+      (_endpoint != Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
+    std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(_endpoint));
+    if (endpoint != nullptr && endpoint->isBroadcastBind()) {
+      LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)
+        << "invalid value for --server.endpoint ('" << _endpoint <<
+        "') - 0.0.0.0 and :: are only allowed for servers binding - not for clients connecting." <<
+        " Choose an IP address of your machine instead." <<
+        " See https://en.wikipedia.org/wiki/0.0.0.0 for more details.";
+      FATAL_ERROR_EXIT();
+    }
+  }
   SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
 }
 

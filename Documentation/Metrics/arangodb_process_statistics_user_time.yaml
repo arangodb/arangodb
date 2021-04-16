@@ -1,0 +1,23 @@
+name: arangodb_process_statistics_user_time
+introducedIn: "3.6.1"
+help: |
+  Process user time
+unit: s
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Amount of time that this process has been scheduled in user mode,
+  measured in seconds.
+threshold: |
+  This metric can vary significantly dependent on the workload. If the rate is
+  consistently very high, it could be an indication of some problem.
+troubleshooting: |
+  There are many possible reasons for this, and specific advice cannot be given
+  here. Examples can be costly or inefficient queries being executed, or just
+  that the machine's performance is not sufficient for the tasks.

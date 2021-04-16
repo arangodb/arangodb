@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,7 @@ struct MyComputation : public VertexComputation<uint64_t, uint8_t, uint64_t> {
       for (const uint64_t* msg : messages) {
         if (*msg < currentComponent) {
           currentComponent = *msg;
-        };
+        }
       }
 
       if (currentComponent != vertexData()) {
@@ -61,9 +61,10 @@ struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
                          std::string const& result)
       : VertexGraphFormat<uint64_t, uint8_t>(server, result, /*vertexNull*/0) {}
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                      uint64_t& targetPtr) override {
-    targetPtr = _vertexIdRange++;
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/,
+                      uint64_t& targetPtr, uint64_t& vertexIdRange) override {
+    targetPtr = vertexIdRange++;
   }
 };
 

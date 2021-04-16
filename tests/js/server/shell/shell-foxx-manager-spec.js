@@ -7,6 +7,8 @@ var fs = require('fs');
 var internal = require('internal');
 var basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Foxx Manager', function () {
   describe('when manifest changes', function () {
     var mount;

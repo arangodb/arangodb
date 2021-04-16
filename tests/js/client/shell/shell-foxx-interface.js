@@ -43,6 +43,8 @@ const pixelStr = 'R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
 const pixelGif = new Buffer(pixelStr, 'base64');
 const vpackObjectSize = 73;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 const cmpBuffer = function(a, b) {
   if (a.length !== b.length) {
     return false;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -367,7 +367,6 @@ bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
     return false;
   }
 
-  // don't really understand why we need `ExecutionPlan` and `Ast` here
   aql::Expression expr(ctx.ast, const_cast<aql::AstNode*>(_node));
 
   destroy();
@@ -394,7 +393,8 @@ bool normalizeGeoDistanceCmpNode(
     NormalizedCmpNode& out) {
   static_assert(adjacencyChecker<aql::AstNodeType>::checkAdjacency<
                 aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
-                aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT>(),
+                aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
+                aql::NODE_TYPE_OPERATOR_BINARY_NE, aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
                 "Values are not adjacent");
 
   auto checkFCallGeoDistance = [](aql::AstNode const* node, aql::Variable const& ref) {
@@ -419,7 +419,7 @@ bool normalizeGeoDistanceCmpNode(
 
   auto cmp = in.type;
 
-  if (cmp < aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+  if (cmp < aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
       cmp > aql::NODE_TYPE_OPERATOR_BINARY_GE ||
       in.numMembers() != 2) {
     // wrong `in` type
@@ -658,7 +658,7 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
       value_.reset(node);
 
       if (!value_.execute(*ctx_)) {
-        // failed to evalue value
+        // failed to evaluate value
         return false;
       }
 

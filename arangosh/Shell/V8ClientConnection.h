@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,10 @@
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 #include <v8.h>
+
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace arangodb {
 class ClientFeature;
@@ -73,6 +77,8 @@ class V8ClientConnection {
   double timeout() const;
 
   void timeout(double value);
+  
+  std::string protocol() const;
 
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value) { _databaseName = value; }
@@ -151,6 +157,7 @@ class V8ClientConnection {
     _lastHttpReturnCode = httpCode;
     _lastErrorMessage = msg;
   }
+
  private:
   application_features::ApplicationServer& _server;
   ClientFeature& _client;
@@ -171,6 +178,13 @@ class V8ClientConnection {
   velocypack::Options _vpackOptions;
   bool _forceJson;
   bool _setCustomError;
+
+  // a per-endpoint, per-user cache for connections. whenever we reconnect
+  // to another endpoint, we can put the old connection into this cache,
+  // and recycle it later. the goal is to not use too many separate connections
+  // and ephemeral ports for patterns such as "connect-to-leader" -> "connect-to-follower"
+  // -> "connect-to-leader" etc. 
+  std::unordered_map<std::string, std::shared_ptr<fuerte::Connection>> _connectionCache;
 };
 }  // namespace arangodb
 

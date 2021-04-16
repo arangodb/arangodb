@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,7 +100,7 @@ bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
 }
 
 /// @brief locks for writing, but only tries
-bool ReadWriteLock::tryLockWrite() {
+bool ReadWriteLock::tryLockWrite() noexcept {
   // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire write lock as long as no readers or writers are active,
@@ -130,7 +130,7 @@ void ReadWriteLock::lockRead() {
 }
 
 /// @brief locks for reading, tries only
-bool ReadWriteLock::tryLockRead() {
+bool ReadWriteLock::tryLockRead() noexcept {
   // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire read lock as long as no writers are active or queued

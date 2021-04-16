@@ -33,7 +33,7 @@
 #include "noncopyable.hpp"
 #include "string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct IRESEARCH_API attributes {
   static bool exists(
@@ -51,8 +51,6 @@ struct IRESEARCH_API attributes {
 /// @class attribute
 /// @brief base class for all attributes that can be used with attribute_map
 ///        an empty struct tag type with no virtual methods
-///        all derived classes must implement the following function:
-///        static constexpr string_ref type_name() noexcept
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute { };
 
@@ -240,6 +238,6 @@ class IRESEARCH_API flags {
 static_assert(std::is_move_constructible_v<flags>);
 static_assert(std::is_move_assignable_v<flags>);
 
-NS_END
+}
 
 #endif // IRESEARCH_ATTRIBUTES_H

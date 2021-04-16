@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -112,11 +112,12 @@ struct RocksDBMetadata final {
   /// @brief returns the largest safe seq to squash updates against
   rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
 
-  /// @brief get the current count, ONLY use in recovery
-  DocCount& countUnsafe() { return _count; }
-
   /// @brief buffer a counter adjustment
   void adjustNumberDocuments(rocksdb::SequenceNumber seq, RevisionId revId, int64_t adj);
+
+  /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less memory
+  void adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
+                                       RevisionId revId, int64_t adj);
 
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,
@@ -128,15 +129,19 @@ struct RocksDBMetadata final {
   
   void loadInitialNumberDocuments();
 
-  uint64_t numberDocuments() const {
+  uint64_t numberDocuments() const noexcept {
     return _numberDocuments.load(std::memory_order_acquire);
   }
 
-  RevisionId revisionId() const {
+  rocksdb::SequenceNumber countCommitted() const noexcept {
+    return _count._committedSeq;
+  }
+
+  RevisionId revisionId() const noexcept {
     return _revisionId.load(std::memory_order_acquire);
   }
 
-public:
+ public:
   // static helper methods to modify collection meta entries in rocksdb
 
   /// @brief load collection document count

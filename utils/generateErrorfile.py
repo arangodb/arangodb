@@ -58,33 +58,12 @@ def genJsFile(errors):
 
   return out
 
+def quotedErrorMessage(error):
+    msg  = error[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
+    return "\"" + msg + "\""
 
-# generate C implementation file from errors
-def genCFile(errors, filename):
-
-  headerfile = os.path.splitext(filename)[0] + ".h"
-
-  impl = prologue\
-         + "#include \"Basics/Common.h\"\n"\
-         + "#include \"Basics/error.h\"\n"\
-         + "#include \"Basics/voc-errors.h\"\n"\
-         + "\n"\
-         + "/// helper macro to define an error string\n"\
-         + "#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);\n"\
-         + "\n"\
-         + "void TRI_InitializeErrorMessages() {\n"
-
-  # print individual errors
-  for e in errors:
-    msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
-    impl = impl\
-           + "  REG_ERROR(" + e[0] + ", \"" + msg + "\");\n"
-
-  impl = impl\
-       + "}\n"
-
-  return impl
-
+def errorName(error):
+    return "TRI_" + error[0]
 
 # generate C header file from errors
 def genCHeaderFile(errors):
@@ -92,9 +71,13 @@ def genCHeaderFile(errors):
        + "/// The following errors might be raised when running ArangoDB:\n"\
        + "\n\n"
 
-  header =   "#ifndef ARANGODB_BASICS_VOC_ERRORS_H\n"\
-           + "#define ARANGODB_BASICS_VOC_ERRORS_H 1\n"\
-           + "\n"\
+  header = """
+#ifndef ARANGODB_BASICS_VOC_ERRORS_H
+#define ARANGODB_BASICS_VOC_ERRORS_H 1
+
+#include "Basics/ErrorCode.h"
+
+""" \
            + wiki
 
   # print individual errors
@@ -103,18 +86,47 @@ def genCHeaderFile(errors):
            + "/// " + e[1] + ": " + e[0] + "\n"\
            + wrap(e[2], 80, 0, 0, "/// \"") + "\"\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "constexpr int TRI_" + e[0].ljust(61) + " = " + e[1] + ";\n"\
-           + "\n"
-
-  header = header + "\n"\
-           + "/// register all errors for ArangoDB\n"\
-           + "void TRI_InitializeErrorMessages();\n"\
+           + "constexpr auto " + errorName(e).ljust(65) + " = ErrorCode{" + e[1] + "};\n"\
            + "\n"
 
   header = header\
          + "#endif\n"
 
   return header
+
+def genErrorRegistryHeaderFile(errors):
+    template = """
+#ifndef ARANGODB_BASICS_ERROR_REGISTRY_H
+#define ARANGODB_BASICS_ERROR_REGISTRY_H
+
+#include "Basics/voc-errors.h"
+
+namespace frozen {{
+template <>
+struct elsa<ErrorCode> {{
+  constexpr auto operator()(ErrorCode const& value, std::size_t seed) const -> std::size_t {{
+    return elsa<int>{{}}.operator()(static_cast<int>(value), seed);
+  }}
+}};
+}}  // namespace frozen
+
+#include <frozen/unordered_map.h>
+
+namespace arangodb::error {{
+constexpr static frozen::unordered_map<ErrorCode, const char*, {numErrorMessages}> ErrorMessages = {{
+{initializerList}
+}};
+}}
+
+#endif  // ARANGODB_BASICS_ERROR_REGISTRY_H
+"""
+    initializerList = '\n'.join([
+        "    {" + errorName(e) + ",  // " + e[1] + "\n" + \
+        "      " + quotedErrorMessage(e) + "},"
+        for e in errors
+    ])
+
+    return template.format(numErrorMessages = len(errors), initializerList = initializerList)
 
 
 # define some globals
@@ -152,18 +164,16 @@ with io.open(source, encoding="utf-8", newline=None) as source_fh:
 
 outfile = sys.argv[2]
 extension = os.path.splitext(outfile)[1]
-filename = outfile
 
-if extension == ".tmp":
-  filename = os.path.splitext(outfile)[0]
-  extension = os.path.splitext(filename)[1]
+basename = os.path.basename(outfile)
+filename = basename if extension != ".tmp" else os.path.splitext(basename)[0]
 
-if extension == ".js":
+if filename == "errors.js":
   out = genJsFile(errorsList)
-elif extension == ".h":
+elif filename == "voc-errors.h":
   out = genCHeaderFile(errorsList)
-elif extension == ".cpp":
-  out = genCFile(errorsList, filename)
+elif filename == "error-registry.h":
+  out = genErrorRegistryHeaderFile(errorsList)
 else:
   print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
   sys.exit(1)

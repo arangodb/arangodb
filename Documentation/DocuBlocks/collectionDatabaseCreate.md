@@ -15,12 +15,6 @@ to the [naming conventions](../NamingConventions/README.md).
 * *waitForSync* (optional, default *false*): If *true* creating
   a document will only return after the data was synced to disk.
 
-* *journalSize* (optional, default is a
-  global config parameter, **mmfiles-only**): The maximal
-  size of a journal or datafile.  Note that this also limits the maximal
-  size of a single object. Must be at least 1MB.
-  This option is meaningful for the MMFiles storage engine only.
-
 * *isSystem* (optional, default is *false*): If *true*, create a
   system collection. In this case *collection-name* should start with
   an underscore. End users should normally create non-system collections
@@ -28,7 +22,7 @@ to the [naming conventions](../NamingConventions/README.md).
   very special occasions, but normally a regular collection will do.
 
 * *keyOptions* (optional): additional options for key generation. If
-  specified, then *keyOptions* should be a JSON array containing the
+  specified, then *keyOptions* should be a JSON object containing the
   following attributes (**note**: some of them are optional):
   * *type*: specifies the type of the key generator. The currently
     available generators are *traditional*, *autoincrement*, *uuid*
@@ -88,16 +82,6 @@ to the [naming conventions](../NamingConventions/README.md).
   especially if your collection has a subset of frequently accessed keys. Please test this feature
   carefully to ensure that it does not adversely affect the performance of your system.
 
-* *isVolatile* (optional, default is *false*, **mmfiles-only**): If *true* then the
-  collection data is kept in-memory only and not made persistent. Unloading
-  the collection will cause the collection data to be discarded. Stopping
-  or re-starting the server will also cause full loss of data in the
-  collection. Setting this option will make the resulting collection be
-  slightly faster than regular collections because ArangoDB does not
-  enforce any synchronization to disk and does not calculate any CRC
-  checksums for datafiles (as there are no datafiles).
-  This option is meaningful for the MMFiles storage engine only.
-
 * *schema* (optional, default is *null*): 
   Object that specifies the collection level schema for documents.
   The attribute keys `rule`, `level` and `message` must follow the rules
@@ -122,8 +106,7 @@ With defaults:
 With properties:
 
 @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateProperties}
-  |c = db._create("users", { waitForSync : true,
-           journalSize : 1024 * 1204});
+  c = db._create("users", { waitForSync: true });
   c.properties();
 ~ db._drop("users");
 @END_EXAMPLE_ARANGOSH_OUTPUT

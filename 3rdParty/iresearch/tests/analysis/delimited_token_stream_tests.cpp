@@ -25,7 +25,7 @@
 #include "tests_config.hpp"
 #include "analysis/delimited_token_stream.hpp"
 
-NS_LOCAL
+namespace {
 
 class delimited_token_stream_tests: public ::testing::Test {
   virtual void SetUp() {
@@ -37,7 +37,7 @@ class delimited_token_stream_tests: public ::testing::Test {
   }
 };
 
-NS_END // NS_LOCAL
+} // namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -45,11 +45,16 @@ NS_END // NS_LOCAL
 
 #ifndef IRESEARCH_DLL
 
+TEST_F(delimited_token_stream_tests, consts) {
+  static_assert("delimiter" == irs::type<irs::analysis::delimited_token_stream>::name());
+}
+
 TEST_F(delimited_token_stream_tests, test_delimiter) {
   // test delimiter string_ref::NIL
   {
     irs::string_ref data("abc,def\"\",\"\"ghi");
     irs::analysis::delimited_token_stream stream(irs::string_ref::NIL);
+    ASSERT_EQ(irs::type<irs::analysis::delimited_token_stream>::id(), stream.type());
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -484,10 +489,4 @@ TEST_F(delimited_token_stream_tests, test_make_config_text) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ(config, actual);
-}
-
-TEST_F(delimited_token_stream_tests, test_make_config_invalid_format) {
-  std::string config = ",";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::csv>::get(), config));
 }

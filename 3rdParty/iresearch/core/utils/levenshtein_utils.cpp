@@ -22,9 +22,11 @@
 
 #include "levenshtein_utils.hpp"
 
-#include <unordered_map>
 #include <queue>
 #include <cmath>
+
+#include <absl/container/flat_hash_map.h>
+#include <absl/hash/hash.h>
 
 #include "shared.hpp"
 #include "store/store_utils.hpp"
@@ -37,7 +39,7 @@
 #include "utf8_utils.hpp"
 #include "misc.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -101,7 +103,7 @@ FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
 ///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
 ////////////////////////////////////////////////////////////////////////////////
 FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
-  return lhs.transpose | !rhs.transpose
+  return (lhs.transpose | !rhs.transpose)
       ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
       : abs_diff(lhs.offset, rhs.offset) + lhs.distance <  rhs.distance;
 }
@@ -156,6 +158,8 @@ class parametric_state {
   std::vector<position>::const_iterator end() const noexcept {
     return positions_.end();
   }
+
+  size_t size() const noexcept { return positions_.size(); }
 
   bool empty() const noexcept { return positions_.empty(); }
 
@@ -213,20 +217,32 @@ class parametric_states {
 
  private:
   struct parametric_state_hash {
+    static size_t seed() noexcept {
+      return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(SEED));
+    }
+
     bool operator()(const parametric_state& state) const noexcept {
-      size_t seed = 0;
+      size_t seed = parametric_state_hash::seed();
       for (auto& pos: state) {
-        seed = irs::hash_combine(seed, pos.offset);
-        seed = irs::hash_combine(seed, pos.distance);
-        seed = irs::hash_combine(seed, pos.transpose);
+        const size_t hash = absl::hash_internal::CityHashState::hash(
+          size_t(pos.offset) << 33  |
+          size_t(pos.distance) << 1 |
+          size_t(pos.transpose));
+
+        seed = irs::hash_combine(seed, hash);
       }
       return seed;
     }
+
+    static const void* SEED;
   };
 
-  std::unordered_map<parametric_state, uint32_t, parametric_state_hash> states_;
+  absl::flat_hash_map<parametric_state, uint32_t, parametric_state_hash> states_;
   std::vector<const parametric_state*> states_by_id_;
 }; // parametric_states
+
+const void* parametric_states::parametric_state_hash::SEED
+  = &parametric_states::parametric_state_hash::SEED;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds elementary transition denoted by 'pos' to parametric state
@@ -391,7 +407,7 @@ std::vector<character> make_alphabet(
   // ensure we have enough capacity
   const auto capacity = utf8_size + bits_required<bitset::word_t>();
 
-  begin->cp = fst::fsa::kRho;
+  begin->cp = std::numeric_limits<uint32_t>::max();
   begin->chi.reset(capacity);
   ++begin;
 
@@ -445,9 +461,9 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
   return (lhs | rhs) & mask;
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 parametric_description::parametric_description(
     std::vector<transition_t>&& transitions,
@@ -654,12 +670,12 @@ automaton make_levenshtein_automaton(
 
     if (INVALID_STATE == default_state && arcs.empty()) {
       // optimization for invalid terminal state
-      a.EmplaceArc(state.from, fst::fsa::kRho, INVALID_STATE);
+      a.EmplaceArc(state.from, range_label{0, 255}, INVALID_STATE);
     } else if (INVALID_STATE == default_state && ascii && !a.Final(state.from)) {
       // optimization for ascii only input without default state and weight
       for (auto& arc: arcs) {
         assert(1 == arc.first.size());
-        a.EmplaceArc(state.from, arc.first.front(), arc.second);
+        a.EmplaceArc(state.from, range_label::fromRange(arc.first.front()), arc.second);
       }
     } else {
       builder.insert(a, state.from, default_state, arcs.begin(), arcs.end());
@@ -754,4 +770,4 @@ bool edit_distance(
   return true;
 }
 
-NS_END
+}

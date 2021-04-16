@@ -52,6 +52,8 @@ option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
 # use strictly required OpenSSL version (from ./VERSIONS file)
 option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" OFF)
 
+option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing debug information" OFF)
+
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
 # add_definitions("-DARANGODB_STANDALONE_ASIO=0")
@@ -86,7 +88,7 @@ option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from .
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "8")
+set(ARANGODB_VERSION_MINOR "9")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -295,11 +297,6 @@ if (USE_ENTERPRISE)
   add_subdirectory(enterprise)
 endif ()
 
-option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
-if (DEBUG_SYNC_REPLICATION)
-  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
-endif ()
-
 # we want the following definitions to be in effect for both rocksdb and arangodb
 add_definitions("-DNROCKSDB_THREAD_STATUS")
 add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
@@ -401,6 +398,35 @@ else ()
   set(ARANGODB_BUILD_REPOSITORY "")
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
+
+if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
+  execute_process(
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+
+    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
+    OUTPUT_VARIABLE GIT_OUTPUT)
+
+  # this may fail on shallow clones that only knows about a limited number of commits.
+  # if there is an older merged revision the head, it may not be available to git.
+  if (NOT GIT_OUTPUT)
+      set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
+      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+    else()
+      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
+      set(ENTERPRISE_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+    endif()
+else ()
+  set(ENTERPRISE_BUILD_REPOSITORY "")
+  set(HAVE_ENTERPRISE_BUILD_REPOSITORY "0")
+endif()
+
+if (DEFINED OSKAR_BUILD_REPOSITITORY)
+  set(HAVE_OSKAR_BUILD_REPOSITORY "1")
+else ()
+  set(OSKAR_BUILD_REPOSITORY "")
+  set(HAVE_OSKAR_BUILD_REPOSITORY "0")
+endif ()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-repository.h.in"
@@ -552,15 +578,15 @@ else ()
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.3")
-    message(WARNING "ArangoDB requires g++ 9.3 or newer, building with older compiler versions is unsupported")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
+    message(WARNING "ArangoDB requires g++ 10.0 or newer, building with older compiler versions is unsupported")
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "10.9.9")
     message(WARNING "ArangoDB doesn't support g++ 11.0 yet, building with newer compiler versions is unsupported")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
+if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG OR APPLE)
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
@@ -608,13 +634,6 @@ if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=8192")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-  add_definitions("-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS=1") # try to remove this when
-                                                                 # boost is upgraded to 1.70 or later
-
-  # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
-  # https://connect.microsoft.com/VisualStudio/feedback/details/1892487
-  # http://lists.boost.org/boost-users/2016/04/85968.php
-  add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
 
   # bcrypt is needed for SSL
   set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
@@ -706,28 +725,13 @@ set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 ## BACKTRACE
 ################################################################################
 
-option(USE_BACKTRACE
-  "whether we should try to generate c-level stacktraces"
-  OFF
-)
-
-# iresearch uses backtrace anyway, so we need to find and link libexecinfo
+# iresearch uses backtrace, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
 if (NOT MSVC)
   find_package(Backtrace)
 endif()
 
-if (USE_BACKTRACE)
-  if (MSVC)
-    set(BT_LIBS "Dbghelp" CACHE PATH "Debug Helper libraries")
-  else ()
-    set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
-  endif ()
-
-  add_definitions("-DARANGODB_ENABLE_BACKTRACE=1")
-else ()
-  set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
-endif ()
+set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
 
 ################################################################################
 ## ASSEMBLER OPTIMIZATIONS
@@ -867,9 +871,19 @@ endfunction()
 # JEMALLOC
 # ------------------------------------------------------------------------------
 
+option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
+
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
 endif ()
+
+if (USE_JEMALLOC_PROF)
+  add_definitions("-DUSE_MEMORY_PROFILE=1")
+endif ()
+
+# ------------------------------------------------------------------------------
+# LIBUNWIND
+# ------------------------------------------------------------------------------
 
 if (USE_LIBUNWIND)
   add_definitions("-DARANGODB_HAVE_LIBUNWIND=1")
@@ -885,116 +899,160 @@ add_definitions(-DNDEBUG)
 ## FLAGS
 ################################################################################
 
+include(CheckCCompilerFlag)
+include(CheckCXXCompilerFlag)
+
+# Tests whether an argument can be passed to the C compiler without diagnostics,
+# and appends it to the first variable if possible.
+# If called with multiple arguments, they are tested and possibly appended
+# independently.
+function(add_c_flags_if_supported var)
+  foreach(flag ${ARGN})
+    set(flag_var_name "C_COMPILER_SUPPORTS_${flag}")
+    # Note that this compiles a test file, also using CMAKE_C_FLAGS, which
+    # may thus affect the result.
+    # Also note that check_c_compiler_flag *internally caches* the result for
+    # per *var_name*, forcing us to use a unique variable for each call with the
+    # same option.
+    # An alternative (albeit more costly) would be to unset the variable each time.
+    check_c_compiler_flag(${flag} "${flag_var_name}")
+    set(is_supported ${${flag_var_name}})
+    if(is_supported)
+      set(${var} "${${var}} ${flag}")
+    endif()
+  endforeach()
+  set(${var} "${${var}}" PARENT_SCOPE)
+endfunction()
+
+# Tests whether an argument can be passed to the C++ compiler without diagnostics,
+# and appends it to the first variable if possible.
+# If called with multiple arguments, they are tested and possibly appended
+# independently.
+function(add_cxx_flags_if_supported var)
+  foreach(flag ${ARGN})
+    set(flag_var_name "CXX_COMPILER_SUPPORTS_${flag}")
+    # Note that this compiles a test file, also using CMAKE_CXX_FLAGS, which
+    # may thus affect the result.
+    # Also note that check_cxx_compiler_flag *internally caches* the result for
+    # per *var_name*, forcing us to use a unique variable for each call with the
+    # same option.
+    # An alternative (albeit more costly) would be to unset the variable each time.
+    check_cxx_compiler_flag(${flag} "${flag_var_name}")
+    set(is_supported ${${flag_var_name}})
+    if(is_supported)
+      set(${var} "${${var}} ${flag}")
+    endif()
+  endforeach()
+  set(${var} "${${var}}" PARENT_SCOPE)
+endfunction()
+
 if (VERBOSE)
   message(STATUS)
 endif ()
 
 
 # compiler options
-if (CMAKE_COMPILER_IS_GNUCC)
-  if (VERBOSE)
-    message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
-  endif ()
+if (MSVC) 
+  message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
 
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-
-  set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
-
-  set(CMAKE_CXX_FLAGS                "-g -Wnon-virtual-dtor"          CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
-
-elseif (CMAKE_COMPILER_IS_CLANG)
-  if (VERBOSE)
-    message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
-  endif ()
-
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-
-  if(DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.1")
-    # With the introduction of apple clang version 12.0.0 (clang-1200.0.32.2) the warning "range-loop-analysis" is now
-    # enabled by default or changed analysis behaviour. The compiler now complains about "wrong" usage of
-    # VPackObjectIterator and VPackArrayIterator - which is not the case.
-    #
-    # See example here: https://github.com/arangodb/arangodb/pull/12730
-    #
-    # Since we're stopping compilation on Apple in any warning case, we need to temporary disable that warning and
-    # check upcoming versions if the compiler behaviour will be fixed.
-    set(BASE_FLAGS "${BASE_FLAGS} -Wno-range-loop-analysis")
-  endif()
-
-  set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
-
-  set(CMAKE_CXX_FLAGS                "-g -Wnon-virtual-dtor"          CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
-
-elseif (MSVC)
-  if (VERBOSE)
-    message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
+  if (USE_MINIMAL_DEBUGINFO)
+    message(FATAL_ERROR "USE_MINIMAL_DEBUGINFO is not supported for this compiler")
   endif ()
 
   set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
 
-  set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_C_FLAGS                "/MTd"                                              CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"         CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                      CACHE INTERNAL "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                                      CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                  CACHE INTERNAL "C release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_CXX_FLAGS                "/MTd"                                            CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"       CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                    CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                                    CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                CACHE INTERNAL "C++ release with debug info flags")
 
   if (USE_CLCACHE_MODE)
     set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
     add_definitions(/Z7)
   endif ()
 
-else ()
-  # unknown compiler
-  message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
+else () # NOT MSVC
+  set(EXTRA_C_FLAGS "")
+  set(EXTRA_CXX_FLAGS "")
 
-  set(BASE_FLAGS "-Wall ${BASE_FLAGS}")
+  if (CMAKE_COMPILER_IS_GNUCC)
+    message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
+    set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+    set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
+  elseif (CMAKE_COMPILER_IS_CLANG)
+    message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
+    set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+    set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
+    
+    if (NOT DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0")
+      # clang 11 and higher supports -Wsuggest-override. older versions don't
+      set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
+    endif ()
 
-  set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
+    if (DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.1")
+      # With the introduction of apple clang version 12.0.0 (clang-1200.0.32.2) the warning "range-loop-analysis" is now
+      # enabled by default or changed analysis behaviour. The compiler now complains about "wrong" usage of
+      # VPackObjectIterator and VPackArrayIterator - which is not the case.
+      #
+      # See example here: https://github.com/arangodb/arangodb/pull/12730
+      #
+      # Since we're stopping compilation on Apple in any warning case, we need to temporary disable that warning and
+      # check upcoming versions if the compiler behaviour will be fixed.
+      set(EXTRA_C_FLAGS "-Wno-range-loop-analysis")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-range-loop-analysis")
+    endif ()
+  else ()
+    # unknown compiler
+    message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
+    set(BASE_FLAGS "-Wall ${BASE_FLAGS}")
+  endif ()
 
-  set(CMAKE_CXX_FLAGS                "-g"                             CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
+  # flags for builds without debug symbols
+  set(NODEBUGINFO_FLAGS "-g0")
+
+  # flags for builds with debug symbols
+  if (USE_MINIMAL_DEBUGINFO)
+    # minimal debug symbols
+    set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz")
+  else ()
+    # full debug symbols
+    set(DEBUGINFO_FLAGS "-g")
+  endif ()
+
+  # c
+  # note: when building one of the build types, CMake will automatically combine
+  # the base flags from CMAKE_C_FLAGS with build type-specific flags in 
+  # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
+  # there is no need to repeat the base flags in the build-type specific flags!
+  set(CMAKE_C_FLAGS                  "${EXTRA_C_FLAGS}"                                CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
+
+  # cxx
+  # note: when building one of the build types, CMake will automatically combine
+  # the base flags from CMAKE_CXX_FLAGS with build type-specific flags in 
+  # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
+  # there is no need to repeat the base flags in the build-type specific flags!
+  set(CMAKE_CXX_FLAGS                "${EXTRA_CXX_FLAGS}"                              CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
+
 endif ()
 
-set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS}                    ${BASE_FLAGS} ${BASE_C_FLAGS}")
-set(CMAKE_C_FLAGS_DEBUG          "${CMAKE_C_FLAGS_DEBUG}              ${BASE_FLAGS} ${BASE_C_FLAGS}")
-set(CMAKE_C_FLAGS_RELEASE        "${CMAKE_C_FLAGS_RELEASE}            ${BASE_FLAGS} ${BASE_C_FLAGS}")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}     ${BASE_FLAGS} ${BASE_C_FLAGS}")
-set(CMAKE_C_FLAGS_MINSIZEREL     "${CMAKE_C_FLAGS_MINSIZEREL}         ${BASE_FLAGS} ${BASE_C_FLAGS}")
-
-set(CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS}                ${BASE_FLAGS} ${BASE_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG}          ${BASE_FLAGS} ${BASE_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS_RELEASE        "${CMAKE_CXX_FLAGS_RELEASE}        ${BASE_FLAGS} ${BASE_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${BASE_FLAGS} ${BASE_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL}     ${BASE_FLAGS} ${BASE_CXX_FLAGS}")
+# put together the final flags
+set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
 
 if (VERBOSE)
   message(STATUS "Info BASE_FLAGS:     ${BASE_FLAGS}")
@@ -1004,13 +1062,12 @@ if (VERBOSE)
   message(STATUS "Info BASE_LIBS:      ${BASE_LIBS}")
   message(STATUS)
 
-  if (CMAKE_BUILD_TYPE STREQUAL "None")
+  if (NOT CMAKE_BUILD_TYPE STREQUAL "None")
     message(STATUS "Info CMAKE_C_FLAGS:   ${CMAKE_C_FLAGS}")
     message(STATUS "Info CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
-  else ()
-    message(STATUS "Info CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}:   ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
-    message(STATUS "Info CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}: ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
   endif ()
+  message(STATUS "Info CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}:   ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+  message(STATUS "Info CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}: ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
 
   message(STATUS "Info CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
   message(STATUS)
@@ -1023,7 +1080,6 @@ if(ARANGODB_DEBUG_CMAKE)
   endforeach()
   message( STATUS "DirDefs: ${DirDefs}" )
 endif()
-
 
 ################################################################################
 ## OpenSSL
@@ -1244,9 +1300,12 @@ endif()
 ################################################################################
 
 if (USE_MAINTAINER_MODE)
+  # If "make clean" removes these files, afterwards neither "make" nor "cmake" work any more.
+  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+
   set(ERROR_FILES
     lib/Basics/voc-errors.h
-    lib/Basics/voc-errors.cpp
+    lib/Basics/error-registry.h
     js/common/bootstrap/errors.js
   )
 
@@ -1259,7 +1318,7 @@ if (USE_MAINTAINER_MODE)
       COMMAND ${PYTHON_EXECUTABLE} ./utils/generateErrorfile.py ./${ERRORS_DAT} ./${m}.tmp
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
       COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ./utils/generateErrorfile.py
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building errors files ${m}"
       VERBATIM
@@ -1272,7 +1331,6 @@ if (USE_MAINTAINER_MODE)
 
   set(EXIT_CODE_FILES
     lib/Basics/exitcodes.h
-    lib/Basics/exitcodes.cpp
     js/common/bootstrap/exitcodes.js
     Installation/Windows/Plugins/exitcodes.nsh
   )
@@ -1286,7 +1344,7 @@ if (USE_MAINTAINER_MODE)
       COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
       COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ./utils/generateExitCodesFiles.py
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building exitcode files ${m}"
       VERBATIM

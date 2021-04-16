@@ -727,7 +727,7 @@ function TransactionsImplicitCollectionsSuite() {
     testUseForWriteAllowImplicit: function () {
       db._executeTransaction({
         collections: { write: cn1, allowImplicit: true },
-        action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+        action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate({ compact: false }); }",
         params: { cn1: cn1 }
       });
     },
@@ -739,7 +739,7 @@ function TransactionsImplicitCollectionsSuite() {
     testUseForWriteNoAllowImplicit: function () {
       db._executeTransaction({
         collections: { write: cn1, allowImplicit: false },
-        action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+        action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate({ compact: false }); }",
         params: { cn1: cn1 }
       });
     },
@@ -798,7 +798,7 @@ function TransactionsImplicitCollectionsSuite() {
       try {
         db._executeTransaction({
           collections: { read: cn1, allowImplicit: false },
-          action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate(); }",
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate({ compact: false }); }",
           params: { cn2: cn2 }
         });
         fail();
@@ -817,7 +817,7 @@ function TransactionsImplicitCollectionsSuite() {
       try {
         db._executeTransaction({
           collections: {},
-          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate({ compact: false }); }",
           params: { cn1: cn1 }
         });
         fail();
@@ -835,7 +835,7 @@ function TransactionsImplicitCollectionsSuite() {
       try {
         db._executeTransaction({
           collections: { read: cn1 },
-          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate({ compact: false }); }",
           params: { cn1: cn1 }
         });
         fail();
@@ -853,7 +853,7 @@ function TransactionsImplicitCollectionsSuite() {
       try {
         db._executeTransaction({
           collections: { write: cn2 },
-          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate({ compact: false }); }",
           params: { cn1: cn1 }
         });
         fail();
@@ -871,7 +871,7 @@ function TransactionsImplicitCollectionsSuite() {
       try {
         db._executeTransaction({
           collections: { read: cn1, allowImplicit: true },
-          action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate(); }",
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate({ compact: false }); }",
           params: { cn2: cn2 }
         });
         fail();

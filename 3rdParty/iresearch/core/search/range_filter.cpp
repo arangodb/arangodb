@@ -29,7 +29,7 @@
 #include "search/limited_sample_collector.hpp"
 #include "search/term_filter.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -117,9 +117,9 @@ void visit(
   }
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 DEFINE_FACTORY_DEFAULT(by_range)
 
@@ -150,7 +150,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
   }
 
   limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
-  multiterm_query::states_t states(index.size());
+  multiterm_query::states_t states(index);
   multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments
@@ -182,4 +182,4 @@ DEFINE_FACTORY_DEFAULT(by_range)
   ::visit(segment, reader, rng, visitor);
 }
 
-NS_END // ROOT
+} // ROOT

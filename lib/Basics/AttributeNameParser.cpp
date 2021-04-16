@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,6 +118,12 @@ void arangodb::basics::TRI_ParseAttributeString(std::string const& input,
                                                 std::vector<AttributeName>& result,
                                                 bool allowExpansion) {
   TRI_ParseAttributeString(arangodb::velocypack::StringRef(input), result, allowExpansion);
+}
+
+void arangodb::basics::TRI_ParseAttributeString(std::string_view input,
+                                                std::vector<AttributeName>& result,
+                                                bool allowExpansion) {
+  TRI_ParseAttributeString(arangodb::velocypack::StringRef(input.data(), input.size()), result, allowExpansion);
 }
 
 void arangodb::basics::TRI_ParseAttributeString(arangodb::velocypack::StringRef const& input,

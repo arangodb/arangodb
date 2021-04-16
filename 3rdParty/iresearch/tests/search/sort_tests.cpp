@@ -30,7 +30,7 @@
 #include "search/score.hpp"
 #include "utils/misc.hpp"
 
-NS_LOCAL
+namespace {
 
 struct empty_attribute_provider : irs::attribute_provider {
   virtual irs::attribute* get_mutable(irs::type_info::type_id) {
@@ -106,10 +106,6 @@ struct aligned_scorer : public irs::sort {
     bool empty_scorer_;
   };
 
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   static ptr make(const irs::flags& features = irs::flags::empty_instance(),
                   bool empty_scorer = true) {
     return std::make_unique<aligned_scorer>(features, empty_scorer);
@@ -133,23 +129,15 @@ struct aligned_scorer : public irs::sort {
 };
 
 struct dummy_scorer0: public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return __FILE__ ":" STRINGIFY(__LINE__);
-  }
-
   static ptr make() { return std::make_unique<dummy_scorer0>(); }
   dummy_scorer0(): irs::sort(irs::type<dummy_scorer0>::get()) { }
   virtual prepared::ptr prepare() const override { return nullptr; }
 };
 
-NS_END
+}
 
 TEST(sort_tests, order_equal) {
   struct dummy_scorer1: public irs::sort {
-    static constexpr irs::string_ref type_name() noexcept {
-      return __FILE__ ":" STRINGIFY(__LINE__);
-    }
-
     static ptr make() { return std::make_unique<dummy_scorer1>(); }
     dummy_scorer1(): irs::sort(irs::type<dummy_scorer1>::get()) { }
     virtual prepared::ptr prepare() const override { return nullptr; }
@@ -230,6 +218,9 @@ TEST(sort_tests, order_equal) {
 }
 
 TEST(sort_tests, static_const) {
+  static_assert("iresearch::filter_boost" == irs::type<irs::filter_boost>::name());
+  static_assert(irs::no_boost() == irs::filter_boost().value);
+
   ASSERT_TRUE(irs::order::unordered().empty());
   ASSERT_TRUE(irs::order::prepared::unordered().empty());
 }

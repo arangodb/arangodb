@@ -1,0 +1,29 @@
+name: arangodb_replication_initial_sync_docs_removed_total
+renamedFrom: arangodb_replication_initial_sync_docs_removed
+introducedIn: "3.8.0"
+help: |
+  Number of documents removed by replication initial sync
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  This counter exhibits the total number of documents removed on the
+  follower during initial synchronization of shards. This is part of the
+  older (pre 3.8) initial replication protocol, which might still be
+  used in 3.8 for collections which have been created by older versions.
+
+  In this older protocol, the follower first fetches an overview over
+  a shard from the leader. This does a full collection scan and
+  divides the primary keys in the collection into equal sized chunks.
+  Then, a checksum for each chunk is returned. The same is then done
+  on the follower and the checksums are compared, chunk by chunk. For
+  each chunk, for which the checksums do not match, the list of keys and
+  revisions is fetched from the leader. This then enables the follower
+  to fetch the actually needed documents and remove superfluous ones
+  locally.
+
+  This metric accumulates the total number of documents removed in the
+  third step.

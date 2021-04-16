@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -441,8 +441,8 @@ arangodb::Result RemoveFollower::abort(std::string const& reason) {
   Result result;
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
-    result =
-        Result(1, "Failed aborting RemoveFollower job beyond pending stage");
+    result = Result(TRI_ERROR_INTERNAL,
+                    "Failed aborting RemoveFollower job beyond pending stage");
     return result;
   }
   // Can now only be TODO or PENDING

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
 #include "Aql/AqlValue.h"
-#include "Aql/ResourceUsage.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/SmallVector.h"
 
 #include <limits>
@@ -122,18 +122,27 @@ class AqlItemBlock {
   /// @brief getValue, get the value of a register
   AqlValue getValue(size_t index, RegisterId varNr) const;
 
+  /// @brief getValue, get the value of a register
+  AqlValue getValue(size_t index, RegisterId::value_t column) const;
+  
   /// @brief getValue, get the value of a register by reference
   AqlValue const& getValueReference(size_t index, RegisterId varNr) const;
 
+  /// @brief getValue, get the value of a register by reference
+  AqlValue const& getValueReference(size_t index, RegisterId::value_t column) const;
+  
   /// @brief setValue, set the current value of a register
   void setValue(size_t index, RegisterId varNr, AqlValue const& value);
+  
+  /// @brief setValue, set the current value of a register
+  void setValue(size_t index, RegisterId::value_t column, AqlValue const& value);
 
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
   template <typename... Args>
   // std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
-  void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    auto address = getAddress(index, varNr);
+  void emplaceValue(size_t index, RegisterId::value_t column, Args&&... args) {
+    auto address = getAddress(index, column);
     AqlValue* p = &_data[address];
     TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place
@@ -163,7 +172,7 @@ class AqlItemBlock {
         throw;
       }
     }
-    _numEffectiveRows = std::max<size_t>(_numEffectiveRows, index + 1);
+    _maxModifiedRowIndex = std::max<size_t>(_maxModifiedRowIndex, index + 1);
   }
 
   /// @brief eraseValue, erase the current value of a register and freeing it
@@ -171,6 +180,7 @@ class AqlItemBlock {
   /// use with caution only in special situations when it can be ensured that
   /// no one else will be pointing to the same value
   void destroyValue(size_t index, RegisterId varNr);
+  void destroyValue(size_t index, RegisterId::value_t column);
 
   /// @brief eraseValue, erase the current value of a register not freeing it
   /// this is used if the value is stolen and later released from elsewhere
@@ -196,8 +206,7 @@ class AqlItemBlock {
 
   /// @brief getter for _numRows
   size_t numRows() const noexcept;
-  size_t numEffectiveRows() const noexcept;
-
+  size_t maxModifiedRowIndex() const noexcept;
 
   /// @brief get the relevant consumable range of the block
   std::tuple<size_t, size_t> getRelevantRange() const;
@@ -208,8 +217,8 @@ class AqlItemBlock {
   /// be erased, i.e. empty / none!
   size_t numEntries() const noexcept;
   
-  /// @brief Effective number of entries in the matrix. 
-  size_t numEffectiveEntries() const noexcept;
+  /// @brief number of modified entries
+  size_t maxModifiedEntries() const noexcept;
 
   size_t capacity() const noexcept;
 
@@ -332,7 +341,7 @@ class AqlItemBlock {
  private:
   void destroy() noexcept;
 
-  ResourceMonitor& resourceMonitor() noexcept;
+  arangodb::ResourceMonitor& resourceMonitor() noexcept;
 
   void increaseMemoryUsage(size_t value);
 
@@ -342,7 +351,7 @@ class AqlItemBlock {
                                        size_t sourceRow, bool forceShadowRow);
 
   /// @brief get the computed address within the data vector
-  size_t getAddress(size_t index, RegisterId varNr) const noexcept;
+  size_t getAddress(size_t index, RegisterId::value_t reg) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
 
@@ -368,7 +377,7 @@ class AqlItemBlock {
   RegisterCount _numRegisters = 0;
   
   /// @brief (highest) number of rows that have been written to
-  size_t _numEffectiveRows = 0;
+  size_t _maxModifiedRowIndex = 0;
   
   /// @brief manager for this item block
   AqlItemBlockManager& _manager;

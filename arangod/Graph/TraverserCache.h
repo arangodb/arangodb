@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,7 @@
 #include "Basics/StringHeap.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-#include <velocypack/StringRef.h>
+#include <velocypack/HashedStringRef.h>
 
 #include <unordered_set>
 
@@ -40,6 +40,7 @@ class Methods;
 
 namespace velocypack {
 class Builder;
+class StringRef;
 class Slice;
 }  // namespace velocypack
 
@@ -77,21 +78,17 @@ class TraverserCache {
                                     velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts the real document identified by the _id string
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void insertVertexIntoResult(arangodb::velocypack::StringRef idString, velocypack::Builder& builder);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
   virtual aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Return AQL value containing the result
+  /// @brief Append the vertex for the given id
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  virtual aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString);
+  virtual bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& result);
+  virtual bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result);
 
   size_t getAndResetInsertedDocuments() {
     size_t tmp = _insertedDocuments;
@@ -110,6 +107,8 @@ class TraverserCache {
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
   arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef idString);
+  
+  arangodb::velocypack::HashedStringRef persistString(arangodb::velocypack::HashedStringRef idString);
 
   void increaseFilterCounter() { _filteredDocuments++; }
 
@@ -117,14 +116,6 @@ class TraverserCache {
 
   /// Only valid until the next call to this class
   virtual velocypack::Slice lookupToken(EdgeDocumentToken const& token);
-
- protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Lookup a document from the database.
-  ///        The Slice returned here is only valid until the NEXT call of this
-  ///        function.
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::Slice lookupVertexInCollection(arangodb::velocypack::StringRef idString);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -163,9 +154,13 @@ class TraverserCache {
   /// @brief Set of all strings persisted in the stringHeap. So we can save some
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_set<arangodb::velocypack::StringRef> _persistedStrings;
+  std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
 
   BaseOptions const* _baseOptions;
+
+  /// @brief whether or not to allow adding of previously unknown collections
+  /// during the traversal
+  bool const _allowImplicitCollections;
 };
 
 }  // namespace graph

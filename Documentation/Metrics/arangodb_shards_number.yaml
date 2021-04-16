@@ -1,0 +1,24 @@
+name: arangodb_shards_number
+renamedFrom: arangodb_shards_total_count
+introducedIn: "3.8.0"
+help: |
+  Number of shards on this machine.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Number of shards on this machine. Every shard has a leader and
+  potentially multiple followers. This metric counts both leader and
+  follower shards.
+troubleshoot: |
+  Since both leader and follower shards use memory and disk space,
+  the total number of shards should be approximately balanced
+  evenly across the dbservers. To achieve this, you can either
+  move shards manually, use the "Rebalance shards" button in the
+  UI, or use the cluster maintenance tools in [this repository]
+  (https://github.com/arangodb/cluster-maintenance) (`create-move-plan`
+  and `execute-move-plan` specifically). In the latter case, contact
+  ArangoDB customer support.

@@ -24,8 +24,9 @@
 #define IRESEARCH_TERM_QUERY_H
 
 #include "search/filter.hpp"
+#include "search/states_cache.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class range_query
@@ -57,6 +58,6 @@ class term_query final : public filter::prepared {
   bstring stats_;
 }; // term_query
 
-NS_END // ROOT
+} // ROOT
 
 #endif

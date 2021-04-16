@@ -23,7 +23,7 @@
 #include "result.hpp"
 #include "memory.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 /*static*/ std::unique_ptr<char[]> result::copyState(const char* src) {
   const size_t len = std::strlen(src);
@@ -55,4 +55,4 @@ result::result(Code code, const string_ref& msg1, const string_ref& msg2)
   state_ = std::move(state);
 }
 
-NS_END
+}

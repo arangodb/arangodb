@@ -25,7 +25,7 @@
 
 #include "filter.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class all
@@ -33,10 +33,6 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API all: public filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::all";
-  }
-
   DECLARE_FACTORY();
 
   all() noexcept;
@@ -50,6 +46,6 @@ class IRESEARCH_API all: public filter {
     const attribute_provider* ctx) const override;
 }; // all
 
-NS_END // ROOT
+} // ROOT
 
 #endif

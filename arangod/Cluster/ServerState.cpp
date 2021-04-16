@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,16 +37,18 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterInfo.h"
-#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -79,16 +81,11 @@ static ServerState* Instance = nullptr;
 ServerState::ServerState(application_features::ApplicationServer& server)
     : _server(server),
       _role(RoleEnum::ROLE_UNDEFINED),
-      _lock(),
-      _id(),
       _shortId(0),
       _rebootId(0),
-      _javaScriptStartupPath(),
-      _myEndpoint(),
-      _advertisedEndpoint(),
-      _host(),
       _state(STATE_UNDEFINED),
       _initialized(false),
+      _foxxmasterSince(0),
       _foxxmasterQueueupdate(false) {
   TRI_ASSERT(!Instance);
   Instance = this;
@@ -232,10 +229,6 @@ std::string ServerState::stateToString(StateEnum state) {
       return "UNDEFINED";
     case STATE_STARTUP:
       return "STARTUP";
-    case STATE_STOPPING:
-      return "STOPPING";
-    case STATE_STOPPED:
-      return "STOPPED";
     case STATE_SERVING:
       return "SERVING";
     case STATE_SHUTDOWN:
@@ -251,10 +244,13 @@ std::string ServerState::stateToString(StateEnum state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState::StateEnum ServerState::stringToState(std::string const& value) {
-  if (value == "SHUTDOWN") {
+  if (value == "STARTUP") {
+    return STATE_STARTUP;
+  } else if (value == "SERVING") {
+    return STATE_SERVING;
+  } else if (value == "SHUTDOWN") {
     return STATE_SHUTDOWN;
   }
-  // TODO MAX: do we need to understand other states, too?
 
   return STATE_UNDEFINED;
 }
@@ -384,7 +380,7 @@ bool ServerState::logoff(double timeout) {
       return true;
     }
 
-    if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE || !res.connected()) {
+    if (res.httpCode() == rest::ResponseCode::SERVICE_UNAVAILABLE || !res.connected()) {
       LOG_TOPIC("1776b", INFO, Logger::CLUSTER)
           << "unable to unregister server from agency, because agency is in "
              "shutdown";
@@ -566,7 +562,7 @@ bool ServerState::hasPersistedId() {
 bool ServerState::writePersistedId(std::string const& id) {
   std::string uuidFilename = getUuidFilename();
   // try to create underlying directory
-  int error;
+  auto error = TRI_ERROR_NO_ERROR;
   FileUtils::createDirectory(FileUtils::dirname(uuidFilename), &error);
 
   try {
@@ -612,7 +608,7 @@ std::string ServerState::getPersistedId() {
 
 /// @brief check equality of engines with other registered servers
 bool ServerState::checkEngineEquality(AgencyComm& comm) {
-  std::string engineName = EngineSelectorFeature::engineName();
+  std::string engineName = _server.getFeature<EngineSelectorFeature>().engineName();
 
   AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
@@ -793,10 +789,16 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
 }
 
 std::string ServerState::getShortName() const {
+  if (_role == ROLE_AGENT) {
+    return getId().substr(0, 13);
+  }
   std::stringstream ss;  // ShortName
   auto num = getShortId();
-  size_t width = std::max(std::to_string(num + 1).size(), static_cast<size_t>(4));
-  ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0') << num + 1;
+  if (num == 0) {
+    return std::string{};   // not yet known
+  }
+  size_t width = std::max(std::to_string(num).size(), static_cast<size_t>(4));
+  ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0') << num;
   return ss.str();
 }
 
@@ -822,7 +824,8 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("host", VPackValue(getHost()));
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
-      builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+      builder.add("engine",
+                  VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
       builder.add("timestamp",
                   VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
@@ -988,24 +991,6 @@ void ServerState::setState(StateEnum state) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the JavaScript startup path
-////////////////////////////////////////////////////////////////////////////////
-
-std::string ServerState::getJavaScriptPath() {
-  READ_LOCKER(readLocker, _lock);
-  return _javaScriptStartupPath;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the arangod path
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::setJavaScriptPath(std::string const& value) {
-  WRITE_LOCKER(writeLocker, _lock);
-  _javaScriptStartupPath = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a state transition for a primary server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1014,13 +999,9 @@ bool ServerState::checkPrimaryState(StateEnum state) {
     // startup state can only be set once
     return (_state == STATE_UNDEFINED);
   } else if (state == STATE_SERVING) {
-    return (_state == STATE_STARTUP || _state == STATE_STOPPED);
-  } else if (state == STATE_STOPPING) {
-    return _state == STATE_SERVING;
-  } else if (state == STATE_STOPPED) {
-    return (_state == STATE_STOPPING);
+    return (_state == STATE_STARTUP);
   } else if (state == STATE_SHUTDOWN) {
-    return (_state == STATE_STARTUP || _state == STATE_STOPPED || _state == STATE_SERVING);
+    return (_state == STATE_STARTUP || _state == STATE_SERVING);
   }
 
   // anything else is invalid
@@ -1046,37 +1027,42 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
 }
 
 bool ServerState::isFoxxmaster() const {
+  READ_LOCKER(readLocker, _foxxmasterLock);
   return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
-std::string const& ServerState::getFoxxmaster() { return _foxxmaster; }
+std::string ServerState::getFoxxmaster() const { 
+  READ_LOCKER(readLocker, _foxxmasterLock);
+  return _foxxmaster; 
+}
 
 void ServerState::setFoxxmaster(std::string const& foxxmaster) {
+  WRITE_LOCKER(writeLocker, _foxxmasterLock);
+
   if (_foxxmaster != foxxmaster) {
-    setFoxxmasterQueueupdate(true);
     _foxxmaster = foxxmaster;
+    _foxxmasterQueueupdate = true;
 
     // We're the new foxxmaster, set this once.
-    if (isFoxxmaster()) {
-      setFoxxmasterSinceNow();
+    if (_foxxmaster == getId()) {
+      _foxxmasterSince = TRI_HybridLogicalClock();
     }
   }
 }
 
-bool ServerState::getFoxxmasterQueueupdate() const noexcept {
-  return _foxxmasterQueueupdate;
-}
-
-void ServerState::setFoxxmasterQueueupdate(bool value) {
+void ServerState::setFoxxmasterQueueupdate(bool value) noexcept {
+  WRITE_LOCKER(writeLocker, _foxxmasterLock);
   _foxxmasterQueueupdate = value;
 }
 
-TRI_voc_tick_t ServerState::getFoxxmasterSince() const noexcept {
-  return _foxxmasterSince;
+bool ServerState::getFoxxmasterQueueupdate() const noexcept {
+  READ_LOCKER(readLocker, _foxxmasterLock);
+  return _foxxmasterQueueupdate;
 }
 
-void ServerState::setFoxxmasterSinceNow() {
-  ServerState::_foxxmasterSince = TRI_HybridLogicalClock();
+TRI_voc_tick_t ServerState::getFoxxmasterSince() const noexcept {
+  READ_LOCKER(readLocker, _foxxmasterLock);
+  return _foxxmasterSince;
 }
 
 std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum role) {

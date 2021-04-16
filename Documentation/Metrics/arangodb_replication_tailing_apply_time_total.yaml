@@ -1,0 +1,21 @@
+name: arangodb_replication_tailing_apply_time_total
+renamedFrom: arangodb_replication_tailing_apply_time
+introducedIn: "3.8.0"
+help: |
+  Accumulated time needed to apply replication tailing data.
+unit: ms
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The accumulated time needed to locally process the continuous
+  replication log on a follower received from a replication
+  leader.
+troubleshoot: |
+  If you see unusual spikes here, the follower might not have enough
+  IO bandwidth or might be overloaded. Try to provision more IOPS or
+  more CPU capacity. Additionally, it could make sense to compare the
+  value with all other available follower dbservers to detect potential
+  differences.

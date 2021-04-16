@@ -122,11 +122,7 @@
             if (error > 0) {
               $('#healthStatus').removeClass('positive');
               $('#healthStatus').addClass('negative');
-              if (error === 1) {
-                $('.health-state').html(error + ' NODE ERROR');
-              } else {
-                $('.health-state').html(error + ' NODES ERROR');
-              }
+              $('.health-state').html(error + ' NODE(S) ERROR');
               $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
             } else {
               $('#healthStatus').removeClass('negative');
@@ -142,18 +138,32 @@
           }
         };
 
-        // check cluster state
-        $.ajax({
-          type: 'GET',
-          cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-          contentType: 'application/json',
-          processData: false,
-          async: true,
-          success: function (data) {
-            callbackFunction(data);
-          }
-        });
+        if (frontendConfig.clusterApiJwtPolicy !== 'jwt-all') {
+          // check cluster state
+          $.ajax({
+            type: 'GET',
+            cache: false,
+            url: arangoHelper.databaseUrl('/_admin/cluster/health'),
+            contentType: 'application/json',
+            processData: false,
+            async: true,
+            success: function (data) {
+              if (window.App) {
+                window.App.lastHealthCheckResult = data;
+              }
+              callbackFunction(data);
+              // notify NodesView about new health data
+              if (window.location.hash === '#nodes' && window.App && window.App.nodesView) {
+                window.App.nodesView.render(false);
+              }
+            },
+            error: function () {
+              if (window.App) {
+                window.App.lastHealthCheckResult = null;
+              }
+            }
+          });
+        }
       } else {
         $('#healthStatus').removeClass('positive');
         $('#healthStatus').addClass('negative');

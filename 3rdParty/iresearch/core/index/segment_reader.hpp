@@ -27,7 +27,7 @@
 #include "index_reader.hpp"
 #include "utils/object_pool.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface for a segment reader
@@ -132,7 +132,7 @@ class IRESEARCH_API segment_reader final
   }
 
  private:
-  typedef std::shared_ptr<const sub_reader> impl_ptr;
+  using impl_ptr = std::shared_ptr<const sub_reader>;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;
@@ -151,6 +151,6 @@ template<>
     const segment_meta& meta
 ) noexcept;
 
-NS_END
+}
 
 #endif

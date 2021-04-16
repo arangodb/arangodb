@@ -1,0 +1,56 @@
+# tags files
+tags
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+*.pdb
+
+# idea files
+.idea
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Vim swap files
+*.swp
+
+# Code coverage files
+*.gcno
+
+# Log files
+*.tlog
+*.log
+
+# Other MSVC specific
+*.idb
+*.ilk
+*.exp
+*.cache
+*.opensdf
+*.sdf
+*.suo
+
+# Qt Creator specific
+*.user
+
+# VS Code specific
+.vscode
+
+# Builds
+/build*/

@@ -1,0 +1,19 @@
+name: arangodb_agencycomm_request_time_msec
+introducedIn: "3.7.1"
+help: |
+  Request time for Agency requests.
+unit: ms
+type: histogram
+category: Network
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  This histogram shows how long requests to the agency took.
+threshold: |
+  Usually, such requests should be relatively quick, mostly clearly
+  sub-second. 
+troubleshoot: |
+  If the network or the agents are overloaded, it can help to move
+  agent instances to separate machines.

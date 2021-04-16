@@ -1,0 +1,19 @@
+name: arangodb_document_writes_replication_total
+renamedFrom: arangodb_document_writes_replication
+introducedIn: "3.8.0"
+help: |
+  Total number of document write operations by synchronous replication.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Total number of document write operations by synchronous replication.
+  This metric is only present if the option
+  `--server.export-read-write-metrics` is set to `true`.
+  Total number of document write operations (insert, update, replace, remove)
+  executed by the synchronous replication on followers.
+  This metric is only present if the option `--server.export-read-write-metrics` 
+  is set to `true`.

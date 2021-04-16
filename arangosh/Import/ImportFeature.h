@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +48,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   void start() override;
 
  private:
-  int tryCreateDatabase(ClientFeature&, std::string const& name);
+  ErrorCode tryCreateDatabase(ClientFeature& client, std::string const& name);
 
   std::string _filename;
   bool _useBackslash;
@@ -63,6 +63,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   bool _createDatabase;
   std::string _createCollectionType;
   std::string _typeImport;
+  std::string _headersFile;
   std::vector<std::string> _translations;
   std::vector<std::string> _removeAttributes;
   bool _overwrite;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include <cstdint>
 
 #include "Basics/Common.h"
+#include "Cluster/RebootTracker.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -52,6 +53,11 @@ struct Options {
   /// @brief add the options to an opened vpack builder
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  /// @brief patch intermediateCommitCount for testing
+  static void adjustIntermediateCommitCount(Options& options);
+#endif
+
   static constexpr double defaultLockTimeout = 900.0;
   static uint64_t defaultMaxTransactionSize;
   static uint64_t defaultIntermediateCommitSize;
@@ -68,6 +74,34 @@ struct Options {
   bool skipInaccessibleCollections;
 #endif
   bool waitForSync;
+  bool isFollowerTransaction;
+
+  /// @brief originating server of this transaction. will be populated
+  /// only in the cluster, and with a coordinator id/coordinator reboot id
+  /// then. coordinators fill this in when they start a transaction, and
+  /// the info is send with the transaction begin requests to DB servers,
+  /// which will also store the coordinator's id. this is so they can
+  /// abort the transaction should the coordinator die or be rebooted.
+  /// the server id and reboot id are intentionally empty in single server
+  /// case.
+  arangodb::cluster::RebootTracker::PeerState origin;
+};
+
+struct AllowImplicitCollectionsSwitcher {
+  AllowImplicitCollectionsSwitcher(Options& options, bool allow) noexcept
+      : _options(options), 
+        _oldValue(options.allowImplicitCollectionsForRead) {
+    // previous value has been saved, now override value in options with disallow
+    options.allowImplicitCollectionsForRead = allow;
+  }
+
+  ~AllowImplicitCollectionsSwitcher() {
+    // restore old value
+    _options.allowImplicitCollectionsForRead = _oldValue;
+  }
+
+  Options& _options;
+  bool const _oldValue;
 };
 
 }  // namespace transaction

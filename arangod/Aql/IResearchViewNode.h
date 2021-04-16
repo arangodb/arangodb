@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,12 +51,19 @@ struct VarInfo;
 
 namespace iresearch {
 
+bool filterConditionIsEmpty(aql::AstNode const* filterCondition) noexcept;
+
 enum class MaterializeType {
   Undefined = 0,        // an undefined initial value
   NotMaterialize = 1,   // do not materialize a document
   LateMaterialize = 2,  // a document will be materialized later
   Materialize = 4,      // materialize a document
   UseStoredValues = 8   // use stored or sort column values
+};
+
+enum class CountApproximate {
+  Exact = 0,  // skipAll should return exact number of records
+  Cost = 1,   // iterator cost could be used as skipAllCount
 };
 
 ENABLE_BITMASK_ENUM(MaterializeType);
@@ -84,6 +91,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     arangodb::aql::ConditionOptimization conditionOptimization{
         arangodb::aql::ConditionOptimization::Auto};
 
+    /// @brief skipAll method for view
+    CountApproximate countApproximate{CountApproximate::Exact};
   };  // Options
 
   IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
@@ -104,7 +113,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
                             bool withProperties) const override final;
 
-  /// @returns the list of the linked collections + view itself
+  /// @returns the list of the linked collections
   std::vector<std::reference_wrapper<aql::Collection const>> collections() const;
 
   /// @returns true if underlying view has no links
@@ -137,9 +146,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief set the filter condition to pass to the view
   void filterCondition(aql::AstNode const* node) noexcept;
-
-  /// @brief return true if the filter condition is empty
-  bool filterConditionIsEmpty() const noexcept;
 
   /// @brief return list of shards related to the view (cluster only)
   std::vector<std::string> const& shards() const noexcept { return _shards; }
@@ -201,7 +207,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void setNoMaterialization() noexcept { _noMaterialization = true; }
 
-  static const ptrdiff_t SortColumnNumber;
+  static constexpr ptrdiff_t SortColumnNumber {-1};
 
   // A variable with a field number in a column
   struct ViewVariable {
@@ -264,6 +270,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   };
 
   OptimizationState& state() noexcept { return _optState; }
+
 
  private:
   /// @brief the database

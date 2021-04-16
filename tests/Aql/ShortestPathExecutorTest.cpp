@@ -40,9 +40,10 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/Stats.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
@@ -103,9 +104,15 @@ class TokenTranslator : public TraverserCache {
     TRI_ASSERT(it != _vertices.end());
     return it->second;
   }
+  
+  bool appendVertex(arangodb::velocypack::StringRef idString, VPackBuilder& builder) override {
+    builder.add(translateVertex(idString));
+    return true;
+  }
 
-  AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString) override {
-    return AqlValue{translateVertex(idString)};
+  bool appendVertex(arangodb::velocypack::StringRef idString, AqlValue& result) override {
+    result = AqlValue(translateVertex(idString));
+    return true;
   }
 
   AqlValue fetchEdgeAqlResult(EdgeDocumentToken const& edgeTkn) override {
@@ -173,7 +180,7 @@ class FakePathFinder : public ShortestPathFinder {
     return _calledWith[index];
   }
 
-  [[nodiscard]] auto getCalledWith() -> std::vector<std::pair<std::string, std::string>> {
+  [[nodiscard]] auto getCalledWith() -> std::vector<std::pair<std::string, std::string>> const& {
     return _calledWith;
   };
 
@@ -200,6 +207,67 @@ using PathSequence = std::vector<Path>;
 
 enum class ShortestPathOutput { VERTEX_ONLY, VERTEX_AND_EDGE };
 
+// Namespace conflict with the other shortest path executor
+namespace {
+Vertex const constSource("vertex/source"), constTarget("vertex/target"),
+    regSource(RegisterId(0)), regTarget(RegisterId(1)), brokenSource{"IwillBreakYourSearch"},
+    brokenTarget{"I will also break your search"};
+MatrixBuilder<2> const noneRow{{{{}}}};
+MatrixBuilder<2> const oneRow{{{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const twoRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
+                               {{{R"("vertex/a")"}, {R"("vertex/b")"}}}};
+MatrixBuilder<2> const threeRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
+                                 {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
+                                 {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const someRows{{{{R"("vertex/c")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/b")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/e")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
+
+auto pathBetween(std::string const& start, std::string const& end, size_t n) -> Path {
+  auto path = std::vector<std::string>{};
+  path.reserve(2 + n);
+  path.push_back(start);
+  for (size_t i = 0; i < n; ++i) {
+    path.emplace_back(std::to_string(i));
+  }
+  path.push_back(end);
+  return {path};
+}
+
+PathSequence const noPath = {};
+PathSequence const onePath = {pathBetween("vertex/source", "vertex/target", 10)};
+PathSequence const threePaths = {pathBetween("vertex/source", "vertex/target", 10),
+                                 pathBetween("vertex/source", "vertex/b", 100),
+                                 pathBetween("vertex/a", "vertex/b", 1000)};
+PathSequence const somePaths = {pathBetween("vertex/source", "vertex/target", 10),
+                                pathBetween("vertex/source", "vertex/b", 100),
+                                pathBetween("vertex/a", "vertex/b", 1000),
+                                pathBetween("vertex/c", "vertex/d", 2001)};
+PathSequence const someOtherPaths = {pathBetween("vertex/a", "vertex/target", 10),
+                                     pathBetween("vertex/b", "vertex/target", 999),
+                                     pathBetween("vertex/c", "vertex/target", 1001),
+                                     pathBetween("vertex/d", "vertex/target", 2000),
+                                     pathBetween("vertex/e", "vertex/target", 200),
+                                     pathBetween("vertex/f", "vertex/target", 15),
+                                     pathBetween("vertex/g", "vertex/target", 10)};
+
+auto sources = testing::Values(constSource, regSource, brokenSource);
+auto targets = testing::Values(constTarget, regTarget, brokenTarget);
+static auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
+auto paths = testing::Values(noPath, onePath, threePaths, somePaths);
+auto calls =
+    testing::Values(AqlCall{}, AqlCall{0, 0u, 0u, false},
+                    AqlCall{0, 1u, 0u, false}, AqlCall{0, 0u, 1u, false},
+                    AqlCall{0, 1u, 1u, false}, AqlCall{1, 1u, 1u},
+                    AqlCall{100, 1u, 1u}, AqlCall{1000}, AqlCall{0, 0u, 0u, true},
+                    AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
+
+auto variants = testing::Values(ShortestPathOutput::VERTEX_ONLY,
+                                ShortestPathOutput::VERTEX_AND_EDGE);
+auto blockSizes = testing::Values(size_t{5}, 1000);
+}  // namespace
+
 // TODO: this needs a << operator
 struct ShortestPathTestParameters {
   static RegIdSet _makeOutputRegisters(ShortestPathOutput in) {
@@ -223,17 +291,27 @@ struct ShortestPathTestParameters {
     return RegisterMapping{};
   }
 
-  ShortestPathTestParameters(
-      std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, ShortestPathOutput, size_t> params)
+  ShortestPathTestParameters(std::tuple<Vertex, Vertex, ShortestPathOutput> params)
       : _source(std::get<0>(params)),
         _target(std::get<1>(params)),
-        _outputRegisters(_makeOutputRegisters(std::get<5>(params))),
-        _registerMapping(_makeRegisterMapping(std::get<5>(params))),
-        _inputMatrix{std::get<2>(params)},
-        _inputMatrixCopy{std::get<2>(params)},
-        _paths(std::get<3>(params)),
-        _call(std::get<4>(params)),
-        _blockSize(std::get<6>(params)) {}
+        _outputRegisters(_makeOutputRegisters(std::get<2>(params))),
+        _registerMapping(_makeRegisterMapping(std::get<2>(params))),
+        _inputMatrix{oneRow},
+        _inputMatrixCopy{oneRow},
+        _paths(threePaths),
+        _call(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true}),
+        _blockSize(1000) {}
+
+  ShortestPathTestParameters(std::tuple<MatrixBuilder<2>, PathSequence, AqlCall, size_t> params)
+      : _source(constSource),
+        _target(constTarget),
+        _outputRegisters(_makeOutputRegisters(ShortestPathOutput::VERTEX_ONLY)),
+        _registerMapping(_makeRegisterMapping(ShortestPathOutput::VERTEX_ONLY)),
+        _inputMatrix{std::get<0>(params)},
+        _inputMatrixCopy{std::get<0>(params)},
+        _paths(std::get<1>(params)),
+        _call(std::get<2>(params)),
+        _blockSize(std::get<3>(params)) {}
 
   Vertex _source;
   Vertex _target;
@@ -247,15 +325,14 @@ struct ShortestPathTestParameters {
   size_t _blockSize{1000};
 };
 
-class ShortestPathExecutorTest
-    : public ::testing::Test,
-      public ::testing::WithParamInterface<std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, ShortestPathOutput, size_t>> {
+class ShortestPathExecutorTest : public ::testing::Test {
  protected:
   ShortestPathTestParameters parameters;
 
   MockAqlServer server;
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
   TestShortestPathOptions options;
@@ -276,15 +353,15 @@ class ShortestPathExecutorTest
 
   ShortestPathExecutor testee;
 
-  ShortestPathExecutorTest()
-      : parameters(GetParam()),
+  ShortestPathExecutorTest(ShortestPathTestParameters parameters_)
+      : parameters(std::move(parameters_)),
         server{},
-        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
         translator(*(static_cast<TokenTranslator*>(options.cache()))),
-        registerInfos(parameters._inputRegisters, parameters._outputRegisters,
-                      2, 4, {}, {RegIdSet{0, 1}}),
+        registerInfos(parameters._inputRegisters, parameters._outputRegisters, 2,
+                      4, {}, {RegIdSet{0, 1}}),
         executorInfos(std::make_unique<FakePathFinder>(options, translator),
                       std::move(parameters._registerMapping),
                       std::move(parameters._source), std::move(parameters._target)),
@@ -295,7 +372,7 @@ class ShortestPathExecutorTest
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
         testee(fetcher, executorInfos) {
     for (auto&& p : parameters._paths) {
-      finder.addPath(std::move(p));
+     finder.addPath(std::move(p));
     }
   }
 
@@ -311,36 +388,33 @@ class ShortestPathExecutorTest
   // We only verify that the shortest path executor was called with
   // correct inputs
   void ValidateCalledWith() {
-    auto pathsQueriedBetween = finder.getCalledWith();
+    auto const& pathsQueriedBetween = finder.getCalledWith();
     auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
     // We should always only call the finder at most for all input rows
     ASSERT_LE(pathsQueriedBetween.size(), block->numRows());
 
+    auto source = std::string{};
+    auto target = std::string{};
     auto blockIndex = size_t{0};
     for (auto const& input : pathsQueriedBetween) {
-      auto source = std::string{};
-      auto target = std::string{};
-
       if (executorInfos.useRegisterForSourceInput()) {
         AqlValue value =
             block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
-        source = value.slice().copyString();
+        ASSERT_TRUE(value.slice().isEqualString(input.first));
       } else {
-        source = executorInfos.getSourceInputValue();
+        ASSERT_EQ(executorInfos.getSourceInputValue(), input.first);
       }
 
       if (executorInfos.useRegisterForTargetInput()) {
         AqlValue value =
             block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
-        target = value.slice().copyString();
+        ASSERT_TRUE(value.slice().isEqualString(input.second));
       } else {
-        target = executorInfos.getTargetInputValue();
+        ASSERT_EQ(executorInfos.getTargetInputValue(), input.second);
       }
-      ASSERT_EQ(source, input.first);
-      ASSERT_EQ(target, input.second);
       blockIndex++;
     }
   }
@@ -348,7 +422,7 @@ class ShortestPathExecutorTest
   // TODO: check fullcount correctness.
   void ValidateResult(std::vector<SharedAqlItemBlockPtr>& results,
                       size_t skippedInitial, size_t skippedFullCount) {
-    auto pathsQueriedBetween = finder.getCalledWith();
+    auto const& pathsQueriedBetween = finder.getCalledWith();
 
     FakePathFinder& finder = static_cast<FakePathFinder&>(executorInfos.finder());
     TokenTranslator& translator =
@@ -356,7 +430,7 @@ class ShortestPathExecutorTest
 
     auto expectedRowsFound = std::vector<std::string>{};
     auto expectedPathStarts = std::set<size_t>{};
-    for (auto&& p : pathsQueriedBetween) {
+    for (auto const& p : pathsQueriedBetween) {
       auto& f = finder.findPath(p);
       expectedPathStarts.insert(expectedRowsFound.size());
       expectedRowsFound.insert(expectedRowsFound.end(), f.begin(), f.end());
@@ -493,70 +567,38 @@ class ShortestPathExecutorTest
  * responsibility of the test for the shortest path finder.
  */
 
-TEST_P(ShortestPathExecutorTest, the_test) { TestExecutor(); }
+class ShortestPathExecutorInputOutputTest
+    : public ShortestPathExecutorTest,
+      public ::testing::WithParamInterface<std::tuple<Vertex, Vertex, ShortestPathOutput>> {
+ protected:
+  ShortestPathExecutorInputOutputTest()
+      : ShortestPathExecutorTest(GetParam()) {}
+};
+
+class ShortestPathExecutorPathTest
+    : public ShortestPathExecutorTest,
+      public ::testing::WithParamInterface<std::tuple<MatrixBuilder<2>, PathSequence, AqlCall, size_t>> {
+ protected:
+  ShortestPathExecutorPathTest() : ShortestPathExecutorTest(GetParam()) {}
+};
+
+TEST_P(ShortestPathExecutorInputOutputTest, the_test) {
+  TestExecutor();
+}
+
+TEST_P(ShortestPathExecutorPathTest, the_test) {
+  TestExecutor();
+}
 
 // Namespace conflict with the other shortest path executor
 namespace {
-Vertex const constSource("vertex/source"), constTarget("vertex/target"),
-    regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
-    brokenTarget{"I will also break your search"};
-MatrixBuilder<2> const noneRow{{{{}}}};
-MatrixBuilder<2> const oneRow{{{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
-MatrixBuilder<2> const twoRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
-                               {{{R"("vertex/a")"}, {R"("vertex/b")"}}}};
-MatrixBuilder<2> const threeRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
-                                 {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
-                                 {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
-MatrixBuilder<2> const someRows{{{{R"("vertex/c")"}, {R"("vertex/target")"}}},
-                                {{{R"("vertex/b")"}, {R"("vertex/target")"}}},
-                                {{{R"("vertex/e")"}, {R"("vertex/target")"}}},
-                                {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
 
-auto pathBetween(std::string const& start, std::string const& end, size_t n) -> Path {
-  auto path = std::vector<std::string>{};
-  path.push_back(start);
-  for (size_t i = 0; i < n; ++i) {
-    path.push_back(std::to_string(i));
-  }
-  path.push_back(end);
-  return {path};
-}
+INSTANTIATE_TEST_CASE_P(ShortestPathExecutorInputOutputTestInstance,
+                        ShortestPathExecutorInputOutputTest,
+                        testing::Combine(sources, targets, variants));
 
-PathSequence const noPath = {};
-PathSequence const onePath = {pathBetween("vertex/source", "vertex/target", 10)};
-PathSequence const threePaths = {pathBetween("vertex/source", "vertex/target", 10),
-                                 pathBetween("vertex/source", "vertex/b", 100),
-                                 pathBetween("vertex/a", "vertex/b", 1000)};
-PathSequence const somePaths = {pathBetween("vertex/source", "vertex/target", 10),
-                                pathBetween("vertex/source", "vertex/b", 100),
-                                pathBetween("vertex/a", "vertex/b", 1000),
-                                pathBetween("vertex/c", "vertex/d", 2001)};
-PathSequence const someOtherPaths = {pathBetween("vertex/a", "vertex/target", 10),
-                                     pathBetween("vertex/b", "vertex/target", 999),
-                                     pathBetween("vertex/c", "vertex/target", 1001),
-                                     pathBetween("vertex/d", "vertex/target", 2000),
-                                     pathBetween("vertex/e", "vertex/target", 200),
-                                     pathBetween("vertex/f", "vertex/target", 15),
-                                     pathBetween("vertex/g", "vertex/target", 10)};
-
-auto sources = testing::Values(constSource, regSource, brokenSource);
-auto targets = testing::Values(constTarget, regTarget, brokenTarget);
-static auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
-auto paths = testing::Values(noPath, onePath, threePaths, somePaths);
-auto calls =
-    testing::Values(AqlCall{}, AqlCall{0, 0u, 0u, false},
-                    AqlCall{0, 1u, 0u, false}, AqlCall{0, 0u, 1u, false},
-                    AqlCall{0, 1u, 1u, false}, AqlCall{1, 1u, 1u},
-                    AqlCall{100, 1u, 1u}, AqlCall{1000}, AqlCall{0, 0u, 0u, true},
-                    AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
-
-auto variants = testing::Values(ShortestPathOutput::VERTEX_ONLY,
-                                ShortestPathOutput::VERTEX_AND_EDGE);
-auto blockSizes = testing::Values(size_t{5}, 1000);
-
-INSTANTIATE_TEST_CASE_P(ShortestPathExecutorTestInstance, ShortestPathExecutorTest,
-                        testing::Combine(sources, targets, inputs, paths, calls,
-                                         variants, blockSizes));
+INSTANTIATE_TEST_CASE_P(ShortestPathExecutorPathsTestInstance, ShortestPathExecutorPathTest,
+                        testing::Combine(inputs, paths, calls, blockSizes));
 }  // namespace
 }  // namespace aql
 }  // namespace tests

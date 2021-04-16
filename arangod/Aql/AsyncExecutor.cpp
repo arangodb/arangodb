@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +47,7 @@ ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
     : ExecutionBlock(engine, node),
       _sharedState(engine->sharedState()) {}
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

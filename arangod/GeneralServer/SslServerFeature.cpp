@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,8 +63,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-SslServerFeature* SslServerFeature::SSL = nullptr;
-
 SslServerFeature::SslServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
@@ -88,7 +86,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.ssl-options", "ssl.options");
   options->addOldOption("server.ssl-protocol", "ssl.protocol");
 
-  options->addSection("ssl", "Configure SSL communication");
+  options->addSection("ssl", "SSL communication");
 
   options->addOption("--ssl.cafile", "ca file used for secure connections",
                      new StringParameter(&_cafile));
@@ -147,8 +145,6 @@ void SslServerFeature::prepare() {
   UniformCharacter r(
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
   _rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
-
-  SSL = this;
 }
 
 void SslServerFeature::unprepare() {

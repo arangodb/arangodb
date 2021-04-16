@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +70,7 @@ struct VarUsageFinderT final : public WalkerWorker<T, WalkerUniqueness::NonUniqu
     }
   }
 
-  bool before(T* en) final;
+  bool before(T* en) override final;
 
   /*
    * o  set: x, z   valid = x, z  usedLater = (z, x)
@@ -89,7 +89,7 @@ struct VarUsageFinderT final : public WalkerWorker<T, WalkerUniqueness::NonUniqu
 
   void after(T* en) override final;
 
-  bool enterSubquery(T*, T*) final;
+  bool enterSubquery(T*, T*) override final;
 };
 
 }  // namespace arangodb::aql

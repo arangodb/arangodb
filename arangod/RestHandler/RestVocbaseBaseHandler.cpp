@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -332,7 +332,7 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
     VPackBuilder errorBuilder;
     errorBuilder.openObject();
     for (auto const& it : result.countErrorCodes) {
-      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
+      errorBuilder.add(to_string(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
     _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.toJson());
@@ -467,9 +467,9 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
                                                       OperationResult const& result,
                                                       std::string const& key,
                                                       RevisionId rev) {
-  int code = result.errorNumber();
-  switch (code) {
-    case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
+  auto const code = result.errorNumber();
+  switch (static_cast<int>(code)) {
+    case static_cast<int>(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND):
       if (collectionName.empty()) {
         // no collection name specified
         generateError(rest::ResponseCode::BAD, code,
@@ -481,16 +481,16 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       }
       return;
 
-    case TRI_ERROR_ARANGO_READ_ONLY:
+    case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):
       generateError(rest::ResponseCode::FORBIDDEN, code,
                     "collection is read-only");
       return;
 
-    case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+    case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND):
       generateDocumentNotFound(collectionName, key);
       return;
 
-    case TRI_ERROR_ARANGO_CONFLICT:
+    case static_cast<int>(TRI_ERROR_ARANGO_CONFLICT):
       if (result.buffer != nullptr && !result.slice().isNone()) {
         // This case happens if we come via the generateTransactionError that
         // has a proper OperationResult with a slice:
@@ -574,12 +574,16 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 }
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
-    std::string const& collectionName, AccessMode::Type type) const {
+    std::string const& collectionName, AccessMode::Type type, OperationOptions const& opOptions) const {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase),
+    auto tmp = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase),
                                                          collectionName, type);
+    if (!opOptions.isSynchronousReplicationFrom.empty() && ServerState::instance()->isDBServer()) {
+      tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    }
+    return tmp;
   }
   
   TransactionId tid = TransactionId::none();
@@ -604,7 +608,9 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
+      Result res =
+          mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
+                                !opOptions.isSynchronousReplicationFrom.empty());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -652,7 +658,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
       std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
-        Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
+        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }

@@ -194,6 +194,7 @@ serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
+.queryParam('development', schemas.flag.optional())
 .queryParam('teardown', schemas.flag.default(false))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
@@ -213,6 +214,7 @@ serviceRouter.put(prepareServiceRequestBody, (req, res) => {
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
+.queryParam('development', schemas.flag.default(false))
 .queryParam('teardown', schemas.flag.default(true))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
@@ -262,6 +264,7 @@ configRouter.patch((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -282,6 +285,7 @@ configRouter.put((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -311,6 +315,7 @@ depsRouter.patch((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -331,6 +336,7 @@ depsRouter.put((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/files.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -76,6 +77,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server, in
       _progress(true),
       _useGzip(false),
       _firstLine(true),
+      _documentsPerBatch(1000),
       _skippedDeepNested(0),
       _httpRequestsDone(0),
       _currentCollection(),
@@ -109,6 +111,10 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption("--output-directory", "output directory",
                      new StringParameter(&_outputDirectory));
+  
+  options->addOption("--documents-per-batch", "number of documents to return in each batch",
+                     new UInt64Parameter(&_documentsPerBatch))
+                     .setIntroducedIn(30800);
 
   options->addOption("--overwrite", "overwrite data in output directory",
                      new BooleanParameter(&_overwrite));
@@ -150,6 +156,7 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     TRI_ASSERT(_outputDirectory.size() > 0);
     _outputDirectory.pop_back();
   }
+  TRI_NormalizePath(_outputDirectory);
 
   if (_graphName.empty() && _collections.empty() && _query.empty()) {
     LOG_TOPIC("488d8", FATAL, Logger::CONFIG)
@@ -191,12 +198,12 @@ void ExportFeature::prepare() {
   _directory = std::make_unique<ManagedDirectory>(server(), _outputDirectory,
                                                   !_overwrite, true, _useGzip);
   if (_directory->status().fail()) {
-    switch (_directory->status().errorNumber()) {
-      case TRI_ERROR_FILE_EXISTS:
+    switch (static_cast<int>(_directory->status().errorNumber())) {
+      case static_cast<int>(TRI_ERROR_FILE_EXISTS):
         LOG_TOPIC("72723",FATAL, Logger::FIXME) << "cannot write to output directory '"
                                         << _outputDirectory << "'";
         break;
-      case TRI_ERROR_CANNOT_OVERWRITE_FILE:
+      case static_cast<int>(TRI_ERROR_CANNOT_OVERWRITE_FILE):
         LOG_TOPIC("81812",FATAL, Logger::FIXME)
             << "output directory '" << _outputDirectory
             << "' already exists. use \"--overwrite true\" to "
@@ -316,6 +323,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     post.add("@collection", VPackValue(collection));
     post.close();
     post.add("ttl", VPackValue(::ttlValue));
+    post.add("batchSize", VPackValue(_documentsPerBatch));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
@@ -369,6 +377,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   post.openObject();
   post.add("query", VPackValue(_query));
   post.add("ttl", VPackValue(::ttlValue));
+  post.add("batchSize", VPackValue(_documentsPerBatch));
   post.add("options", VPackValue(VPackValueType::Object));
   post.add("stream", VPackSlice::trueSlice());
   post.close();
@@ -538,6 +547,7 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
 
 void ExportFeature::writeToFile(ManagedDirectory::File & fd, std::string const& line) {
   fd.write(line.c_str(), line.size());
+  THROW_ARANGO_EXCEPTION_IF_FAIL(fd.status());
 }
 
 std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient,
@@ -660,6 +670,7 @@ directed="1">
     post.add("@collection", VPackValue(collection));
     post.close();
     post.add("ttl", VPackValue(::ttlValue));
+    post.add("batchSize", VPackValue(_documentsPerBatch));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();

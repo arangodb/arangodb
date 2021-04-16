@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_QUERY_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_QUERY_EXPRESSION_CONTEXT_H 1
 
+#include <Basics/ErrorCode.h>
 #include "ExpressionContext.h"
 
 namespace arangodb {
@@ -40,8 +41,8 @@ class QueryExpressionContext : public ExpressionContext {
       : ExpressionContext(),
         _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
 
-  void registerWarning(int errorCode, char const* msg) override final;
-  void registerError(int errorCode, char const* msg) override final;
+  void registerWarning(ErrorCode errorCode, char const* msg) override final;
+  void registerError(ErrorCode errorCode, char const* msg) override final;
 
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                        bool caseInsensitive) override final;

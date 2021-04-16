@@ -35,17 +35,15 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
-#include <math.h>
-#include <set>
-
-NS_ROOT
+namespace iresearch {
 
 segment_writer::stored_column::stored_column(
-    const string_ref& name, 
+    const hashed_string_ref& name,
     columnstore_writer& columnstore,
     const column_info_provider_t& column_info,
     bool cache)
   : name(name.c_str(), name.size()),
+    name_hash(name.hash()),
     stream(column_info(name)) {
   if (!cache) {
     auto& info = stream.info();
@@ -60,8 +58,7 @@ segment_writer::stored_column::stored_column(
 
 doc_id_t segment_writer::begin(
     const update_context& ctx,
-    size_t reserve_rollback_extra /*= 0*/
-) {
+    size_t reserve_rollback_extra /*= 0*/) {
   assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
   valid_ = true;
   norm_fields_.clear(); // clear norm fields
@@ -94,8 +91,8 @@ size_t segment_writer::memory_active() const noexcept {
 
   const auto column_cache_active = std::accumulate(
     columns_.begin(), columns_.end(), size_t(0),
-    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) noexcept {
-      return lhs + rhs.second.stream.memory_active();
+    [](size_t lhs, const stored_column& rhs) noexcept {
+      return lhs + rhs.stream.memory_active();
   });
 
   return (docs_context_.size() * sizeof(update_contexts::value_type))
@@ -111,8 +108,8 @@ size_t segment_writer::memory_reserved() const noexcept {
 
   const auto column_cache_reserved = std::accumulate(
     columns_.begin(), columns_.end(), size_t(0),
-    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) noexcept {
-      return lhs + rhs.second.stream.memory_reserved();
+    [](size_t lhs, const stored_column& rhs) noexcept {
+      return lhs + rhs.stream.memory_reserved();
   });
 
   return sizeof(segment_writer)
@@ -153,14 +150,16 @@ bool segment_writer::index(
     token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
 
-  auto& slot = fields_.emplace(name);
-  auto& slot_features = slot.meta().features;
+  auto* slot = fields_.emplace(name);
+  auto& slot_features = slot->meta().features;
+
+  const bool slot_empty = slot->empty();
 
   // invert only if new field features are a subset of slot features
-  if ((slot.empty() || features.is_subset_of(slot_features)) &&
-      slot.invert(tokens, slot.empty() ? features : slot_features, doc)) {
-    if (features.check<norm>()) {
-      norm_fields_.insert(&slot);
+  if ((slot_empty || features.is_subset_of(slot_features)) &&
+      slot->invert(tokens, slot_empty ? features : slot_features, doc)) {
+    if (slot->size() && features.check<norm>()) {
+      norm_fields_.insert(slot);
     }
 
     fields_ += features; // accumulate segment features
@@ -181,21 +180,12 @@ columnstore_writer::column_output& segment_writer::stream(
   REGISTER_TIMER_DETAILED();
   assert(column_info_);
 
-  auto generator = [](
-      const hashed_string_ref& key,
-      const stored_column& value) noexcept {
-    // reuse hash but point ref at value
-    return hashed_string_ref(key.hash(), value.name);
-  };
-
-  // replace original reference to 'name' provided by the caller
-  // with a reference to the cached copy in 'value'
-  return map_utils::try_emplace_update_key(
-    columns_,                                                          // container
-    generator,                                                         // key generator
-    name,                                                              // key
-    name, *col_writer_, *column_info_, nullptr != fields_.comparator() // value // FIXME
-  ).first->second.writer(doc_id);
+  return columns_.lazy_emplace(
+    name,
+    [this, &name](const auto& ctor){
+      ctor(name, *col_writer_, *column_info_,
+           nullptr != fields_.comparator());
+  })->writer(doc_id);
 }
 
 void segment_writer::finish() {
@@ -203,7 +193,8 @@ void segment_writer::finish() {
 
   // write document normalization factors (for each field marked for normalization))
   float_t value;
-  for (auto* field : norm_fields_) {
+  for (const auto* field: norm_fields_) {
+    assert(field && field->size() > 0);
     value = 1.f / float_t(std::sqrt(double_t(field->size())));
     if (value != norm::DEFAULT()) {
       auto& stream = field->norms(*col_writer_);
@@ -213,25 +204,23 @@ void segment_writer::finish() {
 }
 
 void segment_writer::flush_column_meta(const segment_meta& meta) {
-  struct less_t {
-    bool operator()(
-        const stored_column* lhs,
-        const stored_column* rhs) const noexcept {
-      return lhs->name < rhs->name;
-    }
-  };
-
-  std::set<const stored_column*, less_t> columns;
-
   // ensure columns are sorted
+  sorted_columns_.resize(columns_.size());
+  auto begin = sorted_columns_.begin();
   for (auto& entry : columns_) {
-    columns.emplace(&entry.second);
+    *begin = &entry;
+    ++begin;
   }
+  std::sort(
+    sorted_columns_.begin(), sorted_columns_.end(),
+    [](const stored_column* lhs, const stored_column* rhs) noexcept {
+      return lhs->name < rhs->name;
+  });
 
   // flush columns meta
   try {
     col_meta_writer_->prepare(dir_, meta);
-    for (auto& column: columns) {
+    for (const auto* column: sorted_columns_) {
       col_meta_writer_->write(column->name, column->id);
     }
     col_meta_writer_->flush();
@@ -266,7 +255,7 @@ size_t segment_writer::flush_doc_mask(const segment_meta &meta) {
        doc_id < doc_id_end;
        ++doc_id) {
     if (docs_mask_.test(doc_id)) {
-      assert(size_t(integer_traits<doc_id_t>::const_max) >= doc_id + doc_limits::min());
+      assert(size_t(std::numeric_limits<doc_id_t>::max()) >= doc_id + doc_limits::min());
       docs_mask.emplace(doc_id_t(doc_id + doc_limits::min()));
     }
   }
@@ -292,8 +281,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
     );
 
     irs::sorted_column::flush_buffer_t buffer;
-    for (auto& column_entry : columns_) {
-      auto& column = column_entry.second;
+    for (auto& column : columns_) {
 
       if (!field_limits::valid(column.id)) {
         // cached column
@@ -375,4 +363,4 @@ void segment_writer::reset(const segment_meta& meta) {
   initialized_ = true;
 }
 
-NS_END
+}

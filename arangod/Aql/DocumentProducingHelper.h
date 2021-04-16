@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -126,6 +126,7 @@ struct DocumentProducingFunctionContext {
   arangodb::aql::Projections const& _projections;
   size_t _numScanned;
   size_t _numFiltered;
+  uint_fast16_t _killCheckCounter = 0;
 
   /// @brief Builder that is reused to generate projection results 
   arangodb::velocypack::Builder _objectBuilder;

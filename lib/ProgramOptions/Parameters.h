@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,12 +42,12 @@
 namespace arangodb {
 namespace options {
 
-// helper functions to strip-non-numeric data from a string
+// helper function to strip-non-numeric data from a string
 std::string removeCommentsFromNumber(std::string const& value);
 
 // convert a string into a number, base version for signed or unsigned integer types
 template <typename T>
-inline T toNumber(std::string value, T base) {
+inline T toNumber(std::string value, T base = 1) {
   // replace leading spaces, replace trailing spaces & comments
   value = removeCommentsFromNumber(value);
 
@@ -58,15 +58,15 @@ inline T toNumber(std::string value, T base) {
   if (n > 3) {
     std::string suffix = value.substr(n - 3);
 
-    if (suffix == "kib" || suffix == "KiB") {
+    if (suffix == "kib" || suffix == "KiB" || suffix == "KIB") {
       m = 1024;
       value = value.substr(0, n - 3);
       seen = true;
-    } else if (suffix == "mib" || suffix == "MiB") {
+    } else if (suffix == "mib" || suffix == "MiB" || suffix == "MIB") {
       m = 1024 * 1024;
       value = value.substr(0, n - 3);
       seen = true;
-    } else if (suffix == "gib" || suffix == "GiB") {
+    } else if (suffix == "gib" || suffix == "GiB" || suffix == "GIB") {
       m = 1024 * 1024 * 1024;
       value = value.substr(0, n - 3);
       seen = true;
@@ -132,7 +132,7 @@ inline double toNumber<double>(std::string value, double /*base*/) {
 
 // convert a string into another type, specialized version for numbers
 template <typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, T>::type fromString(std::string value) {
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type fromString(std::string const& value) {
   return toNumber<T>(value, static_cast<T>(1));
 }
 

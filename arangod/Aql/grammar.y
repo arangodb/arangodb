@@ -29,6 +29,7 @@
 #include "Aql/types.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Graph/ShortestPathType.h"
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 %}
@@ -60,6 +61,43 @@ void Aqlerror(YYLTYPE* locp,
 }
 
 namespace {
+
+AstNode* buildShortestPathInfo(Parser* parser,
+                               char const* seperator,
+                               AstNode* direction,
+                               AstNode* startNode,
+                               AstNode* endNode,
+                               AstNode* graph,
+                               AstNode* options,
+                               YYLTYPE const& yyloc) {
+  if (!TRI_CaseEqualString(seperator, "TO")) {
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", seperator, yyloc.first_line, yyloc.first_column);
+  }
+  auto infoNode = parser->ast()->createNodeArray();
+  infoNode->addMember(direction);
+  infoNode->addMember(startNode);
+  infoNode->addMember(endNode);
+  infoNode->addMember(graph);
+  
+  auto opts = parser->ast()->createNodeOptions(options);
+  TRI_ASSERT(opts != nullptr);
+  infoNode->addMember(opts);
+  return infoNode;
+}
+
+void checkOutVariables(Parser* parser,
+                       AstNode const* variableNamesNode,
+                       size_t minVariables, size_t maxVariables,
+                       char const* errorMessage,
+                       YYLTYPE const& yyloc) {
+  TRI_ASSERT(variableNamesNode != nullptr);
+  TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
+  if (variableNamesNode->numMembers() < minVariables ||
+      variableNamesNode->numMembers() > maxVariables) {
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, errorMessage, yyloc.first_line, yyloc.first_column);
+  }
+}
+
 void validateOptions(Parser* parser, AstNode const* node,
                      int line, int column) {
   TRI_ASSERT(node != nullptr);
@@ -97,8 +135,6 @@ void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
                              int line, int column,
                              VarSet& variablesIntroduced,
                              AstNode const* vars) {
-  VarSet varsInAssignment{};
-
   size_t const n = vars->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -106,18 +142,6 @@ void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
 
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-      // check if any of the assignment refers to a variable introduced by this very
-      // same COLLECT, e.g. COLLECT aggregate x = .., y = x
-      varsInAssignment.clear();
-      Ast::getReferencedVariables(member->getMember(1), varsInAssignment);
-      for (auto const& it : varsInAssignment) {
-        if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
-          std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT");
-          parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
-          return;
-        }
-      }
-
       // keep track of the variable for our assignment
       auto v = static_cast<Variable*>(member->getMember(0)->getData());
       scopes->addVariable(v);
@@ -129,32 +153,47 @@ void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
 /// @brief validate the aggregate variables expressions
 bool validateAggregates(Parser* parser, AstNode const* aggregates,
                         int line, int column) {
+  VarSet variablesIntroduced{};
+  VarSet varsInAssignment{};
+  
   size_t const n = aggregates->numMembers();
-
   for (size_t i = 0; i < n; ++i) {
     auto member = aggregates->getMemberUnchecked(i);
 
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+      
+      // keep track of the variable for our assignment
+      auto v = static_cast<Variable*>(member->getMember(0)->getData());
+      variablesIntroduced.emplace(v);
 
       auto func = member->getMember(1);
-
-      char const* error = nullptr;
       if (func->type != NODE_TYPE_FCALL) {
         // aggregate expression must be a function call
-        error = "aggregate expression must be a function call";
+        char const* error = "aggregate expression must be a function call";
+        parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
+        return false;
       }
       else {
         auto f = static_cast<arangodb::aql::Function*>(func->getData());
         if (!Aggregator::isValid(f->name)) {
           // aggregate expression must be a call to MIN|MAX|LENGTH...
-          error = "unknown aggregate function used";
+          char const* error = "unknown aggregate function used";
+          parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
+          return false;
         }
       }
-
-      if (error != nullptr) {
-        parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
-        return false;
+      
+      // check if any of the assignment refers to a variable introduced by this very
+      // same COLLECT, e.g. COLLECT aggregate x = .., y = x
+      varsInAssignment.clear();
+      Ast::getReferencedVariables(member->getMember(1), varsInAssignment);
+      for (auto const& it : varsInAssignment) {
+        if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
+          std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT");
+          parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
+          return false;
+        }
       }
     }
   }
@@ -233,6 +272,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_COLLECT "COLLECT declaration"
 %token T_SORT "SORT declaration"
 %token T_LIMIT "LIMIT declaration"
+%token T_WINDOW "WINDOW declaration"
 
 %token T_ASC "ASC keyword"
 %token T_DESC "DESC keyword"
@@ -244,6 +284,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_GRAPH "GRAPH keyword"
 %token T_SHORTEST_PATH "SHORTEST_PATH keyword"
 %token T_K_SHORTEST_PATHS "K_SHORTEST_PATHS keyword"
+%token T_K_PATHS "K_PATHS keyword"
 %token T_DISTINCT "DISTINCT modifier"
 
 %token T_REMOVE "REMOVE command"
@@ -347,6 +388,9 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> collect_variable_list;
 %type <node> keep;
 %type <node> aggregate;
+%type <node> aggregate_list;
+%type <node> aggregate_element;
+%type <node> aggregate_function_call;
 %type <node> collect_optional_into;
 %type <strval> count_into;
 %type <node> expression;
@@ -365,6 +409,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> traversal_graph_info;
 %type <node> shortest_path_graph_info;
 %type <node> k_shortest_paths_graph_info;
+%type <node> k_paths_graph_info;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
 %type <node> array_element;
@@ -489,6 +534,8 @@ statement_block_statement:
     }
   | limit_statement {
     }
+  | window_statement {
+    }
   | remove_statement {
     }
   | insert_statement {
@@ -547,18 +594,18 @@ prune_and_options:
         // Options
         node->addMember($2);
       } else {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
     }
     | T_STRING expression T_STRING object {
       /* prune and options */
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (!TRI_CaseEqualString($1.value, "PRUNE")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
       TRI_ASSERT($2 != nullptr);
       if (!TRI_CaseEqualString($3.value, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $3.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {$3.value, $3.length}, yylloc.first_line, yylloc.first_column);
       }
       TRI_ASSERT($4 != nullptr);
       ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
@@ -585,61 +632,27 @@ traversal_graph_info:
 
 shortest_path_graph_info:
     graph_direction T_SHORTEST_PATH expression T_STRING expression graph_subject options {
-      if (!TRI_CaseEqualString($4.value, "TO")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", $4.value, yylloc.first_line, yylloc.first_column);
-      }
-      auto infoNode = parser->ast()->createNodeArray();
-      auto dirNode = parser->ast()->createNodeValueInt($1);
-      // Direction
-      infoNode->addMember(dirNode);
-      // Source
-      infoNode->addMember($3);
-      // Target
-      infoNode->addMember($5);
-      // Graph
-      infoNode->addMember($6);
-      // Opts
-      auto opts = parser->ast()->createNodeOptions($7);
-      TRI_ASSERT(opts != nullptr);
-      infoNode->addMember(opts);
-      $$ = infoNode;
+      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, 1), $3, $5, $6, $7, yyloc);
     }
   ;
 
 k_shortest_paths_graph_info:
-    graph_direction T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
-      if (!TRI_CaseEqualString($4.value, "TO")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", $4.value, yylloc.first_line, yylloc.first_column);
-      }
-      auto infoNode = parser->ast()->createNodeArray();
-      auto dirNode = parser->ast()->createNodeValueInt($1);
-      // Direction
-      infoNode->addMember(dirNode);
-      // Source
-      infoNode->addMember($3);
-      // Target
-      infoNode->addMember($5);
-      // Graph
-      infoNode->addMember($6);
-      // Opts
-      auto opts = parser->ast()->createNodeOptions($7);
-      TRI_ASSERT(opts != nullptr);
-      infoNode->addMember(opts);
-      $$ = infoNode;
+    graph_direction_steps T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
+      $$ = ::buildShortestPathInfo(parser, $4.value, $1, $3, $5, $6, $7, yyloc);
+    }
+  ;
+
+k_paths_graph_info:
+    graph_direction_steps T_K_PATHS expression T_STRING expression graph_subject options {
+      $$ = ::buildShortestPathInfo(parser, $4.value, $1, $3, $5, $6, $7, yyloc);
     }
   ;
 
 for_statement:
     T_FOR for_output_variables T_IN expression {
-      // first open a new scope (after expression is evaluated)
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       AstNode* variablesNode = static_cast<AstNode*>($2);
-      TRI_ASSERT(variablesNode != nullptr);
-      TRI_ASSERT(variablesNode->type == NODE_TYPE_ARRAY);
-      if (variablesNode->numMembers() != 1) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "Collections and Views only have one return variable", yylloc.first_line, yylloc.first_column);
-      }
-
+      ::checkOutVariables(parser, variablesNode, 1, 1, "Collections and Views only have return variable", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // now create an out variable for the FOR statement
       // this prepares us to handle the optional SEARCH condition, which may
       // or may not refer to the FOR's variable
@@ -688,15 +701,10 @@ for_statement:
       parser->ast()->addOperation(node);
     }
   | T_FOR for_output_variables T_IN traversal_graph_info {
-      // first open a new scope (after expression is evaluated)
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // Traversal
       auto variableNamesNode = static_cast<AstNode*>($2);
-      TRI_ASSERT(variableNamesNode != nullptr);
-      TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
-      if (variableNamesNode->numMembers() > 3) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "Traversals only have one, two or three return variables", yylloc.first_line, yylloc.first_column);
-      }
+      ::checkOutVariables(parser, variableNamesNode, 1, 3, "Traversals only have one, two or three return variables", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
@@ -720,42 +728,41 @@ for_statement:
       parser->ast()->addOperation(node);
     }
   | T_FOR for_output_variables T_IN shortest_path_graph_info {
-      // first open a new scope (after expression is evaluated)
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // Shortest Path
       auto variableNamesNode = static_cast<AstNode*>($2);
-      TRI_ASSERT(variableNamesNode != nullptr);
-      TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
-      if (variableNamesNode->numMembers() > 2) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "ShortestPath only has one or two return variables", yylloc.first_line, yylloc.first_column);
-      }
+      ::checkOutVariables(parser, variableNamesNode, 1, 2, "SHORTEST_PATH only has one or two return variables", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
       auto node = parser->ast()->createNodeShortestPath(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
-
     }
   | T_FOR for_output_variables T_IN k_shortest_paths_graph_info {
-      // first open a new scope (after expression is evaluated)
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // K Shortest Paths
       auto variableNamesNode = static_cast<AstNode*>($2);
-      TRI_ASSERT(variableNamesNode != nullptr);
-      TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
-      if (variableNamesNode->numMembers() > 1) {
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "k Shortest Paths only has one return variable", yylloc.first_line, yylloc.first_column);
-      }
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_SHORTEST_PATHS only has one return variable", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
-      auto node = parser->ast()->createNodeKShortestPaths(variablesNode, graphInfoNode);
+      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KShortestPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
-
     }
-
+  | T_FOR for_output_variables T_IN k_paths_graph_info {
+      // K Paths
+      auto variableNamesNode = static_cast<AstNode*>($2);
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_PATHS only has one return variable", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
+      auto graphInfoNode = static_cast<AstNode*>($4);
+      TRI_ASSERT(graphInfoNode != nullptr);
+      TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
+      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KPaths, variablesNode, graphInfoNode);
+      parser->ast()->addOperation(node);
+    }
   ;
 
 filter_statement:
@@ -788,7 +795,7 @@ let_element:
 count_into:
     T_WITH T_STRING T_INTO variable_name {
       if (!TRI_CaseEqualString($2.value, "COUNT")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", $2.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", {$2.value, $2.length}, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = $4;
@@ -813,6 +820,7 @@ collect_statement:
 
       ::startCollectScope(scopes);
 
+      // in the AST this is transformed to COLLECT AGGREGATE var = COUNT()
       auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), $2.value, $2.length, $3);
       parser->ast()->addOperation(node);
     }
@@ -825,6 +833,7 @@ collect_statement:
         ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, $1);
       }
 
+      // in the AST this is transformed to COLLECT var = expr AGGREGATE var = COUNT()
       auto node = parser->ast()->createNodeCollectCount($1, $2.value, $2.length, $3);
       parser->ast()->addOperation(node);
     }
@@ -849,7 +858,7 @@ collect_statement:
       AstNode const* into = ::getIntoVariable(parser, $3);
       AstNode const* intoExpression = ::getIntoExpression($3);
 
-      auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), $2, into, intoExpression, nullptr, $3);
+      auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), $2, into, intoExpression, nullptr, $4);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list aggregate collect_optional_into options {
@@ -985,7 +994,7 @@ collect_optional_into:
 variable_list:
     variable_name {
       if (! parser->ast()->scopes()->existsVariable($1.value, $1.length)) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeReference($1.value, $1.length);
@@ -997,7 +1006,7 @@ variable_list:
     }
   | variable_list T_COMMA variable_name {
       if (! parser->ast()->scopes()->existsVariable($3.value, $3.length)) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $3.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", {$3.value, $3.length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeReference($3.value, $3.length);
@@ -1012,7 +1021,7 @@ variable_list:
 keep:
     T_STRING {
       if (!TRI_CaseEqualString($1.value, "KEEP")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeArray();
@@ -1027,9 +1036,34 @@ aggregate:
     T_AGGREGATE {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
-    } collect_list {
+    } aggregate_list {
       auto list = static_cast<AstNode*>(parser->popStack());
       $$ = list;
+    }
+  ;
+
+aggregate_list:
+    aggregate_element {
+    }
+  | aggregate_list T_COMMA aggregate_element {
+    }
+  ;
+
+aggregate_element:
+    variable_name T_ASSIGN aggregate_function_call {
+      auto node = parser->ast()->createNodeAssign($1.value, $1.length, $3);
+      parser->pushArrayElement(node);
+    }
+  ;
+
+aggregate_function_call:
+    function_name T_OPEN {
+      parser->pushStack($1.value);
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+    } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
+      auto list = static_cast<AstNode const*>(parser->popStack());
+      $$ = parser->ast()->createNodeAggregateFunctionCall(static_cast<char const*>(parser->popStack()), list);
     }
   ;
 
@@ -1084,6 +1118,31 @@ limit_statement:
       auto node = parser->ast()->createNodeLimit($2, $4);
       parser->ast()->addOperation(node);
     }
+  ;
+
+window_statement:
+    T_WINDOW object aggregate {
+      /* WINDOW {preceding:2, following:2} AGGREGATE x = AVG(x) */
+      
+      // validate aggregates
+      if (!::validateAggregates(parser, $3, yylloc.first_line, yylloc.first_column)) {
+        YYABORT;
+      }
+      
+      auto node = parser->ast()->createNodeWindow(/*spec*/$2, /*range*/nullptr, /*aggrs*/$3);
+      parser->ast()->addOperation(node);
+    }
+  | T_WINDOW expression T_WITH object aggregate {
+    /* WINDOW rangeVar WITH {preceding:"1d", following:"1d"} AGGREGATE x = AVG(x) */
+    
+    // validate aggregates
+    if (!::validateAggregates(parser, $5, yylloc.first_line, yylloc.first_column)) {
+      YYABORT;
+    }
+    
+    auto node = parser->ast()->createNodeWindow(/*spec*/$4, /*range*/$2, /*aggrs*/$5);
+    parser->ast()->addOperation(node);
+  }
   ;
 
 return_statement:
@@ -1309,14 +1368,14 @@ function_call:
       parser->pushStack(node);
     } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
       auto list = static_cast<AstNode const*>(parser->popStack());
-      $$ = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list);
+      $$ = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list, false);
     }
   | T_LIKE T_OPEN {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
       auto list = static_cast<AstNode const*>(parser->popStack());
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), list);
+      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), list, false);
     }
   ;
 
@@ -1382,39 +1441,39 @@ operator_binary:
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($4);
-      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments);
+      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
   | expression T_NOT T_REGEX_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($4);
-      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
+      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
   | expression T_NOT T_REGEX_NON_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($4);
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
+      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
     }
   | expression T_LIKE expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($3);
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments);
+      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
     }
   | expression T_REGEX_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($3);
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
+      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
     }
   | expression T_REGEX_NON_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($3);
-      AstNode* node = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
+      AstNode* node = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
   | expression quantifier T_EQ expression {
@@ -1554,7 +1613,7 @@ for_options:
       } else {
         // everything else must be OPTIONS
         if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
         }
       
         ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
@@ -1571,7 +1630,7 @@ for_options:
 
       if (!TRI_CaseEqualString($1.value, "SEARCH") ||
           !TRI_CaseEqualString($3.value, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
       
       ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
@@ -1591,7 +1650,7 @@ options:
       TRI_ASSERT($2 != nullptr);
 
       if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
       
       ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
@@ -1633,7 +1692,7 @@ object_element:
 
       if (variable == nullptr) {
         // variable does not exist
-        parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "use of unknown variable '%s' in object literal", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "use of unknown variable '%s' in object literal", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
 
       // create a reference to the variable
@@ -1647,7 +1706,7 @@ object_element:
   | T_PARAMETER T_COLON expression {
       // bind-parameter : attribute-value
       if ($1.length < 1 || $1.value[0] == '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
       auto param = parser->ast()->createNodeParameter($1.value, $1.length);
@@ -1978,7 +2037,7 @@ in_or_into_collection_name:
     }
   | T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
@@ -1988,7 +2047,7 @@ in_or_into_collection_name:
 bind_parameter:
     T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
@@ -2001,7 +2060,7 @@ bind_parameter:
 bind_parameter_datasource_expected:
     T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);

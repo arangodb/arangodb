@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,13 +62,13 @@ class ReadWriteLock {
   [[nodiscard]] bool lockWrite(std::chrono::microseconds timeout);
 
   /// @brief locks for writing, but only tries
-  [[nodiscard]] bool tryLockWrite();
+  [[nodiscard]] bool tryLockWrite() noexcept;
 
   /// @brief locks for reading
   void lockRead();
 
   /// @brief locks for reading, tries only
-  [[nodiscard]] bool tryLockRead();
+  [[nodiscard]] bool tryLockRead() noexcept;
 
   /// @brief releases the read-lock or write-lock
   void unlock() noexcept;

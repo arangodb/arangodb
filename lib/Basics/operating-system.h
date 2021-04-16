@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -726,18 +726,19 @@ int TRI_UNLINK(char const* filename);
 void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
-#define TRI_SYSTEM_ERROR()                                                       \
-  do {                                                                           \
-    auto result = translateWindowsError(::GetLastError());                       \
-    errno = result.errorNumber();                                                \
-    auto const& mesg = result.errorMessage();                                    \
-    if (mesg.empty()) {                                                          \
-      memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
-    } else {                                                                     \
-      memcpy(&windowsErrorBuf[0], mesg.data(),                                   \
-             (std::min)(sizeof(windowsErrorBuf) / sizeof(windowsErrorBuf[0]),    \
-                        mesg.size()));                                           \
-    }                                                                            \
+#define TRI_SYSTEM_ERROR()                                                    \
+  do {                                                                        \
+    auto result = translateWindowsError(::GetLastError());                    \
+    errno = static_cast<int>(result.errorNumber());                           \
+    auto const& mesg = result.errorMessage();                                 \
+    memset(windowsErrorBuf, 0, sizeof(windowsErrorBuf));                      \
+    if (mesg.empty()) {                                                       \
+      memcpy(&windowsErrorBuf[0], "unknown error", strlen("unknown error"));  \
+    } else {                                                                  \
+      memcpy(&windowsErrorBuf[0], mesg.data(),                                \
+             (std::min)(sizeof(windowsErrorBuf) / sizeof(windowsErrorBuf[0]), \
+                        mesg.size()));                                        \
+    }                                                                         \
   } while (false)
 
 #define STDERR_FILENO 2

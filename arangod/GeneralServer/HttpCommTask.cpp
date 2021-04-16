@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "HttpCommTask.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
@@ -206,7 +207,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
       _messageDone(false),
-      _allowMethodOverride(GeneralServerFeature::allowMethodOverride()) {
+      _allowMethodOverride(this->_generalServerFeature.allowMethodOverride()) {
   this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
@@ -295,7 +296,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
 template <SocketType T>
 void HttpCommTask<T>::setIOTimeout() {
-  double secs = GeneralServerFeature::keepAliveTimeout();
+  double secs = this->_generalServerFeature.keepAliveTimeout();
   if (secs <= 0) {
     return;
   }
@@ -386,6 +387,15 @@ static void DTraceHttpCommTaskProcessRequest(size_t) {}
 #endif
 
 template <SocketType T>
+std::string HttpCommTask<T>::url() const {
+  if (_request != nullptr) {
+    return std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
+      (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
+  }
+  return "";
+}
+
+template <SocketType T>
 void HttpCommTask<T>::processRequest() {
   DTraceHttpCommTaskProcessRequest((size_t)this);
 
@@ -415,15 +425,11 @@ void HttpCommTask<T>::processRequest() {
   // C functions like strchr that except a C string as input
   _request->body().push_back('\0');
   _request->body().resetTo(_request->body().size() - 1);
-
   {
     LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(_request->requestType()) << "\",\""
-        << (_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())
-        << (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath())
-        << "\"";
+        << HttpRequest::translateMethod(_request->requestType()) << "\",\"" << url() << "\"";
 
     VPackStringRef body = _request->rawPayload();
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
@@ -440,6 +446,7 @@ void HttpCommTask<T>::processRequest() {
   // OPTIONS requests currently go unauthenticated
   if (_request->requestType() == rest::RequestType::OPTIONS) {
     this->processCorsOptions(std::move(_request), _origin);
+
     return;
   }
 
@@ -468,6 +475,7 @@ void HttpCommTask<T>::processRequest() {
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1, nullptr);
   resp->setContentType(_request->contentTypeResponse());
   this->executeRequest(std::move(_request), std::move(resp));
+
 }
 
 #ifdef USE_DTRACE
@@ -504,6 +512,15 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   _header.append(GeneralResponse::responseString(response.responseCode()));
   _header.append("\r\n", 2);
 
+  // if we return HTTP 401, we need to send a www-authenticate header back with
+  // the response. in this case we need to check if the header was already set
+  // or if we need to set it ourselves.
+  // note that clients can suppress sending the www-authenticate header by
+  // sending us an x-omit-www-authenticate header.
+  bool needWwwAuthenticate =
+      (response.responseCode() == rest::ResponseCode::UNAUTHORIZED &&
+      (!_request || _request->header("x-omit-www-authenticate").empty()));
+
   bool seenServerHeader = false;
   // bool seenConnectionHeader = false;
   for (auto const& it : response.headers()) {
@@ -517,6 +534,8 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
     if (key == StaticStrings::Server) {
       seenServerHeader = true;
+    } else if (needWwwAuthenticate && key == StaticStrings::WwwAuthenticate) {
+      needWwwAuthenticate = false;
     }
 
     // reserve enough space for header name + ": " + value + "\r\n"
@@ -555,8 +574,14 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     _header.append(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
   }
 
+  if (needWwwAuthenticate) {
+    TRI_ASSERT(response.responseCode() == rest::ResponseCode::UNAUTHORIZED);
+    _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Basic, realm=\"ArangoDB\"\r\n"));
+    _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Bearer, token_type=\"JWT\", realm=\"ArangoDB\"\r\n"));
+  }
+
   // turn on the keepAlive timer
-  double secs = GeneralServerFeature::keepAliveTimeout();
+  double secs = this->_generalServerFeature.keepAliveTimeout();
   if (_shouldKeepAlive && secs > 0) {
     _header.append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
   } else {
@@ -583,15 +608,14 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
 
   // and give some request information
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
       << "\"http-request-end\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress << "\",\""
-      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << "\",\"" << static_cast<int>(response.responseCode()) << "\","
-      << Logger::FIXED(totalTime, 6);
+      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
+      << url() << "\",\"" << static_cast<int>(response.responseCode()) << "\","
+      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6) ;
 
   // sendResponse is always called from a scheduler thread
   boost::asio::post(this->_protocol->context.io_context,

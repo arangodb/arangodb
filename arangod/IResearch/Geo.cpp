@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@
 #include "Geo/ShapeContainer.h"
 #include "Logger/LogMacros.h"
 #include "IResearch/IResearchCommon.h"
+#include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -94,6 +96,13 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
   }
 
   return true;
+}
+
+void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point) {
+  builder.openArray();
+  builder.add(VPackValue(point.lng().degrees()));
+  builder.add(VPackValue(point.lat().degrees()));
+  builder.close();
 }
 
 } // iresearch

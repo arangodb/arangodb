@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -453,7 +454,7 @@ static void JS_UpdateConfigData(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   Result r = um->updateUser(username, [&](auth::User& u) {
     VPackBuilder updated =
-        VelocyPackHelper::merge(u.configData(), merge.slice(), true, true);
+        velocypack::Collection::merge(u.configData(), merge.slice(), true, true);
     u.setConfigData(std::move(updated));
     return TRI_ERROR_NO_ERROR;
   });
@@ -539,7 +540,8 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // return the current database permissions
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+    TRI_GET_GLOBALS();
+    v8g->_server.getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
       auto lvl = um->databaseAuthLevel(username, vocbase.name());
 
       if (lvl != auth::Level::NONE) {  // hide non accessible collections

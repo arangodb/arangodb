@@ -20,6 +20,8 @@ if (require('internal').db._version(true)['maintainer-mode'] === 'true') {
   options.timeout = 300;
 }
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Foxx routing consistency', () => {
   beforeEach(() => {
     FoxxManager.install(SERVICE_PATH, MOUNT);

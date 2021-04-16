@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -123,7 +123,7 @@ auto root() -> std::shared_ptr<Root const>;
 // base case for recursions.
 class Root : public std::enable_shared_from_this<Root>, public Path {
  public:
-  void forEach(std::function<void(char const* component)> const&) const final {}
+  void forEach(std::function<void(char const* component)> const&) const override final {}
 
  public:
   class Arango : public StaticComponent<Arango, Root> {
@@ -1663,19 +1663,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
       std::shared_ptr<FailedServers const> failedServers() const {
         return FailedServers::make_shared(shared_from_this());
-      }
-
-      class MapLocalToId : public StaticComponent<MapLocalToId, Target> {
-       public:
-        constexpr char const* component() const noexcept {
-          return "MapLocalToID";
-        }
-
-        using BaseType::StaticComponent;
-      };
-
-      std::shared_ptr<MapLocalToId const> mapLocalToID() const {
-        return MapLocalToId::make_shared(shared_from_this());
       }
 
       class NumberOfCoordinators : public StaticComponent<NumberOfCoordinators, Target> {

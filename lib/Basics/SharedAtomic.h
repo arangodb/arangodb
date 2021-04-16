@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,7 @@ struct SharedAtomic {
   SharedAtomic(T t) : _data(t) {}
   SharedAtomic(T& t) : _data(t) {}
   SharedAtomic(SharedAtomic<T>& t) : _data(t.load(std::memory_order_seq_cst)) {}
+  // cppcheck-suppress operatorEqVarError
   SharedAtomic<T>& operator=(SharedAtomic<T> const& other) {
     _data = other.load(std::memory_order_seq_cst);
     return *this;

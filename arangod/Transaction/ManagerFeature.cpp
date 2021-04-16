@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -49,7 +50,7 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
     std::tie(queued, workItem) =
         arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
             [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
-              auto off = std::chrono::seconds(1);
+              auto off = std::chrono::seconds(2);
               // The RequestLane needs to be something which is `HIGH` priority, otherwise
               // all threads executing this might be blocking, waiting for a lock to be
               // released.
@@ -71,19 +72,23 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 namespace arangodb {
 namespace transaction {
 
+DECLARE_COUNTER(arangodb_transactions_expired_total, "Total number of expired transactions");
+
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager"),
       _workItem(nullptr),
       _gcfunc(),
-      _streamingLockTimeout(8.0) {
+      _streamingLockTimeout(8.0),
+      _streamingIdleTimeout(defaultStreamingIdleTimeout),
+      _numExpiredTransactions(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_transactions_expired_total{})) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
-
   startsAfter<EngineSelectorFeature>();
+  startsAfter<MetricsFeature>();
   startsAfter<SchedulerFeature>();
-
   startsBefore<DatabaseFeature>();
 
   _gcfunc = [this] (bool canceled) {
@@ -100,13 +105,30 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
 }
 
 void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("transaction", "Transaction features");
+  options->addSection("transaction", "transactions");
 
   options->addOption("--transaction.streaming-lock-timeout", "lock timeout in seconds "
 		     "in case of parallel access to the same streaming transaction",
                      new DoubleParameter(&_streamingLockTimeout),
 		     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30605).setIntroducedIn(30701);
+  
+  options->addOption("--transaction.streaming-idle-timeout", "idle timeout for streaming "
+         "transactions in seconds",
+                     new DoubleParameter(&_streamingIdleTimeout),
+         arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                      arangodb::options::Flags::OnCoordinator,
+                                      arangodb::options::Flags::OnSingle))
+    .setIntroducedIn(30800);
+}
+
+void ManagerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_streamingIdleTimeout > maxStreamingIdleTimeout) {
+    LOG_TOPIC("7fb2d", FATAL, Logger::TRANSACTIONS) 
+        << "invalid value for --transaction.streaming-idle-timeout. "
+        << "value should be at most " << maxStreamingIdleTimeout;
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void ManagerFeature::prepare() {
@@ -161,6 +183,12 @@ void ManagerFeature::stop() {
 
 void ManagerFeature::unprepare() {
   MANAGER.reset();
+}
+
+void ManagerFeature::trackExpired(uint64_t numExpired) {
+  if (numExpired > 0) {
+    _numExpiredTransactions.count(numExpired);
+  }
 }
 
 }  // namespace transaction

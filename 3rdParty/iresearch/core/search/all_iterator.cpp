@@ -23,7 +23,7 @@
 #include "all_iterator.hpp"
 #include "formats/empty_term_reader.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 all_iterator::all_iterator(
     const sub_reader& reader,
@@ -31,22 +31,21 @@ all_iterator::all_iterator(
     const order::prepared& order,
     uint64_t docs_count,
     boost_t boost)
-  : attributes{{
-      { type<document>::id(), &doc_   },
-      { type<cost>::id(),     &cost_  },
-      { type<score>::id(),    &score_ },
-    }},
-    score_(order),
-    max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)),
-    cost_(max_doc_) {
+  : max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
+  std::get<cost>(attrs_).reset(max_doc_);
+
   if (!order.empty()) {
+    auto& score = std::get<irs::score>(attrs_);
+
+    score.realloc(order);
+
     order::prepared::scorers scorers(
       order, reader, irs::empty_term_reader(docs_count),
-      query_stats, score_.data(),
+      query_stats, score.data(),
       *this, boost);
 
-    irs::reset(score_, std::move(scorers));
+    irs::reset(score, std::move(scorers));
   }
 }
 
-NS_END // ROOT
+} // ROOT

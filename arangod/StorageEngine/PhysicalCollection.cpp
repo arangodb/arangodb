@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
@@ -78,7 +80,7 @@ void PhysicalCollection::flushClusterIndexEstimates() {
 
 void PhysicalCollection::drop() {
   {
-    WRITE_LOCKER(guard, _indexesLock);
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
     _indexes.clear();
   }
   try {
@@ -87,6 +89,15 @@ void PhysicalCollection::drop() {
   } catch (...) {
     // don't throw from here... dropping should succeed
   }
+}
+
+
+uint64_t PhysicalCollection::recalculateCounts() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "recalculateCounts not implemented for this engine");
+}
+
+bool PhysicalCollection::hasDocuments() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hasDocuments not implemented for this engine");
 }
 
 bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
@@ -101,7 +112,7 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
 }
 
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto const& idx : _indexes) {
     if (idx->type() == type) {
       return true;
@@ -145,12 +156,12 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
 
 /// @brief Find index by definition
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(VPackSlice const& info) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   return findIndex(info, _indexes);
 }
 
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(IndexId idxId) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {
       return idx;
@@ -160,7 +171,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(IndexId idxId) const {
 }
 
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxName) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto const& idx : _indexes) {
     if (idx->name() == idxName) {
       return idx;
@@ -266,9 +277,9 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[21];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
-    b.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
+    b.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
   // add other attributes after the system attributes
@@ -295,8 +306,8 @@ Result PhysicalCollection::mergeObjectsForUpdate(
         // merge both values
         auto& value = (*found).second;
         if (keepNull || (!value.isNone() && !value.isNull())) {
-          VPackBuilder sub = VPackCollection::merge(current.value, value, true, !keepNull);
-          b.addUnchecked(key.data(), key.size(), sub.slice());
+          b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
+          VPackCollection::merge(b, current.value, value, true, !keepNull);
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -322,7 +333,12 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     if (!keepNull && s.isNull()) {
       continue;
     }
-    b.addUnchecked(it.first.data(), it.first.size(), s);
+    if (!keepNull && s.isObject()) {
+      b.add(VPackValuePair(it.first.data(), it.first.size(), VPackValueType::String));
+      VPackCollection::merge(b, VPackSlice::emptyObjectSlice(), s, true, true);
+    } else {
+      b.addUnchecked(it.first.data(), it.first.size(), s);
+    }
   }
 
   b.close();
@@ -407,6 +423,9 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
 
   // _rev
   bool handled = false;
+  TRI_IF_FAILURE("Insert::useRev") {
+    isRestore = true;
+  }
   if (isRestore) {
     // copy revision id verbatim
     s = value.get(StaticStrings::RevString);
@@ -420,9 +439,9 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[21];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
+    builder.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
   // add other attributes after the system attributes
@@ -447,7 +466,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods*, VPackSlice co
   }
 
   // temporary buffer for stringifying revision ids
-  char ridBuffer[21];
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
   revisionId = newRevisionId();
   builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   builder.close();
@@ -508,7 +527,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[21];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
     builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   }
@@ -549,13 +568,13 @@ bool PhysicalCollection::checkRevision(transaction::Methods*, RevisionId expecte
 
 /// @brief hands out a list of indexes
 std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   return { _indexes.begin(), _indexes.end() };
 }
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
                                          std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   result.openArray();
   for (std::shared_ptr<Index> const& idx : _indexes) {
     std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
@@ -583,7 +602,7 @@ futures::Future<OperationResult> PhysicalCollection::figures(bool details,
 
   {
     bool seenEdgeIndex = false;
-    READ_LOCKER(guard, _indexesLock);
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     for (auto const& idx : _indexes) {
       // only count an edge index instance
       if (idx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || !seenEdgeIndex) {

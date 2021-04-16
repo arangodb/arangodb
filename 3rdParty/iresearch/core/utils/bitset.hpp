@@ -32,7 +32,7 @@
 #include "noncopyable.hpp"
 #include "memory.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename Alloc>
 class dynamic_bitset_base : irs::compact<0, Alloc> {
@@ -63,6 +63,11 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   using typename base_t::word_t;
 
   typedef size_t index_t;
+
+  constexpr FORCE_INLINE static size_t bits_to_words(size_t bits) noexcept {
+    return bits / bits_required<word_t>()
+        + size_t(0 != (bits % bits_required<word_t>()));
+  }
 
   // returns corresponding bit index within a word for the
   // specified offset in bits
@@ -114,7 +119,7 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   }
 
   void reset(size_t bits) {
-    const auto words = bit_to_words(bits);
+    const auto words = bits_to_words(bits);
 
     if (words > words_) {
       data_ = memory::allocate_unique<word_t[]>(
@@ -209,21 +214,10 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
 
   // counts bits set
   word_t count() const noexcept {
-    return std::accumulate(
-      begin(), end(), word_t(0),
-      [] (word_t v, word_t w) {
-        return v + math::math_traits<word_t>::pop(w);
-    });
+    return math::math_traits<word_t>::pop(begin(), end());
   }
 
  private:
-  FORCE_INLINE static size_t bit_to_words(size_t bits) noexcept {
-    static const size_t EXTRA[] { 1, 0 };
-
-    return bits / bits_required<word_t>()
-        + EXTRA[0 == (bits % bits_required<word_t>())];
-  }
-
   void sanitize() noexcept {
     assert(bits_ <= capacity());
     auto last_word_bits = bits_ % bits_required<word_t>();
@@ -244,6 +238,6 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
 
 typedef dynamic_bitset<std::allocator<size_t>> bitset;
 
-NS_END
+}
 
 #endif

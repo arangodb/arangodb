@@ -27,10 +27,9 @@
 #include "utils/attributes.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/iterator.hpp"
-#include "utils/integer.hpp"
 #include "utils/memory.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                    doc iterators 
@@ -189,6 +188,6 @@ inline bool skip(Iterator& itr, size_t count) {
   return true;
 }
 
-NS_END
+}
 
 #endif

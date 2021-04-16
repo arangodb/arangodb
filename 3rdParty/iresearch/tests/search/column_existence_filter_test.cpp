@@ -26,7 +26,7 @@
 #include "search/column_existence_filter.hpp"
 #include "search/sort.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::by_column_existence make_filter(const irs::string_ref& field,
                                      bool prefix_match) {
@@ -64,7 +64,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
         [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-          doc.insert(std::make_shared<mask_field>(irs::string_ref(name)));
+          doc.insert(std::make_shared<mask_field>(name));
       });
       add_segment(gen);
     }
@@ -1067,4 +1067,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}

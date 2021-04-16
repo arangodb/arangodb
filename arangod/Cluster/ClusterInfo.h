@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -54,6 +55,7 @@
 
 namespace arangodb {
 namespace velocypack {
+class Builder;
 class Slice;
 }
 
@@ -67,34 +69,17 @@ struct ClusterCollectionCreationInfo;
 class CollectionWatcher {
  public:
   CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
-    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-
-    std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id().id());
-    std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
-
-    _agencyCallback = std::make_shared<AgencyCallback>(
-        collection.vocbase().server(), where,
-        [this](VPackSlice const& result) {
-          if (result.isNone()) {
-            _present.store(false);
-          }
-          return true;
-        },
-        true, false);
-    _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  }
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection);
   ~CollectionWatcher();
 
   bool isPresent() {
     // Make sure we did not miss a callback
     _agencyCallback->refetchAndUpdate(true, false);
     return _present.load();
-  };
+  }
 
-private:
-  AgencyCallbackRegistry *_agencyCallbackRegistry;
+ private:
+  AgencyCallbackRegistry* _agencyCallbackRegistry;
   std::shared_ptr<AgencyCallback> _agencyCallback;
 
   // TODO: this does not really need to be atomic: We only write to it
@@ -367,16 +352,15 @@ class ClusterInfo final {
       std::function<void()> const&, AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
     ~SyncerThread();
-    void beginShutdown();
-    void run();
-    void start();
+    void beginShutdown() override;
+    void run() override;
+    bool start();
     bool notify(velocypack::Slice const&);
 
    private:
     std::mutex _m;
     std::condition_variable _cv;
     bool _news;
-    application_features::ApplicationServer& _server;
     std::string _section;
     std::function<void()> _f;
     AgencyCallbackRegistry* _cr;
@@ -389,7 +373,7 @@ class ClusterInfo final {
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
-public:
+ public:
   ClusterInfo(ClusterInfo const&) = delete;             // not implemented
   ClusterInfo& operator=(ClusterInfo const&) = delete;  // not implemented
 
@@ -420,7 +404,8 @@ public:
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*);
+  explicit ClusterInfo(application_features::ApplicationServer& server, AgencyCallbackRegistry* agencyCallbackRegistry,
+                       ErrorCode syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -433,6 +418,9 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
+  
+  /// @brief cancel all pending wait-for-syncer operations
+  void drainSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers
@@ -488,7 +476,7 @@ public:
    * @param    Plan Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version
@@ -529,13 +517,13 @@ public:
   /// @brief ask whether a cluster database exists
   //////////////////////////////////////////////////////////////////////////////
 
-  bool doesDatabaseExist(DatabaseID const&, bool reload = false);
+  bool doesDatabaseExist(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get list of databases in the cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<DatabaseID> databases(bool reload = false);
+  std::vector<DatabaseID> databases();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -607,6 +595,25 @@ public:
   QueryAnalyzerRevisions getQueryAnalyzersRevision(
       DatabaseID const& databaseID);
 
+  /// @brief return shard statistics for the specified database, 
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsForDatabase(DatabaseID const& dbName,
+                                       std::string const& restrictServer,
+                                       arangodb::velocypack::Builder& builder) const;
+  
+  /// @brief return shard statistics for all databases, totals,
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsGlobal(std::string const& restrictServer,
+                                  arangodb::velocypack::Builder& builder) const;
+  
+  /// @brief return shard statistics, separate for each database, 
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsGlobalDetailed(std::string const& restrictServer,
+                                          arangodb::velocypack::Builder& builder) const;
+
+  /// @brief get shard statistics for all databases, split by servers.
+  Result getShardStatisticsGlobalByServer(VPackBuilder& builder) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
   /// all shards in the collection.
@@ -650,7 +657,7 @@ public:
       std::string const& name,     // database name
       double timeout               // request timeout
   );
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -872,19 +879,7 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   ServerID getCoordinatorByShortID(ServerShortID const& shortId);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate planned
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidatePlan();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate current
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidateCurrent();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate current coordinators
   //////////////////////////////////////////////////////////////////////////////
@@ -915,31 +910,40 @@ public:
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
     getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
 
-  std::vector<std::string> getFailedServers() {
-    MUTEX_LOCKER(guard, _failedServersMutex);
-    return _failedServers;
-  }
-  void setFailedServers(std::vector<std::string> const& failedServers) {
-    MUTEX_LOCKER(guard, _failedServersMutex);
-    _failedServers = failedServers;
-  }
+  std::vector<std::string> getFailedServers() const;
+
+  void setFailedServers(std::vector<std::string> const& failedServers);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setServers(std::unordered_map<ServerID, std::string> servers);
+
+  void setServerAliases(std::unordered_map<ServerID, std::string> aliases);
+  
+  void setServerAdvertisedEndpoints(std::unordered_map<ServerID, std::string> advertisedEndpoints);
+  
+  void setServerTimestamps(std::unordered_map<ServerID, std::string> timestamps);
+#endif
+  
+  bool serverExists(ServerID const& serverId) const noexcept;
+  
+  bool serverAliasExists(std::string const& alias) const noexcept;
 
   std::unordered_map<ServerID, std::string> getServers();
 
   TEST_VIRTUAL std::unordered_map<ServerID, std::string> getServerAliases();
 
-  std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
+  std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints() const;
 
-  std::unordered_map<ServerID, std::string> getServerTimestamps();
+  std::unordered_map<ServerID, std::string> getServerTimestamps() const;
 
   std::unordered_map<ServerID, RebootId> rebootIds() const;
 
-  uint64_t getPlanVersion() {
+  uint64_t getPlanVersion() const {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
   }
 
-  uint64_t getCurrentVersion() {
+  uint64_t getCurrentVersion() const {
     READ_LOCKER(guard, _currentProt.lock);
     return _currentVersion;
   }
@@ -987,6 +991,12 @@ public:
   application_features::ApplicationServer& server() const;
 
  private:
+  /// @brief worker function for dropIndexCoordinator
+  Result dropIndexCoordinatorInner(
+      std::string const& databaseName, 
+      std::string const& collectionID,
+      IndexId iid,                   
+      double endTime);
 
   /// @brief helper function to build a new LogicalCollection object from the velocypack
   /// input
@@ -1025,7 +1035,6 @@ public:
 
   void triggerWaiting(
     std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm, uint64_t commitIndex);
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the poll interval
@@ -1087,12 +1096,16 @@ public:
     mutable Mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
-    arangodb::basics::ReadWriteLock lock;
+    mutable arangodb::basics::ReadWriteLock lock;
 
     ProtectionData() : isValid(false), wantedVersion(0), doneVersion(0) {}
   };
 
   cluster::RebootTracker _rebootTracker;
+
+  /// @brief error code sent to all remaining promises of the syncers at shutdown. 
+  /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
+  ErrorCode const _syncerShutdownCode;
 
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
@@ -1186,28 +1199,10 @@ public:
   Mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the sole instance
-  //////////////////////////////////////////////////////////////////////////////
-
-  static ClusterInfo* _theinstance;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief how big a batch is for unique ids
   //////////////////////////////////////////////////////////////////////////////
 
-  static uint64_t const MinIdsPerBatch = 1000000;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief default wait timeout
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double const operationTimeout;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reload timeout
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double const reloadServerListTimeout;
+  static constexpr uint64_t MinIdsPerBatch = 1000000;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check analyzers precondition timeout in seconds
@@ -1215,7 +1210,7 @@ public:
 
   static constexpr double checkAnalyzersPreconditionTimeout = 10.0;
 
-  arangodb::Mutex _failedServersMutex;
+  mutable arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
 
   //////////////////////////////////////////////////////////////////////////////

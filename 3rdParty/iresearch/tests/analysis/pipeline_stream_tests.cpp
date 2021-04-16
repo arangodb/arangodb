@@ -40,20 +40,19 @@
 #include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
 #ifndef IRESEARCH_DLL
-NS_LOCAL
+namespace {
 
 class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::analyzer>, private irs::util::noncopyable {
  public:
   pipeline_test_analyzer(bool has_offset, irs::bytes_ref payload)
     : attributes{ {
-        { irs::type<irs::payload>::id(), payload == irs::bytes_ref::NIL ? nullptr : &payload_},
+        { irs::type<irs::payload>::id(), payload.null() ? nullptr : &payload_},
         { irs::type<irs::increment>::id(), &inc_},
         { irs::type<irs::offset>::id(), has_offset? &offs_: nullptr},
         { irs::type<irs::term_attribute>::id(), &term_}},
         irs::type<pipeline_test_analyzer>::get()} {
     payload_.value = payload;
   }
-  static constexpr irs::string_ref type_name() noexcept { return "pipeline_test_analyzer"; }
   virtual bool next() override {
     if (term_emitted) {
       return false;
@@ -97,7 +96,6 @@ class pipeline_test_analyzer2 : public irs::frozen_attributes<3, irs::analysis::
     current_reset_ = resets_.begin();
     current_term_ = terms_.begin();
   }
-  static constexpr irs::string_ref type_name() noexcept { return "pipeline_test_analyzer2"; }
   virtual bool next() override {
     if (current_next_ != nexts_.end()) {
       auto next_val = *(current_next_++);
@@ -169,7 +167,7 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
   auto* inc = irs::get<irs::increment>(*pipe);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(pipe->reset(data));
-  uint32_t pos{ irs::integer_traits<uint32_t>::const_max };
+  uint32_t pos{ std::numeric_limits<uint32_t>::max() };
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
     auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
@@ -186,7 +184,11 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
   ASSERT_EQ(expected_token, expected_tokens.end());
 }
 
-NS_END
+}
+
+TEST(pipeline_token_stream_test, consts) {
+  static_assert("pipeline" == irs::type<irs::analysis::pipeline_token_stream>::name());
+}
 
 TEST(pipeline_token_stream_test, empty_pipeline) {
   irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -220,6 +222,7 @@ TEST(pipeline_token_stream_test, many_tokenizers) {
   pipeline_options.push_back(ngram);
 
   irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+  ASSERT_EQ(irs::type<irs::analysis::pipeline_token_stream>::id(), pipe.type());
 
   std::string data = "quick broWn,, FOX  jumps,  over lazy dog";
   const analyzer_tokens expected{
@@ -644,10 +647,11 @@ TEST(pipeline_token_stream_test, normalize_json) {
 }
 
 TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
-  irs::bytes_ref test_payload{ { 0x1, 0x2, 0x3 }, 3 };
-  irs::bytes_ref test_payload2{ { 0x11, 0x22, 0x33 }, 3 };
-  pipeline_test_analyzer payload_offset(true, test_payload);
-  pipeline_test_analyzer only_payload(false, test_payload2);
+  // store as separate arrays to make asan happy
+  iresearch::byte_type p1[] = { 0x1, 0x2, 0x3 };
+  iresearch::byte_type p2[] = { 0x11, 0x22, 0x33 };
+  pipeline_test_analyzer payload_offset(true, p1);
+  pipeline_test_analyzer only_payload(false, p2);
   pipeline_test_analyzer only_offset(true, irs::bytes_ref::NIL);
   pipeline_test_analyzer no_payload_no_offset(false, irs::bytes_ref::NIL);
 
@@ -666,7 +670,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload, pay->value);
+    ASSERT_EQ(p1, pay->value.c_str());
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -683,7 +687,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload, pay->value);
+    ASSERT_EQ(p1, pay->value.c_str());
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -700,7 +704,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload2, pay->value);
+    ASSERT_EQ(p2, pay->value.c_str());
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -717,7 +721,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload, pay->value);
+    ASSERT_EQ(p1, pay->value.c_str());
   }
   {
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -734,7 +738,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(test_payload2, pay->value);
+    ASSERT_EQ(p2, pay->value.c_str());
   }
 }
 

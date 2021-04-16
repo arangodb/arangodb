@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,12 +54,14 @@ CachedValue* CachedValue::construct(void const* k, std::size_t kSize,
       kSize > maxKeySize || vSize > maxValueSize) {
     return nullptr;
   }
-
+  
+  // cppcheck-suppress *
   std::uint8_t* buf = new std::uint8_t[_headerAllocSize + kSize + vSize];
   std::uint8_t* aligned = reinterpret_cast<std::uint8_t*>(
       (reinterpret_cast<std::size_t>(buf) + _headerAllocOffset) & _headerAllocMask);
   std::size_t offset = buf - aligned;
   // ctor of CachedValue is noexcept
+  // cppcheck-suppress memleak
   return new (aligned) CachedValue(offset, k, kSize, v, vSize);
 }
 

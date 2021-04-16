@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,22 +24,9 @@
 
 #include "AgencyComm.h"
 
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/application-exit.h"
-#include "RestServer/ServerFeature.h"
-
-#include <memory>
-#include <thread>
-#ifdef DEBUG_SYNC_REPLICATION
-#include <atomic>
-#endif
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-#include <set>
-
-#include "Agency/AsyncAgencyComm.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
@@ -48,7 +35,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -56,9 +45,18 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "RestServer/MetricsFeature.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
+#include "RestServer/ServerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/HealthData.h"
+#include "StorageEngine/StorageEngine.h"
+
+#include <memory>
+#include <set>
+#include <thread>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -66,13 +64,7 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-
-#ifdef DEBUG_SYNC_REPLICATION
-static std::atomic<uint64_t> debugUniqId(1);
-bool AgencyComm::syncReplDebug = false;
-#endif
 
 static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) {
   builder.add(name, VPackSlice::emptyObjectSlice());
@@ -83,7 +75,7 @@ static std::string const writeURL{"/_api/agency/write"};
 const std::vector<std::string> AgencyTransaction::TypeUrl({"/read", "/write",
                                                            "/transact",
                                                            "/transient"});
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition
 // -----------------------------------------------------------------------------
@@ -387,7 +379,7 @@ bool AgencyReadTransaction::validate(AgencyCommResult const& result) const {
 // --SECTION--                                                  AgencyCommResult
 // -----------------------------------------------------------------------------
 
-AgencyCommResult::AgencyCommResult(int code, std::string message)
+AgencyCommResult::AgencyCommResult(ResponseCode code, std::string message)
     : _message(std::move(message)), _statusCode(code) {}
 
 AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
@@ -398,7 +390,7 @@ AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
       _connected(other._connected),
       _sent(other._sent),
       _vpack(std::move(other._vpack)) {
-  other._statusCode = 0;
+  other._statusCode = {};
   other._connected = false;
   other._sent = false;
 }
@@ -413,14 +405,14 @@ AgencyCommResult& AgencyCommResult::operator=(AgencyCommResult&& other) noexcept
     _sent = other._sent;
     _vpack = std::move(other._vpack);
 
-    other._statusCode = 0;
+    other._statusCode = {};
     other._connected = false;
     other._sent = false;
   }
   return *this;
 }
 
-void AgencyCommResult::set(int code, std::string message) {
+void AgencyCommResult::set(ResponseCode code, std::string message) {
   _message = std::move(message);
   _statusCode = code;
   _location.clear();
@@ -430,20 +422,20 @@ void AgencyCommResult::set(int code, std::string message) {
 
 bool AgencyCommResult::connected() const { return _connected; }
 
-int AgencyCommResult::httpCode() const { return _statusCode; }
+rest::ResponseCode AgencyCommResult::httpCode() const { return _statusCode; }
 
 bool AgencyCommResult::sent() const { return _sent; }
 
-int AgencyCommResult::errorCode() const {
+ErrorCode AgencyCommResult::errorCode() const {
   return asResult().errorNumber();
 }
 
 std::string AgencyCommResult::errorMessage() const {
-  return asResult().errorMessage();
+  return std::string{asResult().errorMessage()};
 }
 
-std::pair<std::optional<int>, std::optional<std::string_view>> AgencyCommResult::parseBodyError() const {
-  auto result = std::pair<std::optional<int>, std::optional<std::string_view>>{};
+std::pair<std::optional<ErrorCode>, std::optional<std::string_view>> AgencyCommResult::parseBodyError() const {
+  auto result = std::pair<std::optional<ErrorCode>, std::optional<std::string_view>>{};
 
   if (_vpack != nullptr) {
     auto const body = _vpack->slice();
@@ -452,7 +444,7 @@ std::pair<std::optional<int>, std::optional<std::string_view>> AgencyCommResult:
       try {
         auto const errorCode = body.get(StaticStrings::ErrorCode).getNumber<int>();
         // Save error code if possible, set default error message first
-        result.first = errorCode;
+        result.first = ErrorCode{errorCode};
       } catch (VPackException const&) {
       }
 
@@ -491,11 +483,11 @@ Result AgencyCommResult::asResult() const {
     return Result{};
   } else {
     auto const err = parseBodyError();
-    auto const errorCode = std::invoke([&]() -> int {
+    auto const errorCode = std::invoke([&]() -> ErrorCode {
       if (err.first) {
         return *err.first;
-      } else if (_statusCode > 0) {
-        return _statusCode;
+      } else if (_statusCode != rest::ResponseCode{}) {
+        return ErrorCode{static_cast<int>(_statusCode)};
       } else {
         return TRI_ERROR_INTERNAL;
       }
@@ -523,7 +515,7 @@ void AgencyCommResult::clear() {
   _location = "";
   _message = "";
   _vpack.reset();
-  _statusCode = 0;
+  _statusCode = ResponseCode{};
   _sent = false;
   _connected = false;
 }
@@ -539,7 +531,7 @@ VPackSlice AgencyCommResult::slice() const {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "call to AgencyCommResult::slice() without valid precondition check");
   }
-  return _vpack->slice(); 
+  return _vpack->slice();
 }
 
 void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
@@ -555,7 +547,7 @@ void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
         builder.add("vpack", _vpack->slice());
       }
     }
-    builder.add("statusCode", VPackValue(_statusCode));
+    builder.add("statusCode", VPackValue(static_cast<int>(_statusCode)));
     builder.add(VPackValue("values"));
     {
       VPackObjectBuilder v(&builder);
@@ -640,12 +632,12 @@ std::string AgencyCommHelper::generateStamp() {
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
-    : _server(server),
-      _agency_comm_request_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram<log_scale_t<uint64_t>>(
-          StaticStrings::AgencyCommRequestTimeMs)) {}
+  : _server(server),
+    _agency_comm_request_time_ms(
+      _server.getFeature<arangodb::ClusterFeature>().agency_comm_request_time_ms()) {}
 
-AgencyCommResult AgencyComm::sendServerState(double timeout) {
-  // construct JSON value { "status": "...", "time": "..." }
+  AgencyCommResult AgencyComm::sendServerState(double timeout) {
+  // construct JSON value { "status": "...", "time": "...", "healthy": ... }
   VPackBuilder builder;
 
   try {
@@ -655,7 +647,15 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
     builder.add("status", VPackValue(status));
     std::string const stamp = AgencyCommHelper::generateStamp();
     builder.add("time", VPackValue(stamp));
+
+    if (ServerState::instance()->isDBServer()) {
+      // use storage engine health self-assessment and send it to agency too
+      arangodb::HealthData hd = _server.getFeature<EngineSelectorFeature>().engine().healthCheck();
+      hd.toVelocyPack(builder);
+    }
+
     builder.close();
+
   } catch (...) {
     return AgencyCommResult();
   }
@@ -758,17 +758,18 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
 
   try {
     if (!result.slice().isArray()) {
-      result.set(500, "got invalid result structure for getValues response");
+      result.set(ResponseCode::SERVER_ERROR,
+                 "got invalid result structure for getValues response");
       return result;
     }
 
     if (result.slice().length() != 1) {
-      result.set(500,
+      result.set(ResponseCode::SERVER_ERROR,
                  "got invalid result structure length for getValues response");
       return result;
     }
 
-    result._statusCode = 200;
+    result._statusCode = rest::ResponseCode::OK;
 
   } catch (std::exception const& e) {
     LOG_TOPIC("a6906", ERR, Logger::AGENCYCOMM)
@@ -798,7 +799,7 @@ AgencyCommResult AgencyComm::dump() {
     return result;
   }
 
-  result._statusCode = 200;
+  result._statusCode = rest::ResponseCode::OK;
 
   return result;
 }
@@ -855,11 +856,6 @@ AgencyCommResult AgencyComm::casValue(std::string const& key, VPackSlice const& 
 }
 
 uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
-#ifdef DEBUG_SYNC_REPLICATION
-  if (AgencyComm::syncReplDebug == true) {
-    return debugUniqId++;
-  }
-#endif
   AgencyCommResult readResult;
   AgencyCommResult writeResult;
 
@@ -883,7 +879,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
 
     try {
       oldValue = oldSlice.getNumber<decltype(oldValue)>();
-    } catch (velocypack::Exception& e) {
+    } catch (velocypack::Exception const& e) {
       LOG_TOPIC("74f97", ERR, Logger::AGENCYCOMM)
           << "Sync/LatestID in agency could not be parsed: " << e.what()
           << "; If this error persists, contact the ArangoDB support.";
@@ -1000,13 +996,14 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
                        url, builder.slice());
 
   if (!result.successful() &&
-      result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      result.httpCode() != ResponseCode::PRECONDITION_FAILED) {
     return result;
   }
 
   try {
     if (!transaction.validate(result)) {
-      result.set(500, std::string("validation failed for response to URL " + url));
+      result.set(ResponseCode::SERVER_ERROR,
+                 std::string("validation failed for response to URL " + url));
       LOG_TOPIC("f2083", DEBUG, Logger::AGENCYCOMM)
           << "validation failed for url: " << url
           << ", type: " << transaction.typeName()
@@ -1085,7 +1082,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
     AgencyCommResult result = casValue(key + "/Lock", oldSlice, slice, ttl, timeout);
 
     if (!result.successful() &&
-        result.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+        result.httpCode() == ResponseCode::PRECONDITION_FAILED) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", slice, false, ttl, timeout);
     }
@@ -1168,7 +1165,7 @@ AgencyCommResult toAgencyCommResult(AsyncAgencyCommResult const& result) {
     }
 
     oldResult._message = "";
-    oldResult._statusCode = result.statusCode();
+    oldResult._statusCode = static_cast<ResponseCode>(result.statusCode());
     if (result.response->isContentTypeJSON()) {
       auto vpack = VPackParser::fromJson(result.response->payloadAsString());
       oldResult.setVPack(std::move(vpack));
@@ -1237,7 +1234,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                                    AsyncAgencyComm::RequestType::CUSTOM, std::move(buffer))
                  .get();
   } else {
-    return AgencyCommResult{static_cast<int>(rest::ResponseCode::METHOD_NOT_ALLOWED),
+    return AgencyCommResult{rest::ResponseCode::METHOD_NOT_ALLOWED,
                             "method not supported"};
   }
   LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM)
@@ -1353,10 +1350,6 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("FailedServers"));
       { VPackObjectBuilder dd(&builder); }
       builder.add("Lock", VPackValue("UNLOCKED"));
-      // MapLocalToID is not used for anything since 3.4. It was used in
-      // previous versions to store server ids from --cluster.my-local-info that
-      // were mapped to server UUIDs
-      addEmptyVPackObject("MapLocalToID", builder);
       addEmptyVPackObject("Failed", builder);
       addEmptyVPackObject("Finished", builder);
       addEmptyVPackObject("Pending", builder);
@@ -1383,7 +1376,7 @@ bool AgencyComm::tryInitializeStructure() {
         AgencyPrecondition("Plan", AgencyPrecondition::Type::EMPTY, true));
 
     AgencyCommResult result = sendTransactionWithFailover(initTransaction);
-    if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
+    if (result.httpCode() ==ResponseCode::UNAUTHORIZED) {
       LOG_TOPIC("a695d", ERR, Logger::AUTHENTICATION)
           << "Cannot authenticate with agency,"
           << " check value of --server.jwt-secret";
@@ -1409,7 +1402,7 @@ bool AgencyComm::shouldInitializeStructure() {
 
     if (!result.successful()) {  // Not 200 - 299
 
-      if (result.httpCode() == 401) {
+      if (result.httpCode() == ResponseCode::UNAUTHORIZED) {
         // unauthorized
         LOG_TOPIC("32781", FATAL, Logger::STARTUP)
             << "Unauthorized. Wrong credentials.";

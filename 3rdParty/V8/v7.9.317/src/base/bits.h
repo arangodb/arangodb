@@ -145,7 +145,7 @@ inline size_t RoundUpToPowerOfTwo(size_t value) {
   if (sizeof(size_t) == sizeof(uint64_t)) {
     return RoundUpToPowerOfTwo64(value);
   } else {
-    return RoundUpToPowerOfTwo32(value);
+    return RoundUpToPowerOfTwo32(static_cast<uint32_t>(value));
   }
 }
 

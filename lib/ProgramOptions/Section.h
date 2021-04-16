@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,9 +37,11 @@ struct Section {
   // sections are default copy-constructible and default movable
 
   Section(std::string const& name, std::string const& description,
-          std::string const& alias, bool hidden, bool obsolete)
+          std::string const& link, std::string const& alias, 
+          bool hidden, bool obsolete)
       : name(name),
         description(description),
+        link(link),
         alias(alias),
         hidden(hidden),
         obsolete(obsolete),
@@ -47,7 +49,7 @@ struct Section {
 
   // get display name for the section
   std::string displayName() const { return alias.empty() ? name : alias; }
-
+  
   // whether or not the section has (displayable) options
   bool hasOptions() const;
 
@@ -61,6 +63,7 @@ struct Section {
 
   std::string name;
   std::string description;
+  std::string link;
   std::string alias;
   bool hidden;
   bool obsolete;
@@ -68,14 +71,18 @@ struct Section {
 
   // program options of the section
   std::map<std::string, Option> options;
+  
+  // sub-headlines
+  std::map<std::string, std::string> headlines;
 };
 
 /// @brief section only available in enterprise builds
 /// must have the same storage layout as struct Section
 struct EnterpriseSection : public Section {
   EnterpriseSection(std::string const& name, std::string const& description,
-                    std::string const& alias, bool hidden, bool obsolete)
-      : Section(name, description, alias, hidden, obsolete) {
+                    std::string const& link, std::string const& alias, 
+                    bool hidden, bool obsolete)
+      : Section(name, description, link, alias, hidden, obsolete) {
     enterpriseOnly = true;
   }
 };

@@ -79,8 +79,8 @@
 
 #endif // _MSC_VER
 
-NS_ROOT
-NS_BEGIN(mmap_utils)
+namespace iresearch {
+namespace mmap_utils {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief flushes changes made in memory back to disk
@@ -134,7 +134,7 @@ class IRESEARCH_API mmap_handle : private util::noncopyable {
   bool dontneed_; // request to free pages on close
 }; // mmap_handle
 
-NS_END // mmap_utils
-NS_END // ROOT
+} // mmap_utils
+} // ROOT
 
 #endif // IRESEARCH_MMAP_UTILS_H
