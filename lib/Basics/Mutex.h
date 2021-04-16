@@ -54,17 +54,18 @@
 namespace arangodb {
 
 class Mutex {
- private:
+ public:
   Mutex(Mutex const&) = delete;
   Mutex& operator=(Mutex const&) = delete;
 
- public:
   Mutex();
   ~Mutex();
 
  public:
   void lock();
-  bool tryLock();
+  // purposefully violate our naming convention (try_lock instead of tryLock)
+  // in order to be compatible with std::mutex
+  bool try_lock();
   void unlock();
 
   // assert that the mutex is locked by the current thread. will do

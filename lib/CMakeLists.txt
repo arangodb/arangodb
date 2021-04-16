@@ -107,6 +107,7 @@ add_library(arango STATIC
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
+  Basics/Guarded.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp

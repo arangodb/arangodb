@@ -89,8 +89,6 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
   // Different implementations of the Scheduler may require different
   // options to be set. This requires a solution here.
 
-  options->addSection("server", "Server features");
-
   // max / min number of threads
   options->addOption("--server.maximal-threads",
                      std::string(

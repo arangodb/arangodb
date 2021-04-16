@@ -84,7 +84,7 @@ void Mutex::lock() {
 #endif
 }
 
-bool Mutex::tryLock() {
+bool Mutex::try_lock() {
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   // we must not hold the lock ourselves here
   TRI_ASSERT(_holder != Thread::currentThreadId());
@@ -146,7 +146,7 @@ Mutex::~Mutex() = default;
 
 void Mutex::lock() { AcquireSRWLockExclusive(&_mutex); }
 
-bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
+bool Mutex::try_lock() { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
 
 void Mutex::unlock() { ReleaseSRWLockExclusive(&_mutex); }
 

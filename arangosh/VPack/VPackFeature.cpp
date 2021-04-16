@@ -145,10 +145,17 @@ void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
 #endif
                      new StringParameter(&_outputFile));
 
-  options->addOption("--input-type", "type of input", new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes));
-  options->addOption("--output-type", "type of output", new DiscreteValuesParameter<StringParameter>(&_outputType, outputTypes));
+  options->addOption("--input-type", "type of input",
+                     new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes))
+                     .setIntroducedIn(30800);
+  
+  options->addOption("--output-type", "type of output",
+                     new DiscreteValuesParameter<StringParameter>(&_outputType, outputTypes))
+                     .setIntroducedIn(30800);
+  
   options->addOption("--fail-on-non-json", "fail when trying to emit non-JSON types to JSON output",
-                     new BooleanParameter(&_failOnNonJson));
+                     new BooleanParameter(&_failOnNonJson))
+                     .setIntroducedIn(30800);
 }
 
 void VPackFeature::start() {

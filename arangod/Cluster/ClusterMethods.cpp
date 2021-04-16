@@ -341,17 +341,10 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
     if (it == resultMap.end()) { // no answer from this shard
       auto const& it2 = shardError.find(sId);
       TRI_ASSERT(it2 != shardError.end());
-
-      auto weSend = opCtx.shardMap.find(sId);
-      TRI_ASSERT(weSend != opCtx.shardMap.end());  // We send sth there earlier.
-      size_t count = weSend->second.size();
-      for (size_t i = 0; i < count; ++i) {
-        resultBody.openObject(/*unindexed*/ true);
-        resultBody.add(StaticStrings::Error, VPackValue(true));
-        resultBody.add(StaticStrings::ErrorNum, VPackValue(it2->second));
-        resultBody.close();
-      }
-
+      resultBody.openObject(/*unindexed*/ true);
+      resultBody.add(StaticStrings::Error, VPackValue(true));
+      resultBody.add(StaticStrings::ErrorNum, VPackValue(it2->second));
+      resultBody.close();
     } else {
       VPackSlice arr = it->second;
       // we expect an array of baby-documents, but the response might
