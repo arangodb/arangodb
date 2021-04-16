@@ -77,7 +77,6 @@ struct DummyPool : public network::ConnectionPool {
   }
 
   std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&) override {
-    LOG_DEVEL << "Reconnecting";
     if (_handOutPooledConnectionNext) {
       _handOutPooledConnectionNext = false;
       // We only hand out connected connections
