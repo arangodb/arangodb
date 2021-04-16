@@ -251,7 +251,10 @@ void HeartbeatThread::run() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   std::unordered_map<std::string, std::shared_ptr<AgencyCallback>> serverCallbacks{};
-  if (!ServerState::instance()->isAgent(role)) {
+  if (ServerState::instance()->isCoordinator(role) ||
+      ServerState::instance()->isDBServer(role) ||
+      (ServerState::instance()->isSingleServer(role) &&
+       _server.getFeature<ReplicationFeature>().isActiveFailoverEnabled())) {
     std::function<bool(VPackSlice const& result)> updbs = [self = shared_from_this()] (VPackSlice const& result) {
       LOG_TOPIC("fe092", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current db servers";
       self->updateDBServers();
