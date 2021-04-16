@@ -6,6 +6,9 @@ v3.7.11 (XXXX-XX-XX)
   Also fixed potential shutdown errors due to global replication applier being
   shut down in parallel to a concurrent shut down attempt.
 
+* Fix BTS-352: removed assertion for success of a RocksDB function and throw a
+  proper exception instead.
+
 * Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
   to specify "--ldap2.OPTION". Authentication / Authorization will first check
   the primary LDAP server. If this server cannot authenticate a user, it will
