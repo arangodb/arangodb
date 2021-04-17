@@ -4,6 +4,15 @@
 
 @RESTHEADER{POST /_api/export, Create export cursor, createCursorExport}
 
+@HINTS
+{% hint 'warning' %}
+This endpoint should no longer be used. It is deprecated in version 3.8.0 and
+removed in 3.9.0.
+
+Use streaming AQL queries instead (`POST /_api/cursor` with
+`{ "options": { "stream": true } }`.
+{% endhint %}
+
 @RESTBODYPARAM{flush,boolean,required,}
 if set to *true*, a WAL flush operation will be executed prior to the
 export. The flush operation will start copying documents from the WAL to the
