@@ -9,6 +9,10 @@ devel
   option "--ldap.responsible-for". This file must contain the usernames
   line-by-line.
 
+* Fix cluster internal retry behavior for network communications. In particular
+  retry on 421 (leader refuses operation). This leads to the cluster letting
+  less internal errors out to clients.
+
 * Don't display obsoleted startup options and sections in `--help` and
   `--help-.` commands. Also rename "global" to "general" options.
 
