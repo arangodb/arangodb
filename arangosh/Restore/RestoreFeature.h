@@ -25,12 +25,14 @@
 #ifndef ARANGODB_RESTORE_RESTORE_FEATURE_H
 #define ARANGODB_RESTORE_RESTORE_FEATURE_H 1
 
-#include <shared_mutex>
+#include <atomic>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/debugging.h"
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
 #include "Utils/ManagedDirectory.h"
@@ -38,8 +40,11 @@
 
 namespace arangodb {
 
-namespace httpclient {
+namespace basics {
+class StringBuffer;
+}
 
+namespace httpclient {
 class SimpleHttpResult;
 }
 
@@ -60,7 +65,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
    * @return The name of the feature
    */
   static std::string featureName();
-
+  
   /**
    * @brief Saves a worker error for later handling and clears queued jobs
    * @param error Error from a client worker
@@ -72,6 +77,10 @@ class RestoreFeature final : public application_features::ApplicationFeature {
    * @return  First error from the list, or OK if none exist
    */
   Result getFirstError() const;
+
+
+  std::unique_ptr<basics::StringBuffer> leaseBuffer();
+  void returnBuffer(std::unique_ptr<basics::StringBuffer> buffer) noexcept;
 
   /// @brief Holds configuration data to pass between methods
   struct Options {
@@ -132,23 +141,98 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     std::atomic<uint64_t> totalRead{0};
   };
 
+  /// @brief shared state for a single collection
+  struct SharedState {
+    SharedState() : complete(false) {}
+
+    Mutex mutex;
+    Result result;
+    std::set<size_t> readOffsets;
+    bool complete;
+  };
+  
   /// @brief Stores all necessary data to restore a single collection or shard
-  struct JobData {
-    ManagedDirectory& directory;
+  struct RestoreJob {
+    RestoreJob(RestoreFeature& feature, 
+               RestoreProgressTracker& progressTracker,
+               Options const& options, 
+               Stats& stats, 
+               bool useEnvelope,
+               std::string const& collectionName,
+               std::shared_ptr<SharedState> sharedState);
+
+    virtual ~RestoreJob();
+    
+    virtual Result run(arangodb::httpclient::SimpleHttpClient& client) = 0;
+
+    void updateProgress();
+
+    Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& client,
+                           size_t readOffset,
+                           char const* buffer,
+                           size_t bufferSize);
+    
     RestoreFeature& feature;
     RestoreProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
-    VPackSlice collection;
     bool useEnvelope;
-
-    JobData(ManagedDirectory& directory, RestoreFeature& feature, RestoreProgressTracker& progressTracker,
-            Options const& options, Stats& stats, VPackSlice collection, bool useEnvelope);
+    std::string const collectionName;
+    std::shared_ptr<SharedState> sharedState;
   };
+
+  struct RestoreMainJob : public RestoreJob {
+    RestoreMainJob(ManagedDirectory& directory, 
+                   RestoreFeature& feature, 
+                   RestoreProgressTracker& progressTracker,
+                   Options const& options, 
+                   Stats& stats, 
+                   VPackSlice parameters,
+                   bool useEnvelope);
+    
+    Result run(arangodb::httpclient::SimpleHttpClient& client) override;
+
+    Result dispatchRestoreData(arangodb::httpclient::SimpleHttpClient& client,
+                               size_t readOffset,
+                               char const* data,
+                               size_t length,
+                               bool forceDirect);
+    
+    Result restoreData(arangodb::httpclient::SimpleHttpClient& client);
+
+    /// @brief Restore a collection's indexes given its description
+    Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& client);
+
+    /// @brief Send command to restore a collection's indexes
+    Result sendRestoreIndexes(arangodb::httpclient::SimpleHttpClient& client,
+                              arangodb::velocypack::Slice);
+    
+    ManagedDirectory& directory;
+    VPackSlice parameters;
+  };
+  
+  struct RestoreSendJob : public RestoreJob {
+    RestoreSendJob(RestoreFeature& feature, 
+                   RestoreProgressTracker& progressTracker,
+                   Options const& options, 
+                   Stats& stats, 
+                   bool useEnvelope, 
+                   std::string const& collectionName,
+                   std::shared_ptr<SharedState> sharedState,
+                   size_t readOffset,
+                   std::unique_ptr<basics::StringBuffer> buffer);
+    
+    Result run(arangodb::httpclient::SimpleHttpClient& client) override;
+    
+    size_t const readOffset;
+    std::unique_ptr<basics::StringBuffer> buffer;
+  };
+  
+  ClientTaskQueue<RestoreJob>& taskQueue();
 
  private:
   ClientManager _clientManager;
-  ClientTaskQueue<JobData> _clientTaskQueue;
+  ClientTaskQueue<RestoreJob> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;
   std::unique_ptr<RestoreProgressTracker> _progressTracker;
   int& _exitCode;
@@ -156,6 +240,9 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   Stats _stats;
   Mutex mutable _workerErrorLock;
   std::queue<Result> _workerErrors;
+
+  Mutex _buffersLock;
+  std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;
 };
 
 }  // namespace arangodb
