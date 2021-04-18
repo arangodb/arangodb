@@ -1347,8 +1347,12 @@ Result RestoreFeature::RestoreMainJob::restoreData(arangodb::httpclient::SimpleH
      
       // if we are already at the end of the input file, there is no need
       // to start a background task for the restore. we can simply do it
-      // in this read task
-      bool const forceDirect = (numRead == 0);
+      // in this same thread.
+      // in addition, if we are using the enveloped format, we must restore
+      // data in order. this is because the enveloped data format may contain
+      // documents to insert *AND* documents to remove (this is an MMFiles
+      // legacy).
+      bool const forceDirect = (numRead == 0) || !useEnvelope;
 
       result = dispatchRestoreData(client, datafileReadOffset, buffer->begin(), length, forceDirect);
 
