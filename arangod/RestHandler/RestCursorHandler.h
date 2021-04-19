@@ -84,7 +84,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// in AQL we can post a handler calling this function again.
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus processQuery(bool continuation);
+  RestStatus processQuery();
 
   /// @brief returns the short id of the server which should handle this request
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;

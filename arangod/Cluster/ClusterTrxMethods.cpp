@@ -132,12 +132,18 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
 
+  double const lockTimeout = state.options().lockTimeout;
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   buildTransactionBody(state, server, builder);
 
   network::RequestOptions reqOpts;
   reqOpts.database = state.vocbase().name();
+  // set request timeout a little higher than our lock timeout, so that 
+  // responses that are close to the timeout value have a chance of getting
+  // back to us (note: the 5 is arbitrary here, could as well be 3.0 or 10.0)
+  reqOpts.timeout = network::Timeout(lockTimeout + 5.0);
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
@@ -352,6 +358,9 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       }
       requests.emplace_back(::beginTransactionRequest(state, leader));
     }
+    
+    // use original lock timeout here
+    state.options().lockTimeout = oldLockTimeout;
 
     if (requests.empty()) {
       return res;
@@ -394,9 +403,6 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     }
 
     // Entering slow path
-
-    // use original lock timeout here
-    state.options().lockTimeout = oldLockTimeout;
 
     TRI_ASSERT(fastPathResult.is(TRI_ERROR_LOCK_TIMEOUT));
 
