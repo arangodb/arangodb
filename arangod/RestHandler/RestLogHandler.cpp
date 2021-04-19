@@ -3,6 +3,7 @@
 //
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 
 #include <Cluster/ServerState.h>
 #include <Network/ConnectionPool.h>
@@ -307,7 +308,15 @@ RestStatus RestLogHandler::handleGetRequest() {
         VPackObjectBuilder builder(&result);
         result.add("index", VPackValue(entry->logIndex().value));
         result.add("term", VPackValue(entry->logTerm().value));
-        result.add("payload", VPackValue(entry->logPayload().dummy));
+
+        {
+          VPackParser parser; // TODO remove parser and store vpack
+          parser.parse(entry->logPayload().dummy);
+          auto parserResult = parser.steal();
+          result.add("payload", parserResult->slice());
+        }
+
+
       }
       generateOk(rest::ResponseCode::OK, result.slice());
 
