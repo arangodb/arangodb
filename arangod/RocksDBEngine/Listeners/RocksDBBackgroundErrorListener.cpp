@@ -39,7 +39,7 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
   }
 
   if (!_called.exchange(true)) {
-    std::string operation = "unknown";
+    char const* operation = "unknown";
     switch (reason) {
       case rocksdb::BackgroundErrorReason::kFlush: {
         operation = "flush";
@@ -63,6 +63,11 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
         << "RocksDB encountered a background error during a " << operation << " operation: "
         << (status != nullptr ? status->ToString() : "unknown error") << "; The database will be put in read-only mode, and subsequent write errors are likely. It is advised to shut down this instance, resolve the error offline and then restart it.";
   }
+}
+
+void RocksDBBackgroundErrorListener::resume() noexcept {
+  bool expected = true;
+  _called.compare_exchange_strong(expected, false);
 }
 
 }  // namespace arangodb

@@ -50,6 +50,7 @@ void RocksDBBackgroundThread::beginShutdown() {
 
 void RocksDBBackgroundThread::run() {
   double const startTime = TRI_microtime();
+  uint64_t runs = 0;
 
   while (!isStopping()) {
     {
@@ -60,9 +61,14 @@ void RocksDBBackgroundThread::run() {
     if (_engine.inRecovery()) {
       continue;
     }
+    
+    if (++runs % 16 == 0) {
+      // send a Resume() command to RocksDB
+      _engine.tryResume();
+    }
 
     TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }
-
+    
     try {
       if (!isStopping()) {
         double start = TRI_microtime();

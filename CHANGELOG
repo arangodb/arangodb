@@ -1,6 +1,16 @@
 devel
 -----
 
+* Try to automatically resume RocksDB operations after a RocksDB background
+  error. On a background error, RocksDB may have gone into read-only mode and
+  not try to recover from it automatically in some situations, e.g. if the
+  background error happened during compaction. In this case it will stay in
+  read-only mode until shutdown, or until its Resume() API is called.
+  Now we try to automatically resume RocksDB operations about every 15 seconds
+  in case a background error has happened. Resuming may not succeed in all
+  cases, but it can help in some cases if the original error condition is
+  fixed.
+
 * Fix cluster internal retry behavior for network communications. In particular
   retry on 421 (leader refuses operation). This leads to the cluster letting
   less internal errors out to clients.
