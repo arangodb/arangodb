@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix sporadic ArangoSearch error
+  `Invalid RL encoding in 'dense_fixed_offset_column_key'`
+
 * Fix cluster internal retry behavior for network communications. In particular
   retry on 421 (leader refuses operation). This leads to the cluster letting
   less internal errors out to clients.
