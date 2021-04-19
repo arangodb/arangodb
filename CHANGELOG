@@ -1,6 +1,9 @@
 v3.6.14 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
+  'dense_fixed_offset_column_key'`.
+
 * Fixed a problem in document batch operations, where errors from one shard were
   reported multiple times, if the shard is completely off line.
 
