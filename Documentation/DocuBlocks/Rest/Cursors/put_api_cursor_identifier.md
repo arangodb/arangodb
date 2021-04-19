@@ -1,8 +1,14 @@
 
-@startDocuBlock post_api_cursor_identifier
+@startDocuBlock put_api_cursor_identifier
 @brief return the next results from an existing cursor
 
-@RESTHEADER{POST /_api/cursor/{cursor-identifier}, Read next batch from cursor, modifyQueryCursorPost}
+@RESTHEADER{PUT /_api/cursor/{cursor-identifier}, Read next batch from cursor, modifyQueryCursorPut}
+
+@HINTS
+{% hint 'warning' %}
+There is a functionally equivalent HTTP POST counterpart to this endpoint, which should
+be used preferrably.
+{% endhint %}
 
 @RESTURLPARAMETERS
 
@@ -39,7 +45,7 @@ with *HTTP 404*.
 
 Valid request for next batch
 
-@EXAMPLE_ARANGOSH_RUN{RestCursorPostForLimitReturnCont}
+@EXAMPLE_ARANGOSH_RUN{RestCursorPutForLimitReturnCont}
     var url = "/_api/cursor";
     var cn = "products";
     db._drop(cn);
@@ -70,7 +76,7 @@ Valid request for next batch
 
 Missing identifier
 
-@EXAMPLE_ARANGOSH_RUN{RestCursorPostMissingCursorIdentifier}
+@EXAMPLE_ARANGOSH_RUN{RestCursorPutMissingCursorIdentifier}
     var url = "/_api/cursor";
 
     var response = logCurlRequest('PUT', url, '');
@@ -82,7 +88,7 @@ Missing identifier
 
 Unknown identifier
 
-@EXAMPLE_ARANGOSH_RUN{RestCursorPostInvalidCursorIdentifier}
+@EXAMPLE_ARANGOSH_RUN{RestCursorPutInvalidCursorIdentifier}
     var url = "/_api/cursor/123123";
 
     var response = logCurlRequest('PUT', url, '');
