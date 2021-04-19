@@ -29,6 +29,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let internal = require('internal'); // OK: processCsvFile
+const request = require('@arangodb/request');
 
 exports.getServerById = function (id) {
   const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
@@ -98,12 +99,15 @@ exports.waitForFoxxInitialized = function () {
       }
     } else {
       // arangosh
-  
+
       const coordinators = exports.getEndpointsByType('coordinator');
       let done = 0;
       coordinators.forEach((endpoint) => {
-        let res = arango.GET_RAW('/wenn-der-fuxxmann-zweimal-klingelt');
-        if (res.code === 404) {
+        let res = request.get({
+          url: endpoint + '/wenn-der-fuxxmann-zweimal-klingelt',
+          timeout: 5
+        });
+        if (res.status === 404) {
           // selfHeal was already executed - Foxx is ready!
           ++done;
         }
