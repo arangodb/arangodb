@@ -15,6 +15,10 @@ devel
   API. This is true for recent 3.7 and 3.8 versions, as the POST API will be
   backported there as well.
 
+* Fix cluster internal retry behavior for network communications. In particular
+  retry on 421 (leader refuses operation). This leads to the cluster letting
+  less internal errors out to clients.
+
 * Don't display obsoleted startup options and sections in `--help` and
   `--help-.` commands. Also rename "global" to "general" options.
 
