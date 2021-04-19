@@ -59,8 +59,8 @@ function OptionsTestSuite () {
     setUp : function () {
       db._drop(cn1);
       db._drop(cn2);
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, { numberOfShards: 2 });
+      c2 = db._create(cn2, { numberOfShards: 2 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,20 +122,14 @@ function OptionsTestSuite () {
         }
       }
 
-      // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray();
-      assertEqual(docs[0].value, true);
-      assertEqual(docs[1].value, true);
+      // both transactions should have succeeded
+      assertTrue(c2.document("runner1").value);  // runner1 transaction should succeed
+      assertTrue(c2.document("runner2").value); // runner2 transaction should succeed
     },
-
 
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(OptionsTestSuite);
 
