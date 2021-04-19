@@ -1,8 +1,8 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
-* Fix sporadic ArangoSearch error
-  `Invalid RL encoding in 'dense_fixed_offset_column_key'`
+* Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
+  'dense_fixed_offset_column_key'`.
 
 * Timely updates of rebootId / cluster membership of DB servers and coordinators
   in ClusterInfo. Fixes BTS-368 detected in chaos tests.
