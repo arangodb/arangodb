@@ -125,7 +125,8 @@ class InMemoryLog : public LogFollower {
   auto becomeLeader(LogTerm term, std::vector<std::shared_ptr<LogFollower>> const& follower,
                     std::size_t writeConcern) -> void;
 
-  [[nodiscard]] auto getStatistics() const -> LogStatistics;
+  [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
+  [[nodiscard]] auto getStatus() const -> LogStatus;
 
   auto runAsyncStep() -> void;
 

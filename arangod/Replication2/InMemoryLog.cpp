@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 
 #include <Basics/application-exit.h>
+#include <Basics/overload.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <utility>
@@ -138,6 +139,29 @@ auto InMemoryLog::GuardedInMemoryLog::insert(LogPayload payload) -> LogIndex {
   return index;
 }
 
+auto InMemoryLog::getStatus() const -> LogStatus {
+  auto self = acquireMutex();
+  return std::visit(overload{[&](Unconfigured const&) {
+                               return LogStatus{UnconfiguredStatus{}};
+                             },
+                             [&](LeaderConfig const& leader) {
+                               LeaderStatus status;
+                               status.local = self->getStatistics();
+                               for (auto const& f : leader.follower) {
+                                 status.follower[f._impl->participantId()] =
+                                     LogStatistics{f.lastAckedIndex, f.lastAckedCommitIndex};
+                               }
+                               return LogStatus{std::move(status)};
+                             },
+                             [&](FollowerConfig const& follower) {
+                               FollowerStatus status;
+                               status.local = self->getStatistics();
+                               status.leader = follower.leaderId;
+                               return LogStatus{std::move(status)};
+                             }},
+                    self->_role);
+}
+
 LogIndex InMemoryLog::GuardedInMemoryLog::nextIndex() const {
   return LogIndex{_log.size() + 1};
 }
@@ -202,7 +226,7 @@ auto InMemoryLog::GuardedInMemoryLog::becomeLeader(
   _currentTerm = term;
 }
 
-[[nodiscard]] auto InMemoryLog::getStatistics() const -> LogStatistics {
+[[nodiscard]] auto InMemoryLog::getLocalStatistics() const -> LogStatistics {
   auto self = acquireMutex();
   return self->getStatistics();
 }

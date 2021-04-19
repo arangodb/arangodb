@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <variant>
 
 #include <Basics/Identifier.h>
 
@@ -89,7 +90,29 @@ using ParticipantId = std::string;
 struct LogStatistics {
   LogIndex spearHead{};
   LogIndex commitIndex{};
+
+  void toVelocyPack(velocypack::Builder& builder) const;
 };
+
+struct LeaderStatus {
+  LogStatistics local;
+  std::unordered_map<ParticipantId, LogStatistics> follower;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
+
+struct FollowerStatus {
+  LogStatistics local;
+  ParticipantId leader;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
+
+struct UnconfiguredStatus {
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
+
+using LogStatus = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
 
 // TODO This should probably be moved into a separate file
 class LogEntry {

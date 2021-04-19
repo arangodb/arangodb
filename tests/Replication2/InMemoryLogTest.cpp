@@ -39,7 +39,7 @@ TEST(InMemoryLogTest, test) {
   log.becomeLeader(LogTerm{1}, {}, 1);
 
   {
-    auto stats = log.getStatistics();
+    auto stats = log.getLocalStatistics();
     EXPECT_EQ(LogIndex{0}, stats.commitIndex);
     EXPECT_EQ(LogIndex{0}, stats.spearHead);
   }
@@ -51,7 +51,7 @@ TEST(InMemoryLogTest, test) {
   auto f = log.waitFor(index);
 
   {
-    auto stats = log.getStatistics();
+    auto stats = log.getLocalStatistics();
     EXPECT_EQ(LogIndex{0}, stats.commitIndex);
     EXPECT_EQ(LogIndex{1}, stats.spearHead);
   }
@@ -61,7 +61,7 @@ TEST(InMemoryLogTest, test) {
   EXPECT_TRUE(f.isReady());
 
   {
-    auto stats = log.getStatistics();
+    auto stats = log.getLocalStatistics();
     EXPECT_EQ(LogIndex{1}, stats.commitIndex);
     EXPECT_EQ(LogIndex{1}, stats.spearHead);
   }
@@ -305,13 +305,13 @@ TEST(InMemoryLog, replicationTest) {
     }
 
     {
-      auto stats = followerLog->getStatistics();
+      auto stats = followerLog->getLocalStatistics();
       ASSERT_EQ(stats.commitIndex, LogIndex{0});
       ASSERT_EQ(stats.spearHead, LogIndex{1});
     }
     followerLog->runAsyncAppendEntries();
     {
-      auto stats = followerLog->getStatistics();
+      auto stats = followerLog->getLocalStatistics();
       ASSERT_EQ(stats.commitIndex, LogIndex{0});
       ASSERT_EQ(stats.spearHead, LogIndex{1});
     }
@@ -320,7 +320,7 @@ TEST(InMemoryLog, replicationTest) {
     followerLog->becomeFollower(LogTerm{2}, leaderId);
     followerLog->runAsyncAppendEntries();
     {
-      auto stats = followerLog->getStatistics();
+      auto stats = followerLog->getLocalStatistics();
       ASSERT_EQ(stats.commitIndex, LogIndex{2});
       ASSERT_EQ(stats.spearHead, LogIndex{2});
     }
@@ -353,7 +353,7 @@ TEST(InMemoryLog, replicationTest2) {
     }
 
     {
-      auto stats = leaderLog->getStatistics();
+      auto stats = leaderLog->getLocalStatistics();
       ASSERT_EQ(stats.commitIndex, LogIndex{0});
       ASSERT_EQ(stats.spearHead, LogIndex{4});
     }
@@ -373,20 +373,20 @@ TEST(InMemoryLog, replicationTest2) {
     ASSERT_EQ(info->term, LogTerm{1});
 
     {
-      auto stats = leaderLog->getStatistics();
+      auto stats = leaderLog->getLocalStatistics();
       ASSERT_EQ(stats.commitIndex, LogIndex{4});
       ASSERT_EQ(stats.spearHead, LogIndex{4});
     }
 
     {
-      auto stats = followerLog->getStatistics();
+      auto stats = followerLog->getLocalStatistics();
       ASSERT_EQ(stats.commitIndex, LogIndex{0});
       ASSERT_EQ(stats.spearHead, LogIndex{4});
     }
     ASSERT_TRUE(followerLog->hasPendingAppendEntries());
     followerLog->runAsyncAppendEntries();
     {
-      auto stats = followerLog->getStatistics();
+      auto stats = followerLog->getLocalStatistics();
       ASSERT_EQ(stats.commitIndex, LogIndex{4});
       ASSERT_EQ(stats.spearHead, LogIndex{4});
     }

@@ -11,6 +11,7 @@
 #include <Replication2/InMemoryLog.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/overload.h"
 #include "RestLogHandler.h"
 
 using namespace arangodb;
@@ -168,7 +169,7 @@ RestStatus RestLogHandler::handlePostRequest() {
       follower.emplace_back(std::make_shared<FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
     }
 
-    log->becomeLeader(term, std::move(follower), writeConcern);
+    log->becomeLeader(term, follower, writeConcern);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
   } else if (verb == "becomeFollower") {
     auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
@@ -202,14 +203,11 @@ RestStatus RestLogHandler::handleGetRequest() {
     {
       VPackObjectBuilder arrayBuilder(&response);
       for (auto const& [id, log] : _vocbase._logs) {
-        auto stats = log->getStatistics();
+        auto stats = log->getLocalStatistics();
 
         auto idString = std::to_string(id.id());
-        {
-          VPackObjectBuilder ob(&response, idString);
-          response.add("commitIndex", VPackValue(stats.commitIndex.value));
-          response.add("spearHead", VPackValue(stats.spearHead.value));
-        }
+        response.add(VPackValue(idString));
+        stats.toVelocyPack(response);
       }
     }
 
@@ -223,13 +221,26 @@ RestStatus RestLogHandler::handleGetRequest() {
     if (auto it = _vocbase._logs.find(logId); it != _vocbase._logs.end()) {
       log = it->second;
     } else {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown log");
+      generateError(rest::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown log");
       return RestStatus::DONE;
     }
   }
 
-
   if (suffixes.size() == 1) {
+    VPackBuilder buffer;
+    std::visit([&](auto const& status) { status.toVelocyPack(buffer); }, log->getStatus());
+    generateOk(rest::ResponseCode::OK, buffer.slice());
+    return RestStatus::DONE;
+  } else if (suffixes.size() != 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_api/log/<log-id>");
+    return RestStatus::DONE;
+  }
+
+  auto const& verb = suffixes[1];
+
+  if (verb == "dump") {
     // dump log
     auto [idx, snapshot] = log->createSnapshot();
     VPackBuilder result;
@@ -246,10 +257,10 @@ RestStatus RestLogHandler::handleGetRequest() {
       }
     }
 
+    generateOk(rest::ResponseCode::OK, result.slice());
   } else {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expect GET /_api/log/<log-id>");
-
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "expecting one of the resources 'dump', ");
   }
   return RestStatus::DONE;
 }
