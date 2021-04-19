@@ -301,7 +301,7 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
   }
 }
 
-/// @brief handle CRUD api shard responses, slow path
+/// @brief handle CRUD api shard responses, fast path
 template <typename F, typename CT>
 OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
                                              std::vector<Try<network::Response>> const& results) {
@@ -320,7 +320,22 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
     if (commError != TRI_ERROR_NO_ERROR) {
       shardError.try_emplace(sId, commError);
     } else {
-      resultMap.try_emplace(sId, res.slice());
+      VPackSlice result = res.slice();
+      // we expect an array of baby-documents, but the response might
+      // also be an error, if the DBServer threw a hissy fit
+      if (result.isObject() && 
+          result.get(StaticStrings::Error).isBoolean() &&
+          result.get(StaticStrings::Error).getBoolean()) {
+        // an error occurred, now rethrow the error
+        auto code = ::ErrorCode{result.get(StaticStrings::ErrorNum).getNumericValue<int>()};
+        VPackSlice msg = result.get(StaticStrings::ErrorMessage);
+        if (msg.isString()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(code, msg.copyString());
+        } else {
+          THROW_ARANGO_EXCEPTION(code);
+        }
+      }
+      resultMap.try_emplace(std::move(sId), result);
       network::errorCodesFromHeaders(res.response().header.meta(), errorCounter, true);
       code = res.statusCode();
     }
@@ -347,20 +362,6 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
       resultBody.close();
     } else {
       VPackSlice arr = it->second;
-      // we expect an array of baby-documents, but the response might
-      // also be an error, if the DBServer threw a hissy fit
-      if (arr.isObject() && arr.hasKey(StaticStrings::Error) &&
-          arr.get(StaticStrings::Error).isBoolean() &&
-          arr.get(StaticStrings::Error).getBoolean()) {
-        // an error occurred, now rethrow the error
-        auto res = ::ErrorCode{arr.get(StaticStrings::ErrorNum).getNumericValue<int>()};
-        VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
-        if (msg.isString()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(res, msg.copyString());
-        } else {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-      }
       resultBody.add(arr.at(pair.second));
     }
   }
@@ -1514,11 +1515,11 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
 
       auto cb = [options](network::Response&& res) -> OperationResult {
         if (res.error != fuerte::Error::NoError) {
-          return OperationResult(network::fuerteToArangoErrorCode(res), options);
+          return OperationResult(network::fuerteToArangoErrorCode(res), std::move(options));
         }
 
         return network::clusterResultInsert(res.statusCode(),
-                                            res.response().stealPayload(), options, {});
+                                            res.response().stealPayload(), std::move(options), {});
       };
       return std::move(futures[0]).thenValue(cb);
     }
@@ -1623,15 +1624,15 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
-          return network::clusterResultDelete(res.statusCode(),
-                                              res.response().stealPayload(), options, {});
+          return network::clusterResultRemove(res.statusCode(),
+                                              res.response().stealPayload(), std::move(options), {});
         };
         return std::move(futures[0]).thenValue(cb);
       }
 
       return futures::collectAll(std::move(futures))
           .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) -> OperationResult {
-            return handleCRUDShardResponsesFast(network::clusterResultDelete, opCtx, results);
+            return handleCRUDShardResponsesFast(network::clusterResultRemove, opCtx, results);
           });
     });
 
@@ -1680,7 +1681,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 
     return futures::collectAll(std::move(futures))
     .thenValue([=](std::vector<Try<network::Response>>&& responses) mutable -> OperationResult {
-      return ::handleCRUDShardResponsesSlow(network::clusterResultDelete, expectedLen,
+      return ::handleCRUDShardResponsesSlow(network::clusterResultRemove, expectedLen,
                                             std::move(options), responses);
     });
   });
@@ -1878,7 +1879,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
           return network::clusterResultDocument(res.statusCode(),
-                                                res.response().stealPayload(), options, {});
+                                                res.response().stealPayload(), std::move(options), {});
         });
       }
 
@@ -2399,7 +2400,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
           return network::clusterResultModify(res.statusCode(),
-                                              res.response().stealPayload(), options, {});
+                                              res.response().stealPayload(), std::move(options), {});
         };
         return std::move(futures[0]).thenValue(cb);
       }
