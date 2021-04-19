@@ -395,8 +395,6 @@ void HeartbeatThread::runDBServer() {
 
   using namespace std::chrono_literals;
 
-  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
-
   while (!isStopping() && !server().getFeature<DatabaseFeature>().started()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     LOG_TOPIC("eec21", DEBUG, Logger::HEARTBEAT)
@@ -1088,6 +1086,7 @@ bool HeartbeatThread::init() {
   if (ServerState::instance()->isClusterRole() && !sendServerState()) {
     return false;
   }
+  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
 
   return true;
 }
