@@ -254,6 +254,7 @@ class StaticStrings {
   static std::string const GraphDropCollection;
   static std::string const GraphCreateCollection;
   static std::string const GraphEdgeDefinitions;
+  static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;

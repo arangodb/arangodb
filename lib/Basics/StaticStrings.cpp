@@ -271,6 +271,7 @@ std::string const StaticStrings::GraphOptions("options");
 std::string const StaticStrings::GraphSmartGraphAttribute(
     "smartGraphAttribute");
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
+std::string const StaticStrings::GraphEdgeDefinitionType("type");
 std::string const StaticStrings::GraphOrphans("orphanCollections");
 std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
