@@ -53,29 +53,33 @@ struct FakePersistedLog : PersistedLog {
 };
 
 struct FakeLogFollower : LogFollower {
-  explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id, std::string database)
-      :  pool(pool), id(std::move(id)), database(database) {}
+  explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
+                           std::string database, LogId logId)
+      :  pool(pool), id(std::move(id)), database(database), logId(logId) {}
   auto participantId() const noexcept -> ParticipantId override { return id; }
   auto appendEntries(AppendEntriesRequest request)
       -> arangodb::futures::Future<AppendEntriesResult> override {
     VPackBufferUInt8  buffer;
     {
-      VPackBuilder builder;
+      VPackBuilder builder(buffer);
       request.toVelocyPack(builder);
     }
+
+    auto path = "_api/log/" + std::to_string(logId.id()) + "/appendEntries";
 
     network::RequestOptions opts;
     opts.database = database;
     LOG_DEVEL << "sending append entries to " << id << " with payload " << VPackSlice(buffer.data()).toJson();
-    auto f = network::sendRequest(pool, "server:" + id, fuerte::RestVerb::Post, "_api/log/appendEntries", std::move(buffer), opts);
+    auto f = network::sendRequest(pool, "server:" + id, fuerte::RestVerb::Post, path, std::move(buffer), opts);
 
     return std::move(f).thenValue([this](network::Response result) -> AppendEntriesResult {
       LOG_DEVEL << "Append entries for " << id << " returned, fuerte ok = " << result.ok();
       if (result.fail()) {
         return AppendEntriesResult{false, LogTerm(0)};
       }
-
-      return AppendEntriesResult::fromVelocyPack(result.slice());
+      LOG_DEVEL << "Result for " << id << " is " << result.slice().toJson();
+      TRI_ASSERT(result.slice().get("error").isFalse()); // TODO
+      return AppendEntriesResult::fromVelocyPack(result.slice().get("result"));
     });
 
   }
@@ -83,6 +87,7 @@ struct FakeLogFollower : LogFollower {
   network::ConnectionPool *pool;
   ParticipantId id;
   std::string database;
+  LogId logId;
 };
 
 RestStatus RestLogHandler::handlePostRequest() {
@@ -134,7 +139,7 @@ RestStatus RestLogHandler::handlePostRequest() {
   if (auto& verb = suffixes[1]; verb == "insert") {
     auto idx = log->insert(LogPayload{body.toJson()});
 
-    auto f = log->waitFor(idx).thenValue([this](std::shared_ptr<QuorumData>&& quorum) {
+    auto f = log->waitFor(idx).thenValue([this, idx](std::shared_ptr<QuorumData>&& quorum) {
       VPackBuilder response;
       {
         VPackObjectBuilder ob(&response);
@@ -145,10 +150,11 @@ RestStatus RestLogHandler::handlePostRequest() {
           response.add(VPackValue(part));
         }
       }
-
-      generateOk(rest::ResponseCode::OK, response);
+      LOG_DEVEL << "insert completed idx = " << idx.value;
+      generateOk(rest::ResponseCode::ACCEPTED, response.slice());
     });
 
+    log->runAsyncStep(); // TODO
     return waitForFuture(std::move(f));
 
   } else if(verb == "becomeLeader") {
@@ -159,7 +165,7 @@ RestStatus RestLogHandler::handlePostRequest() {
     std::vector<std::shared_ptr<LogFollower>> follower;
     for (auto const& part : VPackArrayIterator(body.get("follower"))) {
       auto partId = part.copyString();
-      follower.emplace_back(std::make_shared<FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name()));
+      follower.emplace_back(std::make_shared<FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
     }
 
     log->becomeLeader(term, std::move(follower), writeConcern);

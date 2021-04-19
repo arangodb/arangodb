@@ -382,7 +382,7 @@ void InMemoryLog::GuardedInMemoryLog::checkCommitIndex() {
   TRI_ASSERT(commitIndex >= _commitIndex);
   if (commitIndex > _commitIndex) {
     std::vector<ParticipantId> quorum;
-    std::transform(indexes.begin(), indexes.end(), std::back_inserter(quorum),
+    std::transform(indexes.begin(), indexes.begin() + quorum_size, std::back_inserter(quorum),
                    [](auto& p) { return p.second; });
 
     auto quorum_data =
