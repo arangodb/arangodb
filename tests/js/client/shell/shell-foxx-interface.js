@@ -173,7 +173,8 @@ function foxxInterfaceSuite () {
       // we don't create bodies for head requests anymore:
       //assertTrue(res.body instanceof Buffer);
       //assertEqual(res.body.length, 0);
-      
+      assertUndefined(res.body);
+
       assertEqual(res.headers['content-length'], pixelGif.length);
       assertEqual(res.headers['content-type'], binaryMime);
       assertEqual(res.headers['test'], 'header');
