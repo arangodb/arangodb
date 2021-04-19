@@ -1893,10 +1893,14 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
 v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
                                              v8::Isolate* isolate) {
   auto responseBody = response.payload();
-
-  if ((response.contentEncoding() == fuerte::ContentEncoding::Identity) ||
-      response.isContentTypeHtml() ||
-      response.isContentTypeText()) {
+  if ((responseBody.size() > 0) &&
+      (response.contentEncoding() == fuerte::ContentEncoding::Identity) &&
+      (
+        response.isContentTypeJSON() ||
+        response.isContentTypeText() ||
+        response.isContentTypeHtml()
+        )
+    ) {
     const char* bodyStr = reinterpret_cast<const char*>(responseBody.data());
     return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
   } else {
@@ -2089,11 +2093,12 @@ again:
       ).FromMaybe(false);
   }
 
-  auto contentType = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
-  headers->Set(context,
-               TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader),
-               contentType).FromMaybe(false);
-
+  if (response->contentType() != fuerte::ContentType::Custom) {
+    auto contentType = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
+    headers->Set(context,
+                 TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader),
+                 contentType).FromMaybe(false);
+  }
   for (auto const& it : response->header.meta()) {
     headers->Set(context,
                  TRI_V8_STD_STRING(isolate, it.first),
