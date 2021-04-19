@@ -151,10 +151,10 @@ RestStatus RestLogHandler::handlePostRequest() {
         }
       }
 
-      generateOk(rest::ResponseCode::ACCEPTED, response);
+      generateOk(rest::ResponseCode::ACCEPTED, response.slice());
     });
 
-    log->runAsyncStep();
+    log->runAsyncStep(); // TODO
     return waitForFuture(std::move(f));
 
   } else if(verb == "becomeLeader") {
