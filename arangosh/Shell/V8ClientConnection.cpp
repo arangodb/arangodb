@@ -1772,11 +1772,15 @@ void translateHeaders(fu::Request& request,
   for (auto& pair : headerFields) {
     if (boost::iequals(StaticStrings::ContentTypeHeader, pair.first)) {
       if (pair.second == StaticStrings::MimeTypeVPack) {
-        request.header.contentType(fu::ContentType::VPack);
+        if (forceJson) {
+          request.header.contentType(fu::ContentType::Json);
+        } else {
+          request.header.contentType(fu::ContentType::VPack);
+        }
       } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-               (memcmp(pair.second.c_str(),
-                       StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-                       StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
+                 (pair.second.compare(0,
+                                      StaticStrings::MimeTypeJsonNoEncoding.length(),
+                                      StaticStrings::MimeTypeJsonNoEncoding) == 0)) {
         // ignore encoding etc.
         request.header.contentType(fu::ContentType::Json);
       } else {
