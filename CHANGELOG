@@ -18,6 +18,9 @@ v3.8.0 (XXXX-XX-XX)
   order. However, the enveloped format may contain documents and remove 
   operations, which need to be restored in the original order. 
 
+* Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
+  'dense_fixed_offset_column_key'`.
+
 * Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
   replacement for PUT `/_api/cursor/<cursor-id>`. The POST API is functionally
   equivalent to the existing PUT API. The benefit of using the POST API is that
