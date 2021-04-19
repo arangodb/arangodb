@@ -1044,6 +1044,7 @@ Result RestReplicationHandler::processRestoreCollection(
 
   std::shared_ptr<LogicalCollection> col;
   auto lookupResult = methods::Collections::lookup(_vocbase, name, col);
+
   if (lookupResult.ok()) {
     TRI_ASSERT(col);
     if (dropExisting) {
@@ -1074,6 +1075,9 @@ Result RestReplicationHandler::processRestoreCollection(
                         std::string("unable to drop collection '") + name +
                             "': " + dropResult.errorMessage());
         }
+
+        // we just removed the collection, so we cannot rely on it being present now
+        col.reset();
       } catch (basics::Exception const& ex) {
         LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
             << "processRestoreCollection "
@@ -1224,7 +1228,7 @@ Result RestReplicationHandler::processRestoreCollection(
     s = parameters.get("shardingStrategy");
     if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
       // downgrade sharding strategy to just hash
-      toMerge.add("shardingStrategy", VPackValue("hash"));
+      toMerge.add(StaticStrings::shardingStrategy, VPackValue("hash"));
       changes.push_back("changed 'shardingStrategy' attribute value to 'hash'");
     }
 
@@ -1302,22 +1306,24 @@ Result RestReplicationHandler::processRestoreCollection(
     // We do never take any responsibility of the
     // value this pointer will point to.
     LogicalCollection* colPtr = nullptr;
-
-    // now re-create the collection
-    int res = createCollection(parameters, &colPtr);
+    int res = createCollection(parameters, colPtr);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res, std::string("unable to create collection: ") + TRI_errno_string(res));
     }
 
+    // If we get here, we must have a collection ptr.
+    TRI_ASSERT(colPtr != nullptr);
+  
     // might be also called on dbservers
     if (name[0] != '_' && !ExecContext::current().isSuperuser() &&
         ServerState::instance()->isSingleServer()) {
+
       auth::UserManager* um = AuthenticationFeature::instance()->userManager();
       TRI_ASSERT(um != nullptr);  // should not get here
       if (um != nullptr) {
         um->updateUser(ExecContext::current().user(), [&](auth::User& entry) {
-          entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
+          entry.grantCollection(_vocbase.name(), name, auth::Level::RW);
           return TRI_ERROR_NO_ERROR;
         });
       }
@@ -2925,8 +2931,8 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::createCollection(VPackSlice slice,
-                                             arangodb::LogicalCollection** dst) {
-  TRI_ASSERT(dst != nullptr);
+                                             arangodb::LogicalCollection*& dst) {
+  TRI_ASSERT(dst == nullptr);
 
   if (!slice.isObject()) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2959,6 +2965,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   if (col != nullptr && col->type() == type) {
     // TODO
     // collection already exists. TODO: compare attributes
+    dst = col.get();
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -3013,9 +3020,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   TRI_ASSERT(col->planId() == planId);
 #endif
 
-  if (dst != nullptr) {
-    *dst = col.get();
-  }
+  dst = col.get();
 
   return TRI_ERROR_NO_ERROR;
 }
