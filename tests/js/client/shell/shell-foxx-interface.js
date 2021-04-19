@@ -170,9 +170,6 @@ function foxxInterfaceSuite () {
     testFoxxInterfaceHeadBinary: function () {
       let res = arango.HEAD_RAW(binUrl);
       assertEqual(res.code, 200, res.parsedBody);
-      // we don't create bodies for head requests anymore:
-      //assertTrue(res.body instanceof Buffer);
-      //assertEqual(res.body.length, 0);
       assertUndefined(res.body);
 
       assertEqual(res.headers['content-length'], pixelGif.length);
