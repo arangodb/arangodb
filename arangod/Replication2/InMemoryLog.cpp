@@ -356,7 +356,11 @@ void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(Follower& follower) {
   follower.requestInFlight = true;
   follower._impl->appendEntries(std::move(req))
       .thenFinal([this, &follower, lastIndex,
-                  currentCommitIndex](futures::Try<AppendEntriesResult>&& res) {
+                  currentCommitIndex, currentTerm = _currentTerm](futures::Try<AppendEntriesResult>&& res) {
+        // TODO This is not yet concurrency-safe
+        if (currentTerm != _currentTerm) {
+          return;
+        }
         TRI_ASSERT(res.hasValue());
         follower.requestInFlight = false;
         auto& response = res.get();

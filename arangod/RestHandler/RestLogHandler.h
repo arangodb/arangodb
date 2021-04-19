@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef ARANGODB3_RESTLOGHANDLER_H
 #define ARANGODB3_RESTLOGHANDLER_H
+
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-
 
 namespace arangodb {
 

@@ -284,6 +284,14 @@ TEST(InMemoryLogTest, replicationTest) {
     auto& info = fut.get();
     ASSERT_EQ(info->quorum.size(), 2);
     ASSERT_EQ(info->term, LogTerm{1});
+
+    {
+      auto stats = followerLog->getLocalStatistics();
+      ASSERT_EQ(stats.commitIndex, LogIndex{0});
+      ASSERT_EQ(stats.spearHead, LogIndex{1});
+    }
+
+    ASSERT_TRUE(followerLog->hasPendingAppendEntries());
   }
 
   {
@@ -312,7 +320,7 @@ TEST(InMemoryLogTest, replicationTest) {
     followerLog->runAsyncAppendEntries();
     {
       auto stats = followerLog->getLocalStatistics();
-      ASSERT_EQ(stats.commitIndex, LogIndex{0});
+      ASSERT_EQ(stats.commitIndex, LogIndex{1});
       ASSERT_EQ(stats.spearHead, LogIndex{1});
     }
     // should still be true because of leader retry
