@@ -1449,8 +1449,11 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
   VPackStringRef bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
-  
-  VPackBuilder builder(&basics::VelocyPackHelper::strictRequestValidationOptions);
+
+  VPackOptions builderOptions = basics::VelocyPackHelper::strictRequestValidationOptions;
+  builderOptions.paddingBehavior = VPackOptions::PaddingBehavior::UsePadding;
+
+  VPackBuilder builder(&builderOptions);
 
   // First parse and collect all markers, we assemble everything in one
   // large builder holding an array
@@ -1494,12 +1497,15 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
 
         TRI_ASSERT(doc.isObject());
         bool checkKey = true;
+        bool checkRev = generateNewRevisionIds;
         for (auto it : VPackObjectIterator(doc, true)) {
           // only check for "_key" attribute here if we still have to.
           // once we have seen it, it will not show up again in the same document
           bool const isKey = checkKey && (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString);
   
           if (isKey) {
+            // _key attribute
+
             // prevent checking for _key twice in the same document
             checkKey = false;
 
@@ -1516,17 +1522,23 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
               // with MMFiles dumps from <= 3.6
               documentsToRemove.erase(it.value.copyString());
             }
-          }
+          
+            documentsToInsert.add(it.key);
+            documentsToInsert.add(it.value);
+          } else if (checkRev && arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
+            // _rev attribute
 
-          documentsToInsert.add(it.key);
+            // prevent checking for _rev twice in the same document
+            checkRev = false;
 
-          if (generateNewRevisionIds && 
-              !isKey && 
-              arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
             char ridBuffer[arangodb::basics::maxUInt64StringSize];
             RevisionId newRid = physical->newRevisionId();
+            
+            documentsToInsert.add(it.key);
             documentsToInsert.add(newRid.toValuePair(ridBuffer));
           } else {
+            // copy key/value verbatim
+            documentsToInsert.add(it.key);
             documentsToInsert.add(it.value);
           }
         }
@@ -1630,7 +1642,10 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
                                                        std::string const& collectionName,
                                                        bool generateNewRevisionIds) {
   // we'll build all documents to insert in this builder
-  VPackBuilder documentsToInsert;
+  VPackOptions vpackOptions;
+  vpackOptions.paddingBehavior = VPackOptions::PaddingBehavior::UsePadding;
+
+  VPackBuilder documentsToInsert(&vpackOptions);
   std::unordered_set<std::string> documentsToRemove;
   Result res = parseBatch(trx, collectionName, documentsToInsert, documentsToRemove, generateNewRevisionIds);
   if (res.fail()) {
