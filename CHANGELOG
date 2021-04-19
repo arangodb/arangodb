@@ -15,6 +15,9 @@ devel
   API. This is true for recent 3.7 and 3.8 versions, as the POST API will be
   backported there as well.
 
+* Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
+  'dense_fixed_offset_column_key'`.
+
 * Fix cluster internal retry behavior for network communications. In particular
   retry on 421 (leader refuses operation). This leads to the cluster letting
   less internal errors out to clients.
