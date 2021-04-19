@@ -137,9 +137,26 @@ function ahuacatlParseTestSuite () {
       assertEqual([ "_ABC" ], getVariables(getParseResults("let _ABC = 1 return _ABC")));
       assertEqual([ "$KNURPS" ], getVariables(getParseResults("let $KNURPS = 1 return $KNURPS")));
       
+      // variable names starting with underscores
       assertEqual([ "foo", "FOO", "Foo", "fOO" ], getVariables(getParseResults("let foo = 1, FOO = 2, Foo = 3, fOO = 4 return FOO")));
       
       assertEqual([ "_foo_foo_", "bar___bar", "baz_" ], getVariables(getParseResults("let _foo_foo_ = 1, bar___bar = 2, baz_ = 3 return _foo_foo_")));
+      assertEqual([ "_FOO", "_foo" ], getVariables(getParseResults("let _FOO = 1, _foo = 2 return _FOO")));
+
+      // suspicious but legal variable names, even when prepended with an underscore
+      ["a", "b", "A", "B", "aa", "aA", "ab", "Aa", "AA", "a0", "A0", "a999999999", 
+       "_a", "_b", "_A", "_B", "_aa", "_aA", "_ab", "_Aa", "_AA", "_a0", "_A0", "_a999999999", 
+       "a_", "a__", "a_a_a_a_a_a", "a0_01_02_03_04", "a_________0", "a0__b_",
+       "_a_", "_a__", "_a_a_a_a_a_a", "_a0_01_02_03_04", "_a_________0", "_a0__b_",
+       "__a_", "__a__", "__a_a_a_a_a_a", "__a0_01_02_03_04", "__a_________0", "__a0__b_",
+      ].forEach((name) => {
+        assertEqual([ name ], getVariables(getParseResults("LET " + name + " = 1 RETURN " + name)));
+      });
+
+      // invalid variable names
+      ["_", "__", "___", "_0", "_1", "___0", "00", "___00", "____1", "___9_9", "_0abcd"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code, "LET " + name + " = 1 RETURN " + name); 
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
