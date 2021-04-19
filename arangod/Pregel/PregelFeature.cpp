@@ -227,6 +227,10 @@ PregelFeature::PregelFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
+  
+  // don't delete the pointer to the feature on shutdown, as the ApplicationServer
+  // owns it
+  ::instance.reset(this, ::NonDeleter());
 }
 
 PregelFeature::~PregelFeature() {
@@ -244,10 +248,6 @@ size_t PregelFeature::availableParallelism() {
 }
 
 void PregelFeature::start() {
-  // don't delete the pointer to the feature on shutdown, as the ApplicationServer
-  // owns it
-  ::instance.reset(this, ::NonDeleter());
-
   if (ServerState::instance()->isAgent()) {
     return;
   }
