@@ -1,9 +1,13 @@
 devel
 -----
 
+* Retry if an ex-leader can no longer drop a follower because it is no longer
+  leading.
+
 * Fix cluster internal retry behavior for network communications. In particular
   retry on 421 (leader refuses operation). This leads to the cluster letting
   less internal errors out to clients.
+
 * Don't display obsoleted startup options and sections in `--help` and
   `--help-.` commands. Also rename "global" to "general" options.
 
