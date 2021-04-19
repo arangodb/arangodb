@@ -1772,30 +1772,13 @@ void translateHeaders(fu::Request& request,
   if (forceJson) {
     // Preset posting json (if) but allow override if there is a specified header:
     request.header.contentType(fu::ContentType::Json);
+    request.header.acceptType(fu::ContentType::Json);
   }
   for (auto& pair : headerFields) {
-    if (boost::iequals(StaticStrings::ContentTypeHeader, pair.first)) {
-      if (pair.second == StaticStrings::MimeTypeVPack) {
-        request.header.contentType(fu::ContentType::VPack);
-      } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-                 (pair.second.compare(0,
-                                      StaticStrings::MimeTypeJsonNoEncoding.length(),
-                                      StaticStrings::MimeTypeJsonNoEncoding) == 0)) {
-        // ignore encoding etc.
-        request.header.contentType(fu::ContentType::Json);
-      } else {
-        request.header.contentType(fu::ContentType::Custom);
-      }
-    } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
-      request.header.acceptType(fu::ContentType::Custom);
-    }
     request.header.addMeta(basics::StringUtils::tolower(pair.first), pair.second);
   }
   if (request.header.acceptType() == fu::ContentType::Unset) {
     request.header.acceptType(fu::ContentType::VPack);
-  }
-  if (forceJson && (request.header.acceptType() == fu::ContentType::VPack)) {
-    request.header.acceptType(fu::ContentType::Json);
   }
 
   request.timeout(
