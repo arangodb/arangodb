@@ -113,7 +113,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("network", "Configure cluster-internal networking");
+  options->addSection("network", "cluster-internal networking");
 
   options->addOption("--network.io-threads", "number of network IO threads for cluster-internal communication",
                      new UInt32Parameter(&_numIOThreads))
@@ -296,16 +296,17 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                                  RequestCallback&& cb) {
   TRI_ASSERT(req != nullptr);
   prepareRequest(pool, req);
-  auto conn = pool.leaseConnection(endpoint);
+  bool isFromPool = false;
+  auto conn = pool.leaseConnection(endpoint, isFromPool);
   conn->sendRequest(std::move(req),
-                    [this, &pool,
+                    [this, &pool, isFromPool,
                      cb = std::move(cb)](fuerte::Error err,
                                          std::unique_ptr<fuerte::Request> req,
                                          std::unique_ptr<fuerte::Response> res) {
                       TRI_ASSERT(req != nullptr);
                       finishRequest(pool, err, req, res);
                       TRI_ASSERT(req != nullptr);
-                      cb(err, std::move(req), std::move(res));
+                      cb(err, std::move(req), std::move(res), isFromPool);
                     });
 }
 
@@ -329,10 +330,22 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::
                                                               req->timestamp());
     std::chrono::milliseconds timeout = req->timeout();
     TRI_ASSERT(timeout.count() > 0);
-    double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
-                                       static_cast<double>(timeout.count()),
-                                   0.0, 100.0);
-    _requestDurations.count(percentage);
+    if (timeout.count() > 0) {
+      // only go in here if we are sure to not divide by zero 
+      double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
+                                         static_cast<double>(timeout.count()),
+                                     0.0, 100.0);
+      _requestDurations.count(percentage);
+    } else {
+      // the timeout value was 0, for whatever reason. this is unexpected,
+      // but we must not make the program crash here.
+      // so instead log a warning and interpret this as a request that took
+      // 100% of the timeout duration.
+      _requestDurations.count(100.0);
+      LOG_TOPIC("1688c", WARN, Logger::FIXME) 
+          << "encountered invalid 0s timeout for internal request to path " 
+          << req->header.path;
+    }
   }
 }
 

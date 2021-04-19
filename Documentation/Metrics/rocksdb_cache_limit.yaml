@@ -1,0 +1,18 @@
+name: rocksdb_cache_limit
+introducedIn: "3.6.1"
+help: |
+  Global allocation limit for the ArangoDB cache in front of RocksDB
+unit: bytes
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric reflects the current global allocation limit for the
+  ArangoDB caches which sit in front of RocksDB. For example, the
+  edge cache counts towards this allocation. This global limit can
+  be controlled with the `--cache.size` option. See
+  [the manual for details](https://www.arangodb.com/docs/stable/programs-arangod-options.html#cache).

@@ -132,7 +132,7 @@ class IRESEARCH_API segment_reader final
   }
 
  private:
-  typedef std::shared_ptr<const sub_reader> impl_ptr;
+  using impl_ptr = std::shared_ptr<const sub_reader>;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;

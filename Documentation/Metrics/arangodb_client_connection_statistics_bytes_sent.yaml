@@ -1,0 +1,15 @@
+name: arangodb_client_connection_statistics_bytes_sent
+introducedIn: "3.8.0"
+help: |
+  Bytes sent for a request
+unit: bytes
+type: histogram
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Histogram of the sent response sizes in bytes

@@ -3,8 +3,333 @@ devel
 
 * Allow AQL variable names starting with an underscore, as stated in the docs.
 
+* Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
+  replacement for PUT `/_api/cursor/<cursor-id>`. The POST API is functionally
+  equivalent to the existing PUT API. The benefit of using the POST API is
+  that HTTP POST requests will not be considered as idempotent, so proxies
+  may not retry them if they fail. This was the case with the existing PUT
+  API, as HTTP PUT requests can be considered idempotent according to the
+  HTTP specification.
+
+  The POST API is now used internally by ArangoDB's own requests, including
+  the web UI and the client tools. That means the web UI and client tools
+  will only work with ArangoDB versions that have support for the new POST
+  API. This is true for recent 3.7 and 3.8 versions, as the POST API will be
+  backported there as well.
+
+* Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
+  'dense_fixed_offset_column_key'`.
+
+* Fix cluster internal retry behavior for network communications. In particular
+  retry on 421 (leader refuses operation). This leads to the cluster letting
+  less internal errors out to clients.
+
+* Don't display obsoleted startup options and sections in `--help` and
+  `--help-.` commands. Also rename "global" to "general" options.
+
+* Added option `--query.require-with` to make AQL in single server mode also
+  require `WITH` clauses where the cluster would need them.
+  The option is turned off by default, but can be turned on in single servers
+  to remove this behavior difference between single servers and clusters,
+  making later a transition from single server to cluster easier.
+
+* Fixed a problem in document batch operations, where errors from one shard
+  were reported multiple times, if the shard is completely off line.
+
+* Removed assertion for success of a RocksDB function. Throw a proper 
+  exception instead.
+
+* Show peak memory usage in AQL query profiling output.
+
+* Micro improvements for Pregel job API and documentation:
+  - Added a few useful attributes to Pregel HTTP API docs.
+  - Added "parallelism" attribute to the result of Pregel job status responses,
+    so that the effective parallelism is reported back.
+  - Make sure "computationTime" in Pregel job status response does not
+    underflow in case of errors.
+
+* Prevent arangod from terminating with "terminate called without an active 
+  exception" (SIGABRT) in case an out-of-memory exception occurs during 
+  creating an ASIO socket connection.
+
+* UI builds are now using the yarn package manager instead of the previously
+  used node package manager.
+
+* Fixed issue #13169: arangoimport tsv conversion of bools and null, although
+  switched off by `--convert false`.
+
+  Importing unquoted `null`, `false` and `true` literals from delimited files
+  get imported as strings now if `convert` is explicitly turned off. It
+  previously affected unquoted numbers only.
+
+* Web UI: Highlight binary and hexadecimal integer literals in AQL queries.
+
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global
+  replication applier being started before end of database recovery procedure.
+  Also fixed potential shut down errors due to global replication applier
+  being shut down in parallel to a concurrent shut down attempt.
+
+* Experimentally switch to wyhash (from xxhash) for velocypack. This is an
+  experiment in devel to check if it produces any observable speedups.
+
+* Updated ArangoDB Starter to 0.15.0.
+
+* Remove deprecated HTTP REST API `/_api/export`. This API was deprecated
+  in a previous version because it was not supported in clusters and was
+  also covered completely by streaming AQL queries for the RocksDB storage
+  engine.
+
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
+* Updated ArangoDB Starter to 0.15.0-preview-4.
+
+* Fixed CPPCHECK warning or added suppression.
+
+* Added enterprise-build-repository and oskar-build-repository to `--version`
+  as `enterprise-build-repository` and `oskar-build-repository`.
+
+* Clean up replication code and remove a 3.2-compatibility mode that was
+  only useful when replicating from a leader < ArangoDB version 3.3.
+
+* Obsolete option `--database.old-system-collections`. This option has no
+  meaning in ArangoDB 3.9, as old system collections will not be created
+  anymore in this version. The option was deprecated in 3.8 and announced
+  to be obsoleted.
+
+* Upgrade velocypack to latest, C++17-only version.
+
+* Make arangovpack more powerful, by supporting different input and output
+  formats (json and vpack, plain or hex-encoded).
+  The arangovpack options `--json` and `--pretty` have been removed and have
+  been replaced with separate options for specifying the input and output
+  types:
+  * `--input-type` ("json", "json-hex", "vpack", "vpack-hex")
+  * `--output-type` ("json", "json-pretty", "vpack", "vpack-hex")
+  The previous option `--print-non-json` has been replaced with the option
+  `--fail-on-non-json` which makes arangovpack fail when trying to emit
+  non-JSON types to JSON output.
+
+* Fix undefined behavior in dynarray constructor when running into
+  an out-of-memory exception during construction. In arangod, this can only
+  happen during metrics objects construction at program start.
+
+* Added option `--headers-file` to arangoimport, to optionally read CSV/TSV
+  headers from a separate file.
+
+* Updated ArangoDB Starter to 0.15.0-preview-3.
+
+* Fixed issue BTS-353: memleak when running into an out-of-memory situation
+  while repurposing an existing AqlItemBlock.
+
+* Fix logging of urls when using `--log.level requests=debug`. There was an
+  issue since v3.7.7 with the wrong URL being logged in request logging if
+  multiple requests were sent over the same connection. In this case, the
+  request logging only reported the first URL requested in the connection,
+  even for all subsequent requests.
+
+* Deprecate option `--rocksdb.exclusive-writes`, which was meant to serve
+  only as a stopgap measure while porting applications from the MMFiles
+  storage engine to RocksDB.
+
+* Added startup option `--query.allow-collections-in-expressions` to control
+  whether collection names can be used in arbitrary places in AQL expressions,
+  e.g. `collection + 1`. This was allowed before, as a collection can be seen
+  as an array of documents. However, referring to a collection like this in a
+  query would materialize all the collection's documents in RAM, making such
+  constructs prohibitively expensive for medium-size to large-size collections.
+
+  The option can now be set to `false` to prohibit accidental usage of
+  collection names in AQL expressions. With that setting, using a collection
+  inside an arbitrary expression will trigger the error `collection used as
+  expression operand` and make the query fail.
+  Even with the option being set to `false`, it is still possible to use
+  collection names in AQL queries where they are expected, e.g. `FOR doc IN
+  collection RETURN doc`.
+
+* Remove obsolete API endpoint /_admin/repair/distributeShardsLike`. This
+  API was intended to correct some bad state introduced before 3.2.12 or 3.3.4,
+  respectively. It had to be invoked manually by callers and there was never
+  any driver support for it.
+
+* Remove now-unused SubqueryExecutor. This is an internal change only and
+  should not have any effect on queries, as from 3.8 onwards only spliced
+  subqueries should be used in query execution plans and during query
+  execution.
+
+* Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
+  Now, any maintainer mode build will build all log messages automatically,
+  so we will have full coverage of log message construction during our
+  tests. In non-maintainer mode, log messages are still only built when
+  actually required. This simplifies the build and increases coverage.
+
+* Updated ArangoDB Starter to 0.15.0-preview-2.
+
+* Updated OpenSSL to 1.1.1k and OpenLDAP to 2.4.58.
+
+* Updated arangosync to 2.0.1.
+
+* Introduce metrics for AQL query memory limit violations:
+  - `arangodb_aql_global_query_memory_limit_reached`: Total number of times the
+    global query memory limit was violated.
+  - `arangodb_aql_local_query_memory_limit_reached`: Total number of times a
+    local query memory limit was violated.
+
+* Set the default value for `--query.global-memory-limit` to around 90% of RAM,
+  so that a global memory limit is now effective by default.
+
+  The default global memory limit value is calculated by a formula depending on
+  the amount of available RAM and will result in the following values for
+  common RAM sizes:
+
+  RAM:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+  RAM:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+  RAM:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
+  RAM:    536870912    (512MiB)  Limit:    255013683    (243MiB), %mem: 47.5
+  RAM:    805306368    (768MiB)  Limit:    510027366    (486MiB), %mem: 63.3
+  RAM:   1073741824   (1024MiB)  Limit:    765041049    (729MiB), %mem: 71.2
+  RAM:   2147483648   (2048MiB)  Limit:   1785095782   (1702MiB), %mem: 83.1
+  RAM:   4294967296   (4096MiB)  Limit:   3825205248   (3648MiB), %mem: 89.0
+  RAM:   8589934592   (8192MiB)  Limit:   7752415969   (7393MiB), %mem: 90.2
+  RAM:  17179869184  (16384MiB)  Limit:  15504831938  (14786MiB), %mem: 90.2
+  RAM:  25769803776  (24576MiB)  Limit:  23257247908  (22179MiB), %mem: 90.2
+  RAM:  34359738368  (32768MiB)  Limit:  31009663877  (29573MiB), %mem: 90.2
+  RAM:  42949672960  (40960MiB)  Limit:  38762079846  (36966MiB), %mem: 90.2
+  RAM:  68719476736  (65536MiB)  Limit:  62019327755  (59146MiB), %mem: 90.2
+  RAM: 103079215104  (98304MiB)  Limit:  93028991631  (88719MiB), %mem: 90.2
+  RAM: 137438953472 (131072MiB)  Limit: 124038655509 (118292MiB), %mem: 90.2
+  RAM: 274877906944 (262144MiB)  Limit: 248077311017 (236584MiB), %mem: 90.2
+  RAM: 549755813888 (524288MiB)  Limit: 496154622034 (473169MiB), %mem: 90.2
+
+* The old metrics API contains the following gauges which should actually be
+  counters:
+    * arangodb_scheduler_jobs_dequeued
+    * arangodb_scheduler_jobs_submitted
+    * arangodb_scheduler_jobs_done
+  Therefore the new v2 metric api adds the following counters:
+    * arangodb_scheduler_jobs_dequeued_total
+    * arangodb_scheduler_jobs_submitted_total
+    * arangodb_scheduler_jobs_done_total
+  These counters are only visible in the new v2 metrics API and replace the old
+  metrics which are suppressed for v2.
+
+* Fix connectionTime statistic. This statistic should provide the distribution
+  of the connection lifetimes, but in previous versions the tracking was broken
+  and no values were reported.
+
+* Add an option for locking down all endpoints in the `/_admin/cluster` REST
+  API for callers without a proper JWT set in the request. There is a new
+  startup option `--cluster.api-jwt-policy` that allows *additional* checks
+  for a valid JWT in requests to sub-routes of `/_admin/cluster`. The
+  possible values for the startup option are:
+
+  - "jwt-all": requires a valid JWT for all accesses to `/_admin/cluster` and
+    its sub-routes. If this configuration is used, the "Cluster" and "Nodes"
+    sections of the web interface will be disabled, as they are relying on the
+    ability to read data from several cluster APIs.
+  - "jwt-write": requires a valid JWT for write accesses (all HTTP methods
+    except HTTP GET) to `/_admin/cluster`. This setting can be used to allow
+    privileged users to read data from the cluster APIs, but not to do any
+    modifications. All existing permissions checks for the cluster API routes
+    are still in effect with this setting, meaning that read operations without
+    a valid JWT may still require dedicated other permissions (as in 3.7).
+  - "jwt-compat": no *additional* access checks are in place for the cluster
+    APIs. However, all existing permissions checks for the cluster API routes
+    are still in effect with this setting, meaning that all operations may
+    still require dedicated other permissions (as in 3.7).
+
+  The default value for the option is `jwt-compat`, which means this option
+  will not cause any extra JWT checks compared to 3.7.
+
+* Increase default idle timeout in streaming transactions from 10 seconds to
+  60 seconds, and make the timeout configurable via a startup parameter
+  `--transaction.streaming-idle-timeout`.
+
+* Use RebootTracker to abort cluster transactions on DB servers should the
+  originating coordinator die or be rebooted. The previous implementation left
+  the coordinator's transactions open on DB servers until they timed out there.
+  Now, the coordinator's unavailability or reboot will be detected as early as
+  it is reported by the agency, and all open transactions from that coordinator
+  will be auto-aborted on DB servers.
+
+* Fix shortName labels in metrics, in particular for agents.
+
+* Fix a race in LogAppender::haveAppenders.
+  `haveAppenders` is called as part of audit logging. It accesses internal maps
+  but previously did not hold a lock while doing so.
+
+* Fix implicit capture of views in a context of JS transaction.
+
+* Fix a crash caused by returning a result produced by ANALYZER function.
+
+* Update the Web UI's list of built-in AQL functions for proper syntax
+  highlighting in the query editor.
+
+* Bug-fix in the case of very rare network issues there was a chance that
+  an AQL query could get stuck during a cleanup and after a commit.
+	This would cause the client to receive a timeout, and the Coordinator
+	blocking a Scheduler thread. This situation is sorted out and the thread
+	will not be blocked anymore. We also added logs in case the query
+	could not successfully be cleaned up, which would leave locks on shards
+	behind.
+
+* Switched to GCC 10 as the default compiler and use Sandy Bridge as the
+  default required architecture (Linux, macOS binaries).
+
+* Fix an assertion failure that occurred when restoring view definitions from
+  a cluster into a single server.
+
+* Added new ArangoSearch analyzer type "stopwords".
+
+* Fix error message in case of index unique constraint violations. They were
+  lacking the actual error message (i.e. "unique constraint violated") and
+  only showed the index details. The issue was introduced only in devel in Feb.
+
+* Removed obsolete metrics in new v2 metric API. Those metrics' values were
+  identical to the sum value of histograms.
+
+* Allow process-specific logfile names.
+
+  This change allows replacing '$PID' with the current process id in the 
+  `--log.output` and `--audit.output` startup parameters.
+  This way it is easier to write process-specific logfiles.
+
+* Backport a bugfix from upstream RocksDB for opening encrypted files with
+  small sizes. Without the bugfix, the server may run into assertion failures
+  during recovery.
+
+* Fix duplicate leaving of V8 contexts when returning streaming cursors.
+  The `exitContext` call done on query shutdown could previously try to exit
+  the V8 context multiple times, which would cause undefined behavior. Now
+  we are tracking if we already left the context to prevent duplicate invocation.
+
+* In a cluster, do not create the collections `_statistics`, `_statistics15` and 
+  `statisticsRaw` on DB servers. These collections should only be created by the
+  coordinator, and should translate into 2 shards each on DB servers. But there
+  shouldn't be shards named `_statistics*` on DB servers.
+
+* Fixed two bogus messages about hotbackup restore:
+  - Coordinators unconditionally logged the message "Got a hotbackup restore
+    event, getting new cluster-wide unique IDs..." on shutdown. This was not
+    necessarily related to a hotbackup restore.
+  - DB servers unconditionally logged the message "Strange, we could not 
+    unregister the hotbackup restore callback." on shutdown, although this was
+    meaningless.
+
+* Rename "save" return attribute to "dst" in AQL functions `DATE_UTCTOLOCAL` and
+  `DATE_LOCALTOUTC`.
+
+* Fix potentially undefined behavior when creating a CalculationTransactionContext
+  for an arangosearch analyzer. An uninitialized struct member was passed as an
+  argument to its base class. This potentially had no observable effects, but
+  should be fixed.
+
+* Retry a cluster internal network request if the connection comes from the
+  pool and turns out to be stale (connection immediately closed). This fixes
+  some spurious errors after a hotbackup restore.
+
 * Fix progress reporting for arangoimport with large files on Windows.
-  Previously, progress was only reported for the first 2GB of data due to a
+  Previously, progress was only reported for the first 2GB of data due to an
   int overflow.
 
 * Log the actual signal instead of "control-c" and also include the process id
@@ -861,6 +1186,9 @@ devel
   (assuming the data fits in one batch).
 
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
+
+* Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
+  upgraded to 3.7.5 the DOCUMENT method in AQL will now return documents again.
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
 

@@ -54,23 +54,23 @@ class range_filter_test_case : public tests::filter_test_case_base {
            const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) {
             doc.insert(std::make_shared<tests::templates::string_field>(
-              irs::string_ref(name),
+              name,
               data.str
             ));
           } else if (data.is_null()) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-            field.name(irs::string_ref(name));
+            field.name(name);
             field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
           } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-            field.name(irs::string_ref(name));
+            field.name(name);
             field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
           } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-            field.name(irs::string_ref(name));
+            field.name(name);
             field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
           } else if (data.is_number()){
             const double dValue = data.as_number<double_t>();
@@ -78,7 +78,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
             {
               doc.insert(std::make_shared<tests::double_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-              field.name(irs::string_ref(name));
+              field.name(name);
               field.value(dValue);
             }
 
@@ -87,7 +87,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
               // 'value' can be interpreted as a float 
               doc.insert(std::make_shared<tests::float_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
-              field.name(irs::string_ref(name));
+              field.name(name);
               field.value(fValue);
             }
 
@@ -95,13 +95,13 @@ class range_filter_test_case : public tests::filter_test_case_base {
             {
               doc.insert(std::make_shared<tests::long_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
-              field.name(irs::string_ref(name));
+              field.name(name);
               field.value(lValue);
             }
             {
               doc.insert(std::make_shared<tests::int_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::int_field>();
-              field.name(irs::string_ref(name));
+              field.name(name);
               field.value(int32_t(lValue));
             }
           }

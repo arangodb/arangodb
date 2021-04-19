@@ -204,7 +204,6 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
-  Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Cluster/QueryAnalyzerRevisions-test.cpp
   Containers/EnumerateTest.cpp
@@ -219,6 +218,7 @@ set(ARANGODB_TESTS_SOURCES
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
+  Graph/TraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/GenericGraphProviderTest.cpp
   Graph/GraphMockProviderInstances.cpp
@@ -274,12 +274,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalView-test.cpp
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp)
-
-if (USE_FAILURE_TESTS)
-  # add test that depends on USE_FAILURE_TESTS
-  set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES} Aql/OldSubqueriesTest.cpp)
-endif ()
-
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

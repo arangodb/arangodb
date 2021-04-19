@@ -295,6 +295,7 @@ velocypack::Options const& transaction::Methods::vpackOptions() const {
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
+/// by a leader.
 static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
@@ -632,7 +633,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
-      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
     }
   }
 
@@ -753,13 +754,14 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     return opRes.result;
   }
 
-  auto translateName = [this](std::string const& collectionName) {
-    if (_state->isDBServer() && vocbase().isOneShard()) {
+  auto translateName = [this](std::string const& collectionName) { 
+    if (_state->isDBServer()) {
       auto collection = resolver()->getCollectionStructCluster(collectionName);
       if (collection != nullptr) {
         auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
         auto shards = ci.getShardList(std::to_string(collection->id().id()));
         if (shards != nullptr && shards->size() == 1) {
+          TRI_ASSERT(vocbase().isOneShard());
           return (*shards)[0];
         }
       }
@@ -875,7 +877,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return futures::makeFuture(
-        OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options));
+        OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
     }
   }
 
@@ -1036,6 +1038,16 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
+
+    // This failure point is to test the case that a former leader has
+    // resigned in the meantime but still gets an insert request from
+    // a coordinator who does not know this yet. That is, the test sets
+    // the failure point on all servers, including the current leader.
+    TRI_IF_FAILURE("documents::insertLeaderRefusal") {
+      if (value.isObject() && value.hasKey("ThisIsTheRetryOnLeaderRefusalTest")) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
+      }
+    }
 
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
@@ -1735,7 +1747,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
     std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
-      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
     }
   }
 
@@ -1866,7 +1878,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       for (auto const& f : *followers) {
         network::Headers headers;
         ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-        auto future = network::sendRequest(pool, "server:" + f, fuerte::RestVerb::Put,
+        auto future = network::sendRequestRetry(pool, "server:" + f, fuerte::RestVerb::Put,
                                            path, body, reqOpts, std::move(headers));
         futures.emplace_back(std::move(future));
       }
@@ -1880,16 +1892,18 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
              responses[i].get().statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
+          LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
+              << "truncateLocal: dropping follower " << (*followers)[i]
+              << " for shard " << collection->vocbase().name() << "/" << collectionName
+              << ": " << responses[i].get().combinedResult().errorMessage();
           res = followerInfo->remove((*followers)[i]);
           if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
-            LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
-                << "truncateLocal: dropped follower " << (*followers)[i]
-                << " for shard " << collectionName;
           } else {
             LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
-                << " for shard " << collectionName << ": " << res.errorMessage();
+                << " for shard " << collection->vocbase().name() << "/" << collection->name()
+                << ": " << res.errorMessage();
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
           }
         }

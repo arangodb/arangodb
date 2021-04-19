@@ -143,14 +143,6 @@ struct LeaderInfo {
 
   /// @brief get leader state
   Result getState(Connection& connection, bool isChildSyncer, char const* context);
-
-  /// we need to act like a 3.2 client
-  bool simulate32Client() const;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
- private:
-  bool _force32mode{false};  // force client to act like 3.2
-#endif
 };
 
 struct BatchInfo {

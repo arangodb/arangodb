@@ -38,9 +38,9 @@ Sort the log entries either ascending (if *sort* is *asc*) or descending
 imposes a chronological order. The default value is *asc*.
 
 @RESTQUERYPARAM{serverId,string,optional}
-Returns all log entries of a specified server by supplying the serverId. All
-other query parameters remain valid. If no serverId is given, the asked server
-will reply.
+Returns all log entries of the specified server. All other query parameters 
+remain valid. If no serverId is given, the asked server
+will reply. This parameter is only meaningful on Coordinators.
 
 @RESTDESCRIPTION
 Returns fatal, error, warning or info log messages from the server's global log.
@@ -70,7 +70,14 @@ is returned if there are insufficient privileges to access the logs.
 @startDocuBlock get_admin_log
 @brief returns the server logs
 
-@RESTHEADER{GET /_admin/log, Read global logs from the server, setLogLevel:read}
+@RESTHEADER{GET /_admin/log, Read global logs from the server (deprecated), setLogLevel:read}
+
+@HINTS
+{% hint 'warning' %}
+This endpoint should no longer be used. It is deprecated from version 3.8.0 on.
+Use `/_admin/log/entries` instead, which provides the same data in a more
+intuitive and easier to process format.
+{% endhint %}
 
 @RESTQUERYPARAMETERS
 
@@ -106,6 +113,11 @@ Sort the log entries either ascending (if *sort* is *asc*) or descending
 (if *sort* is *desc*) according to their *lid* values. Note that the *lid*
 imposes a chronological order. The default value is *asc*.
 
+@RESTQUERYPARAM{serverId,string,optional}
+Returns all log entries of the specified server. All other query parameters 
+remain valid. If no serverId is given, the asked server
+will reply. This parameter is only meaningful on Coordinators.
+
 @RESTDESCRIPTION
 Returns fatal, error, warning or info log messages from the server's global log.
 The result is a JSON object with the attributes described below.
@@ -114,9 +126,6 @@ This API can be turned off via the startup option `--log.api-enabled`. In case
 the API is disabled, all requests will be responded to with HTTP 403. If the
 API is enabled, accessing it requires admin privileges, or even superuser
 privileges, depending on the value of the `--log.api-enabled` startup option.
-
-This API is **deprecated** in favor of the `/_admin/log/entries` REST API, which 
-provides the same data in a more intuitive and easier to process format.
 
 @RESTRETURNCODES
 

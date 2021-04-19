@@ -61,7 +61,7 @@ function ensureServers(options, numServers) {
 
 function checkServersGOOD(instanceInfo) {
   try {
-    let health = require('internal').clusterHealth();
+    let health = internal.clusterHealth();
     let rc = instanceInfo.arangods.reduce((previous, arangod) => {
         if (arangod.role === "agent") return true;
         if (health.hasOwnProperty(arangod.id)) {
@@ -99,6 +99,8 @@ function runArangodRecovery (params) {
   }
 
   let additionalParams= {
+    'foxx.queues': 'false',
+    'server.statistics': 'false',
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
   };
@@ -121,13 +123,14 @@ function runArangodRecovery (params) {
   additionalTestParams['javascript.run-main'] = true;
 
   if (params.setup) {
+    additionalTestParams['server.request-timeout'] = '60';
     additionalTestParams['javascript.script-parameter'] = 'setup';
 
     // special handling for crash-handler recovery tests
     if (params.script.match(/crash-handler/)) {
       // forcefully enable crash handler, even if turned off globally
       // during testing
-      require('internal').env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
+      internal.env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
     }
 
     params.options.disableMonitor = true;
@@ -170,7 +173,7 @@ function runArangodRecovery (params) {
     params.args = args;
       
   } else {
-    additionalTestParams['javascript.script-parameter'] = 'recory';
+    additionalTestParams['javascript.script-parameter'] = 'recovery';
   }
 
   if (params.setup) {
@@ -219,12 +222,14 @@ function runArangodRecovery (params) {
 }
 
 function recovery (options) {
-  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
-      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
+  if ((!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
+       global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') ||
+      (!global.ARANGODB_CLIENT_VERSION(true)['maintainer-mode'] ||
+       global.ARANGODB_CLIENT_VERSION(true)['maintainer-mode'] === 'false')) {
     return {
       recovery: {
         status: false,
-        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
+        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On and -DUSE_MAINTAINER_MODE=On'
       },
       status: false
     };

@@ -106,10 +106,11 @@ following things:
    under `Documentation/Metrics/template.yaml`)
  - many of the componentes are required, so please provide adequate
    information about your metric
- - the script also assembles all these YAML documentation snippets
+ - the script can also assemble all these YAML documentation snippets
    into a single file under `Documentation/Metrics/allMetrics.yaml`,
    the format is again a structured YAML file which can easily be
-   processed by the documentation tools.
+   processed by the documentation tools, this is only needed when
+   we update the documentation web pages.
 
 Please, if you have added or modified a metric, make sure to declare
 the metric as shown above and add a documentation YAML snippet in the
@@ -117,7 +118,9 @@ correct format. Afterwards, run
 
     utils/generateAllMetricsDocumentation.py
 
-and include `Documentation/allMetrics.yaml` in your PR.
+but do not include `Documentation/Metrics/allMetrics.yaml` in your PR
+(as was a previous policy). The file is only generated if you add
+`-d` as command line option to the script.
 
 
 ---
@@ -143,7 +146,7 @@ For Oskar you may use the following:
 
     shellInAlpineContainer
 
-    apk add --no-cache nodejs npm && cd /work/ArangoDB/build && cmake --build . --target frontend
+    apk add --no-cache nodejs yarn && cd /work/ArangoDB/build && cmake --build . --target frontend
 
 To remove all available node modules and start a clean installation run:
 
@@ -152,13 +155,13 @@ To remove all available node modules and start a clean installation run:
 The frontend can also be built using these commands:
 
     cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
-    npm install
-    npm run build
+    yarn install
+    yarn run build
 
 For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
 run:
 
-    npm start
+    yarn start
 
 This will deploy a development server (Port: 3000) and automatically start your
 favorite browser and open the web UI.
@@ -656,7 +659,7 @@ There are several major places where unittests live:
 | `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools
 | `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage
 | `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each
-| `js/common/modules/jsunity[.js|/jsunity.js`                  | jsunity testing framework; invoked via jsunity.js next to the module
+| `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module
 | `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb
 
 ### Filename conventions

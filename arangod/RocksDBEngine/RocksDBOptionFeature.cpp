@@ -191,7 +191,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
 }
 
 void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("rocksdb", "Configure the RocksDB engine");
+  options->addSection("rocksdb", "RocksDB engine");
 
   options->addObsoleteOption("--rocksdb.enabled",
                              "obsolete always active - Whether or not the "
@@ -466,7 +466,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "but will inhibit concurrent write operations",
                   new BooleanParameter(&_exclusiveWrites),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30504);
+      .setIntroducedIn(30504).setDeprecatedIn(30800);
 
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now

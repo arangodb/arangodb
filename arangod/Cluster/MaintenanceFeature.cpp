@@ -56,14 +56,25 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-DECLARE_COUNTER(arangodb_maintenance_phase1_accum_runtime_msec_total, "Accumulated runtime of phase one [ms]");
-DECLARE_COUNTER(arangodb_maintenance_phase2_accum_runtime_msec_total, "Accumulated runtime of phase two [ms]");
-DECLARE_COUNTER(arangodb_maintenance_agency_sync_accum_runtime_msec_total, "Accumulated runtime of agency sync phase [ms]");
 DECLARE_COUNTER(arangodb_maintenance_action_duplicate_total, "Counter of actions that have been discarded because of a duplicate");
 DECLARE_COUNTER(arangodb_maintenance_action_registered_total, "Counter of actions that have been registered in the action registry");
-DECLARE_COUNTER(arangodb_maintenance_action_accum_runtime_msec_total, "Accumulated action runtime");
-DECLARE_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total, "Accumulated action queue time");
 DECLARE_COUNTER(arangodb_maintenance_action_failure_total, "Failure counter for the maintenance actions");
+
+
+////////////////////////////////////////////////////////////////////////////////
+// FAKE DECLARATIONS - remove when v1 is removed
+////////////////////////////////////////////////////////////////////////////////
+
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase1_accum_runtime_msec_total,
+    "Accumulated runtime of phase one [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase2_accum_runtime_msec_total,
+    "Accumulated runtime of phase two [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_agency_sync_accum_runtime_msec_total,
+    "Accumulated runtime of agency sync phase [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_runtime_msec_total,
+    "Accumulated action runtime");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total,
+    "Accumulated action queue time");
 
 struct MaintenanceScale {
   static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
@@ -121,8 +132,6 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
 }
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOption(
       "--server.maintenance-threads",
       "maximum number of threads available for maintenance actions",
@@ -387,7 +396,15 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
 Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAction,
                                      bool executeNow) {
+
+  TRI_ASSERT(newAction != nullptr);
+  TRI_ASSERT(newAction->ok());
+
   Result result;
+  
+  if (newAction == nullptr) {
+    return result.reset(TRI_ERROR_INTERNAL, "invalid call of MaintenanceFeature::addAction");
+  }
 
   // the underlying routines are believed to be safe and throw free,
   //  but just in case
@@ -400,7 +417,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
-      if (newAction && newAction->ok()) {
+      if (newAction->ok()) {
         // Register action only if construction was ok
         registerAction(newAction, executeNow);
       } else {

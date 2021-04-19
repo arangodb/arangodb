@@ -1,0 +1,16 @@
+name: rocksdb_oldest_snapshot_time
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "rocksdb-oldest-snapshot-time"
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "rocksdb-oldest-snapshot-time".
+  It shows a number representing the unix timestamp of the oldest
+  unreleased snapshot.

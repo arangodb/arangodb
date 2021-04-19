@@ -208,7 +208,7 @@ ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,1486,"must not have a distributeShard
 ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,1487,"the number of current dbservers is lower than the requested replicationFactor","Will be raised if one tries to create a collection with a replicationFactor greater than the available number of DB-Servers."
 ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER,1488,"a follower could not be dropped in agency","Will be raised if a follower that ought to be dropped could not be dropped in the Agency (under Current)."
 ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION,1489,"a shard leader refuses to perform a replication operation","Will be raised if a replication operation is refused by a shard leader."
-ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,1490,"a shard follower refuses to perform an operation that is not a replication","Will be raised if a non-replication operation is refused by a shard follower."
+ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,1490,"a shard follower refuses to perform an operation","Will be raised if a replication operation is refused by a shard follower because it is coming from the wrong leader."
 ERROR_CLUSTER_SHARD_LEADER_RESIGNED,1491,"a (former) shard leader refuses to perform an operation, because it has resigned in the meantime","Will be raised if a non-replication operation is refused by a former shard leader that has found out that it is no longer the leader."
 ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,1492,"some agency operation failed","Will be raised if after various retries an Agency operation could not be performed successfully."
 ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing","Will be raised when servers are currently competing for leadership, and the result is still unknown."
@@ -243,6 +243,7 @@ ERROR_QUERY_BIND_PARAMETER_TYPE,1553,"bind parameter '%s' has an invalid value o
 ERROR_QUERY_INVALID_ARITHMETIC_VALUE,1561,"invalid arithmetic value","Will be raised when a non-numeric value is used in an arithmetic operation."
 ERROR_QUERY_DIVISION_BY_ZERO,1562,"division by zero","Will be raised when there is an attempt to divide by zero."
 ERROR_QUERY_ARRAY_EXPECTED,1563,"array expected","Will be raised when a non-array operand is used for an operation that expects an array argument operand."
+ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,1568,"collection '%s' used as expression operand","Will be raised when a collection is used as an operand in an AQL expression."
 ERROR_QUERY_FAIL_CALLED,1569,"FAIL(%s) called","Will be raised when the function FAIL() is called from inside a query."
 ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restriction on '%s'","Will be raised when a geo restriction was specified but no suitable geo index is found to resolve it."
 ERROR_QUERY_FULLTEXT_INDEX_MISSING,1571,"no suitable fulltext index found for fulltext query on '%s'","Will be raised when a fulltext query is performed on a collection without a suitable fulltext index."
@@ -445,22 +446,6 @@ ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE,4007,"shard key value must 
 ERROR_NO_SMART_JOIN_ATTRIBUTE,4008,"smart join attribute not given or invalid","The given document does not have the required SmartJoin attribute set or it has an invalid value."
 ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE,4009,"must not change the value of the smartJoinAttribute","Will be raised if there is an attempt to update the value of the smartJoinAttribute."
 ERROR_INVALID_DISJOINT_SMART_EDGE,4010,"non disjoint edge found","Will be raised if there is an attempt to create an edge between separated graph components."
-
-################################################################################
-## Cluster repair errors
-################################################################################
-
-ERROR_CLUSTER_REPAIRS_FAILED,5000,"error during cluster repairs","General error during cluster repairs"
-ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY,5001,"not enough (healthy) db servers","Will be raised when, during repairDistributeShardsLike, there must be a free DB-Server to move a shard, but there is no candidate or none is healthy."
-ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,5002,"replication factor violated during cluster repairs","Will be raised on various inconsistencies regarding the replication factor"
-ERROR_CLUSTER_REPAIRS_NO_DBSERVERS,5003,"no dbservers during cluster repairs","Will be raised if a collection that is fixed has some shard without DB-Servers"
-ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS,5004,"mismatching leaders during cluster repairs","Will be raised if a shard in collection and its prototype in the corresponding distributeShardsLike collection have mismatching leaders (when they should already have been fixed)"
-ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS,5005,"mismatching followers during cluster repairs","Will be raised if a shard in collection and its prototype in the corresponding distributeShardsLike collection don't have the same followers (when they should already have been adjusted)"
-ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES,5006,"inconsistent attributes during cluster repairs","Will be raised if a collection that is fixed does (not) have distributeShardsLike when it is expected, or does (not) have repairingDistributeShardsLike when it is expected"
-ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS,5007,"mismatching shards during cluster repairs","Will be raised if in a collection and its distributeShardsLike prototype collection some shard and its prototype have an unequal number of DB-Servers"
-ERROR_CLUSTER_REPAIRS_JOB_FAILED,5008,"move shard job failed during cluster repairs","Will be raised if a move shard job in the Agency failed during cluster repairs"
-ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED,5009,"move shard job disappeared during cluster repairs","Will be raised if a move shard job in the Agency cannot be found anymore before it finished"
-ERROR_CLUSTER_REPAIRS_OPERATION_FAILED,5010,"agency transaction failed during cluster repairs","Will be raised if an agency transaction failed during either sending or executing it."
 
 ################################################################################
 ## Agency errors

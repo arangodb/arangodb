@@ -372,9 +372,9 @@ struct ClusterInfoScale {
   static log_scale_t<float> scale() { return { std::exp(1.f), 0.f, 2500.f, 10 }; }
 };
 
-DECLARE_COUNTER(arangodb_load_current_accum_runtime_msec_total, "Accumulated runtime of Current loading [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_load_current_accum_runtime_msec_total, "Accumulated runtime of Current loading [ms]");
 DECLARE_HISTOGRAM(arangodb_load_current_runtime, ClusterInfoScale, "Current loading runtimes [ms]");
-DECLARE_COUNTER(arangodb_load_plan_accum_runtime_msec_total, "Accumulated runtime of Plan loading [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_load_plan_accum_runtime_msec_total, "Accumulated runtime of Plan loading [ms]");
 DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale, "Plan loading runtimes [ms]");
 
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
@@ -6098,7 +6098,7 @@ CollectionWatcher::~CollectionWatcher() {
 ClusterInfo::SyncerThread::SyncerThread(
   application_features::ApplicationServer& server, std::string const& section,
   std::function<void()> const& f, AgencyCallbackRegistry* cregistry) :
-  arangodb::Thread(server, section + "Syncer"), _news(false), _server(server),
+  arangodb::Thread(server, section + "Syncer"), _news(false),
   _section(section), _f(f), _cr(cregistry) {}
 
 ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }

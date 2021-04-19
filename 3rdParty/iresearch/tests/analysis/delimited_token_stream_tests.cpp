@@ -490,9 +490,3 @@ TEST_F(delimited_token_stream_tests, test_make_config_text) {
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ(config, actual);
 }
-
-TEST_F(delimited_token_stream_tests, test_make_config_invalid_format) {
-  std::string config = ",";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::csv>::get(), config));
-}

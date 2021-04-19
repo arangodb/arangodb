@@ -40,14 +40,6 @@
     restServer = options["server.rest-server"];
   }
 
-  // autoload all modules
-  // this functionality is deprecated and will be removed in 3.9
-  if (global.USE_OLD_SYSTEM_COLLECTIONS) {
-    // check and load all modules in all databases from _modules
-    // this can be expensive, so it is guarded by a flag
-    internal.loadStartup('server/bootstrap/autoload.js').startup();
-  }
-
   // reload routing information
   if (restServer) {
     // the function name reloadRouting is misleading here, as it actually

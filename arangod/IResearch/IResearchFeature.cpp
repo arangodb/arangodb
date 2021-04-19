@@ -34,6 +34,8 @@
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValue.h"
+#include "Aql/AqlValueMaterializer.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/application-exit.h"
@@ -114,11 +116,14 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
 /// function body for ArangoSearch context functions ANALYZER/BOOST.
 /// Just returns its first argument as outside ArangoSearch context
 /// there is nothing to do with search stuff, but optimization could roll.
-arangodb::aql::AqlValue contextFunc(arangodb::aql::ExpressionContext*,
+arangodb::aql::AqlValue contextFunc(arangodb::aql::ExpressionContext* ctx,
                                     arangodb::aql::AstNode const&,
                                     arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
+  TRI_ASSERT(ctx);
   TRI_ASSERT(!args.empty()); //ensured by function signature
-  return args[0];
+
+  arangodb::aql::AqlValueMaterializer materializer(&ctx->trx().vpackOptions());
+  return arangodb::aql::AqlValue{ materializer.slice(args[0], true) };
 }
 
 /// Check whether prefix is a value prefix
@@ -592,7 +597,7 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       return true;
     }
 
-    std::string upperName = name;
+    auto upperName = static_cast<std::string>(name);
 
     // AQL function external names are always in upper case
     std::transform(upperName.begin(), upperName.end(), upperName.begin(), ::toupper);
@@ -825,8 +830,7 @@ void IResearchFeature::beginShutdown() {
 
 void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
   _running.store(false);
-  options->addSection("arangosearch",
-                      std::string("Configure the ") + FEATURE_NAME + " feature");
+  options->addSection("arangosearch", FEATURE_NAME + " feature");
   options->addOption(THREADS_PARAM,
                      "the exact number of threads to use for asynchronous "
                      "tasks (0 == autodetect)",

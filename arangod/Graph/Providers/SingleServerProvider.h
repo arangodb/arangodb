@@ -58,7 +58,7 @@ class HashedStringRef;
 namespace graph {
 
 // TODO: we need to control from the outside if and which parts of the vertex - (will be implemented in the future via template parameters)
-// data should be returned THis is most-likely done via Template Parameter like
+// data should be returned. This is most-likely done via a template parameter like
 // this: template<ProduceVertexData>
 struct SingleServerProvider {
   using Options = BaseProviderOptions;
@@ -66,16 +66,16 @@ struct SingleServerProvider {
    public:
     class Vertex {
      public:
-      explicit Vertex(VertexType v) : _vertex(v){};
+      explicit Vertex(VertexType v) : _vertex(v) {}
 
       VertexType const& getID() const;
-
+      
       bool operator<(Vertex const& other) const noexcept {
         return _vertex < other._vertex;
       }
 
       bool operator>(Vertex const& other) const noexcept {
-        return !operator<(other);
+        return _vertex > other._vertex;
       }
 
      private:
@@ -84,8 +84,8 @@ struct SingleServerProvider {
 
     class Edge {
      public:
-      explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
-      explicit Edge() : _token() { _token = EdgeDocumentToken(); }
+      explicit Edge(EdgeDocumentToken tkn) noexcept : _token(std::move(tkn)) {}
+      Edge() noexcept : _token() {}
 
       void addToBuilder(SingleServerProvider& provider,
                         arangodb::velocypack::Builder& builder) const;
@@ -130,11 +130,10 @@ struct SingleServerProvider {
   ~SingleServerProvider() = default;
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
-  // SingleServerProvider& operator=(SingleServerProvider&&) = default;
 
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;                           // rocks
+      -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
 
@@ -161,10 +160,10 @@ struct SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
 
-  RefactoredTraverserCache _cache;
-
   BaseProviderOptions _opts;
 
+  RefactoredTraverserCache _cache;
+  
   arangodb::aql::TraversalStats _stats;
 };
 }  // namespace graph

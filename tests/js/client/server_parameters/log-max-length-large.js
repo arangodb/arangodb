@@ -31,7 +31,7 @@ const fs = require('fs');
 if (getOptions === true) {
   return {
     'log.max-entry-length': '1048576', 
-    'log.output': 'file://' + fs.getTempFile(),
+    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
   };
 }

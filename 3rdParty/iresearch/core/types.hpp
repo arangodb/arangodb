@@ -24,7 +24,7 @@
 #ifndef IRESEARCH_TYPES_H
 #define IRESEARCH_TYPES_H
 
-#include "utils/integer.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 

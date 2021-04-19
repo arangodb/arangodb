@@ -83,7 +83,6 @@
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestRedirectHandler.h"
-#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -141,8 +140,6 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
 }
 
 void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOldOption("server.allow-method-override",
                         "http.allow-method-override");
   options->addOldOption("server.hide-product-header",
@@ -156,12 +153,13 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_numIoThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addSection("http", "HttpServer features");
+  options->addSection("http", "HTTP server features");
 
   options->addOption("--http.allow-method-override",
                      "allow HTTP method override using special headers",
                      new BooleanParameter(&_allowMethodOverride),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30800);
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
@@ -170,13 +168,12 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption(
       "--http.hide-product-header",
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
-      new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
+      new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
+      .setDeprecatedIn(30800);
 
   options->addOption("--http.trusted-origin",
                      "trusted origin URLs for CORS requests with credentials",
                      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
-
-  options->addSection("frontend", "Frontend options");
 
   options->addOption("--frontend.proxy-request-check",
                      "enable proxy request checking",
@@ -585,11 +582,6 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
-
-  if (cluster.isEnabled()) {
-    _handlerFactory->addPrefixHandler("/_admin/repair",
-                                      RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
-  }
 
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {

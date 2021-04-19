@@ -128,9 +128,7 @@ Conductor::~Conductor() {
 
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _callbackMutex.assertLockedByCurrentThread();
   _startTimeSecs = TRI_microtime();
-
   _computationStartTimeSecs = _startTimeSecs;
   _finalizationStartTimeSecs = _startTimeSecs;
   _endTimeSecs = _startTimeSecs;
@@ -264,10 +262,13 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
   b.add(Utils::activateAllKey, VPackValue(activateAll));
 
-  b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
+  if (!toWorkerMessages.slice().isNone()) {
+    b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
+  }
   _aggregators->serializeValues(b);
 
   b.close();
+
   LOG_TOPIC("d98de", DEBUG, Logger::PREGEL) << b.toString();
 
   _stepStartTimeSecs = TRI_microtime();
@@ -714,7 +715,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
 
-      responses.emplace_back(network::sendRequest(pool, "server:" + server,
+      responses.emplace_back(network::sendRequestRetry(pool, "server:" + server,
                                                   fuerte::RestVerb::Post, path,
                                                   std::move(buffer), reqOpts));
 
@@ -800,6 +801,11 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   _aggregators->serializeValues(debugOut);
   debugOut.close();
 
+  if (_finalizationStartTimeSecs < _computationStartTimeSecs) {
+    // prevent negative computation times from being reported
+    _finalizationStartTimeSecs = _computationStartTimeSecs;
+  }
+
   double compTime = _finalizationStartTimeSecs - _computationStartTimeSecs;
   TRI_ASSERT(compTime >= 0);
   if (didStore) {
@@ -881,6 +887,7 @@ VPackBuilder Conductor::toVelocyPack() const {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
+  result.add("parallelism", _userParams.slice().get(Utils::parallelismKey));
   if (_masterContext) {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
@@ -949,7 +956,7 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
   std::vector<futures::Future<network::Response>> responses;
 
   for (auto const& server : _dbServers) {
-    responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
+    responses.emplace_back(network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Post,
                                                 base + path, buffer, reqOpts));
   }
 

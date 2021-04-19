@@ -14,18 +14,22 @@
           <p>The cluster supervision maintenance mode is currently enabled.</p>
           <p>While the maintenance mode is enabled, the agency will not organize failovers for shards that are located on unavailable leaders or follower DB servers. This mode can be used for controlled shutdown/restart of servers, e.g. or for upgrading or other planned maintenance.</p>
         </div>
-        <button id="disableMaintenanceMode" class="button-success pull-right"
-                style="margin-right: 20px;">Disable Maintenance Mode
-        </button>
+        <% if (canChange) { %>
+          <button id="disableMaintenanceMode" class="button-success pull-right"
+                  style="margin-right: 20px;">Disable Maintenance Mode
+          </button>
+        <% } %>
       <% } else { %>
         <div id="maintenanceMode" class="infoBox successBox" style="margin-top: 15px; margin-bottom: 20px">
           <h4>Maintenance mode disabled <i class="fa fa-check"></i></h4>
           <p>The cluster supervision maintenance mode is currently disabled.</p>
           <p>This is the expected setting for normal operations: in case a leader or follower DB server becomes unavailable, the agency will organize failovers for all affected shards.
         </div>
-        <button id="enableMaintenanceMode" class="button-warning pull-right"
-                style="margin-right: 20px; margin-bottom: 20px;">Enable Maintenance Mode
-        </button>
+        <% if (canChange) { %>
+          <button id="enableMaintenanceMode" class="button-warning pull-right"
+                  style="margin-right: 20px; margin-bottom: 20px;">Enable Maintenance Mode
+          </button>
+        <% } %>
       <% } %>
     </div>
 

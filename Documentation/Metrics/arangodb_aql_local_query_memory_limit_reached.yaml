@@ -1,0 +1,20 @@
+name: arangodb_aql_local_query_memory_limit_reached
+introducedIn: "3.8.0"
+help: |
+  Number of times a local query memory limit threshold was reached.
+unit: number
+type: counter
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of times a local query memory limit threshold was reached, i.e.
+  a single query tried to allocate more memory than configured in the query's
+  `memoryLimit` attribute or the value configured via the startup option
+  `--query.memory-limit`.
+  Every time this counter will increase, an AQL query will have aborted with a 
+  "resource limit exceeded" error.

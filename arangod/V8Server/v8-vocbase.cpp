@@ -1398,7 +1398,7 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
-  engine.getStatistics(builder);
+  engine.getStatistics(builder, true);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
@@ -2271,14 +2271,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           TRI_V8_ASCII_STRING(isolate, "FORCE_ONE_SHARD"),
                           v8::Boolean::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().forceOneShard()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
-      .FromMaybe(false);  // ignore result
-
-  // use old system collections
-  context->Global()
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "USE_OLD_SYSTEM_COLLECTIONS"),
-                          v8::Boolean::New(isolate,
-                                          vocbase.server().getFeature<DatabaseFeature>().useOldSystemCollections()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // a thread-global variable that will contain the AQL module.

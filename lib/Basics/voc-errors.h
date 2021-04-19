@@ -895,9 +895,9 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER                        
 constexpr auto TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION                = ErrorCode{1489};
 
 /// 1490: ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
-/// "a shard follower refuses to perform an operation that is not a replication"
-/// Will be raised if a non-replication operation is refused by a shard
-/// follower.
+/// "a shard follower refuses to perform an operation"
+/// Will be raised if a replication operation is refused by a shard follower
+/// because it is coming from the wrong leader.
 constexpr auto TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION                = ErrorCode{1490};
 
 /// 1491: ERROR_CLUSTER_SHARD_LEADER_RESIGNED
@@ -1061,6 +1061,11 @@ constexpr auto TRI_ERROR_QUERY_DIVISION_BY_ZERO                                 
 /// Will be raised when a non-array operand is used for an operation that
 /// expects an array argument operand.
 constexpr auto TRI_ERROR_QUERY_ARRAY_EXPECTED                                    = ErrorCode{1563};
+
+/// 1568: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
+/// "collection '%s' used as expression operand"
+/// Will be raised when a collection is used as an operand in an AQL expression.
+constexpr auto TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     = ErrorCode{1568};
 
 /// 1569: ERROR_QUERY_FAIL_CALLED
 /// "FAIL(%s) called"
@@ -1678,74 +1683,6 @@ constexpr auto TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE           
 /// Will be raised if there is an attempt to create an edge between separated
 /// graph components.
 constexpr auto TRI_ERROR_INVALID_DISJOINT_SMART_EDGE                             = ErrorCode{4010};
-
-/// 5000: ERROR_CLUSTER_REPAIRS_FAILED
-/// "error during cluster repairs"
-/// General error during cluster repairs
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_FAILED                                  = ErrorCode{5000};
-
-/// 5001: ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY
-/// "not enough (healthy) db servers"
-/// Will be raised when, during repairDistributeShardsLike, there must be a
-/// free DB-Server to move a shard, but there is no candidate or none is
-/// healthy.
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY                      = ErrorCode{5001};
-
-/// 5002: ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED
-/// "replication factor violated during cluster repairs"
-/// Will be raised on various inconsistencies regarding the replication factor
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED             = ErrorCode{5002};
-
-/// 5003: ERROR_CLUSTER_REPAIRS_NO_DBSERVERS
-/// "no dbservers during cluster repairs"
-/// Will be raised if a collection that is fixed has some shard without
-/// DB-Servers
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS                            = ErrorCode{5003};
-
-/// 5004: ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS
-/// "mismatching leaders during cluster repairs"
-/// Will be raised if a shard in collection and its prototype in the
-/// corresponding distributeShardsLike collection have mismatching leaders
-/// (when they should already have been fixed)
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS                     = ErrorCode{5004};
-
-/// 5005: ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS
-/// "mismatching followers during cluster repairs"
-/// Will be raised if a shard in collection and its prototype in the
-/// corresponding distributeShardsLike collection don't have the same followers
-/// (when they should already have been adjusted)
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS                   = ErrorCode{5005};
-
-/// 5006: ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES
-/// "inconsistent attributes during cluster repairs"
-/// Will be raised if a collection that is fixed does (not) have
-/// distributeShardsLike when it is expected, or does (not) have
-/// repairingDistributeShardsLike when it is expected
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES                 = ErrorCode{5006};
-
-/// 5007: ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS
-/// "mismatching shards during cluster repairs"
-/// Will be raised if in a collection and its distributeShardsLike prototype
-/// collection some shard and its prototype have an unequal number of DB-Servers
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS                      = ErrorCode{5007};
-
-/// 5008: ERROR_CLUSTER_REPAIRS_JOB_FAILED
-/// "move shard job failed during cluster repairs"
-/// Will be raised if a move shard job in the Agency failed during cluster
-/// repairs
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED                              = ErrorCode{5008};
-
-/// 5009: ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED
-/// "move shard job disappeared during cluster repairs"
-/// Will be raised if a move shard job in the Agency cannot be found anymore
-/// before it finished
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                         = ErrorCode{5009};
-
-/// 5010: ERROR_CLUSTER_REPAIRS_OPERATION_FAILED
-/// "agency transaction failed during cluster repairs"
-/// Will be raised if an agency transaction failed during either sending or
-/// executing it.
-constexpr auto TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED                        = ErrorCode{5010};
 
 /// 20001: ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE
 /// "malformed gossip message"

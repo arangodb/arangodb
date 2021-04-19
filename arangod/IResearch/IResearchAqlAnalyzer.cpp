@@ -38,8 +38,11 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Optimizer.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryString.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -67,6 +70,7 @@ constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 constexpr const char BATCH_SIZE_PARAM_NAME[] = "batchSize";
 constexpr const char MEMORY_LIMIT_PARAM_NAME[] = "memoryLimit";
 constexpr const char CALCULATION_PARAMETER_NAME[] = "param";
+constexpr const char RETURN_TYPE_PARAM_NAME[] = "returnType";
 
 constexpr const uint32_t MAX_BATCH_SIZE{1000};
 constexpr const uint32_t MAX_MEMORY_LIMIT{33554432U}; // 32Mb
@@ -99,6 +103,18 @@ struct OptionsValidator {
                                    .append("' should be less or equal to ")
                                    .append(std::to_string(MAX_MEMORY_LIMIT))};
     }
+    if (opts.returnType != arangodb::iresearch::AnalyzerValueType::String &&
+        opts.returnType != arangodb::iresearch::AnalyzerValueType::Number &&
+        opts.returnType != arangodb::iresearch::AnalyzerValueType::Bool) {
+       return deserialize_error{
+           std::string("Value of '").append(RETURN_TYPE_PARAM_NAME)
+             .append("' should be ")
+             .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING)
+             .append(" or ")
+             .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER)
+             .append(" or ")
+             .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL)};
+    }
     return {};
   }
 };
@@ -108,7 +124,12 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
   factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool, false, values::numeric_value<bool, false>>,
   factory_simple_parameter<KEEP_NULL_PARAM_NAME, bool, false, values::numeric_value<bool, true>>,
   factory_simple_parameter<BATCH_SIZE_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 10>>,
-  factory_simple_parameter<MEMORY_LIMIT_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 1048576U>>
+  factory_simple_parameter<MEMORY_LIMIT_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 1048576U>>,
+  factory_deserialized_default<RETURN_TYPE_PARAM_NAME,
+                               arangodb::iresearch::AnalyzerValueTypeEnumDeserializer,
+                               values::numeric_value<arangodb::iresearch::AnalyzerValueType,
+                                   static_cast<std::underlying_type_t<arangodb::iresearch::AnalyzerValueType>>(
+                                       arangodb::iresearch::AnalyzerValueType::String)>>
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
@@ -137,17 +158,33 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
     builder.add(KEEP_NULL_PARAM_NAME, VPackValue(options.keepNull));
     builder.add(BATCH_SIZE_PARAM_NAME, VPackValue(options.batchSize));
     builder.add(MEMORY_LIMIT_PARAM_NAME, VPackValue(options.memoryLimit));
+    switch (options.returnType) {
+      case arangodb::iresearch::AnalyzerValueType::String:
+        builder.add(RETURN_TYPE_PARAM_NAME,
+          VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING));
+        break;
+      case arangodb::iresearch::AnalyzerValueType::Number:
+        builder.add(RETURN_TYPE_PARAM_NAME,
+          VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER));
+        break;
+      case arangodb::iresearch::AnalyzerValueType::Bool:
+        builder.add(RETURN_TYPE_PARAM_NAME,
+          VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL));
+        break;
+      default:
+          TRI_ASSERT(false);
+    }
     return true;
   }
   return false;
 }
 
-/// @brief Dummmy transaction state which does nothing but provides valid
+/// @brief Dummy transaction state which does nothing but provides valid
 /// statuses to keep ASSERT happy
 class CalculationTransactionState final : public arangodb::TransactionState {
  public:
   explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
-      : TransactionState(vocbase, arangodb::TransactionId(0), _options) {
+      : TransactionState(vocbase, arangodb::TransactionId(0), arangodb::transaction::Options()) {
     updateStatus(arangodb::transaction::Status::RUNNING);  // always running to make ASSERTS happy
   }
 
@@ -177,9 +214,6 @@ class CalculationTransactionState final : public arangodb::TransactionState {
 
   /// @brief number of commits, including intermediate commits
   uint64_t numCommits() const override { return 0; }
-
- private:
-  arangodb::transaction::Options _options;
 };
 
 /// @brief Dummy transaction context which just gives dummy state
@@ -255,6 +289,8 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
   }
 
   virtual bool killed() const override { return false; }
+
+  virtual void debugKillQuery() override {}
 
   /// @brief whether or not a query is a modification query
   virtual bool isModificationQuery() const noexcept override { return false; }
@@ -448,7 +484,7 @@ namespace iresearch {
 
 /*static*/ bool AqlAnalyzer::normalize_json(const irs::string_ref& args,
                                                     std::string& out) {
-  auto src = VPackParser::fromJson(args);
+  auto src = VPackParser::fromJson(args.c_str(), args.size());
   VPackBuilder builder;
   if (normalize_slice(src->slice(), builder)) {
     out = builder.toString();
@@ -464,7 +500,7 @@ namespace iresearch {
 
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(irs::string_ref const& args) {
-  auto builder = VPackParser::fromJson(args);
+  auto builder = VPackParser::fromJson(args.c_str(), args.size());
   return make_slice(builder->slice());
 }
 
@@ -476,6 +512,7 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
+  std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
                  .ok());
@@ -487,13 +524,54 @@ bool AqlAnalyzer::next() {
       while (_queryResults->numRows() > _resultRowIdx) {
         AqlValue const& value =
             _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
-        if (value.isString() || (value.isNull(true) && _options.keepNull)) {
-          if (value.isString()) {
-            _term.value = arangodb::iresearch::getBytesRef(value.slice());
-          } else {
-            _term.value = irs::bytes_ref::EMPTY;
+        if (_options.keepNull || !value.isNull(true)) {
+          switch (_options.returnType) {
+            case AnalyzerValueType::String:
+              if (value.isString()) {
+                std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());
+              } else {
+                VPackFunctionParameters params{_params_arena};
+                params.push_back(value);
+                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                _valueBuffer = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(_valueBuffer.isString());
+                std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(_valueBuffer.slice().stringView());
+              }
+              break;
+            case AnalyzerValueType::Number:
+              if (value.isNumber()) {
+                std::get<3>(_attrs).value = value.slice();
+              } else {
+                VPackFunctionParameters params{_params_arena};
+                params.push_back(value);
+                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                _valueBuffer = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(_valueBuffer.isNumber());
+                std::get<3>(_attrs).value = _valueBuffer.slice();
+              }
+              break;
+            case AnalyzerValueType::Bool:
+              if (value.isBoolean()) {
+                std::get<3>(_attrs).value = value.slice();
+              } else {
+                VPackFunctionParameters params{_params_arena};
+                params.push_back(value);
+                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                _valueBuffer = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
+                TRI_ASSERT(_valueBuffer.isBoolean());
+                std::get<3>(_attrs).value = _valueBuffer.slice();
+              }
+              break;
+            default:
+              // new return type added?
+              TRI_ASSERT(false);
+              LOG_TOPIC("a9ba5", WARN, iresearch::TOPIC) << "Unexpected AqlAnalyzer return type " <<
+                static_cast<std::underlying_type_t<AnalyzerValueType>>(_options.returnType);
+              std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
+              _valueBuffer = AqlValue();
+              std::get<3>(_attrs).value = _valueBuffer.slice();
           }
-          _inc.value = _nextIncVal;
+          std::get<0>(_attrs).value = _nextIncVal;
           _nextIncVal = !_options.collapsePositions;
           return true;
         }
@@ -555,7 +633,21 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
         }
       });
       ast->validateAndOptimize(_query->trxForOptimization());
-      _plan = ExecutionPlan::instantiateFromAst(ast, true);
+
+      std::unique_ptr<ExecutionPlan> plan = ExecutionPlan::instantiateFromAst(ast, true);
+
+      // run the plan through the optimizer, executing only the absolutely necessary
+      // optimizer rules (we skip all other rules to save time). we have to execute
+      // the "splice-subqueries" rule here so we replace all SubqueryNodes with
+      // SubqueryStartNodes and SubqueryEndNodes.
+      Optimizer optimizer(1);
+      // disable all rules which are not necessary
+      optimizer.disableRules(plan.get(), [](OptimizerRule const& rule) -> bool {
+        return rule.canBeDisabled() || rule.isClusterOnly();
+      });
+      optimizer.createPlans(std::move(plan), _query->queryOptions(), false);
+
+      _plan = optimizer.stealBest();
     } else {
       for (auto node : _bindedNodes) {
         node->setStringValue(field.c_str(), field.size());
@@ -564,6 +656,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
     }
     _queryResults = nullptr;
     _plan->clearVarUsageComputed();
+    _aqlFunctionsInternalCache.clear();
     _engine.initFromPlanForCalculation(*_plan);
     _executionState = ExecutionState::HASMORE;
     _resultRowIdx = 0;
