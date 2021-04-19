@@ -89,7 +89,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   uint64_t _idleTtlMilli;
   uint32_t _numIOThreads;
   bool _verifyHosts;
-  bool _prepared;
+  std::atomic<bool> _prepared;
 
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;

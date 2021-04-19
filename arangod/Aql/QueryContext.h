@@ -169,7 +169,7 @@ class QueryContext {
   std::unordered_map<std::string, std::string> _queryDataSources;
   
   /// @brief current state the query is in (used for profiling and error messages)
-  QueryExecutionState::ValueType _execState;
+  std::atomic<QueryExecutionState::ValueType> _execState;
   
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines

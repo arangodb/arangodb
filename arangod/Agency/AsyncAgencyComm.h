@@ -173,8 +173,8 @@ class AsyncAgencyCommManager final {
   void setStopping(bool stopping) { _isStopping = stopping; }
 
  private:
-  bool _isStopping = false;
-  bool _skipScheduler = true;
+  std::atomic<bool> _isStopping = false;
+  std::atomic<bool> _skipScheduler = true;
   application_features::ApplicationServer& _server;
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
