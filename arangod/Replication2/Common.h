@@ -96,6 +96,7 @@ struct LogStatistics {
 
 struct LeaderStatus {
   LogStatistics local;
+  LogTerm term;
   std::unordered_map<ParticipantId, LogStatistics> follower;
 
   void toVelocyPack(velocypack::Builder& builder) const;
@@ -104,6 +105,7 @@ struct LeaderStatus {
 struct FollowerStatus {
   LogStatistics local;
   ParticipantId leader;
+  LogTerm term;
 
   void toVelocyPack(velocypack::Builder& builder) const;
 };

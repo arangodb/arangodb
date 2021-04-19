@@ -84,6 +84,7 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue("follower"));
   builder.add("leader", VPackValue(leader));
+  builder.add("term", VPackValue(term.value));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
 }
@@ -91,6 +92,7 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
 void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue("leader"));
+  builder.add("term", VPackValue(term.value));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
   {

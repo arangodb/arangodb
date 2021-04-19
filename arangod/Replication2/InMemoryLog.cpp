@@ -147,6 +147,7 @@ auto InMemoryLog::getStatus() const -> LogStatus {
                              [&](LeaderConfig const& leader) {
                                LeaderStatus status;
                                status.local = self->getStatistics();
+                               status.term = self->_currentTerm;
                                for (auto const& f : leader.follower) {
                                  status.follower[f._impl->participantId()] =
                                      LogStatistics{f.lastAckedIndex, f.lastAckedCommitIndex};
@@ -157,6 +158,7 @@ auto InMemoryLog::getStatus() const -> LogStatus {
                                FollowerStatus status;
                                status.local = self->getStatistics();
                                status.leader = follower.leaderId;
+                               status.term = self->_currentTerm;
                                return LogStatus{std::move(status)};
                              }},
                     self->_role);
