@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix sporadic ArangoSearch error
+  `Invalid RL encoding in 'dense_fixed_offset_column_key'`
+
 * Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
   replacement for PUT `/_api/cursor/<cursor-id>`. The POST API is functionally
   equivalent to the existing PUT API. The benefit of using the POST API is that
