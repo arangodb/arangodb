@@ -1038,9 +1038,23 @@ Result RestoreFeature::RestoreJob::sendRestoreData(arangodb::httpclient::SimpleH
     }
   } else {
     // no error
+
     {
       MUTEX_LOCKER(locker, sharedState->mutex);
       TRI_ASSERT(!sharedState->readOffsets.empty());
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+      {
+        auto it = sharedState->readOffsets.find(readOffset);
+        TRI_ASSERT(it != sharedState->readOffsets.end());
+        [[maybe_unused]] bool wasSynced = progressTracker.updateStatus(
+            collectionName, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING, readOffset + (*it).second});
+        if (wasSynced && options.failOnUpdateContinueFile) {
+          LOG_TOPIC("a87bf", WARN, Logger::RESTORE) << "triggered failure point at offset " << readOffset << "!";
+          FATAL_ERROR_EXIT_CODE(38); // exit with exit code 38 to report to the test frame work that this was an intentional crash
+        }
+      }
+#endif
       sharedState->readOffsets.erase(readOffset);
     }
 
@@ -1054,22 +1068,8 @@ Result RestoreFeature::RestoreJob::sendRestoreData(arangodb::httpclient::SimpleH
 
 void RestoreFeature::RestoreJob::updateProgress() {
   MUTEX_LOCKER(locker, sharedState->mutex);
-
-  if (!sharedState->readOffsets.empty()) {
-    size_t readOffset = *(sharedState->readOffsets.begin());
-
-    // progressTracker has its own lock
-    locker.unlock();
-
-    [[maybe_unused]] bool wasSynced = progressTracker.updateStatus(
-          collectionName, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING, readOffset});
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    if (wasSynced && options.failOnUpdateContinueFile) {
-      LOG_TOPIC("a87bf", WARN, Logger::RESTORE) << "triggered failure point at offset " << readOffset << "!";
-      FATAL_ERROR_EXIT_CODE(38); // exit with exit code 38 to report to the test frame work that this was an intentional crash
-    }
-#endif
-  } else if (sharedState->complete) {
+  
+  if (sharedState->complete && sharedState->readOffsets.empty()) {
     // we are done with restoring the entire collection
     
     // progressTracker has its own lock
@@ -1077,6 +1077,15 @@ void RestoreFeature::RestoreJob::updateProgress() {
 
     progressTracker.updateStatus(
         collectionName, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORED, 0});
+  } else if (!sharedState->readOffsets.empty()) {
+    auto it = sharedState->readOffsets.begin();
+    size_t readOffset = (*it).first /*offset*/ + (*it).second /*length*/;
+
+    // progressTracker has its own lock
+    locker.unlock();
+    
+    progressTracker.updateStatus(
+          collectionName, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING, readOffset});
   }
 }
 
@@ -1118,6 +1127,8 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(arangodb::httpclient:
                                                            char const* data,
                                                            size_t length, 
                                                            bool forceDirect) {
+  size_t readLength = length;
+
   // the following object is needed for cleaning up duplicate attributes.
   // this does not perform any allocations in case we don't store any
   // data into it (which is the normal case)
@@ -1192,7 +1203,7 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(arangodb::httpclient:
   {
     // insert the current readoffset
     MUTEX_LOCKER(locker, sharedState->mutex);
-    sharedState->readOffsets.emplace(readOffset);
+    sharedState->readOffsets.emplace(readOffset, readLength);
   }
     
   // check if we have an idle worker to which we can dispatch the sending of the data.
@@ -1375,7 +1386,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(arangodb::httpclient::SimpleH
           break;
         }
       }
-      
+    
       datafileReadOffset += length;
 
       // bytes successfully sent

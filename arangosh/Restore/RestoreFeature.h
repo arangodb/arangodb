@@ -26,8 +26,8 @@
 #define ARANGODB_RESTORE_RESTORE_FEATURE_H 1
 
 #include <atomic>
+#include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -147,7 +147,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
     Mutex mutex;
     Result result;
-    std::set<size_t> readOffsets;
+    std::map<size_t, size_t> readOffsets;
     bool complete;
   };
   
