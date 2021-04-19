@@ -1904,7 +1904,11 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collection->vocbase().name() << "/" << collection->name()
                 << ": " << res.errorMessage();
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+            if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+            } else {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+            }
           }
         }
       }
@@ -2455,7 +2459,11 @@ Future<Result> Methods::replicateOperations(
               << "could not drop follower " << follower << " for shard "
               << collection->vocbase().name() << "/" << collection->name()
               << ": " << res.errorMessage();
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+          if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+          } else {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+          }
         }
       }
     }
