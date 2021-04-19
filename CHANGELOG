@@ -1,6 +1,18 @@
 devel
 -----
 
+* change arangosh client behavior:
+ - *_RAW methods will never add a `body` to HEAD responses
+ - *_RAW methods will now always return velocypack-typed responses in Buffers
+ - `--server.force-json` will now be applied as default, overrideable
+   by user code
+
+* Fix cluster internal retry behavior for network communications. In particular
+  retry on 421 (leader refuses operation). This leads to the cluster letting
+  less internal errors out to clients.
+* Don't display obsoleted startup options and sections in `--help` and
+  `--help-.` commands. Also rename "global" to "general" options.
+
 * Added option `--query.require-with` to make AQL in single server mode also
   require `WITH` clauses where the cluster would need them.
   The option is turned off by default, but can be turned on in single servers

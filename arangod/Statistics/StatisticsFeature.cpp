@@ -561,8 +561,6 @@ StatisticsFeature::~StatisticsFeature() = default;
 void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-statistics", "server.statistics");
 
-  options->addSection("server", "Server features");
-
   options->addOption("--server.statistics",
                      "turn statistics gathering on or off",
                      new BooleanParameter(&_statistics));

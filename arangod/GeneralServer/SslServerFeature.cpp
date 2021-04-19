@@ -86,7 +86,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.ssl-options", "ssl.options");
   options->addOldOption("server.ssl-protocol", "ssl.protocol");
 
-  options->addSection("ssl", "Configure SSL communication");
+  options->addSection("ssl", "SSL communication");
 
   options->addOption("--ssl.cafile", "ca file used for secure connections",
                      new StringParameter(&_cafile));

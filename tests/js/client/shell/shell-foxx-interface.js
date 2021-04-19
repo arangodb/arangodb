@@ -34,13 +34,15 @@ var db = arangodb.db;
 const FoxxManager = require('@arangodb/foxx/manager');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'interface');
 
+const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
+
 const jsonMime = 'application/json';
-const vpackMime = "application/x-velocypack";
+const vpackMime = forceJson ? jsonMime : "application/x-velocypack";
 const binaryMime = 'image/gif';
 const textMime = 'text/plain';
 const pixelStr = 'R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
 const pixelGif = new Buffer(pixelStr, 'base64');
-const vpackObjectSize = 73;
+const vpackObjectSize = forceJson ? 75: 73;
 
 require("@arangodb/test-helper").waitForFoxxInitialized();
 
@@ -167,9 +169,8 @@ function foxxInterfaceSuite () {
     testFoxxInterfaceHeadBinary: function () {
       let res = arango.HEAD_RAW(binUrl);
       assertEqual(res.code, 200, res.parsedBody);
-      assertTrue(res.body instanceof Buffer);
-      assertEqual(res.body.length, 0);
-      
+      assertUndefined(res.body);
+
       assertEqual(res.headers['content-length'], pixelGif.length);
       assertEqual(res.headers['content-type'], binaryMime);
       assertEqual(res.headers['test'], 'header');

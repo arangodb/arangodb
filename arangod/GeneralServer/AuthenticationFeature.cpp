@@ -67,8 +67,6 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
 }
 
 void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOldOption("server.disable-authentication",
                         "server.authentication");
   options->addOldOption("server.disable-authentication-unix-sockets",
