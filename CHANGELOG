@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix crashes during arangorestore operations due to usage of wrong pointer
+  value for updating user permissions.
+
 * Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
   replacement for PUT `/_api/cursor/<cursor-id>`. The POST API is functionally
   equivalent to the existing PUT API. The benefit of using the POST API is
