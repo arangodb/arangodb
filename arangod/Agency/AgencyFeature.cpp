@@ -75,7 +75,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
 AgencyFeature::~AgencyFeature() = default;
 
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("agency", "Configure the agency");
+  options->addSection("agency", "agency");
 
   options->addOption("--agency.activate", "Activate agency",
                      new BooleanParameter(&_activated),

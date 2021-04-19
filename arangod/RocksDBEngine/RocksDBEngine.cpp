@@ -270,7 +270,7 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
 
 // add the storage engine's specific options to the global list of options
 void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("rocksdb", "RocksDB engine specific configuration");
+  options->addSection("rocksdb", "RocksDB engine");
   
   /// @brief minimum required percentage of free disk space for considering the
   /// server "healthy". this is expressed as a floating point value between 0 and 1!
