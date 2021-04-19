@@ -32,7 +32,10 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "Transaction/Options.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -46,7 +49,25 @@ using namespace arangodb::graph;
 
 namespace {
 constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::StringRef);
-};
+
+bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
+  if (ServerState::instance()->isDBServer() &&
+      ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+    // on a DB server, we could have got here only in the OneShard case.
+    // in this case turn the rather misleading "collection or view not found"
+    // error into a nicer "collection not known to traversal, please add WITH"
+    // message, so users know what to do
+    return true;
+  }
+  if (ServerState::instance()->isSingleServer() &&
+      ex.code() == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+    return true;
+  }
+
+  return false;
+}
+
+} // namespace
 
 TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
     : _query(query),
@@ -54,7 +75,9 @@ TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
       _insertedDocuments(0),
       _filteredDocuments(0),
       _stringHeap(query.resourceMonitor(), 4096), /* arbitrary block-size may be adjusted for performance */
-      _baseOptions(opts) {}
+      _baseOptions(opts),
+      _allowImplicitCollections(ServerState::instance()->isSingleServer() &&
+                                !_query.vocbase().server().getFeature<QueryRegistryFeature>().requireWith()) {}
 
 TraverserCache::~TraverserCache() {
   clear();
@@ -119,6 +142,8 @@ VPackSlice TraverserCache::lookupVertexInCollection(arangodb::velocypack::String
   }
 
   try {
+    transaction::AllowImplicitCollectionsSwitcher disallower(_trx->state()->options(), _allowImplicitCollections);
+
     Result res = _trx->documentFastPathLocal(collectionName,
                                              id.substr(pos + 1), _mmdr);
     if (res.ok()) {
@@ -131,17 +156,12 @@ VPackSlice TraverserCache::lookupVertexInCollection(arangodb::velocypack::String
       THROW_ARANGO_EXCEPTION(res);
     }
   } catch (basics::Exception const& ex) {
-    if (ServerState::instance()->isDBServer()) {
-      // on a DB server, we could have got here only in the OneShard case.
-      // in this case turn the rather misleading "collection or view not found"
-      // error into a nicer "collection not known to traversal, please add WITH"
-      // message, so users know what to do
-      if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                         "collection not known to traversal: '" +
-                                             collectionName + "'. please add 'WITH " + collectionName +
-                                             "' as the first line in your AQL");
-      }
+    if (isWithClauseMissing(ex)) {
+      // turn the error into a different error 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "collection not known to traversal: '" +
+                                     collectionName + "'. please add 'WITH " + collectionName +
+                                     "' as the first line in your AQL");
     }
 
     throw;
