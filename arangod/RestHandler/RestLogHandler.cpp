@@ -158,6 +158,38 @@ RestStatus RestLogHandler::handlePostRequest() {
     log->runAsyncStep(); // TODO
     return waitForFuture(std::move(f));
 
+  } else if (verb == "insertBabies") {
+
+    if (!body.isArray()) {
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                    "expected array");
+      return RestStatus::DONE;
+    }
+
+    auto lastIndex = LogIndex{0};
+
+    for (auto entry : VPackArrayIterator(body)) {
+      lastIndex = log->insert(LogPayload{entry.toJson()});
+    }
+
+    auto f = log->waitFor(lastIndex).thenValue([this, lastIndex](std::shared_ptr<QuorumData>&& quorum) {
+      VPackBuilder response;
+      {
+        VPackObjectBuilder ob(&response);
+        response.add("index", VPackValue(quorum->index.value));
+        response.add("term", VPackValue(quorum->term.value));
+        VPackArrayBuilder ab(&response, "quorum");
+        for (auto& part : quorum->quorum) {
+          response.add(VPackValue(part));
+        }
+      }
+      LOG_DEVEL << "insert completed idx = " << lastIndex.value;
+      generateOk(rest::ResponseCode::ACCEPTED, response.slice());
+    });
+
+    log->runAsyncStep(); // TODO
+    return waitForFuture(std::move(f));
+
   } else if(verb == "becomeLeader") {
 
     auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
@@ -232,15 +264,17 @@ RestStatus RestLogHandler::handleGetRequest() {
     std::visit([&](auto const& status) { status.toVelocyPack(buffer); }, log->getStatus());
     generateOk(rest::ResponseCode::OK, buffer.slice());
     return RestStatus::DONE;
-  } else if (suffixes.size() != 2) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expect GET /_api/log/<log-id>");
-    return RestStatus::DONE;
   }
 
   auto const& verb = suffixes[1];
 
   if (verb == "dump") {
+    if (suffixes.size() != 2) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expect GET /_api/log/<log-id>/dump");
+      return RestStatus::DONE;
+    }
+
     // dump log
     auto [idx, snapshot] = log->createSnapshot();
     VPackBuilder result;
@@ -258,9 +292,32 @@ RestStatus RestLogHandler::handleGetRequest() {
     }
 
     generateOk(rest::ResponseCode::OK, result.slice());
+  } else if (verb == "readEntry") {
+    if (suffixes.size() != 3) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expect GET /_api/log/<log-id>/readEntry/<id>");
+      return RestStatus::DONE;
+    }
+    LogIndex logIdx{basics::StringUtils::uint64(suffixes[2])};
+
+    auto entry = log->getEntryByIndex(logIdx);
+    if (entry) {
+      VPackBuilder result;
+      {
+        VPackObjectBuilder builder(&result);
+        result.add("index", VPackValue(entry->logIndex().value));
+        result.add("term", VPackValue(entry->logTerm().value));
+        result.add("payload", VPackValue(entry->logPayload().dummy));
+      }
+      generateOk(rest::ResponseCode::OK, result.slice());
+
+    } else {
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "log index not found");
+    }
+
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expecting one of the resources 'dump', ");
+                  "expecting one of the resources 'dump', 'readEntry'");
   }
   return RestStatus::DONE;
 }
