@@ -22,6 +22,10 @@
 
 #ifndef ARANGODB3_REPLICATION_COMMON_H
 #define ARANGODB3_REPLICATION_COMMON_H
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -95,6 +99,9 @@ class LogEntry {
   [[nodiscard]] LogTerm logTerm() const;
   [[nodiscard]] LogIndex logIndex() const;
   [[nodiscard]] LogPayload const& logPayload() const;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice slice) -> LogEntry;
 
  private:
   LogTerm _logTerm{};
