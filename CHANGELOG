@@ -1,6 +1,12 @@
 devel
 -----
 
+* change arangosh client behaviour:
+ - *_RAW methods will never add a `body` to HEAD requests
+ - *_RAW methods will now allways make velocypack replies SlowBuffers
+ - `--server.force-json` will now be applied as default, overrideable
+   by user code
+
 * Fix cluster internal retry behavior for network communications. In particular
   retry on 421 (leader refuses operation). This leads to the cluster letting
   less internal errors out to clients.
