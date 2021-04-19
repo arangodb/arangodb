@@ -1,4 +1,4 @@
-v3.7.12 (XXXX-XX-XX)
+v3.7.11 (XXXX-XX-XX)
 --------------------
 
 * Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
@@ -12,10 +12,6 @@ v3.7.12 (XXXX-XX-XX)
   The POST API is not used internally by ArangoDB's own requests in this version.
   This means that compatibility to older versions of ArangoDB that do not
   provide the new API is ensured.
-
-
-v3.7.11 (XXXX-XX-XX)
---------------------
 
 * Timely updates of rebootId / cluster membership of DB servers and coordinators
   in ClusterInfo. Fixes BTS-368 detected in chaos tests.
