@@ -247,7 +247,7 @@ TEST(InMemoryLogTest, appendEntries) {
   }
 }
 
-TEST(InMemoryLog, replicationTest) {
+TEST(InMemoryLogTest, replicationTest) {
   auto const leaderId = ParticipantId{1};
   auto const leaderState = std::make_shared<InMemoryState>();
   auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
@@ -327,8 +327,7 @@ TEST(InMemoryLog, replicationTest) {
   }
 }
 
-
-TEST(InMemoryLog, replicationTest2) {
+TEST(InMemoryLogTest, replicationTest2) {
   auto const leaderId = ParticipantId{1};
   auto const leaderState = std::make_shared<InMemoryState>();
   auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
