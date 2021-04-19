@@ -1769,14 +1769,14 @@ void translateHeaders(fu::Request& request,
   request.header.restVerb = method;
   request.header.database = databaseName;
   request.header.parseArangoPath(location.toString());
+  if (forceJson) {
+    // Preset posting json (if) but allow override if there is a specified header:
+    request.header.contentType(fu::ContentType::Json);
+  }
   for (auto& pair : headerFields) {
     if (boost::iequals(StaticStrings::ContentTypeHeader, pair.first)) {
       if (pair.second == StaticStrings::MimeTypeVPack) {
-        if (forceJson) {
-          request.header.contentType(fu::ContentType::Json);
-        } else {
-          request.header.contentType(fu::ContentType::VPack);
-        }
+        request.header.contentType(fu::ContentType::VPack);
       } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
                  (pair.second.compare(0,
                                       StaticStrings::MimeTypeJsonNoEncoding.length(),
