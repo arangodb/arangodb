@@ -35,9 +35,12 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -68,6 +71,10 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
   startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<DatabaseFeature>();
+  startsAfter<RocksDBEngine>();
+  startsAfter<RocksDBRecoveryManager>();
+  startsAfter<ServerIdFeature>();
+  startsAfter<StorageEngineFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 }
@@ -190,6 +197,7 @@ void ReplicationFeature::stop() {
   try {
     if (_globalReplicationApplier != nullptr) {
       _globalReplicationApplier->stop();
+      _globalReplicationApplier->stopAndJoin();
     }
   } catch (...) {
     // ignore any error

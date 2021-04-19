@@ -7,6 +7,17 @@ v3.7.11 (XXXX-XX-XX)
   remove this behavior difference between single servers and clusters, making
   later a transition from single server to cluster easier.
 
+* Timely updates of rebootId / cluster membership of DB servers and coordinators
+  in ClusterInfo. Fixes BTS-368 detected in chaos tests.
+
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global replication
+  applier being started before end of database recovery procedure.
+  Also fixed potential shutdown errors due to global replication applier being
+  shut down in parallel to a concurrent shut down attempt.
+
+* Web UI - Added missing HTML escaping inside the file upload plugin used in the
+  section of deploying a new Foxx application when uploading a zip file.
+
 * Fix BTS-352: removed assertion for success of a RocksDB function and throw a
   proper exception instead.
 
