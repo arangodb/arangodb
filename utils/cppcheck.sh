@@ -26,6 +26,7 @@ cppcheck "$@" \
   -I enterprise \
   -I lib \
   -D USE_PLAN_CACHE \
+  -D DEFINE_FACTORY_DEFAULT \
   --std=c++17 \
   --enable=warning,performance,portability,missingInclude \
   --force \

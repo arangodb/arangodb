@@ -12,6 +12,15 @@ v3.8.0 (XXXX-XX-XX)
   version. This means that compatibility to older versions of ArangoDB that do
   not provide the new API is ensured.
 
+* Timely updates of rebootId / cluster membership of DB servers and coordinators
+  in ClusterInfo. Fixes BTS-368 detected in chaos tests.
+
+* Fix cluster internal retry behavior for network communications. In particular
+  retry on 421 (leader refuses operation). This leads to the cluster letting
+  less internal errors out to clients.
+
+* Fixed CPPCHECK warning or added suppression.
+
 * Web UI - Added missing HTML escaping inside the file upload plugin used in the
   section of deploying a new Foxx application when uploading a zip file.
 

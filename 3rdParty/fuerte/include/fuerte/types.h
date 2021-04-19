@@ -53,6 +53,7 @@ StatusCode constexpr StatusMethodNotAllowed = 405;
 StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
+StatusCode constexpr StatusMisdirectedRequest = 421;
 StatusCode constexpr StatusInternalError = 500;
 StatusCode constexpr StatusServiceUnavailable = 503;
 StatusCode constexpr StatusVersionNotSupported = 505;
