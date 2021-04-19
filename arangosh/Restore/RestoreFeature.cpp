@@ -1044,12 +1044,12 @@ Result RestoreFeature::RestoreJob::sendRestoreData(arangodb::httpclient::SimpleH
       TRI_ASSERT(!sharedState->readOffsets.empty());
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-      {
+      if (options.failOnUpdateContinueFile) {
         auto it = sharedState->readOffsets.find(readOffset);
         TRI_ASSERT(it != sharedState->readOffsets.end());
         [[maybe_unused]] bool wasSynced = progressTracker.updateStatus(
             collectionName, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING, readOffset + (*it).second});
-        if (wasSynced && options.failOnUpdateContinueFile) {
+        if (wasSynced) {
           LOG_TOPIC("a87bf", WARN, Logger::RESTORE) << "triggered failure point at offset " << readOffset << "!";
           FATAL_ERROR_EXIT_CODE(38); // exit with exit code 38 to report to the test frame work that this was an intentional crash
         }
@@ -1069,7 +1069,16 @@ Result RestoreFeature::RestoreJob::sendRestoreData(arangodb::httpclient::SimpleH
 void RestoreFeature::RestoreJob::updateProgress() {
   MUTEX_LOCKER(locker, sharedState->mutex);
   
-  if (sharedState->complete && sharedState->readOffsets.empty()) {
+  if (!sharedState->readOffsets.empty()) {
+    auto it = sharedState->readOffsets.begin();
+    size_t readOffset = (*it).first;
+
+    // progressTracker has its own lock
+    locker.unlock();
+    
+    progressTracker.updateStatus(
+          collectionName, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING, readOffset});
+  } else if (sharedState->readCompleteInputfile) {
     // we are done with restoring the entire collection
     
     // progressTracker has its own lock
@@ -1077,15 +1086,6 @@ void RestoreFeature::RestoreJob::updateProgress() {
 
     progressTracker.updateStatus(
         collectionName, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORED, 0});
-  } else if (!sharedState->readOffsets.empty()) {
-    auto it = sharedState->readOffsets.begin();
-    size_t readOffset = (*it).first /*offset*/ + (*it).second /*length*/;
-
-    // progressTracker has its own lock
-    locker.unlock();
-    
-    progressTracker.updateStatus(
-          collectionName, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING, readOffset});
   }
 }
 
@@ -1421,7 +1421,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(arangodb::httpclient::SimpleH
   if (result.ok()) {
     {
       MUTEX_LOCKER(locker, sharedState->mutex);
-      sharedState->complete = true;
+      sharedState->readCompleteInputfile = true;
     }
 
     updateProgress();

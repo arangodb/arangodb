@@ -141,14 +141,25 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     std::atomic<uint64_t> totalRead{0};
   };
 
-  /// @brief shared state for a single collection
+  /// @brief shared state for a single collection, can be shared by multiple
+  /// RestoreJobs (one RestoreMainJob and x RestoreSendJobs)
   struct SharedState {
-    SharedState() : complete(false) {}
+    SharedState() : readCompleteInputfile(false) {}
 
     Mutex mutex;
+
+    /// @brief this contains errors produced by background send operations
+    /// (i.e. RestoreSendJobs)
     Result result;
+
+    /// @brief data chunk offsets (start offset, length) of requests that are currently
+    /// ongoing. it is safe the resume restore only up the minimum value contained
+    /// in here (note: we also need to track the length of each chunk to test the
+    /// resumption of a restore after a crash)
     std::map<size_t, size_t> readOffsets;
-    bool complete;
+
+    /// @brief whether ot not we have read the complete input data file for the collection
+    bool readCompleteInputfile;
   };
   
   /// @brief Stores all necessary data to restore a single collection or shard
