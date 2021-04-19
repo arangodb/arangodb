@@ -127,17 +127,7 @@ TailingSyncer::~TailingSyncer() {
 /// @brief decide based on _state.leader which api to use
 ///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
-  bool act32 = _state.leader.simulate32Client();
-  std::string const& base = act32 ? replutils::ReplicationUrl : TailingSyncer::WalAccessUrl;
-  if (act32) {  // fallback pre 3.3
-    if (cc == "tail") {
-      return base + "/logger-follow?";
-    } else if (cc == "open-transactions") {
-      return base + "/determine-open-transactions?";
-    }
-    // should not be used for anything else
-    TRI_ASSERT(false);
-  }
+  std::string const& base = TailingSyncer::WalAccessUrl;
   return base + "/" + cc + "?";
 }
 
@@ -1735,8 +1725,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
 
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
 
-  if (!fromIncluded && fromTick > 0 &&
-      (!_state.leader.simulate32Client() || fromTick != readTick)) {
+  if (!fromIncluded && fromTick > 0) {
     Result r = handleRequiredFromPresentFailure(fromTick, readTick, "initial");
     TRI_ASSERT(_ongoingTransactions.empty());
 
@@ -1899,7 +1888,6 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
   }
 
   worked = false;
-  TRI_voc_tick_t const originalFetchTick = fetchTick;
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderCheckMore)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1978,8 +1966,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
     _applier->_state._totalFetchInstances++;
   }
 
-  if (!fromIncluded && fetchTick > 0 &&
-      (!_state.leader.simulate32Client() || originalFetchTick != tick)) {
+  if (!fromIncluded && fetchTick > 0) {
     Result r = handleRequiredFromPresentFailure(fetchTick, tick, "ongoing");
     TRI_ASSERT(_ongoingTransactions.empty());
 

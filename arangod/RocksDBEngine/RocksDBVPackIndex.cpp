@@ -721,7 +721,7 @@ Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods*
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         // find conflicting document's key
         LocalDocumentId docId = RocksDBValue::documentId(existing);
-        auto success = _collection.getPhysical()->read(&trx, docId,
+        auto readResult = _collection.getPhysical()->read(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
              VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
              if (mode == IndexOperationMode::internal) {
@@ -734,7 +734,10 @@ Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods*
              }
              return true; // return value does not matter here
            });
-        TRI_ASSERT(success);
+        if (readResult.fail()) {
+          addErrorMsg(readResult);
+          THROW_ARANGO_EXCEPTION(readResult);
+        }
         TRI_ASSERT(res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED));
         break;
       } else if (!s.IsNotFound()) {
@@ -789,7 +792,7 @@ Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, RocksDBMethods
         }
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         // find conflicting document's key
-        auto success = _collection.getPhysical()->read(&trx, docId,
+        auto readResult = _collection.getPhysical()->read(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
              VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
              if (mode == IndexOperationMode::internal) {
@@ -802,7 +805,10 @@ Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, RocksDBMethods
              }
              return true; // return value does not matter here
            });
-        TRI_ASSERT(success);
+        if (readResult.fail()) {
+          addErrorMsg(readResult);
+          THROW_ARANGO_EXCEPTION(readResult);
+        }
         TRI_ASSERT(res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED));
         break;
       } else if (!s.IsNotFound()) {
@@ -866,7 +872,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
       if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
         // find conflicting document's key
         LocalDocumentId docId = RocksDBValue::documentId(existing);
-        auto success = _collection.getPhysical()->read(&trx, docId,
+        auto readResult = _collection.getPhysical()->read(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
              VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
              if (mode == IndexOperationMode::internal) {
@@ -879,7 +885,10 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
              }
              return true; // return value does not matter here
            });
-        TRI_ASSERT(success);
+        if (readResult.fail()) {
+          addErrorMsg(readResult);
+          THROW_ARANGO_EXCEPTION(readResult);
+        }
       } else {
         addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
       }

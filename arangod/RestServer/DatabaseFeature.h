@@ -138,7 +138,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }
   bool upgrade() const { return _upgrade; }
-  bool useOldSystemCollections() const { return _useOldSystemCollections; }
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
@@ -198,7 +197,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _isInitiallyEmpty;
   bool _checkVersion;
   bool _upgrade;
-  bool _useOldSystemCollections;
 
   std::atomic<bool> _started;
 

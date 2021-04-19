@@ -28,48 +28,47 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require('jsunity');
-var arangodb = require('@arangodb');
-var db = arangodb.db;
-
-var replication = require('@arangodb/replication');
+const jsunity = require('jsunity');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
+const replication = require('@arangodb/replication');
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
-var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-let compareTicks = replication.compareTicks;
-var console = require('console');
-var internal = require('internal');
-var masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const compareTicks = replication.compareTicks;
+const console = require('console');
+const internal = require('internal');
+const leaderEndpoint = arango.getEndpoint();
+const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
-var cn = 'UnitTestsReplication';
-var cn2 = 'UnitTestsReplication2';
+const cn = 'UnitTestsReplication';
+const cn2 = 'UnitTestsReplication2';
 
-var connectToMaster = function () {
-  reconnectRetry(masterEndpoint, db._name(), 'root', '');
+let connectToLeader = function () {
+  reconnectRetry(leaderEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
-var connectToSlave = function () {
-  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
+let connectToFollower = function () {
+  reconnectRetry(followerEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
-var collectionChecksum = function (name) {
+let collectionChecksum = function (name) {
   var c = db._collection(name).checksum(true, true);
   return c.checksum;
 };
 
-var collectionCount = function (name) {
+let collectionCount = function (name) {
   return db._collection(name).count();
 };
 
-var compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
-  var state = {};
+let compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, followerFuncFinal, applierConfiguration) {
+  let state = {};
 
   db._flushCache();
-  masterFunc(state);
+  leaderFunc(state);
 
-  connectToSlave();
+  connectToFollower();
   replication.applier.stop();
   replication.applier.forget();
 
@@ -100,7 +99,7 @@ var compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFina
   }
 
   var syncResult = replication.sync({
-    endpoint: masterEndpoint,
+    endpoint: leaderEndpoint,
     username: 'root',
     password: '',
     verbose: true,
@@ -112,14 +111,14 @@ var compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFina
 
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
-  connectToMaster();
-  masterFunc2(state);
+  connectToLeader();
+  leaderFunc2(state);
 
   //  use lastLogTick as of now
   state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
   applierConfiguration = applierConfiguration || {};
-  applierConfiguration.endpoint = masterEndpoint;
+  applierConfiguration.endpoint = leaderEndpoint;
   applierConfiguration.username = 'root';
   applierConfiguration.password = '';
   applierConfiguration.force32mode = false;
@@ -128,7 +127,7 @@ var compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFina
     applierConfiguration.chunkSize = 16384;
   }
 
-  connectToSlave();
+  connectToFollower();
 
   replication.applier.properties(applierConfiguration);
   if (keepBarrier) {
@@ -140,7 +139,7 @@ var compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFina
   var printed = false;
 
   while (true) {
-    var r = slaveFuncOngoing(state);
+    var r = followerFuncOngoing(state);
     if (r === 'wait') {
       //  special return code that tells us to hang on
       internal.wait(0.5, false);
@@ -150,40 +149,40 @@ var compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFina
       break;
     }
 
-    var slaveState = replication.applier.state();
+    var followerState = replication.applier.state();
 
-    if (slaveState.state.lastError.errorNum > 0) {
-      console.topic('replication=error', 'slave has errored:', JSON.stringify(slaveState.state.lastError));
+    if (followerState.state.lastError.errorNum > 0) {
+      console.topic('replication=error', 'follower has errored:', JSON.stringify(followerState.state.lastError));
       break;
     }
 
-    if (!slaveState.state.running) {
-      console.topic('replication=error', 'slave is not running');
+    if (!followerState.state.running) {
+      console.topic('replication=error', 'follower is not running');
       break;
     }
 
-    if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
-        compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
+    if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
+        compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
       console.topic('replication=debug',
-                    'slave has caught up. syncResult.lastLogTick:', state.lastLogTick,
-                    'slaveState.lastAppliedContinuousTick:', slaveState.state.lastAppliedContinuousTick,
-                    'slaveState.lastProcessedContinuousTick:', slaveState.state.lastProcessedContinuousTick);
+                    'follower has caught up. syncResult.lastLogTick:', state.lastLogTick,
+                    'followerState.lastAppliedContinuousTick:', followerState.state.lastAppliedContinuousTick,
+                    'followerState.lastProcessedContinuousTick:', followerState.state.lastProcessedContinuousTick);
       break;
     }
 
     if (!printed) {
-      console.topic('replication=debug', 'waiting for slave to catch up');
+      console.topic('replication=debug', 'waiting for follower to catch up');
       printed = true;
     }
     internal.wait(0.5, false);
   }
 
   db._flushCache();
-  slaveFuncFinal(state);
+  followerFuncFinal(state);
 };
 
-var stopApplier = function (dbName) {
-  connectToSlave();
+let stopApplier = function (dbName) {
+  connectToFollower();
   try {
     db._useDatabase(dbName);
 
@@ -207,7 +206,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRequireFromPresentFalse: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -215,7 +214,7 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          //  flush the wal logs on the master so the start tick is not available
+          //  flush the wal logs on the leader so the start tick is not available
           //  anymore when we start replicating
           for (var i = 0; i < 30; ++i) {
             db._collection(cn).save({
@@ -250,7 +249,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRequireFromPresentTrue: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -258,7 +257,7 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          //  flush the wal logs on the master so the start tick is not available
+          //  flush the wal logs on the leader so the start tick is not available
           //  anymore when we start replicating
           for (var i = 0; i < 30; ++i) {
             db._collection(cn).save({
@@ -275,10 +274,10 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          //  wait for slave applier to have started and run
+          //  wait for follower applier to have started and run
           internal.wait(5, false);
 
-          //  slave should not have stopped
+          //  follower should not have stopped
           assertTrue(replication.applier.state().state.running);
           return true;
         },
@@ -299,7 +298,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRequireFromPresentTrueNoBarrier: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -307,7 +306,7 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          //  flush the wal logs on the master so the start tick is not available
+          //  flush the wal logs on the leader so the start tick is not available
           //  anymore when we start replicating
           for (var i = 0; i < 30; ++i) {
             db._collection(cn).save({
@@ -320,7 +319,7 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          //  wait for slave applier to have started and detect the mess
+          //  wait for follower applier to have started and detect the mess
           return replication.applier.state().state.running;
         },
 
@@ -353,7 +352,7 @@ function ReplicationSuite () {
     setUp: function () {
       stopApplier('_system');
 
-      connectToMaster();
+      connectToLeader();
 
       db._drop(cn);
       db._drop(cn2);
@@ -366,11 +365,11 @@ function ReplicationSuite () {
     tearDown: function () {
       stopApplier('_system');
 
-      connectToMaster();
+      connectToLeader();
       db._drop(cn);
       db._drop(cn2);
 
-      connectToSlave();
+      connectToFollower();
       db._drop(cn);
       db._drop(cn2);
     }
@@ -397,7 +396,7 @@ function ReplicationOtherDBSuite () {
       stopApplier(dbName);
 
       db._useDatabase('_system');
-      connectToSlave();
+      connectToFollower();
       try {
         db._dropDatabase(dbName);
       } catch (e) {
@@ -405,7 +404,7 @@ function ReplicationOtherDBSuite () {
 
       db._createDatabase(dbName);
 
-      connectToMaster();
+      connectToLeader();
 
       try {
         db._dropDatabase(dbName);
@@ -423,7 +422,7 @@ function ReplicationOtherDBSuite () {
       stopApplier(dbName);
 
       db._useDatabase('_system');
-      connectToMaster();
+      connectToLeader();
       try {
         db._dropDatabase(dbName);
       } catch (e) {

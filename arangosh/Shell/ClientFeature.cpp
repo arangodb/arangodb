@@ -81,7 +81,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Configure a connection to the server");
+  options->addSection("server", "server connection");
 
   options->addOption("--server.database", "database name to use when connecting",
                      new StringParameter(&_databaseName));
@@ -155,7 +155,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
-  options->addSection("ssl", "Configure SSL communication");
+  options->addSection("ssl", "SSL communication");
   options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(&_sslProtocol, sslProtocols));
 #if _WIN32

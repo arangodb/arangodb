@@ -516,10 +516,9 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlIte
     inputRow = InputAqlItemRow{std::move(items), pos};
   }
   auto res = _root->initializeCursor(inputRow);
-  if (res.first == ExecutionState::WAITING) {
-    return res;
+  if (res.first != ExecutionState::WAITING) {
+    _initializeCursorCalled = true;
   }
-  _initializeCursorCalled = true;
   return res;
 }
 
@@ -528,7 +527,17 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+
+  TRI_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
+    _query.debugKillQuery();
+  }
+
   auto const res = _root->execute(stack);
+
+  TRI_IF_FAILURE("ExecutionEngine::directKillAfterAQLQueryExecute") {
+    _query.debugKillQuery();
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (std::get<ExecutionState>(res) == ExecutionState::WAITING) {
     auto const skipped = std::get<SkipResult>(res);
@@ -579,7 +588,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
   // we use a backwards compatible stack here.
   // This will always continue with a fetch-all on underlying subqueries (if any)
   AqlCallStack compatibilityStack{AqlCallList{AqlCall::SimulateGetSome(atMost)}};
-  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
   // We cannot trigger a skip operation from here
   TRI_ASSERT(skipped.nothingSkipped());
   return {state, std::move(block)};
@@ -599,7 +608,7 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   // we use a backwards compatible stack here.
   // This will always continue with a fetch-all on underlying subqueries (if any)
   AqlCallStack compatibilityStack{AqlCallList{AqlCall::SimulateSkipSome(atMost)}};
-  auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
+  auto const [state, skipped, block] = execute(std::move(compatibilityStack));
   // We cannot be triggered within a subquery from earlier versions.
   // Also we cannot produce anything ourselfes here.
   TRI_ASSERT(block == nullptr);

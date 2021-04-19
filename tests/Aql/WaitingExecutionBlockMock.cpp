@@ -107,7 +107,7 @@ std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlock
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack const& stack) {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
   traceExecuteEnd(res);

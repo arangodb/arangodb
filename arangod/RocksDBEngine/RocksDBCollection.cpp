@@ -944,12 +944,16 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 }
 
 // read using a local document id
-bool RocksDBCollection::read(transaction::Methods* trx,
+Result RocksDBCollection::read(transaction::Methods* trx,
                              LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb) const {
   ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
-  
-  return (documentId.isSet() && lookupDocumentVPack(trx, documentId, cb, /*withCache*/true));
+
+  if (!documentId.isSet()) {
+    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "invalid local document id"};
+  }
+
+  return lookupDocumentVPack(trx, documentId, cb, /*withCache*/true);
 }
 
 // read using a local document id
@@ -1842,7 +1846,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
   return res;
 }
 
-bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
+Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                                             LocalDocumentId const& documentId,
                                             IndexIterator::DocumentCallback const& cb,
                                             bool withCache) const {
@@ -1859,7 +1863,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                           static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
-      return true;
+      return Result{};
     }
   }
 
@@ -1872,7 +1876,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                 key->string(), &ps);
 
   if (!s.ok()) {
-    return false;
+    return rocksutils::convertStatus(s);
   }
 
   TRI_ASSERT(ps.size() > 0);
@@ -1891,7 +1895,7 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                                     });
   }
 
-  return true;
+  return Result{};
 }
 
 void RocksDBCollection::createCache() const {

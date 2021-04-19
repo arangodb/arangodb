@@ -147,7 +147,7 @@ size_t BlocksWithClientsImpl<Executor>::getClientId(std::string const& shardId) 
 
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-BlocksWithClientsImpl<Executor>::execute(AqlCallStack stack) {
+BlocksWithClientsImpl<Executor>::execute(AqlCallStack const& /*stack*/) {
   // This will not be implemented here!
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -173,7 +173,7 @@ auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
   });
   
   traceExecuteBegin(stack, clientId);
-  auto res = executeWithoutTraceForClient(stack, clientId);
+  auto res = executeWithoutTraceForClient(std::move(stack), clientId);
   traceExecuteEnd(res, clientId);
   return res;
 }
@@ -273,7 +273,7 @@ template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
   AqlCallStack stack(AqlCallList{AqlCall::SimulateGetSome(atMost)});
-  auto [state, skipped, block] = executeForClient(stack, shardId);
+  auto [state, skipped, block] = executeForClient(std::move(stack), shardId);
   TRI_ASSERT(skipped.nothingSkipped());
   return {state, std::move(block)};
 }
@@ -284,7 +284,7 @@ template <class Executor>
 std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
   AqlCallStack stack(AqlCallList{AqlCall::SimulateSkipSome(atMost)});
-  auto [state, skipped, block] = executeForClient(stack, shardId);
+  auto [state, skipped, block] = executeForClient(std::move(stack), shardId);
   TRI_ASSERT(block == nullptr);
   return {state, skipped.getSkipCount()};
 }

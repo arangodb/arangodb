@@ -109,6 +109,15 @@ uint64_t fasthash32(void const*, std::size_t, uint32_t);
 #define VELOCYPACK_HASH32(mem, size, seed) fasthash32(mem, size, seed)
 #endif
 
+// always define wy hash function, in addition to other configured
+// hash function
+#include "velocypack/velocypack-wyhash.h"
+
+// the default secret parameters
+static constexpr uint64_t _wyp[4] = {0xa0761d6478bd642full, 0xe7037ed1a0b428dbull, 0x8ebc6af09c88c6e3ull, 0x589965cc75374cc3ull};
+
+#define VELOCYPACK_HASH_WYHASH(mem, size, seed) wyhash(mem, size, seed, _wyp)
+
 #ifdef __APPLE__
 #include <libkern/OSByteOrder.h>
 #include <machine/endian.h>
@@ -348,48 +357,28 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
   static_assert(length > 0, "length must be > 0");
   static_assert(length <= sizeof(T), "length must be <= sizeof(T)");
   static_assert(length <=8);
-  switch (length) {
-    case 1:
-      return *start;
-    case 2:
-      return readIntFixedHelper<T, 2>(start);
-    case 3:
-      return readIntFixedHelper<T, 3>(start);
-    case 4:
-      return readIntFixedHelper<T, 4>(start);
-    case 5: // starting with 5 bytes memcpy shows better results than shifts. But
-            // for big-endian we leave shifts as this saves some cpu cyles on byteswapping
-      if constexpr (!isLittleEndian()) {
-        return readIntFixedHelper<T, 5>(start);
-      } else {
-        T v{};
-        memcpy(&v, start, 5);
-        return v;
-      }
-    case 6:
-      if constexpr (!isLittleEndian()) {
-        return readIntFixedHelper<T, 6>(start);
-      } else {
-        T v{};
-        memcpy(&v, start, 6);
-        return v;
-      }
-    case 7:
-      if constexpr (!isLittleEndian()) {
-        return readIntFixedHelper<T, 7>(start);
-      } else {
-        T v{};
-        memcpy(&v, start, 7);
-        return v;
-      }
-    case 8: {
-      T v;
-      memcpy(&v, start, 8);
-      if constexpr (!isLittleEndian()) {
-        v = littleToHost(v);
-      }
+  if constexpr (1 == length) {
+     return *start;
+  }
+  if constexpr(length > 1 && length < 5 ) {      // starting with 5 bytes memcpy shows better results than shifts. But
+    return readIntFixedHelper<T, length>(start); // for big-endian we leave shifts as this saves some cpu cyles on byteswapping
+  }
+  if constexpr(length >= 5 && length < 8) {
+    if constexpr (!isLittleEndian()) {
+      return readIntFixedHelper<T, length>(start);
+    } else {
+      T v{};
+      memcpy(&v, start, length);
       return v;
     }
+  }
+  if constexpr (length == 8) {
+    T v;
+    memcpy(&v, start, 8);
+    if constexpr (!isLittleEndian()) {
+      v = littleToHost(v);
+    }
+    return v;
   }
   return 0;
 }
