@@ -165,6 +165,10 @@ class TraverserCache {
   std::unordered_set<arangodb::velocypack::StringRef> _persistedStrings;
 
   BaseOptions const* _baseOptions;
+
+  /// @brief whether or not to allow adding of previously unknown collections
+  /// during the traversal
+  bool const _allowImplicitCollections;
 };
 
 }  // namespace graph
