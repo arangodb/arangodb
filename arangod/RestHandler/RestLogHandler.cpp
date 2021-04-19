@@ -237,7 +237,12 @@ RestStatus RestLogHandler::handleDeleteRequest() {
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-
+  if (auto it = _vocbase._logs.find(logId); it == _vocbase._logs.end()) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "log not found");
+  } else {
+    _vocbase._logs.erase(it);
+    generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
+  }
 
   return RestStatus::DONE;
 }
