@@ -1,4 +1,4 @@
-v3.7.12 (XXXX-XX-XX)
+v3.7.11 (XXXX-XX-XX)
 --------------------
 
 * Added option `--query.require-with` to make AQL in single server mode also
@@ -6,10 +6,6 @@ v3.7.12 (XXXX-XX-XX)
   The option is turned off by default, but can be turned on in single servers to
   remove this behavior difference between single servers and clusters, making
   later a transition from single server to cluster easier.
-
-
-v3.7.11 (XXXX-XX-XX)
---------------------
 
 * Fix BTS-352: removed assertion for success of a RocksDB function and throw a
   proper exception instead.
