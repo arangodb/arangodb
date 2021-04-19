@@ -311,6 +311,9 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_voc_tick_t currentTick() const override;
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
+
+  // try to resume operations in case there was a background error
+  void tryResume();
   
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;

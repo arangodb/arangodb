@@ -663,7 +663,6 @@ void RocksDBEngine::start() {
   } 
   
   _errorListener = std::make_shared<RocksDBBackgroundErrorListener>();
-
   _options.listeners.push_back(_errorListener);
   _options.listeners.push_back(std::make_shared<RocksDBMetricsListener>(server()));
 
@@ -946,6 +945,24 @@ void RocksDBEngine::unprepare() {
   TRI_ASSERT(isEnabled());
   waitForCompactionJobsToFinish();
   shutdownRocksDBInstance();
+}
+
+void RocksDBEngine::tryResume() {
+  if (_errorListener != nullptr && _errorListener->called()) {
+
+    LOG_TOPIC("a77d3", DEBUG, Logger::ENGINES) 
+        << "trying to resume RocksDB operations after background error";
+    rocksdb::Status s = _db->GetRootDB()->Resume();
+    if (s.ok()) {
+      _errorListener->resume();
+      LOG_TOPIC("02f89", INFO, Logger::ENGINES) 
+          << "resumed RocksDB operations after background error";
+    } else {
+      LOG_TOPIC("9708a", WARN, Logger::ENGINES) 
+          << "resuming RocksDB operations after background error failed: " 
+          << rocksutils::convertStatus(s).errorMessage();
+    }
+  }
 }
   
 bool RocksDBEngine::hasBackgroundError() const {

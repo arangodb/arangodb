@@ -38,7 +38,8 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
 
   void OnBackgroundError(rocksdb::BackgroundErrorReason reason, rocksdb::Status* error) override;
 
-  bool called() const { return _called.load(std::memory_order_relaxed); }
+  bool called() const noexcept { return _called.load(std::memory_order_relaxed); }
+  void resume() noexcept;
 
  private:
   std::atomic<bool> _called{false};
