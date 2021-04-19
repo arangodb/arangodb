@@ -1,7 +1,7 @@
 devel
 -----
 
-* change arangosh client behaviour:
+* change arangosh client behavior:
  - *_RAW methods will never add a `body` to HEAD responses
  - *_RAW methods will now allways make velocypack replies SlowBuffers
  - `--server.force-json` will now be applied as default, overrideable
