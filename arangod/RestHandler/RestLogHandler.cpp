@@ -139,7 +139,7 @@ RestStatus RestLogHandler::handlePostRequest() {
   if (auto& verb = suffixes[1]; verb == "insert") {
     auto idx = log->insert(LogPayload{body.toJson()});
 
-    auto f = log->waitFor(idx).thenValue([this](std::shared_ptr<QuorumData>&& quorum) {
+    auto f = log->waitFor(idx).thenValue([this, idx](std::shared_ptr<QuorumData>&& quorum) {
       VPackBuilder response;
       {
         VPackObjectBuilder ob(&response);
@@ -150,7 +150,7 @@ RestStatus RestLogHandler::handlePostRequest() {
           response.add(VPackValue(part));
         }
       }
-
+      LOG_DEVEL << "insert completed idx = " << idx.value;
       generateOk(rest::ResponseCode::ACCEPTED, response.slice());
     });
 
