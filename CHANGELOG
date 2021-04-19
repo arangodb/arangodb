@@ -1,8 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* Timely updates of rebootId / cluster membership of DB servers and
-  coordinators in ClusterInfo. Fixes BTS-368 detected in chaos tests.
+* Timely updates of rebootId / cluster membership of DB servers and coordinators
+  in ClusterInfo. Fixes BTS-368 detected in chaos tests.
 
 * Fix cluster internal retry behavior for network communications. In particular
   retry on 421 (leader refuses operation). This leads to the cluster letting
