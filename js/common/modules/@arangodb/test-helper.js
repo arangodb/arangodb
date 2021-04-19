@@ -99,7 +99,7 @@ exports.waitForFoxxInitialized = function () {
       }
     } else {
       // arangosh
-
+  
       const coordinators = exports.getEndpointsByType('coordinator');
       let done = 0;
       coordinators.forEach((endpoint) => {
