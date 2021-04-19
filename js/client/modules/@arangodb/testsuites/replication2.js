@@ -40,15 +40,12 @@ const testPaths = {
 ////////////////////////////////////////////////////////////////////////////////
 
 function replication2Client(options) {
-  let testCases = tu.scanTestPaths(testPaths.replication2_client, options);
+  const testCases = tu.scanTestPaths(testPaths.replication2_client, options);
 
-  var opts = {
-    'replication': true
-  };
-  _.defaults(opts, options);
+  const opts = _.clone(options);
+  opts.dbServers = Math.max(opts.dbServers, 3);
 
-  return tu.performTests(opts, testCases, 'replication2_client', tu.runThere);
-
+  return tu.performTests(opts, testCases, 'replication2_client', tu.runInLocalArangosh);
 }
 
 
