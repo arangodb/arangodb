@@ -1879,8 +1879,7 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
 v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
                                              v8::Isolate* isolate) {
   auto responseBody = response.payload();
-  if ((responseBody.size() > 0) &&
-      (response.contentEncoding() == fuerte::ContentEncoding::Identity) &&
+  if ((response.contentEncoding() == fuerte::ContentEncoding::Identity) &&
       (
         response.isContentTypeJSON() ||
         response.isContentTypeText() ||
