@@ -3114,7 +3114,11 @@ class writer final : public irs::columnstore_writer {
       // column is dense IFF
       // - all blocks are dense
       // - there are no gaps between blocks
-      column_props_ &= ColumnProperty(column_index_.empty() || 1 == block_index_.min_key() - max_);
+      // - all data blocks have the same length
+      column_props_ &= ColumnProperty{
+        1 == (block_index_.min_key() - max_) &&
+        (!doc_limits::valid(max_) || prev_block_size_ == block_buf_.size())
+      };
 
       // update max element
       max_ = block_index_.max_key();
@@ -3144,7 +3148,8 @@ class writer final : public irs::columnstore_writer {
       auto block_props = block_index_.flush(out, buf);
       block_props |= write_compact(out, ctx_->buf_, cipher_, *comp_, block_buf_);
 
-      length_ += block_buf_.size();
+      prev_block_size_ = block_buf_.size();
+      length_ += prev_block_size_;
 
       // refresh blocks properties
       blocks_props_ &= block_props;
@@ -3155,6 +3160,7 @@ class writer final : public irs::columnstore_writer {
       // column is dense IFF
       // - all blocks are dense
       // - there are no gaps between blocks
+      // - all data blocks have the same length
       column_props_ &= ColumnProperty(0 != (block_props & CP_DENSE));
     }
 
@@ -3163,6 +3169,7 @@ class writer final : public irs::columnstore_writer {
     compression::compressor::ptr comp_; // compressor used for column
     encryption::stream* cipher_;
     uint64_t length_{}; // size of all data blocks in the column
+    uint64_t prev_block_size_{};
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
     memory_output blocks_index_; // blocks index
@@ -5065,7 +5072,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
       ));
     }
 
-    auto column = factory(*this, props);
+    column::ptr column = factory(*this, props);
 
     if (!column) {
       throw index_error(string_utils::to_string(
