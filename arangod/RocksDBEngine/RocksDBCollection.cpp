@@ -1530,11 +1530,11 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
-  if (options.checkUniqueConstraintsInPreflight) {
+  if (options.checkUniqueConstraintsInPreflight || state->numOperations() >= 100) {
     // we can only afford the separation of checking and inserting in a
     // transaction that disallows concurrency, i.e. we need to have the
     // exclusive lock on the collection.
-    TRI_ASSERT(state->isOnlyExclusiveTransaction());
+    TRI_ASSERT(!options.checkUniqueConstraintsInPreflight || state->isOnlyExclusiveTransaction());
 
     // do a round of checks for all indexes, to verify that the insertion
     // will work (i.e. that there will be no unique constraint violations
@@ -1548,7 +1548,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
     for (auto const& idx : _indexes) {
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-      res = rIdx->checkInsert(*trx, mthds, documentId, doc, options);
+      res = rIdx->checkInsert(*trx, mthds, documentId, doc, options, !state->isOnlyExclusiveTransaction());
       if (res.fail()) {
         // no operations happened yet in this savepoint. if we don't
         // cancel it, the WriteBatch will need to be reconstructed from
@@ -1559,6 +1559,8 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     }
   }
 
+  TRI_ASSERT(res.ok());
+
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), documentId);
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
@@ -1567,27 +1569,30 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     // banish new document to avoid caching without committing first
     invalidateCacheEntry(key.ref());
   }
-    
-  TRI_ASSERT(res.ok());
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
-
-  // first insert into the indexes
+  
+  rocksdb::Status s = mthds->PutUntracked(
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+      key.ref(),
+      rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
+  if (!s.ok()) {
+    savepoint.cancel();
+    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
+  }
+ 
+  bool needReversal = false;
+ 
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
-    bool needReversal = false;
-    int modified = 0;
-    for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    for (auto it = _indexes.begin(); it != _indexes.end(); ++it) {
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
       res = rIdx->insert(*trx, mthds, documentId, doc, options);
       // currently only IResearchLink indexes need a reversal
-      needReversal |= rIdx->needsReversal();
-      if (res.ok()) {
-        ++modified;
-      } else {
-        // failure
+      needReversal = needReversal || rIdx->needsReversal();
+      if (res.fail()) {
         if (needReversal && !state->isSingleOperation()) {
           ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
             return rid->remove(*trx, mthds, documentId, doc);
@@ -1596,35 +1601,13 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
         break;
       }
     }
-
-    if (res.fail()) {
-      // inserting into an index failed
-      if (modified == 0) {
-        TRI_ASSERT(!needReversal);
-        // we failed at the very first index, which is the primary index.
-        // in this case the WriteBatch was not modified at all, so we can
-        // just drop the savepoint and do not need to rebuild everything 
-        // that was in the WriteBatch from scratch
-        savepoint.cancel();
-      }
-      return res;
-    }
   }
 
-  TRI_ASSERT(res.ok());
-
-  // now insert into the documents column family only after all indexes
-  rocksdb::Status s = mthds->PutUntracked(
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(),
-      rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
-  if (s.ok()) {
+  if (res.ok()) {
     RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
                                                        RevisionId::fromSlice(doc));
-  } else {
-    res.reset(rocksutils::convertStatus(s, rocksutils::document));
-  } 
-
+  }
+  
   return res;
 }
 
@@ -1655,11 +1638,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                               RocksDBColumnFamilyManager::Family::Documents),
                           key.ref());
   if (!s.ok()) {
-    // operation did not succeed. no modifications have been done yet.
-    // so we can cancel the savepoint
     savepoint.cancel();
-    
-    // if we get here, very likely this is a write-write conflict.
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
@@ -1670,12 +1649,11 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    
     bool needReversal = false;
     for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
       res = rIdx->remove(*trx, mthds, documentId, doc);
-      needReversal |= rIdx->needsReversal();
+      needReversal = needReversal || rIdx->needsReversal();
       if (res.fail()) {
         if (needReversal && !trx->isSingleOperationTransaction()) {
           ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
@@ -1713,11 +1691,11 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
-  if (options.checkUniqueConstraintsInPreflight) {
+  if (options.checkUniqueConstraintsInPreflight || state->numOperations() >= 100) {
     // we can only afford the separation of checking and inserting in a
     // transaction that disallows concurrency, i.e. we need to have the
     // exclusive lock on the collection.
-    TRI_ASSERT(state->isOnlyExclusiveTransaction());
+    TRI_ASSERT(!options.checkUniqueConstraintsInPreflight || state->isOnlyExclusiveTransaction());
 
     // do a round of checks for all indexes, to verify that the insertion
     // will work (i.e. that there will be no unique constraint violations
@@ -1731,7 +1709,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
 
     for (auto const& idx : _indexes) {
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-      res = rIdx->checkReplace(*trx, mthds, oldDocumentId, newDoc, options);
+      res = rIdx->checkReplace(*trx, mthds, oldDocumentId, newDoc, options, !state->isOnlyExclusiveTransaction());
       if (res.fail()) {
         // no operations happened yet in this savepoint. if we don't
         // cancel it, the WriteBatch will need to be reconstructed from
@@ -1742,24 +1720,19 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
     }
   }
 
+  // disable indexing in this transaction if we are allowed to
+  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
+
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), oldDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
   invalidateCacheEntry(key.ref());
-  
-  // disable indexing in this transaction if we are allowed to
-  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
                               RocksDBColumnFamilyManager::Family::Documents),
                           key.ref());
   if (!s.ok()) {
-    // operation did not succeed. no modifications have been done yet.
-    // so we can cancel the savepoint
-    savepoint.cancel();
-    
-    // if we get here, very likely this is a write-write conflict.
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
@@ -1781,12 +1754,11 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
 
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-
     bool needReversal = false;
     for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
       auto rIdx = static_cast<RocksDBIndex*>(it->get());
       res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
-      needReversal |= rIdx->needsReversal();
+      needReversal = needReversal || rIdx->needsReversal();
       if (!res.ok()) {
         if (needReversal && !trx->isSingleOperationTransaction()) {
           ::reverseIdxOps(_indexes, it,

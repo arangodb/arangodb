@@ -687,7 +687,8 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 /// (or if there will be a conflict)
 Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods* mthds,
                                       LocalDocumentId const& documentId,
-                                      velocypack::Slice doc, OperationOptions const& options) {
+                                      velocypack::Slice doc, OperationOptions const& options,
+                                      bool lock) {
   Result res;
     
   // non-unique indexes will not cause any constraint violation
@@ -715,7 +716,11 @@ Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods*
     rocksdb::PinnableSlice existing(leased.get());
 
     for (RocksDBKey const& key : elements) {
-      s = mthds->Get(_cf, key.string(), &existing); /* TODO: lock */
+      if (lock) {
+        s = mthds->GetForUpdate(_cf, key.string(), &existing);
+      } else {
+        s = mthds->Get(_cf, key.string(), &existing);
+      }
 
       if (s.ok()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
@@ -754,7 +759,8 @@ Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods*
 /// (or if there will be a conflict)
 Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, RocksDBMethods* mthds,
                                        LocalDocumentId const& documentId,
-                                       velocypack::Slice doc, OperationOptions const& options) {
+                                       velocypack::Slice doc, OperationOptions const& options,
+                                       bool lock) {
   Result res;
     
   // non-unique indexes will not cause any constraint violation
@@ -782,7 +788,11 @@ Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, RocksDBMethods
     rocksdb::PinnableSlice existing(leased.get());
 
     for (RocksDBKey const& key : elements) {
-      s = mthds->Get(_cf, key.string(), &existing); /* TODO: lock */
+      if (lock) {
+        s = mthds->GetForUpdate(_cf, key.string(), &existing); 
+      } else {
+        s = mthds->Get(_cf, key.string(), &existing); 
+      }
 
       if (s.ok()) {  // detected conflicting index entry
         LocalDocumentId docId = RocksDBValue::documentId(existing);
@@ -850,8 +860,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
 
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
+
+    auto* state = RocksDBTransactionState::toState(&trx);
+
     for (RocksDBKey const& key : elements) {
-      if (!options.checkUniqueConstraintsInPreflight) {
+      if (!options.checkUniqueConstraintsInPreflight && state->numOperations() < 100) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
         if (s.ok()) {  // detected conflicting index entry
           res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);

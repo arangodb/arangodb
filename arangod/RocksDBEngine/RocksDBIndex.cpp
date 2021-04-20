@@ -263,7 +263,8 @@ Result RocksDBIndex::checkInsert(transaction::Methods& /*trx*/,
                                  RocksDBMethods* /*methods*/,
                                  LocalDocumentId const& /*documentId*/,
                                  arangodb::velocypack::Slice /*doc*/,
-                                 OperationOptions const& /*options*/) {
+                                 OperationOptions const& /*options*/,
+                                 bool /*lock*/) {
   // default implementation does nothing - derived indexes can override this!
   return {};
 }
@@ -276,7 +277,8 @@ Result RocksDBIndex::checkReplace(transaction::Methods& /*trx*/,
                                   RocksDBMethods* /*methods*/,
                                   LocalDocumentId const& /*documentId*/,
                                   arangodb::velocypack::Slice /*doc*/,
-                                  OperationOptions const& /*options*/) {
+                                  OperationOptions const& /*options*/,
+                                  bool /*lock*/) {
   // default implementation does nothing - derived indexes can override this!
   return {};
 }

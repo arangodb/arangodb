@@ -582,7 +582,8 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
                                      RocksDBMethods* mthd,
                                      RocksDBKeyLeaser const& key,
                                      arangodb::velocypack::Slice keySlice,
-                                     OperationOptions const& options, 
+                                     OperationOptions const& options,
+                                     bool insert,
                                      bool lock) {
   IndexOperationMode mode = options.indexOperationMode;
   
@@ -596,18 +597,26 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
     s = mthd->Get(_cf, key->string(), &ps);
   }
 
-  if (s.ok()) {  // detected conflicting primary key
-    if (mode == IndexOperationMode::internal) {
-    // in this error mode, we return the conflicting document's key
-    // inside the error message string (and nothing else)!
-      return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
+  if (insert) {
+    // INSERT case
+    if (s.ok()) {  // detected conflicting primary key
+      if (mode == IndexOperationMode::internal) {
+      // in this error mode, we return the conflicting document's key
+      // inside the error message string (and nothing else)!
+        return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
+      }
+      // build a proper error message
+      res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return addErrorMsg(res, keySlice.copyString());
+    } else if (!s.IsNotFound()) {
+      // IsBusy(), IsTimedOut() etc... this indicates a conflict
+      return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
     }
-    // build a proper error message
-    res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-    return addErrorMsg(res, keySlice.copyString());
-  } else if (!s.IsNotFound()) {
-    // IsBusy(), IsTimedOut() etc... this indicates a conflict
-    return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
+  } else {
+    // UPDATE/REPLACE case
+    if (!s.ok()) {
+      return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
+    }
   }
 
   ps.Reset();  // clear used memory
@@ -619,7 +628,8 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
                                         RocksDBMethods* mthd,
                                         LocalDocumentId const& documentId,
                                         velocypack::Slice slice,
-                                        OperationOptions const& options) {
+                                        OperationOptions const& options,
+                                        bool lock) {
   VPackSlice keySlice;
   RevisionId revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
@@ -628,7 +638,24 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
-  return probeKey(trx, mthd, key, keySlice, options, /*lock*/ false);
+  return probeKey(trx, mthd, key, keySlice, options, true, lock);
+}
+
+Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx, 
+                                         RocksDBMethods* mthd,
+                                         LocalDocumentId const& documentId,
+                                         velocypack::Slice slice,
+                                         OperationOptions const& options,
+                                         bool lock) {
+  VPackSlice keySlice;
+  RevisionId revision;
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
+  TRI_ASSERT(keySlice.isString());
+
+  RocksDBKeyLeaser key(&trx);
+  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
+
+  return probeKey(trx, mthd, key, keySlice, options, false, lock);
 }
 
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, 
@@ -646,8 +673,9 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   
   Result res;
 
-  if (!options.checkUniqueConstraintsInPreflight) {
-    res = probeKey(trx, mthd, key, keySlice, options, /*lock*/ true);
+  auto* state = RocksDBTransactionState::toState(&trx);
+  if (!options.checkUniqueConstraintsInPreflight && state->numOperations() < 100) {
+    res = probeKey(trx, mthd, key, keySlice, options, true, /*lock*/ true);
 
     if (res.fail()) {
       return res;

@@ -114,7 +114,11 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// (or if there will be a conflict)
   Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
                      LocalDocumentId const& documentId, velocypack::Slice doc,
-                     OperationOptions const& options) override;
+                     OperationOptions const& options, bool lock) override;
+  
+  Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                      OperationOptions const& options, bool lock) override;
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -140,6 +144,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                   RocksDBKeyLeaser const& key,
                   arangodb::velocypack::Slice keySlice,
                   OperationOptions const& options, 
+                  bool insert,
                   bool lock);
   
   /// @brief create the iterator, for a single attribute, IN operator

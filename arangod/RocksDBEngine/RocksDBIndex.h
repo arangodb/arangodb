@@ -101,7 +101,8 @@ class RocksDBIndex : public Index {
   virtual Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
                              LocalDocumentId const& documentId,
                              arangodb::velocypack::Slice doc,
-                             OperationOptions const& options);
+                             OperationOptions const& options,
+                             bool lock);
   
   /// performs a preflight check for an update/replace operation, not carrying out any
   /// modifications to the index.
@@ -110,7 +111,8 @@ class RocksDBIndex : public Index {
   virtual Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
                               LocalDocumentId const& documentId,
                               arangodb::velocypack::Slice doc,
-                              OperationOptions const& options);
+                              OperationOptions const& options,
+                              bool lock);
 
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,

@@ -139,13 +139,13 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// (or if there will be a conflict)
   Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
                      LocalDocumentId const& documentId, velocypack::Slice doc,
-                     OperationOptions const& options) override;
+                     OperationOptions const& options, bool lock) override;
   
   /// @brief returns whether the document can be updated/replaced in the index
   /// (or if there will be a conflict)
   Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
                       LocalDocumentId const& documentId, velocypack::Slice doc,
-                      OperationOptions const& options) override;
+                      OperationOptions const& options, bool lock) override;
 
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
