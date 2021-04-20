@@ -1,5 +1,5 @@
-v3.8.0 (XXXX-XX-XX)
--------------------
+v3.8.0-beta.1 (2021-04-20)
+--------------------------
 
 * Fix BTS-374: thread race between ArangoSearch link unloading and storage
   engine WAL flushing.
