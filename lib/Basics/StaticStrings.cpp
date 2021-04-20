@@ -234,6 +234,9 @@ std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 std::string const StaticStrings::EncodingIdentity("identity");
 std::string const StaticStrings::EncodingDeflate("deflate");
 
+std::string const StaticStrings::Body("body");
+std::string const StaticStrings::ParsedBody("parsedBody");
+
 // collection attributes
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");

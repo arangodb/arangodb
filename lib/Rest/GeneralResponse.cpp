@@ -428,8 +428,10 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_TRANSACTION_INTERNAL):
       return ResponseCode::SERVER_ERROR;
 
-    case static_cast<int>(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE):
     case static_cast<int>(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED):
+      return ResponseCode::MISDIRECTED_REQUEST;
+
+    case static_cast<int>(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE):
     case static_cast<int>(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING):
     case static_cast<int>(TRI_ERROR_CLUSTER_NOT_LEADER):
     case static_cast<int>(TRI_ERROR_SHUTTING_DOWN):
