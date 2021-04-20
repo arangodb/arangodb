@@ -122,6 +122,9 @@ class DumpRestoreHelper {
     if (this.dumpOptions.encrypted) {
       this.dumpConfig.activateEncryption();
     }
+    if (this.dumpOptions.hasOwnProperty("threads")) {
+      this.dumpConfig.setThreads(this.dumpOptions.threads);
+    }
     if (this.dumpOptions.jwtSecret) {
       let keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
       if (!fs.exists(keyDir)) {  // needed on win32
@@ -148,6 +151,9 @@ class DumpRestoreHelper {
       this.restoreOldConfig.setRootDir(pu.TOP_DIR);
     } else {
       this.restoreOldConfig.setEndpoint(this.instanceInfo.endpoint);
+    }
+    if (this.restoreOptions.hasOwnProperty("threads")) {
+      this.restoreConfig.setThreads(this.restoreOptions.threads);
     }
     if (this.restoreOptions.jwtSecret) {
       let keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
@@ -698,7 +704,8 @@ function dumpWithCrashes (options) {
   let dumpOptions = {
     allDatabases: true,
     deactivateCompression: true,
-    activateFailurePoint: true
+    activateFailurePoint: true,
+    threads: 1,
   };
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
