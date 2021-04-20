@@ -727,10 +727,12 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
     // update reader
     _dataStore._reader = reader;
 
-    auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
+    auto subscription = std::atomic_load(&_flushSubscription);
 
     if (subscription) {
-      subscription->tick(_lastCommittedTick);
+      auto& impl = static_cast<IResearchFlushSubscription&>(*subscription);
+
+      impl.tick(_lastCommittedTick);
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
@@ -789,7 +791,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
-  auto subscription = _flushSubscription;
+  auto subscription = std::atomic_load(&_flushSubscription);
 
   if (!subscription) {
     // already released
