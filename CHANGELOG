@@ -1,8 +1,8 @@
 devel
 -----
 
-* Fix crashes during arangorestore operations due to usage of wrong pointer
-  value for updating user permissions.
+* Fix BTS-374: thread race between ArangoSearch link unloading and storage
+  engine WAL flushing.
   
 * Fix thread race between ArangoSearch link unloading and storage engine
   WAL flushing.
