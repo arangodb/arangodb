@@ -421,8 +421,8 @@ void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
   for (auto const& to : getTo()) {
     builder.add(VPackValue(to));
   }
-  builder.add("type", VPackValue(getType()));
   builder.close();  // array
+  builder.add("type", VPackValue(getType()));
 }
 
 ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition) {
