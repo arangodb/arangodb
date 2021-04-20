@@ -31,7 +31,6 @@ var internal = require('internal');
 var arangodb = require('@arangodb');
 const path = require('path');
 var db = arangodb.db;
-var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 const FoxxManager = require('@arangodb/foxx/manager');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'interface');
 
@@ -170,10 +169,7 @@ function foxxInterfaceSuite () {
     testFoxxInterfaceHeadBinary: function () {
       let res = arango.HEAD_RAW(binUrl);
       assertEqual(res.code, 200, res.parsedBody);
-      // we don't create bodies for head requests anymore:
-      //assertTrue(res.body instanceof Buffer);
-      //assertEqual(res.body.length, 0);
-      
+      assertUndefined(res.body);
       assertEqual(res.headers['content-length'], pixelGif.length);
       assertEqual(res.headers['content-type'], binaryMime);
       assertEqual(res.headers['test'], 'header');
