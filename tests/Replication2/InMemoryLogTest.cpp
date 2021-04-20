@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/MockLog.h"
+#include "Replication2/TestHelper.h"
 
 #include <Basics/Exceptions.h>
 #include <Replication2/InMemoryLog.h>
@@ -55,7 +56,7 @@ struct InMemoryLogTest2 : ::testing::Test {
   LogId _nextLogId{0};
 };
 
-TEST_F(InMemoryLogTest2, test) {
+TEST_F(InMemoryLogTest2, stop_follower_and_rejoin) {
   auto leader = addLogInstance("leader");
   auto follower = addFollowerLogInstance("follower");
 
@@ -102,6 +103,15 @@ TEST_F(InMemoryLogTest2, test) {
     auto f = leader->waitFor(idx);
     leader->runAsyncStep();
     ASSERT_TRUE(follower->hasPendingAppendEntries());
+    {
+      auto request = follower->pendingAppendEntries()[0].request;
+      EXPECT_EQ(request.leaderId, leader->participantId());
+      EXPECT_EQ(request.leaderTerm, LogTerm{3});
+      EXPECT_EQ(request.leaderCommit, LogIndex{0});
+      EXPECT_EQ(request.prevLogTerm, LogTerm{2});
+      EXPECT_EQ(request.prevLogIndex, LogIndex{2});
+    }
+
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
     }
