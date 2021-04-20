@@ -190,6 +190,8 @@ class Graph {
   /// @brief get the cids of all edgeCollections
   std::set<std::string> const& edgeCollections() const;
 
+  bool needsToBeSatellite(std::string edge) const;
+
   /// @brief get the cids of all edgeCollections
   std::map<std::string, EdgeDefinition> const& edgeDefinitions() const;
 

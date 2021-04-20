@@ -504,8 +504,9 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
 Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
-  std::unordered_set<std::string> satelliteCollectionsToCreate{};
+  std::unordered_set<std::string> satelliteDocumentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
+  std::unordered_set<std::string> satelliteEdgeCollectionsToCreate{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentDocumentCollections{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentEdgeCollections{};
 
@@ -533,7 +534,11 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
       return res;
     } else {
       // not found the collection, need to create it later
-      edgeCollectionsToCreate.emplace(edgeColl);
+      if (graph->isHybrid() && graph->needsToBeSatellite(edgeColl)) { // check for satellites
+        satelliteEdgeCollectionsToCreate.emplace(edgeColl);
+      } else {
+        edgeCollectionsToCreate.emplace(edgeColl);
+      }
     }
   }
 
@@ -551,11 +556,11 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
         if (graph->isHybrid()) {
-          if (satelliteCollectionsToCreate.find(vertexColl) ==
-                  satelliteCollectionsToCreate.end() &&
+          if (satelliteDocumentCollectionsToCreate.find(vertexColl) ==
+                  satelliteDocumentCollectionsToCreate.end() &&
               graph->satelliteCollections().find(vertexColl) !=
                   graph->satelliteCollections().end()) {
-            satelliteCollectionsToCreate.emplace(vertexColl);
+            satelliteDocumentCollectionsToCreate.emplace(vertexColl);
           } else {
             documentCollectionsToCreate.emplace(vertexColl);
           }
@@ -628,8 +633,12 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     satOptionsBuilder.openObject();
     graph->createSatelliteCollectionOptions(satOptionsBuilder, waitForSync);
     satOptionsBuilder.close();
-    for (auto const& satColl : satelliteCollectionsToCreate) {
+    for (auto const& satColl : satelliteDocumentCollectionsToCreate) {
       collectionsToCreate.emplace_back(CollectionCreationInfo{satColl, TRI_COL_TYPE_DOCUMENT,
+                                                              satOptionsBuilder.slice()});
+    }
+    for (auto const& satEdgeColl : satelliteEdgeCollectionsToCreate) {
+      collectionsToCreate.emplace_back(CollectionCreationInfo{satEdgeColl, TRI_COL_TYPE_EDGE,
                                                               satOptionsBuilder.slice()});
     }
   }
