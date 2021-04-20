@@ -213,7 +213,6 @@ std::set<std::string> const& Graph::orphanCollections() const {
 }
 
 std::set<std::string> const& Graph::satelliteCollections() const {
-  TRI_ASSERT(isHybrid());
   return _satelliteColls;
 }
 
