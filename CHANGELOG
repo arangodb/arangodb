@@ -1,12 +1,12 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix BTS-374: thread race between ArangoSearch link unloading and storage
+  engine WAL flushing.
+
 * Fix crashes during arangorestore operations due to usage of wrong pointer
   value for updating user permissions.
   
-* Fix thread race between ArangoSearch link unloading and storage engine
-  WAL flushing.
-
 * Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
   'dense_fixed_offset_column_key'`.
 
