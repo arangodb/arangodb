@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-374: thread race between ArangoSearch link unloading and storage
+  engine WAL flushing.
+
 * Fix crashes during arangorestore operations due to usage of wrong pointer
   value for updating user permissions.
 
