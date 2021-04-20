@@ -1,7 +1,7 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
- arangosh client behavior:
+* Change arangosh client behavior:
   - *_RAW methods will never add a `body` to HEAD responses
   - *_RAW methods will now always return velocypack-typed responses in Buffers
   - `--server.force-json` will now be applied as default, overrideable
