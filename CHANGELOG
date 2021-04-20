@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fix thread race between ArangoSearch link unloading and storage engine
+  WAL flushing.
+
 * Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
   'dense_fixed_offset_column_key'`.
 
