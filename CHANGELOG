@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix crashes during arangorestore operations due to usage of wrong pointer
+  value for updating user permissions.
+  
 * Fix thread race between ArangoSearch link unloading and storage engine
   WAL flushing.
 
