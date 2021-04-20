@@ -229,13 +229,10 @@ auto InMemoryLog::GuardedInMemoryLog::becomeLeader(
 
   _role = LeaderConfig{std::move(follower_vec), writeConcern};
   _currentTerm = term;
-  // TODO this here is required because the write concern could be higher.
-  // This would cause the writeConcern to decrease.
-  // Raft declares this volatile on all servers - so we can just forget that.
-  // And it will repair very quickly.
-  // Maybe we can only change it if
-  //  - we were follower before or
-  //  - the write concern increased
+  // The term just changed, and this means we cannot rely on the last computed
+  // commitIndex any longer (e.g. because the write concern may have changed,
+  // or the list of followers could have changed).
+  // We thus start with 0, and it will be updated subsequently.
   _commitIndex = LogIndex{0};
 }
 
@@ -389,13 +386,44 @@ auto InMemoryLog::GuardedInMemoryLog::handleAppendEntriesResponse(
   if (currentTerm != _currentTerm) {
     return;
   }
-  TRI_ASSERT(res.hasValue());
   follower.requestInFlight = false;
-  auto& response = res.get();
-  if (response.success) {
-    follower.lastAckedIndex = lastIndex;
-    follower.lastAckedCommitIndex = currentCommitIndex;
-    checkCommitIndex();
+  if (res.hasValue()) {
+    auto& response = res.get();
+    if (response.success) {
+      follower.lastAckedIndex = lastIndex;
+      follower.lastAckedCommitIndex = currentCommitIndex;
+      checkCommitIndex();
+    } else {
+      // TODO Optimally, we'd like this condition (lastAckedIndex > 0) to be
+      //      assertable here. For that to work, we need to make sure that no
+      //      other failures than "I don't have that log entry" can lead to this
+      //      branch.
+      if (follower.lastAckedIndex > LogIndex{0}) {
+        follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
+      }
+    }
+  } else if (res.hasException()) {
+    // TODO add a backoff on failures instead
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10ms);
+    try {
+      res.throwIfFailed();
+    } catch (std::exception const& e) {
+      LOG_TOPIC("e094b", INFO, Logger::REPLICATION2)
+          << "exception in appendEntries  to follower "
+          << follower._impl->participantId() << ": " << e.what();
+    } catch (...) {
+      LOG_TOPIC("05608", INFO, Logger::REPLICATION2)
+          << "exception in appendEntries  to follower "
+          << follower._impl->participantId() << ".";
+    }
+  } else {
+    LOG_TOPIC("dc441", FATAL, Logger::REPLICATION2)
+        << "in appendEntries to follower " << follower._impl->participantId()
+        << ", result future has neither value nor exception.";
+    TRI_ASSERT(false);
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(1s);
   }
   // try sending the next batch
   sendAppendEntries(parentLog, follower);
