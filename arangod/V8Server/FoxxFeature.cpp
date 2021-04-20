@@ -41,7 +41,7 @@ FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
 }
 
 void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("foxx", "Configure Foxx");
+  options->addSection("foxx", "Foxx services");
 
   options->addOldOption("server.foxx-queues", "foxx.queues");
   options->addOldOption("server.foxx-queues-poll-interval",

@@ -152,8 +152,10 @@ function echoVpackVpack () {
   
   var res = arango.POST_RAW(path, body, headers);
 
-  expect(res.body).to.be.a('string');
+  expect(res.body).to.be.a('SlowBuffer');
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+  var replyBody = VPACK_TO_V8(res.body);
+  expect(replyBody.requestBody).to.be.a('string');
 };
 
 ////////////////////////////////////////////////////////////////////////////////

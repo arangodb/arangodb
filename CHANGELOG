@@ -1,6 +1,54 @@
 devel
 -----
 
+* Fix crashes during arangorestore operations due to usage of wrong pointer
+  value for updating user permissions.
+  
+* Fix thread race between ArangoSearch link unloading and storage engine
+  WAL flushing.
+
+* change arangosh client behavior:
+ - *_RAW methods will never add a `body` to HEAD responses
+ - *_RAW methods will now always return velocypack-typed responses in Buffers
+ - `--server.force-json` will now be applied as default, overrideable
+   by user code
+
+* Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
+  replacement for PUT `/_api/cursor/<cursor-id>`. The POST API is functionally
+  equivalent to the existing PUT API. The benefit of using the POST API is
+  that HTTP POST requests will not be considered as idempotent, so proxies
+  may not retry them if they fail. This was the case with the existing PUT
+  API, as HTTP PUT requests can be considered idempotent according to the
+  HTTP specification.
+
+  The POST API is now used internally by ArangoDB's own requests, including
+  the web UI and the client tools. That means the web UI and client tools
+  will only work with ArangoDB versions that have support for the new POST
+  API. This is true for recent 3.7 and 3.8 versions, as the POST API will be
+  backported there as well.
+
+* Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
+  'dense_fixed_offset_column_key'`.
+
+* Fix cluster internal retry behavior for network communications. In particular
+  retry on 421 (leader refuses operation). This leads to the cluster letting
+  less internal errors out to clients.
+
+* Don't display obsoleted startup options and sections in `--help` and
+  `--help-.` commands. Also rename "global" to "general" options.
+
+* Added option `--query.require-with` to make AQL in single server mode also
+  require `WITH` clauses where the cluster would need them.
+  The option is turned off by default, but can be turned on in single servers
+  to remove this behavior difference between single servers and clusters,
+  making later a transition from single server to cluster easier.
+
+* Fixed a problem in document batch operations, where errors from one shard
+  were reported multiple times, if the shard is completely off line.
+
+* Removed assertion for success of a RocksDB function. Throw a proper 
+  exception instead.
+
 * Show peak memory usage in AQL query profiling output.
 
 * Micro improvements for Pregel job API and documentation:
