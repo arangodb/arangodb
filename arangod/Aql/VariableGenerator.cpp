@@ -64,7 +64,7 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(b
 /// @brief generate a variable
 Variable* VariableGenerator::createVariable(std::string name, bool isUserDefined) {
   if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) { 
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name.c_str());
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, arangodb::basics::Exception::FillExceptionString(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name.c_str()));
   }
 
   auto variable = std::make_unique<Variable>(std::move(name), nextId(), false);

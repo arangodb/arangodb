@@ -151,11 +151,13 @@ function ahuacatlParseTestSuite () {
        "__a_", "__a__", "__a_a_a_a_a_a", "__a0_01_02_03_04", "__a_________0", "__a0__b_",
       ].forEach((name) => {
         assertEqual([ name ], getVariables(getParseResults("LET " + name + " = 1 RETURN " + name)));
+        assertEqual([ name ], getVariables(getParseResults("LET `" + name + "` = 1 RETURN `" + name + "`")));
       });
 
       // invalid variable names
       ["_", "__", "___", "_0", "_1", "___0", "00", "___00", "____1", "___9_9", "_0abcd"].forEach((name) => {
         assertParseError(errors.ERROR_QUERY_PARSE.code, "LET " + name + " = 1 RETURN " + name); 
+        assertParseError(errors.ERROR_QUERY_PARSE.code, "LET `" + name + "` = 1 RETURN `" + name + "`"); 
       });
     },
 
