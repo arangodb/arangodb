@@ -13,6 +13,12 @@ devel
   that high overhead. There can still be issues when conflicts happen for index
   entries, but a lot of previously problematic cases should now work better.
 
+* change arangosh client behavior:
+ - *_RAW methods will never add a `body` to HEAD responses
+ - *_RAW methods will now always return velocypack-typed responses in Buffers
+ - `--server.force-json` will now be applied as default, overrideable
+   by user code
+
 * Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
   replacement for PUT `/_api/cursor/<cursor-id>`. The POST API is functionally
   equivalent to the existing PUT API. The benefit of using the POST API is
