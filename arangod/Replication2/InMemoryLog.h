@@ -100,7 +100,7 @@ struct QuorumData {
  * @brief A simple non-persistent log implementation, mainly for prototyping
  * replication 2.0.
  */
-class InMemoryLog : public LogFollower {
+class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMemoryLog> {
  public:
   InMemoryLog() = delete;
   explicit InMemoryLog(ParticipantId participantId, std::shared_ptr<InMemoryState> state,
@@ -190,9 +190,14 @@ class InMemoryLog : public LogFollower {
     auto becomeLeader(LogTerm term, std::vector<std::shared_ptr<LogFollower>> const& follower,
                       std::size_t writeConcern) -> void;
 
+    auto handleAppendEntriesResponse(std::weak_ptr<InMemoryLog> const& parentLog,
+                                     Follower& follower, LogIndex lastIndex,
+                                     LogIndex currentCommitIndex, LogTerm currentTerm,
+                                     futures::Try<AppendEntriesResult>&& res) -> void;
+
     [[nodiscard]] auto getStatistics() const -> LogStatistics;
 
-    auto runAsyncStep() -> void;
+    auto runAsyncStep(std::weak_ptr<InMemoryLog> const& parentLog) -> void;
 
     [[nodiscard]] auto participantId() const noexcept -> ParticipantId;
     [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
@@ -207,7 +212,7 @@ class InMemoryLog : public LogFollower {
 
     auto getLogIterator(LogIndex from) -> std::shared_ptr<LogIterator>;
 
-    void sendAppendEntries(Follower&);
+    void sendAppendEntries(std::weak_ptr<InMemoryLog> const& parentLog, Follower&);
 
     void persistRemainingLogEntries();
 

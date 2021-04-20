@@ -241,14 +241,14 @@ auto InMemoryLog::GuardedInMemoryLog::becomeLeader(
 
 auto InMemoryLog::runAsyncStep() -> void {
   auto self = acquireMutex();
-  return self->runAsyncStep();
+  return self->runAsyncStep(weak_from_this());
 }
 
-auto InMemoryLog::GuardedInMemoryLog::runAsyncStep() -> void {
+auto InMemoryLog::GuardedInMemoryLog::runAsyncStep(std::weak_ptr<InMemoryLog> const& parentLog) -> void {
   assertLeader();
   auto& conf = std::get<LeaderConfig>(_role);
   for (auto& follower : conf.follower) {
-    sendAppendEntries(follower);
+    sendAppendEntries(parentLog, follower);
   }
 
   /*if (_log.size() > _commitIndex.value) {
@@ -323,7 +323,7 @@ void InMemoryLog::GuardedInMemoryLog::updateCommitIndexLeader(LogIndex newIndex,
   }
 }
 
-void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(Follower& follower) {
+void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(std::weak_ptr<InMemoryLog> const& parentLog, Follower& follower) {
   if (follower.requestInFlight) {
     return;  // wait for the request to return
   }
@@ -357,23 +357,33 @@ void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(Follower& follower) {
 
   follower.requestInFlight = true;
   follower._impl->appendEntries(std::move(req))
-      .thenFinal([this, &follower, lastIndex,
-                  currentCommitIndex, currentTerm = _currentTerm](futures::Try<AppendEntriesResult>&& res) {
-        // TODO This is not yet concurrency-safe
-        if (currentTerm != _currentTerm) {
-          return;
+      .thenFinal([parentLog = parentLog, &follower, lastIndex, currentCommitIndex,
+                  currentTerm = _currentTerm](futures::Try<AppendEntriesResult>&& res) {
+        if (auto self = parentLog.lock()) {
+          auto guarded = self->acquireMutex();
+          guarded->handleAppendEntriesResponse(parentLog, follower, lastIndex, currentCommitIndex,
+                                               currentTerm, std::move(res));
         }
-        TRI_ASSERT(res.hasValue());
-        follower.requestInFlight = false;
-        auto& response = res.get();
-        if (response.success) {
-          follower.lastAckedIndex = lastIndex;
-          follower.lastAckedCommitIndex = currentCommitIndex;
-          checkCommitIndex();
-        }
-        // try sending the next batch
-        sendAppendEntries(follower);
       });
+}
+
+auto InMemoryLog::GuardedInMemoryLog::handleAppendEntriesResponse(
+    std::weak_ptr<InMemoryLog> const& parentLog, Follower& follower,
+    LogIndex lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
+    futures::Try<AppendEntriesResult>&& res) -> void {
+  if (currentTerm != _currentTerm) {
+    return;
+  }
+  TRI_ASSERT(res.hasValue());
+  follower.requestInFlight = false;
+  auto& response = res.get();
+  if (response.success) {
+    follower.lastAckedIndex = lastIndex;
+    follower.lastAckedCommitIndex = currentCommitIndex;
+    checkCommitIndex();
+  }
+  // try sending the next batch
+  sendAppendEntries(parentLog, follower);
 }
 
 auto InMemoryLog::GuardedInMemoryLog::getLogIterator(LogIndex fromIdx)
