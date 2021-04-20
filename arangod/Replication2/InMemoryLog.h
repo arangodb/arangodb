@@ -140,8 +140,8 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
   using ConstGuard = MutexGuard<GuardedInMemoryLog const, std::unique_lock<std::mutex>>;
 
   struct Follower {
-    explicit Follower(std::shared_ptr<LogFollower> impl)
-        : _impl(std::move(impl)) {}
+    explicit Follower(std::shared_ptr<LogFollower> impl, LogIndex lastLogIndex)
+        : _impl(std::move(impl)), lastAckedIndex(lastLogIndex) {}
 
     std::shared_ptr<LogFollower> _impl;
     LogIndex lastAckedIndex = LogIndex{0};
@@ -238,19 +238,7 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
   auto acquireMutex() const -> ConstGuard;
 };
 
-struct DelayedFollowerLog : InMemoryLog {
-  using InMemoryLog::InMemoryLog;
-  auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult> override;
-  void runAsyncAppendEntries();
 
-  void dropAsyncAppendEntries();
-
-  [[nodiscard]] auto hasPendingAppendEntries() const -> bool { return !_asyncQueue.empty(); }
- private:
-
-  using WaitForAsyncPromise = futures::Promise<std::optional<AppendEntriesResult>>;
-  std::vector<WaitForAsyncPromise> _asyncQueue;
-};
 
 }  // namespace arangodb::replication2
 

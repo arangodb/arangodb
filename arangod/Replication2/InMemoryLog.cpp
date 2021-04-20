@@ -224,7 +224,7 @@ auto InMemoryLog::GuardedInMemoryLog::becomeLeader(
   follower_vec.reserve(follower.size());
   std::transform(follower.cbegin(), follower.cend(), std::back_inserter(follower_vec),
                  [&](std::shared_ptr<LogFollower> const& impl) -> Follower {
-                   return Follower{impl};
+                   return Follower{impl, getLastIndex()};
                  });
 
   _role = LeaderConfig{std::move(follower_vec), writeConcern};
@@ -498,34 +498,6 @@ auto InMemoryState::createSnapshot() -> std::shared_ptr<InMemoryState const> {
 InMemoryState::InMemoryState(InMemoryState::state_container state)
     : _state(std::move(state)) {}
 
-void DelayedFollowerLog::runAsyncAppendEntries() {
-  auto asyncQueue = std::move(_asyncQueue);
-  _asyncQueue.clear();
-
-  for (auto& p : asyncQueue) {
-    p.setValue(std::nullopt);
-  }
-}
-auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
-    -> arangodb::futures::Future<AppendEntriesResult> {
-  auto f = _asyncQueue.emplace_back().getFuture();
-
-  return std::move(f).thenValue([this, req = std::move(req)](auto&& result) mutable {
-    if (result) {
-      return futures::Future<AppendEntriesResult>(std::in_place, *result);
-    }
-    return InMemoryLog::appendEntries(std::move(req));
-  });
-}
-
-void DelayedFollowerLog::dropAsyncAppendEntries() {
-  auto asyncQueue = std::move(_asyncQueue);
-  _asyncQueue.clear();
-
-  for (auto& p : asyncQueue) {
-    p.setValue(AppendEntriesResult{false, LogTerm{0}});
-  }
-}
 
 QuorumData::QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum)
     : index(index), term(term), quorum(std::move(quorum)) {}
