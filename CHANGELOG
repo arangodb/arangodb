@@ -3,6 +3,9 @@ devel
 
 * Fix crashes during arangorestore operations due to usage of wrong pointer
   value for updating user permissions.
+  
+* Fix thread race between ArangoSearch link unloading and storage engine
+  WAL flushing.
 
 * change arangosh client behavior:
  - *_RAW methods will never add a `body` to HEAD responses
