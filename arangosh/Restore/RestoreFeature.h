@@ -153,7 +153,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     Result result;
 
     /// @brief data chunk offsets (start offset, length) of requests that are currently
-    /// ongoing. it is safe the resume restore only up the minimum value contained
+    /// ongoing. Resumption of the restore must start at the smallest key value contained
     /// in here (note: we also need to track the length of each chunk to test the
     /// resumption of a restore after a crash)
     std::map<size_t, size_t> readOffsets;
