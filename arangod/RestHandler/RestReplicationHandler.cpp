@@ -1342,18 +1342,12 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     // All other errors are thrown to the outside.
     return Result();
   } else {
-    // We do never take any responsibility of the
-    // value this pointer will point to.
-    LogicalCollection* colPtr = nullptr;
-    auto res = createCollection(parameters, colPtr);
+    auto res = createCollection(parameters);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res, StringUtils::concatT("unable to create collection: ",
                                               TRI_errno_string(res)));
     }
-    // If we get here, we must have a collection ptr.
-    TRI_ASSERT(colPtr != nullptr);
-  
     // might be also called on dbservers
     if (name[0] != '_' && !ExecContext::current().isSuperuser() &&
         ServerState::instance()->isSingleServer()) {
@@ -3211,10 +3205,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
 /// @brief creates a collection, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode RestReplicationHandler::createCollection(VPackSlice slice,
-                                                   arangodb::LogicalCollection*& dst) {
-  TRI_ASSERT(dst == nullptr);
-
+ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   if (!slice.isObject()) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
@@ -3246,7 +3237,6 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice,
   if (col != nullptr && col->type() == type) {
     // TODO
     // collection already exists. TODO: compare attributes
-    dst = col.get();
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -3300,8 +3290,6 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice,
 
   TRI_ASSERT(col->planId() == planId);
 #endif
-
-  dst = col.get();
 
   return TRI_ERROR_NO_ERROR;
 }
