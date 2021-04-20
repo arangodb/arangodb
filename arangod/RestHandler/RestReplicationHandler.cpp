@@ -1262,7 +1262,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     }
 
     // finally rewrite all Enterprise Edition sharding strategies to a simple hash-based strategy
-    s = parameters.get(StaticSrings::ShardingStrategy);
+    s = parameters.get(StaticStrings::ShardingStrategy);
     if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
       // downgrade sharding strategy to just hash
       toMerge.add(StaticStrings::shardingStrategy, VPackValue("hash"));
