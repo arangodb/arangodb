@@ -1259,7 +1259,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     s = parameters.get(StaticStrings::ShardingStrategy);
     if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
       // downgrade sharding strategy to just hash
-      toMerge.add(StaticStrings::shardingStrategy, VPackValue("hash"));
+      toMerge.add(StaticStrings::ShardingStrategy, VPackValue("hash"));
       changes.push_back("changed 'shardingStrategy' attribute value to 'hash'");
     }
 
