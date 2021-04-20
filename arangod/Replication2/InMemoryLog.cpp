@@ -252,7 +252,8 @@ auto InMemoryLog::runAsyncStep() -> void {
   return self->runAsyncStep(weak_from_this());
 }
 
-auto InMemoryLog::GuardedInMemoryLog::runAsyncStep(std::weak_ptr<InMemoryLog> const& parentLog) -> void {
+auto InMemoryLog::GuardedInMemoryLog::runAsyncStep(std::weak_ptr<InMemoryLog> const& parentLog)
+    -> void {
   assertLeader();
   auto& conf = std::get<LeaderConfig>(_role);
   for (auto& follower : conf.follower) {
@@ -331,7 +332,8 @@ void InMemoryLog::GuardedInMemoryLog::updateCommitIndexLeader(LogIndex newIndex,
   }
 }
 
-void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(std::weak_ptr<InMemoryLog> const& parentLog, Follower& follower) {
+void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(std::weak_ptr<InMemoryLog> const& parentLog,
+                                                        Follower& follower) {
   if (follower.requestInFlight) {
     return;  // wait for the request to return
   }
@@ -473,8 +475,8 @@ void InMemoryLog::GuardedInMemoryLog::checkCommitIndex() {
   TRI_ASSERT(commitIndex >= _commitIndex);
   if (commitIndex > _commitIndex) {
     std::vector<ParticipantId> quorum;
-    std::transform(indexes.begin(), indexes.begin() + quorum_size, std::back_inserter(quorum),
-                   [](auto& p) { return p.second; });
+    std::transform(indexes.begin(), indexes.begin() + quorum_size,
+                   std::back_inserter(quorum), [](auto& p) { return p.second; });
 
     auto quorum_data =
         std::make_shared<QuorumData>(commitIndex, _currentTerm, std::move(quorum));
@@ -497,7 +499,6 @@ auto InMemoryState::createSnapshot() -> std::shared_ptr<InMemoryState const> {
 
 InMemoryState::InMemoryState(InMemoryState::state_container state)
     : _state(std::move(state)) {}
-
 
 QuorumData::QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum)
     : index(index), term(term), quorum(std::move(quorum)) {}

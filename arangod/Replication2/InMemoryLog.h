@@ -25,8 +25,8 @@
 
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
-#include <velocypack/SharedSlice.h>
 #include <velocypack/Builder.h>
+#include <velocypack/SharedSlice.h>
 #include <immer/map.hpp>
 
 #include <deque>
@@ -79,7 +79,6 @@ class InMemoryState {
   InMemoryState() = default;
 };
 
-
 struct LogFollower {
   virtual ~LogFollower() = default;
 
@@ -107,7 +106,8 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
                        std::shared_ptr<PersistedLog> persistedLog);
 
   // follower only
-  auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult> override;
+  auto appendEntries(AppendEntriesRequest)
+      -> arangodb::futures::Future<AppendEntriesResult> override;
 
   // leader only
   auto insert(LogPayload) -> LogIndex;
@@ -169,11 +169,12 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
     GuardedInMemoryLog& operator=(GuardedInMemoryLog&&) = delete;
     ~GuardedInMemoryLog() = default;
     GuardedInMemoryLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
-                   std::shared_ptr<PersistedLog> persistedLog, LogIndex logIndex)
+                       std::shared_ptr<PersistedLog> persistedLog, LogIndex logIndex)
         : _id(id), _persistedLog(std::move(persistedLog)), _state(std::move(state)), _commitIndex{logIndex} {}
 
     // follower only
-    auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult>;
+    auto appendEntries(AppendEntriesRequest)
+        -> arangodb::futures::Future<AppendEntriesResult>;
 
     // leader only
     auto insert(LogPayload) -> LogIndex;
@@ -237,8 +238,6 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
 };
-
-
 
 }  // namespace arangodb::replication2
 
