@@ -54,8 +54,11 @@ std::string const&  to_string(ValidationLevel level) {
 
 //////////////////////////////////////////////////////////////////////////////
 
+ValidatorBase::ValidatorBase()
+    : _level(ValidationLevel::Strict), _special(validation::SpecialProperties::None) {}
+
 ValidatorBase::ValidatorBase(VPackSlice params)
-    : _level(ValidationLevel::Strict), _special(validation::SpecialProperties::None) {
+    : ValidatorBase() {
   // parse message
   auto msgSlice = params.get(StaticStrings::ValidationParameterMessage);
   if (msgSlice.isString()) {
