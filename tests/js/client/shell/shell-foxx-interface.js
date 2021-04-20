@@ -31,7 +31,6 @@ var internal = require('internal');
 var arangodb = require('@arangodb');
 const path = require('path');
 var db = arangodb.db;
-var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 const FoxxManager = require('@arangodb/foxx/manager');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'interface');
 
