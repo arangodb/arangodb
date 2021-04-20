@@ -216,6 +216,10 @@ class StaticStrings {
   static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
 
+  // arangosh result body
+  static std::string const Body;
+  static std::string const ParsedBody;
+
   // collection attributes
   static std::string const CacheEnabled;
   static std::string const DistributeShardsLike;

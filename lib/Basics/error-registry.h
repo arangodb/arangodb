@@ -344,7 +344,7 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessage
     {TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION,  // 1489
       "a shard leader refuses to perform a replication operation"},
     {TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,  // 1490
-      "a shard follower refuses to perform an operation that is not a replication"},
+      "a shard follower refuses to perform an operation"},
     {TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED,  // 1491
       "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime"},
     {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,  // 1492
