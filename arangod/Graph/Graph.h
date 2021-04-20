@@ -81,7 +81,7 @@ class EdgeDefinition {
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
-  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition);
+  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition, std::set<std::string> const& satCollections);
 
   void toVelocyPack(velocypack::Builder&) const;
 

@@ -425,7 +425,7 @@ void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
   builder.add("type", VPackValue(getType()));
 }
 
-ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition) {
+ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition, std::set<std::string> const& satCollections) {
   Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
   if (res.fail()) {
     return res;
@@ -436,13 +436,38 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
 
   std::set<std::string> fromSet;
   std::set<std::string> toSet;
+  EdgeDefinitionType type = EdgeDefinitionType::DEFAULT;
+  bool foundFromSat = false;
+  bool foundToSat = false;
 
   // duplicates in from and to shouldn't occur, but are safely ignored here
   for (VPackSlice it : VPackArrayIterator(from)) {
+    TRI_ASSERT(it.isString());
+    if (satCollections.find(it.copyString()) != satCollections.end()) {
+      // found a sat collection defined in from's
+      foundFromSat = true;
+    }
+
     fromSet.emplace(it.copyString());
   }
   for (VPackSlice it : VPackArrayIterator(to)) {
+    TRI_ASSERT(it.isString());
+    if (satCollections.find(it.copyString()) != satCollections.end()) {
+      // found a sat collection defined in to's
+      foundToSat = true;
+    }
+
     toSet.emplace(it.copyString());
+  }
+
+  if (foundFromSat && !foundToSat) {
+    type = EdgeDefinitionType::SATTOSMART;
+  } else if (!foundFromSat && foundToSat) {
+    type = EdgeDefinitionType::SMARTTOSAT;
+  }  else if (foundFromSat && foundToSat) {
+    type = EdgeDefinitionType::SATTOSAT;
+  } else if (!foundFromSat && !foundToSat) {
+    type = EdgeDefinitionType::SMARTTOSMART;
   }
 
   // We do not allow creating an edge definition with either an empty from
@@ -609,7 +634,7 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(EdgeDefinition const& ed
 }
 
 ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
-  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
+  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice, satelliteCollections());
 
   if (res.fail()) {
     return std::move(res).result();
