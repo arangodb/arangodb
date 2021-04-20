@@ -485,11 +485,22 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
 }
 
 template <class Executor>
-void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
+void ExecutionBlockImpl<Executor>::ensureOutputBlock(Context& ctx) {
+  auto getCall = [&ctx]() {
+    if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+      TRI_ASSERT(!ctx.stack.empty());
+      AqlCall const& subqueryCall = ctx.stack.peek();
+      AqlCall copyCall = subqueryCall;
+      return std::move(copyCall);
+    } else {
+      return std::move(ctx.clientCall);
+    }
+  };
+    
   if (_outputItemRow == nullptr || !_outputItemRow->isInitialized()) {
-    _outputItemRow = allocateOutputBlock(std::move(call));
+    _outputItemRow = allocateOutputBlock(getCall());
   } else {
-    _outputItemRow->setCall(std::move(call));
+    _outputItemRow->setCall(getCall());
   }
 }
 
@@ -651,9 +662,8 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack,
-                                                  AqlCallType const& aqlCall,
-                                                  ADB_IGNORE_UNUSED bool wasCalledWithContinueCall)
+auto ExecutionBlockImpl<Executor>::executeFetcher(Context& ctx,
+                                                  AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
   // TODO The logic in the MultiDependencySingleRowFetcher branch should be
   //      moved into the MultiDependencySingleRowFetcher.
@@ -669,7 +679,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack,
     // Note the aqlCall is an AqlCallSet in this case:
     static_assert(std::is_same_v<AqlCallSet, std::decay_t<decltype(aqlCall)>>);
     TRI_ASSERT(_lastRange.numberDependencies() == _dependencies.size());
-    auto const& [state, skipped, ranges] = _rowFetcher.execute(stack, aqlCall);
+    auto const& [state, skipped, ranges] = _rowFetcher.execute(ctx.stack, aqlCall);
     for (auto const& [dependency, range] : ranges) {
       _lastRange.setDependency(dependency, range);
     }
@@ -681,8 +691,8 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack,
     // trigger this Executor with everthing from above.
     // NOTE: The Executor needs to discard shadowRows, and do the accouting.
     static_assert(std::is_same_v<AqlCall, std::decay_t<decltype(aqlCall)>>);
-    auto fetchAllStack = stack.createEquivalentFetchAllShadowRowsStack();
-    fetchAllStack.pushCall(createUpstreamCall(aqlCall, wasCalledWithContinueCall));
+    auto fetchAllStack = ctx.stack.createEquivalentFetchAllShadowRowsStack();
+    fetchAllStack.pushCall(createUpstreamCall(aqlCall, ctx.clientCallList.hasMoreCalls()));
     auto res = _rowFetcher.execute(fetchAllStack);
     // Just make sure we did not Skip anything
     TRI_ASSERT(std::get<SkipResult>(res).nothingSkipped());
@@ -693,51 +703,59 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack,
     // SubqueryStart and the partnered SubqueryEnd by *not*
     // pushing the upstream request.
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
-      stack.pushCall(createUpstreamCall(std::move(aqlCall), wasCalledWithContinueCall));
+      ctx.stack.pushCall(createUpstreamCall(std::move(aqlCall), ctx.clientCallList.hasMoreCalls()));
     }
 
-    auto const result = _rowFetcher.execute(stack);
+    auto const result = std::invoke([&]() {
+      if (_prefetchTask && !_prefetchTask->isConsumed() && !_prefetchTask->tryClaim()) {
+        // some other thread is currently executing our prefetch task
+        // -> wait till it has finished.
+        //LOG_DEVEL << "  >>> waiting for prefetch task";
+        _prefetchTask->waitFor();
+        TRI_ASSERT(_prefetchTask->result);
+        _prefetchTask->state.store(PrefetchTask::State::Consumed, std::memory_order_relaxed);
+        return std::move(_prefetchTask->result).value();
+      } else {
+        return _rowFetcher.execute(ctx.stack);
+      }
+    });
+
+    //LOG_DEVEL << "Fetcher state " << (unsigned)std::get<ExecutionState>(result)
+    //          << " hasLimit " << aqlCall.hasLimit();
+    if (false && std::get<ExecutionState>(result) == ExecutionState::HASMORE) {
+      if (_prefetchTask == nullptr) {
+        _prefetchTask = std::make_shared<PrefetchTask>();
+      }
+      _prefetchTask->state.store(PrefetchTask::State::Pending);
+
+      // we can safely ignore the result here, because we will try to
+      // claim the task ourselves anyway.
+      std::ignore = SchedulerFeature::SCHEDULER->queue(
+          RequestLane::INTERNAL_LOW,
+          [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
+            if (!task->tryClaim()) {
+              return;
+            }
+            // task is a copy of the PrefetchTask shared_ptr, and we will only attempt to execute the task on the
+            // execution block if we successfully claimed the task. i.e., it does not matter if this task lingers
+            // around in the scheduler queue even after the execution block has been destroyed, because in this case
+            // we will not be able to claim the task and simply return early without accessing the block.
+            task->execute(*block, stack);
+          });
+      //LOG_DEVEL << "<<< SCHEDULED prefetch task";
+    }
 
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
       // As the stack is copied into the fetcher, we need to pop off our call
       // again. If we use other datastructures or moving we may hand over
       // ownership of the stack here instead and no popCall is necessary.
-      std::ignore = stack.popCall();
+      std::ignore = ctx.stack.popCall();
     } else {
       // Do not pop the call, we did not put it on.
       // However we need it for accounting later.
     }
 
     return result;
-  }
-}
-
-template <class Executor>
-auto ExecutionBlockImpl<Executor>::doProduceRows(Context& ctx) ->
-  std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> {
-  TRI_ASSERT(!_executorReturnedDone);
-
-  if (_prefetchTask && !_prefetchTask->isConsumed() && !_prefetchTask->tryClaim()) {
-    // some other thread is currently executing our prefetch task
-    // -> wait till it has finished.
-    _prefetchTask->waitFor();
-    _outputItemRow = std::move(_prefetchTask->output);
-    TRI_ASSERT(_outputItemRow);
-    _prefetchTask->state.store(PrefetchTask::State::Consumed, std::memory_order_relaxed);
-    return std::move(_prefetchTask->result);
-  } else {
-    if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-      TRI_ASSERT(!ctx.stack.empty());
-      AqlCall const& subqueryCall = ctx.stack.peek();
-      AqlCall copyCall = subqueryCall;
-      ensureOutputBlock(std::move(copyCall));
-    } else {
-      ensureOutputBlock(std::move(ctx.clientCall));
-    }
-    TRI_ASSERT(_outputItemRow);
-
-    // no prefetch task or we successfully claimed ownership of it
-    return executeProduceRows(_lastRange, *_outputItemRow);
   }
 }
 
@@ -1371,36 +1389,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           break;
         }
 
-        // Execute getSome
-        auto [state, stats, call] = doProduceRows(ctx);
+        ensureOutputBlock(ctx);
         TRI_ASSERT(_outputItemRow);
 
-        if constexpr (is_one_of_v<Executor, EnumerateCollectionExecutor, IndexExecutor>) {
-          // TODO - make prefetching configurable
-          if (!ctx.clientCall.hasLimit() && _lastRange.hasDataRow()) {
-            if (_prefetchTask == nullptr) {
-              _prefetchTask = std::make_shared<PrefetchTask>();
-            }
-            _prefetchTask->state.store(PrefetchTask::State::Pending);
+        // Execute getSome
+        auto [state, stats, call] = executeProduceRows(_lastRange, *_outputItemRow);
 
-            // we can safely ignore the result here, because we will try to
-            // claim the task ourselves anyway.
-            std::ignore = SchedulerFeature::SCHEDULER->queue(
-                RequestLane::INTERNAL_LOW,
-                [block = this, task = _prefetchTask, call = ctx.clientCall]() mutable {
-                  if (!task->tryClaim()) {
-                    return;
-                  }
-                  // task is a copy of the PrefetchTask shared_ptr, and we will only attempt to execute the task on the
-                  // execution block if we successfully claimed the task. i.e., it does not matter if this task lingers
-                  // around in the scheduler queue even after the execution block has been destroyed, because in this case
-                  // we will not be able to claim the task and simply return early without accessing the block.
-                  task->output = block->allocateOutputBlock(std::move(call));
-                  task->execute(*block);
-                });
-          }
-        }
-        
         _executorReturnedDone = state == ExecutorState::DONE;
         _blockStats += stats;
         localExecutorState = state;
@@ -1484,12 +1478,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
         // executors.
         TRI_ASSERT(isMultiDepExecutor<Executor> || !lastRangeHasDataRow());
         TRI_ASSERT(!_lastRange.hasShadowRow());
-        SkipResult skippedLocal;
+        
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         auto subqueryLevelBefore = ctx.stack.subqueryLevel();
 #endif
-        std::tie(_upstreamState, skippedLocal, _lastRange) =
-            executeFetcher(ctx.stack, _upstreamRequest, ctx.clientCallList.hasMoreCalls());
+        SkipResult skippedLocal;
+        std::tie(_upstreamState, skippedLocal, _lastRange) = executeFetcher(ctx, _upstreamRequest);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         TRI_ASSERT(subqueryLevelBefore == ctx.stack.subqueryLevel());
 #endif
@@ -1603,15 +1597,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           _execState = ExecState::DONE;
           break;
         }
-        if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-          TRI_ASSERT(!ctx.stack.empty());
-          // unfortunately we cannot move here, because clientCall can still be
-          // read-from later
-          AqlCall copyCall = ctx.clientCall;
-          ensureOutputBlock(std::move(copyCall));
-        } else {
-          ensureOutputBlock(std::move(ctx.clientCall));
-        }
+        ensureOutputBlock(ctx);
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
         if constexpr (executorHasSideEffects<Executor>) {
@@ -1904,19 +1890,23 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() {
 }
 
 template <class Executor>
-void ExecutionBlockImpl<Executor>::PrefetchTask::execute(ExecutionBlockImpl& block) {
-  TRI_ASSERT(state.load() == State::InProgress);
-  result = block.executeProduceRows(block._lastRange, *output);
-  TRI_ASSERT(this->output);
+void ExecutionBlockImpl<Executor>::PrefetchTask::execute(ExecutionBlockImpl& block, AqlCallStack& stack) {
+  if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher> ||
+                executorHasSideEffects<Executor>) {
+    TRI_ASSERT(false)
+  } else {
+    TRI_ASSERT(state.load() == State::InProgress);
+    result = block._rowFetcher.execute(stack);
 
-  // (3) - this release-store synchronizes with the acquire-load (1, 2)
-  state.store(State::Finished, std::memory_order_release);
-  
-  // need to temporarily lock the mutex to enforce serialization with the waiting thread
-  lock.lock();
-  lock.unlock();
-  
-  bell.notify_one();
+    // (3) - this release-store synchronizes with the acquire-load (1, 2)
+    state.store(State::Finished, std::memory_order_release);
+
+    // need to temporarily lock the mutex to enforce serialization with the waiting thread
+    lock.lock();
+    lock.unlock();
+
+    bell.notify_one();
+  }
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;

@@ -232,9 +232,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack);
 
   std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
-      AqlCallStack& stack, AqlCallType const& aqlCall, bool wasCalledWithContinueCall);
-
-  std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> doProduceRows(Context& ctx);
+      Context& ctx, AqlCallType const& aqlCall);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);
@@ -262,7 +260,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   // Ensure that we have an output block of the desired dimensions
   // Will as a side effect modify _outputItemRow
-  void ensureOutputBlock(AqlCall&& call);
+  void ensureOutputBlock(Context& ctx);
 
   // Compute the next state based on the given call.
   // Can only be one of Skip/Produce/FullCount/FastForward/Done
@@ -308,17 +306,16 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       Consumed
     };
     std::atomic<State> state{State::Pending};
-    std::unique_ptr<OutputAqlItemRow> output;
 
     std::mutex lock;
     std::condition_variable bell;
-    std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> result;
+    std::optional<std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>> result;
     
     bool isConsumed() const;
     bool tryClaim();
     void waitFor();
     
-    void execute(ExecutionBlockImpl& block);
+    void execute(ExecutionBlockImpl& block, AqlCallStack& stack);
   };
 
   RegisterInfos _registerInfos;
