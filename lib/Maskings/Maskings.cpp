@@ -25,8 +25,10 @@
 #include <iostream>
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
@@ -36,7 +38,9 @@
 #include "Maskings.h"
 
 #include "Basics/FileUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -47,6 +51,10 @@
 
 using namespace arangodb;
 using namespace arangodb::maskings;
+
+namespace {
+std::string const xxxx("xxxx");
+}
 
 MaskingsResult Maskings::fromFile(std::string const& filename) {
   std::string definition;
@@ -191,8 +199,6 @@ bool Maskings::shouldDumpData(std::string const& name) {
 
 VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>& path,
                                 std::string& buffer, VPackSlice const& data) {
-  static std::string xxxx("xxxx");
-
   if (path.size() == 1 && path[0].size() >= 1 && path[0][0] == '_') {
     if (data.isString()) {
       velocypack::ValueLength length;
@@ -242,6 +248,8 @@ VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>
 
 void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
                               std::vector<std::string>& path, VPackSlice const& data) {
+  std::string buffer;
+
   for (VPackSlice entry : VPackArrayIterator(data)) {
     if (entry.isObject()) {
       VPackObjectBuilder ob(&builder);
@@ -250,7 +258,6 @@ void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
       VPackArrayBuilder ap(&builder);
       addMaskedArray(collection, builder, path, entry);
     } else {
-      std::string buffer;
       builder.add(maskedItem(collection, path, buffer, entry));
     }
   }
@@ -258,6 +265,8 @@ void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
 
 void Maskings::addMaskedObject(Collection& collection, VPackBuilder& builder,
                                std::vector<std::string>& path, VPackSlice const& data) {
+  std::string buffer;
+
   for (auto const& entry : VPackObjectIterator(data, false)) {
     std::string key = entry.key.copyString();
     VPackSlice const& value = entry.value;
@@ -271,7 +280,6 @@ void Maskings::addMaskedObject(Collection& collection, VPackBuilder& builder,
       VPackArrayBuilder ap(&builder, key);
       addMaskedArray(collection, builder, path, value);
     } else {
-      std::string buffer;
       builder.add(key, maskedItem(collection, path, buffer, value));
     }
 
@@ -280,7 +288,7 @@ void Maskings::addMaskedObject(Collection& collection, VPackBuilder& builder,
 }
 
 void Maskings::addMasked(Collection& collection, VPackBuilder& builder,
-                         VPackSlice const& data) {
+                         VPackSlice data) {
   if (!data.isObject()) {
     return;
   }
@@ -293,32 +301,50 @@ void Maskings::addMasked(Collection& collection, VPackBuilder& builder,
 }
 
 void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
-                         VPackSlice const& slice) {
+                         VPackSlice slice) {
   if (!slice.isObject()) {
     return;
   }
-
-  velocypack::StringRef dataStrRef("data");
-
+  
   VPackBuilder builder;
 
-  {
-    VPackObjectBuilder ob(&builder);
+  if (slice.hasKey(StaticStrings::KeyString)) {
+    // non-enveloped format - the document is at the top level
+    {
+      VPackObjectBuilder ob(&builder);
+      addMasked(collection, builder, slice);
+    }
+  
+    // the maskings will generate a result object that contains a "data"
+    // attribute at the top
+    slice = builder.slice().get("data");
+  } else {
+    // enveloped format -  the document is underneath the "data" attribute
+    velocypack::StringRef dataStrRef("data");
 
-    for (auto const& entry : VPackObjectIterator(slice, false)) {
-      velocypack::StringRef key = entry.key.stringRef();
+    {
+      VPackObjectBuilder ob(&builder);
 
-      if (key.equals(dataStrRef)) {
-        addMasked(collection, builder, entry.value);
-      } else {
-        builder.add(key, entry.value);
+      for (auto const& entry : VPackObjectIterator(slice, false)) {
+        velocypack::StringRef key = entry.key.stringRef();
+
+        if (key.equals(dataStrRef)) {
+          addMasked(collection, builder, entry.value);
+        } else {
+          builder.add(key, entry.value);
+        }
       }
     }
-  }
 
-  std::string masked = builder.toJson();
-  data.appendText(masked);
-  data.appendText("\n");
+    slice = builder.slice();
+  }
+  
+  // directly emit JSON into result StringBuffer
+  basics::VPackStringBufferAdapter adapter(data.stringBuffer());
+  VPackDumper dumper(&adapter, &VPackOptions::Defaults);
+  dumper.dump(slice);
+    
+  data.appendChar('\n');
 }
 
 void Maskings::mask(std::string const& name, basics::StringBuffer const& data,
