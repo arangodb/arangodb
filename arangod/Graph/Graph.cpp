@@ -116,6 +116,20 @@ Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefault
   TRI_ASSERT(!_rev.empty());
 
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    // TODO: Check why we're landing here and not in SmartGraphEE - Cleanup!
+    LOG_DEVEL << "do not forget me - 1";
+    if (slice.isObject()) {
+      if (slice.hasKey(StaticStrings::GraphSatellites) &&
+          slice.get(StaticStrings::GraphSatellites).isArray()) {
+
+        for (VPackSlice it : VPackArrayIterator(slice.get(StaticStrings::GraphSatellites))) {
+          if (!it.isString()) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INVALID_PARAMETER);
+          }
+          _satelliteColls.emplace(it.copyString());
+        }
+      }
+    }
     parseEdgeDefinitions(slice.get(StaticStrings::GraphEdgeDefinitions));
   }
   if (slice.hasKey(StaticStrings::GraphOrphans)) {
@@ -146,6 +160,20 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
   TRI_ASSERT(_rev.empty());
 
   if (info.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    // TODO: Check why we're landing here and not in SmartGraphEE - Cleanup!
+    LOG_DEVEL << "do not forget me - 2";
+    if (options.isObject()) {
+      if (options.hasKey(StaticStrings::GraphSatellites) &&
+          options.get(StaticStrings::GraphSatellites).isArray()) {
+
+        for (VPackSlice it : VPackArrayIterator(options.get(StaticStrings::GraphSatellites))) {
+          if (!it.isString()) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INVALID_PARAMETER);
+          }
+          _satelliteColls.emplace(it.copyString());
+        }
+      }
+    }
     parseEdgeDefinitions(info.get(StaticStrings::GraphEdgeDefinitions));
   }
   if (info.hasKey(StaticStrings::GraphOrphans)) {
@@ -463,7 +491,7 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
     type = EdgeDefinitionType::SATTOSMART;
   } else if (!foundFromSat && foundToSat) {
     type = EdgeDefinitionType::SMARTTOSAT;
-  }  else if (foundFromSat && foundToSat) {
+  } else if (foundFromSat && foundToSat) {
     type = EdgeDefinitionType::SATTOSAT;
   } else if (!foundFromSat && !foundToSat) {
     type = EdgeDefinitionType::SMARTTOSMART;
@@ -475,7 +503,7 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
     return Result(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
   }
 
-  return EdgeDefinition{collection, std::move(fromSet), std::move(toSet)};
+  return EdgeDefinition{collection, std::move(fromSet), std::move(toSet), type};
 }
 
 bool EdgeDefinition::operator==(EdgeDefinition const& other) const {
@@ -565,6 +593,7 @@ void EdgeDefinition::addToBuilder(VPackBuilder& builder) const {
     builder.add(VPackValue(to));
   }
   builder.close();  // to
+  builder.add(StaticStrings::GraphEdgeDefinitionType, VPackValue(getType()));
 
   builder.close();  // obj
 }
