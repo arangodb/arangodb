@@ -212,6 +212,11 @@ std::set<std::string> const& Graph::orphanCollections() const {
   return _orphanColls;
 }
 
+std::set<std::string> const& Graph::satelliteCollections() const {
+  TRI_ASSERT(isHybrid());
+  return _satelliteColls;
+}
+
 std::set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
 }
@@ -737,7 +742,10 @@ bool Graph::isDisjoint() const {
   return false;
 }
 
-bool Graph::isHybrid() const { return false; }
+bool Graph::isHybrid() const {
+  TRI_ASSERT(_satelliteColls.empty());
+  return false;
+}
 
 bool Graph::isSatellite() const { return _isSatellite; }
 
@@ -756,6 +764,10 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   }
 
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
+}
+
+void Graph::createSatelliteCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
+  TRI_ASSERT(false);
 }
 
 std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(

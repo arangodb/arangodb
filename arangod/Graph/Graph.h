@@ -175,12 +175,17 @@ class Graph {
 
   virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
 
+  virtual void createSatelliteCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
+
  public:
   /// @brief get the cids of all vertexCollections
   std::set<std::string> const& vertexCollections() const;
 
   /// @brief get the cids of all orphanCollections
   std::set<std::string> const& orphanCollections() const;
+
+  /// @brief get the cids of all satelliteCollections
+  std::set<std::string> const& satelliteCollections() const;
 
   /// @brief get the cids of all edgeCollections
   std::set<std::string> const& edgeCollections() const;
@@ -315,6 +320,9 @@ class Graph {
 
   /// @brief the names of all orphanCollections
   std::set<std::string> _orphanColls;
+
+  /// @brief the names of all orphanCollections
+  std::set<std::string> _satelliteColls;
 
   /// @brief the names of all edgeCollections
   std::set<std::string> _edgeColls;
