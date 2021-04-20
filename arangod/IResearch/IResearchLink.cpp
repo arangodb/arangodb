@@ -966,7 +966,7 @@ Result IResearchLink::drop() {
     }
   }
 
-  _flushSubscription.reset(); // reset together with '_asyncSelf'
+  std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {
@@ -1241,7 +1241,7 @@ Result IResearchLink::initDataStore(
     InitCallback const& initCallback, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression) {
-  _flushSubscription.reset(); // reset together with '_asyncSelf'
+  std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   auto& server = _collection.vocbase().server();
@@ -1869,7 +1869,7 @@ Result IResearchLink::unload() {
     return drop();
   }
 
-  _flushSubscription.reset(); // reset together with '_asyncSelf'
+  std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {
