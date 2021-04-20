@@ -147,6 +147,7 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
     LogIndex lastAckedIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     bool requestInFlight = false;
+    std::size_t numErrorsSinceLastAnswer = 0;
   };
 
   struct Unconfigured {};

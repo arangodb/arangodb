@@ -388,6 +388,7 @@ auto InMemoryLog::GuardedInMemoryLog::handleAppendEntriesResponse(
   }
   follower.requestInFlight = false;
   if (res.hasValue()) {
+    follower.numErrorsSinceLastAnswer = 0;
     auto& response = res.get();
     if (response.success) {
       follower.lastAckedIndex = lastIndex;
@@ -403,18 +404,25 @@ auto InMemoryLog::GuardedInMemoryLog::handleAppendEntriesResponse(
       }
     }
   } else if (res.hasException()) {
-    // TODO add a backoff on failures instead
+    auto const exp = follower.numErrorsSinceLastAnswer;
+    ++follower.numErrorsSinceLastAnswer;
+
     using namespace std::chrono_literals;
-    std::this_thread::sleep_for(10ms);
+    // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
+    // until at most 100us * 2 ** 17 == 13.11s.
+    auto const sleepFor = 100us * (1 << std::min(exp, std::size_t{17}));
+
+    std::this_thread::sleep_for(sleepFor);
+
     try {
       res.throwIfFailed();
     } catch (std::exception const& e) {
       LOG_TOPIC("e094b", INFO, Logger::REPLICATION2)
-          << "exception in appendEntries  to follower "
+          << "exception in appendEntries to follower "
           << follower._impl->participantId() << ": " << e.what();
     } catch (...) {
       LOG_TOPIC("05608", INFO, Logger::REPLICATION2)
-          << "exception in appendEntries  to follower "
+          << "exception in appendEntries to follower "
           << follower._impl->participantId() << ".";
     }
   } else {
