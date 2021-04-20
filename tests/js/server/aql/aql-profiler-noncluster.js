@@ -24,14 +24,12 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // contains common code for aql-profiler* tests
-const profHelper = require("@arangodb/aql-profiler-test-helper");
+const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 
 const _ = require('lodash');
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @file test suite for AQL tracing/profiling: noncluster tests
@@ -201,12 +199,13 @@ function ahuacatlProfilerTestSuite () {
       const prepare = (rows) => {
         profHelper.createBinaryTree(col, edgeCol, rows);
       };
-      const query = `FOR v IN 0..@rows OUTBOUND @root @@edgeCol RETURN v`;
+      const query = `WITH @@vertexCol FOR v IN 0..@rows OUTBOUND @root @@edgeCol RETURN v`;
       const rootNodeId = `${colName}/1`;
       const bind = rows => ({
         rows: rows,
         root: rootNodeId,
         '@edgeCol': edgeColName,
+        '@vertexCol': colName,
       });
 
       const genNodeList = (rows, batches) => {
@@ -231,7 +230,7 @@ function ahuacatlProfilerTestSuite () {
       const prepare = (rows) => {
         profHelper.createBinaryTree(col, edgeCol, rows);
       };
-      const query = `FOR v IN 0..@depth OUTBOUND @root @@edgeCol RETURN v`;
+      const query = `WITH @@vertexCol FOR v IN 0..@depth OUTBOUND @root @@edgeCol RETURN v`;
       const rootNodeId = `${colName}/1`;
       // actual tree depth:
       // const treeDepth = rows => Math.ceil(Math.log2(rows));
@@ -243,6 +242,7 @@ function ahuacatlProfilerTestSuite () {
         depth: depth(rows),
         root: rootNodeId,
         '@edgeCol': edgeColName,
+        '@vertexCol': colName,
       });
       const visitedNodes = rows => Math.pow(2, depth(rows)+1)-1;
 
@@ -270,7 +270,7 @@ function ahuacatlProfilerTestSuite () {
       const prepare = (rows) => {
         profHelper.createBinaryTree(col, edgeCol, rows);
       };
-      const query = `FOR v IN @depth..@rows OUTBOUND @root @@edgeCol RETURN v`;
+      const query = `WITH @@vertexCol FOR v IN @depth..@rows OUTBOUND @root @@edgeCol RETURN v`;
       const rootNodeId = `${colName}/1`;
       // actual tree depth:
       // const treeDepth = rows => Math.ceil(Math.log2(rows));
@@ -283,6 +283,7 @@ function ahuacatlProfilerTestSuite () {
         depth: depth(rows),
         root: rootNodeId,
         '@edgeCol': edgeColName,
+        '@vertexCol': colName,
       });
       const skippedNodes = rows => Math.pow(2, depth(rows))-1;
       const visitedNodes = rows => rows - skippedNodes(rows);

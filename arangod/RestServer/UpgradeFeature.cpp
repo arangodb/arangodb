@@ -73,8 +73,6 @@ void UpgradeFeature::addTask(methods::Upgrade::Task&& task) {
 }
 
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
-
   options->addOldOption("upgrade", "database.auto-upgrade");
 
   options->addOption("--database.auto-upgrade",

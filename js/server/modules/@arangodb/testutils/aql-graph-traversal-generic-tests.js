@@ -32,7 +32,7 @@ const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertException, as
 const internal = require("internal");
 const db = internal.db;
 const aql = require("@arangodb").aql;
-const protoGraphs = require('@arangodb/aql-graph-traversal-generic-graphs').protoGraphs;
+const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
 
 

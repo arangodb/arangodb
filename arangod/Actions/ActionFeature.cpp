@@ -41,8 +41,6 @@ ActionFeature::ActionFeature(application_features::ApplicationServer& server)
 }
 
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOption(
       "--server.allow-use-database",
       "allow change of database in REST actions, only needed for "
