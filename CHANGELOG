@@ -4,19 +4,22 @@ v3.8.0 (XXXX-XX-XX)
 * Improve parallelism capabilities of arangorestore.
 
   arangorestore can now dispatch restoring data chunks of a collection to idle
-  background threads, so that multiple restore requests can be in flight for 
-  the same collection concurrently.
+  background threads, so that multiple restore requests can be in flight for the
+  same collection concurrently.
 
-  This can improve restore speed in situations when there are idle threads 
-  left (number of threads can be configured via arangorestore's `--threads` 
-  option) and the dump file for the collection is large.
+  This can improve restore speed in situations when there are idle threads left
+  (number of threads can be configured via arangorestore's `--threads` option)
+  and the dump file for the collection is large.
 
-  The improved parallelism is only used when restoring dumps that are in the 
-  non-enveloped format. This format has been introduced with ArangoDB 3.8. 
-  The reason is that dumps in the non-enveloped format only contain the raw 
-  documents, which can be restored independent of each other, i.e. in any 
-  order. However, the enveloped format may contain documents and remove 
-  operations, which need to be restored in the original order. 
+  The improved parallelism is only used when restoring dumps that are in the
+  non-enveloped format. This format has been introduced with ArangoDB 3.8.
+  The reason is that dumps in the non-enveloped format only contain the raw
+  documents, which can be restored independent of each other, i.e. in any order.
+  However, the enveloped format may contain documents and remove operations,
+  which need to be restored in the original order.
+
+* Fix crashes during arangorestore operations due to usage of wrong pointer
+  value for updating user permissions.
 
 * Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
   'dense_fixed_offset_column_key'`.
