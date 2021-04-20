@@ -133,6 +133,9 @@ auto InMemoryLog::insert(LogPayload payload) -> LogIndex {
   return self->insert(std::move(payload));
 }
 auto InMemoryLog::GuardedInMemoryLog::insert(LogPayload payload) -> LogIndex {
+  // TODO this has to be lock free
+  // TODO investigate what order between insert-increaseTerm is required?
+  // Currently we use a mutex. Is this the only valid semantic?
   assertLeader();
   auto const index = nextIndex();
   _log.emplace_back(LogEntry{_currentTerm, index, std::move(payload)});
@@ -226,6 +229,14 @@ auto InMemoryLog::GuardedInMemoryLog::becomeLeader(
 
   _role = LeaderConfig{std::move(follower_vec), writeConcern};
   _currentTerm = term;
+  // TODO this here is required because the write concern could be higher.
+  // This would cause the writeConcern to decrease.
+  // Raft declares this volatile on all servers - so we can just forget that.
+  // And it will repair very quickly.
+  // Maybe we can only change it if
+  //  - we were follower before or
+  //  - the write concern increased
+  _commitIndex = LogIndex{0};
 }
 
 [[nodiscard]] auto InMemoryLog::getLocalStatistics() const -> LogStatistics {
@@ -355,6 +366,10 @@ void InMemoryLog::GuardedInMemoryLog::sendAppendEntries(std::weak_ptr<InMemoryLo
     req.entries.emplace_back(*std::move(entry));
   }
 
+  // Capture self(shared_from_this()) instead of this
+  // additionally capture a weak pointer that will be locked
+  // when the request returns. If the locking is successful
+  // we are still in the same term.
   follower.requestInFlight = true;
   follower._impl->appendEntries(std::move(req))
       .thenFinal([parentLog = parentLog, &follower, lastIndex, currentCommitIndex,
@@ -452,16 +467,28 @@ void DelayedFollowerLog::runAsyncAppendEntries() {
   _asyncQueue.clear();
 
   for (auto& p : asyncQueue) {
-    p.setValue();
+    p.setValue(std::nullopt);
   }
 }
 auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
   auto f = _asyncQueue.emplace_back().getFuture();
 
-  return std::move(f).then([this, req = std::move(req)](auto) mutable {
+  return std::move(f).thenValue([this, req = std::move(req)](auto&& result) mutable {
+    if (result) {
+      return futures::Future<AppendEntriesResult>(std::in_place, *result);
+    }
     return InMemoryLog::appendEntries(std::move(req));
   });
+}
+
+void DelayedFollowerLog::dropAsyncAppendEntries() {
+  auto asyncQueue = std::move(_asyncQueue);
+  _asyncQueue.clear();
+
+  for (auto& p : asyncQueue) {
+    p.setValue(AppendEntriesResult{false, LogTerm{0}});
+  }
 }
 
 QuorumData::QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum)

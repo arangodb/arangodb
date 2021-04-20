@@ -30,7 +30,98 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-TEST(InMemoryLogTest, test) {
+struct InMemoryLogTest : ::testing::Test {};
+struct InMemoryLogTest2 : ::testing::Test {
+
+
+  auto getNextLogId() -> LogId {
+    return _nextLogId = LogId{_nextLogId.id() + 1};
+  }
+
+  auto addLogInstance(ParticipantId const& id) -> std::shared_ptr<InMemoryLog> {
+    auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
+    auto persistedLog = std::make_shared<MockLog>(getNextLogId());
+    auto log = std::make_shared<InMemoryLog>(id, state, persistedLog);
+    return log;
+  }
+
+  auto addFollowerLogInstance(ParticipantId const& id) -> std::shared_ptr<DelayedFollowerLog> {
+    auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
+    auto persistedLog = std::make_shared<MockLog>(getNextLogId());
+    auto log = std::make_shared<DelayedFollowerLog>(id, state, persistedLog);
+    return log;
+  }
+
+  LogId _nextLogId{0};
+};
+
+TEST_F(InMemoryLogTest2, test) {
+  auto leader = addLogInstance("leader");
+  auto follower = addFollowerLogInstance("follower");
+
+  {
+    // write a single entry on both servers
+    leader->becomeLeader(LogTerm{1}, {follower}, 2);
+    follower->becomeFollower(LogTerm{1}, leader->participantId());
+    auto idx = leader->insert(LogPayload{"first entry"});
+    auto f = leader->waitFor(idx);
+    leader->runAsyncStep();
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+    ASSERT_TRUE(f.isReady());
+  }
+
+  {
+    // leader continues alone
+    leader->becomeLeader(LogTerm{2}, {}, 1);
+    auto idx = leader->insert(LogPayload{"second entry"});
+    auto f = leader->waitFor(idx);
+    leader->runAsyncStep();
+    ASSERT_FALSE(follower->hasPendingAppendEntries());
+    ASSERT_TRUE(f.isReady());
+  }
+
+  // check statistics
+  {
+    auto stats = leader->getLocalStatistics();
+    EXPECT_EQ(stats.spearHead, LogIndex{2});
+    EXPECT_EQ(stats.commitIndex, LogIndex{2});
+  }
+  {
+    auto stats = follower->getLocalStatistics();
+    EXPECT_EQ(stats.spearHead, LogIndex{1});
+    EXPECT_EQ(stats.commitIndex, LogIndex{1});
+  }
+
+  // now write another entry to both
+  {
+    leader->becomeLeader(LogTerm{3}, {follower}, 2);
+    follower->becomeFollower(LogTerm{3}, leader->participantId());
+    auto idx = leader->insert(LogPayload{"third entry"});
+    auto f = leader->waitFor(idx);
+    leader->runAsyncStep();
+    ASSERT_TRUE(follower->hasPendingAppendEntries());
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+    ASSERT_TRUE(f.isReady());
+  }
+
+  {
+    auto stats = leader->getLocalStatistics();
+    EXPECT_EQ(stats.spearHead, LogIndex{3});
+    EXPECT_EQ(stats.commitIndex, LogIndex{3});
+  }
+  {
+    auto stats = follower->getLocalStatistics();
+    EXPECT_EQ(stats.spearHead, LogIndex{3});
+    EXPECT_EQ(stats.commitIndex, LogIndex{3});
+  }
+}
+
+
+TEST_F(InMemoryLogTest, test) {
   auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
   auto const ourParticipantId = ParticipantId{1};
   auto persistedLog = std::make_shared<MockLog>(LogId{1});
@@ -75,7 +166,7 @@ TEST(InMemoryLogTest, test) {
   EXPECT_EQ(payload, logEntry.logPayload());
 }
 
-TEST(InMemoryLogTest, appendEntries) {
+TEST_F(InMemoryLogTest, appendEntries) {
   auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
   auto const ourParticipantId = ParticipantId{1};
   auto const leaderId = ParticipantId{2};
@@ -247,7 +338,7 @@ TEST(InMemoryLogTest, appendEntries) {
   }
 }
 
-TEST(InMemoryLogTest, replicationTest) {
+TEST_F(InMemoryLogTest, replicationTest) {
   auto const leaderId = ParticipantId{1};
   auto const leaderState = std::make_shared<InMemoryState>();
   auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
@@ -335,7 +426,7 @@ TEST(InMemoryLogTest, replicationTest) {
   }
 }
 
-TEST(InMemoryLogTest, replicationTest2) {
+TEST_F(InMemoryLogTest, replicationTest2) {
   auto const leaderId = ParticipantId{1};
   auto const leaderState = std::make_shared<InMemoryState>();
   auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
