@@ -1752,8 +1752,9 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
           httpOptions.timeout = options.oneTestTimeout;
           httpOptions.returnBodyOnError = true;
 
-          let body = `return global.KEYSPACE_EXISTS('FoxxFirstSelfHeal');`;
+          // let body = `return global.KEYSPACE_EXISTS('FoxxFirstSelfHeal');`;
           //let body = `return global.KEYSPACE('FoxxFirstSelfHeal');`;
+          let body = "return false;"
           let res = download(arangod.url + '/_db/_system/_admin/execute?returnBodyAsJSON=true', body);
           print(res)
           return res.message === "OK";
