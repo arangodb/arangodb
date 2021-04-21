@@ -81,7 +81,8 @@ class EdgeDefinition {
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
-  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition, std::set<std::string> const& satCollections);
+  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition,
+                                                      std::set<std::string> const& satCollections);
 
   void toVelocyPack(velocypack::Builder&) const;
 
@@ -190,8 +191,6 @@ class Graph {
   /// @brief get the cids of all edgeCollections
   std::set<std::string> const& edgeCollections() const;
 
-  bool needsToBeSatellite(std::string const& edge) const;
-
   /// @brief get the cids of all edgeCollections
   std::map<std::string, EdgeDefinition> const& edgeDefinitions() const;
 
@@ -210,6 +209,7 @@ class Graph {
   virtual bool isDisjoint() const;
   virtual bool isSatellite() const;
   virtual bool isHybrid() const;
+  virtual bool needsToBeSatellite(std::string const& edge) const;
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;

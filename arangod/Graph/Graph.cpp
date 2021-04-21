@@ -247,20 +247,7 @@ std::set<std::string> const& Graph::edgeCollections() const {
 }
 
 bool Graph::needsToBeSatellite(std::string const& edge) const {
-  bool useAsSatellite = false;
-
-  auto edgeDefinition = edgeDefinitions().at(edge);
-  for (auto const& from: edgeDefinition.getFrom()) {
-    if (satelliteCollections().find(from) != satelliteCollections().end()) {
-      useAsSatellite = true;
-    }
-  }
-  for (auto const& to: edgeDefinition.getTo()) {
-    if (satelliteCollections().find(to) != satelliteCollections().end()) {
-      useAsSatellite = true;
-    }
-  }
-  return useAsSatellite;
+  return false;
 }
 
 std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {

@@ -554,11 +554,11 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     } else {
-      if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
-        if (graph->isHybrid() && graph->satelliteCollections().find(vertexColl) !=
-                                     graph->satelliteCollections().end()) {
-          satelliteDocumentCollectionsToCreate.emplace(vertexColl);
-        }
+      if (graph->isHybrid() &&
+          edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end() &&
+          graph->satelliteCollections().find(vertexColl) !=
+              graph->satelliteCollections().end()) {
+        satelliteDocumentCollectionsToCreate.emplace(vertexColl);
       } else {
         documentCollectionsToCreate.emplace(vertexColl);
       }
