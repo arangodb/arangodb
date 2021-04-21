@@ -555,16 +555,12 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
       return res;
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
-        if (graph->isHybrid()) {
-          if (graph->satelliteCollections().find(vertexColl) !=
-              graph->satelliteCollections().end()) {
-            satelliteDocumentCollectionsToCreate.emplace(vertexColl);
-          } else {
-            documentCollectionsToCreate.emplace(vertexColl);
-          }
-        } else {
-          documentCollectionsToCreate.emplace(vertexColl);
+        if (graph->isHybrid() && graph->satelliteCollections().find(vertexColl) !=
+                                     graph->satelliteCollections().end()) {
+          satelliteDocumentCollectionsToCreate.emplace(vertexColl);
         }
+      } else {
+        documentCollectionsToCreate.emplace(vertexColl);
       }
     }
   }
