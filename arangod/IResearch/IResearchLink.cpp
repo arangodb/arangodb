@@ -727,10 +727,12 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
     // update reader
     _dataStore._reader = reader;
 
-    auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
+    auto subscription = std::atomic_load(&_flushSubscription);
 
     if (subscription) {
-      subscription->tick(_lastCommittedTick);
+      auto& impl = static_cast<IResearchFlushSubscription&>(*subscription);
+
+      impl.tick(_lastCommittedTick);
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
@@ -789,13 +791,15 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
-  auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
+  auto subscription = std::atomic_load(&_flushSubscription);
 
   if (!subscription) {
     // already released
     *code = CommitResult::NO_CHANGES;
     return {};
   }
+
+  auto& impl = static_cast<IResearchFlushSubscription&>(*subscription);
 
   try {
     auto const lastTickBeforeCommit = _engine->currentTick();
@@ -838,7 +842,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
           << "' got last operation tick '" << _lastCommittedTick << "'";
 
       // no changes, can release the latest tick before commit
-      subscription->tick(lastTickBeforeCommit);
+      impl.tick(lastTickBeforeCommit);
 
       return {};
     }
@@ -860,7 +864,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     _dataStore._reader = reader;
 
     // update last committed tick
-    subscription->tick(_lastCommittedTick);
+    impl.tick(_lastCommittedTick);
 
     // invalidate query cache
     aql::QueryCache::instance()->invalidate(&(_collection.vocbase()), _viewGuid);
@@ -962,7 +966,7 @@ Result IResearchLink::drop() {
     }
   }
 
-  _flushSubscription.reset(); // reset together with '_asyncSelf'
+  std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {
@@ -1237,7 +1241,7 @@ Result IResearchLink::initDataStore(
     InitCallback const& initCallback, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression) {
-  _flushSubscription.reset(); // reset together with '_asyncSelf'
+  std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   auto& server = _collection.vocbase().server();
@@ -1865,7 +1869,7 @@ Result IResearchLink::unload() {
     return drop();
   }
 
-  _flushSubscription.reset(); // reset together with '_asyncSelf'
+  std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {
