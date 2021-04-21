@@ -1,6 +1,9 @@
 devel
 -----
 
+* Make the time-to-live (TTL) value of a streaming cursor only count after
+  the first response has been sent to the client.
+
 * Changed default value of arangodump's `--envelope` option from `true` to
   `false`. This allows using higher parallelism in arangorestore when 
   restoring large collection dumps. As a side-effect, this will also decrease 
