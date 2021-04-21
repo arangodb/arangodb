@@ -458,7 +458,7 @@ char const* TransactionState::actorName() const noexcept {
 
 void TransactionState::coordinatorRerollTransactionId() {
   TRI_ASSERT(isCoordinator());
-  TRI_ASSERT(isRunning())
+  TRI_ASSERT(isRunning());
   auto old = _id;
   _id = transaction::Context::makeTransactionId();
   LOG_TOPIC("a565a", DEBUG, Logger::TRANSACTIONS)

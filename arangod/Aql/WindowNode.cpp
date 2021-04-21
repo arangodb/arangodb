@@ -139,7 +139,7 @@ bool WindowBounds::needsFollowingRows() const {
            _followingDuration.minutes > 0 || _followingDuration.seconds > 0 ||
            _followingDuration.milliseconds > 0;
   }
-  TRI_ASSERT(_rangeType == RangeType::Numeric)
+  TRI_ASSERT(_rangeType == RangeType::Numeric);
   return _followingNumber > 0.0;
 }
 

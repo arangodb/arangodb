@@ -80,12 +80,12 @@ struct RegisterId {
   }
 
   constexpr bool operator<(RegisterId const& rhs) const noexcept {
-    TRI_ASSERT(type() == rhs.type())
+    TRI_ASSERT(type() == rhs.type());
     return _value < rhs._value;
   }
 
   constexpr bool operator>(RegisterId const& rhs) const noexcept {
-    TRI_ASSERT(type() == rhs.type())
+    TRI_ASSERT(type() == rhs.type());
     return _value > rhs._value;
   }
 

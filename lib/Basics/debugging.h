@@ -203,15 +203,22 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                           \
-  if (!(ADB_LIKELY(expr))) {                                                           \
-    arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, __FUNCTION__, #expr); \
-  } else {}
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                             \
+  do {                                                                                   \
+    if (!(ADB_LIKELY(expr))) {                                                           \
+      arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, __FUNCTION__, #expr); \
+    } else {                                                                             \
+    }                                                                                    \
+  } while (false)
 
 #else
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                           \
-  while (false) { (void)(expr); }
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/ \
+  do {                                       \
+    if (false) {                             \
+      (void)(expr);                          \
+    }                                        \
+  } while (false)
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
