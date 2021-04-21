@@ -460,7 +460,8 @@ void InMemoryLog::GuardedInMemoryLog::checkCommitIndex() {
                  std::back_inserter(indexes), [](Follower const& f) {
                    return std::make_pair(f.lastAckedIndex, f._impl->participantId());
                  });
-  TRI_ASSERT(_persistedLogEnd.value > 0);
+  // This assertion only holds after the first insert:
+  // TRI_ASSERT(_persistedLogEnd > LogIndex{0});
   indexes.emplace_back(_persistedLogEnd, participantId());
   TRI_ASSERT(indexes.size() == conf.follower.size() + 1);
 
