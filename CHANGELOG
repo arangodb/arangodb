@@ -1,3 +1,10 @@
+v3.8.0 (XXXX-XX-XX)
+-------------------
+
+* Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at 
+  arangodb::transaction::V8Context::exitV8Context().
+
+
 v3.8.0-beta.1 (2021-04-20)
 --------------------------
 
