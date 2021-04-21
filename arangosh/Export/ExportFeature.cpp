@@ -70,6 +70,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server, in
       _xgmmlLabelAttribute("label"),
       _typeExport("json"),
       _queryMaxRuntime(0.0),
+      _useMaxRuntime(false),
       _xgmmlLabelOnly(false),
       _overwrite(false),
       _progress(true),
@@ -194,6 +195,9 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
     _csvFields = StringUtils::split(_csvFieldOptions, ',');
   }
+  
+  // we will use _maxRuntime only if the option was set by the user
+  _useMaxRuntime = options->processingResult().touched("--query-max-runtime");
 }
 
 void ExportFeature::prepare() {
@@ -381,7 +385,9 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   post.add("ttl", VPackValue(::ttlValue));
   post.add("batchSize", VPackValue(_documentsPerBatch));
   post.add("options", VPackValue(VPackValueType::Object));
-  post.add("maxRuntime", VPackValue(_queryMaxRuntime));
+  if (_useMaxRuntime) {
+    post.add("maxRuntime", VPackValue(_queryMaxRuntime));
+  }
   post.add("stream", VPackSlice::trueSlice());
   post.close();
   post.close();

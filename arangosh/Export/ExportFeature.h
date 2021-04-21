@@ -78,6 +78,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
   std::vector<std::string> _csvFields;
   std::string _outputDirectory;
   double _queryMaxRuntime;
+  bool _useMaxRuntime; 
   bool _xgmmlLabelOnly;
   bool _overwrite;
   bool _progress;
