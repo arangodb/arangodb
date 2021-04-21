@@ -278,7 +278,12 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                       << follower << " for shard " << tc.collectionName()
                       << " in database " << cc->vocbase().name()
                       << ": " << r.errorMessage();
-                  res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                  if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+                    res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+                  } else {
+                    res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                  }
+
                   return false;  // cancel transaction
                 }
               }

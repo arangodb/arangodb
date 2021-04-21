@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Retry if an ex-leader can no longer drop a follower because it is no longer
+  leading.
+
 * Fix BTS-374: thread race between ArangoSearch link unloading and storage
   engine WAL flushing.
 
