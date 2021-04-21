@@ -1736,28 +1736,24 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     ++count;
 
     instanceInfo.arangods.forEach(arangod => {
-      if (arangod.suspended) {
+      if (arangod.suspended || arangod.upAndRunning ) {
         // just fake the availability here
         arangod.upAndRunning = true;
         return;
       }
       print(Date() + " tickeling cluster node " + arangod.url);
-      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+
+      let url = arangod.url;
+      if (arangod.role === "coordinator") {
+        url += '/_admin/aardvark/index.html';
+      } else {
+        url += '/_api/version';
+      }
+      const reply = download(url, '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      print(reply)
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
-        if (arangod.role === "coordinator") {
-          print(arangod)
-          let httpOptions = makeAuthorizationHeaders(instanceInfo.authOpts);
-          httpOptions.method = 'POST';
-          httpOptions.timeout = options.oneTestTimeout;
-          httpOptions.returnBodyOnError = true;
-
-          let body = `return global.KEYSPACE_EXISTS('FoxxFirstSelfHeal');`;
-          let res = download(arangod.url + '/_db/_system/_admin/execute?returnBodyAsJSON=true', body, httpOptions);
-          print(res)
-          arangod.upAndRunning = res.body === "true";
-          return arangod.upAndRunning;
-        } else { return true;}
+        return true;
       }
 
       if (!checkArangoAlive(arangod, options)) {
