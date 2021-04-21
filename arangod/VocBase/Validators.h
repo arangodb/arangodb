@@ -50,10 +50,6 @@ enum class ValidationLevel {
 };
 
 struct ValidatorBase {
- protected:
-  explicit ValidatorBase();
-
- public:
   explicit ValidatorBase(VPackSlice params);
   virtual ~ValidatorBase() = default;
 
