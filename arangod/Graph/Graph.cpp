@@ -248,7 +248,7 @@ std::set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
 }
 
-bool Graph::needsToBeSatellite(std::string edge) const {
+bool Graph::needsToBeSatellite(std::string const& edge) const {
   bool useAsSatellite = false;
 
   auto edgeDefinition = edgeDefinitions().at(edge);
