@@ -719,6 +719,72 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(404)
         doc.parsed_response['id'].should be_nil
       end
+      
+      it "creates a streaming cursor with a low TTL" do
+        cmd = api
+        body = "{ \"query\" : \"LET x = SLEEP(10) FOR i IN 1..10 RETURN i\", \"batchSize\" : 1, \"ttl\" : 10, \"options\": { \"stream\": true } }"
+        doc = ArangoDB.log_post("#{prefix}-create-low-ttl", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
+        doc.parsed_response['hasMore'].should eq(true)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
+
+        id = doc.parsed_response['id']
+        cmd = api + "/#{id}"
+        doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
+        doc.parsed_response['id'].should eq(id)
+        doc.parsed_response['hasMore'].should eq(true)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
+        
+        doc = ArangoDB.log_delete("#{prefix}-create-ttl", cmd)
+      end
+      
+      it "creates a non-streaming cursor with a low TTL" do
+        cmd = api
+        body = "{ \"query\" : \"LET x = SLEEP(10) FOR i IN 1..10 RETURN i\", \"batchSize\" : 1, \"ttl\" : 10 }"
+        doc = ArangoDB.log_post("#{prefix}-create-low-ttl", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
+        doc.parsed_response['hasMore'].should eq(true)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
+
+        id = doc.parsed_response['id']
+        cmd = api + "/#{id}"
+        doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
+        doc.parsed_response['id'].should eq(id)
+        doc.parsed_response['hasMore'].should eq(true)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
+        
+        doc = ArangoDB.log_delete("#{prefix}-create-ttl", cmd)
+      end
 
       it "creates a cursor that will expire - PUT" do
         cmd = api
