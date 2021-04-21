@@ -132,6 +132,8 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
 
   [[nodiscard]] auto participantId() const noexcept -> ParticipantId override;
 
+  // TODO Do we want another read function that only allows to read
+  //      committed entries?
   [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
 
  private:
