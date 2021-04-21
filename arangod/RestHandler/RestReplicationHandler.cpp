@@ -1454,11 +1454,8 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
   VPackStringRef bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
-
-  VPackOptions builderOptions = basics::VelocyPackHelper::strictRequestValidationOptions;
-  builderOptions.paddingBehavior = VPackOptions::PaddingBehavior::UsePadding;
-
-  VPackBuilder builder(&builderOptions);
+  
+  VPackBuilder builder(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
   // First parse and collect all markers, we assemble everything in one
   // large builder holding an array
@@ -1647,10 +1644,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
                                                        std::string const& collectionName,
                                                        bool generateNewRevisionIds) {
   // we'll build all documents to insert in this builder
-  VPackOptions vpackOptions;
-  vpackOptions.paddingBehavior = VPackOptions::PaddingBehavior::UsePadding;
-
-  VPackBuilder documentsToInsert(&vpackOptions);
+  VPackBuilder documentsToInsert;
   std::unordered_set<std::string> documentsToRemove;
   Result res = parseBatch(trx, collectionName, documentsToInsert, documentsToRemove, generateNewRevisionIds);
   if (res.fail()) {
