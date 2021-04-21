@@ -1745,7 +1745,19 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
-        return true;
+        if (arangod.role === "coordinator") {
+          print(arangod)
+          let httpOptions = makeAuthorizationHeaders(instanceInfo.authOpts);
+          httpOptions.method = 'POST';
+          httpOptions.timeout = options.oneTestTimeout;
+          httpOptions.returnBodyOnError = true;
+
+          let body = `return global.KEYSPACE_EXISTS('FoxxFirstSelfHeal');`;
+          //let body = `return global.KEYSPACE('FoxxFirstSelfHeal');`;
+          let res = download(arangod.url + '/_db/_system/_admin/execute?returnBodyAsJSON=true', body);
+          print(res)
+          return res.message === "OK";
+        } else { return true;}
       }
 
       if (!checkArangoAlive(arangod, options)) {
