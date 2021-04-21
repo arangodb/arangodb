@@ -49,10 +49,10 @@ class EdgeDefinition {
  private:
   enum EdgeDefinitionType {
     DEFAULT,
-    SMARTTOSMART,
-    SATTOSAT,
-    SMARTTOSAT,
-    SATTOSMART
+    SMART_TO_SMART,
+    SAT_TO_SAT,
+    SMART_TO_SAT,
+    SAT_TO_SMART
   };
 
  public:
@@ -190,7 +190,7 @@ class Graph {
   /// @brief get the cids of all edgeCollections
   std::set<std::string> const& edgeCollections() const;
 
-  bool needsToBeSatellite(std::string edge) const;
+  bool needsToBeSatellite(std::string const& edge) const;
 
   /// @brief get the cids of all edgeCollections
   std::map<std::string, EdgeDefinition> const& edgeDefinitions() const;

@@ -116,8 +116,7 @@ Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefault
   TRI_ASSERT(!_rev.empty());
 
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
-    // TODO: Check why we're landing here and not in SmartGraphEE - Cleanup!
-    LOG_DEVEL << "do not forget me - 1";
+    // TODO Feature HybridSmartGraphs: Check why we're landing here and not in SmartGraphEE - Cleanup!
     if (slice.isObject()) {
       if (slice.hasKey(StaticStrings::GraphSatellites) &&
           slice.get(StaticStrings::GraphSatellites).isArray()) {
@@ -160,8 +159,7 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
   TRI_ASSERT(_rev.empty());
 
   if (info.hasKey(StaticStrings::GraphEdgeDefinitions)) {
-    // TODO: Check why we're landing here and not in SmartGraphEE - Cleanup!
-    LOG_DEVEL << "do not forget me - 2";
+    // TODO Feature HybridSmartGraphs: Check why we're landing here and not in SmartGraphEE - Cleanup!
     if (options.isObject()) {
       if (options.hasKey(StaticStrings::GraphSatellites) &&
           options.get(StaticStrings::GraphSatellites).isArray()) {
@@ -505,13 +503,13 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
   }
 
   if (foundFromSat && !foundToSat) {
-    type = EdgeDefinitionType::SATTOSMART;
+    type = EdgeDefinitionType::SAT_TOS_MART;
   } else if (!foundFromSat && foundToSat) {
-    type = EdgeDefinitionType::SMARTTOSAT;
+    type = EdgeDefinitionType::SMART_TO_SAT;
   } else if (foundFromSat && foundToSat) {
-    type = EdgeDefinitionType::SATTOSAT;
+    type = EdgeDefinitionType::SAT_TO_SAT;
   } else if (!foundFromSat && !foundToSat) {
-    type = EdgeDefinitionType::SMARTTOSMART;
+    type = EdgeDefinitionType::SMART_TO_SMART;
   }
 
   // We do not allow creating an edge definition with either an empty from
