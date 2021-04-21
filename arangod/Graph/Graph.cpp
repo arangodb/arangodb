@@ -503,7 +503,7 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
   }
 
   if (foundFromSat && !foundToSat) {
-    type = EdgeDefinitionType::SAT_TOS_MART;
+    type = EdgeDefinitionType::SAT_TO_SMART;
   } else if (!foundFromSat && foundToSat) {
     type = EdgeDefinitionType::SMART_TO_SAT;
   } else if (foundFromSat && foundToSat) {
