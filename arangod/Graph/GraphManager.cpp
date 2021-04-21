@@ -556,10 +556,8 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
         if (graph->isHybrid()) {
-          if (satelliteDocumentCollectionsToCreate.find(vertexColl) ==
-                  satelliteDocumentCollectionsToCreate.end() &&
-              graph->satelliteCollections().find(vertexColl) !=
-                  graph->satelliteCollections().end()) {
+          if (graph->satelliteCollections().find(vertexColl) !=
+              graph->satelliteCollections().end()) {
             satelliteDocumentCollectionsToCreate.emplace(vertexColl);
           } else {
             documentCollectionsToCreate.emplace(vertexColl);
