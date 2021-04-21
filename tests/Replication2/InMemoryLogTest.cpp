@@ -503,6 +503,157 @@ TEST_F(InMemoryLogTest, replicationTest2) {
   ASSERT_FALSE(followerLog->hasPendingAppendEntries());
 }
 
+TEST_F(InMemoryLogTest, parallelAccessTest) {
+  using namespace std::chrono_literals;
+
+  auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
+  auto const ourParticipantId = ParticipantId{1};
+  auto persistedLog = std::make_shared<MockLog>(LogId{1});
+  struct alignas(128) {
+    InMemoryLog log;
+    std::atomic<bool> go = false;
+    std::atomic<bool> stopClientThreads = false;
+    std::atomic<bool> stopReplicationThread = false;
+    std::atomic<std::size_t> threadsReady = 0;
+    std::atomic<std::size_t> threadsSatisfied = 0;
+  } data{InMemoryLog{ourParticipantId, state, persistedLog}};
+  data.log.becomeLeader(LogTerm{1}, {}, 1);
+
+  constexpr static auto genPayload = [](uint16_t thread, uint32_t i) {
+    auto str = std::string(16, ' ');
+
+    // 5 digits for thread
+    static_assert(std::numeric_limits<uint16_t>::max() <= 99'999);
+    // 10 digits for i
+    static_assert(std::numeric_limits<uint32_t>::max() <= 99'999'999'999);
+
+    auto p = str.begin() + 5;
+    *p = ':';
+    do {
+      --p;
+      *p = '0' + (thread % 10);
+      thread /= 10;
+    } while (thread > 0);
+    p = str.end();
+    do {
+      --p;
+      *p = '0' + (i % 10);
+      i /= 10;
+    } while (i > 0);
+
+    return str;
+  };
+  EXPECT_EQ("    0:         0", genPayload(0, 0));
+  EXPECT_EQ("   11:        42", genPayload(11, 42));
+  EXPECT_EQ("65535:4294967295", genPayload(65535, 4294967295));
+
+  constexpr auto maxIter = std::numeric_limits<uint32_t>::max();
+
+  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+  auto alternatinglyInsertAndRead = [&](auto const threadIdx) {
+    return [threadIdx, &data] {
+      data.threadsReady.fetch_add(1);
+      while (!data.go.load()) {
+      }
+
+      auto& log = data.log;
+      for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); ++i) {
+        auto const payload = LogPayload{genPayload(threadIdx, i)};
+        auto const idx = log.insert(payload);
+        std::this_thread::sleep_for(1ns);
+        auto res = log.getEntryByIndex(idx);
+        ASSERT_TRUE(res.has_value());
+        auto const& entry = res.value();
+        EXPECT_EQ(payload, entry.logPayload());
+        EXPECT_EQ(idx, entry.logIndex());
+        if (i == 1000) {
+          // we should have done at least a few iterations before finishing
+          data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
+        }
+      }
+    };
+  };
+
+  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+  auto insertManyThenRead = [&](auto const threadIdx) {
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+    return [threadIdx, &data] {
+      data.threadsReady.fetch_add(1);
+      while (!data.go.load()) {
+      }
+
+      auto& log = data.log;
+
+      constexpr auto batch = 100;
+      auto idxs = std::vector<LogIndex>{};
+      idxs.resize(batch);
+
+      for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); i += batch) {
+        for (auto k = 0; k < batch && i + k < maxIter; ++k) {
+          auto const payload = LogPayload{genPayload(threadIdx, i + k)};
+          idxs[k] = log.insert(payload);
+        }
+        std::this_thread::sleep_for(1ns);
+        for (auto k = 0; k < batch && i + k < maxIter; ++k) {
+          auto const payload = LogPayload{genPayload(threadIdx, i + k)};
+          auto res = log.getEntryByIndex(idxs[k]);
+          auto const& entry = res.value();
+          EXPECT_EQ(payload, entry.logPayload());
+          EXPECT_EQ(idxs[k], entry.logIndex());
+        }
+        if (i == 10 * batch) {
+          // we should have done at least a few iterations before finishing
+          data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
+        }
+      }
+    };
+  };
+
+  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+  auto runReplicationWithIntermittentPauses = [&data] {
+    for (auto i = 0; ; ++i) {
+      data.log.runAsyncStep();
+      if (i % 16) {
+        std::this_thread::sleep_for(10ns);
+        if (data.stopReplicationThread.load()) {
+          return;
+        }
+      }
+    }
+  };
+
+  // start replication
+  auto replicationThread = std::thread{runReplicationWithIntermittentPauses};
+
+  std::vector<std::thread> clientThreads;
+  auto threadCounter = uint16_t{0};
+  clientThreads.emplace_back(alternatinglyInsertAndRead(threadCounter++));
+  clientThreads.emplace_back(insertManyThenRead(threadCounter++));
+
+
+  ASSERT_EQ(clientThreads.size(), threadCounter);
+  while (data.threadsReady.load() < clientThreads.size()) {
+  }
+  data.go.store(true);
+  while (data.threadsSatisfied.load() < clientThreads.size()) {
+    std::this_thread::sleep_for(100us);
+  }
+  data.stopClientThreads.store(true);
+
+  for (auto& thread : clientThreads) {
+    thread.join();
+  }
+
+  // stop replication only after all client threads joined, so we don't block
+  // them in some intermediate state
+  data.stopReplicationThread.store(true);
+  replicationThread.join();
+
+  auto stats = data.log.getLocalStatistics();
+  EXPECT_LE(LogIndex{8000}, stats.commitIndex);
+  EXPECT_LE(stats.commitIndex, stats.spearHead);
+}
+
 TEST(LogIndexTest, compareOperators) {
   auto one = LogIndex{1};
   auto two = LogIndex{2};
