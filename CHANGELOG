@@ -1,3 +1,10 @@
+v3.8.0 (XXXX-XX-XX)
+-------------------
+
+* Make the time-to-live (TTL) value of a streaming cursor only count after
+  the first response has been sent to the client.
+
+
 v3.8.0-beta.1 (2021-04-20)
 --------------------------
 
