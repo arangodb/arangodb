@@ -76,9 +76,9 @@ class ExportFeature final : public application_features::ApplicationFeature,
   std::string _typeExport;
   std::string _csvFieldOptions;
   std::vector<std::string> _csvFields;
-  bool _xgmmlLabelOnly;
-
   std::string _outputDirectory;
+  double _queryMaxRuntime;
+  bool _xgmmlLabelOnly;
   bool _overwrite;
   bool _progress;
   bool _useGzip;
