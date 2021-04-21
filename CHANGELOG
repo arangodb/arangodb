@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at 
+  arangodb::transaction::V8Context::exitV8Context().
+
 * Changed default value of arangodump's `--envelope` option from `true` to
   `false`. This allows using higher parallelism in arangorestore when 
   restoring large collection dumps. As a side-effect, this will also decrease 
