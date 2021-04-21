@@ -1900,6 +1900,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       coordinatorArgs['cluster.my-address'] = endpoint;
       coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
       coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
+      coordinatorArgs['foxx.force-update-on-startup'] = 'true';
       if (!addArgs.hasOwnProperty('cluster.default-replication-factor')) {
         coordinatorArgs['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
       }
