@@ -114,16 +114,17 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// (or if there will be a conflict)
   Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
                      LocalDocumentId const& documentId, velocypack::Slice doc,
-                     OperationOptions const& options, bool lock) override;
+                     OperationOptions const& options) override;
   
   Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
                       LocalDocumentId const& documentId, velocypack::Slice doc,
-                      OperationOptions const& options, bool lock) override;
+                      OperationOptions const& options) override;
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& options) override;
+                OperationOptions const& options,
+                bool performChecks) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -134,7 +135,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                 LocalDocumentId const& oldDocumentId,
                 velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
                 velocypack::Slice newDoc,
-                OperationOptions const& /*options*/) override;
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
  private:
   /// @brief test if the specified key (keySlice) already exists.
@@ -144,8 +146,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                   RocksDBKeyLeaser const& key,
                   arangodb::velocypack::Slice keySlice,
                   OperationOptions const& options, 
-                  bool insert,
-                  bool lock);
+                  bool insert);
   
   /// @brief create the iterator, for a single attribute, IN operator
   std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,

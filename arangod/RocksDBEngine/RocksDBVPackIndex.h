@@ -122,7 +122,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& options) override;
+                OperationOptions const& options, 
+                bool performChecks) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
@@ -132,20 +133,21 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 LocalDocumentId const& oldDocumentId,
                 velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
                 velocypack::Slice newDoc,
-                OperationOptions const& options) override;
+                OperationOptions const& options,
+                bool performChecks) override;
 
  private:
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)
   Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
                      LocalDocumentId const& documentId, velocypack::Slice doc,
-                     OperationOptions const& options, bool lock) override;
+                     OperationOptions const& options) override;
   
   /// @brief returns whether the document can be updated/replaced in the index
   /// (or if there will be a conflict)
   Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
                       LocalDocumentId const& documentId, velocypack::Slice doc,
-                      OperationOptions const& options, bool lock) override;
+                      OperationOptions const& options) override;
 
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }

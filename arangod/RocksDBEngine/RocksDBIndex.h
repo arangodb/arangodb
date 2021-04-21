@@ -101,8 +101,7 @@ class RocksDBIndex : public Index {
   virtual Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
                              LocalDocumentId const& documentId,
                              arangodb::velocypack::Slice doc,
-                             OperationOptions const& options,
-                             bool lock);
+                             OperationOptions const& options);
   
   /// performs a preflight check for an update/replace operation, not carrying out any
   /// modifications to the index.
@@ -111,14 +110,14 @@ class RocksDBIndex : public Index {
   virtual Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
                               LocalDocumentId const& documentId,
                               arangodb::velocypack::Slice doc,
-                              OperationOptions const& options,
-                              bool lock);
+                              OperationOptions const& options);
 
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice doc,
-                        OperationOptions const& options) = 0;
+                        OperationOptions const& options,
+                        bool performChecks) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -130,7 +129,8 @@ class RocksDBIndex : public Index {
                         arangodb::velocypack::Slice oldDoc,
                         LocalDocumentId const& newDocumentId,
                         velocypack::Slice newDoc,
-                        OperationOptions const& options);
+                        OperationOptions const& options,
+                        bool performChecks);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 

@@ -583,8 +583,8 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
                                      RocksDBKeyLeaser const& key,
                                      arangodb::velocypack::Slice keySlice,
                                      OperationOptions const& options,
-                                     bool insert,
-                                     bool lock) {
+                                     bool insert) {
+  bool const lock = !RocksDBTransactionState::toState(&trx)->isOnlyExclusiveTransaction();
   IndexOperationMode mode = options.indexOperationMode;
   
   transaction::StringLeaser leased(&trx);
@@ -619,8 +619,6 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
     }
   }
 
-  ps.Reset();  // clear used memory
-
   return res;
 }
 
@@ -628,8 +626,7 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
                                         RocksDBMethods* mthd,
                                         LocalDocumentId const& documentId,
                                         velocypack::Slice slice,
-                                        OperationOptions const& options,
-                                        bool lock) {
+                                        OperationOptions const& options) {
   VPackSlice keySlice;
   RevisionId revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
@@ -638,15 +635,14 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
-  return probeKey(trx, mthd, key, keySlice, options, true, lock);
+  return probeKey(trx, mthd, key, keySlice, options, /*insert*/ true);
 }
 
 Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx, 
                                          RocksDBMethods* mthd,
                                          LocalDocumentId const& documentId,
                                          velocypack::Slice slice,
-                                         OperationOptions const& options,
-                                         bool lock) {
+                                         OperationOptions const& options) {
   VPackSlice keySlice;
   RevisionId revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
@@ -655,14 +651,15 @@ Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
-  return probeKey(trx, mthd, key, keySlice, options, false, lock);
+  return probeKey(trx, mthd, key, keySlice, options, /*insert*/ false);
 }
 
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, 
                                    RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
                                    velocypack::Slice slice,
-                                   OperationOptions const& options) {
+                                   OperationOptions const& options,
+                                   bool performChecks) {
   VPackSlice keySlice;
   RevisionId revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
@@ -673,9 +670,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   
   Result res;
 
-  auto* state = RocksDBTransactionState::toState(&trx);
-  if (!options.checkUniqueConstraintsInPreflight && state->numOperations() < 100) {
-    res = probeKey(trx, mthd, key, keySlice, options, true, /*lock*/ true);
+  if (performChecks) {
+    res = probeKey(trx, mthd, key, keySlice, options, /*insert*/ true);
 
     if (res.fail()) {
       return res;
@@ -702,7 +698,8 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
                                    velocypack::Slice oldDoc,
                                    LocalDocumentId const& newDocumentId,
                                    velocypack::Slice newDoc,
-                                   OperationOptions const& /*options*/) {
+                                   OperationOptions const& /*options*/,
+                                   bool /*performChecks*/) {
   Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
