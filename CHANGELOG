@@ -1,3 +1,10 @@
+v3.8.0 (XXXX-XX-XX)
+-------------------
+
+* Added option `--query-max-runtime` to arangoexport, in order to control
+  maximum query runtime.
+
+
 v3.8.0-beta.1 (2021-04-20)
 --------------------------
 
