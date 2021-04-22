@@ -94,6 +94,10 @@ class RocksDBTransactionState final : public TransactionState {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }
 
+  uint64_t numOperations() const {
+    return _numInserts + _numUpdates + _numRemoves;
+  }
+
   bool hasFailedOperations() const override {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
