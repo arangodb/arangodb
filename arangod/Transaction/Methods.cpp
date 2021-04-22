@@ -1904,6 +1904,12 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collection->vocbase().name() << "/" << collection->name()
                 << ": " << res.errorMessage();
+
+            // Note: it is safe here to exit the loop early. We are losing the leadership here.
+            // No matter what happens next, the Current entry in the agency is rewritten and
+            // thus replication is restarted from the new leader. There is no need to keep
+            // trying to drop followers at this point.
+
             if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
               // In this case, we know that we are not or no longer
               // the leader for this shard. Therefore we need to
@@ -2466,6 +2472,12 @@ Future<Result> Methods::replicateOperations(
               << "could not drop follower " << follower << " for shard "
               << collection->vocbase().name() << "/" << collection->name()
               << ": " << res.errorMessage();
+
+          // Note: it is safe here to exit the loop early. We are losing the leadership here.
+          // No matter what happens next, the Current entry in the agency is rewritten and
+          // thus replication is restarted from the new leader. There is no need to keep
+          // trying to drop followers at this point.
+
           if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
             // In this case, we know that we are not or no longer
             // the leader for this shard. Therefore we need to
