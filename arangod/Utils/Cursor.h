@@ -56,7 +56,6 @@ class Cursor {
         _ttl(ttl),
         _expires(TRI_microtime() + _ttl),
         _hasCount(hasCount),
-        _canUseExpire(false),
         _isDeleted(false),
         _isUsed(false) {}
 
@@ -73,8 +72,6 @@ class Cursor {
 
   inline double expires() const { return _expires; }
   
-  inline bool canUseExpire() const { return _canUseExpire; }
-
   inline bool isUsed() const { return _isUsed; }
 
   inline bool isDeleted() const { return _isDeleted; }
@@ -92,10 +89,7 @@ class Cursor {
   void release() {
     TRI_ASSERT(_isUsed);
     _isUsed = false;
-    if (!_canUseExpire) {
-      _expires = TRI_microtime() + _ttl;
-      _canUseExpire = true;
-    }
+    _expires = TRI_microtime() + _ttl;
   }
 
   virtual void kill() {}
@@ -147,7 +141,6 @@ class Cursor {
   /// @brief this flag is initially false, but will flip to true once the cursor
   /// is returned to the cursor repository. if the flag is still false, a cursor
   /// cannot expire (e.g. because it is still operating)
-  bool _canUseExpire;
   bool _isDeleted;
   bool _isUsed;
 };
