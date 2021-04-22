@@ -194,7 +194,9 @@ bool CreateCollection::first() {
             << database << "/" << collection << "' failed: " << res;
       LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
 
-      result(TRI_ERROR_FAILED, error.str());
+      res.reset(TRI_ERROR_FAILED, error.str());
+      result(res);
+      
     }
 
   } catch (std::exception const& e) {
@@ -202,7 +204,7 @@ bool CreateCollection::first() {
 
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("60514", WARN, Logger::MAINTENANCE) << error.str();
-    res(TRI_ERROR_FAILED, error.str());
+    res.reset(TRI_ERROR_FAILED, error.str());
     result(res);
   }
 
