@@ -292,9 +292,9 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                       << " for shard " << cc->vocbase().name() << "/" << tc.collectionName()
                       << ": " << r.errorMessage();
                   if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-                    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+                    res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
                   } else {
-                    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                    res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
                   }
                 }
               }
