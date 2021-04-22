@@ -1187,7 +1187,13 @@ void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
 Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) const {
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
-    return schema->validate(s, VPackSlice::noneSlice(), true, options);
+    auto res = schema->validate(s, VPackSlice::noneSlice(), true, options);
+    if (res.fail()) {
+      return res;
+    }
+  }
+  if (_internalValidator) {
+    return _internalValidator->validate(s, VPackSlice::noneSlice(), true, options);
   }
   return {};
 }
@@ -1196,7 +1202,20 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
                                    VPackOptions const* options) const {
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
-    return schema->validate(modifiedDoc, oldDoc, false, options);
+    auto res = schema->validate(modifiedDoc, oldDoc, false, options);
+    if (res.fail()) {
+      return res;
+    }
+  }
+  if (_internalValidator) {
+    return _internalValidator->validate(modifiedDoc, oldDoc, false, options);
   }
   return {};
+}
+
+void LogicalCollection::setInternalValidator(std::unique_ptr<arangodb::ValidatorBase> validator) {
+  // We can only set the InteralSchema once.
+  // We cannot override it
+  TRI_ASSERT(!_internalValidator);
+  _internalValidator = std::move(validator);
 }

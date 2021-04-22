@@ -333,6 +333,8 @@ class LogicalCollection : public LogicalDataSource {
 
   Result updateSchema(VPackSlice schema);
 
+  void setInternalValidator(std::unique_ptr<arangodb::ValidatorBase>);
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -409,6 +411,8 @@ class LogicalCollection : public LogicalDataSource {
   // `_schema` must be used with atomic accessors only!!
   // We use relaxed access (load/store) as we only care about atomicity.
   std::shared_ptr<arangodb::ValidatorBase> _schema;
+
+  std::unique_ptr<arangodb::ValidatorBase> _internalValidator;
 };
 
 }  // namespace arangodb
