@@ -277,7 +277,11 @@ set(ARANGODB_TESTS_SOURCES
   VPackDeserializer/BasicTests.cpp)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
-  Replication2/InMemoryLogTest.cpp Replication2/MockLog.cpp Replication2/MockLog.h Replication2/RocksDBLogTest.cpp Replication2/TestHelper.cpp Replication2/TestHelper.h)
+  Replication2/InMemoryLogTest.cpp
+  Replication2/MockLog.cpp
+  Replication2/RocksDBLogTest.cpp
+  Replication2/TestHelper.cpp
+  )
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
@@ -325,6 +329,8 @@ target_link_libraries(arangodbtests
 
 target_link_libraries(arangodbtests_replication2
   gtest
+  arango_agency
+  arango_v8server
   arangoserver
   arango_replication2
   arango_iresearch
