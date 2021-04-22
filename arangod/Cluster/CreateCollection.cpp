@@ -99,7 +99,7 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
   if (!error.str().empty()) {
     LOG_TOPIC("7c60f", ERR, Logger::MAINTENANCE)
         << "CreateCollection: " << error.str();
-    result(TRI_ERROR_INTERNAL, error.str());
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -116,8 +116,6 @@ bool CreateCollection::first() {
   LOG_TOPIC("21710", DEBUG, Logger::MAINTENANCE)
       << "CreateCollection: creating local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << collection << "'";
-
-  Result res;
 
   try {  // now try to guard the vocbase
     auto& df = _feature.server().getFeature<DatabaseFeature>();
@@ -158,9 +156,9 @@ bool CreateCollection::first() {
 
     std::shared_ptr<LogicalCollection> col;
     OperationOptions options(ExecContext::current());
-    res.reset(Collections::create(vocbase, options, shard, type, docket.slice(),
-                                  waitForRepl, enforceReplFact, false, col));
-    result(res);
+    _result = Collections::create(vocbase, options, shard, type, docket.slice(),
+                                  waitForRepl, enforceReplFact, false, col);
+
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
           << "local collection " << database << "/" << shard
@@ -174,27 +172,27 @@ bool CreateCollection::first() {
       }
     }
 
-    if (res.fail()) {
+    if (_result.fail()) {
       // If this is TRI_ERROR_ARANGO_DUPLICATE_NAME, then we assume that a previous
       // incarnation of ourselves has already done the work. This can happen, if
       // the timing of phaseOne runs is unfortunate with asynchronous creation of
       // shards.
       // In this case, we do not report an error and do not increase the version
       // number of the shard in `setState` below.
-      if (res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
+      if (_result.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
         LOG_TOPIC("9db9c", INFO, Logger::MAINTENANCE)
         << "local collection " << database << "/" << shard
         << " already found, ignoring...";
-        result(TRI_ERROR_NO_ERROR);
+        _result.reset(TRI_ERROR_NO_ERROR);
         _doNotIncrement = true;
         return false;
       }
       std::stringstream error;
       error << "creating local shard '" << database << "/" << shard << "' for central '"
-            << database << "/" << collection << "' failed: " << res;
+            << database << "/" << collection << "' failed: " << _result;
       LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
 
-      result(TRI_ERROR_FAILED, error.str());
+      _result.reset(TRI_ERROR_FAILED, error.str());
     }
 
   } catch (std::exception const& e) {
@@ -202,13 +200,12 @@ bool CreateCollection::first() {
 
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("60514", WARN, Logger::MAINTENANCE) << error.str();
-    res(TRI_ERROR_FAILED, error.str());
-    result(res);
+    _result.reset(TRI_ERROR_FAILED, error.str());
   }
 
-  if (res.fail()) {
+  if (_result.fail()) {
     _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), res);
+                             _description.get(SERVER_ID), _result);
   }
 
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)

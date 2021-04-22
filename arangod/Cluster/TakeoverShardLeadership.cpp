@@ -106,7 +106,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
   if (!error.str().empty()) {
     LOG_TOPIC("2aa85", ERR, Logger::MAINTENANCE)
         << "TakeoverLeadership: " << error.str();
-    result(TRI_ERROR_INTERNAL, error.str());
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -253,7 +253,6 @@ bool TakeoverShardLeadership::first() {
   std::string const& localLeader = _description.get(LOCAL_LEADER);
   std::string const& planRaftIndex = _description.get(PLAN_RAFT_INDEX);
   uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
-  Result res;
 
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
@@ -277,8 +276,7 @@ bool TakeoverShardLeadership::first() {
       error << "TakeoverShardLeadership: failed to lookup local collection "
             << shard << "in database " + database;
       LOG_TOPIC("65342", ERR, Logger::MAINTENANCE) << error.str();
-      res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
-      result(res);
+      _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
     }
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -286,13 +284,12 @@ bool TakeoverShardLeadership::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("79443", WARN, Logger::MAINTENANCE)
         << "TakeoverShardLeadership: " << error.str();
-    res(TRI_ERROR_INTERNAL, error.str());
-    result(res);
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
   }
 
-  if (res.fail()) {
+  if (_result.fail()) {
     _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), res);
+                             _description.get(SERVER_ID), _result);
   }
 
   return false;
