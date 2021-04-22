@@ -29,6 +29,7 @@
 #include "Containers/SmallVector.h"
 
 #include <limits>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -385,6 +386,29 @@ class AqlItemBlock {
   /// @brief number of SharedAqlItemBlockPtr instances. shall be returned to
   /// the _manager when it reaches 0.
   mutable size_t _refCount = 0;
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // The _refCount is intentionally not atomic since this would be significantly more
+  // expensive and it should actually not be necessary since no block should ever be
+  // used by multiple threads concurrently.
+  // However, in the past we had some issues where two threads (unintentionally) accessed
+  // the same block, potentially corrupting the _refCount. This OwnershipChecker is used
+  // in incRefCount/decRefCount and adds some (limited) verification that those methods
+  // are not called concurrently.
+  mutable std::atomic<std::thread::id> _owner{std::thread::id()};
+    
+  struct OwnershipChecker {
+    explicit OwnershipChecker(std::atomic<std::thread::id>& v) : _v(v) {
+      auto old = _v.exchange(std::this_thread::get_id(), std::memory_order_relaxed);
+      TRI_ASSERT(old == std::thread::id());
+    }
+    ~OwnershipChecker() {
+      auto old = _v.exchange(std::thread::id(), std::memory_order_relaxed);
+      TRI_ASSERT(old == std::this_thread::get_id());
+    }
+    std::atomic<std::thread::id>& _v;
+  };
+#endif
 
   /// @brief current row index we want to read from. This will be increased
   /// after getRelevantRange function will be called, which will return a tuple
