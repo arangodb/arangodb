@@ -1,6 +1,8 @@
 devel
 -----
 
+* Guarded access only to ActionBase::_result.
+
 * Changed default value of arangodump's `--envelope` option from `true` to
   `false`. This allows using higher parallelism in arangorestore when 
   restoring large collection dumps. As a side-effect, this will also decrease 
