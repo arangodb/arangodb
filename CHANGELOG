@@ -1,8 +1,7 @@
 devel
 -----
 
-* Retry if an ex-leader can no longer drop a follower because it is no longer
-  leading.
+* Guarded access only to ActionBase::_result.
 
 * Changed default value of arangodump's `--envelope` option from `true` to
   `false`. This allows using higher parallelism in arangorestore when 
