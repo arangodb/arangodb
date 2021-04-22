@@ -3,6 +3,12 @@ v3.7.11 (XXXX-XX-XX)
 
 * Guarded access only to ActionBase::_result.
 
+* Make the time-to-live (TTL) value of a streaming cursor only count after the
+  response has been sent to the client.
+
+* Fix BTS-340: AQL expressions similar to `x < 3 || x` are no longer erroneously
+  be reduced to `x < 3` by the optimizer rule remove-redundant-or.
+
 * Fix BTS-374: thread race between ArangoSearch link unloading and storage
   engine WAL flushing.
 
