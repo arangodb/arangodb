@@ -1,7 +1,13 @@
 devel
 -----
 
-* Guarded access only to ActionBase::_result.
+* Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
+  to specify "--ldap2.OPTION". Authentication / Authorization will first check
+  the primary LDAP server. If this server cannot authenticate a user, it will
+  try the secondary one. It is possible to specify a file containing all users
+  that the primary (or secondary) LDAP server is handling by specifying the
+  option "--ldap.responsible-for". This file must contain the usernames
+  line-by-line.
 
 * Make the time-to-live (TTL) value of a streaming cursor only count after
   the response has been sent to the client.
