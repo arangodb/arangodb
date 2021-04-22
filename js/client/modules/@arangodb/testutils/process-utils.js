@@ -1736,7 +1736,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     ++count;
 
     instanceInfo.arangods.forEach(arangod => {
-      if (arangod.suspended) {
+      if (arangod.suspended || arangod.upAndRunning) {
         // just fake the availability here
         arangod.upAndRunning = true;
         return;
