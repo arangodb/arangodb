@@ -62,7 +62,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
                 RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId,
                 VPackSlice doc,
-                OperationOptions const& /*options*/) override {
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override {
     return IResearchLink::insert(trx, documentId, doc);
   }
 
