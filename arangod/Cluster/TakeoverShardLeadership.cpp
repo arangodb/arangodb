@@ -282,7 +282,8 @@ bool TakeoverShardLeadership::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("79443", WARN, Logger::MAINTENANCE)
         << "TakeoverShardLeadership: " << error.str();
-    result(TRI_ERROR_INTERNAL, error.str());
+    res(TRI_ERROR_INTERNAL, error.str());
+    result(res);
   }
 
   if (res.fail()) {
