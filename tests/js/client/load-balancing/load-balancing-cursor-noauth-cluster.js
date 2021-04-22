@@ -117,7 +117,7 @@ function CursorSyncSuite () {
       coordinators = [];
     },
 
-    testCursorForwardingBasic: function() {
+    testCursorForwardingBasicPut: function() {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -154,8 +154,46 @@ function CursorSyncSuite () {
       assertTrue(result.error);
       assertEqual(result.code, 404);
     },
+    
+    testCursorForwardingBasicPost: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest('POST', url, query, true);
 
-    testCursorForwardingDeletion: function() {
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest('POST', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 200);
+      assertFalse(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest('POST', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+    },
+
+    testCursorForwardingDeletionPut: function() {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -184,6 +222,41 @@ function CursorSyncSuite () {
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('PUT', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+    },
+    
+    testCursorForwardingDeletionPost: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest('POST', url, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest('DELETE', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 202);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest('POST', url, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.error);

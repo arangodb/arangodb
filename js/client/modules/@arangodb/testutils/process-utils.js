@@ -99,6 +99,12 @@ class ConfigBuilder {
     }
     this.config['server.database'] = database;
   }
+  setThreads(threads) {
+    if (this.type !== 'restore' && this.type !== 'dump') {
+      throw '"threads" is not supported for binary: ' + this.type;
+    }
+    this.config['threads'] = threads;
+  }
   setIncludeSystem(active) {
     if (this.type !== 'restore' && this.type !== 'dump') {
       throw '"include-system-collections" is not supported for binary: ' + this.type;
