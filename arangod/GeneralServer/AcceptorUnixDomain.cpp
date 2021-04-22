@@ -63,18 +63,12 @@ void AcceptorUnixDomain::open() {
 }
 
 void AcceptorUnixDomain::asyncAccept() {
-  // In most cases _asioSocket will be nullptr here, however, if
-  // the async_accept returns with an error, then an old _asioSocket
-  // is already set. Therefore, we do no longer assert here that
-  // _asioSocket is nullptr.
   IoContext& context = _server.selectIoContext();
 
-  {
-    std::unique_lock<std::mutex> guard(_mutex);
-    _asioSocket = std::make_unique<AsioSocket<SocketType::Unix>>(context);
-  }
-
-  auto handler = [this](asio_ns::error_code const& ec) {
+  auto asioSocket = std::make_unique<AsioSocket<SocketType::Unix>>(context);
+  auto& socket = asioSocket->socket;
+  auto& peer = asioSocket->peer;
+  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) {
     if (ec) {
       handleError(ec);
       return;
@@ -90,21 +84,16 @@ void AcceptorUnixDomain::asyncAccept() {
     info.clientAddress = "local";
     info.clientPort = 0;
 
-    decltype(_asioSocket) as;
-    {
-      std::unique_lock<std::mutex> guard(_mutex);
-      as = std::move(_asioSocket);
-    }
     auto commTask =
         std::make_shared<HttpCommTask<SocketType::Unix>>(_server,
                                                          std::move(info),
-                                                         std::move(as));
+                                                         std::move(asioSocket));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, handler);
+  _acceptor.async_accept(socket, peer, handler);
 }
 
 void AcceptorUnixDomain::close() {
