@@ -70,7 +70,7 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
 
   if (!error.str().empty()) {
     LOG_TOPIC("2aa84", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -102,7 +102,7 @@ bool ResignShardLeadership::first() {
       error << "Failed to lookup local collection " << collection
             << " in database " + database;
       LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
-      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
@@ -131,7 +131,7 @@ bool ResignShardLeadership::first() {
     std::stringstream error;
     error << "exception thrown when resigning:" << e.what();
     LOG_TOPIC("173dd", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
 

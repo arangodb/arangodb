@@ -1,6 +1,8 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Guarded access only to ActionBase::_result.
+
 * Fix BTS-374: thread race between ArangoSearch link unloading and storage
   engine WAL flushing.
 

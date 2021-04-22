@@ -57,7 +57,7 @@ DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription co
 
   if (!error.str().empty()) {
     LOG_TOPIC("c7e42", ERR, Logger::MAINTENANCE) << "DropCollection: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -84,13 +84,13 @@ bool DropCollection::first() {
         TRI_ASSERT(coll);
         LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
           << "Dropping local collection " + shard;
-        _result = Collections::drop(*coll, false, 2.5);
+        result(Collections::drop(*coll, false, 2.5));
       } else {
         std::stringstream error;
 
         error << "failed to lookup local collection " << database << "/" << shard;
         LOG_TOPIC("02722", ERR, Logger::MAINTENANCE) << "DropCollection: " << error.str();
-        _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
+        result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
 
         return false;
       }
@@ -100,7 +100,7 @@ bool DropCollection::first() {
 
       error << " action " << _description << " failed with exception " << e.what();
       LOG_TOPIC("9dbd8", ERR, Logger::MAINTENANCE) << error.str();
-      _result.reset(TRI_ERROR_INTERNAL, error.str());
+      result(TRI_ERROR_INTERNAL, error.str());
 
       return false;
     }

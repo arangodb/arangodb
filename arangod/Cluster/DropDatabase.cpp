@@ -51,7 +51,7 @@ DropDatabase::DropDatabase(MaintenanceFeature& feature, ActionDescription const&
 
   if (!error.str().empty()) {
     LOG_TOPIC("103f0", ERR, Logger::MAINTENANCE) << "DropDatabase: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -66,16 +66,17 @@ bool DropDatabase::first() {
     DatabaseGuard guard("_system");
     auto vocbase = &guard.database();
 
-    _result = Databases::drop(vocbase, database);
-    if (!_result.ok() && _result.errorNumber() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+    auto res = Databases::drop(vocbase, database);
+    result(res);
+    if (!res.ok() && res.errorNumber() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
       LOG_TOPIC("f46b7", ERR, Logger::AGENCY) << "DropDatabase: dropping database " << database
-                                     << " failed: " << _result.errorMessage();
+                                     << " failed: " << res.errorMessage();
       return false;
     }
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
 
