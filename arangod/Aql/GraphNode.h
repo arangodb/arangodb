@@ -181,6 +181,8 @@ class GraphNode : public ExecutionNode {
 
   std::vector<aql::Collection*> const& vertexColls() const;
 
+  std::vector<aql::Collection*> const& satelliteColls() const;
+
   virtual void getConditionVariables(std::vector<Variable const*>&) const;
 
   /// @brief return any of the collections.
@@ -245,6 +247,9 @@ class GraphNode : public ExecutionNode {
   /// @brief the vertex collection names (can also be edge collections
   /// as an edge can also point to another edge, instead of a vertex).
   std::vector<aql::Collection*> _vertexColls;
+
+  /// @brief the edge collection names
+  std::vector<aql::Collection*> _satelliteColls;
 
   /// @brief The default direction given in the query
   TRI_edge_direction_e const _defaultDirection;
