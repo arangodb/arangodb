@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Make the time-to-live (TTL) value of a streaming cursor only count after the
+  response has been sent to the client.
+
 * Added option `--query-max-runtime` to arangoexport, in order to control
   maximum query runtime.
 
