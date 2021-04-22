@@ -1,6 +1,23 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Improve performance of batch CRUD operations (insert, update, replace, 
+  remove) if some of the documents in the batch run into write-write conflicts.
+  Rolling back partial operations in case of a failure is very expensive 
+  because it requires rebuilding RocksDB write batches for the transaction 
+  from scratch. Rebuilding write batches takes time proportional to the number
+  of operations in the batch, and for larger batches the cost can be 
+  prohibitive. 
+  Now we are not rolling back write batches in some situations when this is
+  not required, so that in many cases running into a conflict does not have 
+  that high overhead. There can still be issues when conflicts happen for index
+  entries, but a lot of previously problematic cases should now work better.
+
+  This change also reduces the RocksDB-internal lock timeout for writing to
+  keys locked by another transaction from 1s to 1ms. This will mean that 
+  operations that ran into a write-write conflict may fail quicker than before,
+  and not wait and retry to acquire the locked key(s).
+
 * Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at
   arangodb::transaction::V8Context::exitV8Context().
 
