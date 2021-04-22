@@ -104,7 +104,8 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
                                    arangodb::velocypack::Slice slice,
-                                   OperationOptions const& /*options*/) {
+                                   OperationOptions const& /*options*/,
+                                   bool /*performChecks*/) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else
@@ -238,7 +239,7 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
 
     res = ridx.insert(trx, &batched, RocksDBKey::documentId(it->key()),
                       VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())),
-                      options);
+                      options, /*performChecks*/ true);
     if (res.fail()) {
       break;
     }
@@ -341,8 +342,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::TrackedDocumentInsert:
         if (_lastObjectID == _objectId) {
           auto pair = RocksDBLogValue::trackedDocument(blob);
-          OperationOptions options;
-          tmpRes = _index.insert(_trx, _methods, pair.first, pair.second, options);
+          tmpRes = _index.insert(_trx, _methods, pair.first, pair.second, _options, /*performChecks*/ true);
           numInserted++;
         }
         break;
@@ -433,6 +433,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   RocksDBIndex& _index;      /// the index to use
   transaction::Methods& _trx;
   MethodsType* _methods;  /// methods to fill
+  OperationOptions const _options;
 
   rocksdb::SequenceNumber _startSequence;
   rocksdb::SequenceNumber _currentSequence;
