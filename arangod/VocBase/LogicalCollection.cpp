@@ -28,9 +28,9 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
@@ -78,17 +78,17 @@ static std::string translateStatus(TRI_vocbase_col_status_e status) {
 }
 
 std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
-  auto guid = arangodb::basics::VelocyPackHelper::getStringValue(info, arangodb::StaticStrings::DataSourceGuid,
-                                                                 arangodb::StaticStrings::Empty);
+  auto guid = arangodb::basics::VelocyPackHelper::getStringValue(
+      info, arangodb::StaticStrings::DataSourceGuid, arangodb::StaticStrings::Empty);
 
   if (!guid.empty()) {
-    // check if the globallyUniqueId is only numeric. This causes ambiguities later
-    // and can only happen (only) for collections created with v3.3.0 (the GUID
-    // generation process was changed in v3.3.1 already to fix this issue).
+    // check if the globallyUniqueId is only numeric. This causes ambiguities
+    // later and can only happen (only) for collections created with v3.3.0 (the
+    // GUID generation process was changed in v3.3.1 already to fix this issue).
     // remove the globallyUniqueId so a new one will be generated server.side
     bool validNumber = false;
     NumberUtils::atoi_positive<uint64_t>(guid.data(), guid.data() + guid.size(), validNumber);
-    if (!validNumber) { 
+    if (!validNumber) {
       // GUID is not just numeric, this is fine
       return guid;
     }
@@ -96,7 +96,7 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
     // GUID is only numeric - we must not use it
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // this should never happen for any collections created during testing. the
-    // only way to make this happen is using a collection created with v3.3.0, 
+    // only way to make this happen is using a collection created with v3.3.0,
     // which we will not have in our tests.
     TRI_ASSERT(false);
 #endif
@@ -107,9 +107,10 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
       static_cast<uint32_t>(LogicalCollection::currentVersion()));
 
   // predictable UUID for legacy collections
-  if (static_cast<LogicalCollection::Version>(version) < LogicalCollection::Version::v33 && info.isObject()) {
-    return arangodb::basics::VelocyPackHelper::getStringValue(info, arangodb::StaticStrings::DataSourceName,
-                                                              arangodb::StaticStrings::Empty);
+  if (static_cast<LogicalCollection::Version>(version) < LogicalCollection::Version::v33 &&
+      info.isObject()) {
+    return arangodb::basics::VelocyPackHelper::getStringValue(
+        info, arangodb::StaticStrings::DataSourceName, arangodb::StaticStrings::Empty);
   }
 
   return arangodb::StaticStrings::Empty;
@@ -177,15 +178,15 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _smartJoinAttribute(
           Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
-      _countCache(/*ttl*/ system() ? 900.0 : 15.0), 
+      _countCache(/*ttl*/ system() ? 900.0 : 15.0),
       _physical(vocbase.server().getFeature<EngineSelectorFeature>().engine().createPhysicalCollection(
           *this, info)) {
-  
-  TRI_IF_FAILURE("disableRevisionsAsDocumentIds") { 
+
+  TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds.store(false);
     _syncByRevision.store(false);
   }
-  
+
   TRI_ASSERT(info.isObject());
 
   if (!TRI_vocbase_t::IsAllowedName(info)) {
@@ -289,13 +290,14 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 Result LogicalCollection::updateSchema(VPackSlice schema) {
   using namespace std::literals::string_literals;
   if (schema.isNone()) {
-    return { TRI_ERROR_NO_ERROR };
-  } 
+    return {TRI_ERROR_NO_ERROR};
+  }
   if (schema.isNull()) {
     schema = VPackSlice::emptyObjectSlice();
   }
   if (!schema.isObject()) {
-    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Schema description is not an object."};
+    return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
+            "Schema description is not an object."};
   }
 
   TRI_ASSERT(schema.isObject());
@@ -307,13 +309,14 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
     try {
       newSchema = std::make_shared<ValidatorJsonSchema>(schema);
     } catch (std::exception const& ex) {
-      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building schema: "s + ex.what() };
+      return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
+              "Error when building schema: "s + ex.what()};
     }
   }
 
   std::atomic_store_explicit(&_schema, newSchema, std::memory_order_relaxed);
 
-  return { TRI_ERROR_NO_ERROR };
+  return {TRI_ERROR_NO_ERROR};
 }
 
 LogicalCollection::~LogicalCollection() = default;
@@ -402,7 +405,7 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 }
 
 /// @briefs creates a new document key, the input slice is ignored here
-std::string LogicalCollection::createKey(VPackSlice) {
+std::string LogicalCollection::createKey(VPackSlice) const {
   return keyGenerator()->generate();
 }
 
@@ -666,11 +669,10 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
     }
   });
   result.add("parameters", VPackValue(VPackValueType::Object));
-  toVelocyPackIgnore(
-     result, {"objectId", "path", "statusString", "indexes"},
-     LogicalDataSource::Serialization::Inventory);
-  result.close(); // parameters
-  result.close(); // collection
+  toVelocyPackIgnore(result, {"objectId", "path", "statusString", "indexes"},
+                     LogicalDataSource::Serialization::Inventory);
+  result.close();  // parameters
+  result.close();  // collection
 }
 
 void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
@@ -723,7 +725,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
         return !idx->isHidden() && !idx->inProgress();
     }
   });
-  result.add("planVersion", VPackValue(1)); // planVersion is hard-coded to 1 since 3.8
+  result.add("planVersion", VPackValue(1));  // planVersion is hard-coded to 1 since 3.8
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
@@ -731,7 +733,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
                                                      Serialization context) const {
-  bool const forPersistence = (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress);
+  bool const forPersistence = (context == Serialization::Persistence ||
+                               context == Serialization::PersistenceWithInProgress);
   bool const showInProgress = (context == Serialization::PersistenceWithInProgress);
 
   // We write into an open object
@@ -775,7 +778,9 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   if (forPersistence) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  auto filter = [indexFlags, forPersistence, showInProgress](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+  auto filter = [indexFlags, forPersistence,
+                 showInProgress](arangodb::Index const* idx,
+                                 decltype(Index::makeFlags())& flags) {
     if ((forPersistence || !idx->isHidden()) && (showInProgress || !idx->inProgress())) {
       flags = indexFlags;
       return true;
@@ -855,7 +860,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   // - _type
   // - _isSystem
   // ... probably a few others missing here ...
-      
+
   if (!vocbase().server().hasFeature<DatabaseFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
@@ -882,7 +887,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   VPackSlice replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
 
   VPackSlice writeConcernSlice = slice.get(StaticStrings::WriteConcern);
-  if (writeConcernSlice.isNone()) { // deprecated in 3.6
+  if (writeConcernSlice.isNone()) {  // deprecated in 3.6
     writeConcernSlice = slice.get(StaticStrings::MinReplicationFactor);
   }
 
@@ -905,14 +910,16 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
           replicationFactor != _sharding->replicationFactor()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "cannot change replicationFactor for a collection using 'distributeShardsLike'");
+                        "cannot change replicationFactor for a collection "
+                        "using 'distributeShardsLike'");
         } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "changing replicationFactor is "
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
-          return Result(TRI_ERROR_FORBIDDEN,
-                        "cannot change replicationFactor of a SatelliteCollection");
+          return Result(
+              TRI_ERROR_FORBIDDEN,
+              "cannot change replicationFactor of a SatelliteCollection");
         }
       }
     } else if (replicationFactorSlice.isString()) {
@@ -933,7 +940,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
 #endif
       // fallthrough here if we set the string "satellite" for a satellite
       // collection
-      TRI_ASSERT(isSatellite() && _sharding->replicationFactor() == 0 && replicationFactor == 0);
+      TRI_ASSERT(isSatellite() && _sharding->replicationFactor() == 0 &&
+                 replicationFactor == 0);
     } else {
       return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
     }
@@ -944,14 +952,12 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
       int64_t writeConcernTest = writeConcernSlice.getNumber<int64_t>();
       if (writeConcernTest < 0) {
         // negative value for writeConcern... not good
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for writeConcern");
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
       }
 
       writeConcern = writeConcernSlice.getNumber<size_t>();
       if (writeConcern > replicationFactor) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for writeConcern");
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
       }
 
       if (ServerState::instance()->isCoordinator() &&
@@ -971,10 +977,10 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
         }
       }
     } else {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "bad value for writeConcern");
+      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
     }
-    TRI_ASSERT((writeConcern <= replicationFactor && !isSatellite()) || (writeConcern == 0 && isSatellite()));
+    TRI_ASSERT((writeConcern <= replicationFactor && !isSatellite()) ||
+               (writeConcern == 0 && isSatellite()));
   }
 
   auto doSync = !engine.inRecovery() && databaseFeature.forceSyncProperties();
@@ -1074,9 +1080,7 @@ void LogicalCollection::persistPhysicalCollection() {
   engine.createCollection(vocbase(), *this);
 }
 
-basics::ReadWriteLock& LogicalCollection::statusLock() {
-  return _statusLock;
-}
+basics::ReadWriteLock& LogicalCollection::statusLock() { return _statusLock; }
 
 /// @brief Defer a callback to be executed when the collection
 ///        can be dropped. The callback is supposed to drop
@@ -1145,8 +1149,8 @@ Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice newSlice
 }
 
 /// @brief removes a document or edge
-Result LogicalCollection::remove(transaction::Methods& trx, velocypack::Slice const slice,
-                                 OperationOptions& options,
+Result LogicalCollection::remove(transaction::Methods& trx,
+                                 velocypack::Slice const slice, OperationOptions& options,
                                  ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
@@ -1182,15 +1186,16 @@ void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
 
 Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) const {
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
-  if (schema != nullptr) { 
+  if (schema != nullptr) {
     return schema->validate(s, VPackSlice::noneSlice(), true, options);
   }
   return {};
 }
 
-Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const* options) const {
+Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
+                                   VPackOptions const* options) const {
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
-  if (schema != nullptr) { 
+  if (schema != nullptr) {
     return schema->validate(modifiedDoc, oldDoc, false, options);
   }
   return {};

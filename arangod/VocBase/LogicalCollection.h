@@ -191,7 +191,7 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
-  virtual std::string createKey(arangodb::velocypack::Slice input);
+  virtual std::string createKey(arangodb::velocypack::Slice input) const;
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
@@ -235,7 +235,7 @@ class LogicalCollection : public LogicalDataSource {
 
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
                                          Serialization context) const;
-  
+
   void toVelocyPackForInventory(velocypack::Builder&) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
@@ -307,8 +307,8 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
   void schemaToVelocyPack(VPackBuilder&) const;
-  Result validate(VPackSlice newDoc, VPackOptions const*) const; // insert
-  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const; // update / replace
+  Result validate(VPackSlice newDoc, VPackOptions const*) const;  // insert
+  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const;  // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -322,14 +322,14 @@ class LogicalCollection : public LogicalDataSource {
   bool syncByRevision() const;
   /// @brief sets the value of _syncByRevision
   void setSyncByRevision(bool);
-  
+
   /// @brief returns the value of _syncByRevision, but only for "real" collections with data backing.
   /// returns false for all collections with no data backing.
   bool useSyncByRevision() const;
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
-                                           Serialization context) const override;
+                                            Serialization context) const override;
 
   Result updateSchema(VPackSlice schema);
 
@@ -364,8 +364,8 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isAStub;
 
 #ifdef USE_ENTERPRISE
-  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition only)
-  // can only be true if _isSmart is also true
+  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition
+  // only) can only be true if _isSmart is also true
   bool const _isDisjoint;
   // @brief Flag if this collection is a smart one. (Enterprise Edition only)
   bool const _isSmart;
@@ -379,13 +379,13 @@ class LogicalCollection : public LogicalDataSource {
   bool const _allowUserKeys;
 
   std::atomic<bool> _usesRevisionsAsDocumentIds;
-  
+
   std::atomic<bool> _syncByRevision;
 
   RevisionId const _minRevision;
 
   std::string _smartJoinAttribute;
-  
+
   transaction::CountCache _countCache;
 
   // SECTION: Key Options
