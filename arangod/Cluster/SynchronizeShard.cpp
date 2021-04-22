@@ -120,7 +120,7 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescriptio
 
   if (!error.str().empty()) {
     LOG_TOPIC("03780", ERR, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
-    result(TRI_ERROR_INTERNAL, error.str());
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -685,14 +685,14 @@ bool SynchronizeShard::first() {
   // the plan:
   while (true) {
     if (feature().server().isStopping()) {
-      result(TRI_ERROR_SHUTTING_DOWN);
+      _result.reset(TRI_ERROR_SHUTTING_DOWN);
       return false;
     }
 
     std::vector<std::string> planned;
-    auto res = clusterInfo.getShardServers(shard, planned);
+    auto result = clusterInfo.getShardServers(shard, planned);
 
-    if (!res.ok() ||
+    if (!result.ok() ||
         std::find(planned.begin(), planned.end(), ourselves) == planned.end() ||
         planned.front() != leader) {
       // Things have changed again, simply terminate:
@@ -700,7 +700,7 @@ bool SynchronizeShard::first() {
       error << "cancelled, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, error);
       LOG_TOPIC("a1dc7", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
-      result(TRI_ERROR_FAILED, error.str());
+      _result.reset(TRI_ERROR_FAILED, error.str());
       return false;
     }
 
@@ -710,7 +710,7 @@ bool SynchronizeShard::first() {
       msg << "exception in getCollection, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, msg);
       LOG_TOPIC("89972", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << msg.str();
-      result(TRI_ERROR_FAILED, msg.str());
+      _result.reset(TRI_ERROR_FAILED, msg.str());
       return false;
     }
 
@@ -731,7 +731,7 @@ bool SynchronizeShard::first() {
       error << "already done, ";
       AppendShardInformationToMessage(database, shard, planId, startTime, error);
       LOG_TOPIC("4abcb", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
-      result(TRI_ERROR_FAILED, error.str());
+      _result.reset(TRI_ERROR_FAILED, error.str());
       return false;
     }
 
@@ -755,7 +755,7 @@ bool SynchronizeShard::first() {
       std::stringstream error;
       error << "failed to lookup local shard " << database << "/" << shard;
       LOG_TOPIC("06489", ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
-      result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
@@ -765,7 +765,7 @@ bool SynchronizeShard::first() {
       std::stringstream error;
       error << "failed to get a count on leader " << database << "/" << shard;
       LOG_TOPIC("da225", ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
-      result(TRI_ERROR_INTERNAL, error.str());
+      _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
 
@@ -796,7 +796,7 @@ bool SynchronizeShard::first() {
       Result res = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
       if (res.fail()) {
         LOG_TOPIC("a49d1", INFO, Logger::MAINTENANCE) << res.errorMessage();
-        result(res);
+        _result.reset(res);
         return false;
       }
 
@@ -819,7 +819,7 @@ bool SynchronizeShard::first() {
         if (asResult.errorNumber() != TRI_ERROR_REPLICATION_SHARD_NONEMPTY) {
           // Stop action in this case
           LOG_TOPIC("daaaa", INFO, Logger::MAINTENANCE) << "SynchronizeShard, error in addFollower (short cut): " << asResult.errorMessage();
-          result(asResult);
+          _result.reset(asResult);
           return false;
         }
         // Otherwise move on.
@@ -845,7 +845,7 @@ bool SynchronizeShard::first() {
           "SynchronizeShard: synchronization failed for shard ");
         errorMessage += shard + ": shutdown in progress, giving up";
         LOG_TOPIC("a0f9a", INFO, Logger::MAINTENANCE) << errorMessage;
-        result(TRI_ERROR_SHUTTING_DOWN, errorMessage);
+        _result.reset(TRI_ERROR_SHUTTING_DOWN, errorMessage);
         return false;
       }
 
@@ -896,7 +896,7 @@ bool SynchronizeShard::first() {
         error << "could not initially synchronize shard " << database << "/" << shard << ": "
               << syncRes.errorMessage();
         LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
-        result(TRI_ERROR_INTERNAL, error.str());
+        _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
 
@@ -908,7 +908,7 @@ bool SynchronizeShard::first() {
         error << "shard " << database << "/" << shard << " seems to be gone from leader, this "
                "can happen if a collection was dropped during synchronization!";
         LOG_TOPIC("664ae", WARN, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
-        result(TRI_ERROR_INTERNAL, error.str());
+        _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
 
@@ -922,7 +922,7 @@ bool SynchronizeShard::first() {
                             leader, lastTick, builder);
       if (!tickResult.ok()) {
         LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << tickResult.errorMessage();
-        result(std::move(tickResult).result());
+        _result.reset(std::move(tickResult).result());
         return false;
       }
       lastTick = tickResult.get();
@@ -932,7 +932,7 @@ bool SynchronizeShard::first() {
                                             leader, syncerId, lastTick, builder);
       if (!res.ok()) {
         LOG_TOPIC("be85f", INFO, Logger::MAINTENANCE) << res.errorMessage();
-        result(res);
+        _result.reset(res);
         return false;
       }
     } catch (basics::Exception const& e) {
@@ -945,7 +945,7 @@ bool SynchronizeShard::first() {
         error << " failed: " << e.what();
         LOG_TOPIC("65d6f", ERR, Logger::MAINTENANCE) << error.str();
       }
-      result(e.code(), e.what());
+      _result.reset(e.code(), e.what());
       return false;
     } catch (std::exception const& e) {
       std::stringstream error;
@@ -953,7 +953,7 @@ bool SynchronizeShard::first() {
       AppendShardInformationToMessage(database, shard, planId, startTime, error);
       error << " failed: " << e.what();
       LOG_TOPIC("1e576", ERR, Logger::MAINTENANCE) << error.str();
-      result(TRI_ERROR_INTERNAL, e.what());
+      _result.reset(TRI_ERROR_INTERNAL, e.what());
       return false;
     }
     // Validate that HARDLOCK only works!
@@ -962,7 +962,7 @@ bool SynchronizeShard::first() {
     // locally, because the DatabaseGuard constructor threw.
     LOG_TOPIC("9f2c0", WARN, Logger::MAINTENANCE)
         << "action " << _description << " failed with exception " << e.what();
-    result(TRI_ERROR_INTERNAL, e.what());
+    _result.reset(TRI_ERROR_INTERNAL, e.what());
     return false;
   }
 
@@ -1062,7 +1062,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       auto errorMessage = StringUtils::concatT(
           "synchronizeOneShard: error when cancelling soft read lock: ", res.errorMessage());
       LOG_TOPIC("c37d1", INFO, Logger::MAINTENANCE) << errorMessage;
-      result(TRI_ERROR_INTERNAL, errorMessage);
+      _result.reset(TRI_ERROR_INTERNAL, errorMessage);
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
     }
     lastLogTick = tickReached;
@@ -1230,7 +1230,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   // Report success:
   LOG_TOPIC("3423d", DEBUG, Logger::MAINTENANCE)
       << "synchronizeOneShard: synchronization worked for shard " << shard;
-  result(TRI_ERROR_NO_ERROR);
+  _result.reset(TRI_ERROR_NO_ERROR);
   return {TRI_ERROR_NO_ERROR};
 }
 

@@ -80,7 +80,7 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature, ActionDescription const& d
 
   if (!error.str().empty()) {
     LOG_TOPIC("8473a", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
-    result(TRI_ERROR_INTERNAL, error.str());
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -105,7 +105,7 @@ bool EnsureIndex::first() {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << " in database " + database;
       LOG_TOPIC("12767", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
-      result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
@@ -117,10 +117,9 @@ bool EnsureIndex::first() {
     }
 
     VPackBuilder index;
-    auto res = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
-    result(res);
+    _result = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
 
-    if (res.ok()) {
+    if (_result.ok()) {
       VPackSlice created = index.slice().get("isNewlyCreated");
       std::string log = std::string("Index ") + id;
       log += (created.isBool() && created.getBool() ? std::string(" created")
@@ -129,10 +128,10 @@ bool EnsureIndex::first() {
     } else {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "
-            << res.errorMessage();
+            << _result.errorMessage();
 
-      if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-          !res.is(TRI_ERROR_BAD_PARAMETER)) {
+      if (!_result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
+          !_result.is(TRI_ERROR_BAD_PARAMETER)) {
         // "unique constraint violated" is an expected error that can happen at any time.
         // it does not justify logging and alerting DBAs. The error will be passed back
         // to the caller anyway, so not logging it seems to be good.
@@ -143,8 +142,8 @@ bool EnsureIndex::first() {
       {
         VPackObjectBuilder o(&eb);
         eb.add(StaticStrings::Error, VPackValue(true));
-        eb.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
-        eb.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
+        eb.add(StaticStrings::ErrorMessage, VPackValue(_result.errorMessage()));
+        eb.add(StaticStrings::ErrorNum, VPackValue(_result.errorNumber()));
         eb.add(ID, VPackValue(id));
       }
 
@@ -156,7 +155,7 @@ bool EnsureIndex::first() {
       // you be able to produce an IndexError?
 
       _feature.storeIndexError(database, collection, shard, id, eb.steal());
-      result(TRI_ERROR_INTERNAL, error.str());
+      _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
 
@@ -164,7 +163,7 @@ bool EnsureIndex::first() {
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("445e5", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
-    result(TRI_ERROR_INTERNAL, error.str());
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
 
