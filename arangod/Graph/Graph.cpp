@@ -465,38 +465,15 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
 
   std::set<std::string> fromSet;
   std::set<std::string> toSet;
-  EdgeDefinitionType type = EdgeDefinitionType::DEFAULT;
-  bool foundFromSat = false;
-  bool foundToSat = false;
 
   // duplicates in from and to shouldn't occur, but are safely ignored here
   for (VPackSlice it : VPackArrayIterator(from)) {
     TRI_ASSERT(it.isString());
-    if (satCollections.find(it.copyString()) != satCollections.end()) {
-      // found a sat collection defined in from's
-      foundFromSat = true;
-    }
-
     fromSet.emplace(it.copyString());
   }
   for (VPackSlice it : VPackArrayIterator(to)) {
     TRI_ASSERT(it.isString());
-    if (satCollections.find(it.copyString()) != satCollections.end()) {
-      // found a sat collection defined in to's
-      foundToSat = true;
-    }
-
     toSet.emplace(it.copyString());
-  }
-
-  if (foundFromSat && !foundToSat) {
-    type = EdgeDefinitionType::SAT_TO_SMART;
-  } else if (!foundFromSat && foundToSat) {
-    type = EdgeDefinitionType::SMART_TO_SAT;
-  } else if (foundFromSat && foundToSat) {
-    type = EdgeDefinitionType::SAT_TO_SAT;
-  } else if (!foundFromSat && !foundToSat) {
-    type = EdgeDefinitionType::SMART_TO_SMART;
   }
 
   // We do not allow creating an edge definition with either an empty from
@@ -505,7 +482,7 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
     return Result(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
   }
 
-  return EdgeDefinition{collection, std::move(fromSet), std::move(toSet), type};
+  return EdgeDefinition{collection, std::move(fromSet), std::move(toSet)};
 }
 
 bool EdgeDefinition::operator==(EdgeDefinition const& other) const {

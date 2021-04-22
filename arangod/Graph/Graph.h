@@ -46,7 +46,7 @@ struct ServerDefaults;
 namespace graph {
 
 class EdgeDefinition {
- private:
+ public:
   enum EdgeDefinitionType {
     DEFAULT,
     SMART_TO_SMART,
