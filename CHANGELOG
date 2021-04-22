@@ -4,6 +4,14 @@ devel
 * Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at 
   arangodb::transaction::V8Context::exitV8Context().
 
+* Allow AQL variable names starting with an underscore, as stated in the docs.
+
+* Fix crashes during arangorestore operations due to usage of wrong pointer
+  value for updating user permissions.
+
+* Added option `--query-max-runtime` to arangoexport, in order to control
+  maximum query runtime.
+
 * Changed default value of arangodump's `--envelope` option from `true` to
   `false`. This allows using higher parallelism in arangorestore when 
   restoring large collection dumps. As a side-effect, this will also decrease 
