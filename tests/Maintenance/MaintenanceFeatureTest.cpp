@@ -96,12 +96,12 @@ class TestActionBasic : public ActionBase {
       createPreAction(_preDesc);
     } else if (0 == _iteration) {
       // time to set result?
-      _result.reset(_resultCode);
+      result(_resultCode);
     }  // if
 
     // verify first() called once
     if (0 != getProgress()) {
-      _result.reset(2);
+      result(2);
     }  // if
 
     return (iteratorEndTest());
@@ -110,12 +110,12 @@ class TestActionBasic : public ActionBase {
   bool next() override {
     // time to set result?
     if (0 == _iteration) {
-      _result.reset(_resultCode);
+      result(_resultCode);
     }  // if
 
     // verify next() called properly
     if (0 == getProgress()) {
-      _result.reset(2);
+      result(2);
     }  // if
 
     return (iteratorEndTest());
@@ -126,7 +126,7 @@ class TestActionBasic : public ActionBase {
     bool more;
 
     //
-    if (_result.ok()) {
+    if (result().ok()) {
       more = 0 < _iteration--;
 
       // if going to stop, see if a postAction is needed
