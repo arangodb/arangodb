@@ -3,6 +3,9 @@ v3.8.0 (XXXX-XX-XX)
 
 * Guarded access only to ActionBase::_result.
 
+* Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at
+  arangodb::transaction::V8Context::exitV8Context().
+
 * Fix a potential buffer overflow in RestReplicationHandler.
 
 * Make the time-to-live (TTL) value of a streaming cursor only count after the
