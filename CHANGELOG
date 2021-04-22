@@ -1,6 +1,11 @@
 devel
 -----
 
+* Allow AQL variable names starting with an underscore, as stated in the docs.
+
+* Fix crashes during arangorestore operations due to usage of wrong pointer
+  value for updating user permissions.
+
 * Added option `--query-max-runtime` to arangoexport, in order to control
   maximum query runtime.
 
