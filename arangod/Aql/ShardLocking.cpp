@@ -75,6 +75,16 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       for (auto const& col : graphNode->vertexColls()) {
         updateLocking(col, AccessMode::Type::READ, snippetId, {}, isUsedAsSatellite(col));
       }
+
+      if (graphNode->isHybrid()) {
+        // Add all Satellite Collections to the Transactions, Traversals do
+        // never write, the collections have been adjusted already. Additional
+        // Satellite Collection can only be used in a hybrid environment
+        for (auto const& col : graphNode->satelliteColls()) {
+          // TODO Feature HybridSmartGraphs: think we can just set last param here to true, but double check
+          updateLocking(col, AccessMode::Type::READ, snippetId, {}, true);
+        }
+      }
       break;
     }
     case ExecutionNode::ENUMERATE_COLLECTION:
