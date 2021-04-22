@@ -83,7 +83,6 @@ class Cursor {
     TRI_ASSERT(!_isUsed);
 
     _isUsed = true;
-    _expires = TRI_microtime() + _ttl;
   }
 
   void release() {
