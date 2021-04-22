@@ -327,13 +327,13 @@ class LogicalCollection : public LogicalDataSource {
   /// returns false for all collections with no data backing.
   bool useSyncByRevision() const;
 
+  void setInternalValidator(std::unique_ptr<arangodb::ValidatorBase>);
+
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                             Serialization context) const override;
 
   Result updateSchema(VPackSlice schema);
-
-  void setInternalValidator(std::unique_ptr<arangodb::ValidatorBase>);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
