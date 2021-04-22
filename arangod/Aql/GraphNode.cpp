@@ -140,7 +140,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         }
         std::string n = col->getString();
         auto c = ci.getCollection(_vocbase->name(), n);
-        if (c->isSmart() && !c->isDisjoint()) { // HEIKO CHECK
+        if (c->isSmart() && !c->isDisjoint()) {
           _isDisjoint = false;
         }
         if (!c->isSmart() || c->distributeShardsLike().empty()) {
@@ -247,7 +247,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = _graphObj->isSmart();
       _isDisjoint = _graphObj->isDisjoint();
-      _isHybrid = _graphObj->isHybrid();
     }
 
     for (const auto& n : eColls) {
@@ -287,15 +286,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     for (auto const& v : vColls) {
       addVertexCollection(collections, v);
     }
-
-    auto sColls = _graphObj->satelliteCollections();
-    length = sColls.size();
-    if (length > 0) {
-      _satelliteColls.reserve(length);
-      for (auto const& s : sColls) {
-        addVertexCollection(collections, s);
-      }
-    }
   }
 }
 
@@ -311,12 +301,9 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
           base.get("defaultDirection")))),
       _optionsBuilt(false),
-      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base,
-                                                                   "isSmart", false)),
-      _isDisjoint(
-          arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isDisjoint", false)),
-      _isHybrid(
-          arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isHybrid", false)) {
+      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isSmart", false)),
+      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isDisjoint", false)) {
+
   if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
@@ -471,7 +458,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* voc
       _optionsBuilt(false),
       _isSmart(false),
       _isDisjoint(false),
-      _isHybrid(false),
       _directions(std::move(directions)),
       _options(std::move(options)) {
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
@@ -505,7 +491,6 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
       _isDisjoint(other.isDisjoint()),
-      _isHybrid(other.isHybrid()),
       _directions(other._directions),
       _options(std::move(options)),
       _collectionToShard(other._collectionToShard) {
@@ -806,15 +791,12 @@ void GraphNode::addVertexCollection(aql::Collection& collection) {
 
 std::vector<aql::Collection const*> GraphNode::collections() const {
   std::unordered_set<aql::Collection const*> set;
-  set.reserve(_edgeColls.size() + _vertexColls.size() + _satelliteColls.size());
+  set.reserve(_edgeColls.size() + _vertexColls.size());
 
   for (auto const& collPointer : _edgeColls) {
     set.emplace(collPointer);
   }
   for (auto const& collPointer : _vertexColls) {
-    set.emplace(collPointer);
-  }
-  for (auto const& collPointer : _satelliteColls) {
     set.emplace(collPointer);
   }
 
@@ -861,10 +843,6 @@ std::vector<aql::Collection*> const& GraphNode::edgeColls() const {
 
 std::vector<aql::Collection*> const& GraphNode::vertexColls() const {
   return _vertexColls;
-}
-
-std::vector<aql::Collection*> const& GraphNode::satelliteColls() const {
-  return _satelliteColls;
 }
 
 graph::Graph const* GraphNode::graph() const noexcept { return _graphObj; }
