@@ -417,21 +417,20 @@ template<typename Scale> class Histogram : public Metric {
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
       _n(_scale.n() - 1),
-      _lowr(std::numeric_limits<value_type>::max()),
-      _highr(std::numeric_limits<value_type>::min()),
       _sum(0) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
       _n(_scale.n() - 1),
-      _lowr(std::numeric_limits<value_type>::max()),
-      _highr(std::numeric_limits<value_type>::min()),
       _sum(0) {}
 
   ~Histogram() = default;
 
-  void records(value_type const& val) {
+  void track_extremes(value_type const& val) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // the value extremes are not actually required and therefore only tracked in
+    // maintainer mode so they can be used when debugging.
     auto expected = _lowr.load(std::memory_order_relaxed);
     while (val < expected) {
       if (_lowr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
@@ -444,6 +443,7 @@ template<typename Scale> class Histogram : public Metric {
         return;
       }
     }
+#endif
   }
 
   virtual std::string type() const override { return "histogram"; }
@@ -475,7 +475,7 @@ template<typename Scale> class Histogram : public Metric {
                                        std::memory_order_relaxed,
                                        std::memory_order_relaxed));
 
-    records(t);
+    track_extremes(t);
   }
 
   value_type low() const { return _scale.low(); }
@@ -541,7 +541,10 @@ template<typename Scale> class Histogram : public Metric {
   }
 
   std::ostream& print(std::ostream& o) const {
-    o << name() << " scale: " <<  _scale << " extremes: [" << _lowr << ", " << _highr << "]";
+    o << name() << " scale: " <<  _scale;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    o << " extremes: [" << _lowr << ", " << _highr << "]";
+#endif
     return o;
   }
 
@@ -549,9 +552,11 @@ template<typename Scale> class Histogram : public Metric {
   Metrics::hist_type _c;
   Scale const _scale;
   size_t const _n;
-  std::atomic<value_type> _lowr;
-  std::atomic<value_type> _highr;
   std::atomic<value_type> _sum;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::atomic<value_type> _lowr{std::numeric_limits<value_type>::max()};
+  std::atomic<value_type> _highr{std::numeric_limits<value_type>::min()};
+#endif
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);
