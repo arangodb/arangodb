@@ -223,7 +223,7 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
       return nullptr;
     }
     
-    if (cursor->canUseExpire() && cursor->expires() < TRI_microtime()) {
+    if (cursor->expires() < TRI_microtime()) {
       // cursor has expired already
       return nullptr;
     }
@@ -300,7 +300,7 @@ bool CursorRepository::garbageCollect(bool force) {
         continue;
       }
 
-      if (force || (cursor->canUseExpire() && cursor->expires() < now)) {
+      if (force || cursor->expires() < now) {
         cursor->kill();
         cursor->setDeleted();
       }
