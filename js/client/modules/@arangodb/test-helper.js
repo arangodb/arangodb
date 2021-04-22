@@ -34,7 +34,6 @@ let {
   getServersByType,
   getEndpointById,
   getEndpointsByType,
-  waitForFoxxInitialized,
   Helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
@@ -47,7 +46,6 @@ exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
 exports.getEndpointById = getEndpointById;
 exports.getEndpointsByType = getEndpointsByType;
-exports.waitForFoxxInitialized = waitForFoxxInitialized;
 exports.Helper = Helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;

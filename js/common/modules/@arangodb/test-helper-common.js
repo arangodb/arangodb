@@ -81,50 +81,6 @@ exports.getEndpointsByType = function (type) {
                               .map(endpointToURL);
 };
 
-// wait for initial selfHeal in cluster
-exports.waitForFoxxInitialized = function () {
-  if (!internal.isCluster()) {
-    // the initial selfHeal is only required in cluster.
-    // single server runs the selfHeal directly at startup.
-    return;
-  }
-
-  let tries = 0;
-  while (++tries < 4 * 30) {
-    let isServer = require('@arangodb').isServer;
-    if (isServer) {
-      // arangod
-      if (!global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
-        return;
-      }
-    } else {
-      // arangosh
-  
-      const coordinators = exports.getEndpointsByType('coordinator');
-      let done = 0;
-      coordinators.forEach((endpoint) => {
-        let res = request.get({
-          url: endpoint + '/wenn-der-fuxxmann-zweimal-klingelt',
-          timeout: 5
-        });
-        if (res.status === 404) {
-          // selfHeal was already executed - Foxx is ready!
-          ++done;
-        }
-      });
-      if (done === coordinators.length) {
-        // Foxx is ready on all coordinators
-        return;
-      }
-    }
-    // otherwise we will likely see HTTP 500 or HTTP 503
-    if (tries % 4 === 0) {
-      require("console").warn("waiting for initial Foxx selfHeal to kick in");
-    }
-    internal.sleep(0.25);
-  }
-};
-
 exports.Helper = {
   process: function (file, processor) {
     internal.processCsvFile(file, function (raw_row, index) {
