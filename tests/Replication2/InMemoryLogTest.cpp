@@ -547,7 +547,7 @@ TEST_F(InMemoryLogTest, parallelAccessTest) {
   EXPECT_EQ("   11:        42", genPayload(11, 42));
   EXPECT_EQ("65535:4294967295", genPayload(65535, 4294967295));
 
-  constexpr auto maxIter = std::numeric_limits<uint32_t>::max();
+  constexpr static auto maxIter = std::numeric_limits<uint32_t>::max();
 
   // NOLINTNEXTLINE(readability-function-cognitive-complexity)
   auto alternatinglyInsertAndRead = [&](auto const threadIdx) {
