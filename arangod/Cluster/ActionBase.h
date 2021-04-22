@@ -31,6 +31,7 @@
 #include "Basics/Result.h"
 
 #include <chrono>
+#include <mutex>
 
 namespace arangodb {
 

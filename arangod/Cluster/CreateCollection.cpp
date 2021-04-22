@@ -155,9 +155,9 @@ bool CreateCollection::first() {
     }
 
     std::shared_ptr<LogicalCollection> col;
-    _result = Collections::create(
+    result(Collections::create(
         vocbase, shard, type, docket.slice(), waitForRepl,
-        enforceReplFact, false, col);
+        enforceReplFact, false, col));
     
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)

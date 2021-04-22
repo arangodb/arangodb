@@ -246,7 +246,7 @@ void ActionBase::result(Result const& result) {
   _result.reset(result);
 }
 
-void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
+void ActionBase::result(int errorNumber, std::string const& errorString) {
   const std::lock_guard<std::mutex> lock(resLock);
   _result.reset(errorNumber, errorString);
 }

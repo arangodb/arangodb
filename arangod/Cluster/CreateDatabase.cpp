@@ -70,8 +70,8 @@ bool CreateDatabase::first() {
 
   TRI_IF_FAILURE("CreateDatabase::first") {
     // simulate DB creation failure
-    _result.reset(TRI_ERROR_DEBUG);
-    _feature.storeDBError(database, _result);
+    result(TRI_ERROR_DEBUG);
+    _feature.storeDBError(database, result());
     return false;
   }
 
