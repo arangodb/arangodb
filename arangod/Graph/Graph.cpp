@@ -116,6 +116,19 @@ Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefault
   TRI_ASSERT(!_rev.empty());
 
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    // TODO Feature HybridSmartGraphs: Check why we're landing here and not in SmartGraphEE - Cleanup!
+    if (slice.isObject()) {
+      if (slice.hasKey(StaticStrings::GraphSatellites) &&
+          slice.get(StaticStrings::GraphSatellites).isArray()) {
+
+        for (VPackSlice it : VPackArrayIterator(slice.get(StaticStrings::GraphSatellites))) {
+          if (!it.isString()) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INVALID_PARAMETER);
+          }
+          _satelliteColls.emplace(it.copyString());
+        }
+      }
+    }
     parseEdgeDefinitions(slice.get(StaticStrings::GraphEdgeDefinitions));
   }
   if (slice.hasKey(StaticStrings::GraphOrphans)) {
@@ -146,6 +159,19 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
   TRI_ASSERT(_rev.empty());
 
   if (info.hasKey(StaticStrings::GraphEdgeDefinitions)) {
+    // TODO Feature HybridSmartGraphs: Check why we're landing here and not in SmartGraphEE - Cleanup!
+    if (options.isObject()) {
+      if (options.hasKey(StaticStrings::GraphSatellites) &&
+          options.get(StaticStrings::GraphSatellites).isArray()) {
+
+        for (VPackSlice it : VPackArrayIterator(options.get(StaticStrings::GraphSatellites))) {
+          if (!it.isString()) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INVALID_PARAMETER);
+          }
+          _satelliteColls.emplace(it.copyString());
+        }
+      }
+    }
     parseEdgeDefinitions(info.get(StaticStrings::GraphEdgeDefinitions));
   }
   if (info.hasKey(StaticStrings::GraphOrphans)) {
@@ -212,8 +238,16 @@ std::set<std::string> const& Graph::orphanCollections() const {
   return _orphanColls;
 }
 
+std::set<std::string> const& Graph::satelliteCollections() const {
+  return _satelliteColls;
+}
+
 std::set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
+}
+
+bool Graph::needsToBeSatellite(std::string const& edge) const {
+  return false;
 }
 
 std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {
@@ -417,9 +451,10 @@ void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
     builder.add(VPackValue(to));
   }
   builder.close();  // array
+  builder.add("type", VPackValue(getType()));
 }
 
-ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition) {
+ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition, std::set<std::string> const& satCollections) {
   Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
   if (res.fail()) {
     return res;
@@ -433,9 +468,11 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
 
   // duplicates in from and to shouldn't occur, but are safely ignored here
   for (VPackSlice it : VPackArrayIterator(from)) {
+    TRI_ASSERT(it.isString());
     fromSet.emplace(it.copyString());
   }
   for (VPackSlice it : VPackArrayIterator(to)) {
+    TRI_ASSERT(it.isString());
     toSet.emplace(it.copyString());
   }
 
@@ -484,6 +521,19 @@ bool EdgeDefinition::renameCollection(std::string const& oldName, std::string co
   return renamed;
 }
 
+auto EdgeDefinition::getType() const -> EdgeDefinitionType {
+  return _type;
+}
+
+auto EdgeDefinition::setType(EdgeDefinitionType type) -> bool {
+  TRI_ASSERT(type != EdgeDefinitionType::DEFAULT);
+  if (_type == EdgeDefinitionType::DEFAULT) {
+    _type = type;
+    return true;
+  }
+  return false;
+}
+
 bool EdgeDefinition::isFromVertexCollectionUsed(std::string const& collectionName) const {
   if (getFrom().find(collectionName) != getFrom().end()) {
     return true;
@@ -522,6 +572,7 @@ void EdgeDefinition::addToBuilder(VPackBuilder& builder) const {
     builder.add(VPackValue(to));
   }
   builder.close();  // to
+  builder.add(StaticStrings::GraphEdgeDefinitionType, VPackValue(getType()));
 
   builder.close();  // obj
 }
@@ -590,7 +641,7 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(EdgeDefinition const& ed
 }
 
 ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
-  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
+  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice, satelliteCollections());
 
   if (res.fail()) {
     return std::move(res).result();
@@ -724,6 +775,11 @@ bool Graph::isDisjoint() const {
   return false;
 }
 
+bool Graph::isHybrid() const {
+  TRI_ASSERT(_satelliteColls.empty());
+  return false;
+}
+
 bool Graph::isSatellite() const { return _isSatellite; }
 
 void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
@@ -741,6 +797,10 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   }
 
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
+}
+
+void Graph::createSatelliteCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
+  TRI_ASSERT(false);
 }
 
 std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(

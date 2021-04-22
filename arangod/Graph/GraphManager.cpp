@@ -459,8 +459,7 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
-                             arangodb::aql::QueryString{queryStr},
-                             nullptr);
+                             arangodb::aql::QueryString{queryStr}, nullptr);
   query.queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query.executeSync();
 
@@ -505,7 +504,9 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
 Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
+  std::unordered_set<std::string> satelliteDocumentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
+  std::unordered_set<std::string> satelliteEdgeCollectionsToCreate{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentDocumentCollections{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentEdgeCollections{};
 
@@ -533,7 +534,11 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
       return res;
     } else {
       // not found the collection, need to create it later
-      edgeCollectionsToCreate.emplace(edgeColl);
+      if (graph->isHybrid() && graph->needsToBeSatellite(edgeColl)) { // check for satellites
+        satelliteEdgeCollectionsToCreate.emplace(edgeColl);
+      } else {
+        edgeCollectionsToCreate.emplace(edgeColl);
+      }
     }
   }
 
@@ -550,7 +555,11 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
       return res;
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
-        documentCollectionsToCreate.emplace(vertexColl);
+        if (graph->isHybrid() && graph->satelliteCollections().find(vertexColl) != graph->satelliteCollections().end()) {
+          satelliteDocumentCollectionsToCreate.emplace(vertexColl);
+        } else {
+          documentCollectionsToCreate.emplace(vertexColl);
+        }
       }
     }
   }
@@ -610,6 +619,22 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     collectionsToCreate.emplace_back(
         CollectionCreationInfo{edgeColl, TRI_COL_TYPE_EDGE, options});
   }
+
+  // new builder
+  VPackBuilder satOptionsBuilder;
+  if (graph->isHybrid()) {
+    satOptionsBuilder.openObject();
+    graph->createSatelliteCollectionOptions(satOptionsBuilder, waitForSync);
+    satOptionsBuilder.close();
+    for (auto const& satColl : satelliteDocumentCollectionsToCreate) {
+      collectionsToCreate.emplace_back(CollectionCreationInfo{satColl, TRI_COL_TYPE_DOCUMENT,
+                                                              satOptionsBuilder.slice()});
+    }
+    for (auto const& satEdgeColl : satelliteEdgeCollectionsToCreate) {
+      collectionsToCreate.emplace_back(CollectionCreationInfo{satEdgeColl, TRI_COL_TYPE_EDGE,
+                                                              satOptionsBuilder.slice()});
+    }
+  }
   if (collectionsToCreate.empty()) {
     // NOTE: Empty graph is allowed.
     return TRI_ERROR_NO_ERROR;
@@ -650,8 +675,7 @@ Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
 
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
-  arangodb::aql::Query query(ctx(), arangodb::aql::QueryString(queryStr),
-                             nullptr);
+  arangodb::aql::Query query(ctx(), arangodb::aql::QueryString(queryStr), nullptr);
   query.queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
@@ -670,7 +694,7 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
 
   if (graphsSlice.isNone()) {
     return Result(TRI_ERROR_OUT_OF_MEMORY);
-  } 
+  }
   if (!graphsSlice.isArray()) {
     LOG_TOPIC("338b7", ERR, arangodb::Logger::GRAPHS)
         << "cannot read graphs from _graphs collection";
@@ -1037,7 +1061,9 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
           s = s.get(StaticStrings::ReplicationFactor);
           if ((s.isNumber() && s.getNumber<int>() == 0) ||
               (s.isString() && s.stringRef() == "satellite")) {
-            return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+            return Result{TRI_ERROR_BAD_PARAMETER,
+                          "invalid combination of 'isSmart' and 'satellite' "
+                          "replicationFactor"};
           }
         }
       }

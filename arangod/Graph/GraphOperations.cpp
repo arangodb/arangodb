@@ -226,7 +226,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
                                                     bool waitForSync,
                                                     std::string const& edgeDefinitionName) {
   OperationOptions options(ExecContext::current());
-  auto maybeEdgeDef = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
+  auto maybeEdgeDef = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice, graph().satelliteCollections());
   if (!maybeEdgeDef) {
     return OperationResult{std::move(maybeEdgeDef).result(), options};
   }
