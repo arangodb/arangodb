@@ -1,6 +1,12 @@
 v3.8.0-beta.1 (2021-04-20)
 --------------------------
 
+* Change arangosh client behavior:
+  - *_RAW methods will never add a `body` to HEAD responses
+  - *_RAW methods will now always return velocypack-typed responses in Buffers
+  - `--server.force-json` will now be applied as default, overrideable
+    by user code
+
 * Fix BTS-374: thread race between ArangoSearch link unloading and storage
   engine WAL flushing.
 
@@ -23,7 +29,7 @@ v3.8.0-beta.1 (2021-04-20)
 
 * Fix crashes during arangorestore operations due to usage of wrong pointer
   value for updating user permissions.
-  
+
 * Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
   'dense_fixed_offset_column_key'`.
 
