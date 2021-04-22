@@ -589,7 +589,6 @@ set(LIB_ARANGO_AGENCY_SOURCES
 set(LIB_ARANGO_V8SERVER_SOURCES
   Cluster/v8-cluster.cpp
   Transaction/V8Context.cpp
-  V8Server/FoxxFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
   V8Server/v8-actions.cpp
@@ -669,8 +668,6 @@ set(LIB_ARANGOSERVER_SOURCES
   FeaturePhases/BasicFeaturePhaseServer.cpp
   FeaturePhases/ClusterFeaturePhase.cpp
   FeaturePhases/DatabaseFeaturePhase.cpp
-  FeaturePhases/FinalFeaturePhase.cpp
-  FeaturePhases/FoxxFeaturePhase.cpp
   FeaturePhases/ServerFeaturePhase.cpp
   FeaturePhases/V8FeaturePhase.cpp
   GeneralServer/Acceptor.cpp
@@ -735,9 +732,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
   RestServer/AqlFeature.cpp
-  RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
-  RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
@@ -745,12 +740,10 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
-  RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
-  RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
@@ -805,6 +798,19 @@ endif()
 
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
+
+add_library(arango_final_phase STATIC
+  RestServer/ScriptFeature.cpp
+  RestServer/ConsoleFeature.cpp
+  FeaturePhases/FinalFeaturePhase.cpp
+)
+
+add_library(arango_foxx_phase STATIC
+  FeaturePhases/FoxxFeaturePhase.cpp
+  RestServer/BootstrapFeature.cpp
+  RestServer/FrontendFeature.cpp
+  V8Server/FoxxFeature.cpp
+)
 
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
@@ -958,6 +964,11 @@ target_link_libraries(arango_common_rest_handler arango_cluster_methods)
 target_link_libraries(arango_common_rest_handler arango_utils)
 target_link_libraries(arango_common_rest_handler arango_iresearch)
 
+target_link_libraries(arango_final_phase arango_v8)
+
+target_link_libraries(arango_foxx_phase boost_boost)
+target_link_libraries(arango_foxx_phase arango::validation)
+
 target_link_libraries(arango_graph arango)
 target_link_libraries(arango_graph arango_aql)
 target_link_libraries(arango_graph arango_cache)
@@ -1020,6 +1031,7 @@ target_link_libraries(arango_utils boost_boost)
 target_link_libraries(arango_utils arango::validation)
 
 target_link_libraries(arango_v8server arango_agency)
+target_link_libraries(arango_v8server arango_foxx_phase)
 target_link_libraries(arango_v8server arango_iresearch)
 target_link_libraries(arango_v8server arango_replication)
 target_link_libraries(arango_v8server arango_v8)
@@ -1039,6 +1051,7 @@ target_link_libraries(arangoserver arango_aql)
 target_link_libraries(arangoserver arango_cluster_engine)
 target_link_libraries(arangoserver arango_cluster_methods)
 target_link_libraries(arangoserver arango_common_rest_handler)
+target_link_libraries(arangoserver arango_final_phase)
 target_link_libraries(arangoserver arango_geo)
 target_link_libraries(arangoserver arango_graph)
 target_link_libraries(arangoserver arango_indexes)
@@ -1123,6 +1136,8 @@ foreach(TARGET
   arango_cluster_engine
   arango_cluster_methods
   arango_common_rest_handler
+  arango_final_phase
+  arango_foxx_phase
   arango_graph
   arango_health
   arango_indexes

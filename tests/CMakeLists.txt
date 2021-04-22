@@ -315,10 +315,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests
-  arango_agency
   arango_cluster_engine
   arango_rocksdb
-  arango_v8server
   arangoserver
   fuerte
   rocksdb
@@ -329,8 +327,6 @@ target_link_libraries(arangodbtests
 
 target_link_libraries(arangodbtests_replication2
   gtest
-  arango_agency
-  arango_v8server
   arangoserver
   arango_replication2
   arango_iresearch
