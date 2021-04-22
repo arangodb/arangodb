@@ -666,7 +666,7 @@ describe ArangoDB do
       
       it "creates a streaming cursor with a low TTL" do
         cmd = api
-        body = "{ \"query\" : \"LET x = SLEEP(10) FOR i IN 1..10 RETURN i\", \"batchSize\" : 1, \"ttl\" : 10, \"options\": { \"stream\": true } }"
+        body = "{ \"query\" : \"FOR i IN 1..10 LET x = SLEEP(5) RETURN i\", \"batchSize\" : 1, \"ttl\" : 2, \"options\": { \"stream\": true } }"
         doc = ArangoDB.log_post("#{prefix}-create-low-ttl", cmd, :body => body)
         
         doc.code.should eq(201)
@@ -681,25 +681,27 @@ describe ArangoDB do
 
         id = doc.parsed_response['id']
         cmd = api + "/#{id}"
-        doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd)
         
-        doc.code.should eq(200)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should be_kind_of(String)
-        doc.parsed_response['id'].should match(@reId)
-        doc.parsed_response['id'].should eq(id)
-        doc.parsed_response['hasMore'].should eq(true)
-        doc.parsed_response['result'].length.should eq(1)
-        doc.parsed_response['cached'].should eq(false)
+        2.times do
+          doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd)
+          doc.code.should eq(200)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(200)
+          doc.parsed_response['id'].should be_kind_of(String)
+          doc.parsed_response['id'].should match(@reId)
+          doc.parsed_response['id'].should eq(id)
+          doc.parsed_response['hasMore'].should eq(true)
+          doc.parsed_response['result'].length.should eq(1)
+          doc.parsed_response['cached'].should eq(false)
+        end
         
         doc = ArangoDB.log_delete("#{prefix}-create-ttl", cmd)
       end
       
       it "creates a non-streaming cursor with a low TTL" do
         cmd = api
-        body = "{ \"query\" : \"LET x = SLEEP(10) FOR i IN 1..10 RETURN i\", \"batchSize\" : 1, \"ttl\" : 10 }"
+        body = "{ \"query\" : \"FOR i IN 1..10 LET x = SLEEP(5) RETURN i\", \"batchSize\" : 1, \"ttl\" : 2 }"
         doc = ArangoDB.log_post("#{prefix}-create-low-ttl", cmd, :body => body)
         
         doc.code.should eq(201)
@@ -714,18 +716,20 @@ describe ArangoDB do
 
         id = doc.parsed_response['id']
         cmd = api + "/#{id}"
-        doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd)
         
-        doc.code.should eq(200)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should be_kind_of(String)
-        doc.parsed_response['id'].should match(@reId)
-        doc.parsed_response['id'].should eq(id)
-        doc.parsed_response['hasMore'].should eq(true)
-        doc.parsed_response['result'].length.should eq(1)
-        doc.parsed_response['cached'].should eq(false)
+        2.times do
+          doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd)
+          doc.code.should eq(200)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(200)
+          doc.parsed_response['id'].should be_kind_of(String)
+          doc.parsed_response['id'].should match(@reId)
+          doc.parsed_response['id'].should eq(id)
+          doc.parsed_response['hasMore'].should eq(true)
+          doc.parsed_response['result'].length.should eq(1)
+          doc.parsed_response['cached'].should eq(false)
+        end
         
         doc = ArangoDB.log_delete("#{prefix}-create-ttl", cmd)
       end
