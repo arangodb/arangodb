@@ -137,9 +137,6 @@ class Cursor {
   double _ttl;
   double _expires;
   bool const _hasCount;
-  /// @brief this flag is initially false, but will flip to true once the cursor
-  /// is returned to the cursor repository. if the flag is still false, a cursor
-  /// cannot expire (e.g. because it is still operating)
   bool _isDeleted;
   bool _isUsed;
 };
