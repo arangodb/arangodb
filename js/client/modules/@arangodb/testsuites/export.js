@@ -176,7 +176,7 @@ function exportTest (options) {
       fs.remove(fs.join(tmpPath, 'ENCRYPTION'));
     }
     results.exportJsonEncrypt = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results.exportJsonEncrypt.failed = results.exportJsonGz.status ? 0 : 1;
+    results.exportJsonEncrypt.failed = results.exportJsonEncrypt.status ? 0 : 1;
 
     try {
       const decBuffer = fs.readDecrypt(fs.join(tmpPath, 'UnitTestsExport.json'), keyfile);
@@ -224,7 +224,7 @@ function exportTest (options) {
   print(CYAN + Date() + ': Export data (jsonl.gz)' + RESET);
   args['compress-output'] = 'true';
   results.exportJsonlGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-  results.exportJsonlGz.failed = results.exportJsonl.status ? 0 : 1;
+  results.exportJsonlGz.failed = results.exportJsonlGz.status ? 0 : 1;
   try {
     fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl.gz')).split('\n')
     .filter(line => line.trim() !== '')
@@ -276,7 +276,7 @@ function exportTest (options) {
   print(CYAN + Date() + ': Export data (xgmml.gz)' + RESET);
   args['compress-output'] = 'true';
   results.exportXgmmlGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-  results.exportXgmmlGz.failed = results.exportXgmml.status ? 0 : 1;
+  results.exportXgmmlGz.failed = results.exportXgmmlGz.status ? 0 : 1;
   try {
     const filesContent = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.xgmml.gz'));
     DOMParser.parseFromString(filesContent);
@@ -302,7 +302,7 @@ function exportTest (options) {
   }
   args['compress-output'] = 'false';
 
-  print(CYAN + Date() + ': Export query (xgmml)' + RESET);
+  print(CYAN + Date() + ': Export query (jsonl)' + RESET);
   args['type'] = 'jsonl';
   args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
   delete args['graph-name'];
@@ -327,10 +327,10 @@ function exportTest (options) {
     };
   }
 
-  print(CYAN + Date() + ': Export query (xgmml.gz)' + RESET);
+  print(CYAN + Date() + ': Export query (jsonl.gz)' + RESET);
   args['compress-output'] = 'true';
   results.exportQueryGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-  results.exportQueryGz.failed = results.exportQuery.status ? 0 : 1;
+  results.exportQueryGz.failed = results.exportQueryGz.status ? 0 : 1;
   try {
     fs.readGzip(fs.join(tmpPath, 'query.jsonl.gz')).split('\n')
     .filter(line => line.trim() !== '')
@@ -354,7 +354,7 @@ function exportTest (options) {
   args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
   args['fields'] = '_key,value1,value2,value3,value4';
   results.exportCsv = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
-  results.exportCsv.failed = results.exportJsonl.status ? 0 : 1;
+  results.exportCsv.failed = results.exportCsv.status ? 0 : 1;
   try {
     fs.read(fs.join(tmpPath, 'query.csv'));
 
@@ -371,6 +371,24 @@ function exportTest (options) {
     };
   }
   delete args['fields'];
+  
+  print(CYAN + Date() + ': Export query (maxRuntime, failure)' + RESET);
+  args['type'] = 'jsonl';
+  args['query'] = 'RETURN SLEEP(4)';
+  args['query-max-runtime'] = '2.0';
+  results.exportQueryMaxRuntimeFail = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+  // we expect a failure here!
+  results.exportQueryMaxRuntimeFail.status = !results.exportQueryMaxRuntimeFail.status;
+  results.exportQueryMaxRuntimeFail.failed = results.exportQueryMaxRuntimeFail.status ? 0 : 1;
+  delete args['query-max-runtime'];
+  
+  print(CYAN + Date() + ': Export query (maxRuntime, ok)' + RESET);
+  args['type'] = 'jsonl';
+  args['query'] = 'RETURN SLEEP(3)';
+  args['query-max-runtime'] = '20.0';
+  results.exportQueryMaxRuntimeOk = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+  results.exportQueryMaxRuntimeOk.failed = results.exportQueryMaxRuntimeOk.status ? 0 : 1;
+  delete args['query-max-runtime'];
 
   return shutdown();
 }
