@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Guarded access only to ActionBase::_result.
+
 * Timely updates of rebootId / cluster membership of DB servers and
   coordinators in ClusterInfo. Fixes BTS-368 detected in chaos tests.
 
