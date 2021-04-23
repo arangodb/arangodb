@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade jemalloc version to latest stable dev.
+
 * Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at 
   arangodb::transaction::V8Context::exitV8Context().
 
