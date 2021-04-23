@@ -2,7 +2,7 @@
 @startDocuBlock get_api_database_shard_distribution
 @brief provides the shard distribution statistics of the current database in the cluster
 
-@RESTHEADER{GET /_admin/cluster/shardDistribution, Shard distribution statistics for the current database}
+@RESTHEADER{GET /_api/database/shardDistribution, Shard distribution statistics for the current database}
 
 @RESTQUERYPARAMETERS
 
