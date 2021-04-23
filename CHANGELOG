@@ -1,5 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
+* Fixed internal issue #798: In  rare case when remove request
+  completely cleans just consolidated segment commit could be cancelled
+  and documents removed from collection may be left dangling in the ArangoSearch index.
+  Also fixes ES-810 and  BTS-279.
 
 * Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at
   arangodb::transaction::V8Context::exitV8Context().
