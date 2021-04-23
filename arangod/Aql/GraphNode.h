@@ -126,9 +126,6 @@ class GraphNode : public ExecutionNode {
   /// @brief flag, if the graph is a Disjoint SmartGraph (Enterprise Edition only!)
   bool isDisjoint() const;
 
-  /// @brief flag, if the graph is a Hybrid SmartGraph (Enterprise Edition only!)
-  bool isHybrid() const;
-
   /// @brief return the database
   TRI_vocbase_t* vocbase() const;
 
@@ -183,8 +180,6 @@ class GraphNode : public ExecutionNode {
   std::vector<aql::Collection*> const& edgeColls() const;
 
   std::vector<aql::Collection*> const& vertexColls() const;
-
-  std::vector<aql::Collection*> const& satelliteColls() const;
 
   virtual void getConditionVariables(std::vector<Variable const*>&) const;
 
@@ -251,9 +246,6 @@ class GraphNode : public ExecutionNode {
   /// as an edge can also point to another edge, instead of a vertex).
   std::vector<aql::Collection*> _vertexColls;
 
-  /// @brief the edge collection names
-  std::vector<aql::Collection*> _satelliteColls;
-
   /// @brief The default direction given in the query
   TRI_edge_direction_e const _defaultDirection;
 
@@ -266,9 +258,6 @@ class GraphNode : public ExecutionNode {
 
   /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
   bool _isDisjoint;
-
-  /// @brief flag, if graph is smart *and* hybrid (Enterprise Edition only!)
-  bool _isHybrid;
 
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
