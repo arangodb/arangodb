@@ -73,7 +73,6 @@ bool DropIndex::first() {
   auto const& shard = _description.get(SHARD);
   auto const& id = _description.get(INDEX);
 
-  Result res;
   VPackBuilder index;
   index.add(VPackValue(_description.get(INDEX)));
 
