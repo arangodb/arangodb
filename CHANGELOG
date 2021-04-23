@@ -1,10 +1,10 @@
 v3.6.14 (XXXX-XX-XX)
 --------------------
 
-* Fixed internal issue #798: In  rare case when remove request
-  completely cleans just consolidated segment commit could be cancelled
-  and documents removed from collection may be left dangling in the ArangoSearch index.
-  Also fixes ES-810 and  BTS-279.
+* Fixed internal issue #798: In  rare case when remove request completely cleans
+  just consolidated segment commit could be cancelled and documents removed from
+  collection may be left dangling in the ArangoSearch index.
+  Also fixes ES-810 and BTS-279.
 
 * Fix BTS-340: AQL expressions similar to `x < 3 || x` are no longer erroneously
   be reduced to `x < 3` by the optimizer rule remove-redundant-or.
