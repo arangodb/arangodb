@@ -138,9 +138,9 @@ class ReplicatedLog : public LogFollower,
   [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
 
  private:
-  struct GuardedInMemoryLog;
-  using Guard = MutexGuard<GuardedInMemoryLog, std::unique_lock<std::mutex>>;
-  using ConstGuard = MutexGuard<GuardedInMemoryLog const, std::unique_lock<std::mutex>>;
+  struct GuardedReplicatedLog;
+  using Guard = MutexGuard<GuardedReplicatedLog, std::unique_lock<std::mutex>>;
+  using ConstGuard = MutexGuard<GuardedReplicatedLog const, std::unique_lock<std::mutex>>;
 
   struct Follower {
     explicit Follower(std::shared_ptr<LogFollower> impl, LogIndex lastLogIndex)
@@ -164,15 +164,15 @@ class ReplicatedLog : public LogFollower,
 
   using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
 
-  struct alignas(128) GuardedInMemoryLog {
-    GuardedInMemoryLog() = delete;
-    GuardedInMemoryLog(GuardedInMemoryLog const&) = delete;
-    GuardedInMemoryLog(GuardedInMemoryLog&&) = delete;
-    GuardedInMemoryLog& operator=(GuardedInMemoryLog const&) = delete;
-    GuardedInMemoryLog& operator=(GuardedInMemoryLog&&) = delete;
-    ~GuardedInMemoryLog() = default;
-    GuardedInMemoryLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
-                       std::shared_ptr<PersistedLog> persistedLog, LogIndex logIndex)
+  struct alignas(128) GuardedReplicatedLog {
+    GuardedReplicatedLog() = delete;
+    GuardedReplicatedLog(GuardedReplicatedLog const&) = delete;
+    GuardedReplicatedLog(GuardedReplicatedLog&&) = delete;
+    GuardedReplicatedLog& operator=(GuardedReplicatedLog const&) = delete;
+    GuardedReplicatedLog& operator=(GuardedReplicatedLog&&) = delete;
+    ~GuardedReplicatedLog() = default;
+    GuardedReplicatedLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
+                         std::shared_ptr<PersistedLog> persistedLog, LogIndex logIndex)
         : _id(id), _persistedLog(std::move(persistedLog)), _state(std::move(state)), _commitIndex{logIndex} {}
 
     // follower only
@@ -236,7 +236,7 @@ class ReplicatedLog : public LogFollower,
 
   // make this thread safe in the most simple way possible, wrap everything in
   // a single mutex.
-  Guarded<GuardedInMemoryLog> _joermungandr;
+  Guarded<GuardedReplicatedLog> _joermungandr;
 
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
