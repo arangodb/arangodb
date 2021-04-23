@@ -24,7 +24,7 @@
 #include "Replication2/TestHelper.h"
 
 #include <Basics/Exceptions.h>
-#include <Replication2/InMemoryLog.h>
+#include <Replication2/ReplicatedLog.h>
 
 #include <gtest/gtest.h>
 
@@ -39,10 +39,10 @@ struct InMemoryLogTest2 : ::testing::Test {
     return _nextLogId = LogId{_nextLogId.id() + 1};
   }
 
-  auto addLogInstance(ParticipantId const& id) -> std::shared_ptr<InMemoryLog> {
+  auto addLogInstance(ParticipantId const& id) -> std::shared_ptr<ReplicatedLog> {
     auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
     auto persistedLog = std::make_shared<MockLog>(getNextLogId());
-    auto log = std::make_shared<InMemoryLog>(id, state, persistedLog);
+    auto log = std::make_shared<ReplicatedLog>(id, state, persistedLog);
     return log;
   }
 
@@ -135,7 +135,7 @@ TEST_F(InMemoryLogTest, test) {
   auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
   auto const ourParticipantId = ParticipantId{1};
   auto persistedLog = std::make_shared<MockLog>(LogId{1});
-  auto log = InMemoryLog{ourParticipantId, state, persistedLog};
+  auto log = ReplicatedLog{ourParticipantId, state, persistedLog};
 
   log.becomeLeader(LogTerm{1}, {}, 1);
 
@@ -352,7 +352,8 @@ TEST_F(InMemoryLogTest, replicationTest) {
   auto const leaderId = ParticipantId{1};
   auto const leaderState = std::make_shared<InMemoryState>();
   auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
-  auto leaderLog = std::make_shared<InMemoryLog>(leaderId, leaderState, leaderPersistentLog);
+  auto leaderLog =
+      std::make_shared<ReplicatedLog>(leaderId, leaderState, leaderPersistentLog);
 
   auto const followerId = ParticipantId{3};
   auto const followerState = std::make_shared<InMemoryState>();
@@ -440,7 +441,8 @@ TEST_F(InMemoryLogTest, replicationTest2) {
   auto const leaderId = ParticipantId{1};
   auto const leaderState = std::make_shared<InMemoryState>();
   auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
-  auto leaderLog = std::make_shared<InMemoryLog>(leaderId, leaderState, leaderPersistentLog);
+  auto leaderLog =
+      std::make_shared<ReplicatedLog>(leaderId, leaderState, leaderPersistentLog);
 
   auto const followerId = ParticipantId{3};
   auto const followerState = std::make_shared<InMemoryState>();
@@ -510,13 +512,13 @@ TEST_F(InMemoryLogTest, parallelAccessTest) {
   auto const ourParticipantId = ParticipantId{1};
   auto persistedLog = std::make_shared<MockLog>(LogId{1});
   struct alignas(128) {
-    InMemoryLog log;
+    ReplicatedLog log;
     std::atomic<bool> go = false;
     std::atomic<bool> stopClientThreads = false;
     std::atomic<bool> stopReplicationThread = false;
     std::atomic<std::size_t> threadsReady = 0;
     std::atomic<std::size_t> threadsSatisfied = 0;
-  } data{InMemoryLog{ourParticipantId, state, persistedLog}};
+  } data{ReplicatedLog{ourParticipantId, state, persistedLog}};
   data.log.becomeLeader(LogTerm{1}, {}, 1);
 
   constexpr static auto genPayload = [](uint16_t thread, uint32_t i) {

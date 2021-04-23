@@ -55,7 +55,7 @@ namespace aql {
 class QueryList;
 }
 namespace replication2 {
-class InMemoryLog;
+class ReplicatedLog;
 }
 namespace velocypack {
 class Builder;
@@ -163,7 +163,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
-  std::unordered_map<arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::InMemoryLog>> _logs;
+  std::unordered_map<arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::ReplicatedLog>> _logs;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;
@@ -297,7 +297,8 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(std::string const& nameOrId) const
       noexcept;
 
-  std::shared_ptr<arangodb::replication2::InMemoryLog> lookupLog(
+  // TODO not yet implemented
+  std::shared_ptr<arangodb::replication2::ReplicatedLog> lookupLog(
       arangodb::replication2::LogId id) const noexcept;
 
   /// @brief looks up a view by identifier

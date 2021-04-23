@@ -18,6 +18,6 @@ auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
     if (result) {
       return futures::Future<AppendEntriesResult>(std::in_place, *result);
     }
-    return InMemoryLog::appendEntries(std::move(entry.request));
+    return ReplicatedLog::appendEntries(std::move(entry.request));
   });
 }

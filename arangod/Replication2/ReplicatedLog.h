@@ -20,8 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION2_INMEMORYLOG_H
-#define ARANGOD_REPLICATION2_INMEMORYLOG_H
+#ifndef ARANGOD_REPLICATION2_REPLICATEDLOG_H
+#define ARANGOD_REPLICATION2_REPLICATEDLOG_H
 
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
@@ -96,14 +96,15 @@ struct QuorumData {
 };
 
 /**
- * @brief A simple non-persistent log implementation, mainly for prototyping
+ * @brief A simple replicated log implementation, mainly for prototyping
  * replication 2.0.
  */
-class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMemoryLog> {
+class ReplicatedLog : public LogFollower,
+                      public std::enable_shared_from_this<ReplicatedLog> {
  public:
-  InMemoryLog() = delete;
-  explicit InMemoryLog(ParticipantId participantId, std::shared_ptr<InMemoryState> state,
-                       std::shared_ptr<PersistedLog> persistedLog);
+  ReplicatedLog() = delete;
+  explicit ReplicatedLog(ParticipantId participantId, std::shared_ptr<InMemoryState> state,
+                         std::shared_ptr<PersistedLog> persistedLog);
 
   // follower only
   auto appendEntries(AppendEntriesRequest)
@@ -163,7 +164,7 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
 
   using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
 
-  struct GuardedInMemoryLog {
+  struct alignas(128) GuardedInMemoryLog {
     GuardedInMemoryLog() = delete;
     GuardedInMemoryLog(GuardedInMemoryLog const&) = delete;
     GuardedInMemoryLog(GuardedInMemoryLog&&) = delete;
@@ -194,14 +195,14 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
     auto becomeLeader(LogTerm term, std::vector<std::shared_ptr<LogFollower>> const& follower,
                       std::size_t writeConcern) -> void;
 
-    auto handleAppendEntriesResponse(std::weak_ptr<InMemoryLog> const& parentLog,
+    auto handleAppendEntriesResponse(std::weak_ptr<ReplicatedLog> const& parentLog,
                                      Follower& follower, LogIndex lastIndex,
                                      LogIndex currentCommitIndex, LogTerm currentTerm,
                                      futures::Try<AppendEntriesResult>&& res) -> void;
 
     [[nodiscard]] auto getStatistics() const -> LogStatistics;
 
-    auto runAsyncStep(std::weak_ptr<InMemoryLog> const& parentLog) -> void;
+    auto runAsyncStep(std::weak_ptr<ReplicatedLog> const& parentLog) -> void;
 
     [[nodiscard]] auto participantId() const noexcept -> ParticipantId;
     [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
@@ -216,7 +217,7 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
 
     auto getLogIterator(LogIndex from) -> std::shared_ptr<LogIterator>;
 
-    void sendAppendEntries(std::weak_ptr<InMemoryLog> const& parentLog, Follower&);
+    void sendAppendEntries(std::weak_ptr<ReplicatedLog> const& parentLog, Follower&);
 
     void persistRemainingLogEntries();
 
@@ -243,4 +244,4 @@ class InMemoryLog : public LogFollower, public std::enable_shared_from_this<InMe
 
 }  // namespace arangodb::replication2
 
-#endif  // ARANGOD_REPLICATION2_INMEMORYLOG_H
+#endif  // ARANGOD_REPLICATION2_REPLICATEDLOG_H

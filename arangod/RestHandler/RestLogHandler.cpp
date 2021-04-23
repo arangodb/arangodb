@@ -9,7 +9,7 @@
 #include <Network/ConnectionPool.h>
 #include <Network/Methods.h>
 #include <Network/NetworkFeature.h>
-#include <Replication2/InMemoryLog.h>
+#include <Replication2/ReplicatedLog.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/overload.h"
@@ -115,7 +115,7 @@ RestStatus RestLogHandler::handlePostRequest() {
     auto state = std::make_shared<InMemoryState>();
     auto persistedLog = std::make_shared<FakePersistedLog>(id);
 
-    auto log = std::make_shared<InMemoryLog>(participantId, state, persistedLog);
+    auto log = std::make_shared<ReplicatedLog>(participantId, state, persistedLog);
     _vocbase._logs.emplace(id, log);
     generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
     return RestStatus::DONE;
@@ -128,7 +128,7 @@ RestStatus RestLogHandler::handlePostRequest() {
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  std::shared_ptr<InMemoryLog> log;
+  std::shared_ptr<ReplicatedLog> log;
   {
     if (auto it = _vocbase._logs.find(logId); it != _vocbase._logs.end()) {
       log = it->second;
@@ -249,7 +249,7 @@ RestStatus RestLogHandler::handleGetRequest() {
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  std::shared_ptr<InMemoryLog> log;
+  std::shared_ptr<ReplicatedLog> log;
   {
     if (auto it = _vocbase._logs.find(logId); it != _vocbase._logs.end()) {
       log = it->second;
