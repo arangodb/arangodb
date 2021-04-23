@@ -167,24 +167,26 @@ auto ReplicatedLog::getStatus() const -> LogStatus {
                     self->_role);
 }
 
-LogIndex ReplicatedLog::GuardedReplicatedLog::nextIndex() const {
+auto ReplicatedLog::GuardedReplicatedLog::nextIndex() const -> LogIndex {
   return LogIndex{_log.size() + 1};
 }
-LogIndex ReplicatedLog::GuardedReplicatedLog::getLastIndex() const {
+auto ReplicatedLog::GuardedReplicatedLog::getLastIndex() const -> LogIndex {
   return LogIndex{_log.size()};
 }
 
-auto ReplicatedLog::createSnapshot()
+auto ReplicatedLog::createSnapshot() const
     -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>> {
   auto self = acquireMutex();
   return self->createSnapshot();
 }
-auto ReplicatedLog::GuardedReplicatedLog::createSnapshot()
+
+auto ReplicatedLog::GuardedReplicatedLog::createSnapshot() const
     -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>> {
   return std::make_pair(_commitIndex, _state->createSnapshot());
 }
 
-auto ReplicatedLog::waitFor(LogIndex index) -> futures::Future<std::shared_ptr<QuorumData>> {
+auto ReplicatedLog::waitFor(LogIndex index)
+    -> futures::Future<std::shared_ptr<QuorumData>> {
   auto self = acquireMutex();
   return self->waitFor(index);
 }
@@ -201,12 +203,13 @@ auto ReplicatedLog::GuardedReplicatedLog::waitFor(LogIndex index)
 
 auto ReplicatedLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
   auto self = acquireMutex();
-  return self->becomeFollower(term, id);
+  return self->becomeFollower(term, std::move(id));
 }
+
 auto ReplicatedLog::GuardedReplicatedLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
   TRI_ASSERT(_currentTerm < term);
   _currentTerm = term;
-  _role = FollowerConfig{id};
+  _role = FollowerConfig{std::move(id)};
 }
 
 auto ReplicatedLog::becomeLeader(LogTerm term,
@@ -321,8 +324,8 @@ auto ReplicatedLog::GuardedReplicatedLog::getEntryByIndex(LogIndex idx) const
   return e;
 }
 
-void ReplicatedLog::GuardedReplicatedLog::updateCommitIndexLeader(LogIndex newIndex,
-                                                              std::shared_ptr<QuorumData> quorum) {
+void ReplicatedLog::GuardedReplicatedLog::updateCommitIndexLeader(
+    LogIndex newIndex, const std::shared_ptr<QuorumData>& quorum) {
   TRI_ASSERT(_commitIndex < newIndex);
   _commitIndex = newIndex;
   _lastQuorum = quorum;
@@ -333,7 +336,7 @@ void ReplicatedLog::GuardedReplicatedLog::updateCommitIndexLeader(LogIndex newIn
 }
 
 void ReplicatedLog::GuardedReplicatedLog::sendAppendEntries(std::weak_ptr<ReplicatedLog> const& parentLog,
-                                                        Follower& follower) {
+                                                            Follower& follower) {
   if (follower.requestInFlight) {
     return;  // wait for the request to return
   }
@@ -439,7 +442,7 @@ auto ReplicatedLog::GuardedReplicatedLog::handleAppendEntriesResponse(
   sendAppendEntries(parentLog, follower);
 }
 
-auto ReplicatedLog::GuardedReplicatedLog::getLogIterator(LogIndex fromIdx)
+auto ReplicatedLog::GuardedReplicatedLog::getLogIterator(LogIndex fromIdx) const
     -> std::shared_ptr<LogIterator> {
   auto from = _log.cbegin();
   auto const endIdx = nextIndex();
@@ -469,19 +472,24 @@ void ReplicatedLog::GuardedReplicatedLog::checkCommitIndex() {
     return;
   }
 
-  std::nth_element(indexes.begin(), indexes.begin() + (quorum_size - 1), indexes.end(),
+  auto nth = indexes.begin();
+  std::advance(nth, quorum_size - 1);
+
+  std::nth_element(indexes.begin(), nth, indexes.end(),
                    [](auto& a, auto& b) { return a.first > b.first; });
 
   auto& [commitIndex, participant] = indexes.at(quorum_size - 1);
   TRI_ASSERT(commitIndex >= _commitIndex);
   if (commitIndex > _commitIndex) {
     std::vector<ParticipantId> quorum;
-    std::transform(indexes.begin(), indexes.begin() + quorum_size,
-                   std::back_inserter(quorum), [](auto& p) { return p.second; });
+    auto last = indexes.begin();
+    std::advance(last, quorum_size);
+    std::transform(indexes.begin(), last, std::back_inserter(quorum),
+                   [](auto& p) { return p.second; });
 
-    auto quorum_data =
+    auto const quorum_data =
         std::make_shared<QuorumData>(commitIndex, _currentTerm, std::move(quorum));
-    updateCommitIndexLeader(commitIndex, std::move(quorum_data));
+    updateCommitIndexLeader(commitIndex, quorum_data);
   }
 }
 

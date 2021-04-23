@@ -38,19 +38,19 @@ namespace arangodb::replication2 {
 
 template <typename T, typename S = T>
 struct implement_compare {
-  [[nodiscard]] bool operator==(S const& other) const {
+  [[nodiscard]] auto operator==(S const& other) const -> bool {
     return self() <= other && other <= self();
   }
-  [[nodiscard]] bool operator!=(S const& other) const {
+  [[nodiscard]] auto operator!=(S const& other) const -> bool {
     return !(self() == other);
   }
-  [[nodiscard]] bool operator<(S const& other) const {
+  [[nodiscard]] auto operator<(S const& other) const -> bool {
     return !(other <= self());
   }
-  [[nodiscard]] bool operator>=(S const& other) const {
+  [[nodiscard]] auto operator>=(S const& other) const -> bool {
     return other <= self();
   }
-  [[nodiscard]] bool operator>(S const& other) const {
+  [[nodiscard]] auto operator>(S const& other) const -> bool {
     return other < self();
   }
 
@@ -85,6 +85,7 @@ struct LogPayload {
   // just a placeholder for now
   std::string dummy;
 };
+
 // just a placeholder for now, must have a hash<>
 using ParticipantId = std::string;
 struct LogStatistics {
@@ -121,9 +122,9 @@ class LogEntry {
  public:
   LogEntry(LogTerm, LogIndex, LogPayload);
 
-  [[nodiscard]] LogTerm logTerm() const;
-  [[nodiscard]] LogIndex logIndex() const;
-  [[nodiscard]] LogPayload const& logPayload() const;
+  [[nodiscard]] auto logTerm() const -> LogTerm;
+  [[nodiscard]] auto logIndex() const -> LogIndex;
+  [[nodiscard]] auto logPayload() const -> LogPayload const&;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LogEntry;

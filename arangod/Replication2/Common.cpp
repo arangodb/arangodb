@@ -41,11 +41,11 @@ auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {
 LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
     : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
 
-LogTerm LogEntry::logTerm() const { return _logTerm; }
+auto LogEntry::logTerm() const -> LogTerm { return _logTerm; }
 
-LogIndex LogEntry::logIndex() const { return _logIndex; }
+auto LogEntry::logIndex() const -> LogIndex { return _logIndex; }
 
-LogPayload const& LogEntry::logPayload() const { return _payload; }
+auto LogEntry::logPayload() const -> LogPayload const& { return _payload; }
 
 void LogEntry::toVelocyPack(velocypack::Builder& builder) const {
   builder.openObject();

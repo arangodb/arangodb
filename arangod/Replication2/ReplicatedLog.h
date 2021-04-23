@@ -33,6 +33,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -65,6 +66,7 @@ struct AppendEntriesRequest {
 
 /**
  * @brief State stub, later to be replaced by a RocksDB state.
+ * Currently unused.
  */
 
 class InMemoryState {
@@ -114,7 +116,8 @@ class ReplicatedLog : public LogFollower,
   auto insert(LogPayload) -> LogIndex;
 
   // leader only
-  auto createSnapshot() -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
+  [[nodiscard]] auto createSnapshot() const
+      -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
 
   // leader only
   auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
@@ -168,12 +171,15 @@ class ReplicatedLog : public LogFollower,
     GuardedReplicatedLog() = delete;
     GuardedReplicatedLog(GuardedReplicatedLog const&) = delete;
     GuardedReplicatedLog(GuardedReplicatedLog&&) = delete;
-    GuardedReplicatedLog& operator=(GuardedReplicatedLog const&) = delete;
-    GuardedReplicatedLog& operator=(GuardedReplicatedLog&&) = delete;
+    auto operator=(GuardedReplicatedLog const&) -> GuardedReplicatedLog& = delete;
+    auto operator=(GuardedReplicatedLog&&) -> GuardedReplicatedLog& = delete;
     ~GuardedReplicatedLog() = default;
     GuardedReplicatedLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
                          std::shared_ptr<PersistedLog> persistedLog, LogIndex logIndex)
-        : _id(id), _persistedLog(std::move(persistedLog)), _state(std::move(state)), _commitIndex{logIndex} {}
+        : _id(std::move(id)),
+          _persistedLog(std::move(persistedLog)),
+          _state(std::move(state)),
+          _commitIndex{logIndex} {}
 
     // follower only
     auto appendEntries(AppendEntriesRequest)
@@ -183,7 +189,8 @@ class ReplicatedLog : public LogFollower,
     auto insert(LogPayload) -> LogIndex;
 
     // leader only
-    auto createSnapshot() -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
+    auto createSnapshot() const
+        -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
 
     // leader only
     auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
@@ -207,15 +214,16 @@ class ReplicatedLog : public LogFollower,
     [[nodiscard]] auto participantId() const noexcept -> ParticipantId;
     [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
 
-    LogIndex nextIndex() const;
-    LogIndex getLastIndex() const;
+    [[nodiscard]] auto nextIndex() const -> LogIndex;
+    [[nodiscard]] auto getLastIndex() const -> LogIndex;
     void assertLeader() const;
     void assertFollower() const;
 
     void checkCommitIndex();
-    void updateCommitIndexLeader(LogIndex newIndex, std::shared_ptr<QuorumData>);
+    void updateCommitIndexLeader(LogIndex newIndex,
+                                 const std::shared_ptr<QuorumData>& quorum);
 
-    auto getLogIterator(LogIndex from) -> std::shared_ptr<LogIterator>;
+    [[nodiscard]] auto getLogIterator(LogIndex from) const -> std::shared_ptr<LogIterator>;
 
     void sendAppendEntries(std::weak_ptr<ReplicatedLog> const& parentLog, Follower&);
 
