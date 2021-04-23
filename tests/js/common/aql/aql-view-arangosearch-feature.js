@@ -27,6 +27,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
+const internal = require('internal');
 const arango = require('@arangodb').arango;
 
 ////////////////////////////////////////////////////////////////////////////////
