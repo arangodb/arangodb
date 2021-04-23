@@ -1904,7 +1904,24 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collection->vocbase().name() << "/" << collection->name()
                 << ": " << res.errorMessage();
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+
+            // Note: it is safe here to exit the loop early. We are losing the leadership here.
+            // No matter what happens next, the Current entry in the agency is rewritten and
+            // thus replication is restarted from the new leader. There is no need to keep
+            // trying to drop followers at this point.
+
+            if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+              // In this case, we know that we are not or no longer
+              // the leader for this shard. Therefore we need to
+              // send a code which let's the coordinator retry.
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+            } else {
+              // In this case, some other error occurred and we
+              // most likely are still the proper leader, so
+              // the error needs to be reported and the local
+              // transaction must be rolled back.
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+            }
           }
         }
       }
@@ -2455,7 +2472,24 @@ Future<Result> Methods::replicateOperations(
               << "could not drop follower " << follower << " for shard "
               << collection->vocbase().name() << "/" << collection->name()
               << ": " << res.errorMessage();
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+
+          // Note: it is safe here to exit the loop early. We are losing the leadership here.
+          // No matter what happens next, the Current entry in the agency is rewritten and
+          // thus replication is restarted from the new leader. There is no need to keep
+          // trying to drop followers at this point.
+
+          if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+            // In this case, we know that we are not or no longer
+            // the leader for this shard. Therefore we need to
+            // send a code which let's the coordinator retry.
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+          } else {
+            // In this case, some other error occurred and we
+            // most likely are still the proper leader, so
+            // the error needs to be reported and the local
+            // transaction must be rolled back.
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+          }
         }
       }
     }
