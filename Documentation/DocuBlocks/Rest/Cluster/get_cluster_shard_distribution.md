@@ -1,6 +1,6 @@
 
 @startDocuBlock get_cluster_shard_distribution
-@brief allows to query the global shard distribution statistics in the cluster
+@brief provides the global shard distribution statistics in the cluster
 
 @RESTHEADER{GET /_admin/cluster/shardDistribution, Global statistics on the current shard distribution}
 
