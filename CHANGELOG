@@ -1,6 +1,8 @@
 v3.6.14 (XXXX-XX-XX)
 --------------------
 
+* Fixed proper return value in sendRequestRetry if server is shutting down.
+
 * Updated ArangoDB Starter to 0.15.0.
 
 * Updated arangosync to 1.4.0.
