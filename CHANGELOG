@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Retry if an ex-leader can no longer drop a follower because it is no longer
+  leading.
+
 * Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at
   arangodb::transaction::V8Context::exitV8Context().
 
