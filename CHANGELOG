@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed a small problem in fuerte which could lead to an assertion failure.
+
+* Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at 
+  arangodb::transaction::V8Context::exitV8Context().
+
 * Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
   to specify "--ldap2.OPTION". Authentication / Authorization will first check
   the primary LDAP server. If this server cannot authenticate a user, it will
