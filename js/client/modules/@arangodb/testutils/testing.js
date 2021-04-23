@@ -158,6 +158,7 @@ let optionsDocumentation = [
   '     previous test run. The information which tests previously failed is taken',
   '     from the "UNITTEST_RESULT.json" (if available).',
   '   - `encryptionAtRest`: enable on disk encryption, enterprise only',
+  '   - `zeroTimeWaitWait`: (linux only) wait for all processes to have zero sockets it "TIME_WAIT" state',
   ''
 ];
 
@@ -239,6 +240,7 @@ const optionsDefaults = {
   'sleepBeforeStart' : 0,
   'sleepBeforeShutdown' : 0,
   'failed': false,
+  'zeroTimeWaitWait': false
 };
 
 let globalStatus = true;
