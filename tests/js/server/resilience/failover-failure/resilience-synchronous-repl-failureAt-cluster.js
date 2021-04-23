@@ -44,7 +44,6 @@ let { getEndpointById,
       debugClearFailAt,
       reconnectRetry
     } = require('@arangodb/test-helper');
-const primaryEndpoint = arango.getEndpoint();
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
