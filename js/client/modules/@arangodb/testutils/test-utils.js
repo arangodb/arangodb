@@ -250,7 +250,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             let stat = pu.getDeltaProcessStats(instanceInfo);
             while (stat.sum_servers.sockstat_TCP_tw > 100) {
               sleep(5);
-              print('. ' + stat.sum_servers.sockstat_TCP_tw);
+              print(new Date()).toISOString() + 'Sockets in TIME_WAIT state remained after the test: ' + stat.sum_servers.sockstat_TCP_tw);
               stat = pu.getDeltaProcessStats(instanceInfo);
             }
           }
