@@ -723,7 +723,7 @@ template <SocketType T>
 void H2Connection<T>::abortRequests(fuerte::Error err, Clock::time_point now) {
   auto it = this->_streams.begin();
   while (it != this->_streams.end()) {
-    if (it->second->expires < now) {
+    if (it->second->expires <= now) {
       it->second->invokeOnError(err);
 
       if (now == Clock::time_point::max()) {
