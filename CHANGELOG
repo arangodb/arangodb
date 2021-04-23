@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Guarded access only to ActionBase::_result.
+
 * Updated arangosync to 2.2.0.
 
 * Fixed proper return value in sendRequestRetry if server is shutting down.
