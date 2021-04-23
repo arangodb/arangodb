@@ -258,6 +258,27 @@ TEST_F(NetworkMethodsTest, request_failure_on_timeout) {
   ASSERT_FALSE(res.hasResponse());
 }
 
+TEST_F(NetworkMethodsTest, request_failure_on_shutdown) {
+  pool->_conn->_err = fuerte::Error::NoError;
+  auto& server = pool->config().clusterInfo->server();
+  server.beginShutdown();
+
+  network::RequestOptions reqOpts;
+
+  VPackBuffer<uint8_t> buffer;
+  auto f = network::sendRequestRetry(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
+                                "/", buffer, reqOpts);
+
+  network::Response res = std::move(f).get();
+  ASSERT_EQ(res.destination, "tcp://example.org:80");
+  ASSERT_EQ(res.error, fuerte::Error::NoError);
+  ASSERT_TRUE(res.hasResponse());
+  ASSERT_EQ(res.statusCode(), fuerte::StatusServiceUnavailable);
+  VPackSlice body = res.slice();
+  VPackSlice errorNum = body.get("errorNum");
+  ASSERT_EQ(static_cast<int>(TRI_ERROR_SHUTTING_DOWN), errorNum.getNumber<int>());
+}
+
 TEST_F(NetworkMethodsTest, request_failure_on_connection_closed) {
   pool->_conn->_err = fuerte::Error::ConnectionClosed;
   
