@@ -137,6 +137,7 @@ bool UpdateCollection::first() {
       error << "failed to lookup local collection " << shard << "in database " + database;
       LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();
       res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      result(res);
     }
   } catch (std::exception const& e) {
     std::stringstream error;
