@@ -1,6 +1,11 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed internal issue #798: In  rare case when remove request
+  completely cleans just consolidated segment commit could be cancelled
+  and documents removed from collection may be left dangling in the ArangoSearch index.
+  Also fixes ES-810 and  BTS-279.
+
 * Make the time-to-live (TTL) value of a streaming cursor only count after the
   response has been sent to the client.
 
