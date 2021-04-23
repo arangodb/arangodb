@@ -48,6 +48,7 @@
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/RestartAction.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -83,10 +84,6 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_upgradeCheck),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
-
-/// @brief This external is buried in RestServer/arangod.cpp.
-///        Used to perform one last action upon shutdown.
-extern std::function<int()> * restartAction;
 
 #ifndef _WIN32
 static int upgradeRestart() {

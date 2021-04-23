@@ -812,6 +812,10 @@ add_library(arango_foxx_phase STATIC
   V8Server/FoxxFeature.cpp
 )
 
+add_library(arango_restart_action STATIC
+  RestServer/RestartAction.cpp
+  )
+
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_GRAPH_SOURCES}
@@ -1013,6 +1017,8 @@ target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb arango::validation)
+target_link_libraries(arango_rocksdb arango_restart_action)
+
 target_link_libraries(arango_storage_engine_common arango::validation)
 
 if (USE_ENTERPRISE)
