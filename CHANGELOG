@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed proper return value in sendRequestRetry if server is shutting down.
+
 * Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at
   arangodb::transaction::V8Context::exitV8Context().
 
