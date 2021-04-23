@@ -3,7 +3,19 @@ devel
 
 * Fixed proper return value in sendRequestRetry if server is shutting down.
 
+* Updated arangosync to 2.2.0.
+
+* Fixed internal issue #798: In  rare case when remove request
+  completely cleans just consolidated segment commit could be cancelled
+  and documents removed from collection may be left dangling in the ArangoSearch index.
+  Also fixes ES-810 and  BTS-279.
+
+* Retry if an ex-leader can no longer drop a follower because it is no longer
+  leading.
+
 * Fixed a small problem in fuerte which could lead to an assertion failure.
+
+* Upgrade jemalloc version to latest stable dev.
 
 * Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at 
   arangodb::transaction::V8Context::exitV8Context().
