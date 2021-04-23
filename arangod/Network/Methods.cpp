@@ -185,6 +185,30 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   return futures::makeFuture(Response{std::string(), Error::Canceled, nullptr});
 }
 
+/// @brief Function to produce a response object from thin air:
+static std::unique_ptr<fuerte::Response> buildResponse(fuerte::StatusCode statusCode,
+                                                       Result const& res) {
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  {
+    VPackObjectBuilder guard(&builder);
+    auto errorNum = res.errorNumber();
+    builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
+    builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
+    if (errorNum != TRI_ERROR_NO_ERROR) {
+      builder.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
+    }
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(statusCode)));
+  }
+  fuerte::ResponseHeader responseHeader;
+  responseHeader.responseCode = statusCode;
+  responseHeader.contentType(ContentType::VPack);
+  auto resp = std::make_unique<fuerte::Response>(responseHeader);
+  resp->setPayload(std::move(buffer), 0);
+  return resp;
+}
+
+
 /// Handler class with enough information to keep retrying
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {
@@ -230,9 +254,14 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   // scheduler requests that are due
   void startRequest() {
     auto now = std::chrono::steady_clock::now();
-    if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
+    if (now > _endTime) {
       callResponse(Error::Timeout, nullptr);
       return;  // we are done
+    }
+    if (_pool->config().clusterInfo->server().isStopping()) {
+      callResponse(Error::NoError, buildResponse(fuerte::StatusUnavailable, Result{TRI_ERROR_SHUTTING_DOWN}));
+      return;  // we are done
+
     }
 
     arangodb::network::EndpointSpec spec;
