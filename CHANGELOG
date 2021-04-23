@@ -1,6 +1,8 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed proper return value in sendRequestRetry if server is shutting down.
+
 * Make the time-to-live (TTL) value of a streaming cursor only count after the
   response has been sent to the client.
 
