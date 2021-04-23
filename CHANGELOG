@@ -1,6 +1,10 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.0.
+
+* Updated arangosync to 1.4.0.
+
 * Guarded access only to ActionBase::_result.
 
 * Fixed internal issue #798: In  rare case when remove request completely cleans
