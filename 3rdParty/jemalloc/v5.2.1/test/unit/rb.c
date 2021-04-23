@@ -26,8 +26,8 @@ static int
 node_cmp(const node_t *a, const node_t *b) {
 	int ret;
 
-	assert_u32_eq(a->magic, NODE_MAGIC, "Bad magic");
-	assert_u32_eq(b->magic, NODE_MAGIC, "Bad magic");
+	expect_u32_eq(a->magic, NODE_MAGIC, "Bad magic");
+	expect_u32_eq(b->magic, NODE_MAGIC, "Bad magic");
 
 	ret = (a->key > b->key) - (a->key < b->key);
 	if (ret == 0) {
@@ -50,21 +50,21 @@ TEST_BEGIN(test_rb_empty) {
 
 	tree_new(&tree);
 
-	assert_true(tree_empty(&tree), "Tree should be empty");
-	assert_ptr_null(tree_first(&tree), "Unexpected node");
-	assert_ptr_null(tree_last(&tree), "Unexpected node");
+	expect_true(tree_empty(&tree), "Tree should be empty");
+	expect_ptr_null(tree_first(&tree), "Unexpected node");
+	expect_ptr_null(tree_last(&tree), "Unexpected node");
 
 	key.key = 0;
 	key.magic = NODE_MAGIC;
-	assert_ptr_null(tree_search(&tree, &key), "Unexpected node");
+	expect_ptr_null(tree_search(&tree, &key), "Unexpected node");
 
 	key.key = 0;
 	key.magic = NODE_MAGIC;
-	assert_ptr_null(tree_nsearch(&tree, &key), "Unexpected node");
+	expect_ptr_null(tree_nsearch(&tree, &key), "Unexpected node");
 
 	key.key = 0;
 	key.magic = NODE_MAGIC;
-	assert_ptr_null(tree_psearch(&tree, &key), "Unexpected node");
+	expect_ptr_null(tree_psearch(&tree, &key), "Unexpected node");
 }
 TEST_END
 
@@ -88,17 +88,17 @@ tree_recurse(node_t *node, unsigned black_height, unsigned black_depth) {
 	/* Red nodes must be interleaved with black nodes. */
 	if (rbtn_red_get(node_t, link, node)) {
 		if (left_node != NULL) {
-			assert_false(rbtn_red_get(node_t, link, left_node),
+			expect_false(rbtn_red_get(node_t, link, left_node),
 				"Node should be black");
 		}
 		if (right_node != NULL) {
-			assert_false(rbtn_red_get(node_t, link, right_node),
+			expect_false(rbtn_red_get(node_t, link, right_node),
 			    "Node should be black");
 		}
 	}
 
 	/* Self. */
-	assert_u32_eq(node->magic, NODE_MAGIC, "Bad magic");
+	expect_u32_eq(node->magic, NODE_MAGIC, "Bad magic");
 
 	/* Left subtree. */
 	if (left_node != NULL) {
@@ -122,21 +122,21 @@ tree_iterate_cb(tree_t *tree, node_t *node, void *data) {
 	unsigned *i = (unsigned *)data;
 	node_t *search_node;
 
-	assert_u32_eq(node->magic, NODE_MAGIC, "Bad magic");
+	expect_u32_eq(node->magic, NODE_MAGIC, "Bad magic");
 
 	/* Test rb_search(). */
 	search_node = tree_search(tree, node);
-	assert_ptr_eq(search_node, node,
+	expect_ptr_eq(search_node, node,
 	    "tree_search() returned unexpected node");
 
 	/* Test rb_nsearch(). */
 	search_node = tree_nsearch(tree, node);
-	assert_ptr_eq(search_node, node,
+	expect_ptr_eq(search_node, node,
 	    "tree_nsearch() returned unexpected node");
 
 	/* Test rb_psearch(). */
 	search_node = tree_psearch(tree, node);
-	assert_ptr_eq(search_node, node,
+	expect_ptr_eq(search_node, node,
 	    "tree_psearch() returned unexpected node");
 
 	(*i)++;
@@ -174,14 +174,14 @@ node_remove(tree_t *tree, node_t *node, unsigned nnodes) {
 	/* Test rb_nsearch(). */
 	search_node = tree_nsearch(tree, node);
 	if (search_node != NULL) {
-		assert_u64_ge(search_node->key, node->key,
+		expect_u64_ge(search_node->key, node->key,
 		    "Key ordering error");
 	}
 
 	/* Test rb_psearch(). */
 	search_node = tree_psearch(tree, node);
 	if (search_node != NULL) {
-		assert_u64_le(search_node->key, node->key,
+		expect_u64_le(search_node->key, node->key,
 		    "Key ordering error");
 	}
 
@@ -189,10 +189,10 @@ node_remove(tree_t *tree, node_t *node, unsigned nnodes) {
 
 	rbtn_black_height(node_t, link, tree, black_height);
 	imbalances = tree_recurse(tree->rbt_root, black_height, 0);
-	assert_u_eq(imbalances, 0, "Tree is unbalanced");
-	assert_u_eq(tree_iterate(tree), nnodes-1,
+	expect_u_eq(imbalances, 0, "Tree is unbalanced");
+	expect_u_eq(tree_iterate(tree), nnodes-1,
 	    "Unexpected node iteration count");
-	assert_u_eq(tree_iterate_reverse(tree), nnodes-1,
+	expect_u_eq(tree_iterate_reverse(tree), nnodes-1,
 	    "Unexpected node iteration count");
 }
 
@@ -220,7 +220,7 @@ static void
 destroy_cb(node_t *node, void *data) {
 	unsigned *nnodes = (unsigned *)data;
 
-	assert_u_gt(*nnodes, 0, "Destruction removed too many nodes");
+	expect_u_gt(*nnodes, 0, "Destruction removed too many nodes");
 	(*nnodes)--;
 }
 
@@ -271,19 +271,19 @@ TEST_BEGIN(test_rb_random) {
 				    black_height);
 				imbalances = tree_recurse(tree.rbt_root,
 				    black_height, 0);
-				assert_u_eq(imbalances, 0,
+				expect_u_eq(imbalances, 0,
 				    "Tree is unbalanced");
 
-				assert_u_eq(tree_iterate(&tree), k+1,
+				expect_u_eq(tree_iterate(&tree), k+1,
 				    "Unexpected node iteration count");
-				assert_u_eq(tree_iterate_reverse(&tree), k+1,
+				expect_u_eq(tree_iterate_reverse(&tree), k+1,
 				    "Unexpected node iteration count");
 
-				assert_false(tree_empty(&tree),
+				expect_false(tree_empty(&tree),
 				    "Tree should not be empty");
-				assert_ptr_not_null(tree_first(&tree),
+				expect_ptr_not_null(tree_first(&tree),
 				    "Tree should not be empty");
-				assert_ptr_not_null(tree_last(&tree),
+				expect_ptr_not_null(tree_last(&tree),
 				    "Tree should not be empty");
 
 				tree_next(&tree, &nodes[k]);
@@ -312,7 +312,7 @@ TEST_BEGIN(test_rb_random) {
 					    remove_iterate_cb, (void *)&nnodes);
 					nnodes--;
 				} while (start != NULL);
-				assert_u_eq(nnodes, 0,
+				expect_u_eq(nnodes, 0,
 				    "Removal terminated early");
 				break;
 			} case 3: {
@@ -326,13 +326,13 @@ TEST_BEGIN(test_rb_random) {
 					    (void *)&nnodes);
 					nnodes--;
 				} while (start != NULL);
-				assert_u_eq(nnodes, 0,
+				expect_u_eq(nnodes, 0,
 				    "Removal terminated early");
 				break;
 			} case 4: {
 				unsigned nnodes = j;
 				tree_destroy(&tree, destroy_cb, &nnodes);
-				assert_u_eq(nnodes, 0,
+				expect_u_eq(nnodes, 0,
 				    "Destruction terminated early");
 				break;
 			} default:

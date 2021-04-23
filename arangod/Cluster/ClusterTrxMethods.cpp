@@ -132,12 +132,18 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
 
+  double const lockTimeout = state.options().lockTimeout;
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   buildTransactionBody(state, server, builder);
 
   network::RequestOptions reqOpts;
   reqOpts.database = state.vocbase().name();
+  // set request timeout a little higher than our lock timeout, so that 
+  // responses that are close to the timeout value have a chance of getting
+  // back to us (note: the 5 is arbitrary here, could as well be 3.0 or 10.0)
+  reqOpts.timeout = network::Timeout(lockTimeout + 5.0);
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
@@ -291,7 +297,18 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                       << "synchronous replication: could not drop follower " << follower
                       << " for shard " << cc->vocbase().name() << "/" << tc.collectionName()
                       << ": " << r.errorMessage();
-                  res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                  if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+                    // In this case, we know that we are not or no longer
+                    // the leader for this shard. Therefore we need to
+                    // send a code which let's the coordinator retry.
+                    res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+                  } else {
+                    // In this case, some other error occurred and we
+                    // most likely are still the proper leader, so
+                    // the error needs to be reported and the local
+                    // transaction must be rolled back.
+                    res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                  }
                 }
               }
               // continue dropping the follower for all shards in this
@@ -352,6 +369,9 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       }
       requests.emplace_back(::beginTransactionRequest(state, leader));
     }
+    
+    // use original lock timeout here
+    state.options().lockTimeout = oldLockTimeout;
 
     if (requests.empty()) {
       return res;
@@ -394,9 +414,6 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     }
 
     // Entering slow path
-
-    // use original lock timeout here
-    state.options().lockTimeout = oldLockTimeout;
 
     TRI_ASSERT(fastPathResult.is(TRI_ERROR_LOCK_TIMEOUT));
 
