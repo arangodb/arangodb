@@ -6,6 +6,11 @@ v3.8.0 (XXXX-XX-XX)
   collection may be left dangling in the ArangoSearch index.
   Also fixes ES-810 and BTS-279.
 
+* Fixed a small problem in fuerte which could lead to an assertion failure.
+
+* Retry if an ex-leader can no longer drop a follower because it is no longer
+  leading.
+
 * Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at
   arangodb::transaction::V8Context::exitV8Context().
 
