@@ -171,8 +171,8 @@ TEST_F(NetworkMethodsTest, request_failure_on_shutdown) {
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
-  ASSERT_TRUE(res.hasResponse());
-  ASSERT_EQ(res.statusCode(), fuerte::StatusServiceUnavailable);
+  ASSERT_TRUE(res.response != nullptr);
+  ASSERT_EQ(res.statusCode(), fuerte::StatusUnavailable);
   VPackSlice body = res.slice();
   VPackSlice errorNum = body.get("errorNum");
   ASSERT_EQ(static_cast<int>(TRI_ERROR_SHUTTING_DOWN), errorNum.getNumber<int>());
