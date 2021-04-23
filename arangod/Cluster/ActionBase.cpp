@@ -126,7 +126,7 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const& descr
   if (_preAction && new_action->ok()) {
     setState(WAITINGPRE);
   } else {
-    _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
+    result(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
   }  // else
 
 }  // ActionBase::createPreAction
@@ -152,8 +152,7 @@ void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& desc
   if (_postAction) {
     _feature.postAction(description);
   } else {
-    _result.reset(TRI_ERROR_BAD_PARAMETER,
-                  "postAction rejected parameters for _postAction.");
+    result(TRI_ERROR_BAD_PARAMETER, "postAction rejected parameters for _postAction.");
   }
 }  // ActionBase::createPostAction
 
@@ -203,9 +202,10 @@ void ActionBase::toVelocyPack(VPackBuilder& builder) const {
   builder.add("done", VPackValue(timepointToString(
                           std::chrono::duration_cast<std::chrono::system_clock::duration>(
                               _actionDone.load()))));
-
-  builder.add("result", VPackValue(_result.errorNumber()));
-
+  {
+    std::lock_guard<std::mutex> lock(resLock);
+    builder.add("result", VPackValue(_result.errorNumber()));
+  }
   builder.add(VPackValue("description"));
   {
     VPackObjectBuilder desc(&builder);
@@ -224,12 +224,31 @@ ActionState ActionBase::getState() const { return _state; }
 
 void ActionBase::setState(ActionState state) {
   // We want to make sure that we get another maintenance run
-  // when we shift from any state to complete or failed 
+  // when we shift from any state to complete or failed
   if ((COMPLETE == state || FAILED == state) && _state != state && _description.has(DATABASE)) {
     _feature.addDirty(_description.get(DATABASE));
     TRI_ASSERT(!_description.get(DATABASE).empty());
   }
   _state = state;
+}
+
+Result ActionBase::result() const {
+  Result result;
+  {
+    const std::lock_guard<std::mutex> lock(resLock);
+    result.reset(_result);
+  }
+  return result;
+}
+
+void ActionBase::result(Result const& result) {
+  const std::lock_guard<std::mutex> lock(resLock);
+  _result.reset(result);
+}
+
+void ActionBase::result(int errorNumber, std::string const& errorString) {
+  const std::lock_guard<std::mutex> lock(resLock);
+  _result.reset(errorNumber, errorString);
 }
 
 /**

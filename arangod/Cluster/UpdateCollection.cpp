@@ -73,7 +73,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   if (!error.str().empty()) {
     LOG_TOPIC("a6e4c", ERR, Logger::MAINTENANCE)
         << "UpdateCollection: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -86,6 +86,7 @@ bool UpdateCollection::first() {
   auto const& shard = _description.get(SHARD);
   auto const& followersToDrop = _description.get(FOLLOWERS_TO_DROP);
   auto const& props = properties();
+  Result res;
 
   try {
     DatabaseGuard guard(database);
@@ -118,20 +119,22 @@ bool UpdateCollection::first() {
           followers->remove(s);
         }
       }
-      _result = Collections::updateProperties(*coll, props);
+      res = Collections::updateProperties(*coll, props);
+      result(res);
 
-      if (!_result.ok()) {
+      if (!res.ok()) {
         LOG_TOPIC("c3733", ERR, Logger::MAINTENANCE)
             << "failed to update properties"
                " of collection "
-            << shard << ": " << _result.errorMessage();
+            << shard << ": " << res.errorMessage();
       }
       
     } else {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << "in database " + database;
       LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();
-      _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      result(res);
     }
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -139,12 +142,13 @@ bool UpdateCollection::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("79442", WARN, Logger::MAINTENANCE)
         << "UpdateCollection: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    res.reset(TRI_ERROR_INTERNAL, error.str());
+    result(res);
   }
 
-  if (_result.fail()) {
+  if (res.fail()) {
     _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), _result);
+                             _description.get(SERVER_ID), res);
   }
 
   return false;
