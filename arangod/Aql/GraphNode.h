@@ -82,10 +82,13 @@ class GraphNode : public ExecutionNode {
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
  public:
+  // QueryPlan decided that we use this graph as a satellite
   bool isUsedAsSatellite() const;
+  // Defines whether a GraphNode can fully be pushed down to a DBServer
   bool isLocalGraphNode() const;
+  // Will wait as soon as any of our collections is a satellite (in sync)
   void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
-
+  // Can be fully pushed down to a DBServer and is available on all DBServers
   bool isEligibleAsSatelliteTraversal() const;
 
  protected:
