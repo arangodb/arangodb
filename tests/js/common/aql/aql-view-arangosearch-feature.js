@@ -1403,6 +1403,64 @@ function iResearchFeatureAqlTestSuite () {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
       }
+    },
+    testRemoveAllInJustConsolidated : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        db._createView(viewName, "arangosearch", 
+                                  {consolidationIntervalMsec: 0, commitIntervalMsec: 0, links: 
+                                    {[colName]: 
+                                      {storeValues: 'id',
+                                       includeAllFields:true, 
+                                       analyzers:['identity']}}});
+        let docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({field: i});
+        }
+        col.insert(docs);
+        db._view(viewName).properties({commitIntervalMsec: 10});
+        let res1 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
+                            + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
+                            + " length RETURN length").toArray();
+        assertEqual(1, res1.length);
+        assertEqual(1000, res1[0]);
+        db._view(viewName).properties({commitIntervalMsec: 0});
+
+        docs = [];
+        for (let i = 1000; i < 2000; ++i) {
+          docs.push({field: i});
+        }
+        col.insert(docs);
+        db._view(viewName).properties({commitIntervalMsec: 10});
+        let res2 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
+                            + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
+                            + " length RETURN length").toArray();
+        assertEqual(1, res2.length);
+        assertEqual(2000, res2[0]);
+        db._view(viewName).properties({commitIntervalMsec: 0});
+        db._query("FOR t IN " + colName + " FILTER t.field < 1500 REMOVE t._key IN " + colName);
+        db._view(viewName).properties({consolidationIntervalMsec: 10});
+        internal.sleep(3); // give consolidation some time
+        col.truncate();
+        db._view(viewName).properties({commitIntervalMsec: 10});
+  
+        // force sync
+        let res = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
+                            + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
+                            + " length RETURN length").toArray();
+        assertEqual(1, res.length);
+        assertEqual(0, res[0]);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
     }
   };
 }
