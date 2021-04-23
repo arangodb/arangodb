@@ -82,7 +82,8 @@ class EngineInfoContainerDBServerServerBased {
    private:
     std::vector<ShardID> getAllLocalShards(std::unordered_map<ShardID, ServerID> const& shardMapping,
                                            ServerID const& server,
-                                           std::shared_ptr<std::vector<std::string>> shardIds);
+                                           std::shared_ptr<std::vector<std::string>> shardIds,
+                                           bool colIsSatellite);
 
    private:
     // The graph node we need to serialize
