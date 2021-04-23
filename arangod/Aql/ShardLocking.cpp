@@ -63,7 +63,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       }
       auto const graphIsUsedAsSatellite = graphNode->isUsedAsSatellite();
       auto const isUsedAsSatellite = [&](auto const& col) {
-        return graphIsUsedAsSatellite || (pushToSingleServer && col->isSatellite());
+        return graphIsUsedAsSatellite || (pushToSingleServer && col->isSatellite()) || (col->isSatellite() && graphNode->isSmart());
       };
       // Add all Edge Collections to the Transactions, Traversals do never write
       for (auto const& col : graphNode->edgeColls()) {
@@ -76,15 +76,6 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
         updateLocking(col, AccessMode::Type::READ, snippetId, {}, isUsedAsSatellite(col));
       }
 
-      if (graphNode->isHybrid()) {
-        // Add all Satellite Collections to the Transactions, Traversals do
-        // never write, the collections have been adjusted already. Additional
-        // Satellite Collection can only be used in a hybrid environment
-        for (auto const& col : graphNode->satelliteColls()) {
-          // TODO Feature HybridSmartGraphs: think we can just set last param here to true, but double check
-          updateLocking(col, AccessMode::Type::READ, snippetId, {}, true);
-        }
-      }
       break;
     }
     case ExecutionNode::ENUMERATE_COLLECTION:
