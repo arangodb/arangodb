@@ -55,7 +55,7 @@ arena_background_thread_inactivity_check(tsdn_t *tsdn, arena_t *arena,
 	    arena_background_thread_info_get(arena);
 	if (background_thread_indefinite_sleep(info)) {
 		background_thread_interval_check(tsdn, arena,
-		    &arena->decay_dirty, 0);
+		    &arena->pa_shard.pac.decay_dirty, 0);
 	}
 }
 
