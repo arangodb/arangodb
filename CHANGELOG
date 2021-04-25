@@ -1,4 +1,4 @@
-v3.7.11 (XXXX-XX-XX)
+v3.7.11 (2021-04-25)
 --------------------
 
 * Fixed proper return value in sendRequestRetry if server is shutting down.
