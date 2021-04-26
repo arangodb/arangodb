@@ -26,6 +26,7 @@
 
 #include <Basics/RocksDBUtils.h>
 #include <Basics/files.h>
+#include <Basics/Exceptions.h>
 #include <Replication2/ReplicatedLog.h>
 #include <RocksDBEngine/RocksDBFormat.h>
 #include <RocksDBEngine/RocksDBLog.h>
