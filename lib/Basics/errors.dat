@@ -37,6 +37,7 @@ ERROR_CANNOT_READ_FILE,34,"cannot read file","Will be raised when a file cannot 
 ERROR_INCOMPATIBLE_VERSION,35,"incompatible server version","Will be raised when a server is running an incompatible version of ArangoDB."
 ERROR_DISABLED,36,"disabled","Will be raised when a requested resource is not enabled."
 ERROR_MALFORMED_JSON,37,"malformed json","Will be raised when a JSON string could not be parsed."
+ERROR_STARTING_UP,38,"startup ongoing","Will be raised when a call cannot succeed because the server startup phase is still in progress."
 
 ################################################################################
 ## HTTP error status codes
