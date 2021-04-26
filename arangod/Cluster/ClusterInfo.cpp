@@ -3134,6 +3134,12 @@ Result ClusterInfo::createCollectionsCoordinator(
             return r;
           }
         }
+      } else {
+        LOG_TOPIC("98765", INFO, Logger::CLUSTER)
+          << "Failed createCollectionsCoordinator for " << infos.size()
+          << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
+          << " first collection name: " << infos[0].name << " result: " << res;
+        return Result(TRI_ERROR_SERVICE_UNAVAILABLE);
       }
 
       // Report if this operation worked, if it failed collections will be
