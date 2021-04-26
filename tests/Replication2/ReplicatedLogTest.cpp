@@ -533,13 +533,13 @@ TEST_F(ReplicatedLogTest, parallelAccessTest) {
     *p = ':';
     do {
       --p;
-      *p = '0' + (thread % 10);
+      *p = static_cast<char>('0' + (thread % 10));
       thread /= 10;
     } while (thread > 0);
     p = str.end();
     do {
       --p;
-      *p = '0' + (i % 10);
+      *p = static_cast<char>('0' + (i % 10));
       i /= 10;
     } while (i > 0);
 
