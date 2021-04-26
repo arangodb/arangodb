@@ -563,6 +563,10 @@ TEST_F(ReplicatedLogTest, parallelAccessTest) {
         auto const payload = LogPayload{genPayload(threadIdx, i)};
         auto const idx = log.insert(payload);
         std::this_thread::sleep_for(1ns);
+        auto fut = log.waitFor(idx);
+        fut.get();
+        // TODO Rather use a function that only allows to read replicated entries,
+        //      and wait for the entry to be replicated beforehand.
         auto res = log.getEntryByIndex(idx);
         ASSERT_TRUE(res.has_value());
         auto const& entry = res.value();
@@ -596,6 +600,8 @@ TEST_F(ReplicatedLogTest, parallelAccessTest) {
           idxs[k] = log.insert(payload);
         }
         std::this_thread::sleep_for(1ns);
+        auto fut = log.waitFor(idxs.back());
+        fut.get();
         for (auto k = 0; k < batch && i + k < maxIter; ++k) {
           auto const payload = LogPayload{genPayload(threadIdx, i + k)};
           auto res = log.getEntryByIndex(idxs[k]);

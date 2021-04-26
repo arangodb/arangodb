@@ -194,6 +194,9 @@ auto ReplicatedLog::waitFor(LogIndex index)
 auto ReplicatedLog::GuardedReplicatedLog::waitFor(LogIndex index)
     -> futures::Future<std::shared_ptr<QuorumData>> {
   assertLeader();
+  if (_commitIndex >= index) {
+    return futures::Future<std::shared_ptr<QuorumData>>{std::in_place, _lastQuorum};
+  }
   auto it = _waitForQueue.emplace(index, WaitForPromise{});
   auto& promise = it->second;
   auto&& future = promise.getFuture();
