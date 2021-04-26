@@ -61,8 +61,8 @@ struct implement_compare {
 };
 
 struct LogIndex : implement_compare<LogIndex> {
-  LogIndex() : value{0} {}
-  explicit LogIndex(std::uint64_t value) : value{value} {}
+  constexpr LogIndex() noexcept : value{0} {}
+  constexpr explicit LogIndex(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
 
   [[nodiscard]] auto operator<=(LogIndex) const -> bool;
@@ -71,8 +71,8 @@ struct LogIndex : implement_compare<LogIndex> {
 };
 
 struct LogTerm : implement_compare<LogTerm> {
-  LogTerm() : value{0} {}
-  explicit LogTerm(std::uint64_t value) : value{value} {}
+  constexpr LogTerm() noexcept : value{0} {}
+  constexpr explicit LogTerm(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
   [[nodiscard]] auto operator<=(LogTerm) const -> bool;
 };
