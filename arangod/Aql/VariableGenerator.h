@@ -89,6 +89,9 @@ class VariableGenerator {
   /// @brief import from VelocyPack
   void fromVelocyPack(arangodb::velocypack::Slice const allVariablesList);
 
+  /// @brief validate a variable name
+  static bool isValidName(char const* p, char const* end) noexcept;
+
  private:
   /// @brief returns the next variable id
   VariableId nextId() noexcept;

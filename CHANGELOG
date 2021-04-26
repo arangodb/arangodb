@@ -1,8 +1,83 @@
 devel
 -----
 
+* Guarded access only to ActionBase::_result.
+
+* Fixed proper return value in sendRequestRetry if server is shutting down.
+
+* Updated arangosync to 2.2.0.
+
+* Fixed internal issue #798: In  rare case when remove request
+  completely cleans just consolidated segment commit could be cancelled
+  and documents removed from collection may be left dangling in the ArangoSearch index.
+  Also fixes ES-810 and  BTS-279.
+
+* Retry if an ex-leader can no longer drop a follower because it is no longer
+  leading.
+
+* Fixed a small problem in fuerte which could lead to an assertion failure.
+
+* Upgrade jemalloc version to latest stable dev.
+
+* Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at 
+  arangodb::transaction::V8Context::exitV8Context().
+
+* Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
+  to specify "--ldap2.OPTION". Authentication / Authorization will first check
+  the primary LDAP server. If this server cannot authenticate a user, it will
+  try the secondary one. It is possible to specify a file containing all users
+  that the primary (or secondary) LDAP server is handling by specifying the
+  option "--ldap.responsible-for". This file must contain the usernames
+  line-by-line.
+
+* Make the time-to-live (TTL) value of a streaming cursor only count after
+  the response has been sent to the client.
+
+* Improve performance of batch CRUD operations (insert, update, replace, 
+  remove) if some of the documents in the batch run into write-write conflicts.
+  Rolling back partial operations in case of a failure is very expensive 
+  because it requires rebuilding RocksDB write batches for the transaction 
+  from scratch. Rebuilding write batches takes time proportional to the number
+  of operations in the batch, and for larger batches the cost can be 
+  prohibitive. 
+  Now we are not rolling back write batches in some situations when this is
+  not required, so that in many cases running into a conflict does not have 
+  that high overhead. There can still be issues when conflicts happen for index
+  entries, but a lot of previously problematic cases should now work better.
+
+* Allow AQL variable names starting with an underscore, as stated in the docs.
+
 * Fix crashes during arangorestore operations due to usage of wrong pointer
   value for updating user permissions.
+
+* Added option `--query-max-runtime` to arangoexport, in order to control
+  maximum query runtime.
+
+* Changed default value of arangodump's `--envelope` option from `true` to
+  `false`. This allows using higher parallelism in arangorestore when 
+  restoring large collection dumps. As a side-effect, this will also decrease 
+  the size of dumps taken with arangodump, and should slightly improve dump 
+  speed.
+
+* Improve parallelism capabilities of arangorestore.
+
+  arangorestore can now dispatch restoring data chunks of a collection to idle
+  background threads, so that multiple restore requests can be in flight for 
+  the same collection concurrently.
+
+  This can improve restore speed in situations when there are idle threads 
+  left (number of threads can be configured via arangorestore's `--threads` 
+  option) and the dump file for the collection is large.
+
+  The improved parallelism is only used when restoring dumps that are in the 
+  non-enveloped format. This format has been introduced with ArangoDB 3.8. 
+  The reason is that dumps in the non-enveloped format only contain the raw 
+  documents, which can be restored independent of each other, i.e. in any 
+  order. However, the enveloped format may contain documents and remove 
+  operations, which need to be restored in the original order. 
+
+* Fix BTS-374: thread race between ArangoSearch link unloading and storage
+  engine WAL flushing.
   
 * Fix thread race between ArangoSearch link unloading and storage engine
   WAL flushing.
