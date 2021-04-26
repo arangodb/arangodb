@@ -234,9 +234,7 @@ PregelFeature::PregelFeature(application_features::ApplicationServer& server)
 }
 
 PregelFeature::~PregelFeature() {
-  if (_recoveryManager) {
-    _recoveryManager.reset();
-  }
+  _recoveryManager.reset();
   cleanupAll();
 }
 
@@ -254,7 +252,8 @@ void PregelFeature::start() {
 
   if (ServerState::instance()->isCoordinator()) {
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    _recoveryManager.reset(new RecoveryManager(ci));
+    _recoveryManager = std::make_unique<RecoveryManager>(ci);
+    _recoveryManagerPtr.store(_recoveryManager.get(), std::memory_order_release);
   }
 }
 

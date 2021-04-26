@@ -24,6 +24,7 @@
 #ifndef ARANGODB_PREGEL_FEATURE_H
 #define ARANGODB_PREGEL_FEATURE_H 1
 
+#include <atomic>
 #include <cstdint>
 
 #include <velocypack/Builder.h>
@@ -76,10 +77,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   // ThreadPool* threadPool() { return _threadPool.get(); }
   RecoveryManager* recoveryManager() {
-    if (_recoveryManager) {
-      return _recoveryManager.get();
-    }
-    return nullptr;
+    return _recoveryManagerPtr.load(std::memory_order_acquire);
   }
 
   static void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
@@ -90,6 +88,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
  private:
   Mutex _mutex;
   std::unique_ptr<RecoveryManager> _recoveryManager;
+  std::atomic<RecoveryManager*> _recoveryManagerPtr;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<Conductor>>> _conductors;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>> _workers;
 };
