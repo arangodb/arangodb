@@ -3,6 +3,8 @@ devel
 * Timely updates of rebootId / cluster membership of DB servers and
   coordinators in ClusterInfo. Fixes BTS-368 detected in chaos tests.
 
+* Guarded access only to ActionBase::_result.
+
 * Fixed proper return value in sendRequestRetry if server is shutting down.
 
 * Updated arangosync to 2.2.0.

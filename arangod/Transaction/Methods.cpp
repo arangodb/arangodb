@@ -1910,7 +1910,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
             // thus replication is restarted from the new leader. There is no need to keep
             // trying to drop followers at this point.
 
-            if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+           if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
               // In this case, we know that we are not or no longer
               // the leader for this shard. Therefore we need to
               // send a code which let's the coordinator retry.
