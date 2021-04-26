@@ -1,5 +1,11 @@
 devel
 -----
+* Introduce a new internal error code for cases where a call cannot succeed
+  because the server startup phase is still in progress. This error will be
+  mapped to the HTTP status code 503 (service unavailable).
+  One example where this can happen is when trying to authenticate a request,
+  but the _users collection is not yet available in the cluster.
+
 * Timely updates of rebootId / cluster membership of DB servers and
   coordinators in ClusterInfo. Fixes BTS-368 detected in chaos tests.
 
