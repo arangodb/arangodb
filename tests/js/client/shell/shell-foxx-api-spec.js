@@ -18,8 +18,6 @@ const aql = arangodb.aql;
 var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 const isVst = arango.getEndpoint().match('^vst://') !== null;
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 function loadFoxxIntoZip(path) {
   let zip = utils.zipDirectory(path);
   let content = fs.readFileSync(zip);
