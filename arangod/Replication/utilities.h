@@ -31,6 +31,7 @@
 #include <unordered_map>
 
 #include "Basics/Result.h"
+#include "SimpleHttpClient/ConnectionCache.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
@@ -94,6 +95,8 @@ struct Connection {
   std::string const _endpointString;
   std::string const _localServerId;
   std::string const _clientInfo;
+
+  httpclient::ConnectionLease _connectionLease;
 
   /// lock to protect client connection
   mutable std::mutex _mutex;

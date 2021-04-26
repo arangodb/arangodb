@@ -150,6 +150,15 @@ GeneralClientConnection* GeneralClientConnection::factory(
 
   return nullptr;
 }
+  
+void GeneralClientConnection::repurpose(double connectTimeout, double requestTimeout,
+                                        size_t connectRetries) {
+  _requestTimeout = requestTimeout;
+  _connectTimeout = connectTimeout;
+  _connectRetries = connectRetries;
+  _numConnectRetries = 0;
+  setInterrupted(false);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect

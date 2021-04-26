@@ -1,5 +1,8 @@
 devel
 -----
+
+* Add a connection cache for internal replication requests.
+
 * Timely updates of rebootId / cluster membership of DB servers and
   coordinators in ClusterInfo. Fixes BTS-368 detected in chaos tests.
 

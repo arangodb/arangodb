@@ -120,6 +120,9 @@ class GeneralClientConnection {
 
   inline size_t connectRetries() const { return _connectRetries; }
 
+  void repurpose(double connectTimeout, double requestTimeout,
+                 size_t connectRetries);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect
   //////////////////////////////////////////////////////////////////////////////

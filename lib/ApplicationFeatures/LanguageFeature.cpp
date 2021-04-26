@@ -55,7 +55,7 @@ void setCollator(std::string const& language, void* icuDataPtr) {
   }
 }
 
-  void setLocale(icu::Locale& locale) {
+void setLocale(icu::Locale& locale) {
   using arangodb::basics::Utf8Helper;
   std::string languageName;
 
