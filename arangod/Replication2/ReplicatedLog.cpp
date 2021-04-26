@@ -50,9 +50,9 @@ struct ContainerIterator : LogIterator {
   I _end;
 };
 
-class InMemoryLogIterator : public LogIterator {
+class ReplicatedLogIterator : public LogIterator {
  public:
-  explicit InMemoryLogIterator(std::deque<LogEntry>::const_iterator begin,
+  explicit ReplicatedLogIterator(std::deque<LogEntry>::const_iterator begin,
                                std::deque<LogEntry>::const_iterator end)
       : _begin(std::move(begin)), _end(std::move(end)) {}
 
@@ -449,7 +449,7 @@ auto ReplicatedLog::GuardedReplicatedLog::getLogIterator(LogIndex fromIdx) const
   TRI_ASSERT(fromIdx < endIdx);
   std::advance(from, fromIdx.value);
   auto to = _log.cend();
-  return std::make_shared<InMemoryLogIterator>(from, to);
+  return std::make_shared<ReplicatedLogIterator>(from, to);
 }
 
 void ReplicatedLog::GuardedReplicatedLog::checkCommitIndex() {

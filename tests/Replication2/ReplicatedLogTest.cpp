@@ -31,8 +31,8 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-struct InMemoryLogTest : ::testing::Test {};
-struct InMemoryLogTest2 : ::testing::Test {
+struct ReplicatedLogTest : ::testing::Test {};
+struct ReplicatedLogTest2 : ::testing::Test {
 
 
   auto getNextLogId() -> LogId {
@@ -56,7 +56,7 @@ struct InMemoryLogTest2 : ::testing::Test {
   LogId _nextLogId{0};
 };
 
-TEST_F(InMemoryLogTest2, stop_follower_and_rejoin) {
+TEST_F(ReplicatedLogTest2, stop_follower_and_rejoin) {
   auto leader = addLogInstance("leader");
   auto follower = addFollowerLogInstance("follower");
 
@@ -131,7 +131,7 @@ TEST_F(InMemoryLogTest2, stop_follower_and_rejoin) {
 }
 
 
-TEST_F(InMemoryLogTest, test) {
+TEST_F(ReplicatedLogTest, test) {
   auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
   auto const ourParticipantId = ParticipantId{1};
   auto persistedLog = std::make_shared<MockLog>(LogId{1});
@@ -176,7 +176,7 @@ TEST_F(InMemoryLogTest, test) {
   EXPECT_EQ(payload, logEntry.logPayload());
 }
 
-TEST_F(InMemoryLogTest, appendEntries) {
+TEST_F(ReplicatedLogTest, appendEntries) {
   auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
   auto const ourParticipantId = ParticipantId{1};
   auto const leaderId = ParticipantId{2};
@@ -348,7 +348,7 @@ TEST_F(InMemoryLogTest, appendEntries) {
   }
 }
 
-TEST_F(InMemoryLogTest, replicationTest) {
+TEST_F(ReplicatedLogTest, replicationTest) {
   auto const leaderId = ParticipantId{1};
   auto const leaderState = std::make_shared<InMemoryState>();
   auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
@@ -437,7 +437,7 @@ TEST_F(InMemoryLogTest, replicationTest) {
   }
 }
 
-TEST_F(InMemoryLogTest, replicationTest2) {
+TEST_F(ReplicatedLogTest, replicationTest2) {
   auto const leaderId = ParticipantId{1};
   auto const leaderState = std::make_shared<InMemoryState>();
   auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
@@ -505,7 +505,7 @@ TEST_F(InMemoryLogTest, replicationTest2) {
   ASSERT_FALSE(followerLog->hasPendingAppendEntries());
 }
 
-TEST_F(InMemoryLogTest, parallelAccessTest) {
+TEST_F(ReplicatedLogTest, parallelAccessTest) {
   using namespace std::chrono_literals;
 
   auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
