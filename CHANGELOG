@@ -1,6 +1,172 @@
 devel
 -----
 
+* Guarded access only to ActionBase::_result.
+
+* Fixed proper return value in sendRequestRetry if server is shutting down.
+
+* Updated arangosync to 2.2.0.
+
+* Fixed internal issue #798: In  rare case when remove request
+  completely cleans just consolidated segment commit could be cancelled
+  and documents removed from collection may be left dangling in the ArangoSearch index.
+  Also fixes ES-810 and  BTS-279.
+
+* Retry if an ex-leader can no longer drop a follower because it is no longer
+  leading.
+
+* Fixed a small problem in fuerte which could lead to an assertion failure.
+
+* Upgrade jemalloc version to latest stable dev.
+
+* Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at 
+  arangodb::transaction::V8Context::exitV8Context().
+
+* Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
+  to specify "--ldap2.OPTION". Authentication / Authorization will first check
+  the primary LDAP server. If this server cannot authenticate a user, it will
+  try the secondary one. It is possible to specify a file containing all users
+  that the primary (or secondary) LDAP server is handling by specifying the
+  option "--ldap.responsible-for". This file must contain the usernames
+  line-by-line.
+
+* Make the time-to-live (TTL) value of a streaming cursor only count after
+  the response has been sent to the client.
+
+* Improve performance of batch CRUD operations (insert, update, replace, 
+  remove) if some of the documents in the batch run into write-write conflicts.
+  Rolling back partial operations in case of a failure is very expensive 
+  because it requires rebuilding RocksDB write batches for the transaction 
+  from scratch. Rebuilding write batches takes time proportional to the number
+  of operations in the batch, and for larger batches the cost can be 
+  prohibitive. 
+  Now we are not rolling back write batches in some situations when this is
+  not required, so that in many cases running into a conflict does not have 
+  that high overhead. There can still be issues when conflicts happen for index
+  entries, but a lot of previously problematic cases should now work better.
+
+* Allow AQL variable names starting with an underscore, as stated in the docs.
+
+* Fix crashes during arangorestore operations due to usage of wrong pointer
+  value for updating user permissions.
+
+* Added option `--query-max-runtime` to arangoexport, in order to control
+  maximum query runtime.
+
+* Changed default value of arangodump's `--envelope` option from `true` to
+  `false`. This allows using higher parallelism in arangorestore when 
+  restoring large collection dumps. As a side-effect, this will also decrease 
+  the size of dumps taken with arangodump, and should slightly improve dump 
+  speed.
+
+* Improve parallelism capabilities of arangorestore.
+
+  arangorestore can now dispatch restoring data chunks of a collection to idle
+  background threads, so that multiple restore requests can be in flight for 
+  the same collection concurrently.
+
+  This can improve restore speed in situations when there are idle threads 
+  left (number of threads can be configured via arangorestore's `--threads` 
+  option) and the dump file for the collection is large.
+
+  The improved parallelism is only used when restoring dumps that are in the 
+  non-enveloped format. This format has been introduced with ArangoDB 3.8. 
+  The reason is that dumps in the non-enveloped format only contain the raw 
+  documents, which can be restored independent of each other, i.e. in any 
+  order. However, the enveloped format may contain documents and remove 
+  operations, which need to be restored in the original order. 
+
+* Fix BTS-374: thread race between ArangoSearch link unloading and storage
+  engine WAL flushing.
+  
+* Fix thread race between ArangoSearch link unloading and storage engine
+  WAL flushing.
+
+* change arangosh client behavior:
+ - *_RAW methods will never add a `body` to HEAD responses
+ - *_RAW methods will now always return velocypack-typed responses in Buffers
+ - `--server.force-json` will now be applied as default, overrideable
+   by user code
+
+* Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
+  replacement for PUT `/_api/cursor/<cursor-id>`. The POST API is functionally
+  equivalent to the existing PUT API. The benefit of using the POST API is
+  that HTTP POST requests will not be considered as idempotent, so proxies
+  may not retry them if they fail. This was the case with the existing PUT
+  API, as HTTP PUT requests can be considered idempotent according to the
+  HTTP specification.
+
+  The POST API is now used internally by ArangoDB's own requests, including
+  the web UI and the client tools. That means the web UI and client tools
+  will only work with ArangoDB versions that have support for the new POST
+  API. This is true for recent 3.7 and 3.8 versions, as the POST API will be
+  backported there as well.
+
+* Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
+  'dense_fixed_offset_column_key'`.
+
+* Fix cluster internal retry behavior for network communications. In particular
+  retry on 421 (leader refuses operation). This leads to the cluster letting
+  less internal errors out to clients.
+
+* Don't display obsoleted startup options and sections in `--help` and
+  `--help-.` commands. Also rename "global" to "general" options.
+
+* Added option `--query.require-with` to make AQL in single server mode also
+  require `WITH` clauses where the cluster would need them.
+  The option is turned off by default, but can be turned on in single servers
+  to remove this behavior difference between single servers and clusters,
+  making later a transition from single server to cluster easier.
+
+* Fixed a problem in document batch operations, where errors from one shard
+  were reported multiple times, if the shard is completely off line.
+
+* Removed assertion for success of a RocksDB function. Throw a proper 
+  exception instead.
+
+* Show peak memory usage in AQL query profiling output.
+
+* Micro improvements for Pregel job API and documentation:
+  - Added a few useful attributes to Pregel HTTP API docs.
+  - Added "parallelism" attribute to the result of Pregel job status responses,
+    so that the effective parallelism is reported back.
+  - Make sure "computationTime" in Pregel job status response does not
+    underflow in case of errors.
+
+* Prevent arangod from terminating with "terminate called without an active 
+  exception" (SIGABRT) in case an out-of-memory exception occurs during 
+  creating an ASIO socket connection.
+
+* UI builds are now using the yarn package manager instead of the previously
+  used node package manager.
+
+* Fixed issue #13169: arangoimport tsv conversion of bools and null, although
+  switched off by `--convert false`.
+
+  Importing unquoted `null`, `false` and `true` literals from delimited files
+  get imported as strings now if `convert` is explicitly turned off. It
+  previously affected unquoted numbers only.
+
+* Web UI: Highlight binary and hexadecimal integer literals in AQL queries.
+
+* Fix BTS-350, BTS-358: Fixed potential startup errors due to global
+  replication applier being started before end of database recovery procedure.
+  Also fixed potential shut down errors due to global replication applier
+  being shut down in parallel to a concurrent shut down attempt.
+
+* Experimentally switch to wyhash (from xxhash) for velocypack. This is an
+  experiment in devel to check if it produces any observable speedups.
+
+* Updated ArangoDB Starter to 0.15.0.
+
+* Remove deprecated HTTP REST API `/_api/export`. This API was deprecated
+  in a previous version because it was not supported in clusters and was
+  also covered completely by streaming AQL queries for the RocksDB storage
+  engine.
+
+* Added error handling for figures command in cluster. Previously errors
+  returned by shards were ignored when aggregating the individual responses.
+
 * Updated ArangoDB Starter to 0.15.0-preview-4.
 
 * Fixed CPPCHECK warning or added suppression.
@@ -8,11 +174,11 @@ devel
 * Added enterprise-build-repository and oskar-build-repository to `--version`
   as `enterprise-build-repository` and `oskar-build-repository`.
 
-* Clean up replication code and remove a 3.2-compatibility mode that was 
+* Clean up replication code and remove a 3.2-compatibility mode that was
   only useful when replicating from a leader < ArangoDB version 3.3.
 
 * Obsolete option `--database.old-system-collections`. This option has no
-  meaning in ArangoDB 3.9, as old system collections will not be created 
+  meaning in ArangoDB 3.9, as old system collections will not be created
   anymore in this version. The option was deprecated in 3.8 and announced
   to be obsoleted.
 
@@ -20,16 +186,16 @@ devel
 
 * Make arangovpack more powerful, by supporting different input and output
   formats (json and vpack, plain or hex-encoded).
-  The arangovpack options `--json` and `--pretty` have been removed and have 
-  been replaced with separate options for specfiying the input and output 
+  The arangovpack options `--json` and `--pretty` have been removed and have
+  been replaced with separate options for specifying the input and output
   types:
   * `--input-type` ("json", "json-hex", "vpack", "vpack-hex")
   * `--output-type` ("json", "json-pretty", "vpack", "vpack-hex")
   The previous option `--print-non-json` has been replaced with the option
-  `--fail-on-non-json` which makes arangovpack fail when trying to emit 
+  `--fail-on-non-json` which makes arangovpack fail when trying to emit
   non-JSON types to JSON output.
 
-* Fix undefined behavior in dynarray constructor when running into 
+* Fix undefined behavior in dynarray constructor when running into
   an out-of-memory exception during construction. In arangod, this can only
   happen during metrics objects construction at program start.
 
@@ -58,12 +224,12 @@ devel
   query would materialize all the collection's documents in RAM, making such
   constructs prohibitively expensive for medium-size to large-size collections.
 
-  The option can now be set to `false` to prohibit accidental usage of 
+  The option can now be set to `false` to prohibit accidental usage of
   collection names in AQL expressions. With that setting, using a collection
-  inside an arbitrary expression will trigger the error `collection used as 
+  inside an arbitrary expression will trigger the error `collection used as
   expression operand` and make the query fail.
-  Even with the option being set to `false`, it is still possible to use 
-  collection names in AQL queries where they are expected, e.g. `FOR doc IN 
+  Even with the option being set to `false`, it is still possible to use
+  collection names in AQL queries where they are expected, e.g. `FOR doc IN
   collection RETURN doc`.
 
 * Remove obsolete API endpoint /_admin/repair/distributeShardsLike`. This
@@ -98,9 +264,9 @@ devel
   so that a global memory limit is now effective by default.
 
   The default global memory limit value is calculated by a formula depending on
-  the amount of available RAM and will result in the following values for 
+  the amount of available RAM and will result in the following values for
   common RAM sizes:
-  
+
   RAM:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
   RAM:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
   RAM:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
@@ -131,7 +297,7 @@ devel
     * arangodb_scheduler_jobs_done_total
   These counters are only visible in the new v2 metrics API and replace the old
   metrics which are suppressed for v2.
-  
+
 * Fix connectionTime statistic. This statistic should provide the distribution
   of the connection lifetimes, but in previous versions the tracking was broken
   and no values were reported.
@@ -157,10 +323,10 @@ devel
     are still in effect with this setting, meaning that all operations may
     still require dedicated other permissions (as in 3.7).
 
-  The default value for the option is `jwt-compat`, which means this option 
+  The default value for the option is `jwt-compat`, which means this option
   will not cause any extra JWT checks compared to 3.7.
 
-* Increase default idle timeout in streaming transactions from 10 seconds to 
+* Increase default idle timeout in streaming transactions from 10 seconds to
   60 seconds, and make the timeout configurable via a startup parameter
   `--transaction.streaming-idle-timeout`.
 

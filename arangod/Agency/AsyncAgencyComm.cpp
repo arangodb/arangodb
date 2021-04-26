@@ -166,10 +166,12 @@ void agencyAsyncInquiryHandleResponse(AsyncAgencyCommManager& man,
               result.response().header.metaByKey(arangodb::StaticStrings::Location);
           redirectOrError(man, endpoint, location);
           return ::agencyAsyncInquiry(man, std::move(meta), std::move(body));
+        } else if (result.statusCode() != fuerte::StatusServiceUnavailable) {
+          // otherwise return error as is
+          return std::move(meta->promise)
+              .fulfill(AsyncAgencyCommResult{result.error, result.stealResponse()});
         }
-        // otherwise return error as is
-        return std::move(meta->promise)
-            .fulfill(AsyncAgencyCommResult{result.error, result.stealResponse()});
+        [[fallthrough]];
       case Error::ConnectionCanceled:
         if (man.server().isStopping()) {
           return std::move(meta->promise)

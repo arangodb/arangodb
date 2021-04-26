@@ -37,6 +37,7 @@
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
+#include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
@@ -81,6 +82,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
+        
+namespace {
+AqlCallStack const defaultStack{AqlCallList{AqlCall{}}};
+}
 
 /// @brief internal constructor, Used to construct a full query or a ClusterQuery
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
@@ -211,7 +216,7 @@ Query::~Query() {
   _snippets.clear(); // simon: must be before plan
   _plans.clear(); // simon: must be before AST
   _ast.reset();
-  
+
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
       << " Query::~Query this: " << (uintptr_t)this;
@@ -240,10 +245,11 @@ bool Query::killed() const {
 
 /// @brief set the query to killed
 void Query::kill() {
-  _queryKilled = true;
-
-  if (_trx->state()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() && !_queryKilled) {
+    _queryKilled = true;
     this->cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, /*sync*/false);
+  } else {
+    _queryKilled = true;
   }
 }
 
@@ -447,8 +453,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // In case of WAITING we return, this function is repeatable!
         // In case of HASMORE we loop
         while (true) {
-          AqlCallStack defaultStack{AqlCallList{AqlCall{}}};
-          auto const& [state, skipped, block] = engine->execute(defaultStack);
+          auto const& [state, skipped, block] = engine->execute(::defaultStack);
           // The default call asks for No skips.
           TRI_ASSERT(skipped.nothingSkipped());
           if (state == ExecutionState::WAITING) {
@@ -662,6 +667,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       ExecutionState state = ExecutionState::HASMORE;
       auto context = TRI_IGETC;
       while (state != ExecutionState::DONE) {
+        if (killed()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+        }
         auto res = engine->getSome(ExecutionBlock::DefaultBatchSize);
         state = res.first;
         while (state == ExecutionState::WAITING) {
@@ -679,6 +687,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
 
         if (!_queryOptions.silent && resultRegister.isValid()) {
+          TRI_IF_FAILURE("Query::executeV8directKillBeforeQueryResultIsGettingHandled") {
+            debugKillQuery();
+          }
           size_t memoryUsage = 0;
           size_t const n = value->numRows();
 
@@ -708,10 +719,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           // this may throw
           _resourceMonitor.increaseMemoryUsage(memoryUsage);
           _resultMemoryUsage += memoryUsage;
-        }
 
-        if (killed()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+          TRI_IF_FAILURE("Query::executeV8directKillAfterQueryResultIsGettingHandled") {
+            debugKillQuery();
+          }
         }
       }
 
@@ -1346,6 +1357,10 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 
   enterState(QueryExecutionState::ValueType::FINALIZATION);
 
+  TRI_IF_FAILURE("Query::directKillBeforeQueryWillBeFinalized") {
+    debugKillQuery();
+  }
+
   // simon: do not unregister _queryProfile here, since kill() will be called
   //        under the same QueryList lock
 
@@ -1379,6 +1394,10 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     guard.cancel();
   }
 
+  TRI_IF_FAILURE("Query::directKillAfterQueryWillBeFinalized") {
+    debugKillQuery();
+  }
+
   LOG_TOPIC("7ef18", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
       << " Query::finalize: before cleanupPlanAndEngine"
@@ -1409,6 +1428,11 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
         /* ignore */
       }
     });
+
+    TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
+      debugKillQuery();
+    }
+
     return ExecutionState::WAITING;
   } catch (...) {
     // In case of any error that happened in sending out the requests
@@ -1456,3 +1480,54 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     return ExecutionState::DONE;
   }
 }
+
+  void Query::debugKillQuery() {
+#ifndef ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_ASSERT(false);
+    return;
+#else
+    if (_wasDebugKilled) {
+      return;
+    }
+    bool usingSystemCollection = false;
+    // Ignore queries on System collections, we do not want them to hit failure points
+    collections().visit([&usingSystemCollection](std::string const&, Collection& col) -> bool {
+      if (col.getCollection()->system()) {
+        usingSystemCollection = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (usingSystemCollection) {
+      return;
+    }
+
+    _wasDebugKilled = true;
+    // A query can only be killed under certain circumstances.
+    // We assert here that one of those is true.
+    // a) Query is in the list of current queries, this can be requested by the user and the query can be killed by user
+    // b) Query is in the query registry. In this case the query registry can hit a timeout, which triggers the kill
+    // c) The query id has been handed out to the user (stream query only)
+    bool isStreaming = queryOptions().stream;
+    bool isInList = false;
+    bool isInRegistry = false;
+    auto const& queryList = vocbase().queryList();
+    if (queryList->enabled()) {
+      auto const& current = queryList->listCurrent();
+      for (auto const& it : current) {
+        if (it.id == _queryId) {
+          isInList = true;
+          break;
+        }
+      }
+    }
+
+    QueryRegistry* registry = QueryRegistryFeature::registry();
+    if (registry != nullptr) {
+      isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
+    }
+    TRI_ASSERT(isInList || isStreaming || isInRegistry || _execState == QueryExecutionState::ValueType::FINALIZATION);
+    kill();
+#endif
+  }

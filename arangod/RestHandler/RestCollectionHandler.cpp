@@ -322,6 +322,11 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
+  if (ServerState::instance()->isDBServer()) {
+    generateError(Result(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR));
+    return;
+  }
+
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -371,6 +376,7 @@ void RestCollectionHandler::handleCommandPost() {
   _builder.clear();
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(_context);
+
   Result res =
       methods::Collections::create(_vocbase,  // collection vocbase
                                    options,
@@ -758,8 +764,12 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
     return futures::makeFuture(OperationResult(Result(), options));
   });
 
+
   futures::Future<OperationResult> fut = std::move(figures).then_bind(
       [=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
+        if (figures.fail()) {
+          THROW_ARANGO_EXCEPTION(figures.result);
+        }
         if (figures.buffer) {
           _builder.add("figures", figures.slice());
         }

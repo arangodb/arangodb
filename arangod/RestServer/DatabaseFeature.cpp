@@ -297,7 +297,7 @@ DatabaseFeature::~DatabaseFeature() {
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
+  options->addSection("database", "database options");
 
   options->addOption("--database.wait-for-sync",
                      "default wait-for-sync behavior, can be overwritten "
@@ -829,6 +829,11 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name, bool removeApps
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());
+    }
+    // TODO Temporary fix, this full method needs to be unified.
+    try {
+      vocbase->cursorRepository()->garbageCollect(true);
+    } catch (...) {
     }
 
     res = engine.prepareDropDatabase(*vocbase).errorNumber();

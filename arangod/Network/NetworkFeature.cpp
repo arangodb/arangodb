@@ -113,7 +113,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("network", "Configure cluster-internal networking");
+  options->addSection("network", "cluster-internal networking");
 
   options->addOption("--network.io-threads", "number of network IO threads for cluster-internal communication",
                      new UInt32Parameter(&_numIOThreads))

@@ -116,8 +116,6 @@ FileDescriptorsFeature::FileDescriptorsFeature(application_features::Application
 }
 
 void FileDescriptorsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOption("--server.descriptors-minimum",
                      "minimum number of file descriptors needed to start (0 = no minimum)",
                      new UInt64Parameter(&_descriptorsMinimum),

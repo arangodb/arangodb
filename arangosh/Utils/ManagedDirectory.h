@@ -153,6 +153,7 @@ class ManagedDirectory {
    private:
     void writeNoLock(char const* data, size_t length);
     TRI_read_return_t readNoLock(char* buffer, size_t length);
+    void prepareGzip(char const* gzFlags);
 
    private:
     ManagedDirectory const& _directory;

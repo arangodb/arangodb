@@ -1,9 +1,7 @@
 project(nghttp2 C CXX)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-implicit-function-declaration")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-implicit-function-declaration")
-endif()
+add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-implicit-function-declaration)
+add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-implicit-function-declaration)
 
 # add_subdirectory(lib/includes)
 

@@ -790,9 +790,10 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
 
-    network::sendRequest(pool, "server:" + _config.coordinatorId(),
-                         fuerte::RestVerb::Post, baseUrl + path, std::move(buffer), reqOpts)
+    network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
+        fuerte::RestVerb::Post, baseUrl + path, std::move(buffer), reqOpts)
         .finally([](auto&&) noexcept {});
+
   }
 }
 
@@ -820,7 +821,7 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
     reqOpts.database = _config.database();
     reqOpts.skipScheduler = true;
 
-    network::Response r = network::sendRequest(pool, "server:" + _config.coordinatorId(),
+    network::Response r = network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
                                                fuerte::RestVerb::Post,
                                                baseUrl + path, std::move(buffer), reqOpts).await_unwrap();
 

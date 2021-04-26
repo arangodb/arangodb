@@ -71,7 +71,7 @@ class Cursor {
   inline double ttl() const { return _ttl; }
 
   inline double expires() const { return _expires; }
-
+  
   inline bool isUsed() const { return _isUsed; }
 
   inline bool isDeleted() const { return _isDeleted; }
@@ -83,15 +83,21 @@ class Cursor {
     TRI_ASSERT(!_isUsed);
 
     _isUsed = true;
-    _expires = TRI_microtime() + _ttl;
   }
 
   void release() {
     TRI_ASSERT(_isUsed);
     _isUsed = false;
+    _expires = TRI_microtime() + _ttl;
   }
 
   virtual void kill() {}
+
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  virtual void debugKillQuery() {}
 
   virtual size_t count() const = 0;
 

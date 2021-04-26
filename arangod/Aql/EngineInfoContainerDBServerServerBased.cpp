@@ -36,6 +36,7 @@
 
 #include <Futures/Utilities.h>
 #include <set>
+#include <velocypack/Collection.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -334,7 +335,7 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
     return result;
   };
 
-  return network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
+  return network::sendRequestRetry(pool, serverDest, fuerte::RestVerb::Post,
                               "/_api/aql/setup", std::move(buffer), options,
                               std::move(headers))
       .then([buildCallback = std::move(buildCallback)](futures::Try<network::Response>&& resp) mutable {
@@ -501,8 +502,17 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       serverBefore = server;
 #endif
       VPackSlice infoSlice{buffer->data()};
+      // We need to rewrite the request.
+      // We have modified the options locally so we need to update the VPack representation of Options here.
+      // Note: There may be a more optimized variant, but we have just waited 2 seconds and will linearly
+      // lock all servers, any performance optimization here will not have measureable impact.
+      VPackBuilder overwrittenOptions;
+      overwrittenOptions.openObject();
+      addOptionsPart(overwrittenOptions, server);
+      overwrittenOptions.close();
+      auto newRequest = arangodb::velocypack::Collection::merge(infoSlice, overwrittenOptions.slice(), false);
 
-      auto request = buildSetupRequest(trx, std::move(server), infoSlice,
+      auto request = buildSetupRequest(trx, std::move(server), newRequest.slice(),
                                        std::move(didCreateEngine), snippetIds, serverToQueryId,
                                        serverToQueryIdLock, pool, options).await_unwrap();
       _query.incHttpRequests(unsigned(1));
@@ -638,7 +648,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   builder.close();
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId] : serverQueryIds) {
-    requests.emplace_back(network::sendRequest(pool, server, fuerte::RestVerb::Delete,
+    requests.emplace_back(network::sendRequestRetry(pool, server, fuerte::RestVerb::Delete,
                                                           url + std::to_string(queryId),
                                                           /*copy*/ body, options));
   }
@@ -651,7 +661,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   for (auto& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
-      requests.emplace_back(network::sendRequest(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
+      requests.emplace_back(network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
                            url + basics::StringUtils::itoa(engine.second), noBody, options));
     }
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));

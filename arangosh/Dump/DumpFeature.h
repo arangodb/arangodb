@@ -82,7 +82,7 @@ class DumpFeature final : public application_features::ApplicationFeature {
     bool overwrite{false};
     bool progress{true};
     bool useGzip{true};
-    bool useEnvelope{true};
+    bool useEnvelope{false};
   };
 
   /// @brief Stores stats about the overall dump progress

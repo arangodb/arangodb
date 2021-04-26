@@ -854,6 +854,7 @@ void createMoveShard(std::shared_ptr<MoveShardContext> const& ctx, VPackSlice pl
             std::move(ctx->promise).fulfill(result.asResult());
           }
         } catch (...) {
+          std::move(ctx->promise).capture_current_exception();
         }
       });
 }

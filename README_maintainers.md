@@ -137,7 +137,8 @@ For building the ArangoDB starter checkout the
 
 ### Building the Web Interface
 
-To build Web UI, also known as frontend or *Aardvark*, use CMake in the
+To build Web UI, also known as frontend or *Aardvark*, [Node.js](https://nodejs.org/)
+and [Yarn](https://yarnpkg.com/) need to be installed. You can then use CMake in the
 build directory:
 
     cmake --build . --target frontend
@@ -146,7 +147,7 @@ For Oskar you may use the following:
 
     shellInAlpineContainer
 
-    apk add --no-cache nodejs npm && cd /work/ArangoDB/build && cmake --build . --target frontend
+    apk add --no-cache nodejs yarn && cd /work/ArangoDB/build && cmake --build . --target frontend
 
 To remove all available node modules and start a clean installation run:
 
@@ -155,13 +156,13 @@ To remove all available node modules and start a clean installation run:
 The frontend can also be built using these commands:
 
     cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
-    npm install
-    npm run build
+    yarn install
+    yarn run build
 
 For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
 run:
 
-    npm start
+    yarn start
 
 This will deploy a development server (Port: 3000) and automatically start your
 favorite browser and open the web UI.
@@ -659,7 +660,7 @@ There are several major places where unittests live:
 | `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools
 | `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage
 | `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each
-| `js/common/modules/jsunity[.js|/jsunity.js`                  | jsunity testing framework; invoked via jsunity.js next to the module
+| `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module
 | `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb
 
 ### Filename conventions

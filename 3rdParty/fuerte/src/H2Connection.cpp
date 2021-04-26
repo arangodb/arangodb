@@ -28,8 +28,6 @@
 #include <fuerte/types.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <regex>
-
 #include "debugging.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
@@ -294,11 +292,11 @@ void H2Connection<T>::initNgHttp2Session() {
   }
 
   rv = nghttp2_session_client_new(&_session, callbacks, /*args*/ this);
+  nghttp2_session_callbacks_del(callbacks);
+
   if (rv != 0) {
-    nghttp2_session_callbacks_del(callbacks);
     throw std::runtime_error("out ouf memory");
   }
-  nghttp2_session_callbacks_del(callbacks);
 }
 
 // -----------------------------------------------------------------------------
@@ -465,7 +463,7 @@ void H2Connection<SocketType::Ssl>::finishConnect() {
 // queue the response onto the session, call only on IO thread
 template <SocketType T>
 void H2Connection<T>::queueHttp2Requests() {
-  int numQueued = 0;  // make sure we do send too many request
+  int numQueued = 0;  // make sure we do not send too many request
 
   Stream* tmp = nullptr;
   while (numQueued++ < 4 && this->_queue.pop(tmp)) {
@@ -723,7 +721,7 @@ template <SocketType T>
 void H2Connection<T>::abortRequests(fuerte::Error err, Clock::time_point now) {
   auto it = this->_streams.begin();
   while (it != this->_streams.end()) {
-    if (it->second->expires < now) {
+    if (it->second->expires <= now) {
       it->second->invokeOnError(err);
 
       if (now == Clock::time_point::max()) {

@@ -211,6 +211,10 @@ void RocksDBTransactionState::createTransaction() {
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
 
+  // when trying to lock the same keys, we want to return quickly and not 
+  // spend the default 1000ms before giving up
+  trxOpts.lock_timeout = 1; 
+
   // unclear performance implications do not use for now
   // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
   if (isOnlyExclusiveTransaction()) {

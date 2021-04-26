@@ -94,7 +94,7 @@ uint64_t RestHandler::messageId() const {
 
   return messageId;
 }
-  
+
 RequestLane RestHandler::determineRequestLane() {
   if (_lane == RequestLane::UNDEFINED) {
     bool found;
@@ -130,9 +130,9 @@ void RestHandler::trackTaskEnd() noexcept {
   if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
-    
+
     // update the time the last low priority item spent waiting in the queue.
-    
+
     // the queueing time is in ms
     uint64_t queueTimeMs = static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
     SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
@@ -238,9 +238,19 @@ std::optional<futures::Future<Result>> RestHandler::forwardRequest() {
 
   nf.trackForwardedRequest();
 
-  auto future = network::sendRequest(pool, "server:" + serverId, requestType,
-                                     _request->requestPath(),
-                                     std::move(payload), options, std::move(headers));
+  // Should the coordinator be gone by now, we'll respond with 404.
+  // There is no point forwarding requests. This affects transactions, cursors, ...
+  if (server().getFeature<ClusterFeature>().clusterInfo().getServerEndpoint(serverId).empty()) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_CLUSTER_SERVER_UNKNOWN,
+                  std::string("cluster server ") + serverId + " unknown");
+    return futures::Future<Result>(std::in_place, TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
+  }
+
+  auto future = network::sendRequestRetry(pool, "server:" + serverId, requestType,
+                                          _request->requestPath(), std::move(payload),
+                                          options, std::move(headers));
+
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
     auto res = network::fuerteToArangoErrorCode(response);
