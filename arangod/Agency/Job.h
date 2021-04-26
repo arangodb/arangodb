@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_JOB_H
-#define ARANGOD_CONSENSUS_JOB_H 1
+#pragma once
 
 #include <stddef.h>
 #include <algorithm>
@@ -371,4 +370,3 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

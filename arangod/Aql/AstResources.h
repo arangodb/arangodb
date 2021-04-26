@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AST_RESOURCES_H
-#define ARANGOD_AQL_AST_RESOURCES_H 1
+#pragma once
 
 #include <string>
 #include <vector>
@@ -102,4 +101,3 @@ class AstResources {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

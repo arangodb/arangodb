@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_RECURSIVE_LOCKER_H
-#define LIB_BASICS_RECURSIVE_LOCKER_H 1
+#pragma once
 
 #include "MutexLocker.h"
 #include "ReadLocker.h"
@@ -182,4 +181,3 @@ class RecursiveWriteLocker {
 
 } // arangodb
 
-#endif

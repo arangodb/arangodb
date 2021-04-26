@@ -21,8 +21,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_PDP_H
-#define ARANGOD_IRESEARCH__IRESEARCH_PDP_H 1
+#pragma once
 
 #include "IResearchPDP.h"
 
@@ -118,4 +117,3 @@ const irs::parametric_description& getParametricDescription(
 } // iresearch
 } // arangodb
 
-#endif // ARANGOD_IRESEARCH__IRESEARCH_PDP_H

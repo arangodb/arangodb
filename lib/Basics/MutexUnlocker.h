@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MUTEX_UNLOCKER_H
-#define ARANGODB_BASICS_MUTEX_UNLOCKER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Locking.h"
@@ -99,4 +98,3 @@ class MutexUnlocker {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

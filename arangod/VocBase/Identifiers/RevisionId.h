@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_REVISION_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_REVISION_ID_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
@@ -115,4 +114,3 @@ static_assert(sizeof(RevisionId) == sizeof(RevisionId::BaseType),
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::RevisionId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::RevisionId)
 
-#endif

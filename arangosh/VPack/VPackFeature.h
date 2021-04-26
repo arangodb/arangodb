@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VPACK_VPACK_FEATURE_H
-#define ARANGODB_VPACK_VPACK_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -48,4 +47,3 @@ class VPackFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

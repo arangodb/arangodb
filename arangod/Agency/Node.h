@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_NODE_H
-#define ARANGOD_CONSENSUS_NODE_H 1
+#pragma once
 
 #include "AgencyCommon.h"
 #include "Basics/ResultT.h"
@@ -440,4 +439,3 @@ inline std::ostream& operator<<(std::ostream& o, Node const& n) {
 
 }  // namespace arangodb::consensus
 
-#endif

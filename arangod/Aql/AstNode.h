@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AST_NODE_H
-#define ARANGOD_AQL_AST_NODE_H 1
+#pragma once
 
 #include "Basics/ScopeGuard.h"
 
@@ -678,4 +677,3 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   } while (0)
 #endif
 
-#endif

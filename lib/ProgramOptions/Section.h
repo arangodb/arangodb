@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_SECTION_H
-#define ARANGODB_PROGRAM_OPTIONS_SECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "ProgramOptions/Option.h"
@@ -90,4 +89,3 @@ struct EnterpriseSection : public Section {
 }  // namespace options
 }  // namespace arangodb
 
-#endif

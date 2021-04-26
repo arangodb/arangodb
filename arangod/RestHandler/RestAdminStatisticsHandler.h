@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ADMIN_STATISTICS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ADMIN_STATISTICS_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -48,4 +47,3 @@ class RestAdminStatisticsHandler : public RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

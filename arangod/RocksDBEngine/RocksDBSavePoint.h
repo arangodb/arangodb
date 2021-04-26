@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_SAVEPOINT_H
-#define ARANGOD_ROCKSDB_ROCKSDB_SAVEPOINT_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "VocBase/voc-types.h"
@@ -57,4 +56,3 @@ class RocksDBSavePoint {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SCOPES_H
-#define ARANGOD_AQL_SCOPES_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -158,4 +157,3 @@ class Scopes {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

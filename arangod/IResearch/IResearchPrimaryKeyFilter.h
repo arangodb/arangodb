@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H
-#define ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H 1
+#pragma once
 
 #include "IResearchDocument.h"
 #include "VocBase/voc-types.h"
@@ -155,4 +154,3 @@ class PrimaryKeyFilterContainer final : public irs::filter {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H

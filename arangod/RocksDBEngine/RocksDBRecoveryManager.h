@@ -22,8 +22,7 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_RECOVERY_MANAGER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_RECOVERY_MANAGER_H 1
+#pragma once
 
 #include <rocksdb/types.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -69,4 +68,3 @@ class RocksDBRecoveryManager final : public application_features::ApplicationFea
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_HANDLER_CREATOR_H
-#define ARANGOD_REST_HANDLER_REST_HANDLER_CREATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -56,4 +55,3 @@ class RestHandlerCreator : public H {
 };
 }  // namespace arangodb
 
-#endif

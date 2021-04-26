@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_VOCBASEINFO_H
-#define ARANGOD_VOCBASE_VOCBASEINFO_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -167,4 +166,3 @@ void addClusterOptions(velocypack::Builder& builder, std::string const& sharding
 void addClusterOptions(velocypack::Builder&, VocbaseOptions const&);
 
 }  // namespace arangodb
-#endif

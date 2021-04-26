@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_JSLOADER_H
-#define ARANGODB_V8_JSLOADER_H 1
+#pragma once
 
 #include <string>
 
@@ -61,4 +60,3 @@ class JSLoader : public ScriptLoader {
 };
 }  // namespace arangodb
 
-#endif

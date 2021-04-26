@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_SYNCHRONIZE_SHARD_H
-#define ARANGODB_MAINTENANCE_SYNCHRONIZE_SHARD_H
+#pragma once
 
 #include "Basics/ResultT.h"
 #include "Cluster/ActionBase.h"
@@ -91,4 +90,3 @@ class SynchronizeShard : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

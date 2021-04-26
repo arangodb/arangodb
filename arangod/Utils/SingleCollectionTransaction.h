@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_SINGLE_COLLECTION_TRANSACTION_H
-#define ARANGOD_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -90,4 +89,3 @@ class SingleCollectionTransaction final : public transaction::Methods {
 
 }  // namespace arangodb
 
-#endif

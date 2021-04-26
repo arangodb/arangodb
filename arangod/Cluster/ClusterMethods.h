@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_METHODS_H
-#define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
+#pragma once
 
 #include "Agency/AgencyComm.h"
 #include "Aql/FixedVarExpressionContext.h"
@@ -358,4 +357,3 @@ class ClusterMethods {
 
 }  // namespace arangodb
 
-#endif

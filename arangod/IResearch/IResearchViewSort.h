@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H 1
+#pragma once
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
@@ -118,4 +117,3 @@ class IResearchViewSort {
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H

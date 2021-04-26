@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_SORTED_INDEX_ATTRIBUTE_MATCHER_H
-#define ARANGOD_INDEXES_SORTED_INDEX_ATTRIBUTE_MATCHER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Containers/HashSet.h"
@@ -99,4 +98,3 @@ bool isDuplicateOperator(arangodb::aql::AstNode const* node,
 
 }  // namespace arangodb
 
-#endif

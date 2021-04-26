@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CONDITIONAL_DELETER_H
-#define ARANGODB_BASICS_CONDITIONAL_DELETER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -45,4 +44,3 @@ struct ConditionalDeleter {
 
 }  // namespace arangodb
 
-#endif

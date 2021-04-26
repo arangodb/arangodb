@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -60,4 +59,3 @@ class ConfigFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

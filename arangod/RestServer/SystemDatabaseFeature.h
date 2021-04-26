@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_RESTSERVER__SYSTEM_DATABASE_FEATURE_H
-#define ARANGOD_RESTSERVER__SYSTEM_DATABASE_FEATURE_H 1
+#pragma once
 
 #include <atomic>
 
@@ -58,4 +57,3 @@ class SystemDatabaseFeature final : public application_features::ApplicationFeat
 
 }  // namespace arangodb
 
-#endif

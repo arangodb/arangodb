@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_DOCUMENT_CREATION_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_DOCUMENT_CREATION_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 #include "helpers.h"
@@ -89,4 +88,3 @@ struct DocumentCreationTest : public Benchmark<DocumentCreationTest> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

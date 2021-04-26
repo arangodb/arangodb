@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_STATS_H
-#define ARANGOD_AQL_STATS_H 1
+#pragma once
 
 #include "Aql/ExecutionStats.h"
 
@@ -247,4 +246,3 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

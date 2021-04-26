@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_QUERIES_H
-#define ARANGOD_VOC_BASE_API_QUERIES_H 1
+#pragma once
 
 #include "VocBase/vocbase.h"
 #include "Basics/Result.h"
@@ -52,4 +51,3 @@ struct Queries {
 }  // namespace methods
 }  // namespace arangodb
 
-#endif
