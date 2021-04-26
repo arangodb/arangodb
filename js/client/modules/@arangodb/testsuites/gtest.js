@@ -123,37 +123,39 @@ function gtestRunner (options) {
   }
   pu.cleanupDBDirectoriesAppend(dummyDir);
 
-  const run = locateGTest('arangodbtests');
-  if (!options.skipGTest) {
-    if (run !== '') {
-      let argv = [
-        '--gtest_output=json:' + testResultJsonFile,
-      ];
-      if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
-        argv.push('--gtest_filter='+options.testCase);
+  for (const binary of ['arangodbtests', 'arangodbtests_replication2']) {
+    const run = locateGTest(binary);
+    if (!options.skipGTest) {
+      if (run !== '') {
+        let argv = [
+          '--gtest_output=json:' + testResultJsonFile,
+        ];
+        if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
+          argv.push('--gtest_filter=' + options.testCase);
+        } else {
+          argv.push('--gtest_filter=-*_LongRunning');
+          let greylist = readGreylist();
+          greylist.forEach(function (greyItem) {
+            argv.push('--gtest_filter=-' + greyItem);
+          });
+        }
+        // all non gtest args have to come last
+        argv.push('--log.line-number');
+        argv.push(options.extremeVerbosity ? "true" : "false");
+        results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, options.coreCheck);
+        results.basics.failed = results.basics.status ? 0 : 1;
+        if (!results.basics.status) {
+          results.failed += 1;
+        }
+        results = getGTestResults(testResultJsonFile, results);
       } else {
-        argv.push('--gtest_filter=-*_LongRunning');
-        let greylist =   readGreylist();
-        greylist.forEach(function(greyItem) {
-          argv.push('--gtest_filter=-'+greyItem);
-        });
-      }
-      // all non gtest args have to come last
-      argv.push('--log.line-number');
-      argv.push(options.extremeVerbosity ? "true" : "false");
-      results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, options.coreCheck);
-      results.basics.failed = results.basics.status ? 0 : 1;
-      if (!results.basics.status) {
         results.failed += 1;
+        results.basics = {
+          failed: 1,
+          status: false,
+          message: `binary "${binary}" not found when trying to run suite "all-gtest"`
+        };
       }
-      results = getGTestResults(testResultJsonFile, results);
-    } else {
-      results.failed += 1;
-      results.basics = {
-        failed: 1,
-        status: false,
-        message: 'binary "arangodbtests" not found when trying to run suite "all-gtest"'
-      };
     }
   }
   return results;
