@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertMatch, assertTrue, assertFalse */
+/* global fail, assertEqual, assertMatch, assertTrue, assertFalse, arango, db, Buffer */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,8 +24,15 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const { getEndpointById, getEndpointsByType, getServersByType } = require('@arangodb/test-helper');
-const request = require('@arangodb/request');
+let { getEndpointById,
+      getEndpointsByType,
+      getServersByType,
+      debugCanUseFailAt,
+      debugSetFailAt,
+      debugClearFailAt,
+      reconnectRetry
+    } = require('@arangodb/test-helper');
+const primaryEndpoint = arango.getEndpoint();
 
 function endpointToURL(endpoint) {
   if (endpoint.substr(0, 6) === 'ssl://') {
@@ -36,35 +43,6 @@ function endpointToURL(endpoint) {
     return 'http://' + endpoint;
   }
   return 'http' + endpoint.substr(pos);
-}
-
-/// @brief set failure point
-function debugCanUseFailAt(endpoint) {
-  let res = request.get({
-    url: endpoint + '/_admin/debug/failat',
-  });
-  return res.status === 200;
-}
-
-/// @brief set failure point
-function debugSetFailAt(endpoint, failAt) {
-  let res = request.put({
-    url: endpoint + '/_admin/debug/failat/' + failAt,
-    body: ""
-  });
-  if (res.status !== 200) {
-    throw "Error setting failure point";
-  }
-}
-
-function debugClearFailAt(endpoint) {
-  let res = request.delete({
-    url: endpoint + '/_admin/debug/failat',
-    body: ""
-  });
-  if (res.status !== 200) {
-    throw "Error removing failure points";
-  }
 }
 
 function adminClusterSuite() {
@@ -79,27 +57,43 @@ function adminClusterSuite() {
     tearDown: function () {
       getEndpointsByType("coordinator").forEach((ep) => debugClearFailAt(ep));
     },
-    
+
     testRemoveServerNonExisting: function () {
       let coords = getEndpointsByType('coordinator');
       assertTrue(coords.length > 0);
       
       // this is assumed to be an invalid server id, so the operation must fail
-      let res = request.post({ url: coords[0] + "/_admin/cluster/removeServer", body: "testmann123456", json: true });
-      assertEqual(404, res.status);
+      try {
+        reconnectRetry(coords[0], db._name(), "root", "");
+        let res = arango.POST_RAW("/_admin/cluster/removeServer", new Buffer('"testmann123456"'), {
+          "content-type": "application/json"
+        });
+        assertEqual(404, res.code);
+      } finally {
+        reconnectRetry(primaryEndpoint, "_system", "root", "");
+      }
     },
-    
+
     testRemoveNonFailedCoordinatorString: function () {
       let coords = getServersByType('coordinator');
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
-      // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-      debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
-      let res = request.post({ url: endpointToURL(ep) + "/_admin/cluster/removeServer", body: coordinatorId, json: true });
-      // as the coordinator is still in use, we expect "precondition failed"
-      assertEqual(412, res.status);
+      try {
+        // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
+        debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
+        reconnectRetry(ep, db._name(), "root", "");
+        let res = arango.POST_RAW("/_admin/cluster/removeServer",
+                                  new Buffer('"' + coordinatorId + '"'), {
+                                    "content-type": "application/json"
+                                  });
+
+        // as the coordinator is still in use, we expect "precondition failed"
+        assertEqual(412, res.code);
+      } finally {
+        reconnectRetry(primaryEndpoint, "_system", "root", "");
+      }
     },
     
     testRemoveNonFailedCoordinatorObject: function () {
@@ -108,11 +102,20 @@ function adminClusterSuite() {
       
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
-      // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-      debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
-      let res = request.post({ url: endpointToURL(ep) + "/_admin/cluster/removeServer", body: { server: coordinatorId }, json: true });
-      // as the coordinator is still in use, we expect "precondition failed"
-      assertEqual(412, res.status);
+      try {
+        // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
+        debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
+        reconnectRetry(ep, db._name(), "root", "");
+        let res = arango.POST_RAW("/_admin/cluster/removeServer",
+                                  new Buffer('"' + coordinatorId + '"'), {
+                                    "content-type": "application/json"
+                                  });
+
+        // as the coordinator is still in use, we expect "precondition failed"
+        assertEqual(412, res.code);
+      } finally {
+        reconnectRetry(primaryEndpoint, "_system", "root", "");
+      }
     },
     
     testRemoveNonFailedDBServersString: function () {
@@ -121,16 +124,24 @@ function adminClusterSuite() {
       
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
-      // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-      debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
+      try {
+        // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
+        debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
 
-      let dbservers = getServersByType('dbserver');
-      assertTrue(dbservers.length > 0);
-      dbservers.forEach((dbs) => {
-        let res = request.post({ url: endpointToURL(ep) + "/_admin/cluster/removeServer", body: dbs.id, json: true });
-        // as the coordinator is still in use, we expect "precondition failed"
-        assertEqual(412, res.status);
-      });
+        let dbservers = getServersByType('dbserver');
+        assertTrue(dbservers.length > 0);
+        dbservers.forEach((dbs) => {
+          reconnectRetry(ep, db._name(), "root", "");
+          let res = arango.POST_RAW("/_admin/cluster/removeServer",
+                                    new Buffer('"' + dbs.id + '"'), {
+                                    "content-type": "application/json"
+                                  });
+          // as the coordinator is still in use, we expect "precondition failed"
+          assertEqual(412, res.code);
+        });
+      } finally {
+        reconnectRetry(primaryEndpoint, "_system", "root", "");
+      }
     },
     
     testRemoveNonFailedDBServersObject: function () {
@@ -139,16 +150,25 @@ function adminClusterSuite() {
       
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
-      // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-      debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
+      try {
+        // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
+        debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
 
-      let dbservers = getServersByType('dbserver');
-      assertTrue(dbservers.length > 0);
-      dbservers.forEach((dbs) => {
-        let res = request.post({ url: endpointToURL(ep) + "/_admin/cluster/removeServer", body: { server: dbs.id }, json: true });
-        // as the coordinator is still in use, we expect "precondition failed"
-        assertEqual(412, res.status);
-      });
+        let dbservers = getServersByType('dbserver');
+        assertTrue(dbservers.length > 0);
+        dbservers.forEach((dbs) => {
+          reconnectRetry(ep, "_system", "root", "");
+          let res = arango.POST_RAW("/_admin/cluster/removeServer",
+                                    new Buffer('"' + dbs.id + '"'), {
+                                    "content-type": "application/json"
+                                  });
+
+          // as the coordinator is still in use, we expect "precondition failed"
+          assertEqual(412, res.code);
+        });
+      } finally {
+        reconnectRetry(primaryEndpoint, "_system", "root", "");
+      }
     },
     
     testCleanoutServerStringNonExisting: function () {
@@ -157,54 +177,64 @@ function adminClusterSuite() {
       
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
-
-      // this is assumed to be an invalid server id, so the operation must fail
-      let res = request.post({ url: endpointToURL(ep) + "/_admin/cluster/cleanOutServer", body: "testmann123456", json: true });
-      // the server expects an object with a "server" attribute, but no string
-      assertEqual(400, res.status);
+      try {
+        // this is assumed to be an invalid server id, so the operation must fail
+        reconnectRetry(ep, "_system", "root", "");
+        let res = arango.POST_RAW("/_admin/cluster/cleanOutServer",
+                                  new Buffer('"testmann123456"'), {
+                                    "content-type": "application/json"
+                                  });
+        // the server expects an object with a "server" attribute, but no string
+        assertEqual(400, res.code);
+      } finally {
+        reconnectRetry(primaryEndpoint, "_system", "root", "");
+      }
     },
-    
+
     testCleanoutServerObjectNonExisting: function () {
       let coords = getServersByType('coordinator');
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
+      try {
+        // this is assumed to be an invalid server id, so the operation must fail
+        reconnectRetry(ep, "_system", "root", "");
+        let res = arango.POST_RAW("/_admin/cluster/cleanOutServer", { server: "testmann123456" });
+        assertEqual(202, res.code);
+        assertTrue(res.parsedBody.hasOwnProperty("id"));
+        assertEqual("string", typeof res.parsedBody.id);
+        assertMatch(/^\d+/, res.parsedBody.id);
+        let id = res.parsedBody.id;
 
-      // this is assumed to be an invalid server id, so the operation must fail
-      let res = request.post({ url: endpointToURL(ep) + "/_admin/cluster/cleanOutServer", body: { server: "testmann123456" }, json: true });
-      assertEqual(202, res.status);
-      assertTrue(res.json.hasOwnProperty("id"));
-      assertEqual("string", typeof res.json.id);
-      assertMatch(/^\d+/, res.json.id);
-      let id = res.json.id;
-
-      // Now wait until the job is finished and check that it has failed:
-      let count = 10;
-      while (--count >= 0) {
-        require("internal").wait(1.0, false);
-        res = request.get({ url: endpointToURL(ep) + "/_admin/cluster/queryAgencyJob?id=" + id, json: true });
-        if (res.status !== 200) {
-          continue;
+        // Now wait until the job is finished and check that it has failed:
+        let count = 10;
+        while (--count >= 0) {
+          require("internal").wait(1.0, false);
+          res = arango.GET_RAW("/_admin/cluster/queryAgencyJob?id=" + id);
+          if (res.code !== 200) {
+            continue;
+          }
+          assertTrue(res.parsedBody.hasOwnProperty("creator"));
+          assertTrue(res.parsedBody.hasOwnProperty("jobId"));
+          assertEqual(id, res.parsedBody.jobId);
+          assertTrue(res.parsedBody.hasOwnProperty("server"));
+          assertEqual("testmann123456", res.parsedBody.server);
+          assertTrue(res.parsedBody.hasOwnProperty("timeCreated"));
+          assertTrue(res.parsedBody.hasOwnProperty("timeFinished"));
+          assertTrue(res.parsedBody.hasOwnProperty("error"));
+          assertFalse(res.parsedBody.error);
+          assertTrue(res.parsedBody.hasOwnProperty("status"));
+          assertEqual("Failed", res.parsedBody.status);
+          assertTrue(res.parsedBody.hasOwnProperty("type"));
+          assertEqual("cleanOutServer", res.parsedBody.type);
+          return;   // all good, and job is terminated
         }
-        assertTrue(res.json.hasOwnProperty("creator"));
-        assertTrue(res.json.hasOwnProperty("jobId"));
-        assertEqual(id, res.json.jobId);
-        assertTrue(res.json.hasOwnProperty("server"));
-        assertEqual("testmann123456", res.json.server);
-        assertTrue(res.json.hasOwnProperty("timeCreated"));
-        assertTrue(res.json.hasOwnProperty("timeFinished"));
-        assertTrue(res.json.hasOwnProperty("error"));
-        assertFalse(res.json.error);
-        assertTrue(res.json.hasOwnProperty("status"));
-        assertEqual("Failed", res.json.status);
-        assertTrue(res.json.hasOwnProperty("type"));
-        assertEqual("cleanOutServer", res.json.type);
-        return;   // all good, and job is terminated
+        assertEqual(200, res);   // will fail if loop ends
+      } finally {
+        reconnectRetry(primaryEndpoint, "_system", "root", "");
       }
-      assertEqual(200, res);   // will fail if loop ends
-    },
-   
+    }
   };
 }
 

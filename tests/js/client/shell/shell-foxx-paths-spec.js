@@ -7,8 +7,6 @@ const internal = require('internal');
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 const arango = require('@arangodb').arango;
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 describe('Foxx service path handling', () => {
   const mount = '/unittest/paths';
   before(function () {
