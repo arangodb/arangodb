@@ -32,8 +32,6 @@ const FoxxManager = require('@arangodb/foxx/manager');
 const basePath1 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb1');
 const basePath2 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb2');
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 function multipleDatabasesSuite () {
   'use strict';
   const mount1 = '/test1';

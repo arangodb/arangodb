@@ -44,8 +44,6 @@ const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:
 const aql = arangodb.aql;
 const db = internal.db;
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 describe('Foxx service', () => {
   const mount = '/queue_test_mount';
   before(() => {
