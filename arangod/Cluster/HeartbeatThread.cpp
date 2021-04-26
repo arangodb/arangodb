@@ -1086,8 +1086,14 @@ bool HeartbeatThread::init() {
   if (ServerState::instance()->isClusterRole() && !sendServerState()) {
     return false;
   }
-  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
-
+  if (ServerState::instance()->isDBServer()) {
+    // the maintenanceThread is only required by DB server instances, but we deliberately
+    // initialize it here instead of in runDBServer because the ClusterInfo::SyncerThread
+    // uses HeartbeatThread::notify to notify this thread, but that SyncerThread is started
+    // before runDBServer is called. So in order to prevent a data race we should initialize
+    // _maintenanceThread before that SyncerThread is started.
+    _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+  }
   return true;
 }
 
