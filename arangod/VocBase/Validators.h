@@ -26,9 +26,9 @@
 
 #include <Basics/debugging.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
-#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 #include <string>
 
@@ -36,8 +36,8 @@
 #include <validation/types.hpp>
 
 namespace tao::json {
-   template< template< typename... > class Traits >
-   class basic_schema;
+template <template <typename...> class Traits>
+class basic_schema;
 }
 
 namespace arangodb {
@@ -58,7 +58,8 @@ struct ValidatorBase {
   virtual ~ValidatorBase() = default;
 
   // Validation function as it should be used in the logical collection or storage engine.
-  Result validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert, VPackOptions const*) const;
+  Result validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert,
+                  VPackOptions const*) const;
 
   // Validate a single document in the specialized class ignoring the the level.
   // This version is used in the implementations of AQL Functions.
@@ -84,7 +85,8 @@ struct ValidatorJsonSchema : public ValidatorBase {
   Result validateOne(VPackSlice slice, VPackOptions const*) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
   std::string const& type() const override;
-private:
+
+ private:
   std::shared_ptr<tao::json::basic_schema<tao::json::traits>> _schema;
   VPackBuilder _builder;
 };

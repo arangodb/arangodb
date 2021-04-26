@@ -45,6 +45,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/InternalValidatorFactory.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
@@ -205,6 +206,21 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   auto res = updateSchema(info.get(StaticStrings::Schema));
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
+  }
+  {
+    auto internalSchema = info.get(StaticStrings::InternalSchema);
+    if (!internalSchema.isNone()) {
+      auto internalSchemaRes = InternalValidatorFactory::ValidatorFromSlice(internalSchema);
+      if (internalSchemaRes.ok()) {
+        TRI_ASSERT(internalSchemaRes.get() != nullptr);
+        _internalValidator.swap(internalSchemaRes.get());
+        LOG_DEVEL << "Setting internal validation: " << name() << " with "
+                  << _internalValidator->type();
+      } else {
+        LOG_DEVEL << "Failed to parse internal schema "
+                  << internalSchemaRes.errorMessage();
+      }
+    }
   }
 
   TRI_ASSERT(!guid().empty());
@@ -795,6 +811,11 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
     result.add(VPackValue(StaticStrings::Schema));
     schemaToVelocyPack(result);
   }
+  // Internal Schema
+  if (_internalValidator) {
+    result.add(VPackValue(StaticStrings::InternalSchema));
+    _internalValidator->toVelocyPack(result);
+  }
 
   // Cluster Specific
   result.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
@@ -1217,5 +1238,7 @@ void LogicalCollection::setInternalValidator(std::unique_ptr<arangodb::Validator
   // We can only set the InteralSchema once.
   // We cannot override it
   TRI_ASSERT(!_internalValidator);
+  TRI_ASSERT(validator);
+  LOG_DEVEL << "Setting validation: " << name() << " with " << validator->type();
   _internalValidator = std::move(validator);
 }

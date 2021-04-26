@@ -257,6 +257,7 @@ std::string const StaticStrings::SyncByRevision("syncByRevision");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Schema("schema");
+std::string const StaticStrings::InternalSchema("internalSchema");
 std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
@@ -291,7 +292,8 @@ std::string const StaticStrings::AccumulatorName("accumulator");
 std::string const StaticStrings::VertexComputationPregelId("pregel-id");
 std::string const StaticStrings::VertexComputationVertexId("vertex");
 std::string const StaticStrings::VertexComputationPhase("phase");
-std::string const StaticStrings::VertexComputationGlobalSuperstep("global-superstep");
+std::string const StaticStrings::VertexComputationGlobalSuperstep(
+    "global-superstep");
 std::string const StaticStrings::VertexComputationPhaseStep("phase-step");
 std::string const StaticStrings::VertexComputationMessage("message");
 std::string const StaticStrings::VertexComputationVoteActive("vote-active");
@@ -393,6 +395,7 @@ std::string const StaticStrings::ValidationLevelStrict("strict");
 std::string const StaticStrings::ValidationParameterMessage("message");
 std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
+std::string const StaticStrings::ValidationParameterType("type");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");

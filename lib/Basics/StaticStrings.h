@@ -239,6 +239,7 @@ class StaticStrings {
   static std::string const SyncByRevision;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Schema;
+  static std::string const InternalSchema;
   static std::string const Version;
   static std::string const WriteConcern;
   static std::string const ShardingSingle;
@@ -366,6 +367,7 @@ class StaticStrings {
   static std::string const ValidationParameterMessage;
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
+  static std::string const ValidationParameterType;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;
