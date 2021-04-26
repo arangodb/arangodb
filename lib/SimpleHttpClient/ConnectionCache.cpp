@@ -43,7 +43,7 @@ ConnectionLease::ConnectionLease(ConnectionCache* cache,
       _connection(std::move(connection)) {}
 
 ConnectionLease::~ConnectionLease() {
-  if (_cache != nullptr) {
+  if (_cache != nullptr && _connection != nullptr) {
     _cache->release(std::move(_connection));
   }
 }
@@ -138,31 +138,29 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
   return {this, std::move(connection)};
 }
 
-void ConnectionCache::release(std::unique_ptr<GeneralClientConnection> connection) {
+void ConnectionCache::release(std::unique_ptr<GeneralClientConnection> connection, bool force) try {
   if (connection == nullptr) {
     // nothing to do
     return;
   }
 
-  try {
-    if (connection->isConnected()) {
-      std::string endpoint = connection->getEndpoint()->specification();
-      TRI_ASSERT(!endpoint.empty());
+  if (connection->isConnected() || force) {
+    std::string endpoint = connection->getEndpoint()->specification();
+    TRI_ASSERT(!endpoint.empty());
 
-      LOG_TOPIC("8e253", TRACE, Logger::REPLICATION) 
-          << "putting connection for endpoint " << endpoint << " back into connections cache";
+    LOG_TOPIC("8e253", TRACE, Logger::REPLICATION) 
+        << "putting connection for endpoint " << endpoint << " back into connections cache";
 
-      MUTEX_LOCKER(locker, _lock);
+    MUTEX_LOCKER(locker, _lock);
 
-      // this may create the vector at _connections[endpoint]
-      auto& connectionsForEndpoint = _connections[endpoint];
-      if (connectionsForEndpoint.size() < _options.maxConnectionsPerEndpoint) {
-        connectionsForEndpoint.emplace_back(std::move(connection));
-      }
+    // this may create the vector at _connections[endpoint]
+    auto& connectionsForEndpoint = _connections[endpoint];
+    if (connectionsForEndpoint.size() < _options.maxConnectionsPerEndpoint) {
+      connectionsForEndpoint.emplace_back(std::move(connection));
     }
-  } catch (...) {
-    // if we catch an exception here, the connection will be auto-destroyed, and no leaks will happen
   }
+} catch (...) {
+  // if we catch an exception here, the connection will be auto-destroyed, and no leaks will happen
 }
 
 }  // namespace httpclient

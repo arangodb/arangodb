@@ -79,7 +79,15 @@ class ConnectionCache {
                           double connectTimeout, double requestTimeout,
                           size_t connectRetries, uint64_t sslProtocol);
 
-  void release(std::unique_ptr<GeneralClientConnection> connection);
+  /// @brief the force flag also moves unconnected connections back into the cache.
+  /// this is currently used only for testing
+  void release(std::unique_ptr<GeneralClientConnection> connection, bool force = false);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::unordered_map<std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> const& connections() const { 
+    return  _connections;
+  }
+#endif
 
  private:
   arangodb::application_features::ApplicationServer& _server;
