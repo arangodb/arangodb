@@ -304,7 +304,9 @@ void ExportFeature::start() {
     }
   }
 
-  std::cout << "Processed " << _collections.size() << " collection(s), wrote " << exportedSize
+  using arangodb::basics::StringUtils::formatSize;
+
+  std::cout << "Processed " << _collections.size() << " collection(s), wrote " << formatSize(exportedSize)
             << " byte(s), " << _httpRequestsDone << " HTTP request(s)" << std::endl;
 
   *_result = ret;
