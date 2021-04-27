@@ -661,6 +661,24 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest2 {
       }
     }
   };
+
+  constexpr static auto runFollowerReplicationWithIntermittentPauses =
+      // NOLINTNEXTLINE(performance-unnecessary-value-param)
+      [](std::vector<DelayedFollowerLog*> followers, ThreadCoordinationData& data) {
+        using namespace std::chrono_literals;
+        auto& log = *data.log;
+        for (auto i = 0;; ++i) {
+          for (auto* follower : followers) {
+            follower->runAsyncAppendEntries();
+            if (i % 17) {
+              std::this_thread::sleep_for(100ns);
+              if (data.stopReplicationThreads.load()) {
+                return;
+              }
+            }
+          }
+        }
+      };
 };
 
 TEST_F(ReplicatedLogConcurrentTest, genPayloadTest) {
@@ -703,6 +721,54 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   // them in some intermediate state
   data.stopReplicationThreads.store(true);
   replicationThread.join();
+
+  auto stats = data.log->getLocalStatistics();
+  EXPECT_LE(LogIndex{8000}, stats.commitIndex);
+  EXPECT_LE(stats.commitIndex, stats.spearHead);
+}
+
+TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
+  using namespace std::chrono_literals;
+
+  auto leader = addLogInstance("leader");
+  auto follower1 = addFollowerLogInstance("follower1");
+  auto follower2 = addFollowerLogInstance("follower2");
+  follower1->becomeFollower(LogTerm{1}, leader->participantId());
+  follower2->becomeFollower(LogTerm{1}, leader->participantId());
+  leader->becomeLeader(LogTerm{1}, {follower1, follower2}, 2);
+
+  auto data = ThreadCoordinationData{leader};
+
+  // start replication
+  auto replicationThread =
+      std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
+  auto followerReplicationThread =
+      std::thread{runFollowerReplicationWithIntermittentPauses,
+                  std::vector{follower1.get(), follower2.get()}, std::ref(data)};
+
+  std::vector<std::thread> clientThreads;
+  auto threadCounter = uint16_t{0};
+  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++, std::ref(data));
+  clientThreads.emplace_back(insertManyThenRead, threadCounter++, std::ref(data));
+
+  ASSERT_EQ(clientThreads.size(), threadCounter);
+  while (data.threadsReady.load() < clientThreads.size()) {
+  }
+  data.go.store(true);
+  while (data.threadsSatisfied.load() < clientThreads.size()) {
+    std::this_thread::sleep_for(100us);
+  }
+  data.stopClientThreads.store(true);
+
+  for (auto& thread : clientThreads) {
+    thread.join();
+  }
+
+  // stop replication only after all client threads joined, so we don't block
+  // them in some intermediate state
+  data.stopReplicationThreads.store(true);
+  replicationThread.join();
+  followerReplicationThread.join();
 
   auto stats = data.log->getLocalStatistics();
   EXPECT_LE(LogIndex{8000}, stats.commitIndex);
