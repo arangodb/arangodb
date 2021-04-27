@@ -33,7 +33,6 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-struct ReplicatedLogTest : ::testing::Test {};
 struct ReplicatedLogTest2 : LogTestBase {};
 
 TEST_F(ReplicatedLogTest2, stop_follower_and_rejoin) {
@@ -118,7 +117,7 @@ TEST_F(ReplicatedLogTest2, test) {
   auto [log, local] = addLogInstance(ourParticipantId);
   auto persistedLog = _manager->getPersistedLogById(local->getLogId());
 
-  log->becomeLeader(LogTerm{1}, {}, 1);
+  log->becomeLeader(LogTerm{1}, {local}, 1);
 
   {
     auto stats = log->getLocalStatistics();
@@ -139,6 +138,7 @@ TEST_F(ReplicatedLogTest2, test) {
   }
 
   log->runAsyncStep();
+  _executor->executeAllActions();
 
   EXPECT_TRUE(f.isReady());
 
@@ -157,7 +157,7 @@ TEST_F(ReplicatedLogTest2, test) {
   EXPECT_EQ(payload, logEntry.logPayload());
 }
 
-TEST_F(ReplicatedLogTest, appendEntries) {
+TEST_F(ReplicatedLogTest2, appendEntries) {
   auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
   auto const ourParticipantId = ParticipantId{1};
   auto const leaderId = ParticipantId{2};
@@ -450,6 +450,7 @@ TEST_F(ReplicatedLogTest2, replicationTest2) {
     ASSERT_FALSE(fut.isReady());
     ASSERT_FALSE(followerLog->hasPendingAppendEntries());
     leaderLog->runAsyncStep();
+    _executor->executeAllActions();
     // future should not be ready because write concern is two
     ASSERT_FALSE(fut.isReady());
     ASSERT_TRUE(followerLog->hasPendingAppendEntries());
