@@ -468,13 +468,16 @@ template<typename Scale> class Histogram : public Metric {
     } else {
       _c[pos(t)] += n;
     }
-    value_type tmp = _sum.load(std::memory_order_relaxed);
-    do {
-    } while (!_sum.compare_exchange_weak(tmp,
-                                       tmp + static_cast<value_type>(n) * t,
-                                       std::memory_order_relaxed,
-                                       std::memory_order_relaxed));
-
+    if constexpr(std::is_integral_v<value_type>) {
+      _sum.fetch_add(static_cast<value_type>(n) * t);
+    } else {
+      value_type tmp = _sum.load(std::memory_order_relaxed);
+      do {
+      } while (!_sum.compare_exchange_weak(tmp,
+                                        tmp + static_cast<value_type>(n) * t,
+                                        std::memory_order_relaxed,
+                                        std::memory_order_relaxed));
+    }
     track_extremes(t);
   }
 
