@@ -45,7 +45,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/InternalValidatorFactory.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
@@ -207,21 +206,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  {
-    auto internalSchema = info.get(StaticStrings::InternalSchema);
-    if (!internalSchema.isNone()) {
-      auto internalSchemaRes = InternalValidatorFactory::ValidatorFromSlice(internalSchema);
-      if (internalSchemaRes.ok()) {
-        TRI_ASSERT(internalSchemaRes.get() != nullptr);
-        _internalValidator.swap(internalSchemaRes.get());
-        LOG_DEVEL << "Setting internal validation: " << name() << " with "
-                  << _internalValidator->type();
-      } else {
-        LOG_DEVEL << "Failed to parse internal schema "
-                  << internalSchemaRes.errorMessage();
-      }
-    }
-  }
+  _collectionType = Helper::getNumericValue(info, StaticStrings::InternalCollectionType,
+                                            InternalCollectionType::Community);
 
   TRI_ASSERT(!guid().empty());
 
@@ -295,6 +281,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   // together.
 
   prepareIndexes(info.get("indexes"));
+  decorateWithInternalValidators();
 }
 
 /*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
@@ -811,11 +798,8 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
     result.add(VPackValue(StaticStrings::Schema));
     schemaToVelocyPack(result);
   }
-  // Internal Schema
-  if (_internalValidator) {
-    result.add(VPackValue(StaticStrings::InternalSchema));
-    _internalValidator->toVelocyPack(result);
-  }
+  // Internal CollectionType
+  result.add(StaticStrings::InternalCollectionType, VPackValue((int)_collectionType));
 
   // Cluster Specific
   result.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
@@ -1234,11 +1218,39 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
   return {};
 }
 
+void LogicalCollection::setInternalCollectionType(InternalCollectionType type) {
+  _collectionType = type;
+}
+
 void LogicalCollection::setInternalValidator(std::unique_ptr<arangodb::ValidatorBase> validator) {
   // We can only set the InteralSchema once.
   // We cannot override it
   TRI_ASSERT(!_internalValidator);
   TRI_ASSERT(validator);
-  LOG_DEVEL << "Setting validation: " << name() << " with " << validator->type();
   _internalValidator = std::move(validator);
 }
+
+void LogicalCollection::decorateWithInternalValidators() {
+  // Community validators go in here.
+  decorateWithInternalEEValidators();
+}
+
+bool LogicalCollection::isShard() const noexcept { return planId() != id(); }
+
+bool LogicalCollection::isLocalSmartEdgeCollection() const noexcept {
+  return _collectionType == InternalCollectionType::LocalSmartEdge;
+}
+
+bool LogicalCollection::isRemoteSmartEdgeCollection() const noexcept {
+  return _collectionType == InternalCollectionType::RemoteSmartEdge;
+}
+
+bool LogicalCollection::isSmartEdgeCollection() const noexcept {
+  return _collectionType == InternalCollectionType::SmartEdge;
+}
+
+#ifndef USE_ENTERPRISE
+void LogicalCollection::decorateWithInternalEEValidators() {
+  // Only available in Enterprise Mode
+}
+#endif

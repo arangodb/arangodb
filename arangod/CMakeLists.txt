@@ -463,7 +463,6 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
-  VocBase/InternalValidatorFactory.cpp
   VocBase/Validators.cpp
   VocBase/VocbaseInfo.cpp
   VocBase/ticks.cpp
