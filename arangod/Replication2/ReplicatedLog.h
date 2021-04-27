@@ -152,7 +152,8 @@ class ReplicatedLog : public LogFollower,
   // TODO Do we want another read function that only allows to read
   //      committed entries?
   [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
-  [[nodiscard]] auto getLogSnapshot() const -> std::optional<LogEntry>;
+
+  [[nodiscard]] auto getReplicatedLogSnapshot() const -> immer::flex_vector<LogEntry>;
 
  private:
   struct GuardedReplicatedLog;
@@ -241,15 +242,11 @@ class ReplicatedLog : public LogFollower,
 
     void sendAppendEntries(std::weak_ptr<ReplicatedLog> const& parentLog, Follower&);
 
-    void persistRemainingLogEntries();
-
     std::variant<Unconfigured, LeaderConfig, FollowerConfig> _role;
     ParticipantId _id{};
     std::shared_ptr<PersistedLog> _persistedLog;
-    // last *valid* entry
-    LogIndex _persistedLogEnd{0};
     LogTerm _currentTerm = LogTerm{};
-    immer::flex_vector<LogEntry> _log;
+    immer::flex_vector<LogEntry> _log{};
     std::shared_ptr<InMemoryState> _state;
     LogIndex _commitIndex{0};
     std::shared_ptr<QuorumData> _lastQuorum;

@@ -582,13 +582,12 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest2 {
       std::this_thread::sleep_for(1ns);
       auto fut = log.waitFor(idx);
       fut.get();
-      // TODO Rather use a function that only allows to read replicated entries,
-      //      and wait for the entry to be replicated beforehand.
-      auto res = log.getEntryByIndex(idx);
-      ASSERT_TRUE(res.has_value());
-      auto const& entry = res.value();
-      EXPECT_EQ(payload, entry.logPayload());
+      auto snapshot = log.getReplicatedLogSnapshot();
+      ASSERT_LT(0, idx.value);
+      ASSERT_LE(idx.value, snapshot.size());
+      auto const& entry = snapshot[idx.value - 1];
       EXPECT_EQ(idx, entry.logIndex());
+      EXPECT_EQ(payload, entry.logPayload());
       if (i == 1000) {
         // we should have done at least a few iterations before finishing
         data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
@@ -617,12 +616,15 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest2 {
       std::this_thread::sleep_for(1ns);
       auto fut = log.waitFor(idxs.back());
       fut.get();
+      auto snapshot = log.getReplicatedLogSnapshot();
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
         auto const payload = LogPayload{genPayload(threadIdx, i + k)};
-        auto res = log.getEntryByIndex(idxs[k]);
-        auto const& entry = res.value();
+        auto const idx = idxs[k];
+        ASSERT_LT(0, idx.value);
+        ASSERT_LE(idx.value, snapshot.size());
+        auto const& entry = snapshot[idx.value - 1];
+        EXPECT_EQ(idx, entry.logIndex());
         EXPECT_EQ(payload, entry.logPayload());
-        EXPECT_EQ(idxs[k], entry.logIndex());
       }
       if (i == 10 * batch) {
         // we should have done at least a few iterations before finishing
@@ -631,20 +633,21 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest2 {
     }
   };
 
-  constexpr static auto runReplicationWithIntermittentPauses = [](MockExecutor& executor, ThreadCoordinationData& data) {
-    using namespace std::chrono_literals;
-    auto& log = *data.log;
-    for (auto i = 0;; ++i) {
-      log.runAsyncStep();
-      executor.executeAllActions();
-      if (i % 16) {
-        std::this_thread::sleep_for(100ns);
-        if (data.stopReplicationThreads.load()) {
-          return;
+  constexpr static auto runReplicationWithIntermittentPauses =
+      [](MockExecutor& executor, ThreadCoordinationData& data) {
+        using namespace std::chrono_literals;
+        auto& log = *data.log;
+        for (auto i = 0;; ++i) {
+          log.runAsyncStep();
+          executor.executeAllActions();
+          if (i % 16) {
+            std::this_thread::sleep_for(100ns);
+            if (data.stopReplicationThreads.load()) {
+              return;
+            }
+          }
         }
-      }
-    }
-  };
+      };
 
   constexpr static auto runFollowerReplicationWithIntermittentPauses =
       // NOLINTNEXTLINE(performance-unnecessary-value-param)

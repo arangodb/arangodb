@@ -43,7 +43,6 @@
 #pragma warning(pop)
 #endif
 
-
 using namespace arangodb;
 using namespace arangodb::replication2;
 
@@ -285,14 +284,6 @@ auto ReplicatedLog::GuardedReplicatedLog::runAsyncStep(std::weak_ptr<ReplicatedL
   for (auto& follower : conf.follower) {
     sendAppendEntries(parentLog, follower);
   }
-
-  /*if (_log.size() > _commitIndex.value) {
-    ++_commitIndex.value;
-  }*/
-
-  //persistRemainingLogEntries();
-
-  /**/
 }
 
 void ReplicatedLog::GuardedReplicatedLog::assertLeader() const {
@@ -509,6 +500,14 @@ auto ReplicatedLog::acquireMutex()
 auto ReplicatedLog::acquireMutex() const
     -> MutexGuard<GuardedReplicatedLog const, std::unique_lock<std::mutex>> {
   return _joermungandr.getLockedGuard();
+}
+
+auto ReplicatedLog::getReplicatedLogSnapshot() const -> immer::flex_vector<LogEntry> {
+  auto [log, commitIndex] = _joermungandr.doUnderLock([](auto const& self) {
+    self.assertLeader();
+    return std::make_pair(self._log, self._commitIndex);
+  });
+  return log.take(commitIndex.value);
 }
 
 auto InMemoryState::createSnapshot() -> std::shared_ptr<InMemoryState const> {
