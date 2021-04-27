@@ -35,8 +35,6 @@ using namespace arangodb::replication2;
 
 struct ReplicatedLogTest : ::testing::Test {};
 struct ReplicatedLogTest2 : ::testing::Test {
-
-
   auto getNextLogId() -> LogId {
     return _nextLogId = LogId{_nextLogId.id() + 1};
   }
@@ -48,7 +46,8 @@ struct ReplicatedLogTest2 : ::testing::Test {
     return log;
   }
 
-  auto addFollowerLogInstance(ParticipantId const& id) -> std::shared_ptr<DelayedFollowerLog> {
+  auto addFollowerLogInstance(ParticipantId const& id)
+      -> std::shared_ptr<DelayedFollowerLog> {
     auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
     auto persistedLog = std::make_shared<MockLog>(getNextLogId());
     auto log = std::make_shared<DelayedFollowerLog>(id, state, persistedLog);
@@ -131,7 +130,6 @@ TEST_F(ReplicatedLogTest2, stop_follower_and_rejoin) {
     EXPECT_EQ(stats.commitIndex, LogIndex{3});
   }
 }
-
 
 TEST_F(ReplicatedLogTest, test) {
   auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
@@ -533,14 +531,14 @@ TEST(LogIndexTest, compareOperators) {
   EXPECT_TRUE(two >= one);
 }
 
-struct ReplicatedLogConcurrentTest : ::testing::Test {
+struct ReplicatedLogConcurrentTest : ReplicatedLogTest2 {
   using ThreadIdx = uint16_t;
   using IterIdx = uint32_t;
   constexpr static auto maxIter = std::numeric_limits<IterIdx>::max();
 
   struct alignas(128) ThreadCoordinationData {
     // the testee
-    ReplicatedLog log;
+    std::shared_ptr<ReplicatedLog> log;
 
     // only when set to true, all client threads start
     std::atomic<bool> go = false;
@@ -550,12 +548,12 @@ struct ReplicatedLogConcurrentTest : ::testing::Test {
     // when set to true, the replication thread stops. should be done only
     // after all client threads stopped to avoid them hanging while waiting on
     // replication.
-    std::atomic<bool> stopReplicationThread = false;
+    std::atomic<bool> stopReplicationThreads = false;
     // every thread increases this by one when it's ready to start
     std::atomic<std::size_t> threadsReady = 0;
-    // every thread increases this by one when it's done a certain minimal amount
-    // of work. This is to guarantee that all threads are running long enough
-    // side by side.
+    // every thread increases this by one when it's done a certain minimal
+    // amount of work. This is to guarantee that all threads are running long
+    // enough side by side.
     std::atomic<std::size_t> threadsSatisfied = 0;
   };
 
@@ -587,14 +585,14 @@ struct ReplicatedLogConcurrentTest : ::testing::Test {
     return str;
   };
 
-  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-  constexpr static auto alternatinglyInsertAndRead = [](ThreadIdx const threadIdx, ThreadCoordinationData& data) {
+  constexpr static auto alternatinglyInsertAndRead = [](ThreadIdx const threadIdx,
+                                                        ThreadCoordinationData& data) {
     using namespace std::chrono_literals;
+    auto& log = *data.log;
     data.threadsReady.fetch_add(1);
     while (!data.go.load()) {
     }
 
-    auto& log = data.log;
     for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); ++i) {
       auto const payload = LogPayload{genPayload(threadIdx, i)};
       auto const idx = log.insert(payload);
@@ -615,20 +613,20 @@ struct ReplicatedLogConcurrentTest : ::testing::Test {
     }
   };
 
-  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-  constexpr static auto insertManyThenRead = [](ThreadIdx const threadIdx, ThreadCoordinationData& data) {
+  constexpr static auto insertManyThenRead = [](ThreadIdx const threadIdx,
+                                                ThreadCoordinationData& data) {
     using namespace std::chrono_literals;
+    auto& log = *data.log;
     data.threadsReady.fetch_add(1);
     while (!data.go.load()) {
     }
-
-    auto& log = data.log;
 
     constexpr auto batch = 100;
     auto idxs = std::vector<LogIndex>{};
     idxs.resize(batch);
 
-    for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); i += batch) {
+    for (auto i = std::uint32_t{0};
+         i < maxIter && !data.stopClientThreads.load(); i += batch) {
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
         auto const payload = LogPayload{genPayload(threadIdx, i + k)};
         idxs[k] = log.insert(payload);
@@ -650,14 +648,14 @@ struct ReplicatedLogConcurrentTest : ::testing::Test {
     }
   };
 
-  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
   constexpr static auto runReplicationWithIntermittentPauses = [](ThreadCoordinationData& data) {
     using namespace std::chrono_literals;
-    for (auto i = 0; ; ++i) {
-      data.log.runAsyncStep();
+    auto& log = *data.log;
+    for (auto i = 0;; ++i) {
+      log.runAsyncStep();
       if (i % 16) {
-        std::this_thread::sleep_for(10ns);
-        if (data.stopReplicationThread.load()) {
+        std::this_thread::sleep_for(100ns);
+        if (data.stopReplicationThreads.load()) {
           return;
         }
       }
@@ -674,14 +672,14 @@ TEST_F(ReplicatedLogConcurrentTest, genPayloadTest) {
 TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   using namespace std::chrono_literals;
 
-  auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
-  auto const ourParticipantId = ParticipantId{1};
-  auto persistedLog = std::make_shared<MockLog>(LogId{1});
-  auto data = ThreadCoordinationData{ReplicatedLog{ourParticipantId, state, persistedLog}};
-  data.log.becomeLeader(LogTerm{1}, {}, 1);
+  auto leader = addLogInstance("leader");
+  leader->becomeLeader(LogTerm{1}, {}, 1);
 
-  // // start replication
-  auto replicationThread = std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
+  auto data = ThreadCoordinationData{leader};
+
+  // start replication
+  auto replicationThread =
+      std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
 
   std::vector<std::thread> clientThreads;
   auto threadCounter = uint16_t{0};
@@ -703,10 +701,10 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
 
   // stop replication only after all client threads joined, so we don't block
   // them in some intermediate state
-  data.stopReplicationThread.store(true);
+  data.stopReplicationThreads.store(true);
   replicationThread.join();
 
-  auto stats = data.log.getLocalStatistics();
+  auto stats = data.log->getLocalStatistics();
   EXPECT_LE(LogIndex{8000}, stats.commitIndex);
   EXPECT_LE(stats.commitIndex, stats.spearHead);
 }
