@@ -88,6 +88,11 @@ class PregelFeature final : public application_features::ApplicationFeature {
  private:
   Mutex _mutex;
   std::unique_ptr<RecoveryManager> _recoveryManager;
+  /// @brief _recoveryManagerPtr always points to the same object as _recoveryManager, but allows
+  /// the pointer to be read atomically. This is necessary because _recoveryManager is initialized
+  /// lazily at a time when other threads are already running and potentially trying to read the
+  /// pointer. This only works because _recoveryManager is only initialzed once and lives until the
+  /// owning PregelFeature instance is also destroyed.
   std::atomic<RecoveryManager*> _recoveryManagerPtr;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<Conductor>>> _conductors;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>> _workers;
