@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -54,7 +53,8 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
   // special override method that extracts a timestamp value from the index attribute
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& options) override;
+                OperationOptions const& options,
+                bool performChecks) override;
 
   // special override method that extracts a timestamp value from the index attribute
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -73,4 +73,3 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
 
 }
 
-#endif

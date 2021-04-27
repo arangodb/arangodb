@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_ACCEPTORTCP_H
-#define ARANGOD_SCHEDULER_ACCEPTORTCP_H 1
+#pragma once
 
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/AsioSocket.h"
@@ -52,4 +51,3 @@ class AcceptorTcp final : public Acceptor {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

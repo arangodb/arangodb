@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DATA_PROTECTOR_H
-#define ARANGODB_BASICS_DATA_PROTECTOR_H 1
+#pragma once
 
 #include <algorithm>
 #include <atomic>
@@ -163,4 +162,3 @@ class DataProtector {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

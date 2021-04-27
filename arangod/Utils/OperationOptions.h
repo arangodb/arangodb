@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_OPERATION_OPTIONS_H
-#define ARANGOD_UTILS_OPERATION_OPTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Utils/ExecContext.h"
@@ -149,4 +148,3 @@ struct OperationOptions {
 
 }  // namespace arangodb
 
-#endif

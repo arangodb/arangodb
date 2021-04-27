@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ALL_ROWS_FETCHER_H
-#define ARANGOD_AQL_ALL_ROWS_FETCHER_H
+#pragma once
 
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionBlock.h"
@@ -124,4 +123,3 @@ class AllRowsFetcher {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_ALL_ROWS_FETCHER_H

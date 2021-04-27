@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_MAP_H
-#define VELOCYPACK_MAP_H
+
+#pragma once
 #include "plan-executor.h"
 #include "utilities.h"
 #include "vpack-types.h"
@@ -107,4 +107,3 @@ struct deserialize_plan_executor<map_deserializer<D, C, K, F>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_MAP_H

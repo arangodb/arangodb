@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
-#define ARANGOD_AQL_EXECUTION_BLOCK_H 1
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionNodeStats.h"
@@ -160,4 +159,3 @@ class ExecutionBlock {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

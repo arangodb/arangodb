@@ -155,7 +155,7 @@ LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
 #ifdef USE_ENTERPRISE
-LogTopic LdapFeature::LDAP_TOPIC("ldap", LogLevel::INFO);
+LogTopic LdapAuthProvider::LDAP_TOPIC("ldap", LogLevel::INFO);
 
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::DEBUG);
 LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization", LogLevel::INFO);

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTION_H
-#define ARANGOD_AQL_COLLECTION_H 1
+#pragma once
 
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/CountCache.h"
@@ -184,4 +183,3 @@ struct Collection {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

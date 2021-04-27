@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUANTIFIER_H
-#define ARANGOD_AQL_QUANTIFIER_H 1
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -52,4 +51,3 @@ struct Quantifier {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

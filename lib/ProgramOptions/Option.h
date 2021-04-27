@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_OPTION_H
-#define ARANGODB_PROGRAM_OPTIONS_OPTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "ProgramOptions/Parameters.h"
@@ -197,4 +196,3 @@ struct Option {
 }  // namespace options
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H
-#define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/asio_ns.h"
@@ -79,4 +78,3 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

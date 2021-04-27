@@ -22,8 +22,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DEBUGGING_H
-#define ARANGODB_BASICS_DEBUGGING_H 1
+#pragma once
 
 #include <stdlib.h>
 #include <ostream>
@@ -224,4 +223,3 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
 
 #endif  // #ifndef TRI_ASSERT
 
-#endif

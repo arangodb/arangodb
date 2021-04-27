@@ -21,8 +21,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IMPORT_QUICK_HIST_H
-#define ARANGODB_IMPORT_QUICK_HIST_H 1
+#pragma once
 
 #include <algorithm>
 #include <chrono>
@@ -276,4 +275,3 @@ class QuickHistogramTimer {
 };  // QuickHistogramTimer
 }  // namespace import
 }  // namespace arangodb
-#endif

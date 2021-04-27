@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDERS_BASE_STEP_H
-#define ARANGOD_GRAPH_PROVIDERS_BASE_STEP_H 1
+#pragma once
 
 #include <numeric>
 
@@ -50,4 +49,3 @@ class BaseStep {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

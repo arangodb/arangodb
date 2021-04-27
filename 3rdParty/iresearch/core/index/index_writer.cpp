@@ -2159,6 +2159,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     // skip empty segments
     if (!pending_segment.segment.meta.live_docs_count) {
       ctx->segment_mask_.emplace(pending_segment.segment.meta);
+      modified = true;
       continue;
     }
 

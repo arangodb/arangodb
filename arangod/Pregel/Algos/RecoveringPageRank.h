@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_RECO_PAGERANK_H
-#define ARANGODB_PREGEL_ALGOS_RECO_PAGERANK_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
@@ -59,4 +58,3 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

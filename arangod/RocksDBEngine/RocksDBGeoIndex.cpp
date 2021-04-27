@@ -378,7 +378,8 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
                                velocypack::Slice doc,
-                               arangodb::OperationOptions const& /*options*/) {
+                               arangodb::OperationOptions const& /*options*/,
+                               bool /*performChecks*/) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;

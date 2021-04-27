@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_QUERY_REGISTRY_FEATUREx_H
-#define APPLICATION_FEATURES_QUERY_REGISTRY_FEATUREx_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
@@ -125,4 +124,3 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
 
 }  // namespace arangodb
 
-#endif

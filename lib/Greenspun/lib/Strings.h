@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GREENSPUN_STRINGS_H
-#define ARANGODB_GREENSPUN_STRINGS_H
+#pragma once
 #include <Greenspun/Interpreter.h>
 
 namespace arangodb::greenspun {
@@ -32,4 +31,3 @@ void RegisterAllStringFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
 
 
-#endif  // ARANGODB_GREENSPUN_STRINGS_H

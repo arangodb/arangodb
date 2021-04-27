@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_BENCHMARK_OPERATION_H
-#define ARANGODB_BENCHMARK_BENCHMARK_OPERATION_H 1
+#pragma once
 
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
@@ -100,4 +99,3 @@ protected:
 }  // namespace arangobench
 }  // namespace arangodb
 
-#endif

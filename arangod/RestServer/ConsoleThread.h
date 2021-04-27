@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_SERVER_CONSOLE_THREAD_H
-#define ARANGOD_REST_SERVER_CONSOLE_THREAD_H 1
+#pragma once
 
 #include "Basics/Thread.h"
 #include "V8Server/V8Context.h"
@@ -68,4 +67,3 @@ class ConsoleThread final : public Thread {
 };
 }  // namespace arangodb
 
-#endif

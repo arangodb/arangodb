@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_VOCBASE_H
-#define ARANGOD_VOC_BASE_VOCBASE_H 1
+#pragma once
 
 #include <stddef.h>
 #include <atomic>
@@ -396,4 +395,3 @@ void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
 void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
                                  arangodb::velocypack::Builder& builder);
 
-#endif

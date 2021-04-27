@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_EVENTS_H
-#define ARANGOD_UTILS_EVENTS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -87,4 +86,3 @@ void DeleteHotbackup(std::string const& id, ErrorCode result);
 }  // namespace events
 }  // namespace arangodb
 
-#endif

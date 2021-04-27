@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_REGISTRY_H
-#define ARANGODB_PREGEL_REGISTRY_H 1
+#pragma once
 
 #include <string>
 #include "Algorithm.h"
@@ -47,4 +46,3 @@ struct AlgoRegistry {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

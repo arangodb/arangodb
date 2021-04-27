@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_HASH_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_HASH_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 #include "helpers.h"
@@ -111,4 +110,3 @@ struct HashTest : public Benchmark<HashTest> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

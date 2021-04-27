@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_USER_STRUCTURES_H
-#define ARANGOD_V8_SERVER_V8_USER_STRUCTURES_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -63,4 +62,3 @@ struct TRI_vocbase_t;
 /// @brief creates the user structures functions
 void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
-#endif

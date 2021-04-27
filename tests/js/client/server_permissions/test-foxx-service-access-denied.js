@@ -32,8 +32,6 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 function testSuite() {
   const db = internal.db;
   const arangodb = require('@arangodb');

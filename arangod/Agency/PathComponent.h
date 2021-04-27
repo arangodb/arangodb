@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_PATHCOMPONENT_H
-#define ARANGOD_CLUSTER_PATHCOMPONENT_H
+#pragma once
 
 #include <functional>
 #include <iosfwd>
@@ -176,4 +175,3 @@ std::ostream& operator<<(std::ostream& stream, Path const& path);
 }  // namespace cluster
 }  // namespace arangodb
 
-#endif  // ARANGOD_CLUSTER_PATHCOMPONENT_H

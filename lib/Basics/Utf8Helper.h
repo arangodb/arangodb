@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_UTF8HELPER_H
-#define ARANGODB_BASICS_UTF8HELPER_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
@@ -235,4 +234,3 @@ static inline int TRI_compare_utf8(char const* left, size_t leftLength,
 
 char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength);
 
-#endif

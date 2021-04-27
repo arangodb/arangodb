@@ -23,8 +23,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H
-#define ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H 1
+#pragma once
 
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
@@ -90,4 +89,3 @@ class GeneralServer {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

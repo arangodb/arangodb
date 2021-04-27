@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_TRANSACTIONAL_BUCKET_H
-#define ARANGODB_CACHE_TRANSACTIONAL_BUCKET_H
+#pragma once
 
 #include <atomic>
 #include <cstddef>
@@ -200,4 +199,3 @@ static_assert(sizeof(TransactionalBucket) == BUCKET_SIZE,
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

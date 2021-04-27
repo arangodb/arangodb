@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H
-#define ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -318,4 +317,3 @@ std::ostream& operator<<(std::ostream&, RocksDBKeyBounds const&);
 
 }  // namespace arangodb
 
-#endif

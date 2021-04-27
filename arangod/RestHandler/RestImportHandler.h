@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_IMPORT_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_IMPORT_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -184,4 +183,3 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FILE_RESULT_STRING_H
-#define ARANGODB_BASICS_FILE_RESULT_STRING_H 1
+#pragma once
 
 #include "Basics/FileResult.h"
 #include "Basics/Result.h"
@@ -47,4 +46,3 @@ class FileResultString : public FileResult {
 };
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINERS_MERKLE_TREE_H
-#define ARANGODB_CONTAINERS_MERKLE_TREE_H 1
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -318,4 +317,3 @@ using RevisionTree = MerkleTree<FnvHashProvider, 3, 64>;
 }  // namespace containers
 }  // namespace arangodb
 
-#endif

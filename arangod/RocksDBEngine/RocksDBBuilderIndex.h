@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_BUILDER_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_BUILDER_INDEX_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBIndex.h"
 
@@ -82,7 +81,8 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice slice, OperationOptions const& options) override;
+                arangodb::velocypack::Slice slice, OperationOptions const& options,
+                bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
@@ -120,4 +120,3 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

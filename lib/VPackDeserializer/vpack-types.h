@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef DESERIALIZE_VPACK_TYPES_H
-#define DESERIALIZE_VPACK_TYPES_H
+
+#pragma once
 
 #ifndef DESERIALIZER_NO_VPACK_TYPES
 #include "velocypack/Iterator.h"
@@ -40,4 +40,3 @@ using builder_type = arangodb::velocypack::Builder;
 }  // namespace arangodb
 #endif  // DESERIALIZER_NO_VPACK_TYPES
 
-#endif  // DESERIALIZE_VPACK_TYPES_H

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TRAVERSAL_EXECUTOR_H
-#define ARANGOD_AQL_TRAVERSAL_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -140,4 +139,3 @@ class TraversalExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

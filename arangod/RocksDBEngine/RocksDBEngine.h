@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ENGINE_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ENGINE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -550,4 +549,3 @@ static constexpr const char* kEncryptionKeystoreFolder = "ENCRYPTION-KEYS";
 
 }  // namespace arangodb
 
-#endif

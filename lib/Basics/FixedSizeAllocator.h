@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H
-#define ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -171,4 +170,3 @@ class FixedSizeAllocator {
 
 }  // namespace arangodb
 
-#endif

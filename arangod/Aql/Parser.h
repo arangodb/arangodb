@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_PARSER_H
-#define ARANGOD_AQL_PARSER_H 1
+#pragma once
 
 #include "Aql/Ast.h"
 #include "Basics/Common.h"
@@ -185,4 +184,3 @@ int Aqllex_destroy(void*);
 /// @brief forward for the context function provided by the lexer (.l)
 void Aqlset_extra(arangodb::aql::Parser*, void*);
 
-#endif

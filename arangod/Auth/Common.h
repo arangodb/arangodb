@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AUTHENTICATION_COMMON_H
-#define ARANGOD_AUTHENTICATION_COMMON_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include <velocypack/Slice.h>
@@ -44,4 +43,3 @@ std::string convertFromAuthLevel(auth::Level lvl);
 }  // namespace auth
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_CALLBACK_H
-#define ARANGOD_CONSENSUS_AGENT_CALLBACK_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 
@@ -56,4 +55,3 @@ class AgentCallback final {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

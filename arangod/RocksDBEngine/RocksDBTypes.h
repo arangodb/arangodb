@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_TYPES_H
-#define ARANGO_ROCKSDB_ROCKSDB_TYPES_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -110,4 +109,3 @@ char const* rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }  // namespace arangodb
 
-#endif

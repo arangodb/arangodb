@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_ACCUMULATOR_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR_ACCUMULATOR_H
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -68,4 +67,3 @@ class ModificationExecutorAccumulator {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif
