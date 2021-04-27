@@ -30,6 +30,20 @@
 #include <velocypack/velocypack-aliases.h>
 #include <utility>
 
+#if (_MSC_VER >= 1)
+// suppress warnings:
+#pragma warning(push)
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+#pragma warning(disable : 4267)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+#pragma warning(disable : 4334)
+#endif
+#include <immer/flex_vector_transient.hpp>
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
+
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 
@@ -52,8 +66,8 @@ struct ContainerIterator : LogIterator {
 
 class ReplicatedLogIterator : public LogIterator {
  public:
-  explicit ReplicatedLogIterator(std::deque<LogEntry>::const_iterator begin,
-                               std::deque<LogEntry>::const_iterator end)
+  explicit ReplicatedLogIterator(immer::flex_vector<LogEntry>::const_iterator begin,
+                                 immer::flex_vector<LogEntry>::const_iterator end)
       : _begin(std::move(begin)), _end(std::move(end)) {}
 
   auto next() -> std::optional<LogEntry> override {
@@ -66,12 +80,12 @@ class ReplicatedLogIterator : public LogIterator {
   }
 
  private:
-  std::deque<LogEntry>::const_iterator _begin;
-  std::deque<LogEntry>::const_iterator _end;
+  immer::flex_vector<LogEntry>::const_iterator _begin;
+  immer::flex_vector<LogEntry>::const_iterator _end;
 };
 
 ReplicatedLog::ReplicatedLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
-                         std::shared_ptr<PersistedLog> persistedLog)
+                             std::shared_ptr<PersistedLog> persistedLog)
     : _joermungandr(id, std::move(state), std::move(persistedLog), LogIndex{0}) {
   auto self = acquireMutex();
   if (ADB_UNLIKELY(self->_persistedLog == nullptr)) {
@@ -110,15 +124,17 @@ auto ReplicatedLog::GuardedReplicatedLog::appendEntries(AppendEntriesRequest req
     abort();
   }
 
-  auto iter = std::make_shared<ContainerIterator<std::vector<LogEntry>::const_iterator>>(
-      req.entries.cbegin(), req.entries.cend());
+  auto iter = std::make_shared<ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>>(
+      req.entries.begin(), req.entries.end());
   res = _persistedLog->insert(iter);
   if (!res.ok()) {
     abort();
   }
 
-  _log.erase(_log.begin() + req.prevLogIndex.value, _log.end());
-  _log.insert(_log.end(), req.entries.begin(), req.entries.end());
+  auto transientLog = _log.transient();
+  transientLog.take(req.prevLogIndex.value);
+  transientLog.append(req.entries.transient());
+  _log = std::move(transientLog).persistent();
 
   if (_commitIndex < req.leaderCommit && !_log.empty()) {
     _commitIndex = std::min(req.leaderCommit, _log.back().logIndex());
@@ -132,13 +148,14 @@ auto ReplicatedLog::insert(LogPayload payload) -> LogIndex {
   auto self = acquireMutex();
   return self->insert(std::move(payload));
 }
+
 auto ReplicatedLog::GuardedReplicatedLog::insert(LogPayload payload) -> LogIndex {
   // TODO this has to be lock free
   // TODO investigate what order between insert-increaseTerm is required?
   // Currently we use a mutex. Is this the only valid semantic?
   assertLeader();
   auto const index = nextIndex();
-  _log.emplace_back(LogEntry{_currentTerm, index, std::move(payload)});
+  _log = _log.push_back(LogEntry{_currentTerm, index, std::move(payload)});
   return index;
 }
 
@@ -209,15 +226,16 @@ auto ReplicatedLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
   return self->becomeFollower(term, std::move(id));
 }
 
-auto ReplicatedLog::GuardedReplicatedLog::becomeFollower(LogTerm term, ParticipantId id) -> void {
+auto ReplicatedLog::GuardedReplicatedLog::becomeFollower(LogTerm term, ParticipantId id)
+    -> void {
   TRI_ASSERT(_currentTerm < term);
   _currentTerm = term;
   _role = FollowerConfig{std::move(id)};
 }
 
 auto ReplicatedLog::becomeLeader(LogTerm term,
-                               std::vector<std::shared_ptr<LogFollower>> const& follower,
-                               std::size_t writeConcern) -> void {
+                                 std::vector<std::shared_ptr<LogFollower>> const& follower,
+                                 std::size_t writeConcern) -> void {
   auto self = acquireMutex();
   // TODO currently the local follower is added to the follower list by the caller.
   //      but we should do it instead here.
@@ -352,10 +370,14 @@ void ReplicatedLog::GuardedReplicatedLog::sendAppendEntries(std::weak_ptr<Replic
     req.prevLogTerm = LogTerm{0};
   }
 
-  // TODO maybe put an iterator into the request?
-  auto it = getLogIterator(follower.lastAckedIndex);
-  while (auto entry = it->next()) {
-    req.entries.emplace_back(*std::move(entry));
+  {
+    // TODO maybe put an iterator into the request?
+    auto it = getLogIterator(follower.lastAckedIndex);
+    auto transientEntries = immer::flex_vector_transient<LogEntry>{};
+    while (auto entry = it->next()) {
+      transientEntries.push_back(*std::move(entry));
+    }
+    req.entries = std::move(transientEntries).persistent();
   }
 
   // Capture self(shared_from_this()) instead of this
@@ -434,11 +456,11 @@ auto ReplicatedLog::GuardedReplicatedLog::handleAppendEntriesResponse(
 
 auto ReplicatedLog::GuardedReplicatedLog::getLogIterator(LogIndex fromIdx) const
     -> std::shared_ptr<LogIterator> {
-  auto from = _log.cbegin();
+  auto from = _log.begin();
   auto const endIdx = nextIndex();
   TRI_ASSERT(fromIdx < endIdx);
   std::advance(from, fromIdx.value);
-  auto to = _log.cend();
+  auto to = _log.end();
   return std::make_shared<ReplicatedLogIterator>(from, to);
 }
 
@@ -538,11 +560,10 @@ auto AppendEntriesRequest::fromVelocyPack(velocypack::Slice slice) -> AppendEntr
   auto leaderCommit = LogIndex{slice.get("leaderCommit").getNumericValue<size_t>()};
   auto entries = std::invoke([&] {
     auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
-    auto entries = std::vector<LogEntry>{};
-    entries.reserve(entriesVp.size());
-    std::transform(entriesVp.begin(), entriesVp.end(), std::back_inserter(entries),
+    auto transientEntries = immer::flex_vector_transient<LogEntry>{};
+    std::transform(entriesVp.begin(), entriesVp.end(), std::back_inserter(transientEntries),
                    [](auto const& it) { return LogEntry::fromVelocyPack(it); });
-    return entries;
+    return std::move(transientEntries).persistent();
   });
 
   return AppendEntriesRequest{leaderTerm,   leaderId,     prevLogTerm,

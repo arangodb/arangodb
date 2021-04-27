@@ -27,7 +27,20 @@
 #include <Futures/Future.h>
 #include <velocypack/Builder.h>
 #include <velocypack/SharedSlice.h>
+
+#if (_MSC_VER >= 1)
+// suppress warnings:
+#pragma warning(push)
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+#pragma warning(disable : 4267)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+#pragma warning(disable : 4334)
+#endif
 #include <immer/map.hpp>
+#include <immer/flex_vector.hpp>
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 #include <deque>
 #include <map>
@@ -58,7 +71,7 @@ struct AppendEntriesRequest {
   LogTerm prevLogTerm;
   LogIndex prevLogIndex;
   LogIndex leaderCommit;
-  std::vector<LogEntry> entries;
+  immer::flex_vector<LogEntry> entries;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
@@ -139,6 +152,7 @@ class ReplicatedLog : public LogFollower,
   // TODO Do we want another read function that only allows to read
   //      committed entries?
   [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
+  [[nodiscard]] auto getLogSnapshot() const -> std::optional<LogEntry>;
 
  private:
   struct GuardedReplicatedLog;
@@ -189,11 +203,11 @@ class ReplicatedLog : public LogFollower,
     auto insert(LogPayload) -> LogIndex;
 
     // leader only
-    auto createSnapshot() const
+    [[nodiscard]] auto createSnapshot() const
         -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
 
     // leader only
-    auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
+    [[nodiscard]] auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
 
     // Set to follower, and (strictly increase) term to the given value
     auto becomeFollower(LogTerm, ParticipantId leaderId) -> void;
@@ -235,7 +249,7 @@ class ReplicatedLog : public LogFollower,
     // last *valid* entry
     LogIndex _persistedLogEnd{0};
     LogTerm _currentTerm = LogTerm{};
-    std::deque<LogEntry> _log;
+    immer::flex_vector<LogEntry> _log;
     std::shared_ptr<InMemoryState> _state;
     LogIndex _commitIndex{0};
     std::shared_ptr<QuorumData> _lastQuorum;

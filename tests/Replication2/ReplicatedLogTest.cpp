@@ -649,8 +649,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest2 {
       // NOLINTNEXTLINE(performance-unnecessary-value-param)
       [](std::vector<DelayedFollowerLog*> followers, ThreadCoordinationData& data) {
         using namespace std::chrono_literals;
-        auto& log = *data.log;
-        for (auto i = 0;; ++i) {
+        for (auto i = 0;;) {
           for (auto* follower : followers) {
             follower->runAsyncAppendEntries();
             if (i % 17) {
@@ -659,6 +658,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest2 {
                 return;
               }
             }
+            ++i;
           }
         }
       };
