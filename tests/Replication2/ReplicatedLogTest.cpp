@@ -26,6 +26,8 @@
 #include <Basics/Exceptions.h>
 #include <Replication2/ReplicatedLog.h>
 
+#include <functional>
+
 #include <gtest/gtest.h>
 
 using namespace arangodb;
@@ -505,163 +507,6 @@ TEST_F(ReplicatedLogTest, replicationTest2) {
   ASSERT_FALSE(followerLog->hasPendingAppendEntries());
 }
 
-TEST_F(ReplicatedLogTest, parallelAccessTest) {
-  using namespace std::chrono_literals;
-
-  auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
-  auto const ourParticipantId = ParticipantId{1};
-  auto persistedLog = std::make_shared<MockLog>(LogId{1});
-  struct alignas(128) {
-    ReplicatedLog log;
-    std::atomic<bool> go = false;
-    std::atomic<bool> stopClientThreads = false;
-    std::atomic<bool> stopReplicationThread = false;
-    std::atomic<std::size_t> threadsReady = 0;
-    std::atomic<std::size_t> threadsSatisfied = 0;
-  } data{ReplicatedLog{ourParticipantId, state, persistedLog}};
-  data.log.becomeLeader(LogTerm{1}, {}, 1);
-
-  constexpr static auto genPayload = [](uint16_t thread, uint32_t i) {
-    auto str = std::string(16, ' ');
-
-    // 5 digits for thread
-    static_assert(std::numeric_limits<uint16_t>::max() <= 99'999);
-    // 10 digits for i
-    static_assert(std::numeric_limits<uint32_t>::max() <= 99'999'999'999);
-
-    auto p = str.begin() + 5;
-    *p = ':';
-    do {
-      --p;
-      *p = static_cast<char>('0' + (thread % 10));
-      thread /= 10;
-    } while (thread > 0);
-    p = str.end();
-    do {
-      --p;
-      *p = static_cast<char>('0' + (i % 10));
-      i /= 10;
-    } while (i > 0);
-
-    return str;
-  };
-  EXPECT_EQ("    0:         0", genPayload(0, 0));
-  EXPECT_EQ("   11:        42", genPayload(11, 42));
-  EXPECT_EQ("65535:4294967295", genPayload(65535, 4294967295));
-
-  constexpr static auto maxIter = std::numeric_limits<uint32_t>::max();
-
-  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-  auto alternatinglyInsertAndRead = [&](auto const threadIdx) {
-    return [threadIdx, &data] {
-      data.threadsReady.fetch_add(1);
-      while (!data.go.load()) {
-      }
-
-      auto& log = data.log;
-      for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); ++i) {
-        auto const payload = LogPayload{genPayload(threadIdx, i)};
-        auto const idx = log.insert(payload);
-        std::this_thread::sleep_for(1ns);
-        auto fut = log.waitFor(idx);
-        fut.get();
-        // TODO Rather use a function that only allows to read replicated entries,
-        //      and wait for the entry to be replicated beforehand.
-        auto res = log.getEntryByIndex(idx);
-        ASSERT_TRUE(res.has_value());
-        auto const& entry = res.value();
-        EXPECT_EQ(payload, entry.logPayload());
-        EXPECT_EQ(idx, entry.logIndex());
-        if (i == 1000) {
-          // we should have done at least a few iterations before finishing
-          data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
-        }
-      }
-    };
-  };
-
-  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-  auto insertManyThenRead = [&](auto const threadIdx) {
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-    return [threadIdx, &data] {
-      data.threadsReady.fetch_add(1);
-      while (!data.go.load()) {
-      }
-
-      auto& log = data.log;
-
-      constexpr auto batch = 100;
-      auto idxs = std::vector<LogIndex>{};
-      idxs.resize(batch);
-
-      for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); i += batch) {
-        for (auto k = 0; k < batch && i + k < maxIter; ++k) {
-          auto const payload = LogPayload{genPayload(threadIdx, i + k)};
-          idxs[k] = log.insert(payload);
-        }
-        std::this_thread::sleep_for(1ns);
-        auto fut = log.waitFor(idxs.back());
-        fut.get();
-        for (auto k = 0; k < batch && i + k < maxIter; ++k) {
-          auto const payload = LogPayload{genPayload(threadIdx, i + k)};
-          auto res = log.getEntryByIndex(idxs[k]);
-          auto const& entry = res.value();
-          EXPECT_EQ(payload, entry.logPayload());
-          EXPECT_EQ(idxs[k], entry.logIndex());
-        }
-        if (i == 10 * batch) {
-          // we should have done at least a few iterations before finishing
-          data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
-        }
-      }
-    };
-  };
-
-  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-  auto runReplicationWithIntermittentPauses = [&data] {
-    for (auto i = 0; ; ++i) {
-      data.log.runAsyncStep();
-      if (i % 16) {
-        std::this_thread::sleep_for(10ns);
-        if (data.stopReplicationThread.load()) {
-          return;
-        }
-      }
-    }
-  };
-
-  // start replication
-  auto replicationThread = std::thread{runReplicationWithIntermittentPauses};
-
-  std::vector<std::thread> clientThreads;
-  auto threadCounter = uint16_t{0};
-  clientThreads.emplace_back(alternatinglyInsertAndRead(threadCounter++));
-  clientThreads.emplace_back(insertManyThenRead(threadCounter++));
-
-
-  ASSERT_EQ(clientThreads.size(), threadCounter);
-  while (data.threadsReady.load() < clientThreads.size()) {
-  }
-  data.go.store(true);
-  while (data.threadsSatisfied.load() < clientThreads.size()) {
-    std::this_thread::sleep_for(100us);
-  }
-  data.stopClientThreads.store(true);
-
-  for (auto& thread : clientThreads) {
-    thread.join();
-  }
-
-  // stop replication only after all client threads joined, so we don't block
-  // them in some intermediate state
-  data.stopReplicationThread.store(true);
-  replicationThread.join();
-
-  auto stats = data.log.getLocalStatistics();
-  EXPECT_LE(LogIndex{8000}, stats.commitIndex);
-  EXPECT_LE(stats.commitIndex, stats.spearHead);
-}
-
 TEST(LogIndexTest, compareOperators) {
   auto one = LogIndex{1};
   auto two = LogIndex{2};
@@ -686,4 +531,182 @@ TEST(LogIndexTest, compareOperators) {
   EXPECT_TRUE(two > one);
   EXPECT_FALSE(two <= one);
   EXPECT_TRUE(two >= one);
+}
+
+struct ReplicatedLogConcurrentTest : ::testing::Test {
+  using ThreadIdx = uint16_t;
+  using IterIdx = uint32_t;
+  constexpr static auto maxIter = std::numeric_limits<IterIdx>::max();
+
+  struct alignas(128) ThreadCoordinationData {
+    // the testee
+    ReplicatedLog log;
+
+    // only when set to true, all client threads start
+    std::atomic<bool> go = false;
+    // when set to true, client threads will stop after the current iteration,
+    // whatever that means for them.
+    std::atomic<bool> stopClientThreads = false;
+    // when set to true, the replication thread stops. should be done only
+    // after all client threads stopped to avoid them hanging while waiting on
+    // replication.
+    std::atomic<bool> stopReplicationThread = false;
+    // every thread increases this by one when it's ready to start
+    std::atomic<std::size_t> threadsReady = 0;
+    // every thread increases this by one when it's done a certain minimal amount
+    // of work. This is to guarantee that all threads are running long enough
+    // side by side.
+    std::atomic<std::size_t> threadsSatisfied = 0;
+  };
+
+  // Used to generate payloads that are unique across threads.
+  constexpr static auto genPayload = [](ThreadIdx thread, IterIdx i) {
+    // This should fit into short string optimization
+    auto str = std::string(16, ' ');
+
+    auto p = str.begin() + 5;
+    // up to 5 digits for thread
+    static_assert(std::numeric_limits<ThreadIdx>::max() <= 99'999);
+    // 1 digit for ':'
+    *p = ':';
+    // up to 10 digits for i
+    static_assert(std::numeric_limits<IterIdx>::max() <= 99'999'999'999);
+
+    do {
+      --p;
+      *p = static_cast<char>('0' + (thread % 10));
+      thread /= 10;
+    } while (thread > 0);
+    p = str.end();
+    do {
+      --p;
+      *p = static_cast<char>('0' + (i % 10));
+      i /= 10;
+    } while (i > 0);
+
+    return str;
+  };
+
+  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+  constexpr static auto alternatinglyInsertAndRead = [](ThreadIdx const threadIdx, ThreadCoordinationData& data) {
+    using namespace std::chrono_literals;
+    data.threadsReady.fetch_add(1);
+    while (!data.go.load()) {
+    }
+
+    auto& log = data.log;
+    for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); ++i) {
+      auto const payload = LogPayload{genPayload(threadIdx, i)};
+      auto const idx = log.insert(payload);
+      std::this_thread::sleep_for(1ns);
+      auto fut = log.waitFor(idx);
+      fut.get();
+      // TODO Rather use a function that only allows to read replicated entries,
+      //      and wait for the entry to be replicated beforehand.
+      auto res = log.getEntryByIndex(idx);
+      ASSERT_TRUE(res.has_value());
+      auto const& entry = res.value();
+      EXPECT_EQ(payload, entry.logPayload());
+      EXPECT_EQ(idx, entry.logIndex());
+      if (i == 1000) {
+        // we should have done at least a few iterations before finishing
+        data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
+      }
+    }
+  };
+
+  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+  constexpr static auto insertManyThenRead = [](ThreadIdx const threadIdx, ThreadCoordinationData& data) {
+    using namespace std::chrono_literals;
+    data.threadsReady.fetch_add(1);
+    while (!data.go.load()) {
+    }
+
+    auto& log = data.log;
+
+    constexpr auto batch = 100;
+    auto idxs = std::vector<LogIndex>{};
+    idxs.resize(batch);
+
+    for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); i += batch) {
+      for (auto k = 0; k < batch && i + k < maxIter; ++k) {
+        auto const payload = LogPayload{genPayload(threadIdx, i + k)};
+        idxs[k] = log.insert(payload);
+      }
+      std::this_thread::sleep_for(1ns);
+      auto fut = log.waitFor(idxs.back());
+      fut.get();
+      for (auto k = 0; k < batch && i + k < maxIter; ++k) {
+        auto const payload = LogPayload{genPayload(threadIdx, i + k)};
+        auto res = log.getEntryByIndex(idxs[k]);
+        auto const& entry = res.value();
+        EXPECT_EQ(payload, entry.logPayload());
+        EXPECT_EQ(idxs[k], entry.logIndex());
+      }
+      if (i == 10 * batch) {
+        // we should have done at least a few iterations before finishing
+        data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
+      }
+    }
+  };
+
+  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+  constexpr static auto runReplicationWithIntermittentPauses = [](ThreadCoordinationData& data) {
+    using namespace std::chrono_literals;
+    for (auto i = 0; ; ++i) {
+      data.log.runAsyncStep();
+      if (i % 16) {
+        std::this_thread::sleep_for(10ns);
+        if (data.stopReplicationThread.load()) {
+          return;
+        }
+      }
+    }
+  };
+};
+
+TEST_F(ReplicatedLogConcurrentTest, genPayloadTest) {
+  EXPECT_EQ("    0:         0", genPayload(0, 0));
+  EXPECT_EQ("   11:        42", genPayload(11, 42));
+  EXPECT_EQ("65535:4294967295", genPayload(65535, 4294967295));
+}
+
+TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
+  using namespace std::chrono_literals;
+
+  auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
+  auto const ourParticipantId = ParticipantId{1};
+  auto persistedLog = std::make_shared<MockLog>(LogId{1});
+  auto data = ThreadCoordinationData{ReplicatedLog{ourParticipantId, state, persistedLog}};
+  data.log.becomeLeader(LogTerm{1}, {}, 1);
+
+  // // start replication
+  auto replicationThread = std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
+
+  std::vector<std::thread> clientThreads;
+  auto threadCounter = uint16_t{0};
+  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++, std::ref(data));
+  clientThreads.emplace_back(insertManyThenRead, threadCounter++, std::ref(data));
+
+  ASSERT_EQ(clientThreads.size(), threadCounter);
+  while (data.threadsReady.load() < clientThreads.size()) {
+  }
+  data.go.store(true);
+  while (data.threadsSatisfied.load() < clientThreads.size()) {
+    std::this_thread::sleep_for(100us);
+  }
+  data.stopClientThreads.store(true);
+
+  for (auto& thread : clientThreads) {
+    thread.join();
+  }
+
+  // stop replication only after all client threads joined, so we don't block
+  // them in some intermediate state
+  data.stopReplicationThread.store(true);
+  replicationThread.join();
+
+  auto stats = data.log.getLocalStatistics();
+  EXPECT_LE(LogIndex{8000}, stats.commitIndex);
+  EXPECT_LE(stats.commitIndex, stats.spearHead);
 }
