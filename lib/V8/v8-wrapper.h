@@ -46,8 +46,7 @@
 /// USE OR OTHER DEALINGS IN THE SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__WRAPPER_H
-#define ARANGODB_V8_V8__WRAPPER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -205,5 +204,3 @@ class V8Wrapper {
 
   v8::Isolate* _isolate;
 };
-
-#endif

@@ -21,9 +21,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
 // Note that error.h uses ARANGODB_BASICS_ERROR_H!
-#ifndef ARANGODB_BASICS_RESULT_ERROR_H
-#define ARANGODB_BASICS_RESULT_ERROR_H
 
 #include <string>
 #include <string_view>
@@ -62,5 +61,3 @@ class Error final {
 };
 
 }  // namespace arangodb::result
-
-#endif  // ARANGODB_BASICS_RESULT_ERROR_H
