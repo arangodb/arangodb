@@ -37,6 +37,7 @@
 #include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -55,6 +56,7 @@ class QueryList;
 }
 namespace replication2 {
 class ReplicatedLog;
+struct LogManager;
 }
 namespace velocypack {
 class Builder;
@@ -162,7 +164,13 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
-  std::unordered_map<arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::ReplicatedLog>> _logs;
+  std::shared_ptr<arangodb::replication2::LogManager> _logManager;
+  [[nodiscard]] auto getReplicatedLogById(arangodb::replication2::LogId id) const
+      -> std::shared_ptr<arangodb::replication2::ReplicatedLog>;
+  auto createReplicatedLog(arangodb::replication2::LogId id)
+  -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::ReplicatedLog>>;
+  auto dropReplicatedLog(arangodb::replication2::LogId id)
+  -> arangodb::Result;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;

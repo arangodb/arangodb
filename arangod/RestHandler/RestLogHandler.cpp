@@ -33,26 +33,6 @@ RestStatus RestLogHandler::execute() {
   return RestStatus::DONE;
 }
 
-struct FakePersistedLog : PersistedLog {
-  explicit FakePersistedLog(LogId id) : PersistedLog(id) {};
-  ~FakePersistedLog() override = default;
-  auto insert(std::shared_ptr<LogIterator> iter) -> Result override {
-    LOG_DEVEL << "Fake log insert";
-    return Result();
-  }
-  auto read(LogIndex start) -> std::shared_ptr<LogIterator> override {
-    struct FakeLogIterator : LogIterator {
-      auto next() -> std::optional<LogEntry> override {
-        return std::nullopt;
-      }
-    };
-
-    return std::shared_ptr<FakeLogIterator>();
-  }
-  auto removeFront(LogIndex stop) -> Result override { return Result(); }
-  auto removeBack(LogIndex start) -> Result override { return Result(); }
-  auto drop() -> Result override { return Result(); }
-};
 
 struct FakeLogFollower : LogFollower {
   explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
@@ -106,18 +86,12 @@ RestStatus RestLogHandler::handlePostRequest() {
     // create a new log
     LogId id{body.get("id").getNumericValue<uint64_t>()};
 
-    if (auto it = _vocbase._logs.find(id); it != _vocbase._logs.end()) {
-      generateError(rest::ResponseCode::CONFLICT, TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, "log with id already exists");
-      return RestStatus::DONE;
+    auto result = _vocbase.createReplicatedLog(id);
+    if (result.ok()) {
+      generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+    } else {
+      generateError(result.result());
     }
-
-    auto participantId = ServerState::instance()->getId();
-    auto state = std::make_shared<InMemoryState>();
-    auto persistedLog = std::make_shared<FakePersistedLog>(id);
-
-    auto log = std::make_shared<ReplicatedLog>(participantId, state, persistedLog);
-    _vocbase._logs.emplace(id, log);
-    generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
     return RestStatus::DONE;
   }
 
@@ -129,13 +103,11 @@ RestStatus RestLogHandler::handlePostRequest() {
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
   std::shared_ptr<ReplicatedLog> log;
-  {
-    if (auto it = _vocbase._logs.find(logId); it != _vocbase._logs.end()) {
-      log = it->second;
-    } else {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown log");
-      return RestStatus::DONE;
-    }
+  log = _vocbase.getReplicatedLogById(logId);
+  if (log == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown log");
+    return RestStatus::DONE;
   }
 
   if (auto& verb = suffixes[1]; verb == "insert") {
@@ -202,6 +174,8 @@ RestStatus RestLogHandler::handlePostRequest() {
       follower.emplace_back(std::make_shared<FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
     }
 
+
+
     log->becomeLeader(term, follower, writeConcern);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
   } else if (verb == "becomeFollower") {
@@ -231,33 +205,17 @@ RestStatus RestLogHandler::handlePostRequest() {
 RestStatus RestLogHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    VPackBuilder response;
 
-    {
-      VPackObjectBuilder arrayBuilder(&response);
-      for (auto const& [id, log] : _vocbase._logs) {
-        auto stats = log->getLocalStatistics();
-
-        auto idString = std::to_string(id.id());
-        response.add(VPackValue(idString));
-        stats.toVelocyPack(response);
-      }
-    }
-
-    generateOk(rest::ResponseCode::OK, response.slice());
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
     return RestStatus::DONE;
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  std::shared_ptr<ReplicatedLog> log;
-  {
-    if (auto it = _vocbase._logs.find(logId); it != _vocbase._logs.end()) {
-      log = it->second;
-    } else {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown log");
-      return RestStatus::DONE;
-    }
+  std::shared_ptr<ReplicatedLog> log = _vocbase.getReplicatedLogById(logId);
+  if (!log) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown log");
+    return RestStatus::DONE;
   }
 
   if (suffixes.size() == 1) {
@@ -346,10 +304,10 @@ RestStatus RestLogHandler::handleDeleteRequest() {
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  if (auto it = _vocbase._logs.find(logId); it == _vocbase._logs.end()) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "log not found");
+  auto result = _vocbase.dropReplicatedLog(logId);
+  if (!result.ok()) {
+    generateError(result);
   } else {
-    _vocbase._logs.erase(it);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
   }
 

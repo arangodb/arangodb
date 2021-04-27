@@ -510,6 +510,11 @@ auto ReplicatedLog::getReplicatedLogSnapshot() const -> immer::flex_vector<LogEn
   return log.take(commitIndex.value);
 }
 
+auto ReplicatedLog::getPersistedLog() const noexcept -> std::shared_ptr<PersistedLog> {
+  auto self = acquireMutex();
+  return self->_persistedLog;
+}
+
 auto InMemoryState::createSnapshot() -> std::shared_ptr<InMemoryState const> {
   return std::make_shared<InMemoryState>(_state);
 }
