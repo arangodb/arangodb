@@ -219,6 +219,8 @@ auto ReplicatedLog::becomeLeader(LogTerm term,
                                std::vector<std::shared_ptr<LogFollower>> const& follower,
                                std::size_t writeConcern) -> void {
   auto self = acquireMutex();
+  // TODO currently the local follower is added to the follower list by the caller.
+  //      but we should do it instead here.
   return self->becomeLeader(term, follower, writeConcern);
 }
 

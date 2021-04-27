@@ -23,11 +23,11 @@ struct DelayedFollowerLog : ReplicatedLog {
     AppendEntriesRequest request;
     WaitForAsyncPromise promise;
   };
-  [[nodiscard]] auto pendingAppendEntries() const -> std::vector<AsyncRequest> const& { return _asyncQueue; }
+  [[nodiscard]] auto pendingAppendEntries() const -> std::deque<AsyncRequest> const& { return _asyncQueue; }
   [[nodiscard]] auto hasPendingAppendEntries() const -> bool { return !_asyncQueue.empty(); }
 
  private:
-  std::vector<AsyncRequest> _asyncQueue;
+  std::deque<AsyncRequest> _asyncQueue;
 };
 
 struct LogTestBase;

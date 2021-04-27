@@ -399,6 +399,11 @@ TEST_F(ReplicatedLogTest2, replicationTest) {
       ASSERT_EQ(stats.commitIndex, LogIndex{0});
       ASSERT_EQ(stats.spearHead, LogIndex{1});
     }
+    {
+      auto stats = leaderLog->getLocalStatistics();
+      ASSERT_EQ(stats.commitIndex, LogIndex{2});
+      ASSERT_EQ(stats.spearHead, LogIndex{2});
+    }
     followerLog->runAsyncAppendEntries();
     {
       auto stats = followerLog->getLocalStatistics();
