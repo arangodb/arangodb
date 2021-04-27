@@ -157,6 +157,7 @@ template <typename FetcherType, typename ModifierType>
                 !std::is_same_v<FetcherType, AllRowsFetcher>) {
     upstreamCall.softLimit = _modifier.getBatchSize();
   }
+
   auto stats = ModificationStats{};
 
   _modifier.reset();

@@ -54,13 +54,13 @@ std::pair<AqlItemBlock const*, size_t> AqlItemMatrix::getBlockRef(size_t index) 
   // shadowRow.
   // All other blocks start with the first row as data row
   TRI_ASSERT(_blocks[index].get());
-  return  {_blocks[index].get(), index == 0 ? _startIndexInFirstBlock : 0};
+  return {_blocks[index].get(), index == 0 ? _startIndexInFirstBlock : 0};
 }
 
 InputAqlItemRow AqlItemMatrix::getRow(AqlItemMatrix::RowIndex index) const noexcept {
-  auto const& [block, unused] = getBlock(index.first);
+  auto [block, unused] = getBlock(index.first);
   TRI_ASSERT(index.second >= unused);
-  return InputAqlItemRow{block, index.second};
+  return InputAqlItemRow{std::move(block), index.second};
 }
 
 std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {

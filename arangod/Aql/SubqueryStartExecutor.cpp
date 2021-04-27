@@ -40,7 +40,7 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
   if (_inputRow.isInitialized()) {
     // We have not been able to report the ShadowRow.
     // Simply return DONE to trigger Impl to fetch shadow row instead.
-    return {ExecutorState::DONE, NoStats{}, AqlCall{}};
+    return {ExecutorState::DONE, NoStats{}, AqlCall::emptyCall};
   }
   TRI_ASSERT(!_inputRow.isInitialized());
   if (input.hasDataRow()) {
@@ -48,9 +48,9 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
     std::tie(_upstreamState, _inputRow) = input.peekDataRow();
     output.copyRow(_inputRow);
     output.advanceRow();
-    return {ExecutorState::DONE, NoStats{}, AqlCall{}};
+    return {ExecutorState::DONE, NoStats{}, AqlCall::emptyCall};
   }
-  return {input.upstreamState(), NoStats{}, AqlCall{}};
+  return {input.upstreamState(), NoStats{}, AqlCall::emptyCall};
 }
 
 auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
@@ -59,7 +59,7 @@ auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall
   if (_inputRow.isInitialized()) {
     // We have not been able to report the ShadowRow.
     // Simply return DONE to trigger Impl to fetch shadow row instead.
-    return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}};
+    return {ExecutorState::DONE, NoStats{}, 0, AqlCall::emptyCall};
   }
 
   if (input.hasDataRow()) {
@@ -67,9 +67,9 @@ auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall
     // It needs to be reported in Produce.
     std::tie(_upstreamState, _inputRow) = input.peekDataRow();
     call.didSkip(1);
-    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}};
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
   }
-  return {input.upstreamState(), NoStats{}, 0, AqlCall{}};
+  return {input.upstreamState(), NoStats{}, 0, AqlCall::emptyCall};
 }
 
 auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
