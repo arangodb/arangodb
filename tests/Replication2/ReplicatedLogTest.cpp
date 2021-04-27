@@ -353,11 +353,19 @@ TEST_F(ReplicatedLogTest2, replicationTest) {
 
     ASSERT_FALSE(fut.isReady());
     ASSERT_FALSE(followerLog->hasPendingAppendEntries());
+    {
+      auto const snapshot = leaderLog->getReplicatedLogSnapshot();
+      ASSERT_EQ(0, snapshot.size());
+    }
     leaderLog->runAsyncStep();
     _executor->executeAllActions();
     // future should not be ready because write concern is two
     ASSERT_FALSE(fut.isReady());
     ASSERT_TRUE(followerLog->hasPendingAppendEntries());
+    {
+      auto const snapshot = leaderLog->getReplicatedLogSnapshot();
+      ASSERT_EQ(0, snapshot.size());
+    }
 
     followerLog->runAsyncAppendEntries();
     ASSERT_TRUE(fut.isReady());
@@ -371,6 +379,12 @@ TEST_F(ReplicatedLogTest2, replicationTest) {
       ASSERT_EQ(stats.commitIndex, LogIndex{0});
       ASSERT_EQ(stats.spearHead, LogIndex{1});
     }
+    {
+      auto const snapshot = leaderLog->getReplicatedLogSnapshot();
+      ASSERT_EQ(1, snapshot.size());
+      ASSERT_EQ(LogIndex{1}, snapshot[0].logIndex());
+      ASSERT_EQ(LogPayload{"myLogEntry 1"}, snapshot[0].logPayload());
+    }
 
     ASSERT_TRUE(followerLog->hasPendingAppendEntries());
   }
@@ -383,6 +397,12 @@ TEST_F(ReplicatedLogTest2, replicationTest) {
       ASSERT_EQ(LogIndex{2}, index);
     }
     auto fut = leaderLog->waitFor(LogIndex{2});
+
+    {
+      auto const snapshot = leaderLog->getReplicatedLogSnapshot();
+      ASSERT_EQ(0, snapshot.size());
+    }
+
     leaderLog->runAsyncStep();
     _executor->executeAllActions();
     ASSERT_TRUE(followerLog->hasPendingAppendEntries());
@@ -392,6 +412,15 @@ TEST_F(ReplicatedLogTest2, replicationTest) {
       ASSERT_EQ(info->quorum.size(), 1);
       ASSERT_EQ(info->term, LogTerm{2});
       ASSERT_EQ(info->quorum[0], leaderId);
+    }
+
+    {
+      auto const snapshot = leaderLog->getReplicatedLogSnapshot();
+      ASSERT_EQ(2, snapshot.size());
+      ASSERT_EQ(LogIndex{1}, snapshot[0].logIndex());
+      ASSERT_EQ(LogPayload{"myLogEntry 1"}, snapshot[0].logPayload());
+      ASSERT_EQ(LogIndex{2}, snapshot[1].logIndex());
+      ASSERT_EQ(LogPayload{"myLogEntry 2"}, snapshot[1].logPayload());
     }
 
     {
