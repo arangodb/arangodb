@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_REGISTRY_H
-#define ARANGOD_AQL_QUERY_REGISTRY_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -185,4 +184,3 @@ class QueryRegistry {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

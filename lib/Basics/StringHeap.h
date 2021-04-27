@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_STRING_HEAP_H
-#define ARANGODB_BASICS_STRING_HEAP_H 1
+#pragma once
 
 #include <vector>
 
@@ -80,4 +79,3 @@ class StringHeap {
 };
 }  // namespace arangodb
 
-#endif

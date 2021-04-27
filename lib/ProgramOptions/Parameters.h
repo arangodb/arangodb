@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_PARAMETERS_H
-#define ARANGODB_PROGRAM_OPTIONS_PARAMETERS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -630,4 +629,3 @@ struct ObsoleteParameter : public Parameter {
 }  // namespace options
 }  // namespace arangodb
 
-#endif

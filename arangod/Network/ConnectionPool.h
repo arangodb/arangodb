@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_CONNECTION_POOL_H
-#define ARANGOD_NETWORK_CONNECTION_POOL_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -168,4 +167,3 @@ class ConnectionPtr {
 }  // namespace network
 }  // namespace arangodb
 
-#endif

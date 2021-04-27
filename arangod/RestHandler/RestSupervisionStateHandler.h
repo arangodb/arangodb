@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_SUPERVISION_STATE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_SUPERVISION_STATE_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -41,4 +40,3 @@ class RestSupervisionStateHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

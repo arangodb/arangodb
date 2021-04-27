@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_DATA_SOURCE_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_DATA_SOURCE_ID_H 1
+#pragma once
 
 #include "Basics/Identifier.h"
 
@@ -51,4 +50,3 @@ static_assert(sizeof(DataSourceId) == sizeof(DataSourceId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::DataSourceId)
 
-#endif

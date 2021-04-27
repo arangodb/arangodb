@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_PRUNE_EXPRESSION_EVALUATOR_H
-#define ARANGOD_AQL_PRUNE_EXPRESSION_EVALUATOR_H 1
+#pragma once
 
 #include "Aql/InAndOutRowExpressionContext.h"
 
@@ -74,4 +73,3 @@ class PruneExpressionEvaluator {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

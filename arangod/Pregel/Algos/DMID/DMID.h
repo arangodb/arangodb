@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_DMID_H
-#define ARANGODB_PREGEL_ALGOS_DMID_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -57,4 +56,3 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

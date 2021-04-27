@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_LOCKING_H
-#define ARANGODB_BASICS_LOCKING_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -46,4 +45,3 @@ static constexpr bool DoNotLock = false;
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

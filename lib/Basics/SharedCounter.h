@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_SHARED_COUNTER_H
-#define ARANGO_SHARED_COUNTER_H 1
+#pragma once
 
 #include <atomic>
 #include <functional>
@@ -118,4 +117,3 @@ struct SharedCounter {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

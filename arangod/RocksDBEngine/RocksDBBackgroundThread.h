@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_BACKGROUND_H
-#define ARANGOD_ROCKSDB_ENGINE_BACKGROUND_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -59,4 +58,3 @@ class RocksDBBackgroundThread final : public Thread {
 };
 }  // namespace arangodb
 
-#endif

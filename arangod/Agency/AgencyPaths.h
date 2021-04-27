@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_AGENCYPATHS_H
-#define ARANGOD_CLUSTER_AGENCYPATHS_H
+#pragma once
 
 #include "Agency/PathComponent.h"
 #include "Basics/debugging.h"
@@ -1900,4 +1899,3 @@ auto supervision() -> std::shared_ptr<Root::Arango::Supervision const>;
 
 }  // namespace arangodb::cluster::paths
 
-#endif  // ARANGOD_CLUSTER_AGENCYPATHS_H

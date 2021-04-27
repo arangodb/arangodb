@@ -21,8 +21,7 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MEMORY__MAP__WIN32_H
-#define ARANGODB_BASICS_MEMORY__MAP__WIN32_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -77,4 +76,3 @@
 #define TRI_MADVISE_DONTNEED 0
 #define TRI_MADVISE_DONTDUMP 0
 
-#endif

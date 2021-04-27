@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
-#define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
+#pragma once
 
 #include <set>
 
@@ -266,4 +265,3 @@ class PhysicalCollection {
 
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_KLUDGE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_KLUDGE_H 1
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common place for all kludges and temporary workarounds required for
@@ -53,4 +52,3 @@ void mangleField(
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

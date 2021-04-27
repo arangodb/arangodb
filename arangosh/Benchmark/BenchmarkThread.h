@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_BENCHMARK_THREAD_H
-#define ARANGODB_BENCHMARK_BENCHMARK_THREAD_H 1
+#pragma once
 
 #include <cmath>
 
@@ -632,4 +631,3 @@ public:
 }  // namespace arangobench
 }  // namespace arangodb
 
-#endif

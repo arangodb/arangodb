@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_DATABASE_INITIAL_SYNCER_H
-#define ARANGOD_REPLICATION_DATABASE_INITIAL_SYNCER_H 1
+#pragma once
 
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
@@ -263,4 +262,3 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
 }  // namespace arangodb
 
-#endif

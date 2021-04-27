@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_UTILS_MANAGED_DIRECTORY_H
-#define ARANGOSH_UTILS_MANAGED_DIRECTORY_H 1
+#pragma once
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -288,4 +287,3 @@ class ManagedDirectory {
 };
 }  // namespace arangodb
 
-#endif

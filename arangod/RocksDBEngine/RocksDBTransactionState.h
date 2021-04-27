@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H 1
+#pragma once
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
@@ -246,4 +245,3 @@ class RocksDBKeyLeaser {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_RANDOM_SHAPES_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_RANDOM_SHAPES_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 #include "Random/RandomGenerator.h"
@@ -121,4 +120,3 @@ struct RandomShapesTest : public Benchmark<RandomShapesTest> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

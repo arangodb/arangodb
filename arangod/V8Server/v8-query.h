@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_QUERY_H
-#define ARANGOD_V8_SERVER_V8_QUERY_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -34,4 +33,3 @@
 
 void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
-#endif

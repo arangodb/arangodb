@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef DESERIALIZER_CONTEXT_H
-#define DESERIALIZER_CONTEXT_H
+
+#pragma once
 #include "plan-executor.h"
 #include "utilities.h"
 
@@ -65,4 +65,3 @@ struct deserialize_plan_executor<context::context_modify_plan<D, Q>, H> {
 }  // namespace velocypack
 }  // namespace arangodb
 
-#endif  // DESERIALIZER_CONTEXT_H

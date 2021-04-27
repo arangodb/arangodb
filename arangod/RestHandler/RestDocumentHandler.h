@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_DOCUMENT_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_DOCUMENT_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -91,4 +90,3 @@ private:
 };
 }  // namespace arangodb
 
-#endif

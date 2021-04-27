@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_COMMON_H
-#define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_COMMON_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -61,4 +60,3 @@ class RocksDBReplicationResult {
 
 }  // namespace arangodb
 
-#endif

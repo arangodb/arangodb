@@ -21,8 +21,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_LATE_MATERIALIZATION_OPTIMIZER_RULES_COMMON_H
-#define ARANGOD_AQL_LATE_MATERIALIZATION_OPTIMIZER_RULES_COMMON_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -88,4 +87,3 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_LATE_MATERIALIZATION_OPTIMIZER_RULES_COMMON_H

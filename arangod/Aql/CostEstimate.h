@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COST_ESTIMATE_H
-#define ARANGOD_AQL_COST_ESTIMATE_H 1
+#pragma once
 
 #include <cstddef>
 #include <stack>
@@ -76,4 +75,3 @@ struct CostEstimate {
 
 }  // namespace arangodb::aql
 
-#endif

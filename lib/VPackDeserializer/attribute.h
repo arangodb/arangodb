@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef DESERIALIZER_ATTRIBUTE_H
-#define DESERIALIZER_ATTRIBUTE_H
+
+#pragma once
 #include "deserialize-with.h"
 #include "errors.h"
 #include "hints.h"
@@ -95,4 +95,3 @@ struct deserialize_plan_executor<attribute_deserializer<N, D>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // DESERIALIZER_ATTRIBUTE_H

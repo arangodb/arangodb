@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_SHORTEST_PATH_FINDER_H
-#define ARANGODB_GRAPH_SHORTEST_PATH_FINDER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -74,4 +73,3 @@ class ShortestPathFinder {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

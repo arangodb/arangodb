@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_TASKS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_TASKS_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -47,4 +46,3 @@ class RestTasksHandler : public arangodb::RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

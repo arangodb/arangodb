@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_CONSTANT_WEIGHT_SHORTEST_PATH_FINDER_H
-#define ARANGODB_GRAPH_CONSTANT_WEIGHT_SHORTEST_PATH_FINDER_H 1
+#pragma once
 
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -94,4 +93,3 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

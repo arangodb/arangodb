@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_RESULT_T_H
-#define ARANGODB_BASICS_RESULT_T_H
+#pragma once
 
 #include <type_traits>
 
@@ -264,4 +263,3 @@ class ResultT {
 
 }  // namespace arangodb
 
-#endif  // ARANGODB_BASICS_RESULT_T_H

@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef CLUSTER_AGENCY_CALLBACK_REGISTRY_H
-#define CLUSTER_AGENCY_CALLBACK_REGISTRY_H 1
+#pragma once
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ReadWriteLock.h"
@@ -74,4 +73,3 @@ class AgencyCallbackRegistry {
 
 }  // namespace arangodb
 
-#endif

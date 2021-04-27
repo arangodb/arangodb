@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_REDIRECT_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_REDIRECT_HANDLER_H 1
+#pragma once
 
 #include "GeneralServer/RestHandler.h"
 
@@ -46,4 +45,3 @@ class RestRedirectHandler : public rest::RestHandler {
 };
 }  // namespace arangodb
 
-#endif

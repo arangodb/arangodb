@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
-#define ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
+#pragma once
 
 #include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionBlock.h"
@@ -178,4 +177,3 @@ class MultiDependencySingleRowFetcher {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

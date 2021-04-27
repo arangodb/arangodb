@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ID_EXECUTOR_H
-#define ARANGOD_AQL_ID_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
@@ -123,4 +122,3 @@ class IdExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

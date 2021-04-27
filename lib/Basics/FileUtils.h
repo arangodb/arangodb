@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FILE_UTILS_H
-#define ARANGODB_BASICS_FILE_UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 #include <functional>
@@ -153,4 +152,3 @@ int slurpProgramWithExitcode(std::string const& program, std::string& output);
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

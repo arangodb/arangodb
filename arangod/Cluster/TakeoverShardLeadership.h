@@ -23,8 +23,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
-#define ARANGODB_MAINTENANCE_TAKEOVER_SHARD_LEADERSHIP_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -47,4 +46,3 @@ class TakeoverShardLeadership : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

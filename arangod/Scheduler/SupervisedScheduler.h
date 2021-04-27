@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H
-#define ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H 1
+#pragma once
 
 #include <array>
 #include <condition_variable>
@@ -226,4 +225,3 @@ class SupervisedScheduler final : public Scheduler {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CONST_FETCHER_H
-#define ARANGOD_AQL_CONST_FETCHER_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
@@ -110,4 +109,3 @@ class ConstFetcher {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

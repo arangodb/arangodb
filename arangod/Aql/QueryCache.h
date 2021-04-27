@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_CACHE_H
-#define ARANGOD_AQL_QUERY_CACHE_H 1
+#pragma once
 
 #include <memory>
 #include <unordered_map>
@@ -277,4 +276,3 @@ class QueryCache {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif
