@@ -46,10 +46,12 @@ ResultT<std::unique_ptr<arangodb::ValidatorBase>> InternalValidatorFactory::Vali
   VPackStringRef type(typeSlice);
 
 #ifdef USE_ENTERPRISE
+  /*
   auto res = InternalValidatorFactoryEE::ValidatorFromSlice(type, definition);
-#endif
   if (res.ok() || res.result().isNot(TRI_ERROR_TYPE_ERROR)) {
     return res;
   }
+  */
+#endif
   return Result{TRI_ERROR_TYPE_ERROR, "ValidatorType not known."};
 }
