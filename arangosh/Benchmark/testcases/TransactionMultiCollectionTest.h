@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_MULTI_COLLECTION_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_MULTI_COLLECTION_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 #include "helpers.h"
@@ -107,4 +106,3 @@ struct TransactionMultiCollectionTest : public Benchmark<TransactionMultiCollect
 };
 
 }  // namespace arangodb::arangobench
-#endif

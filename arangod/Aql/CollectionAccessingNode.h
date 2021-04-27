@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H
-#define ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H 1
+#pragma once
 
 #include "Aql/CollectionAccess.h"
 #include "Aql/ExecutionNodeId.h"
@@ -138,4 +137,3 @@ class CollectionAccessingNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

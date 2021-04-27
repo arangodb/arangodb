@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_COLLECTIONS_H
-#define ARANGOD_VOC_BASE_API_COLLECTIONS_H 1
+#pragma once
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
@@ -154,4 +153,3 @@ Result DropColCoordinatorEnterprise(LogicalCollection* collection, bool allowDro
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

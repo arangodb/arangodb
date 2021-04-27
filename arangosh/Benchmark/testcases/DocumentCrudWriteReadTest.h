@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_DOCUMENT_CRUD_WRITE_READ_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_DOCUMENT_CRUD_WRITE_READ_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 
@@ -104,4 +103,3 @@ struct DocumentCrudWriteReadTest : public Benchmark<DocumentCrudWriteReadTest> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

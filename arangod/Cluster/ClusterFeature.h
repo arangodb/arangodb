@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_FEATURE_H
-#define ARANGOD_CLUSTER_CLUSTER_FEATURE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -190,4 +189,3 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

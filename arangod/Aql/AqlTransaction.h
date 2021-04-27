@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_TRANSACTION_H
-#define ARANGOD_AQL_AQL_TRANSACTION_H 1
+#pragma once
 
 #include "Aql/Collections.h"
 #include "Transaction/Methods.h"
@@ -71,4 +70,3 @@ class AqlTransaction : public transaction::Methods {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

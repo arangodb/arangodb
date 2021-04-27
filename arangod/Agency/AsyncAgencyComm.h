@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ASYNC_AGENCY_COMM_H
-#define ARANGOD_CLUSTER_ASYNC_AGENCY_COMM_H 1
+#pragma once
 
 #include <fuerte/message.h>
 
@@ -286,4 +285,3 @@ class AsyncAgencyComm final {
 };
 
 }  // namespace arangodb
-#endif

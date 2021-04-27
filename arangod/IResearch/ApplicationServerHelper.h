@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__APPLICATION_SERVER_HELPER_H
-#define ARANGOD_IRESEARCH__APPLICATION_SERVER_HELPER_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationServer.h"
 
@@ -53,4 +52,3 @@ inline arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeat
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

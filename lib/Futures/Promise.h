@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_PROMISE_H
-#define ARANGOD_FUTURES_PROMISE_H 1
+#pragma once
 
 #include "Futures/Exceptions.h"
 #include "Futures/SharedState.h"
@@ -156,7 +155,6 @@ class Promise {
 };
 }  // namespace futures
 }  // namespace arangodb
-#endif  // ARANGOD_FUTURES_PROMISE_H
 
 #include "Future.h"
 #include "Promise-inl.h"

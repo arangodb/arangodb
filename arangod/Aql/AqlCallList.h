@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_CALL_LIST_H
-#define ARANGOD_AQL_AQL_CALL_LIST_H 1
+#pragma once
 
 #include "Aql/AqlCall.h"
 
@@ -157,4 +156,3 @@ auto operator<<(std::ostream& out, const arangodb::aql::AqlCallList& list) -> st
 
 }  // namespace arangodb::aql
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_TRANSACTION_H
-#define ARANGODB_CACHE_TRANSACTION_H
+#pragma once
 
 #include <cstdint>
 
@@ -43,4 +42,3 @@ struct Transaction {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

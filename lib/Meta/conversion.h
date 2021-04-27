@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_META_CONVERSION_H
-#define ARANGODB_META_CONVERSION_H 1
+#pragma once
 
 #include <type_traits>
 
@@ -55,4 +54,3 @@ constexpr
 }  // namespace meta
 }  // namespace arangodb
 
-#endif

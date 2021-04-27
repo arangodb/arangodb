@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_INITIAL_SYNCER_H
-#define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -70,4 +69,3 @@ class InitialSyncer : public Syncer {
 };
 }  // namespace arangodb
 
-#endif

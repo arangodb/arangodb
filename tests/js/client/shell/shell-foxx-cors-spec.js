@@ -10,7 +10,6 @@ const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'tes
 const isVst = (arango.getEndpoint().search('vst') >= 0) || (arango.getEndpoint().search('vpp') >= 0);
 const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
 const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'content-length', 'keep-alive', 'server', 'allow'];
 function filterIrelevant(header) {
   return !header.startsWith('x-content-type-options') &&

@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_FAILED_SERVER_H
-#define ARANGOD_CONSENSUS_FAILED_SERVER_H 1
+#pragma once
 
 #include "Job.h"
 #include "Supervision.h"
@@ -51,4 +50,3 @@ struct FailedServer : public Job {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

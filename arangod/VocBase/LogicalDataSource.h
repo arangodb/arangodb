@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD__VOCBASE__LOGICAL_DATA_SOURCE_H
-#define ARANGOD__VOCBASE__LOGICAL_DATA_SOURCE_H 1
+#pragma once
 
 #include "Basics/Result.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -196,4 +195,3 @@ class LogicalDataSource {
 
 }  // namespace arangodb
 
-#endif  // ARANGOD__VOCBASE__LOGICAL_DATA_SOURCE_H

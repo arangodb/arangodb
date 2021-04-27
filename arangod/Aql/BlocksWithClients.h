@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CLUSTER_BLOCKS_H
-#define ARANGOD_AQL_CLUSTER_BLOCKS_H 1
+#pragma once
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
@@ -198,4 +197,3 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

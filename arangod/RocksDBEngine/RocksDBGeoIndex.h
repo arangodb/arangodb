@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_GEO_INDEX_H
-#define ARANGOD_ROCKSDB_GEO_INDEX_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 
@@ -89,4 +88,3 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 };
 }  // namespace arangodb
 
-#endif

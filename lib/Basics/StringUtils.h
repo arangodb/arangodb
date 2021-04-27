@@ -22,8 +22,7 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_STRING_UTILS_H
-#define ARANGODB_BASICS_STRING_UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 #include <charconv>
@@ -528,4 +527,3 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

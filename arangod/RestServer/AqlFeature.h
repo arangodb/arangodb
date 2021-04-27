@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_AQL_FEATURE_H
-#define APPLICATION_FEATURES_AQL_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -41,4 +40,3 @@ class AqlFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

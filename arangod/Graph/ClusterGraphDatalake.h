@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_CLUSTER_GRAPH_DATA_LAKE_H
-#define ARANGOD_GRAPH_CLUSTER_GRAPH_DATA_LAKE_H 1
+#pragma once
 
 #include "Basics/ResourceUsage.h"
 
@@ -68,4 +67,3 @@ class ClusterGraphDatalake {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

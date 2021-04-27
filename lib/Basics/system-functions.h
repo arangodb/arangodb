@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SYSTEM__FUNCTIONS_H
-#define ARANGODB_BASICS_SYSTEM__FUNCTIONS_H 1
+#pragma once
 
 #include <string>
 
@@ -62,4 +61,3 @@ std::string hostname();
 }  // namespace utilities
 }  // namespace arangodb
 
-#endif

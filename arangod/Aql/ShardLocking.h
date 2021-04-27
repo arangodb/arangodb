@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHARD_LOCKING_H
-#define ARANGOD_AQL_SHARD_LOCKING_H 1
+#pragma once
 
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/QuerySnippet.h"
@@ -154,4 +153,3 @@ class ShardLocking {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

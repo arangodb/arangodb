@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ACTIONS_ACTIONS_H
-#define ARANGOD_ACTIONS_ACTIONS_H 1
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -113,4 +112,3 @@ void TRI_CleanupActions();
 /// @brief visit all actions
 void TRI_VisitActions(std::function<void(TRI_action_t*)> const& visitor);
 
-#endif

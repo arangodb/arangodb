@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_PATH_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -55,4 +54,3 @@ class DatabasePathFeature final : public application_features::ApplicationFeatur
 
 }  // namespace arangodb
 
-#endif

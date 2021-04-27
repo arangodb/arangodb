@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_GLOBAL_CONTINUOUS_SYNCER_H
-#define ARANGOD_REPLICATION_GLOBAL_CONTINUOUS_SYNCER_H 1
+#pragma once
 
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
@@ -69,4 +68,3 @@ class GlobalTailingSyncer : public TailingSyncer {
 
 }  // namespace arangodb
 
-#endif

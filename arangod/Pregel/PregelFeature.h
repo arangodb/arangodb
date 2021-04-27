@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_FEATURE_H
-#define ARANGODB_PREGEL_FEATURE_H 1
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -101,4 +100,3 @@ class PregelFeature final : public application_features::ApplicationFeature {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

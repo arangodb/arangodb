@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_MANAGER_FEATURE_THREADS_H
-#define ARANGODB_CACHE_MANAGER_FEATURE_THREADS_H
+#pragma once
 
 #include <cstdint>
 
@@ -57,4 +56,3 @@ class CacheRebalancerThread final : public Thread {
 
 };  // end namespace arangodb
 
-#endif

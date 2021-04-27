@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_EDGECURSOR_H
-#define ARANGOD_GRAPH_EDGECURSOR_H 1
+#pragma once
 
 #include <functional>
 #include <cstdint>
@@ -63,4 +62,3 @@ class EdgeCursor {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

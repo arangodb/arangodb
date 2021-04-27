@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_TIMER_H
-#define ARANGODB_UTILITIES_TIMER_H 1
+#pragma once
 
 #include <Logger/Logger.h>
 #include <chrono>
@@ -64,4 +63,3 @@ struct timer {
 
 }  // namespace Utilities
 }  // namespace arangodb
-#endif

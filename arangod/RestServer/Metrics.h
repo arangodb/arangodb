@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_METRICS_H
-#define ARANGODB_REST_SERVER_METRICS_H 1
+#pragma once
 
 #include <atomic>
 #include <cmath>
@@ -568,4 +567,3 @@ std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {
   return h.print(o);
 }
 
-#endif

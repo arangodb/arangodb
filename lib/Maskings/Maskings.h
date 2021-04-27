@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_MASKINGS_H
-#define ARANGODB_MASKINGS_MASKINGS_H 1
+#pragma once
 
 #include <cstdint>
 #include <map>
@@ -97,4 +96,3 @@ class Maskings {
 }  // namespace maskings
 }  // namespace arangodb
 
-#endif

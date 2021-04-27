@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_RESIGN_SHARD_LEADERSHIP_H
-#define ARANGODB_MAINTENANCE_RESIGN_SHARD_LEADERSHIP_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -48,4 +47,3 @@ class ResignShardLeadership : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

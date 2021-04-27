@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_SHARED_ATOMIC_H
-#define ARANGO_SHARED_ATOMIC_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -137,4 +136,3 @@ struct SharedAtomic {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

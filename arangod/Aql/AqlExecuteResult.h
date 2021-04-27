@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLEXECUTERESULT_H
-#define ARANGOD_AQL_AQLEXECUTERESULT_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -65,4 +64,3 @@ class AqlExecuteResult {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_AQLEXECUTERESULT_H

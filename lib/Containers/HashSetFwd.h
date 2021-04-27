@@ -22,8 +22,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINERS_HASH_SET_FWD_H
-#define ARANGODB_CONTAINERS_HASH_SET_FWD_H
+#pragma once
 
 #include <functional>
 
@@ -53,4 +52,3 @@ using HashSet = emilib::HashSet<KeyT, HashT, EqT>;
 }  // namespace containers
 }  // namespace arangodb
 
-#endif  // ARANGODB_CONTAINERS_HASH_SET_FWD_H

@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MASTERCONTEXT_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MASTERCONTEXT_H 1
+#pragma once
 
 #include <Pregel/MasterContext.h>
 
@@ -77,4 +76,3 @@ private:
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGISTER_ID_H
-#define ARANGOD_AQL_REGISTER_ID_H 1
+#pragma once
 
 #include "Basics/debugging.h"
 
@@ -130,4 +129,3 @@ struct equal_to<arangodb::aql::RegisterId> {
 };
 }  // namespace std
 
-#endif

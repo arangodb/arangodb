@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_LINK_H
-#define ARANGOD_IRESEARCH__IRESEARCH_LINK_H 1
+#pragma once
 
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
@@ -422,4 +421,3 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

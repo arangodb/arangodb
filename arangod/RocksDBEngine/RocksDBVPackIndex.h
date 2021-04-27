@@ -23,8 +23,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H 1
+#pragma once
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -204,4 +203,3 @@ class RocksDBVPackIndex : public RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

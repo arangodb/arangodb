@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_H
-#define ARANGOD_AQL_QUERY_H 1
+#pragma once
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/BindParameters.h"
@@ -354,4 +353,3 @@ class Query : public QueryContext {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

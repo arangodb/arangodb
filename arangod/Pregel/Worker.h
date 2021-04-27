@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_WORKER_H
-#define ARANGODB_PREGEL_WORKER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -169,4 +168,3 @@ class Worker : public IWorker {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif
