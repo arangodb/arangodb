@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_EDGES_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_EDGES_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -86,4 +85,3 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

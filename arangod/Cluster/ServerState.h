@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SERVER_STATE_H
-#define ARANGOD_CLUSTER_SERVER_STATE_H 1
+#pragma once
 
 #include <mutex>
 
@@ -364,4 +363,3 @@ class ServerState {
 
 std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);
 
-#endif

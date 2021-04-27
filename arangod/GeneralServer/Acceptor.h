@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_ACCEPTOR_H
-#define ARANGOD_GENERAL_SERVER_ACCEPTOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -65,4 +64,3 @@ class Acceptor {
 };
 }  // namespace rest
 }  // namespace arangodb
-#endif

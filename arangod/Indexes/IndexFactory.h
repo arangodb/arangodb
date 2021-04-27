@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_INDEX_FACTORY_H
-#define ARANGOD_INDEXES_INDEX_FACTORY_H 1
+#pragma once
 
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
@@ -177,4 +176,3 @@ class IndexFactory {
 
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_ROCKSDB_LINK_H
-#define ARANGOD_IRESEARCH__IRESEARCH_ROCKSDB_LINK_H 1
+#pragma once
 
 #include "IResearchLink.h"
 
@@ -148,4 +147,3 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

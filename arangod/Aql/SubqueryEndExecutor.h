@@ -22,8 +22,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SUBQUERY_END_EXECUTOR_H
-#define ARANGOD_AQL_SUBQUERY_END_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/ExecutionState.h"
@@ -148,4 +147,3 @@ class SubqueryEndExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

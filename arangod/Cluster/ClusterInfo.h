@@ -23,8 +23,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_INFO_H
-#define ARANGOD_CLUSTER_CLUSTER_INFO_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -1253,4 +1252,3 @@ futures::Future<ResultT<uint64_t>> fetchCurrentVersion(network::Timeout timeout)
 
 }  // end namespace arangodb
 
-#endif

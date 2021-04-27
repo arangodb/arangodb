@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H
-#define ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H 1
+#pragma once
 
 #include <map>
 
@@ -201,4 +200,3 @@ struct WalAccessContext {
 
 }  // namespace arangodb
 
-#endif

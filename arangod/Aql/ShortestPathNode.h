@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHORTEST_PATH_NODE_H
-#define ARANGOD_AQL_SHORTEST_PATH_NODE_H 1
+#pragma once
 
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
@@ -164,4 +163,3 @@ class ShortestPathNode : public virtual GraphNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

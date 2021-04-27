@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_TIMING_H
-#define ARANGOD_AQL_EXECUTION_TIMING_H 1
+#pragma once
 
 namespace arangodb {
 namespace aql {
@@ -43,4 +42,3 @@ double elapsedSince(double previous);
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

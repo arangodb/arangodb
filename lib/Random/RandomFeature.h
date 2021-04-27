@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_RANDOM_RANDOM_FEATURE_H
-#define ARANGODB_RANDOM_RANDOM_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -40,4 +39,3 @@ class RandomFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_SLPA_H
-#define ARANGODB_PREGEL_ALGOS_SLPA_H 1
+#pragma once
 
 #include <cmath>
 #include "Pregel/Algorithm.h"
@@ -70,4 +69,3 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

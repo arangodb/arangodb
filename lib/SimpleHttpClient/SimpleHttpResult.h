@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
@@ -260,4 +259,3 @@ class SimpleHttpResult {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_LIST_H
-#define ARANGODB_ENDPOINT_ENDPOINT_LIST_H 1
+#pragma once
 
 #include <string>
 #include <vector>
@@ -56,4 +55,3 @@ class EndpointList {
 };
 }  // namespace arangodb
 
-#endif

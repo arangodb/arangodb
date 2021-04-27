@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_NEIGHBORSENUMERATOR_H
-#define ARANGODB_GRAPH_NEIGHBORSENUMERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/PathEnumerator.h"
@@ -68,4 +67,3 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

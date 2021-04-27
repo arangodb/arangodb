@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_LANE_H
-#define ARANGOD_GENERAL_SERVER_LANE_H 1
+#pragma once
 
 namespace arangodb {
 enum class RequestLane {
@@ -174,4 +173,3 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
 
 }  // namespace arangodb
 
-#endif

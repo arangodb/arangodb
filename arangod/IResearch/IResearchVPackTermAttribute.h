@@ -19,8 +19,8 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE
-#define ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE
+
+#pragma once
 #include <utils/attributes.hpp>
 #include <utils/bit_utils.hpp>
 #include <velocypack/Slice.h>
@@ -37,4 +37,3 @@ struct VPackTermAttribute final : irs::attribute {
 } // namespace iresearch
 } // namespace arangodb
 
-#endif // ARANGOD_IRESEARCH_VPACK_TERM_ATTRIBUTE

@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_DESERIALIZER_VALUES_H
-#define VELOCYPACK_DESERIALIZER_VALUES_H
+
+#pragma once
 #include "gadgets.h"
 #include "plan-executor.h"
 #include "utilities.h"
@@ -194,4 +194,3 @@ struct deserialize_plan_executor<values::vpack_builder_deserializer, H> {
 }  // namespace deserializer::executor
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_VALUES_H

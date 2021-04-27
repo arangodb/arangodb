@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_ARGUMENT_PARSER_H
-#define ARANGODB_PROGRAM_OPTIONS_ARGUMENT_PARSER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -166,4 +165,3 @@ class ArgumentParser {
 }  // namespace options
 }  // namespace arangodb
 
-#endif

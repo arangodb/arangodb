@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORT_REGISTER_H
-#define ARANGOD_AQL_SORT_REGISTER_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "types.h"
@@ -51,4 +50,3 @@ struct SortRegister {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_SORT_REGISTER_H

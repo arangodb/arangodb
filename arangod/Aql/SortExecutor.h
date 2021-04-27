@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORT_EXECUTOR_H
-#define ARANGOD_AQL_SORT_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
@@ -154,4 +153,3 @@ class SortExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

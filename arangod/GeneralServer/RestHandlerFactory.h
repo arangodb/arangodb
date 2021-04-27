@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H
-#define ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -74,4 +73,3 @@ class RestHandlerFactory {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

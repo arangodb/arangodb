@@ -22,8 +22,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_INFOS_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR_INFOS_H
+#pragma once
 
 #include "Aql/Collection.h"
 #include "Aql/RegisterInfos.h"
@@ -106,4 +105,3 @@ struct ModificationExecutorInfos {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

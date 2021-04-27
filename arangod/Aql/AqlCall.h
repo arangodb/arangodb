@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_CALL_H
-#define ARANGOD_AQL_AQL_CALL_H 1
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Basics/Common.h"
@@ -309,4 +308,3 @@ auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::o
 
 }  // namespace arangodb::aql
 
-#endif

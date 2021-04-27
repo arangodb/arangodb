@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PATHMANAGEMENT_PATHSTORE_TRACER_H
-#define ARANGOD_GRAPH_PATHMANAGEMENT_PATHSTORE_TRACER_H 1
+#pragma once
 
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Helpers/TraceEntry.h"
@@ -85,4 +84,3 @@ class PathStoreTracer {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOCBASE_PATHENUMERATOR_H
-#define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -187,4 +186,3 @@ class DepthFirstEnumerator final : public PathEnumerator {
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

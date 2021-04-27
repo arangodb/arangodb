@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_STORE_H
-#define ARANGOD_CONSENSUS_STORE_H 1
+#pragma once
 
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
@@ -213,4 +212,3 @@ inline std::ostream& operator<<(std::ostream& o, Store const& store) {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

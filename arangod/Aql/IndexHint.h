@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_INDEX_HINT_H
-#define ARANGOD_AQL_INDEX_HINT_H 1
+#pragma once
 
 #include <iosfwd>
 #include <string>
@@ -73,4 +72,3 @@ std::ostream& operator<<(std::ostream& stream, arangodb::aql::IndexHint const& h
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

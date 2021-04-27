@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MUTEX_NODE_H
-#define ARANGOD_AQL_MUTEX_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 
@@ -69,4 +68,3 @@ class MutexNode : public ExecutionNode {
 }
 }
 
-#endif

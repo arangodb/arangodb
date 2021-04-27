@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_NETWORK_FEATURE_H
-#define ARANGOD_NETWORK_NETWORK_FEATURE_H 1
+#pragma once
 
 #include <atomic>
 #include <mutex>
@@ -113,4 +112,3 @@ class NetworkFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

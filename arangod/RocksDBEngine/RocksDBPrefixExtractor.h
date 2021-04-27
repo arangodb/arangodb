@@ -23,8 +23,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_PREFIX_EXTRACTOR_H
-#define ARANGO_ROCKSDB_ROCKSDB_PREFIX_EXTRACTOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -77,4 +76,3 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
 
 }  // namespace arangodb
 
-#endif

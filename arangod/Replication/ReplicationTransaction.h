@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H
-#define ARANGOD_REPLICATION_REPLICATION_TRANSACTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionState.h"
@@ -50,4 +49,3 @@ class ReplicationTransaction : public transaction::Methods {
 
 }  // namespace arangodb
 
-#endif
