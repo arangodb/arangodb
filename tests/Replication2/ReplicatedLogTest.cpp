@@ -113,11 +113,10 @@ TEST_F(ReplicatedLogTest2, stop_follower_and_rejoin) {
   }
 }
 
-TEST_F(ReplicatedLogTest, test) {
-  auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
+TEST_F(ReplicatedLogTest2, test) {
   auto const ourParticipantId = ParticipantId{1};
-  auto persistedLog = std::make_shared<MockLog>(LogId{1});
-  auto log = ReplicatedLog{ourParticipantId, state, persistedLog};
+  auto [log, local] = addLogInstance(ourParticipantId);
+  auto persistedLog =
 
   log.becomeLeader(LogTerm{1}, {}, 1);
 
@@ -330,12 +329,9 @@ TEST_F(ReplicatedLogTest, appendEntries) {
   }
 }
 
-TEST_F(ReplicatedLogTest, replicationTest) {
+TEST_F(ReplicatedLogTest2, replicationTest) {
   auto const leaderId = ParticipantId{1};
-  auto const leaderState = std::make_shared<InMemoryState>();
-  auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
-  auto leaderLog =
-      std::make_shared<ReplicatedLog>(leaderId, leaderState, leaderPersistentLog);
+  auto [leaderLog, local] = addLogInstance(leaderId);
 
   auto const followerId = ParticipantId{3};
   auto const followerState = std::make_shared<InMemoryState>();
@@ -345,7 +341,7 @@ TEST_F(ReplicatedLogTest, replicationTest) {
 
   {
     followerLog->becomeFollower(LogTerm{1}, leaderId);
-    leaderLog->becomeLeader(LogTerm{1}, {followerLog}, 2);
+    leaderLog->becomeLeader(LogTerm{1}, {followerLog, local}, 2);
 
     {
       auto const payload = LogPayload{"myLogEntry 1"};
@@ -358,6 +354,7 @@ TEST_F(ReplicatedLogTest, replicationTest) {
     ASSERT_FALSE(fut.isReady());
     ASSERT_FALSE(followerLog->hasPendingAppendEntries());
     leaderLog->runAsyncStep();
+    _executor->executeAllActions();
     // future should not be ready because write concern is two
     ASSERT_FALSE(fut.isReady());
     ASSERT_TRUE(followerLog->hasPendingAppendEntries());
@@ -379,7 +376,7 @@ TEST_F(ReplicatedLogTest, replicationTest) {
   }
 
   {
-    leaderLog->becomeLeader(LogTerm{2}, {followerLog}, 1);
+    leaderLog->becomeLeader(LogTerm{2}, {followerLog, local}, 1);
     {
       auto const payload = LogPayload{"myLogEntry 2"};
       auto index = leaderLog->insert(payload);
@@ -387,6 +384,7 @@ TEST_F(ReplicatedLogTest, replicationTest) {
     }
     auto fut = leaderLog->waitFor(LogIndex{2});
     leaderLog->runAsyncStep();
+    _executor->executeAllActions();
     ASSERT_TRUE(followerLog->hasPendingAppendEntries());
     ASSERT_TRUE(fut.isReady());
     {
@@ -419,12 +417,9 @@ TEST_F(ReplicatedLogTest, replicationTest) {
   }
 }
 
-TEST_F(ReplicatedLogTest, replicationTest2) {
+TEST_F(ReplicatedLogTest2, replicationTest2) {
   auto const leaderId = ParticipantId{1};
-  auto const leaderState = std::make_shared<InMemoryState>();
-  auto const leaderPersistentLog = std::make_shared<MockLog>(LogId{1});
-  auto leaderLog =
-      std::make_shared<ReplicatedLog>(leaderId, leaderState, leaderPersistentLog);
+  auto [leaderLog, local] = addLogInstance(leaderId);
 
   auto const followerId = ParticipantId{3};
   auto const followerState = std::make_shared<InMemoryState>();
@@ -434,7 +429,7 @@ TEST_F(ReplicatedLogTest, replicationTest2) {
 
   {
     followerLog->becomeFollower(LogTerm{1}, leaderId);
-    leaderLog->becomeLeader(LogTerm{1}, {followerLog}, 2);
+    leaderLog->becomeLeader(LogTerm{1}, {followerLog, local}, 2);
 
     {
       leaderLog->insert(LogPayload{"myLogEntry 1"});
@@ -672,8 +667,8 @@ TEST_F(ReplicatedLogConcurrentTest, genPayloadTest) {
 TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   using namespace std::chrono_literals;
 
-  auto leader = addLogInstance("leader");
-  leader->becomeLeader(LogTerm{1}, {}, 1);
+  auto [leader, local] = addLogInstance("leader");
+  leader->becomeLeader(LogTerm{1}, {local}, 1);
 
   auto data = ThreadCoordinationData{leader};
 
@@ -712,12 +707,12 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
 TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   using namespace std::chrono_literals;
 
-  auto leader = addLogInstance("leader");
+  auto [leader, local] = addLogInstance("leader");
   auto follower1 = addFollowerLogInstance("follower1");
   auto follower2 = addFollowerLogInstance("follower2");
   follower1->becomeFollower(LogTerm{1}, leader->participantId());
   follower2->becomeFollower(LogTerm{1}, leader->participantId());
-  leader->becomeLeader(LogTerm{1}, {follower1, follower2}, 2);
+  leader->becomeLeader(LogTerm{1}, {follower1, follower2, local}, 2);
 
   auto data = ThreadCoordinationData{leader};
 
