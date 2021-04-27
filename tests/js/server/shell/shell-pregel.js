@@ -46,7 +46,7 @@ function testAlgo(a, p) {
   do {
     internal.wait(0.2);
     var stats = pregel.status(pid);
-    if (stats.state !== "running") {
+    if (stats.state !== "running" && stats.state !== "storing") {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
 
@@ -172,7 +172,7 @@ function basicTestSuite() {
       do {
         internal.wait(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running") {
+        if (stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
 
@@ -255,7 +255,7 @@ function exampleTestSuite() {
       do {
         internal.wait(0.2);
         var stats = db._pregelStatus(key);
-        if (stats.state !== "running") {
+        if (stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, 4, stats);
           assertEqual(stats.edgeCount, 4, stats);
           break;
@@ -354,7 +354,7 @@ function randomTestSuite() {
       do {
         internal.wait(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running") {
+        if (stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
           break;
@@ -375,7 +375,7 @@ function randomTestSuite() {
       do {
         internal.wait(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running") {
+        if (stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
           break;
@@ -396,7 +396,7 @@ function randomTestSuite() {
       do {
         internal.wait(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running") {
+        if (stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
           break;
