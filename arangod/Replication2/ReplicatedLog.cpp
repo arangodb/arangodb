@@ -270,24 +270,9 @@ auto ReplicatedLog::GuardedReplicatedLog::runAsyncStep(std::weak_ptr<ReplicatedL
     ++_commitIndex.value;
   }*/
 
-  persistRemainingLogEntries();
+  //persistRemainingLogEntries();
 
   /**/
-}
-
-void ReplicatedLog::GuardedReplicatedLog::persistRemainingLogEntries() {
-  if (_persistedLogEnd < nextIndex()) {
-    auto it = getLogIterator(_persistedLogEnd);
-    auto const endIdx = getLastIndex();
-    auto res = _persistedLog->insert(std::move(it));
-    if (res.ok()) {
-      _persistedLogEnd = endIdx;
-      checkCommitIndex();
-    } else {
-      LOG_TOPIC("c2bb2", INFO, Logger::REPLICATION)
-          << "Error persisting log entries: " << res.errorMessage();
-    }
-  }
 }
 
 void ReplicatedLog::GuardedReplicatedLog::assertLeader() const {
@@ -466,10 +451,7 @@ void ReplicatedLog::GuardedReplicatedLog::checkCommitIndex() {
                  std::back_inserter(indexes), [](Follower const& f) {
                    return std::make_pair(f.lastAckedIndex, f._impl->participantId());
                  });
-  // This assertion only holds after the first insert:
-  // TRI_ASSERT(_persistedLogEnd > LogIndex{0});
-  indexes.emplace_back(_persistedLogEnd, participantId());
-  TRI_ASSERT(indexes.size() == conf.follower.size() + 1);
+  TRI_ASSERT(indexes.size() == conf.follower.size());
 
   if (quorum_size <= 0 || quorum_size > indexes.size()) {
     return;

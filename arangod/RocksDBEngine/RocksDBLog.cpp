@@ -36,14 +36,9 @@ RocksDBLog::RocksDBLog(replication2::LogId id, rocksdb::ColumnFamilyHandle* cf,
 
 auto RocksDBLog::insert(std::shared_ptr<LogIterator> iter) -> Result {
   rocksdb::WriteBatch wb;
-  while (auto entry = iter->next()) {
-    auto key = RocksDBKey{};
-    key.constructLogEntry(_objectId, entry->logIndex());
-    auto value = RocksDBValue::LogEntry(entry->logTerm(), entry->logPayload());
-    auto s = wb.Put(_cf, key.string(), value.string());
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
-    }
+  auto res = insertWithBatch(iter, wb);
+  if (!res.ok()) {
+    return res;
   }
 
   rocksdb::WriteOptions opts;
@@ -122,4 +117,19 @@ auto RocksDBLog::removeBack(replication2::LogIndex start) -> Result {
   rocksdb::WriteOptions opts;
   auto s = _db->DeleteRange(opts, _cf, first.string(), getBounds().end());
   return rocksutils::convertStatus(s);
+}
+
+auto RocksDBLog::insertWithBatch(std::shared_ptr<replication2::LogIterator> const& iter,
+                                 rocksdb::WriteBatch& wb) -> Result {
+  while (auto entry = iter->next()) {
+    auto key = RocksDBKey{};
+    key.constructLogEntry(_objectId, entry->logIndex());
+    auto value = RocksDBValue::LogEntry(entry->logTerm(), entry->logPayload());
+    auto s = wb.Put(_cf, key.string(), value.string());
+    if (!s.ok()) {
+      return rocksutils::convertStatus(s);
+    }
+  }
+
+  return Result();
 }

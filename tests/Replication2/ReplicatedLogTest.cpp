@@ -34,40 +34,20 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 struct ReplicatedLogTest : ::testing::Test {};
-struct ReplicatedLogTest2 : ::testing::Test {
-  auto getNextLogId() -> LogId {
-    return _nextLogId = LogId{_nextLogId.id() + 1};
-  }
-
-  auto addLogInstance(ParticipantId const& id) -> std::shared_ptr<ReplicatedLog> {
-    auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
-    auto persistedLog = std::make_shared<MockLog>(getNextLogId());
-    auto log = std::make_shared<ReplicatedLog>(id, state, persistedLog);
-    return log;
-  }
-
-  auto addFollowerLogInstance(ParticipantId const& id)
-      -> std::shared_ptr<DelayedFollowerLog> {
-    auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
-    auto persistedLog = std::make_shared<MockLog>(getNextLogId());
-    auto log = std::make_shared<DelayedFollowerLog>(id, state, persistedLog);
-    return log;
-  }
-
-  LogId _nextLogId{0};
-};
+struct ReplicatedLogTest2 : LogTestBase {};
 
 TEST_F(ReplicatedLogTest2, stop_follower_and_rejoin) {
-  auto leader = addLogInstance("leader");
+  auto [leader, local] = addLogInstance("leader");
   auto follower = addFollowerLogInstance("follower");
 
   {
     // write a single entry on both servers
-    leader->becomeLeader(LogTerm{1}, {follower}, 2);
+    leader->becomeLeader(LogTerm{1}, {local, follower}, 2);
     follower->becomeFollower(LogTerm{1}, leader->participantId());
     auto idx = leader->insert(LogPayload{"first entry"});
     auto f = leader->waitFor(idx);
     leader->runAsyncStep();
+    _executor->executeAllActions();
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
     }
@@ -76,10 +56,11 @@ TEST_F(ReplicatedLogTest2, stop_follower_and_rejoin) {
 
   {
     // leader continues alone
-    leader->becomeLeader(LogTerm{2}, {}, 1);
+    leader->becomeLeader(LogTerm{2}, {local}, 1);
     auto idx = leader->insert(LogPayload{"second entry"});
     auto f = leader->waitFor(idx);
     leader->runAsyncStep();
+    _executor->executeAllActions();
     ASSERT_FALSE(follower->hasPendingAppendEntries());
     ASSERT_TRUE(f.isReady());
   }
@@ -98,11 +79,12 @@ TEST_F(ReplicatedLogTest2, stop_follower_and_rejoin) {
 
   // now write another entry to both
   {
-    leader->becomeLeader(LogTerm{3}, {follower}, 2);
+    leader->becomeLeader(LogTerm{3}, {local, follower}, 2);
     follower->becomeFollower(LogTerm{3}, leader->participantId());
     auto idx = leader->insert(LogPayload{"third entry"});
     auto f = leader->waitFor(idx);
     leader->runAsyncStep();
+    _executor->executeAllActions();
     ASSERT_TRUE(follower->hasPendingAppendEntries());
     {
       auto request = follower->pendingAppendEntries()[0].request;

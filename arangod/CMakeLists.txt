@@ -546,7 +546,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog.cpp
   Replication2/Common.cpp
   RestHandler/RestLogHandler.cpp
-  )
+        Replication2/LogManager.cpp Replication2/LogManager.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp

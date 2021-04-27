@@ -342,7 +342,7 @@ RestStatus RestLogHandler::handleDeleteRequest() {
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expect DELETE /_api/log/<log-id>");
-
+    return RestStatus::DONE;
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};

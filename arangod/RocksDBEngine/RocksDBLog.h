@@ -36,6 +36,7 @@ class RocksDBLog : public replication2::PersistedLog {
              rocksdb::DB* db, uint64_t objectId);
 
   auto insert(std::shared_ptr<replication2::LogIterator> iter) -> Result override;
+  auto insertWithBatch(std::shared_ptr<replication2::LogIterator> const& iter, rocksdb::WriteBatch &batch) -> Result;
   auto read(replication2::LogIndex start)
       -> std::shared_ptr<replication2::LogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> Result override;
