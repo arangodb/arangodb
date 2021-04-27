@@ -232,7 +232,7 @@ void auth::UserManager::loadFromDB() {
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND &&
         _server.hasFeature<BootstrapFeature>() &&
-        !_server.getFeature<BootstrapFeature>().isReady())) {
+        !_server.getFeature<BootstrapFeature>().isReady()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
         "Cannot load users because the _users collection is not yet available");
     }
