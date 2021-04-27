@@ -116,34 +116,34 @@ TEST_F(ReplicatedLogTest2, stop_follower_and_rejoin) {
 TEST_F(ReplicatedLogTest2, test) {
   auto const ourParticipantId = ParticipantId{1};
   auto [log, local] = addLogInstance(ourParticipantId);
-  auto persistedLog =
+  auto persistedLog = _manager->getPersistedLogById(local->getLogId());
 
-  log.becomeLeader(LogTerm{1}, {}, 1);
+  log->becomeLeader(LogTerm{1}, {}, 1);
 
   {
-    auto stats = log.getLocalStatistics();
+    auto stats = log->getLocalStatistics();
     EXPECT_EQ(LogIndex{0}, stats.commitIndex);
     EXPECT_EQ(LogIndex{0}, stats.spearHead);
   }
 
   auto const payload = LogPayload{"myLogEntry 1"};
-  auto index = log.insert(payload);
+  auto index = log->insert(payload);
   EXPECT_EQ(LogIndex{1}, index);
 
-  auto f = log.waitFor(index);
+  auto f = log->waitFor(index);
 
   {
-    auto stats = log.getLocalStatistics();
+    auto stats = log->getLocalStatistics();
     EXPECT_EQ(LogIndex{0}, stats.commitIndex);
     EXPECT_EQ(LogIndex{1}, stats.spearHead);
   }
 
-  log.runAsyncStep();
+  log->runAsyncStep();
 
   EXPECT_TRUE(f.isReady());
 
   {
-    auto stats = log.getLocalStatistics();
+    auto stats = log->getLocalStatistics();
     EXPECT_EQ(LogIndex{1}, stats.commitIndex);
     EXPECT_EQ(LogIndex{1}, stats.spearHead);
   }
