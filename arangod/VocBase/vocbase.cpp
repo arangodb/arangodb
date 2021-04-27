@@ -28,6 +28,7 @@
 #include <exception>
 #include <type_traits>
 #include <utility>
+#include <memory>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
@@ -61,6 +62,7 @@
 #include "Logger/LogMacros.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication2/LogManager.h"
 #include "Replication2/ReplicatedLog.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -77,6 +79,7 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
 
+#include <Scheduler/SchedulerFeature.h>
 #include <thread>
 
 using namespace arangodb;
@@ -1574,6 +1577,41 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem)
   return TRI_ERROR_NO_ERROR;
 }
 
+struct SchedulerExecutor : arangodb::replication2::LogWorkerExecutor {
+  explicit SchedulerExecutor(arangodb::application_features::ApplicationServer& server)
+      : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
+
+  void operator()(fu2::unique_function<void()> func) override {
+    std::ignore = _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
+  }
+
+  Scheduler* _scheduler;
+};
+
+struct VocBaseLogManager : arangodb::replication2::LogManager {
+  VocBaseLogManager(arangodb::application_features::ApplicationServer& server)
+      : LogManager(std::make_shared<SchedulerExecutor>(server)) {}
+
+  auto getPersistedLogById(arangodb::replication2::LogId id)
+      -> std::shared_ptr<arangodb::replication2::PersistedLog> override {
+    if (auto iter = _logs.find(id); iter != _logs.end()) {
+      return iter->second->getPersistedLog();
+    }
+
+    return nullptr;
+  }
+
+  auto getReplicatedLogById(arangodb::replication2::LogId id) const -> std::shared_ptr<arangodb::replication2::ReplicatedLog> {
+    if (auto iter = _logs.find(id); iter != _logs.end()) {
+      return iter->second;
+    }
+
+    return nullptr;
+  }
+
+  std::unordered_map<arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::ReplicatedLog>> _logs;
+};
+
 TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
                            arangodb::CreateDatabaseInfo&& info)
   : _server(info.server()),
@@ -1596,7 +1634,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   _collections.reserve(32);
   _deadCollections.reserve(32);
 
-  _cacheData = std::make_unique<arangodb::DatabaseJavaScriptCache>();
+  _logManager = std::make_shared<VocBaseLogManager>(_info.server());
 }
 
 /// @brief destroy a vocbase object
@@ -1834,6 +1872,65 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor, bool lock
   }
 
   return true;
+}
+
+auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
+    -> std::shared_ptr<arangodb::replication2::ReplicatedLog> {
+  auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
+  return manager->getReplicatedLogById(id);
+}
+
+using namespace arangodb::replication2;
+
+
+struct FakePersistedLog : PersistedLog {
+  explicit FakePersistedLog(LogId id) : PersistedLog(id) {};
+  ~FakePersistedLog() override = default;
+  auto insert(std::shared_ptr<LogIterator> iter) -> Result override {
+    LOG_DEVEL << "Fake log insert";
+    return Result();
+  }
+  auto read(LogIndex start) -> std::shared_ptr<LogIterator> override {
+    struct FakeLogIterator : LogIterator {
+      auto next() -> std::optional<LogEntry> override {
+        return std::nullopt;
+      }
+    };
+
+    return std::shared_ptr<FakeLogIterator>();
+  }
+  auto removeFront(LogIndex stop) -> Result override { return Result(); }
+  auto removeBack(LogIndex start) -> Result override { return Result(); }
+  auto drop() -> Result override { return Result(); }
+};
+
+auto TRI_vocbase_t::createReplicatedLog(arangodb::replication2::LogId id)
+    -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::ReplicatedLog>> {
+  auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
+
+  if (auto iter = manager->_logs.find(id); iter != manager->_logs.end()) {
+    return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+  }
+
+  auto participantId = ServerState::instance()->getId();
+  auto state = std::make_shared<arangodb::replication2::InMemoryState>();
+  auto persistedLog = std::make_shared<FakePersistedLog>(id);
+
+  auto log = std::make_shared<ReplicatedLog>(participantId, state, persistedLog);
+  manager->_logs[id] = log;
+  return log;
+}
+
+auto TRI_vocbase_t::dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result {
+  auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
+
+  if (auto iter = manager->_logs.find(id); iter != manager->_logs.end()) {
+    return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+  } else {
+    manager->_logs.erase(iter);
+  }
+
+  return Result();
 }
 
 /// @brief sanitize an object, given as slice, builder must contain an

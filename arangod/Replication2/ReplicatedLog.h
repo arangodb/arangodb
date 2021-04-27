@@ -155,6 +155,8 @@ class ReplicatedLog : public LogFollower,
 
   [[nodiscard]] auto getReplicatedLogSnapshot() const -> immer::flex_vector<LogEntry>;
 
+  [[nodiscard]] auto getPersistedLog() const noexcept -> std::shared_ptr<PersistedLog>;
+
  private:
   struct GuardedReplicatedLog;
   using Guard = MutexGuard<GuardedReplicatedLog, std::unique_lock<std::mutex>>;
