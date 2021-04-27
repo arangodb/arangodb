@@ -631,11 +631,12 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest2 {
     }
   };
 
-  constexpr static auto runReplicationWithIntermittentPauses = [](ThreadCoordinationData& data) {
+  constexpr static auto runReplicationWithIntermittentPauses = [](MockExecutor& executor, ThreadCoordinationData& data) {
     using namespace std::chrono_literals;
     auto& log = *data.log;
     for (auto i = 0;; ++i) {
       log.runAsyncStep();
+      executor.executeAllActions();
       if (i % 16) {
         std::this_thread::sleep_for(100ns);
         if (data.stopReplicationThreads.load()) {
@@ -679,8 +680,8 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   auto data = ThreadCoordinationData{leader};
 
   // start replication
-  auto replicationThread =
-      std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
+  auto replicationThread = std::thread{runReplicationWithIntermittentPauses,
+                                       std::ref(*_executor), std::ref(data)};
 
   std::vector<std::thread> clientThreads;
   auto threadCounter = uint16_t{0};
@@ -723,8 +724,8 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   auto data = ThreadCoordinationData{leader};
 
   // start replication
-  auto replicationThread =
-      std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
+  auto replicationThread = std::thread{runReplicationWithIntermittentPauses,
+                                       std::ref(*_executor), std::ref(data)};
   auto followerReplicationThread =
       std::thread{runFollowerReplicationWithIntermittentPauses,
                   std::vector{follower1.get(), follower2.get()}, std::ref(data)};
