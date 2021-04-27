@@ -145,16 +145,16 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
                               std::move(me->_lastHeaderValue));
   }
 
-  if ((p->http_major != 1 && p->http_minor != 0) &&
-      (p->http_major != 1 && p->http_minor != 1)) {
+  if ((p->http_major != 1 || p->http_minor != 0) &&
+      (p->http_major != 1 || p->http_minor != 1)) {
     me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_USER;
+    return HPE_OK;
   }
   if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
     me->sendSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_USER;
+    return HPE_OK;
   }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
