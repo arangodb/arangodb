@@ -748,7 +748,7 @@ Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods*
         break;
       } else if (!s.IsNotFound()) {
         res.reset(rocksutils::convertStatus(s));
-        addErrorMsg(res);
+        addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
       }
     }
   }
@@ -827,7 +827,7 @@ Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx,
         break;
       } else if (!s.IsNotFound()) {
         res.reset(rocksutils::convertStatus(s));
-        addErrorMsg(res);
+        addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
       }
     }
   }
@@ -906,7 +906,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
           THROW_ARANGO_EXCEPTION(readResult);
         }
       } else {
-        addErrorMsg(res);
+        addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
       }
     }
 
@@ -925,7 +925,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     }
 
     if (res.fail()) {
-      addErrorMsg(res);
+      addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
     } else if (_estimates) {
       auto* state = RocksDBTransactionState::toState(&trx);
       auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
@@ -1035,6 +1035,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
     rocksdb::Status s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/false);
     if (!s.ok()) {
       res = rocksutils::convertStatus(s, rocksutils::index);
+      addErrorMsg(res, newDoc.get(StaticStrings::KeyString).copyString());
       break;
     }
   }
@@ -1045,7 +1046,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
 /// @brief removes a document from the index
 Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice const doc) {
+                                 velocypack::Slice doc) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
     if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       // intentionally  break index removal
@@ -1082,7 +1083,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
       }
     }
     if (res.fail()) {
-      addErrorMsg(res);
+      TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
+      addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
     }
   } else {
     // non-unique index contain the unique objectID written exactly once
@@ -1095,7 +1097,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
     }
 
     if (res.fail()) {
-      addErrorMsg(res);
+      TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
+      addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
     } else if (_estimates) {
       auto* state = RocksDBTransactionState::toState(&trx);
       auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
