@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed bug in error reporting when a database create did not work, which
+  lead to a busy loop reporting this error to the agency.
+
+* Fixed the error response if the HTTP version is not 1.0 or 1.1 and if
+  the Content-Length is too large (> 1 GB).
+
 * Add a connection cache for internal replication requests.
 
 * Improve legibility of size values (by adding KB, MB, GB, TB suffixes) to 
