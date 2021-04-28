@@ -3139,7 +3139,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           }
         }
       } else {
-        LOG_TOPIC("98765", ERR, Logger::CLUSTER)
+        LOG_TOPIC("98765", WARN, Logger::CLUSTER)
           << "Failed createCollectionsCoordinator for " << infos.size()
           << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
           << " first collection name: " << infos[0].name << " result: " << res;

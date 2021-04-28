@@ -687,7 +687,6 @@ function ClusterCollectionSuite () {
         try {
           db._create(colName);
         } catch (e) {
-          console.error(e);
           threw = true;
           if (isServer) {
             assertTrue(e instanceof ArangoError);
@@ -702,8 +701,8 @@ function ClusterCollectionSuite () {
             };
             assertEqual(expected, e);
           }
-          db._drop(colName);
-          require("internal").sleep(1);
+        } finally {
+          db._drop("UnitTestClusterShouldNotBeCreated1");
         }
         assertTrue(threw);
       } finally {
