@@ -487,7 +487,7 @@ auto SortingGatherExecutor::limitReached() const noexcept -> bool {
 
 [[nodiscard]] auto SortingGatherExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
     noexcept -> AqlCallList {
-  AqlCall upstreamCall{};
+  auto upstreamCall = AqlCall{};
   if (constrainedSort()) {
     if (clientCall.hasSoftLimit()) {
       // We do not know if we are going to be asked again to do a fullcount

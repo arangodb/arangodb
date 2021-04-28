@@ -176,7 +176,8 @@ std::tuple<ExecutorState, NoStats, AqlCall> AccuWindowExecutor::produceRows(
   }
 
   // Just fetch everything from above, allow overfetching
-  return {inputRange.upstreamState(), NoStats{}, AqlCall::emptyCall};
+  AqlCall upstreamCall{};
+  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
 }
 
 /**
@@ -190,7 +191,8 @@ std::tuple<ExecutorState, NoStats, AqlCall> AccuWindowExecutor::produceRows(
 auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
   // we do not keep any state
-  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
+  AqlCall upstreamCall{};
+  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
 [[nodiscard]] auto AccuWindowExecutor::expectedNumberOfRowsNew(
@@ -303,7 +305,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
   ExecutorState state = consumeInputRange(inputRange);
 
   if (_rows.empty()) {
-    return {state, NoStats{}, AqlCall::emptyCall};
+    return {state, NoStats{}, AqlCall{}};
   }
 
   if (_infos.rangeRegister() == RegisterPlan::MaxRegisterId) {
@@ -384,7 +386,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
     state = ExecutorState::HASMORE;
   }
 
-  return {state, NoStats{}, AqlCall::emptyCall};
+  return {state, NoStats{}, AqlCall{}};
 }
 
 /**
@@ -417,7 +419,8 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> WindowExecutor::skipRowsRang
   }
   
   // Just fetch everything from above, allow overfetching
-  return {state, NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
+  AqlCall upstreamCall{};
+  return {state, NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
 [[nodiscard]] auto WindowExecutor::expectedNumberOfRowsNew(

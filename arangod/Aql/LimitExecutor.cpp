@@ -52,10 +52,11 @@ auto LimitExecutor::limitFulfilled() const noexcept -> bool {
 }
 
 auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> AqlCall {
+  auto upstreamCall = AqlCall{};
+
   auto const limitedClientOffset = std::min(clientCall.getOffset(), remainingLimit());
 
   // Offsets must be added, but the client's offset is limited by our limit.
-  AqlCall upstreamCall{};
   upstreamCall.offset = remainingOffset() + limitedClientOffset;
 
   // To get the limit for upstream, we must subtract the downstream offset from

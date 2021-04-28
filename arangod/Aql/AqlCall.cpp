@@ -46,8 +46,6 @@ auto getStringView(velocypack::Slice slice) -> std::string_view {
   return std::string_view(ref.data(), ref.size());
 }
 }  // namespace
-  
-/*static*/ AqlCall const AqlCall::emptyCall{};
 
 auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {

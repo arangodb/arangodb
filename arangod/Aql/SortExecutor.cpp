@@ -161,9 +161,11 @@ void SortExecutor::initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix) {
 
 std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     AqlItemBlockInputMatrix& inputMatrix, OutputAqlItemRow& output) {
+  AqlCall upstreamCall{};
+
   if (!inputMatrix.hasDataRow()) {
     // If our inputMatrix does not contain all upstream rows
-    return {inputMatrix.upstreamState(), NoStats{}, AqlCall::emptyCall};
+    return {inputMatrix.upstreamState(), NoStats{}, upstreamCall};
   }
 
   if (_input == nullptr) {
@@ -173,20 +175,20 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
   if (_returnNext >= _sortedIndexes.size()) {
     // Bail out if called too often,
     // Bail out on no elements
-    return {ExecutorState::DONE, NoStats{}, AqlCall::emptyCall};
+    return {ExecutorState::DONE, NoStats{}, upstreamCall};
   }
 
   while (_returnNext < _sortedIndexes.size() && !output.isFull()) {
     InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
     output.copyRow(inRow);
     output.advanceRow();
-    ++_returnNext;
+    _returnNext++;
   }
 
   if (_returnNext >= _sortedIndexes.size()) {
-    return {ExecutorState::DONE, NoStats{}, AqlCall::emptyCall};
+    return {ExecutorState::DONE, NoStats{}, upstreamCall};
   }
-  return {ExecutorState::HASMORE, NoStats{}, AqlCall::emptyCall};
+  return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
 }
 
 void SortExecutor::doSorting() {
@@ -216,9 +218,11 @@ void SortExecutor::doSorting() {
 
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     AqlItemBlockInputMatrix& inputMatrix, AqlCall& call) {
+  AqlCall upstreamCall{};
+
   if (inputMatrix.upstreamState() == ExecutorState::HASMORE) {
     // If our inputMatrix does not contain all upstream rows
-    return {ExecutorState::HASMORE, NoStats{}, 0, AqlCall::emptyCall};
+    return {ExecutorState::HASMORE, NoStats{}, 0, upstreamCall};
   }
 
   if (_input == nullptr) {
@@ -228,19 +232,19 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   if (_returnNext >= _sortedIndexes.size()) {
     // Bail out if called too often,
     // Bail out on no elements
-    return {ExecutorState::DONE, NoStats{}, 0, AqlCall::emptyCall};
+    return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
   }
 
   while (_returnNext < _sortedIndexes.size() && call.shouldSkip()) {
     InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
-    ++_returnNext;
+    _returnNext++;
     call.didSkip(1);
   }
 
   if (_returnNext >= _sortedIndexes.size()) {
-    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), upstreamCall};
   }
-  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
+  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
 [[nodiscard]] auto SortExecutor::expectedNumberOfRowsNew(AqlItemBlockInputMatrix const& input,

@@ -193,7 +193,7 @@ auto KShortestPathsExecutor<FinderType>::produceRows(AqlItemBlockInputRange& inp
     if (_finder.isDone()) {
       if (!fetchPaths(input)) {
         TRI_ASSERT(!input.hasDataRow());
-        return {input.upstreamState(), stats(), AqlCall::emptyCall};
+        return {input.upstreamState(), stats(), AqlCall{}};
       }
     } else {
       doOutputPath(output);
@@ -201,9 +201,9 @@ auto KShortestPathsExecutor<FinderType>::produceRows(AqlItemBlockInputRange& inp
   }
 
   if (_finder.isDone()) {
-    return {input.upstreamState(), stats(), AqlCall::emptyCall};
+    return {input.upstreamState(), stats(), AqlCall{}};
   } else {
-    return {ExecutorState::HASMORE, stats(), AqlCall::emptyCall};
+    return {ExecutorState::HASMORE, stats(), AqlCall{}};
   }
 }
 
@@ -220,7 +220,7 @@ auto KShortestPathsExecutor<FinderType>::skipRowsRange(AqlItemBlockInputRange& i
     if (_finder.isDone()) {
       if (!fetchPaths(input)) {
         TRI_ASSERT(!input.hasDataRow());
-        return {input.upstreamState(), stats(), skipped, AqlCall::emptyCall};
+        return {input.upstreamState(), stats(), skipped, AqlCall{}};
       }
     } else {
       if (_finder.skipPath()) {
@@ -231,9 +231,9 @@ auto KShortestPathsExecutor<FinderType>::skipRowsRange(AqlItemBlockInputRange& i
   }
 
   if (_finder.isDone()) {
-    return {input.upstreamState(), stats(), skipped, AqlCall::emptyCall};
+    return {input.upstreamState(), stats(), skipped, AqlCall{}};
   } else {
-    return {ExecutorState::HASMORE, stats(), skipped, AqlCall::emptyCall};
+    return {ExecutorState::HASMORE, stats(), skipped, AqlCall{}};
   }
 }
 

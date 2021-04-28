@@ -236,12 +236,12 @@ auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlI
       doOutputPath(output);
       if (output.isFull()) {
         if (pathLengthAvailable() > 0) {
-          return {ExecutorState::HASMORE, NoStats{}, AqlCall::emptyCall};
+          return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
         } else {
           // We don't have rows available for output. If
           // upstream is DONE, we will not be able to produce more
           // if upstream HASMORE, we do not know, so we say HASMORE.
-          return {input.upstreamState(), NoStats{}, AqlCall::emptyCall};
+          return {input.upstreamState(), NoStats{}, AqlCall{}};
         }
       }
     } else {
@@ -251,7 +251,7 @@ auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlI
       // HASMORE, we can potentially make more.
       if (!fetchPath(input)) {
         TRI_ASSERT(!input.hasDataRow());
-        return {input.upstreamState(), NoStats{}, AqlCall::emptyCall};
+        return {input.upstreamState(), NoStats{}, AqlCall{}};
       }
     }
   }
@@ -267,13 +267,13 @@ auto ShortestPathExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall&
     if (pathLengthAvailable() == 0) {
       if (!fetchPath(input)) {
         TRI_ASSERT(!input.hasDataRow());
-        return {input.upstreamState(), NoStats{}, skipped, AqlCall::emptyCall};
+        return {input.upstreamState(), NoStats{}, skipped, AqlCall{}};
       }
     } else {
       // if we end up here there is path available, but
       // we have skipped as much as we were asked to.
       TRI_ASSERT(call.getOffset() == 0);
-      return {ExecutorState::HASMORE, NoStats{}, skipped, AqlCall::emptyCall};
+      return {ExecutorState::HASMORE, NoStats{}, skipped, AqlCall{}};
     }
   }
 }

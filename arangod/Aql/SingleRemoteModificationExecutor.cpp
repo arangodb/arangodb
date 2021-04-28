@@ -84,7 +84,7 @@ template <typename Modifier>
     }
   }
 
-  return {input.upstreamState(), stats, AqlCall::emptyCall};
+  return {input.upstreamState(), stats, AqlCall{}};
 }
 
 template <typename Modifier>
@@ -98,10 +98,10 @@ template <typename Modifier>
     auto result = doSingleRemoteModificationOperation(row, stats);
     if (result.ok()) {
       call.didSkip(1);
-      return {input.upstreamState(), stats, 1, AqlCall::emptyCall};
+      return {input.upstreamState(), stats, 1, AqlCall{}};
     }
   }
-  return {input.upstreamState(), stats, 0, AqlCall::emptyCall};
+  return {input.upstreamState(), stats, 0, AqlCall{}};
 }
 
 template <typename Modifier>

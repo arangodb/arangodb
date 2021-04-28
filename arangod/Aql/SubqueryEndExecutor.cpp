@@ -102,7 +102,7 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
       _accumulator.addValue(inputRow.getValue(_infos.getInputRegister()));
     }
   }
-  return {input.upstreamState(), NoStats{}, AqlCall::emptyCall};
+  return {input.upstreamState(), NoStats{}, AqlCall{}};
 }
 
 auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
@@ -122,7 +122,7 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   // This is correct since the SubqueryEndExecutor produces one output out
   // of the accumulation of all the (relevant) inputs
   call.didSkip(1);
-  return {input.upstreamState(), NoStats{}, 1, AqlCall::emptyCall};
+  return {input.upstreamState(), NoStats{}, 1, AqlCall{}};
 }
 
 auto SubqueryEndExecutor::consumeShadowRow(ShadowAqlItemRow shadowRow,

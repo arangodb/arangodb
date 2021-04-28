@@ -217,9 +217,6 @@ struct AqlCall {
   }
 
   auto requestLessDataThan(AqlCall const& other) const noexcept -> bool;
-  
-  /// @brief reusable const empty call object
-  static AqlCall const emptyCall;
 };
 
 constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {

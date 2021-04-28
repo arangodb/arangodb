@@ -212,9 +212,10 @@ auto ConstrainedSortExecutor::produceRows(AqlItemBlockInputRange& input, OutputA
   if (consumeInput(input) == ExecutorState::HASMORE) {
     // Input could not be fully consumed, executor is more hungry!
     // Get more.
+    AqlCall upstreamCall{};
     // We need to fetch everything form upstream.
     // Unlimited, no offset call.
-    return {ExecutorState::HASMORE, NoStats{}, AqlCall::emptyCall};
+    return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
   };
 
   while (!output.isFull() && !doneProducing()) {
@@ -229,9 +230,9 @@ auto ConstrainedSortExecutor::produceRows(AqlItemBlockInputRange& input, OutputA
     output.advanceRow();
   }
   if (doneProducing()) {
-    return {ExecutorState::DONE, NoStats{}, AqlCall::emptyCall};
+    return {ExecutorState::DONE, NoStats{}, AqlCall{}};
   }
-  return {ExecutorState::HASMORE, NoStats{}, AqlCall::emptyCall};
+  return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
 }
 
 auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
@@ -239,9 +240,10 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   if (consumeInput(inputRange) == ExecutorState::HASMORE) {
     // Input could not be fully consumed, executor is more hungry!
     // Get more.
-    // We need to fetch everything from upstream.
+    AqlCall upstreamCall{};
+    // We need to fetch everything form upstream.
     // Unlimited, no offset call.
-    return {ExecutorState::HASMORE, NoStats{}, 0, AqlCall::emptyCall};
+    return {ExecutorState::HASMORE, NoStats{}, 0, upstreamCall};
   };
 
   while (!doneProducing()) {
@@ -260,13 +262,13 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
       _returnNext = _rows.size();
     } else {
       // We still have something, but cannot continue to skip.
-      return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
+      return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall{}};
     }
   }
 
   while (call.needSkipMore() && !doneSkipping()) {
     auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
-    // unlikely, but for backwards-compatibility.
+    // unlikely, but for backwards compatibility.
     if (call.getOffset() > 0) {
       auto const skipNum = (std::min)(call.getOffset(), rowsLeftToSkip);
       call.didSkip(skipNum);
@@ -281,7 +283,7 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
 
   auto const state = doneSkipping() ? ExecutorState::DONE : ExecutorState::HASMORE;
 
-  return {state, NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
+  return {state, NoStats{}, call.getSkipCount(), AqlCall{}};
 }
 
 [[nodiscard]] auto ConstrainedSortExecutor::expectedNumberOfRowsNew(

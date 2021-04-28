@@ -235,7 +235,7 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItem
   stats.addScannedIndex(_traverser.getAndResetReadDocuments());
   stats.addHttpRequests(_traverser.getAndResetHttpRequests());
 
-  return {state, stats, AqlCall::emptyCall};
+  return {state, stats, AqlCall{}};
 }
 
 auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
@@ -252,11 +252,11 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& ca
 
     if (!_traverser.hasMore()) {
       if (!initTraverser(input)) {
-        return {input.upstreamState(), stats, skipped, AqlCall::emptyCall};
+        return {input.upstreamState(), stats, skipped, AqlCall{}};
       }
     } else {
       TRI_ASSERT(call.getOffset() == 0);
-      return {ExecutorState::HASMORE, stats, skipped, AqlCall::emptyCall};
+      return {ExecutorState::HASMORE, stats, skipped, AqlCall{}};
     }
   }
 }

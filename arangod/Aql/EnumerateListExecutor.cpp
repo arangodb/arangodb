@@ -178,9 +178,9 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipR
 
   if (_inputArrayPosition < _inputArrayLength) {
     // fullCount will always skip the complete array
-    return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
+    return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), AqlCall{}};
   }
-  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
+  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), AqlCall{}};
 }
 
 void EnumerateListExecutor::initialize() {

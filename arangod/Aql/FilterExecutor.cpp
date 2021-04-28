@@ -68,7 +68,7 @@ auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
   }
 
   // Just fetch everything from above, allow overfetching
-  return {inputRange.upstreamState(), stats, call.getSkipCount(), AqlCall::emptyCall};
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), AqlCall{}};
 }
 
 auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
@@ -91,7 +91,7 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   }
 
   // Just fetch everything from above, allow overfetching
-  return {inputRange.upstreamState(), stats, AqlCall::emptyCall};
+  return {inputRange.upstreamState(), stats, AqlCall{}};
 }
 
 [[nodiscard]] auto FilterExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,

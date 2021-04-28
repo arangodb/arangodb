@@ -247,9 +247,10 @@ auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
+  AqlCall upstreamCall{};
   // We cannot forward anything, no skip, no limit.
   // Need to request all from upstream.
-  return {returnState(), NoStats{}, AqlCall::emptyCall};
+  return {returnState(), NoStats{}, upstreamCall};
 }
 
 /**
@@ -279,9 +280,10 @@ auto HashedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
     }
   }
 
+  AqlCall upstreamCall{};
   // We cannot forward anything, no skip, no limit.
   // Need to request all from upstream.
-  return {returnState(), NoStats{}, call.getSkipCount(), AqlCall::emptyCall};
+  return {returnState(), NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
 // finds the group matching the current row, or emplaces it. in either case,

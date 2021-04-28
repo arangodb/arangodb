@@ -390,7 +390,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   auto newState = pendingGroup ? ExecutorState::HASMORE : inputRange.upstreamState();
 
   INTERNAL_LOG_SC << "reporting state: " << newState;
-  return {newState, Stats{}, AqlCall::emptyCall};
+  return {newState, Stats{}, AqlCall{}};
 }
 
 auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
@@ -463,5 +463,5 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
   INTERNAL_LOG_SC << " skipped rows: " << clientCall.getSkipCount();
   INTERNAL_LOG_SC << "reporting state: " << inputRange.upstreamState();
 
-  return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(), AqlCall::emptyCall};
+  return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(), AqlCall{}};
 }
