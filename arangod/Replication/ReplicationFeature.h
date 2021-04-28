@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REPLICATION_REPLICATION_FEATURE_H
-#define ARANGODB_REPLICATION_REPLICATION_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
@@ -145,4 +144,3 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 
 }  // namespace arangodb
 
-#endif

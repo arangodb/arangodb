@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHAREDAQLITEMBLOCKPTR_H
-#define ARANGOD_AQL_SHAREDAQLITEMBLOCKPTR_H
+#pragma once
 
 #include "Aql/AqlItemBlock.h"
 #include "Basics/debugging.h"
@@ -208,4 +207,3 @@ void arangodb::aql::SharedAqlItemBlockPtr::decrRefCount() noexcept {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_SHAREDAQLITEMBLOCKPTR_H

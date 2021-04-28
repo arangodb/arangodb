@@ -21,8 +21,7 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__DEADLINE_H
-#define ARANGODB_V8_V8__DEADLINE_H 1
+#pragma once
 
 #include <chrono>
 #include <v8.h>
@@ -36,4 +35,3 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::millise
 
 void TRI_InitV8Deadline(v8::Isolate* isolate);
 
-#endif

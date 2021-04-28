@@ -22,8 +22,7 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_SETTINGS_MANAGER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_SETTINGS_MANAGER_H 1
+#pragma once
 
 #include <rocksdb/types.h>
 #include "Basics/Common.h"
@@ -85,4 +84,3 @@ class RocksDBSettingsManager {
 };
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
-#define ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/IResearchViewNode.h"
@@ -548,4 +547,3 @@ struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materiali
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H

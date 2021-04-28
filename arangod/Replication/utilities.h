@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_UTILITIES_H
-#define ARANGOD_REPLICATION_UTILITIES_H 1
+#pragma once
 
 #include <map>
 #include <mutex>
@@ -186,4 +185,3 @@ Result parseResponse(velocypack::Builder&, httpclient::SimpleHttpResult const*);
 }  // namespace replutils
 }  // namespace arangodb
 
-#endif

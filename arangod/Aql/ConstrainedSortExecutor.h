@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CONSTRAINED_SORT_EXECUTOR_H
-#define ARANGOD_AQL_CONSTRAINED_SORT_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -126,4 +125,3 @@ class ConstrainedSortExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

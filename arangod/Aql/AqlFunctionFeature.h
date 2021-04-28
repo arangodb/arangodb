@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_FUNCTION_FEATURE_H
-#define ARANGOD_AQL_AQL_FUNCTION_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/Function.h"
@@ -71,4 +70,3 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

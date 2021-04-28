@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H 1
+#pragma once
 
 #include "Aql/QueryResult.h"
 #include "Basics/Common.h"
@@ -206,4 +205,3 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

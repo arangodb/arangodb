@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_ATTRIBUTE_WEIGHT_SHORTEST_PATH_FINDER_H
-#define ARANGODB_GRAPH_ATTRIBUTE_WEIGHT_SHORTEST_PATH_FINDER_H 1
+#pragma once
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -279,4 +278,3 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

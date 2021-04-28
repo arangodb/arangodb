@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_INCREMENTAL_SYNC_H
-#define ARANGOD_ROCKSDB_ROCKSDB_INCREMENTAL_SYNC_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -42,4 +41,3 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                              arangodb::LogicalCollection* col, std::string const& keysId);
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_STORED_VALUES_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_STORED_VALUES_H 1
+#pragma once
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
@@ -96,4 +95,3 @@ class IResearchViewStoredValues {
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_STORED_VALUES_H

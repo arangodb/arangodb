@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H
-#define ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "VocBase/LogicalView.h"
@@ -71,4 +70,3 @@ class ViewTypesFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

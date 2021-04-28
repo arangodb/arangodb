@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_TIMESTRING_H
-#define ARANGOD_CONSENSUS_TIMESTRING_H 1
+#pragma once
 
 #include <chrono>
 #include "Basics/Common.h"
@@ -62,4 +61,3 @@ inline std::chrono::system_clock::time_point stringToTimepoint(std::string const
   return std::chrono::time_point<std::chrono::system_clock>();
 }
 
-#endif

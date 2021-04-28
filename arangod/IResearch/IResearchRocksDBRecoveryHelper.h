@@ -21,8 +21,7 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H
-#define ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H 1
+#pragma once
 
 #include <cstdint>
 #include <set>
@@ -105,4 +104,3 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 }  // end namespace iresearch
 }  // end namespace arangodb
 
-#endif

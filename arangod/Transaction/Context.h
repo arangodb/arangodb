@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_CONTEXT_H
-#define ARANGOD_TRANSACTION_CONTEXT_H 1
+#pragma once
 
 #include <memory>
 
@@ -171,4 +170,3 @@ class Context {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

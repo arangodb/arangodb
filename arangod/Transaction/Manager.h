@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_MANAGER_H
-#define ARANGOD_TRANSACTION_MANAGER_H 1
+#pragma once
 
 #include "Basics/Identifier.h"
 #include "Basics/ReadWriteLock.h"
@@ -272,4 +271,3 @@ class Manager final {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

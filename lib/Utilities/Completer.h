@@ -21,8 +21,7 @@
 /// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_COMPLETER_H
-#define ARANGODB_UTILITIES_COMPLETER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -53,4 +52,3 @@ class Completer {
 };
 }  // namespace arangodb
 
-#endif

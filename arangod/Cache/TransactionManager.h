@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_TRANSACTION_WINDOW_H
-#define ARANGODB_CACHE_TRANSACTION_WINDOW_H
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -98,4 +97,3 @@ class TransactionManager {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

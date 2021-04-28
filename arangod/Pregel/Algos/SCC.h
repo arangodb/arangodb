@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_SCC_H
-#define ARANGODB_PREGEL_ALGOS_SCC_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -66,4 +65,3 @@ struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

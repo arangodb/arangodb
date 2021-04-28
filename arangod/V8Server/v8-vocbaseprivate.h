@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_VOCBASEPRIVATE_H
-#define ARANGOD_V8_SERVER_V8_VOCBASEPRIVATE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "V8/v8-utils.h"
@@ -56,4 +55,3 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
                            std::string& collectionName,
                            arangodb::velocypack::Builder& builder, bool includeRev);
 
-#endif

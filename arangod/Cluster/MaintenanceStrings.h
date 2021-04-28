@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_MAINTENANCE_STRINGS_H
-#define ARANGODB_CLUSTER_MAINTENANCE_STRINGS_H
+#pragma once
 
 namespace arangodb {
 namespace maintenance {
@@ -73,4 +72,3 @@ constexpr char const* LEADER_NOT_YET_KNOWN = "NOT_YET_TOUCHED";
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

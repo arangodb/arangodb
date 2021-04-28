@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_DISPATCHER_H
-#define ARANGOD_V8_SERVER_V8_DISPATCHER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -31,4 +30,3 @@
 
 void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
-#endif

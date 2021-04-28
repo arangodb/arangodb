@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ENGINE_INFO_CONTAINER_DBSERVER_SERVER_BASED_H
-#define ARANGOD_AQL_ENGINE_INFO_CONTAINER_DBSERVER_SERVER_BASED_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -227,4 +226,3 @@ class EngineInfoContainerDBServerServerBased {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

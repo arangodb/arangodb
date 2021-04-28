@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H
-#define ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -46,4 +45,3 @@ TraverserCache* CreateCache(arangodb::aql::QueryContext& query, bool activateDoc
 }  // namespace CacheFactory
 }  // namespace graph
 }  // namespace arangodb
-#endif

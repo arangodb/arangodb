@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_INDEX_FACTORY_H
-#define ARANGOD_CLUSTER_CLUSTER_INDEX_FACTORY_H 1
+#pragma once
 
 #include "Indexes/IndexFactory.h"
 
@@ -54,4 +53,3 @@ class ClusterIndexFactory final : public IndexFactory {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_TIME_FORMAT_H
-#define ARANGODB_LOGGER_LOG_TIME_FORMAT_H 1
+#pragma once
 
 #include <chrono>
 #include <string>
@@ -69,4 +68,3 @@ void writeTime(std::string& out,
 }  // namespace LogTimeFormats
 }  // namespace arangodb
 
-#endif

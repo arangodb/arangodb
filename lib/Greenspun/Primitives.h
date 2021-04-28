@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H
-#define ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H 1
+#pragma once
 
 #include "Interpreter.h"
 
@@ -41,4 +40,3 @@ void RegisterAllPrimitives(Machine& ctx);
 }  // namespace greenspun
 }  // namespace arangodb
 
-#endif

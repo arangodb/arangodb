@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HTTP_RESPONSE_H
-#define ARANGODB_REST_HTTP_RESPONSE_H 1
+#pragma once
 
 #include "Rest/GeneralResponse.h"
 
@@ -114,4 +113,3 @@ class HttpResponse : public GeneralResponse {
 };
 }  // namespace arangodb
 
-#endif

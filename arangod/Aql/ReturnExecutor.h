@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_RETURN_EXECUTOR_H
-#define ARANGOD_AQL_RETURN_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -113,4 +112,3 @@ class ReturnExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif
