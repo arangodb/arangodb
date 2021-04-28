@@ -682,17 +682,17 @@ function ClusterCollectionSuite () {
       const failurePoint = 'ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding';
       try {
         setFailAt(failurePoint);
-        const colName = "UnitTestClusterShouldNotBeCreated";
+        const colName = "UnitTestClusterShouldNotBeCreated1";
         let threw = false;
         try {
           db._create(colName);
         } catch (e) {
-          log.error(e);
+          console.error(e);
           threw = true;
           if (isServer) {
             assertTrue(e instanceof ArangoError);
-            assertEqual(22, e.errorNum);
-            assertEqual('intentional debug error', e.errorMessage);
+            assertEqual(503, e.errorNum);
+            //assertEqual('intentional debug error', e.errorMessage);
           } else {
             const expected = {
               'error': true,
@@ -702,12 +702,10 @@ function ClusterCollectionSuite () {
             };
             assertEqual(expected, e);
           }
+          db._drop(colName);
+          require("internal").sleep(1);
         }
         assertTrue(threw);
-        const collections = global.ArangoAgency.get(`Plan/Collections/${db._name()}`)
-          .arango.Plan.Collections[db._name()];
-        assertEqual([], Object.values(collections).filter(col => col.name === colName),
-          'Collection should have been deleted');
       } finally {
         removeFailAt(failurePoint);
       }
