@@ -1,6 +1,12 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed bug in error reporting when a database create did not work, which
+  lead to a busy loop reporting this error to the agency.
+
+* Fixed the error response if the HTTP version is not 1.0 or 1.1 and if
+  the Content-Length is too large (> 1 GB).
+
 * Guarded access only to ActionBase::_result.
 
 * Updated arangosync to 2.2.0.
