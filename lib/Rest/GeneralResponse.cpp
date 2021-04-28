@@ -435,6 +435,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING):
     case static_cast<int>(TRI_ERROR_CLUSTER_NOT_LEADER):
     case static_cast<int>(TRI_ERROR_SHUTTING_DOWN):
+    case static_cast<int>(TRI_ERROR_STARTING_UP):
     case static_cast<int>(TRI_ERROR_CLUSTER_CONNECTION_LOST):
       return ResponseCode::SERVICE_UNAVAILABLE;
 

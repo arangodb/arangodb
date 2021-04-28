@@ -400,6 +400,24 @@ void HttpCommTask<T>::processRequest() {
   DTraceHttpCommTaskProcessRequest((size_t)this);
 
   TRI_ASSERT(_request);
+  auto msgId = _request->messageId();
+  auto respContentType = _request->contentTypeResponse();
+  try {
+    doProcessRequest();
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC("1e6f8", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
+      << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), respContentType,
+                            msgId, ex.code(), ex.message());
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("1fbd2", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
+    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType,
+                            msgId, ErrorCode(TRI_ERROR_FAILED), ex.what());
+  }
+}
+
+template <SocketType T>
+void HttpCommTask<T>::doProcessRequest() {
   this->_protocol->timer.cancel();
   if (this->stopped()) {
     return;  // we have to ignore this request because the connection has already been closed
@@ -446,7 +464,6 @@ void HttpCommTask<T>::processRequest() {
   // OPTIONS requests currently go unauthenticated
   if (_request->requestType() == rest::RequestType::OPTIONS) {
     this->processCorsOptions(std::move(_request), _origin);
-
     return;
   }
 

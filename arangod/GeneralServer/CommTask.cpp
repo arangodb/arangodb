@@ -744,41 +744,30 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
                Logger::logRequestParameters())
       << "\"authorization-header\",\"" << (void*)this << "\",SENSITIVE_DETAILS_HIDDEN";
 
-  try {
-    AuthenticationMethod authMethod = AuthenticationMethod::NONE;
-    if (authStr.size() >= 6) {
-      if (strncasecmp(authStr.c_str(), "basic ", 6) == 0) {
-        authMethod = AuthenticationMethod::BASIC;
-      } else if (strncasecmp(authStr.c_str(), "bearer ", 7) == 0) {
-        authMethod = AuthenticationMethod::JWT;
-      }
+  AuthenticationMethod authMethod = AuthenticationMethod::NONE;
+  if (authStr.size() >= 6) {
+    if (strncasecmp(authStr.c_str(), "basic ", 6) == 0) {
+      authMethod = AuthenticationMethod::BASIC;
+    } else if (strncasecmp(authStr.c_str(), "bearer ", 7) == 0) {
+      authMethod = AuthenticationMethod::JWT;
     }
-
-    req.setAuthenticationMethod(authMethod);
-    if (authMethod == AuthenticationMethod::NONE) {
-      events::UnknownAuthenticationMethod(req);
-      return auth::TokenCache::Entry::Unauthenticated();
-    }
-
-    auto authToken = this->_auth->tokenCache().checkAuthentication(authMethod, auth);
-    req.setAuthenticated(authToken.authenticated());
-    req.setUser(authToken.username());  // do copy here, so that we do not invalidate the member
-    if (authToken.authenticated()) {
-      events::Authenticated(req, authMethod);
-    } else {
-      events::CredentialsBad(req, authMethod);
-    }
-    return authToken;
-
-  } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC("c4537", WARN, arangodb::Logger::AUTHENTICATION)
-        << "exception during authentication process: '" << ex.message() << "'";
-  } catch (...) {
-    LOG_TOPIC("c4538", WARN, arangodb::Logger::AUTHENTICATION)
-        << "unknown exception during authentication process";
   }
-  
-  return auth::TokenCache::Entry::Unauthenticated();
+
+  req.setAuthenticationMethod(authMethod);
+  if (authMethod == AuthenticationMethod::NONE) {
+    events::UnknownAuthenticationMethod(req);
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
+
+  auto authToken = this->_auth->tokenCache().checkAuthentication(authMethod, auth);
+  req.setAuthenticated(authToken.authenticated());
+  req.setUser(authToken.username());  // do copy here, so that we do not invalidate the member
+  if (authToken.authenticated()) {
+    events::Authenticated(req, authMethod);
+  } else {
+    events::CredentialsBad(req, authMethod);
+  }
+  return authToken;
 }
 
 /// decompress content

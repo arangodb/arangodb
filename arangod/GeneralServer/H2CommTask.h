@@ -100,6 +100,8 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   /// handle stream request in arangodb
   void processStream(Stream& strm);
+  
+  void processRequest(Stream& stream, std::unique_ptr<HttpRequest> req);
 
   /// should close connection
   bool shouldStop() const;
