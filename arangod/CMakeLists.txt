@@ -189,6 +189,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Cache/RefactoredTraverserCache.cpp
   Graph/Cache/RefactoredClusterTraverserCache.cpp
+  Graph/Enumerators/OneSidedEnumerator.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
   Graph/Helpers/TraceEntry.cpp
   Graph/Queues/QueueTracer.cpp
@@ -196,6 +197,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/PathManagement/PathStore.cpp
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
+  Graph/Options/OneSidedEnumeratorOptions.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp
   Graph/Providers/ClusterProvider.cpp
   Graph/Providers/SingleServerProvider.cpp

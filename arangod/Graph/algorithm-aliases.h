@@ -42,6 +42,11 @@ using TracedKPathEnumerator =
     TwoSidedEnumerator<QueueTracer<FifoQueue<typename Provider::Step>>,
                        PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>,
                        PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
+
+// BFS Traversal implementation
+/*template <class Provider>
+using BFSEnumerator =
+    OneSidedEnumerator<FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>, Provider,
+                       PathValidator<PathStore<typename Provider::Step>, VertexUniquenessLevel::PATH>>;*/
 }  // namespace graph
 }  // namespace arangodb
-
