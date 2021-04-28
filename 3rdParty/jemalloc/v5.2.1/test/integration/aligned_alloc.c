@@ -9,7 +9,7 @@
  */
 static void
 purge(void) {
-	assert_d_eq(mallctl("arena.0.purge", NULL, NULL, NULL, 0), 0,
+	expect_d_eq(mallctl("arena.0.purge", NULL, NULL, NULL, 0), 0,
 	    "Unexpected mallctl error");
 }
 
@@ -20,14 +20,14 @@ TEST_BEGIN(test_alignment_errors) {
 	alignment = 0;
 	set_errno(0);
 	p = aligned_alloc(alignment, 1);
-	assert_false(p != NULL || get_errno() != EINVAL,
+	expect_false(p != NULL || get_errno() != EINVAL,
 	    "Expected error for invalid alignment %zu", alignment);
 
 	for (alignment = sizeof(size_t); alignment < MAXALIGN;
 	    alignment <<= 1) {
 		set_errno(0);
 		p = aligned_alloc(alignment + 1, 1);
-		assert_false(p != NULL || get_errno() != EINVAL,
+		expect_false(p != NULL || get_errno() != EINVAL,
 		    "Expected error for invalid alignment %zu",
 		    alignment + 1);
 	}
@@ -58,7 +58,7 @@ TEST_BEGIN(test_oom_errors) {
 #endif
 	set_errno(0);
 	p = aligned_alloc(alignment, size);
-	assert_false(p != NULL || get_errno() != ENOMEM,
+	expect_false(p != NULL || get_errno() != ENOMEM,
 	    "Expected error for aligned_alloc(%zu, %zu)",
 	    alignment, size);
 
@@ -71,7 +71,7 @@ TEST_BEGIN(test_oom_errors) {
 #endif
 	set_errno(0);
 	p = aligned_alloc(alignment, size);
-	assert_false(p != NULL || get_errno() != ENOMEM,
+	expect_false(p != NULL || get_errno() != ENOMEM,
 	    "Expected error for aligned_alloc(%zu, %zu)",
 	    alignment, size);
 
@@ -83,7 +83,7 @@ TEST_BEGIN(test_oom_errors) {
 #endif
 	set_errno(0);
 	p = aligned_alloc(alignment, size);
-	assert_false(p != NULL || get_errno() != ENOMEM,
+	expect_false(p != NULL || get_errno() != ENOMEM,
 	    "Expected error for aligned_alloc(&p, %zu, %zu)",
 	    alignment, size);
 }

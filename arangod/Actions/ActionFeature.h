@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ACTION_FEATURE_H
-#define APPLICATION_FEATURES_ACTION_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -43,4 +42,3 @@ class ActionFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

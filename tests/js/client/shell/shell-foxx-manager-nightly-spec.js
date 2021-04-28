@@ -34,10 +34,8 @@ const fs = require('fs');
 const db = require('internal').db;
 const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 const arango = require('@arangodb').arango;
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 const expect = require('chai').expect;
-
-require("@arangodb/test-helper").waitForFoxxInitialized();
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 
 describe('Foxx Manager', function () {
   describe('using different dbs', function () {
@@ -64,7 +62,6 @@ describe('Foxx Manager', function () {
     });
 
     it('should allow to install apps on same mount point', function () {
-      const download = require('internal').download;
       arango.reconnect(origin, 'tmpFMDB', 'root', '');
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'itzpapalotl'), '/unittest');
@@ -73,23 +70,22 @@ describe('Foxx Manager', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), '/unittest');
       }).not.to.throw();
-      db._useDatabase('_system');
-      const baseUrl = origin + '/_db';
-      const available = download(baseUrl + '/tmpFMDB/unittest/random');
+      arango.reconnect(origin, 'tmpFMDB', 'root', '');
+      const available = arango.GET_RAW('/unittest/random');
       expect(available.code).to.equal(200);
-      const unavailable = download(baseUrl + '/tmpFMDB2/unittest/random');
+      arango.reconnect(origin, 'tmpFMDB2', 'root', '');
+      const unavailable = arango.GET_RAW('/unittest/random');
       expect(unavailable.code).to.equal(404);
     });
   });
 
   describe('upgrading', function () {
-    const download = require('internal').download;
     const colSetup = 'unittest_upgrade_setup';
     const colSetupTeardown = 'unittest_upgrade_setup_teardown';
     const mount = '/unittest/upgrade';
     const setupTeardownApp = fs.join(basePath, 'minimal-working-setup-teardown');
     const setupApp = fs.join(basePath, 'minimal-working-setup');
-    const url = origin + '/_db/_system' + mount + '/test';
+    const url = '/_db/_system' + mount + '/test';
     const brokenApp = fs.join(basePath, 'broken-controller-file');
 
     beforeEach(function () {
@@ -110,7 +106,7 @@ describe('Foxx Manager', function () {
       }
       FoxxManager.install(setupTeardownApp, mount);
       expect(db._collection(colSetupTeardown)).to.be.an.instanceOf(ArangoCollection);
-      expect(download(url).code).to.equal(200);
+      expect(arango.GET_RAW(url).code).to.equal(200);
     });
 
     afterEach(function () {
@@ -149,7 +145,7 @@ describe('Foxx Manager', function () {
       } catch (e) {
         // noop
       }
-      expect(download(url).code).to.equal(200);
+      expect(arango.GET_RAW(url).code).to.equal(200);
     });
 
     it('should not execute teardown of the old app', function () {
@@ -163,13 +159,12 @@ describe('Foxx Manager', function () {
   });
 
   describe('replacing', function () {
-    const download = require('internal').download;
     const colSetup = 'unittest_replace_setup';
     const colSetupTeardown = 'unittest_replace_setup_teardown';
     const mount = '/unittest/replace';
     const setupTeardownApp = fs.join(basePath, 'minimal-working-setup-teardown');
     const setupApp = fs.join(basePath, 'minimal-working-setup');
-    const url = origin + '/_db/_system' + mount + '/test';
+    const url = '/_db/_system' + mount + '/test';
     const brokenApp = fs.join(basePath, 'broken-controller-file');
 
     beforeEach(function () {
@@ -190,7 +185,7 @@ describe('Foxx Manager', function () {
       }
       FoxxManager.install(setupTeardownApp, mount);
       expect(db._collection(colSetupTeardown)).to.be.an.instanceOf(ArangoCollection);
-      expect(download(url).code).to.equal(200);
+      expect(arango.GET_RAW(url).code).to.equal(200);
     });
 
     afterEach(function () {
@@ -225,7 +220,7 @@ describe('Foxx Manager', function () {
 
     it('should make the original app unreachable', function () {
       FoxxManager.replace(setupApp, mount);
-      expect(download(url).code).to.equal(404);
+      expect(arango.GET_RAW(url).code).to.equal(404);
     });
 
     it('with broken app it should keep the old app reachable', function () {
@@ -234,7 +229,7 @@ describe('Foxx Manager', function () {
       } catch (e) {
         // noop
       }
-      expect(download(url).code).to.equal(200);
+      expect(arango.GET_RAW(url).code).to.equal(200);
     });
 
     it('with broken app it should not execute teardown of the old app', function () {

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_APPENDER_H
-#define ARANGODB_LOGGER_LOG_APPENDER_H 1
+#pragma once
 
 #include <stddef.h>
 #include <array>
@@ -91,4 +90,3 @@ class LogAppender {
 };
 }  // namespace arangodb
 
-#endif

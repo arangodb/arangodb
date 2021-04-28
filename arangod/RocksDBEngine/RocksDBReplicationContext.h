@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H
-#define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -273,4 +272,3 @@ class RocksDBReplicationContext {
 
 }  // namespace arangodb
 
-#endif

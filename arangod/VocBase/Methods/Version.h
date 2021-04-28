@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_METHODS_VERSION_H
-#define ARANGOD_VOC_BASE_METHODS_VERSION_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -80,4 +79,3 @@ struct Version {
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

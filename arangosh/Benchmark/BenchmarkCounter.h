@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_BENCHMARK_COUNTER_H
-#define ARANGODB_BENCHMARK_BENCHMARK_COUNTER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -192,4 +191,3 @@ private:
 }  // namespace arangobench
 }  // namespace arangodb
 
-#endif

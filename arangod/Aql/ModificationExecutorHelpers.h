@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_HELPERS_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR_HELPERS_H
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Aql/ModificationOptions.h"
@@ -97,4 +96,3 @@ AqlValue getDocumentOrNull(VPackSlice const& elm, std::string const& key);
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_REBALANCER_H
-#define ARANGODB_CACHE_REBALANCER_H
+#pragma once
 
 #include "Manager.h"
 
@@ -47,4 +46,3 @@ class Rebalancer {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

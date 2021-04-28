@@ -83,6 +83,18 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
+// number of write operations in transactions after which we will start 
+// doing preflight checks before every document insert or update/replace.
+// the rationale is that if we already have a lot of operations accumulated
+// in our transaction's WriteBatch, every rollback due to a unique constraint
+// violation will be prohibitively expensive for larger WriteBatch sizes.
+// so instead of performing an insert, update/replace directly, we first
+// check for uniqueness violations and instantly abort if there are any, 
+// without having modified the transaction's WriteBatch for the failed
+// operation. We can thus avoid the costly RollbackToSavePoint() call here.
+// we don't do this preflight check for smaller batches though.
+constexpr size_t preflightThreshold = 100;
+
 arangodb::LocalDocumentId generateDocumentId(arangodb::LogicalCollection const& collection,
                                              arangodb::RevisionId revisionId) {
   bool useRev = collection.usesRevisionsAsDocumentIds();
@@ -837,7 +849,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
-    auto res = removeDocument(&trx, docId, docBuffer.slice(), options);
+    auto res = removeDocument(&trx, savepoint, docId, docBuffer.slice(), options);
 
     if (res.fail()) {  // Failed to remove document in truncate.
       return res;
@@ -1379,7 +1391,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection.id(), previousMdr.revisionId(),
                           TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-  res = removeDocument(&trx, documentId, oldDoc, options);
+  res = removeDocument(&trx, savepoint, documentId, oldDoc, options);
 
   if (res.ok()) {
     trackWaitForSync(&trx, options);
@@ -1529,13 +1541,12 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
-
-  if (options.checkUniqueConstraintsInPreflight) {
-    // we can only afford the separation of checking and inserting in a
-    // transaction that disallows concurrency, i.e. we need to have the
-    // exclusive lock on the collection.
-    TRI_ASSERT(state->isOnlyExclusiveTransaction());
-
+    
+  TRI_ASSERT(!options.checkUniqueConstraintsInPreflight || state->isOnlyExclusiveTransaction());
+  
+  bool const performPreflightChecks = (options.checkUniqueConstraintsInPreflight || state->numOperations() >= ::preflightThreshold);
+  
+  if (performPreflightChecks) {
     // do a round of checks for all indexes, to verify that the insertion
     // will work (i.e. that there will be no unique constraint violations
     // later - we can't guard against disk full etc. later).
@@ -1559,8 +1570,11 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     }
   }
 
+  TRI_ASSERT(res.ok());
+
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), documentId);
+  TRI_ASSERT(key->containsLocalDocumentId(documentId));
 
   if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // banish new document to avoid caching without committing first
@@ -1569,37 +1583,42 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
-
-  TRI_ASSERT(key->containsLocalDocumentId(documentId));
+  
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
       key.ref(),
       rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
   if (!s.ok()) {
+    savepoint.cancel();
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
+      TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
       err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
     });
     return res;
   }
-
+ 
   bool needReversal = false;
-  
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+ 
+  {
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
-  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
-    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
-    res = rIdx->insert(*trx, mthds, documentId, doc, options);
-    // currently only IResearchLink indexes need a reversal
-    needReversal = needReversal || rIdx->needsReversal();
-    if (res.fail()) {
-      if (needReversal && !state->isSingleOperation()) {
-        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
-          return rid->remove(*trx, mthds, documentId, doc);
-        });
+    for (auto it = _indexes.begin(); it != _indexes.end(); ++it) {
+      RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
+      // if we already performed the preflight checks, there is no need to repeat the
+      // checks once again here
+      res = rIdx->insert(*trx, mthds, documentId, doc, options, /*performChecks*/ !performPreflightChecks);
+      // currently only IResearchLink indexes need a reversal
+      needReversal = needReversal || rIdx->needsReversal();
+      if (res.fail()) {
+        if (needReversal && !state->isSingleOperation()) {
+          ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
+            return rid->remove(*trx, mthds, documentId, doc);
+          });
+        }
+        break;
       }
-      break;
     }
   }
 
@@ -1607,11 +1626,12 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
                                                        RevisionId::fromSlice(doc));
   }
-
+  
   return res;
 }
 
 Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
+                                         RocksDBSavePoint& savepoint,
                                          LocalDocumentId const& documentId,
                                          VPackSlice doc,
                                          OperationOptions const& options) const {
@@ -1623,6 +1643,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), documentId);
+  TRI_ASSERT(key->containsLocalDocumentId(documentId));
 
   invalidateCacheEntry(key.ref());
 
@@ -1636,8 +1657,10 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                               RocksDBColumnFamilyManager::Family::Documents),
                           key.ref());
   if (!s.ok()) {
+    savepoint.cancel();
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
+      TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
       err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
     });
@@ -1649,21 +1672,23 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       << " seq: " << mthds->sequenceNumber()
       << " objectID " << objectId() << " name: " << _logicalCollection.name();*/
 
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  bool needReversal = false;
-  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
-    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
-    res = rIdx->remove(*trx, mthds, documentId, doc);
-    needReversal = needReversal || rIdx->needsReversal();
-    if (res.fail()) {
-      if (needReversal && !trx->isSingleOperationTransaction()) {
-        ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
-          OperationOptions options;
-          options.indexOperationMode = IndexOperationMode::rollback;
-          return rid->insert(*trx, mthds, documentId, doc, options);
-        });
+  {
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    bool needReversal = false;
+    for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+      RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
+      res = rIdx->remove(*trx, mthds, documentId, doc);
+      needReversal = needReversal || rIdx->needsReversal();
+      if (res.fail()) {
+        if (needReversal && !trx->isSingleOperationTransaction()) {
+          ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
+            OperationOptions options;
+            options.indexOperationMode = IndexOperationMode::rollback;
+            return rid->insert(*trx, mthds, documentId, doc, options, /*performChecks*/ true);
+          });
+        }
+        break;
       }
-      break;
     }
   }
 
@@ -1691,12 +1716,11 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
-  if (options.checkUniqueConstraintsInPreflight) {
-    // we can only afford the separation of checking and inserting in a
-    // transaction that disallows concurrency, i.e. we need to have the
-    // exclusive lock on the collection.
-    TRI_ASSERT(state->isOnlyExclusiveTransaction());
+  TRI_ASSERT(!options.checkUniqueConstraintsInPreflight || state->isOnlyExclusiveTransaction());
 
+  bool const performPreflightChecks = (options.checkUniqueConstraintsInPreflight || state->numOperations() >= ::preflightThreshold);
+
+  if (performPreflightChecks) {
     // do a round of checks for all indexes, to verify that the insertion
     // will work (i.e. that there will be no unique constraint violations
     // later - we can't guard against disk full etc. later).
@@ -1735,6 +1759,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&newDoc](result::Error& err) {
+      TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
       err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
     });
@@ -1757,20 +1782,24 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
     invalidateCacheEntry(key.ref());
   }
 
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  bool needReversal = false;
-  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
-    auto rIdx = static_cast<RocksDBIndex*>(it->get());
-    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
-    needReversal = needReversal || rIdx->needsReversal();
-    if (!res.ok()) {
-      if (needReversal && !trx->isSingleOperationTransaction()) {
-        ::reverseIdxOps(_indexes, it,
-                        [&](RocksDBIndex* rid) {
-                          return rid->update(*trx, mthds, newDocumentId, newDoc, oldDocumentId, oldDoc, options);
-                        });
+  {
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    bool needReversal = false;
+    for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+      auto rIdx = static_cast<RocksDBIndex*>(it->get());
+      // if we already performed the preflight checks, there is no need to repeat the
+      // checks once again here
+      res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc, options, /*performChecks*/ !performPreflightChecks);
+      needReversal = needReversal || rIdx->needsReversal();
+      if (!res.ok()) {
+        if (needReversal && !trx->isSingleOperationTransaction()) {
+          ::reverseIdxOps(_indexes, it,
+                          [&](RocksDBIndex* rid) {
+                            return rid->update(*trx, mthds, newDocumentId, newDoc, oldDocumentId, oldDoc, options, /*performChecks*/ true);
+                          });
+        }
+        break;
       }
-      break;
     }
   }
 

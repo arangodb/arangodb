@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_CURSOR_H
-#define ARANGOD_AQL_QUERY_CURSOR_H 1
+#pragma once
 
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -137,4 +136,3 @@ class QueryStreamCursor final : public arangodb::Cursor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

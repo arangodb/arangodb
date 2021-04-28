@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_ENGINE_H
-#define ARANGOD_CLUSTER_ENGINE_CLUSTER_ENGINE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -233,4 +232,3 @@ class ClusterEngine final : public StorageEngine {
 
 }  // namespace arangodb
 
-#endif

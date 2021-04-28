@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_DATABASE_TAILING_SYNCER_H
-#define ARANGOD_REPLICATION_DATABASE_TAILING_SYNCER_H 1
+#pragma once
 
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
@@ -110,4 +109,3 @@ class DatabaseTailingSyncer : public TailingSyncer {
 };
 }  // namespace arangodb
 
-#endif

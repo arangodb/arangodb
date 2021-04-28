@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_LOCAL_DOCUMENT_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_LOCAL_DOCUMENT_ID_H 1
+#pragma once
 
 #include "Basics/Identifier.h"
 #include "VocBase/ticks.h"
@@ -72,4 +71,3 @@ static_assert(sizeof(LocalDocumentId) == sizeof(LocalDocumentId::BaseType),
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::LocalDocumentId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::LocalDocumentId)
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -417,7 +416,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief creates a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  ErrorCode createCollection(VPackSlice slice, arangodb::LogicalCollection** dst);
+  ErrorCode createCollection(VPackSlice slice);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -574,4 +573,3 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result testPermissions();
 };
 }  // namespace arangodb
-#endif

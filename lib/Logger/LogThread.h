@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_THREAD_H
-#define ARANGODB_LOGGER_LOG_THREAD_H 1
+#pragma once
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
@@ -75,4 +74,3 @@ class LogThread final : public Thread {
 };
 }  // namespace arangodb
 
-#endif

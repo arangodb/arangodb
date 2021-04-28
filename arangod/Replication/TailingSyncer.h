@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_TAILING_SYNCER_H
-#define ARANGOD_REPLICATION_TAILING_SYNCER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplierConfiguration.h"
@@ -230,4 +229,3 @@ class TailingSyncer : public Syncer {
 };
 }  // namespace arangodb
 
-#endif

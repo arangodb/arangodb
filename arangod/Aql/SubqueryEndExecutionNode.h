@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H
-#define ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -85,4 +84,3 @@ class SubqueryEndNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_ALGORITHM_ALIASES_H
-#define ARANGOD_GRAPH_ALGORITHM_ALIASES_H 1
+#pragma once
 
 #include <Graph/PathManagement/PathValidator.h>
 #include <Graph/Providers/ProviderTracer.h>
@@ -46,4 +45,3 @@ using TracedKPathEnumerator =
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

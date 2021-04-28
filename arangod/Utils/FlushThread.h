@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_FLUSH_THREAD_H
-#define ARANGOD_UTILS_FLUSH_THREAD_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -63,4 +62,3 @@ class FlushThread final : public Thread {
 
 }  // namespace arangodb
 
-#endif

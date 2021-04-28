@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H
-#define ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H 1
+#pragma once
 
 #include "Rest/GeneralRequest.h"
 #include "Utils/ExecContext.h"
@@ -82,4 +81,3 @@ class VocbaseContext final : public arangodb::ExecContext {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_ITEM_MATRIX_H
-#define ARANGOD_AQL_AQL_ITEM_MATRIX_H 1
+#pragma once
 
 #include "Aql/ShadowAqlItemRow.h"
 
@@ -133,4 +132,3 @@ class AqlItemMatrix {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

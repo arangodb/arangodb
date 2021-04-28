@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_LINE_EDITOR_H
-#define ARANGODB_UTILITIES_LINE_EDITOR_H 1
+#pragma once
 
 #include <functional>
 
@@ -110,4 +109,3 @@ class LineEditor {
 };
 }  // namespace arangodb
 
-#endif

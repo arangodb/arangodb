@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H 1
+#pragma once
 
 #include "IResearch/IResearchViewMeta.h"
 #include "VocBase/LogicalView.h"
@@ -124,4 +123,3 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H

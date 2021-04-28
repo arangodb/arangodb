@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CACHE_CACHE_MANAGER_FEATURE_H
-#define ARANGOD_CACHE_CACHE_MANAGER_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cache/CacheManagerFeatureThreads.h"
@@ -55,4 +54,3 @@ class CacheManagerFeature final : public application_features::ApplicationFeatur
 
 }  // namespace arangodb
 
-#endif

@@ -23,8 +23,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H 1
+#pragma once
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -122,7 +121,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& options) override;
+                OperationOptions const& options, 
+                bool performChecks) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
@@ -132,7 +132,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 LocalDocumentId const& oldDocumentId,
                 velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
                 velocypack::Slice newDoc,
-                OperationOptions const& options) override;
+                OperationOptions const& options,
+                bool performChecks) override;
 
  private:
   /// @brief returns whether the document can be inserted into the index
@@ -202,4 +203,3 @@ class RocksDBVPackIndex : public RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

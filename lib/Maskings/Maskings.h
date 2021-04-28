@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_MASKINGS_H
-#define ARANGODB_MASKINGS_MASKINGS_H 1
+#pragma once
 
 #include <cstdint>
 #include <map>
@@ -84,8 +83,8 @@ class Maskings {
                       std::vector<std::string>& path, VPackSlice const& data);
   void addMaskedObject(Collection& collection, VPackBuilder& builder,
                        std::vector<std::string>& path, VPackSlice const& data);
-  void addMasked(Collection& collection, VPackBuilder& builder, VPackSlice const& data);
-  void addMasked(Collection& collection, basics::StringBuffer& data, VPackSlice const& slice);
+  void addMasked(Collection& collection, VPackBuilder& builder, VPackSlice  data);
+  void addMasked(Collection& collection, basics::StringBuffer& data, VPackSlice slice);
 
  private:
   std::map<std::string, Collection> _collections;
@@ -97,4 +96,3 @@ class Maskings {
 }  // namespace maskings
 }  // namespace arangodb
 
-#endif

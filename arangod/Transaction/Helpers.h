@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_HELPERS_H
-#define ARANGOD_TRANSACTION_HELPERS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Transaction/CountCache.h"
@@ -157,4 +156,3 @@ class BuilderLeaser {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

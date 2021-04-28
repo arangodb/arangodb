@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_VERSION_H
-#define ARANGODB_REST_VERSION_H 1
+#pragma once
 
 #include <map>
 #include <string>
@@ -154,4 +153,3 @@ class Version {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

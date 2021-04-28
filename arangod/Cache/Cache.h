@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_CACHE_H
-#define ARANGODB_CACHE_CACHE_H
+#pragma once
 
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
@@ -227,4 +226,3 @@ class Cache : public std::enable_shared_from_this<Cache> {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

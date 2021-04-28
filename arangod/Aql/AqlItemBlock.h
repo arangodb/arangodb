@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_H
-#define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Basics/ResourceUsage.h"
@@ -32,6 +31,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include <absl/container/flat_hash_map.h>
 
 namespace arangodb {
 namespace aql {
@@ -326,9 +327,9 @@ class AqlItemBlock {
   size_t moveOtherBlockHere(size_t targetRow, AqlItemBlock& source);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-// MaintainerMode method to validate if ShadowRows organization are consistent.
-// e.g. If a block always follows this pattern:
-// ((Data* Shadow(0))* Shadow(1))* ...
+  // MaintainerMode method to validate if ShadowRows organization are consistent.
+  // e.g. If a block always follows this pattern:
+  // ((Data* Shadow(0))* Shadow(1))* ...
   void validateShadowRowConsistency() const;
 #endif
 
@@ -368,7 +369,7 @@ class AqlItemBlock {
   /// count with valueCount.
   /// note: only AqlValues that point to dynamically allocated memory
   /// should be added to this map. Other types (VPACK_INLINE) are not supported.
-  std::unordered_map<void const*, ValueInfo> _valueCount;
+  ::iresearch_absl::flat_hash_map<void const*, ValueInfo> _valueCount;
 
   /// @brief _numRows, number of rows
   size_t _numRows = 0;
@@ -448,4 +449,3 @@ class AqlItemBlock {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

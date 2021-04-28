@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_METHODS_H
-#define ARANGOD_ROCKSDB_ROCKSDB_METHODS_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBCommon.h"
 
@@ -286,4 +285,3 @@ struct IndexingEnabler {
 
 }  // namespace arangodb
 
-#endif

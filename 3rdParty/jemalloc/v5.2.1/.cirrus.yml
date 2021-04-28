@@ -5,8 +5,7 @@ env:
 task:
   freebsd_instance:
     matrix:
-      image: freebsd-12-0-release-amd64
-      image: freebsd-11-2-release-amd64
+      image: freebsd-12-2-release-amd64
   install_script:
     - sed -i.bak -e 's,pkg+http://pkg.FreeBSD.org/\${ABI}/quarterly,pkg+http://pkg.FreeBSD.org/\${ABI}/latest,' /etc/pkg/FreeBSD.conf
     - pkg upgrade -y
@@ -14,7 +13,10 @@ task:
   script:
     - autoconf
     #- ./configure ${COMPILER_FLAGS:+       CC="$CC $COMPILER_FLAGS"       CXX="$CXX $COMPILER_FLAGS" }       $CONFIGURE_FLAGS
-    - ./configure
+    # We don't perfectly track freebsd stdlib.h definitions.  This is fine when
+    # we count as a system header, but breaks otherwise, like during these
+    # tests.
+    - ./configure --with-jemalloc-prefix=ci_
     - export JFLAG=`sysctl -n kern.smp.cpus`
     - gmake -j${JFLAG}
     - gmake -j${JFLAG} tests

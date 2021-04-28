@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_DATABASE_GUARD_H
-#define ARANGOD_UTILS_DATABASE_GUARD_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
@@ -63,4 +62,3 @@ class DatabaseGuard {
 
 }  // namespace arangodb
 
-#endif

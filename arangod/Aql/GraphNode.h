@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_GRAPH_NODE_H
-#define ARANGOD_AQL_GRAPH_NODE_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Aql/Condition.h"
@@ -271,4 +270,3 @@ class GraphNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

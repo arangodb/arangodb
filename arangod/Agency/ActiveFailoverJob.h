@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_ACTIVE_FAILOVER_JOB_H
-#define ARANGOD_CONSENSUS_ACTIVE_FAILOVER_JOB_H 1
+#pragma once
 
 #include "Job.h"
 #include "Supervision.h"
@@ -55,4 +54,3 @@ struct ActiveFailoverJob final : public Job {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

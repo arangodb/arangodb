@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ENCODING_H
-#define ARANGODB_BASICS_ENCODING_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -61,4 +60,3 @@ static inline void storeNumber(uint8_t* dest, T value, uint32_t length) {
 }  // namespace encoding
 }  // namespace arangodb
 
-#endif

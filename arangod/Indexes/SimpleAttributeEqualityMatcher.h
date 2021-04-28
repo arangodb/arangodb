@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_SIMPLE_ATTRIBUTE_EQUALITY_MATCHER_H
-#define ARANGOD_INDEXES_SIMPLE_ATTRIBUTE_EQUALITY_MATCHER_H 1
+#pragma once
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
@@ -107,4 +106,3 @@ class SimpleAttributeEqualityMatcher {
 };
 }  // namespace arangodb
 
-#endif
