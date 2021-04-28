@@ -127,6 +127,11 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::ApplicationServer& server) {
+  TRI_IF_FAILURE("QueryAllUsers") {
+    // simulates the case that the _users collection is not yet available
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+  
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
