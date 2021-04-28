@@ -151,16 +151,16 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
                                 std::move(self->_lastHeaderValue));
   }
 
-  if ((p->http_major != 1 && p->http_minor != 0) &&
-      (p->http_major != 1 && p->http_minor != 1)) {
+  if ((p->http_major != 1 || p->http_minor != 0) &&
+      (p->http_major != 1 || p->http_minor != 1)) {
     self->addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
                             rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_USER;
+    return HPE_OK;
   }
   if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
     self->addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                             rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_USER;
+    return HPE_OK;
   }
   if (p->content_length > 0) {
     // lets not reserve more than 64MB at once
