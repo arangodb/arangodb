@@ -1260,21 +1260,29 @@ TEST_F(StoreTestAPI, precondition) {
         count3, "keys, from log entry", cur + count + count2, "on.");
       doCountTransactions(count3, count + count2);
     },
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package
 ////////////////////////////////////////////////////////////////////////////////
+TEST_F(StoreTestAPI, huge_transaction_package) {
+  writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
+  std::stringstream ss;
+  ss << "[";
+  bool first{true};
+  for (int i{}; i< 20000; ++i) {
+    if (first)
+      first = false;
+    else
+      ss << ",";
+    ss << R"([{"a":{"op":"increment"}}, {}, "huge)" << i << R"("])";
+  }
+  ss << "]";
+  writeAndCheck(ss.str());
+  assertEqual(readAndCheck(R"([["a"]])"), R"([{"a":20000}])");
+}
 
-    testHugeTransactionPackage : function() {
-      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
-      var huge = [];
-      for (var i = 0; i < 20000; ++i) {
-        huge.push([{"a":{"op":"increment"}}, {}, "huge" + i]);
-      }
-      writeAndCheck(huge, 600);
-      assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
-    },
-
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package, inc/dec
 ////////////////////////////////////////////////////////////////////////////////
