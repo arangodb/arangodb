@@ -653,6 +653,66 @@ function ClusterCollectionSuite () {
       }
     },
 
+    testCreateFailureWhenRemovingIsBuilding : function () {
+      if (!isServer) {
+        console.info('Skipping client test');
+        // TODO make client tests work
+        return;
+      }
+      let setFailAt;
+      let removeFailAt;
+      if (isServer) {
+        if (internal.debugCanUseFailAt()) {
+          setFailAt = internal.debugSetFailAt;
+          removeFailAt = internal.debugRemoveFailAt;
+        }
+      } else {
+        const arango = internal.arango;
+        const coordinatorEndpoint = arango.getEndpoint();
+        if (debugCanUseFailAt(coordinatorEndpoint)) {
+          setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
+          removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
+        }
+      }
+      if (!setFailAt) {
+        console.info('Failure tests disabled, skipping...');
+        return;
+      }
+
+      const failurePoint = 'ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding';
+      try {
+        setFailAt(failurePoint);
+        const colName = "UnitTestClusterShouldNotBeCreated";
+        let threw = false;
+        try {
+          db._create(colName);
+        } catch (e) {
+          log.error(e);
+          threw = true;
+          if (isServer) {
+            assertTrue(e instanceof ArangoError);
+            assertEqual(22, e.errorNum);
+            assertEqual('intentional debug error', e.errorMessage);
+          } else {
+            const expected = {
+              'error': true,
+              'errorNum': 22,
+              'code': 503,
+              'errorMessage': 'intentional debug error',
+            };
+            assertEqual(expected, e);
+          }
+        }
+        assertTrue(threw);
+        const collections = global.ArangoAgency.get(`Plan/Collections/${db._name()}`)
+          .arango.Plan.Collections[db._name()];
+        assertEqual([], Object.values(collections).filter(col => col.name === colName),
+          'Collection should have been deleted');
+      } finally {
+        removeFailAt(failurePoint);
+      }
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replicationFactor
 ////////////////////////////////////////////////////////////////////////////////

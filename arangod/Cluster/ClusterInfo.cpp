@@ -3124,6 +3124,11 @@ Result ClusterInfo::createCollectionsCoordinator(
           << "createCollectionCoordinator, isBuilding removed, waiting for new "
              "Plan...";
 
+      TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
+        TRI_ASSERT(false);
+        res.set(rest::ResponseCode::PRECONDITION_FAILED, "Failed to mark collection ready");
+      }
+
       if (res.successful()) {
         // Note that this is not strictly necessary, just to avoid an
         // unneccessary request when we're sure that we don't need it anymore.
@@ -3135,11 +3140,11 @@ Result ClusterInfo::createCollectionsCoordinator(
           }
         }
       } else {
-        LOG_TOPIC("98765", INFO, Logger::CLUSTER)
+        LOG_TOPIC("98765", ERR, Logger::CLUSTER)
           << "Failed createCollectionsCoordinator for " << infos.size()
           << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
           << " first collection name: " << infos[0].name << " result: " << res;
-        return Result(TRI_ERROR_SERVICE_UNAVAILABLE);
+        return Result(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
       }
 
       // Report if this operation worked, if it failed collections will be
