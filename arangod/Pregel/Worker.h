@@ -91,7 +91,7 @@ class Worker : public IWorker {
     DONE         // after calling finished
   };
 
-  WorkerState _state = WorkerState::DEFAULT;
+  std::atomic<WorkerState> _state = WorkerState::DEFAULT;
   WorkerConfig _config;
   uint64_t _expectedGSS = 0;
   uint32_t _messageBatchSize = 500;

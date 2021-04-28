@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed various issues (mainly data races) reported by ThreadSanitizer.
+
 * Fixed bug in error reporting when a database create did not work, which lead
   to a busy loop reporting this error to the agency.
 

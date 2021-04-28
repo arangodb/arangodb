@@ -44,6 +44,8 @@ class AcceptorUnixDomain final : public Acceptor {
 
  private:
   asio_ns::local::stream_protocol::acceptor _acceptor;
+  /// @brief protects the _asioSocket
+  std::mutex _mutex;
   std::unique_ptr<AsioSocket<SocketType::Unix>> _asioSocket;
 };
 }  // namespace rest
