@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <Graph/Enumerators/OneSidedEnumerator.h>
+#include <Graph/Enumerators/TwoSidedEnumerator.h>
+
 #include <Graph/PathManagement/PathValidator.h>
 #include <Graph/Providers/ProviderTracer.h>
 #include <Graph/Types/UniquenessLevel.h>
@@ -43,10 +46,17 @@ using TracedKPathEnumerator =
                        PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>,
                        PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
 
-// BFS Traversal implementation
-/*template <class Provider>
+// BFS Traversal Enumerator implementation
+template <class Provider>
 using BFSEnumerator =
     OneSidedEnumerator<FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>, Provider,
-                       PathValidator<PathStore<typename Provider::Step>, VertexUniquenessLevel::PATH>>;*/
+                       PathValidator<PathStore<typename Provider::Step>, VertexUniquenessLevel::PATH>>;
+
+// DFS Traversal Enumerator implementation
+/*template <class Provider>
+using DFSEnumerator =
+OneSidedEnumerator<LifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>, Provider,
+    PathValidator<PathStore<typename Provider::Step>, VertexUniquenessLevel::PATH>>;*/
+
 }  // namespace graph
 }  // namespace arangodb
