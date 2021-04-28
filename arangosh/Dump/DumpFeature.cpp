@@ -24,6 +24,7 @@
 
 #include "DumpFeature.h"
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
 
@@ -31,7 +32,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <boost/algorithm/clamp.hpp>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -722,9 +722,9 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
 
   // clamp chunk values to allowed ranges
   _options.initialChunkSize =
-      boost::algorithm::clamp(_options.initialChunkSize, ::MinChunkSize, ::MaxChunkSize);
+      std::clamp(_options.initialChunkSize, ::MinChunkSize, ::MaxChunkSize);
   _options.maxChunkSize =
-      boost::algorithm::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
+      std::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
 
   if (_options.tickEnd < _options.tickStart) {
     LOG_TOPIC("25a0a", FATAL, arangodb::Logger::DUMP)
@@ -748,8 +748,8 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
   TRI_NormalizePath(_options.outputPath);
 
   uint32_t clamped =
-      boost::algorithm::clamp(_options.threadCount, 1,
-                              4 * static_cast<uint32_t>(NumberOfCores::getValue()));
+      std::clamp(_options.threadCount, uint32_t(1),
+                 4 * static_cast<uint32_t>(NumberOfCores::getValue()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC("0460e", WARN, Logger::DUMP) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
