@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* When writing to starting shard leader respond with specific
+  503. Fixes BTS-390.
+
 * Fixed bug in error reporting when a database create did not work, which lead
   to a busy loop reporting this error to the agency.
 
