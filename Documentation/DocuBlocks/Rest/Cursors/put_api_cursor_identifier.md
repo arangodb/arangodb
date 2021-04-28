@@ -2,7 +2,7 @@
 @startDocuBlock put_api_cursor_identifier
 @brief return the next results from an existing cursor
 
-@RESTHEADER{PUT /_api/cursor/{cursor-identifier}, Read next batch from cursor, modifyQueryCursorPut}
+@RESTHEADER{PUT /_api/cursor/{cursor-identifier}, Read next batch from cursor (deprecated), modifyQueryCursorPut}
 
 @HINTS
 {% hint 'warning' %}
