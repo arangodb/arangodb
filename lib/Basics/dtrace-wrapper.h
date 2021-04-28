@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DTRACE_WRAPPER_H
-#define ARANGODB_DTRACE_WRAPPER_H 1
+#pragma once
 
 #ifdef USE_DTRACE
 
@@ -35,4 +34,3 @@
 
 #endif
 
-#endif

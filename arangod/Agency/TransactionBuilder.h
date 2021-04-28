@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_AGENCY_TRANSACTION_BUILDER_H
-#define ARANGOD_CLUSTER_AGENCY_TRANSACTION_BUILDER_H 1
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -235,4 +234,3 @@ struct envelope {
 };
 
 }  // namespace arangodb
-#endif

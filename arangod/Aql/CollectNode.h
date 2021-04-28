@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECT_NODE_H
-#define ARANGOD_AQL_COLLECT_NODE_H 1
+#pragma once
 
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
@@ -220,4 +219,3 @@ class CollectNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

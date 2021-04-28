@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_DROP_DATABASE_H
-#define ARANGODB_MAINTENANCE_DROP_DATABASE_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -46,4 +45,3 @@ class DropDatabase : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

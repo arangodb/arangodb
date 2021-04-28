@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H
-#define ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H 1
+#pragma once
 
 #include "Aql/types.h"
 
@@ -66,4 +65,3 @@ class AttributeAccessor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

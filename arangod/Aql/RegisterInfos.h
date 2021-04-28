@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGISTERINFOS_H
-#define ARANGOD_AQL_REGISTERINFOS_H 1
+#pragma once
 
 #include "Aql/types.h"
 
@@ -133,4 +132,3 @@ class RegisterInfos {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif   // ARANGOD_AQL_REGISTERINFOS_H

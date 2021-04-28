@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_AQL_INSERT_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_AQL_INSERT_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 #include "helpers.h"
@@ -82,4 +81,3 @@ struct AqlInsertTest : public Benchmark<AqlInsertTest> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

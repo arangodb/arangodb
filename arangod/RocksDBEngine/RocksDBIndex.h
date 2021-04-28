@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
+#pragma once
 
 #include <rocksdb/status.h>
 
@@ -116,7 +115,8 @@ class RocksDBIndex : public Index {
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice doc,
-                        OperationOptions const& options) = 0;
+                        OperationOptions const& options,
+                        bool performChecks) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -128,7 +128,8 @@ class RocksDBIndex : public Index {
                         arangodb::velocypack::Slice oldDoc,
                         LocalDocumentId const& newDocumentId,
                         velocypack::Slice newDoc,
-                        OperationOptions const& options);
+                        OperationOptions const& options,
+                        bool performChecks);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
@@ -176,4 +177,3 @@ class RocksDBIndex : public Index {
 };
 }  // namespace arangodb
 
-#endif

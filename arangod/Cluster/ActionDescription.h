@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
-#define ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
+#pragma once
 
 #include "Basics/Result.h"
 #include "Cluster/MaintenanceStrings.h"
@@ -211,4 +210,3 @@ struct hash<arangodb::maintenance::ActionDescription> {
 
 }  // namespace std
 
-#endif

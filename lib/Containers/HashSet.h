@@ -22,8 +22,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINERS_HASH_SET_H
-#define ARANGODB_CONTAINERS_HASH_SET_H 1
+#pragma once
 
 // Include implementation and forward-declarations in our namespace:
 
@@ -46,4 +45,3 @@ bool operator==(HashSet<KeyT, HashT, EqT> const& left, HashSet<KeyT, HashT, EqT>
 
 }  // namespace emilib
 
-#endif

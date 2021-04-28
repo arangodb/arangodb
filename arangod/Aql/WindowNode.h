@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_WINDOW_NODE_H
-#define ARANGOD_AQL_WINDOW_NODE_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Aql/CollectOptions.h"
@@ -161,4 +160,3 @@ class WindowNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

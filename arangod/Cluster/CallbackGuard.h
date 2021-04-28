@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CALLBACKGUARD_H
-#define ARANGOD_CLUSTER_CALLBACKGUARD_H
+#pragma once
 
 #include <functional>
 
@@ -69,4 +68,3 @@ class CallbackGuard {
 
 }}
 
-#endif

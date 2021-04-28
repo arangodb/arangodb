@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_URLHELPER_H
-#define ARANGOD_UTILS_URLHELPER_H
+#pragma once
 
 #include <optional>
 #include <variant>
@@ -218,4 +217,3 @@ std::ostream& operator<<(std::ostream&, UserInfo const&);
 }  // namespace url
 }  // namespace arangodb
 
-#endif  // ARANGOD_UTILS_URLHELPER_H

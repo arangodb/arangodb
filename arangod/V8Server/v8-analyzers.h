@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_ANALYZERS_H
-#define ARANGOD_V8_SERVER_V8_ANALYZERS_H 1
+#pragma once
 
 #include <v8.h>
 
@@ -41,4 +40,3 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate);
 } // iresearch
 } // arangodb
 
-#endif

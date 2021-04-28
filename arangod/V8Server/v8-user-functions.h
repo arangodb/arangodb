@@ -21,9 +21,7 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_USERFUNCTIONS_H
-#define ARANGOD_V8_SERVER_V8_USERFUNCTIONS_H 1
+#pragma once
 
 void TRI_InitV8UserFunctions(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
-#endif

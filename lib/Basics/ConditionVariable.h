@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CONDITION_VARIABLE_H
-#define ARANGODB_BASICS_CONDITION_VARIABLE_H 1
+#pragma once
 
 #include <chrono>
 
@@ -98,4 +97,3 @@ class ConditionVariable {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

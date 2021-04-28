@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_VALIDATORS_H
-#define ARANGOD_VOC_BASE_VALIDATORS_H 1
+#pragma once
 
 #include <Basics/debugging.h>
 #include <velocypack/Builder.h>
@@ -96,4 +95,3 @@ struct ValidatorBool : public ValidatorBase {
 };
 
 }  // namespace arangodb
-#endif

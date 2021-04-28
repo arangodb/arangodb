@@ -21,8 +21,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MATERIALIZE_EXECUTOR_H
-#define ARANGOD_AQL_MATERIALIZE_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -146,4 +145,3 @@ class MaterializeExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

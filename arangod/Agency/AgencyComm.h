@@ -22,8 +22,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_AGENCY_COMM_H
-#define ARANGOD_CLUSTER_AGENCY_COMM_H 1
+#pragma once
 
 #include <memory>
 #include <optional>
@@ -666,4 +665,3 @@ namespace std {
 ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
 }
 
-#endif

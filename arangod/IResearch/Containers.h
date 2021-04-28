@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_CONTAINERS_H
-#define ARANGODB_IRESEARCH__IRESEARCH_CONTAINERS_H 1
+#pragma once
 
 #include <memory>
 #include <shared_mutex>
@@ -444,4 +443,3 @@ class UnorderedRefKeyMap : public UnorderedRefKeyMapBase<CharType, V>,
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

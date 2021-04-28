@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AUTHENTICATION_USER_MANAGER_H
-#define ARANGOD_AUTHENTICATION_USER_MANAGER_H 1
+#pragma once
 
 #include "Auth/Common.h"
 #include "Auth/User.h"
@@ -187,4 +186,3 @@ class UserManager {
 }  // namespace auth
 }  // namespace arangodb
 
-#endif

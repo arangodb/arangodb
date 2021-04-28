@@ -23,8 +23,7 @@
    SOFTWARE.
 */
 
-#ifndef LIB_BASICS_FASTHASH_H
-#define LIB_BASICS_FASTHASH_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -66,5 +65,3 @@ uint32_t fasthash32(const void* buf, size_t len, uint32_t seed);
  * @seed: the seed
  */
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed);
-
-#endif

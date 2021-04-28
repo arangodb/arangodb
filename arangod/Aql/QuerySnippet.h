@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_SNIPPET_H
-#define ARANGOD_AQL_QUERY_SNIPPET_H 1
+#pragma once
 
 #include "Aql/Query.h"
 #include "Cluster/ClusterInfo.h"
@@ -111,4 +110,3 @@ class QuerySnippet {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

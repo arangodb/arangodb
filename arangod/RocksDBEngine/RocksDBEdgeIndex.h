@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H 1
+#pragma once
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -114,7 +113,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& /*options*/) override;
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
@@ -161,4 +161,3 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

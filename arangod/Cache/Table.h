@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_TABLE_H
-#define ARANGODB_CACHE_TABLE_H
+#pragma once
 
 #include "Basics/ReadWriteSpinLock.h"
 #include "Cache/BucketState.h"
@@ -261,4 +260,3 @@ class Table : public std::enable_shared_from_this<Table> {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_INTERFACE_H
-#define ARANGOD_CONSENSUS_AGENT_INTERFACE_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 
@@ -68,4 +67,3 @@ class AgentInterface {
 };
 }  // namespace consensus
 }  // namespace arangodb
-#endif

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_CONDUCTOR_H
-#define ARANGODB_PREGEL_CONDUCTOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -152,4 +151,3 @@ class Conductor {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

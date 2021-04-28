@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_LINK_HELPER_H
-#define ARANGODB_IRESEARCH__IRESEARCH_LINK_HELPER_H 1
+#pragma once
 
 #include <memory>
 
@@ -157,4 +156,3 @@ struct IResearchLinkHelper {
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_LINK_HELPER_H

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TYPES_H
-#define ARANGOD_AQL_TYPES_H 1
+#pragma once
 
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/RegisterId.h"
@@ -106,4 +105,3 @@ enum class ExplainRegisterPlan {
 
 }  // namespace arangodb
 
-#endif

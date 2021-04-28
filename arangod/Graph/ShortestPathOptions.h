@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H
-#define ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H 1
+#pragma once
 
 #include <memory>
 #include "Graph/BaseOptions.h"
@@ -109,4 +108,3 @@ struct ShortestPathOptions : public BaseOptions {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

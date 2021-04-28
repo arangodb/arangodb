@@ -22,8 +22,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_KSHORTEST_PATHS_NODE_H
-#define ARANGOD_AQL_KSHORTEST_PATHS_NODE_H 1
+#pragma once
 
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
@@ -196,4 +195,3 @@ class KShortestPathsNode : public virtual GraphNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

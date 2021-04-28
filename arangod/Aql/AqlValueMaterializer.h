@@ -23,8 +23,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLVALUEMATERIALIZER_H
-#define ARANGOD_AQL_AQLVALUEMATERIALIZER_H
+#pragma once
 
 #include "Aql/AqlValue.h"
 
@@ -67,4 +66,3 @@ struct AqlValueMaterializer {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_AQLVALUEMATERIALIZER_H

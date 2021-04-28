@@ -22,8 +22,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_FOLLOWER_INFO_H
-#define ARANGOD_CLUSTER_FOLLOWER_INFO_H 1
+#pragma once
 
 #include "ClusterInfo.h"
 
@@ -247,4 +246,3 @@ class FollowerInfo {
 };
 }  // end namespace arangodb
 
-#endif

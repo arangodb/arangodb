@@ -22,8 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_ENUMERATORS_TWO_SIDED_ENUMERATOR_H
-#define ARANGODB_GRAPH_ENUMERATORS_TWO_SIDED_ENUMERATOR_H 1
+#pragma once
 
 #include "Containers/HashSet.h"
 
@@ -206,4 +205,3 @@ class TwoSidedEnumerator {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

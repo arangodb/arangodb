@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_FINDING_H
-#define ARANGODB_CACHE_FINDING_H
+#pragma once
 
 #include "Basics/Result.h"
 #include "Cache/CachedValue.h"
@@ -99,4 +98,3 @@ class Finding {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_ENGINE_H
-#define ARANGOD_AQL_EXECUTION_ENGINE_H 1
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -184,4 +183,3 @@ class ExecutionEngine {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

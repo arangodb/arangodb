@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PATH_STORE_H
-#define ARANGOD_GRAPH_PATH_STORE_H 1
+#pragma once
 
 #include <queue>
 #include <unordered_set>
@@ -93,4 +92,3 @@ class PathStore {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif  // ARANGOD_GRAPH_QUEUE_H

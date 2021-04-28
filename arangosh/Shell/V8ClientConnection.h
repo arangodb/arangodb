@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHELL_V8CLIENT_CONNECTION_H
-#define ARANGODB_SHELL_V8CLIENT_CONNECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -188,4 +187,3 @@ class V8ClientConnection {
 };
 }  // namespace arangodb
 
-#endif

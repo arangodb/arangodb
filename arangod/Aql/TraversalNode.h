@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TRAVERSAL_NODE_H
-#define ARANGOD_AQL_TRAVERSAL_NODE_H 1
+#pragma once
 
 #include "Aql/Condition.h"
 #include "Aql/GraphNode.h"
@@ -278,4 +277,3 @@ class TraversalNode : public virtual GraphNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

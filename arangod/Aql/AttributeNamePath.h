@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ATTRIBUTE_NAME_PATH_H
-#define ARANGOD_AQL_ATTRIBUTE_NAME_PATH_H 1
+#pragma once
 
 #include <functional>
 #include <string>
@@ -120,4 +119,3 @@ struct equal_to<arangodb::aql::AttributeNamePath> {
 
 } // namespace std
 
-#endif

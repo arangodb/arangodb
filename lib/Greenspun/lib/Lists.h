@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GREENSPUN_LISTS_H
-#define ARANGODB_GREENSPUN_LISTS_H
+#pragma once
 #include <Greenspun/Interpreter.h>
 
 namespace arangodb::greenspun {
@@ -30,4 +29,3 @@ void RegisterAllListFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
 
 
-#endif  // ARANGODB_GREENSPUN_LISTS_H

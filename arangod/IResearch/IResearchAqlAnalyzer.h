@@ -20,8 +20,8 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER
-#define ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER 1
+
+#pragma once
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -124,4 +124,3 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 }; // AqlAnalyzer
 } // namespace iresearch
 } // namespace arangodb
-#endif // ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER

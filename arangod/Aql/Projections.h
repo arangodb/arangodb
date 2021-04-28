@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_PROJECTIONS_H
-#define ARANGOD_AQL_PROJECTIONS_H 1
+#pragma once
 
 #include "Aql/AttributeNamePath.h"
 #include "Transaction/Methods.h"
@@ -130,4 +129,3 @@ class Projections {
 } // namespace aql
 } // namespace arangodb
 
-#endif

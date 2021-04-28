@@ -52,8 +52,7 @@
 /// Author: Ray Sidney
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_H
-#define ARANGODB_LOGGER_LOGGER_H 1
+#pragma once
 
 #include <atomic>
 #include <cstddef>
@@ -347,5 +346,3 @@ class Logger {
   static std::unique_ptr<LogThread> _loggingThread;
 };
 }  // namespace arangodb
-
-#endif

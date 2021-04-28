@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_PARSE_RESULT_H
-#define ARANGODB_MASKINGS_PARSE_RESULT_H
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -49,4 +48,3 @@ struct ParseResult {
   T result;
 };
 
-#endif

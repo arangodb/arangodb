@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORT_CONDITION_H
-#define ARANGOD_AQL_SORT_CONDITION_H 1
+#pragma once
 
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
@@ -128,4 +127,3 @@ class SortCondition {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

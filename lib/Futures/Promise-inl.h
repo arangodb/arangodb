@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_PROMISE_INL_H
-#define ARANGOD_FUTURES_PROMISE_INL_H 1
+#pragma once
 
 namespace arangodb {
 namespace futures {
@@ -39,4 +38,3 @@ Future<T> Promise<T>::getFuture() {
 }  // namespace futures
 }  // namespace arangodb
 
-#endif  // ARANGOD_FUTURES_PROMISE_INL_H

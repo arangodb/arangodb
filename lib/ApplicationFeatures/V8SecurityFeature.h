@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H 1
+#pragma once
 
 #include <memory>
 #include <regex>
@@ -147,4 +146,3 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
 }  // namespace arangodb
 
-#endif

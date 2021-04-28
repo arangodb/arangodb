@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AGENCY_PRIV_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AGENCY_PRIV_HANDLER_H 1
+#pragma once
 
 #include "Agency/Agent.h"
 #include "Logger/LogMacros.h"
@@ -65,4 +64,3 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
 
 }  // namespace arangodb
 
-#endif

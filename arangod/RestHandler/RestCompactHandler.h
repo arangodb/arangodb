@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_COMPACT_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_COMPACT_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -42,4 +41,3 @@ class RestCompactHandler : public arangodb::RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

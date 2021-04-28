@@ -368,8 +368,8 @@ _Enterprise Edition only_
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.1
-* Date: 2019-08-05 20:41:17Z
+* Version: 5.2.1-dev, commit 12cd13cd418512d9e7596921ccdb62e25a103f87
+* Date: 2021-03-30 15:20:30 -0700
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license

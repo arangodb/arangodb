@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_FUTURE_H
-#define ARANGOD_FUTURES_FUTURE_H 1
+#pragma once
 
 #include <chrono>
 #include <condition_variable>
@@ -567,4 +566,3 @@ class Future {
 
 }  // namespace futures
 }  // namespace arangodb
-#endif  // ARANGOD_FUTURES_FUTURE_H

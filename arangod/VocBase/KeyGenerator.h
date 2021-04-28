@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_KEY_GENERATOR_H
-#define ARANGOD_VOC_BASE_KEY_GENERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
@@ -109,4 +108,3 @@ class KeyGenerator {
 
 }  // namespace arangodb
 
-#endif

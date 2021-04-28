@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_DEBUG_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_DEBUG_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -39,4 +38,3 @@ class RestDebugHandler : public arangodb::RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

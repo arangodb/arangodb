@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGODB_CONTAINERS_ENUMERATE_H
-#define ARANGODB_CONTAINERS_ENUMERATE_H
+
+#pragma once
 #include <functional>
 #include <iterator>
 
@@ -127,4 +127,3 @@ enumerate_wrapper<T, C> enumerate(T&& v, C c) {
 }
 };  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
+#pragma once
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -327,4 +326,3 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__ENUMERATE_VIEW_NODE_H

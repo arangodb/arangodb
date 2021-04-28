@@ -23,8 +23,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#pragma once
 
 #include <string.h>
 #include <atomic>
@@ -500,4 +499,3 @@ class SimpleHttpClient {
 }  // namespace httpclient
 }  // namespace arangodb
 
-#endif

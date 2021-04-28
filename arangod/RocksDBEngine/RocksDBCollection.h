@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
+#pragma once
 
 #include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
@@ -163,6 +162,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                   OperationOptions const& options) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice doc,
                                   OperationOptions const& options) const;
@@ -229,4 +229,3 @@ inline RocksDBCollection* toRocksDBCollection(LogicalCollection& logical) {
 
 }  // namespace arangodb
 
-#endif

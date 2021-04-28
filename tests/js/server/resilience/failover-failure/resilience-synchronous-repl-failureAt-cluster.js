@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo */
+/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test synchronous replication in the cluster
@@ -33,9 +33,17 @@ const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const _ = require("lodash");
 const wait = require("internal").wait;
-const request = require('@arangodb/request');
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
+let { getEndpointById,
+      getEndpointsByType,
+      getServersByType,
+      debugCanUseFailAt,
+      debugRemoveFailAt,
+      debugSetFailAt,
+      debugClearFailAt,
+      reconnectRetry
+    } = require('@arangodb/test-helper');
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -62,45 +70,6 @@ function SynchronousReplicationSuite() {
   if (!require('internal').debugSetFailAt) {
     console.info("Failure Tests disabled, Skipping...");
     return {};
-  }
-
-  function baseUrl(endpoint) { // arango.getEndpoint()
-    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
-  /// @brief set failure point
-  function debugSetFailAt(endpoint, failAt) {
-    assertTrue(failAt !== undefined);
-    let res = request.put({
-      url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error seting failure point";
-    }
-  }
-
-  /// @brief remove failure point
-  function debugRemoveFailAt(endpoint, failAt) {
-    assertTrue(failAt !== undefined);
-    let res = request.delete({
-      url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error seting failure point";
-    }
-  }
-
-  /// @brief remove all failure points
-  function debugClearFailAt(endpoint) {
-    let res = request.delete({
-      url: baseUrl(endpoint) + '/_admin/debug/failat',
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error seting failure point";
-    }
   }
 
   ////////////////////////////////////////////////////////////////////////////////

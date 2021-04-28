@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORT_NODE_H
-#define ARANGOD_AQL_SORT_NODE_H 1
+#pragma once
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
@@ -144,4 +143,3 @@ class SortNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

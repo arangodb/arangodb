@@ -22,8 +22,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AUTHENTICATION_USER_H
-#define ARANGOD_AUTHENTICATION_USER_H 1
+#pragma once
 
 #include <set>
 
@@ -164,4 +163,3 @@ class User {
 }  // namespace auth
 }  // namespace arangodb
 
-#endif

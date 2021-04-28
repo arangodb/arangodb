@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_UTILS_CLIENT_MANAGER_H
-#define ARANGOSH_UTILS_CLIENT_MANAGER_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -118,4 +117,3 @@ class ClientManager {
 };
 }  // namespace arangodb
 
-#endif

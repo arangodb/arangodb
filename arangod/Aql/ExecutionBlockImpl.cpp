@@ -1088,7 +1088,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
 
       if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix, MultiAqlItemBlockInputRange>) {
-        // The executor will have used all Rows.
+        // The executor will have used all rows.
         // However we need to drop them from the input
         // here.
         inputRange.skipAllRemainingDataRows();
@@ -1105,7 +1105,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, dummy);
 
       if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix, MultiAqlItemBlockInputRange>) {
-        // The executor will have used all Rows.
+        // The executor will have used all rows.
         // However we need to drop them from the input
         // here.
         inputRange.skipAllRemainingDataRows();

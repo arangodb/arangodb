@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_META_UTILITY_H
-#define ARANGODB_META_UTILITY_H 1
+#pragma once
 
 #include <memory>
 
@@ -55,4 +54,3 @@ T exchange(T& obj, U&& new_value) {
 
 }  // namespace meta
 }  // namespace arangodb
-#endif

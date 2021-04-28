@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H 1
+#pragma once
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
@@ -92,6 +91,10 @@ class RocksDBTransactionState final : public TransactionState {
   
   inline bool hasOperations() const {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
+  }
+
+  uint64_t numOperations() const {
+    return _numInserts + _numUpdates + _numRemoves;
   }
 
   bool hasFailedOperations() const override {
@@ -242,4 +245,3 @@ class RocksDBKeyLeaser {
 
 }  // namespace arangodb
 
-#endif

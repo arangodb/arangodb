@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_NODES_H
-#define ARANGOD_AQL_MODIFICATION_NODES_H 1
+#pragma once
 
 #include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
@@ -440,4 +439,3 @@ class UpsertNode : public ModificationNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

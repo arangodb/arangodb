@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_SYNC_THREAD_H
-#define ARANGOD_ROCKSDB_ENGINE_SYNC_THREAD_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -85,4 +84,3 @@ class RocksDBSyncThread final : public Thread {
 };
 }  // namespace arangodb
 
-#endif

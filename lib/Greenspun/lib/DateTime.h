@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GREENSPUN_DATETIME_H
-#define ARANGODB_PREGEL_GREENSPUN_DATETIME_H 1
+#pragma once
 
 #include <Greenspun/Interpreter.h>
 
@@ -40,4 +39,3 @@ void RegisterAllDateTimeFunctions(Machine& ctx);
 }  // namespace greenspun
 }  // namespace arangodb
 
-#endif

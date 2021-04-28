@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_STATE_H
-#define ARANGOD_AQL_EXECUTION_STATE_H 1
+#pragma once
 
 #include <iosfwd>
 
@@ -60,4 +59,3 @@ std::ostream& operator<<(std::ostream& ostream, ExecutorState state);
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

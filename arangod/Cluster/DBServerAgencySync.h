@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_DB_SERVER_AGENCY_SYNC_H
-#define ARANGOD_CLUSTER_DB_SERVER_AGENCY_SYNC_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -79,4 +78,3 @@ class DBServerAgencySync {
 };
 }  // namespace arangodb
 
-#endif

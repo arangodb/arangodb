@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CPU_USAGE_SNAPSHOT_H
-#define ARANGODB_CPU_USAGE_SNAPSHOT_H 1
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -106,4 +105,3 @@ struct CpuUsageSnapshot {
 
 }  // namespace arangodb
 
-#endif

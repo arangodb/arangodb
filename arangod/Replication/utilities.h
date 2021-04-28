@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_UTILITIES_H
-#define ARANGOD_REPLICATION_UTILITIES_H 1
+#pragma once
 
 #include <map>
 #include <mutex>
@@ -31,6 +30,7 @@
 #include <unordered_map>
 
 #include "Basics/Result.h"
+#include "SimpleHttpClient/ConnectionCache.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
@@ -41,7 +41,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace httpclient {
-class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
 }  // namespace httpclient
@@ -94,6 +93,8 @@ struct Connection {
   std::string const _endpointString;
   std::string const _localServerId;
   std::string const _clientInfo;
+
+  httpclient::ConnectionLease _connectionLease;
 
   /// lock to protect client connection
   mutable std::mutex _mutex;
@@ -186,4 +187,3 @@ Result parseResponse(velocypack::Builder&, httpclient::SimpleHttpResult const*);
 }  // namespace replutils
 }  // namespace arangodb
 
-#endif

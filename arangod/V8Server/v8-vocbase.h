@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_VOCBASE_H
-#define ARANGOD_V8_SERVER_V8_VOCBASE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
@@ -49,4 +48,3 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                          arangodb::aql::QueryRegistry* queryRegistry,
                          TRI_vocbase_t& vocbase, size_t threadNumber);
 
-#endif

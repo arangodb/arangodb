@@ -22,8 +22,7 @@
 /// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_SRV_H
-#define ARANGODB_ENDPOINT_ENDPOINT_SRV_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -52,4 +51,3 @@ class EndpointSrv final : public Endpoint {
 };
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLUMN_FAMILY_MANAGER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLUMN_FAMILY_MANAGER_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBCommon.h"
 #include <rocksdb/db.h>
@@ -78,4 +77,3 @@ struct RocksDBColumnFamilyManager {
 
 }  // namespace arangodb
 
-#endif

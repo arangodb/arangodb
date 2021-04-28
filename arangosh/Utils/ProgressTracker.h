@@ -21,11 +21,16 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_UTILS_PROGRESS_TRACKER_H
-#define ARANGOSH_UTILS_PROGRESS_TRACKER_H 1
+#pragma once
 
 #include "ManagedDirectory.h"
 #include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
+
+#include <atomic>
+#include <shared_mutex>
+#include <string>
+#include <unordered_map>
 
 namespace arangodb {
 template <typename T>
@@ -64,8 +69,8 @@ bool ProgressTracker<T>::updateStatus(std::string const& collectionName,
   }
 
   {
-    std::unique_lock guard(_writeFileMutex);
     VPackBufferUInt8 buffer;
+    std::unique_lock guard(_writeFileMutex);
 
     {
       std::unique_lock guardState(_collectionStatesMutex);
@@ -118,4 +123,3 @@ std::string ProgressTracker<T>::filename() const {
 
 }
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_UTILITIES_H
-#define ARANGOD_FUTURES_UTILITIES_H 1
+#pragma once
 
 #include <algorithm>
 #include <chrono>
@@ -258,4 +257,3 @@ T collect(T t) { return t; }
 
 }  // namespace futures
 }  // namespace arangodb
-#endif  // ARANGOD_FUTURES_UTILITIES_H

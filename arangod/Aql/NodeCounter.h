@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_NODE_COUNTER_H
-#define ARANGOD_AQL_NODE_COUNTER_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -77,4 +76,3 @@ bool ExecutionNode::walk(NodeCounter& worker);
 } // namespace aql
 } // namespace arangodb
 
-#endif

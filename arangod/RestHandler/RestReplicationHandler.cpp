@@ -161,6 +161,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   builder.clear();
 
   try {
+    TRI_ASSERT(pos >= ptr);
     VPackParser parser(builder, builder.options);
     parser.parse(ptr, static_cast<size_t>(pos - ptr));
   } catch (std::exception const& ex) {
@@ -1468,6 +1469,8 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
       ++line;
     }
 
+    TRI_ASSERT(ptr <= pos);
+    TRI_ASSERT(pos <= end);
     if (pos - ptr > 1) {
       // found something
       VPackSlice doc;
@@ -1493,12 +1496,15 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
 
         TRI_ASSERT(doc.isObject());
         bool checkKey = true;
+        bool checkRev = generateNewRevisionIds;
         for (auto it : VPackObjectIterator(doc, true)) {
           // only check for "_key" attribute here if we still have to.
           // once we have seen it, it will not show up again in the same document
           bool const isKey = checkKey && (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString);
   
           if (isKey) {
+            // _key attribute
+
             // prevent checking for _key twice in the same document
             checkKey = false;
 
@@ -1515,17 +1521,23 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
               // with MMFiles dumps from <= 3.6
               documentsToRemove.erase(it.value.copyString());
             }
-          }
+          
+            documentsToInsert.add(it.key);
+            documentsToInsert.add(it.value);
+          } else if (checkRev && arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
+            // _rev attribute
 
-          documentsToInsert.add(it.key);
+            // prevent checking for _rev twice in the same document
+            checkRev = false;
 
-          if (generateNewRevisionIds && 
-              !isKey && 
-              arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
             char ridBuffer[arangodb::basics::maxUInt64StringSize];
             RevisionId newRid = physical->newRevisionId();
+            
+            documentsToInsert.add(it.key);
             documentsToInsert.add(newRid.toValuePair(ridBuffer));
           } else {
+            // copy key/value verbatim
+            documentsToInsert.add(it.key);
             documentsToInsert.add(it.value);
           }
         }
@@ -1637,7 +1649,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   }
 
   OperationOptions options(_context);
-  options.silent = false;
+  options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
   options.waitForSync = false;
@@ -1679,6 +1691,42 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
           << " documents for restore: " << opRes.result.errorMessage();
       return opRes.result;
     }
+
+    if (opRes.countErrorCodes.empty()) {
+      // no detailed errors reported. all good
+      return Result();
+    }
+
+    // at least one error occurred
+    if (opRes.slice().isArray()) {
+      // Now go through the individual results and check each errors
+      VPackArrayIterator itRequest(requestSlice);
+      VPackArrayIterator itResult(opRes.slice());
+
+      while (itRequest.valid()) {
+        VPackSlice result = *itResult;
+        VPackSlice error = result.get(StaticStrings::Error);
+        if (error.isTrue()) {
+          error = result.get(StaticStrings::ErrorNum);
+          if (error.isNumber()) {
+            auto code = ErrorCode{error.getNumericValue<int>()};
+            error = result.get(StaticStrings::ErrorMessage);
+            if (error.isString()) {
+              return { code, error.copyString() };
+            }
+            return { code };
+          }
+        }
+        itRequest.next();
+        itResult.next();
+      }
+    }
+    
+    // if we get here, we didn't have a detailed array with results.
+    // so we need to stick to the error code map, which is all we got
+    TRI_ASSERT(!opRes.countErrorCodes.empty());
+    ErrorCode ec = (*opRes.countErrorCodes.begin()).first;
+    return {ec};
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC("8e8e1", WARN, Logger::CLUSTER)
         << "could not insert documents for restore exception: " << ex.what();
@@ -1692,30 +1740,6 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
         << "could not insert documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
-
-  // Now go through the individual results and check each errors
-  VPackArrayIterator itRequest(requestSlice);
-  VPackArrayIterator itResult(opRes.slice());
-
-  while (itRequest.valid()) {
-    VPackSlice result = *itResult;
-    VPackSlice error = result.get(StaticStrings::Error);
-    if (error.isTrue()) {
-      error = result.get(StaticStrings::ErrorNum);
-      if (error.isNumber()) {
-        auto code = ErrorCode{error.getNumericValue<int>()};
-        error = result.get(StaticStrings::ErrorMessage);
-        if (error.isString()) {
-          return { code, error.copyString() };
-        }
-        return { code };
-      }
-    }
-    itRequest.next();
-    itResult.next();
-  }
-
-  return Result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

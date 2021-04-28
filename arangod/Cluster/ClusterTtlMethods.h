@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TTL_METHODS_H
-#define ARANGOD_CLUSTER_CLUSTER_TTL_METHODS_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -49,4 +48,3 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
 
 }  // namespace arangodb
 
-#endif

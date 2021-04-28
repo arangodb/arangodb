@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AST_HELPER_H
-#define ARANGOD_AQL_AST_HELPER_H 1
+#pragma once
 
 #include <string>
 #include <unordered_set>
@@ -44,4 +43,3 @@ std::unordered_set<std::string> getReferencedAttributesForKeep(
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

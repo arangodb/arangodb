@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_LIMIT_EXECUTOR_H
-#define ARANGOD_AQL_LIMIT_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -147,4 +146,3 @@ class LimitExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

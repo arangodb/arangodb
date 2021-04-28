@@ -55,8 +55,7 @@
 /// POSSIBILITY OF SUCH DAMAGE.
 //////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LRUCACHE_H
-#define ARANGODB_LRUCACHE_H 1
+#pragma once
 
 #include <cstddef>
 #include <list>
@@ -131,5 +130,3 @@ class LruCache {
 
 }  // namespace basics
 }  // namespace arangodb
-
-#endif

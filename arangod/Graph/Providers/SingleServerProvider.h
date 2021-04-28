@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDERS_SINGLESERVERPROVIDER_H
-#define ARANGOD_GRAPH_PROVIDERS_SINGLESERVERPROVIDER_H 1
+#pragma once
 
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
@@ -169,4 +168,3 @@ struct SingleServerProvider {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

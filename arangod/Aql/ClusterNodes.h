@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CLUSTER_NODES_H
-#define ARANGOD_AQL_CLUSTER_NODES_H 1
+#pragma once
 
 #include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
@@ -420,4 +419,3 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

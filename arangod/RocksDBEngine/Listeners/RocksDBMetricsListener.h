@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_METRICS_LISTENER_H
-#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_METRICS_LISTENER_H 1
+#pragma once
 
 // public rocksdb headers
 #include <rocksdb/listener.h>
@@ -48,4 +47,3 @@ class RocksDBMetricsListener : public rocksdb::EventListener {
 
 }  // namespace arangodb
 
-#endif

@@ -5470,7 +5470,7 @@ struct CommonNodeFinder {
       }
     }
     possibleNodes.clear();
-    return (!commonName.empty());
+    return false;
   }
 };
 

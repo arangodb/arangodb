@@ -22,8 +22,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_READ_WRITE_SPIN_LOCK_H
-#define ARANGO_READ_WRITE_SPIN_LOCK_H 1
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -63,4 +62,3 @@ class ReadWriteSpinLock {
 
 }  // namespace arangodb::basics
 
-#endif
