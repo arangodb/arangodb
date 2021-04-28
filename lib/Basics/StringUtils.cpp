@@ -1973,7 +1973,7 @@ std::string formatSize(uint64_t value) {
       out = std::to_string(value);
       label = "bytes";
     }
-  } else if (value < 1000000ULL) {
+  } else if (value < 1000'000ULL) {
     out = std::to_string((double) value / double(1000));
     label = "KB";
   } else if (value < 1000000000ULL) {
