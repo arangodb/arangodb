@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_ASIOSOCKET_H
-#define ARANGOD_GENERAL_SERVER_ASIOSOCKET_H 1
+#pragma once
 
 #include "GeneralServer/IoContext.h"
 #include "GeneralServer/SslServerFeature.h"
@@ -202,4 +201,3 @@ struct AsioSocket<SocketType::Unix> {
 
 }  // namespace rest
 }  // namespace arangodb
-#endif

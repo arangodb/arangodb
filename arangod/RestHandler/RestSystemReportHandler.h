@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_SYSTEM_REPORT_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_SYSTEM_REPORT_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
   
@@ -47,4 +46,3 @@ private:
 };
 }  // namespace arangodb
 
-#endif

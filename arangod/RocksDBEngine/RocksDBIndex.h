@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
+#pragma once
 
 #include <rocksdb/status.h>
 
@@ -178,4 +177,3 @@ class RocksDBIndex : public Index {
 };
 }  // namespace arangodb
 
-#endif

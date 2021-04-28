@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTOR_EXPRESSION_CONTEXT_H
-#define ARANGOD_AQL_EXECUTOR_EXPRESSION_CONTEXT_H 1
+#pragma once
 
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/Variable.h"
@@ -61,4 +60,3 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
 };
 }  // namespace aql
 }  // namespace arangodb
-#endif

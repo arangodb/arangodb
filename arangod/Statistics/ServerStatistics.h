@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_SERVER_STATISTICS_H
-#define ARANGOD_STATISTICS_SERVER_STATISTICS_H 1
+#pragma once
 
 #include <cstdint>
 #include <optional>
@@ -101,4 +100,3 @@ struct ServerStatistics {
 
 } // namespace
 
-#endif

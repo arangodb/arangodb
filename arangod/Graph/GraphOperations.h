@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz & Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_GRAPHOPERATIONS_H
-#define ARANGOD_GRAPH_GRAPHOPERATIONS_H
+#pragma once
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
@@ -218,4 +217,3 @@ class GraphOperations {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif  // ARANGOD_GRAPH_GRAPHOPERATIONS_H

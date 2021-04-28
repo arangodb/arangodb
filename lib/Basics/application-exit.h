@@ -21,8 +21,7 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_APPLICATION__EXIT_H
-#define ARANGODB_BASICS_APPLICATION__EXIT_H 1
+#pragma once
 
 #include "Basics/CleanupFunctions.h"
 
@@ -61,4 +60,3 @@ void TRI_Application_Exit_SetExit(TRI_ExitFunction_t);
     std::abort();                                          \
   } while (0)
 
-#endif

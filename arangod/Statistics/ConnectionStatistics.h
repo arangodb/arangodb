@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_CONNECTION_STATISTICS_H
-#define ARANGOD_STATISTICS_CONNECTION_STATISTICS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -114,4 +113,3 @@ class ConnectionStatistics {
 };
 }  // namespace arangodb
 
-#endif

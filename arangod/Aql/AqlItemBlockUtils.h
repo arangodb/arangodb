@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCKUTILS_H
-#define ARANGOD_AQL_AQLITEMBLOCKUTILS_H
+#pragma once
 
 #include <functional>
 #include <vector>
@@ -45,4 +44,3 @@ SharedAqlItemBlockPtr concatenate(AqlItemBlockManager&,
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_AQLITEMBLOCKUTILS_H

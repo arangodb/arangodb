@@ -5,6 +5,7 @@
 #ifdef _WIN32
 #  include <windows.h>
 #  include "msvc_compat/windows_extra.h"
+#  include "msvc_compat/strings.h"
 #  ifdef _WIN64
 #    if LG_VADDR <= 32
 #      error Generate the headers using x64 vcargs
@@ -31,7 +32,7 @@
 #    include <sys/uio.h>
 #  endif
 #  include <pthread.h>
-#  ifdef __FreeBSD__
+#  if defined(__FreeBSD__) || defined(__DragonFly__)
 #  include <pthread_np.h>
 #  endif
 #  include <signal.h>
@@ -90,5 +91,14 @@ isblank(int c) {
 #  include <unistd.h>
 #endif
 #include <fcntl.h>
+
+/*
+ * The Win32 midl compiler has #define small char; we don't use midl, but
+ * "small" is a nice identifier to have available when talking about size
+ * classes.
+ */
+#ifdef small
+#  undef small
+#endif
 
 #endif /* JEMALLOC_INTERNAL_H */

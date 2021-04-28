@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ENDIAN_H
-#define ARANGODB_BASICS_ENDIAN_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstring>
@@ -323,4 +322,3 @@ inline T bigToHost(T in) {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

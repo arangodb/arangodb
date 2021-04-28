@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SIGNALS_H
-#define ARANGODB_BASICS_SIGNALS_H 1
+#pragma once
 
 namespace arangodb {
 namespace signals {
@@ -54,4 +53,3 @@ void unmaskAllSignals();
 }  // namespace signals
 }  // namespace arangodb
 
-#endif

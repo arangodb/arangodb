@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_NONCE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_NONCE_FEATURE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -41,4 +40,3 @@ class NonceFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

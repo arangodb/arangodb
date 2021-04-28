@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__GLOBALS_H
-#define ARANGODB_V8_V8__GLOBALS_H 1
+#pragma once
 
 #include <string.h>
 #include <cstdint>
@@ -883,4 +882,3 @@ bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
 bool TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
                                   v8::Handle<v8::Value> value);
 
-#endif

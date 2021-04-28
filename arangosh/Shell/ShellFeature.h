@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHELL_SHELL_FEATURE_H
-#define ARANGODB_SHELL_SHELL_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -66,4 +65,3 @@ class ShellFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

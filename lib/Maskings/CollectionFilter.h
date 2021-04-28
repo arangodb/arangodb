@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_COLLECTION_FILTER_H
-#define ARANGODB_MASKINGS_COLLECTION_FILTER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -32,4 +31,3 @@ class CollectionFilter {};
 }  // namespace maskings
 }  // namespace arangodb
 
-#endif

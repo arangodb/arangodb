@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CONDITION_FINDER_H
-#define ARANGOD_AQL_CONDITION_FINDER_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -69,4 +68,3 @@ class ConditionFinder final : public WalkerWorker<ExecutionNode, WalkerUniquenes
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

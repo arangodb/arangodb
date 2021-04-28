@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GRAPH_STRUCTURE_H
-#define ARANGODB_PREGEL_GRAPH_STRUCTURE_H 1
+#pragma once
 
 #include "Basics/debugging.h"
 
@@ -214,4 +213,3 @@ struct hash<arangodb::pregel::PregelID> {
 };
 }  // namespace std
 
-#endif

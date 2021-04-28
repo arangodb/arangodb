@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_WEIGHTEDENUMERATOR_H
-#define ARANGODB_GRAPH_WEIGHTEDENUMERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/PathEnumerator.h"
@@ -159,4 +158,3 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

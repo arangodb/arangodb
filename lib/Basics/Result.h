@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_RESULT_H
-#define ARANGODB_BASICS_RESULT_H 1
+#pragma once
 
 #include <iosfwd>
 #include <memory>
@@ -182,4 +181,3 @@ class Result final {
  */
 auto operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostream&;
 
-#endif

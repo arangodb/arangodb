@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MESSAGEDATA_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MESSAGEDATA_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -59,4 +58,3 @@ struct MessageData {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_KSHORTEST_PATHS_EXECUTOR_H
-#define ARANGOD_AQL_KSHORTEST_PATHS_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -199,4 +198,3 @@ class KShortestPathsExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

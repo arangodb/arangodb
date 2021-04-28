@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H
-#define APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -52,4 +51,3 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

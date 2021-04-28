@@ -1043,6 +1043,8 @@ ClientTaskQueue<DumpFeature::DumpJob>& DumpFeature::taskQueue() {
 }
 
 void DumpFeature::start() {
+  using arangodb::basics::StringUtils::formatSize;
+
   if (!_options.maskingsFile.empty()) {
     maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
 
@@ -1197,7 +1199,7 @@ void DumpFeature::start() {
       LOG_TOPIC("66c0e", INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
           << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s,"
-          << " wrote " << _stats.totalWritten.load() << " byte(s) into datafiles, sent "
+          << " wrote " << formatSize(_stats.totalWritten.load()) << " into datafiles, sent "
           << _stats.totalBatches.load() << " batch(es)";
     } else {
       LOG_TOPIC("aaa17", INFO, Logger::DUMP)

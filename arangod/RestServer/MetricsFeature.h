@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_METRICS_FEATURE_H
-#define ARANGODB_REST_SERVER_METRICS_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
@@ -196,4 +195,3 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif
