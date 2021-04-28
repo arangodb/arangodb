@@ -73,8 +73,6 @@ class FollowerInfo {
   // flag if we have enough insnc followers and can pass through writes
   bool _canWrite;
 
-  enum WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
-
  public:
   explicit FollowerInfo(arangodb::LogicalCollection* d)
       : _followers(std::make_shared<std::vector<ServerID>>()),
@@ -86,6 +84,8 @@ class FollowerInfo {
     // On replicationfactor 1 we do not have any failover servers to maintain.
     // This should also disable satellite tracking.
   }
+
+  enum WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
