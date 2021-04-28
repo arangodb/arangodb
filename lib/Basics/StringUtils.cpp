@@ -1980,7 +1980,7 @@ std::string formatSize(uint64_t value) {
     out = std::to_string((double) value / 1e6);
     label = "MB";
   } else if (value < 1'000'000'000'000ULL) {
-    out = std::to_string((double) value / double(1000000000));
+    out = std::to_string((double) value / 1e9);
     label = "GB";
   } else if (value < 1000000000000000ULL) {
     out = std::to_string((double) value / double(1000000000000));
