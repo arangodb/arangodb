@@ -71,7 +71,7 @@ struct AppendEntriesRequest {
   LogTerm prevLogTerm;
   LogIndex prevLogIndex;
   LogIndex leaderCommit;
-  immer::flex_vector<LogEntry> entries;
+  immer::flex_vector<LogEntry> entries{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;

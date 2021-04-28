@@ -86,7 +86,7 @@ TEST_F(ReplicatedLogTest2, stop_follower_and_rejoin) {
     _executor->executeAllActions();
     ASSERT_TRUE(follower->hasPendingAppendEntries());
     {
-      auto request = follower->pendingAppendEntries()[0].request;
+      auto request = follower->pendingAppendEntries()[0]->request;
       EXPECT_EQ(request.leaderId, leader->participantId());
       EXPECT_EQ(request.leaderTerm, LogTerm{3});
       EXPECT_EQ(request.leaderCommit, LogIndex{0});

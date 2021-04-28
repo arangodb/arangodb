@@ -2,11 +2,13 @@
 #ifndef ARANGODB3_TESTHELPER_H
 #define ARANGODB3_TESTHELPER_H
 
-#include <gtest/gtest.h>
+#include "Basics/Guarded.h"
 
 #include "Replication2/ReplicatedLog.h"
 #include "Replication2/LogManager.h"
 #include "MockLog.h"
+
+#include <gtest/gtest.h>
 
 namespace arangodb::replication2 {
 struct DelayedFollowerLog : ReplicatedLog {
@@ -23,11 +25,16 @@ struct DelayedFollowerLog : ReplicatedLog {
     AppendEntriesRequest request;
     WaitForAsyncPromise promise;
   };
-  [[nodiscard]] auto pendingAppendEntries() const -> std::deque<AsyncRequest> const& { return _asyncQueue; }
-  [[nodiscard]] auto hasPendingAppendEntries() const -> bool { return !_asyncQueue.empty(); }
+  [[nodiscard]] auto pendingAppendEntries() const -> std::deque<std::shared_ptr<AsyncRequest>> {
+    return _asyncQueue.copy();
+  }
+  [[nodiscard]] auto hasPendingAppendEntries() const -> bool {
+    return _asyncQueue.doUnderLock(
+        [](auto const& queue) { return !queue.empty(); });
+  }
 
  private:
-  std::deque<AsyncRequest> _asyncQueue;
+  Guarded<std::deque<std::shared_ptr<AsyncRequest>>> _asyncQueue;
 };
 
 struct LogTestBase;
