@@ -471,10 +471,29 @@ std::string H2CommTask<T>::url(HttpRequest const* req) const {
 }
 
 template <SocketType T>
-void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
+void H2CommTask<T>::processStream(Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
   std::unique_ptr<HttpRequest> req = std::move(stream.request);
+  auto msgId = req->messageId();
+  auto respContentType = req->contentTypeResponse();
+  try {
+    processRequest(stream, std::move(req));
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC("a78c5", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
+      << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), respContentType,
+                            msgId, ex.code(), ex.message());
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("d1e88", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
+    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType,
+                            msgId, ErrorCode(TRI_ERROR_FAILED), ex.what());
+  }
+}
+
+template <SocketType T>
+void H2CommTask<T>::processRequest(Stream& stream, std::unique_ptr<HttpRequest> req) {
+  
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
   req->body().push_back('\0');
