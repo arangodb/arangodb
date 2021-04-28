@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H
-#define ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H 1
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -171,4 +170,3 @@ struct equal_to<std::vector<arangodb::basics::AttributeName>> {
 std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
 std::ostream& operator<<(std::ostream&, std::vector<arangodb::basics::AttributeName> const&);
 
-#endif

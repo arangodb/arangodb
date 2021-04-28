@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_QUEUE_H
-#define ARANGOD_GRAPH_QUEUE_H 1
+#pragma once
 
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
@@ -102,4 +101,3 @@ class FifoQueue {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif  // ARANGOD_GRAPH_QUEUE_H

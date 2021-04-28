@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_COLLECTION_H
-#define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_COLLECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -61,4 +60,3 @@ class ClusterTransactionCollection final : public TransactionCollection {
 };
 }  // namespace arangodb
 
-#endif

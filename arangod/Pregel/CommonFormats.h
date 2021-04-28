@@ -25,8 +25,7 @@
 // in the
 // cpp files to do template specialization
 
-#ifndef ARANGODB_PREGEL_COMMON_MFORMATS_H
-#define ARANGODB_PREGEL_COMMON_MFORMATS_H 1
+#pragma once
 
 #include <map>
 
@@ -145,4 +144,3 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_V8_CONTEXT_H
-#define ARANGOD_TRANSACTION_V8_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Context.h"
@@ -95,4 +94,3 @@ class V8Context final : public Context {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

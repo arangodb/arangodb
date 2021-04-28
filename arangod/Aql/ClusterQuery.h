@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CLUSTER_QUERY_H
-#define ARANGOD_AQL_CLUSTER_QUERY_H 1
+#pragma once
 
 #include "Aql/Query.h"
 #include "Cluster/ClusterTypes.h"
@@ -62,4 +61,3 @@ class ClusterQuery final : public arangodb::aql::Query {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif // ARANGOD_AQL_CLUSTER_QUERY_H

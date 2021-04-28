@@ -29,8 +29,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-#include <boost/algorithm/clamp.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
 
@@ -599,6 +599,7 @@ arangodb::Result processInputDirectory(
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::FileUtils::listFiles;
   using arangodb::basics::StringUtils::concatT;
+  using arangodb::basics::StringUtils::formatSize;
 
   auto fill = [](std::unordered_map<std::string, bool>& map, std::vector<std::string> const& requested) {
     for (auto const& name : requested) {
@@ -904,9 +905,9 @@ arangodb::Result processInputDirectory(
           LOG_TOPIC("75e65", INFO, Logger::RESTORE)
               << "# Current restore progress: restored " << stats.restoredCollections
               << " of " << stats.totalCollections << " collection(s), read "
-              << stats.totalRead << " byte(s) from datafiles, "
+              << formatSize(stats.totalRead) << " from datafiles, "
               << "sent " << stats.totalBatches << " data batch(es) of "
-              << stats.totalSent << " byte(s) total size"
+              << formatSize(stats.totalSent) << " total size"
               << ", queued jobs: " << std::get<0>(queueStats)
               << ", workers: " << std::get<1>(queueStats);
           start = now;
@@ -1235,6 +1236,7 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(arangodb::httpclient:
 Result RestoreFeature::RestoreMainJob::restoreData(arangodb::httpclient::SimpleHttpClient& client) {
   using arangodb::Logger;
   using arangodb::basics::StringBuffer;
+  using arangodb::basics::StringUtils::formatSize;
 
   int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(parameters, "type", 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
@@ -1274,7 +1276,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(arangodb::httpclient::SimpleH
   if (options.progress) {
     LOG_TOPIC("95913", INFO, Logger::RESTORE)
         << "# Loading data into " << collectionType << " collection '" << collectionName
-        << "', data size: " << fileSize << " byte(s)";
+        << "', data size: " << formatSize(fileSize);
   }
 
   int64_t numReadForThisCollection = 0;
@@ -1285,7 +1287,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(arangodb::httpclient::SimpleH
   
   std::string ofFilesize;
   if (!isGzip) {
-    ofFilesize = " of " + std::to_string(fileSize);
+    ofFilesize = " of " + formatSize(fileSize);
   }
 
   size_t datafileReadOffset = 0;
@@ -1404,8 +1406,8 @@ Result RestoreFeature::RestoreMainJob::restoreData(arangodb::httpclient::SimpleH
 
         LOG_TOPIC("69a73", INFO, Logger::RESTORE)
             << "# Still loading data into " << collectionType << " collection '"
-            << collectionName << "', " << numReadForThisCollection << ofFilesize
-            << " byte(s) read" << percentage;
+            << collectionName << "', " << formatSize(numReadForThisCollection) << ofFilesize
+            << " read" << percentage;
         numReadSinceLastReport = 0;
       }
     }
@@ -1675,8 +1677,8 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
     _options.chunkSize = 1024 * 128;
   }
 
-  auto clamped = boost::algorithm::clamp(_options.threadCount, uint32_t(1),
-                                         uint32_t(4 * NumberOfCores::getValue()));
+  auto clamped = std::clamp(_options.threadCount, uint32_t(1),
+                            uint32_t(4 * NumberOfCores::getValue()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC("53570", WARN, Logger::RESTORE) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
@@ -1750,6 +1752,7 @@ void RestoreFeature::prepare() {
 
 void RestoreFeature::start() {
   using arangodb::basics::StringUtils::concatT;
+  using arangodb::basics::StringUtils::formatSize;
   using arangodb::httpclient::SimpleHttpClient;
 
   double const start = TRI_microtime();
@@ -2009,9 +2012,9 @@ void RestoreFeature::start() {
       LOG_TOPIC("a66e1", INFO, Logger::RESTORE)
           << "Processed " << _stats.restoredCollections << " collection(s) in "
           << Logger::FIXED(totalTime, 6) << " s, "
-          << "read " << _stats.totalRead << " byte(s) from datafiles, "
+          << "read " << formatSize(_stats.totalRead) << " from datafiles, "
           << "sent " << _stats.totalBatches << " data batch(es) of "
-          << _stats.totalSent << " byte(s) total size";
+          << formatSize(_stats.totalSent) << " total size";
     } else if (_options.importStructure) {
       LOG_TOPIC("147ca", INFO, Logger::RESTORE)
           << "Processed " << _stats.restoredCollections << " collection(s) in "

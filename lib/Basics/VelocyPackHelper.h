@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_VELOCY_PACK_HELPER_H
-#define ARANGODB_BASICS_VELOCY_PACK_HELPER_H 1
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -435,4 +434,3 @@ struct less<arangodb::velocypack::StringRef> {
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,
                                    arangodb::velocypack::Slice const&);
 
-#endif

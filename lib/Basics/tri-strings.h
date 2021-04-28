@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TRI__STRINGS_H
-#define ARANGODB_BASICS_TRI__STRINGS_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -161,4 +160,3 @@ size_t TRI_CharLengthUtf8String(char const*, size_t);
 
 char* TRI_PrefixUtf8String(char const*, const uint32_t);
 
-#endif

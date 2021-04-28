@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__CONV_H
-#define ARANGODB_V8_V8__CONV_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/conversions.h"
@@ -57,4 +56,3 @@ bool TRI_ObjectToBoolean(v8::Isolate* isolate, v8::Handle<v8::Value> const);
 bool TRI_GetOptionalBooleanProperty(v8::Isolate* isolate, v8::Handle<v8::Object> const obj,
                                     const char* property, bool defaultValue);
 
-#endif

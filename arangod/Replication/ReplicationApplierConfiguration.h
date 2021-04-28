@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_APPLIER_CONFIGURATION_H
-#define ARANGOD_REPLICATION_REPLICATION_APPLIER_CONFIGURATION_H 1
+#pragma once
 
 #include <set>
 #include <string>
@@ -116,4 +115,3 @@ class ReplicationApplierConfiguration {
 
 }  // namespace arangodb
 
-#endif

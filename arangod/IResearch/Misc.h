@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_MISC_H
-#define ARANGOD_IRESEARCH__IRESEARCH_MISC_H 1
+#pragma once
 
 #include <type_traits>
 
@@ -55,4 +54,3 @@ struct adjacencyChecker {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_MISC_H

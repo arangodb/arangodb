@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_METRICS_FEATURE_H
-#define ARANGOD_REPLICATION_REPLICATION_METRICS_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/Metrics.h"
@@ -198,4 +197,3 @@ class ReplicationMetricsFeature final : public application_features::Application
 
 } // namespace arangodb
 
-#endif

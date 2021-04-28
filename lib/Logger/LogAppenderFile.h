@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_APPENDER_FILE_H
-#define ARANGODB_LOGGER_LOG_APPENDER_FILE_H 1
+#pragma once
 
 #include <stddef.h>
 #include <memory>
@@ -142,4 +141,3 @@ class LogAppenderStdout final : public LogAppenderStdStream {
 
 }  // namespace arangodb
 
-#endif

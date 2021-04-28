@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENCY_COMMON_H
-#define ARANGOD_CONSENSUS_AGENCY_COMMON_H 1
+#pragma once
 
 #include <chrono>
 
@@ -164,4 +163,3 @@ inline std::ostream& operator<<(std::ostream& o, arangodb::consensus::log_t cons
   return o;
 }
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REMOTE_EXECUTOR_H
-#define ARANGOD_AQL_REMOTE_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlExecuteResult.h"
 #include "Aql/ClusterNodes.h"
@@ -145,4 +144,3 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_REMOTE_EXECUTOR_H

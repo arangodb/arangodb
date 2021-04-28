@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_BENCH_FEATURE_H
-#define ARANGODB_BENCHMARK_BENCH_FEATURE_H 1
+#pragma once
 
 #include <atomic>
 
@@ -121,4 +120,3 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
@@ -126,4 +125,3 @@ class SslClientConnection final : public GeneralClientConnection {
 }  // namespace httpclient
 }  // namespace arangodb
 
-#endif

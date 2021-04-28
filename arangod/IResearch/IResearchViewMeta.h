@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_META_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_META_H 1
+#pragma once
 
 #include <locale>
 #include <unordered_set>
@@ -224,4 +223,3 @@ struct IResearchViewMetaState {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

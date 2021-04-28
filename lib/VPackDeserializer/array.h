@@ -20,8 +20,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_ARRAY_H
-#define VELOCYPACK_ARRAY_H
+
+#pragma once
+
 #include "deserialize-with.h"
 #include "errors.h"
 #include "types.h"
@@ -117,4 +118,3 @@ struct deserialize_plan_executor<array_deserializer<D, C, F>, H> {
 }  // namespace velocypack
 }  // namespace arangodb
 
-#endif  // VELOCYPACK_ARRAY_H

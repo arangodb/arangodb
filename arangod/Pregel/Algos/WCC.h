@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_WCC_H
-#define ARANGODB_PREGEL_ALGOS_WCC_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -57,4 +56,3 @@ struct WCC : public SimpleAlgorithm<uint64_t, uint64_t, SenderMessage<uint64_t>>
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

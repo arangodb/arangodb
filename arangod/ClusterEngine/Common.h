@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_COMMON_H
-#define ARANGOD_CLUSTER_ENGINE_COMMON_H 1
+#pragma once
 
 namespace arangodb {
 
@@ -30,4 +29,3 @@ enum class ClusterEngineType { RocksDBEngine, MockEngine };
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__SHELL_H
-#define ARANGODB_V8_V8__SHELL_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -34,4 +33,3 @@
 
 void TRI_InitV8Shell(v8::Isolate* isolate);
 
-#endif

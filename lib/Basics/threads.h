@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREADS_H
-#define ARANGODB_BASICS_THREADS_H 1
+#pragma once
 
 #include "Basics/ErrorCode.h"
 #include "Basics/operating-system.h"
@@ -71,4 +70,3 @@ ErrorCode TRI_JoinThread(TRI_thread_t* thread);
 ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout);
 bool TRI_DetachThread(TRI_thread_t* thread);
 
-#endif

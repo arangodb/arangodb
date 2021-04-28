@@ -1,6 +1,5 @@
 
-#ifndef ARANGODB_BASICS_ERROR_REGISTRY_H
-#define ARANGODB_BASICS_ERROR_REGISTRY_H
+#pragma once
 
 #include "Basics/voc-errors.h"
 
@@ -703,5 +702,3 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessage
       "error during AIR execution"},
 };
 }
-
-#endif  // ARANGODB_BASICS_ERROR_REGISTRY_H

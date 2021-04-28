@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H
-#define ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
@@ -156,4 +155,3 @@ struct ReplicationApplierState {
 
 }  // namespace arangodb
 
-#endif

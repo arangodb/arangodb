@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt <andreas@arangodb.com>
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_AUTHENTICATION_FEATURE_H
-#define APPLICATION_FEATURES_AUTHENTICATION_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/TokenCache.h"
@@ -109,4 +108,3 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 
 }  // namespace arangodb
 
-#endif

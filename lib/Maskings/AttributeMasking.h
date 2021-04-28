@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_ATTRIBUTE_MASKING_H
-#define ARANGODB_MASKINGS_ATTRIBUTE_MASKING_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -68,4 +67,3 @@ class AttributeMasking {
 }  // namespace maskings
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UTIL_GEOMETRY_S2MULTIPOLYLINE_H__
-#define UTIL_GEOMETRY_S2MULTIPOLYLINE_H__
+#pragma once
 
 #include <s2/s2polyline.h>
 #include <s2/s2region.h>
@@ -80,4 +79,3 @@ class S2MultiPolyline : public S2Region {
   std::vector<S2Polyline> lines_;
 };
 
-#endif  // UTIL_GEOMETRY_S2POLYLINE_H__

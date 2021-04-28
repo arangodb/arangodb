@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_OPTIONS_H
-#define ARANGOD_AQL_QUERY_OPTIONS_H 1
+#pragma once
 
 #include <string>
 #include <unordered_set>
@@ -116,4 +115,3 @@ struct QueryOptions {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

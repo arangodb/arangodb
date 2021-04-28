@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_REPLICATION_ITERATOR_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_REPLICATION_ITERATOR_H 1
+#pragma once
 
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
@@ -56,4 +55,3 @@ class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
 };
 
 }  // namespace arangodb
-#endif

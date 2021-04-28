@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_SYNCER_H
-#define ARANGOD_REPLICATION_SYNCER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -239,4 +238,3 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
 }  // namespace arangodb
 
-#endif
