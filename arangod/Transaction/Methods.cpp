@@ -1204,13 +1204,13 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   };
 
   Result res;
-  std::unordered_map<ErrorCode, size_t> errorCounter;
+  auto errorCounter = std::make_unique<std::unordered_map<ErrorCode, size_t>>();
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
     for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
-        createBabiesError(resultBuilder, errorCounter, res);
+        createBabiesError(resultBuilder, *errorCounter, res);
       }
     }
     res.reset(); // With babies reporting is handled in the result body
@@ -1234,19 +1234,19 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
       }
-      if (options.silent && errs.empty()) {
+      if (options.silent && errs->empty()) {
         // We needed the results, but do not want to report:
         resDocs->clear();
       }
-      return OperationResult(std::move(res), std::move(resDocs), options, std::move(errs));
+      return OperationResult(std::move(res), std::move(resDocs), options, std::move(*errs));
     });
   }
-  if (options.silent && errorCounter.empty()) {
+  if (options.silent && errorCounter->empty()) {
     // We needed the results, but do not want to report:
     resDocs->clear();
   }
   return futures::makeFuture(OperationResult(std::move(res), std::move(resDocs),
-                                             options, std::move(errorCounter)));
+                                             options, std::move(*errorCounter)));
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -1466,7 +1466,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   ///////////////////////
 
   bool multiCase = newValue.isArray();
-  std::unordered_map<ErrorCode, size_t> errorCounter;
+  auto errorCounter = std::make_unique<std::unordered_map<ErrorCode, size_t>>();
   Result res;
   if (multiCase) {
     {
@@ -1475,7 +1475,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       while (it.valid()) {
         res = workForOneDocument(it.value(), true);
         if (res.fail()) {
-          createBabiesError(resultBuilder, errorCounter, res);
+          createBabiesError(resultBuilder, *errorCounter, res);
         }
         ++it;
       }
@@ -1505,22 +1505,22 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
       }
-      if (options.silent && errs.empty()) {
+      if (options.silent && errs->empty()) {
         // We needed the results, but do not want to report:
         resDocs->clear();
       }
       return OperationResult(std::move(res), std::move(resDocs),
-                             std::move(options), std::move(errs));
+                             std::move(options), std::move(*errs));
     });
   }
 
-  if (options.silent && errorCounter.empty()) {
+  if (options.silent && errorCounter->empty()) {
     // We needed the results, but do not want to report:
     resDocs->clear();
   }
 
   return futures::makeFuture(OperationResult(std::move(res), std::move(resDocs),
-                         std::move(options), std::move(errorCounter)));
+                         std::move(options), std::move(*errorCounter)));
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -1683,13 +1683,13 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   };
 
   Result res;
-  std::unordered_map<ErrorCode, size_t> errorCounter;
+  auto errorCounter = std::make_unique<std::unordered_map<ErrorCode, size_t>>();
   if (value.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
     for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
-        createBabiesError(resultBuilder, errorCounter, res);
+        createBabiesError(resultBuilder, *errorCounter, res);
       }
     }
     res.reset(); // With babies reporting is handled in the result body
@@ -1714,22 +1714,22 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
       }
-      if (options.silent && errs.empty()) {
+      if (options.silent && errs->empty()) {
         // We needed the results, but do not want to report:
         resDocs->clear();
       }
       return OperationResult(std::move(res), std::move(resDocs),
-                             std::move(options), std::move(errs));
+                             std::move(options), std::move(*errs));
     });
   }
 
-  if (options.silent && errorCounter.empty()) {
+  if (options.silent && errorCounter->empty()) {
     // We needed the results, but do not want to report:
     resDocs->clear();
   }
 
   return futures::makeFuture(OperationResult(std::move(res), std::move(resDocs),
-                         std::move(options), std::move(errorCounter)));
+                         std::move(options), std::move(*errorCounter)));
 }
 
 /// @brief fetches all documents in a collection
