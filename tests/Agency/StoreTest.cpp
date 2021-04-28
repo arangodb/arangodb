@@ -168,36 +168,47 @@ std::string const agencyLeader {"http://agencyLeader"};
 
 struct SimpleJson {
   SimpleJson(std::string name, SimpleJson value) {}
-  SimpleJson(std::string value) {}
+  SimpleJson(const char * value) {}
   SimpleJson(double value) {}
   SimpleJson() {}
+
+  bool operator==(SimpleJson const &other) const {
+    return true;
+  }
 };
 
 struct AgencyResult {
   int statusCode {200};
-  SimpleJson bodyParsed;
+  std::vector<SimpleJson> bodyParsed;
 };
 
-AgencyResult accessAgency(std::string const &op, SimpleJson const &json) {
+AgencyResult accessAgency(std::string const &op, std::vector<SimpleJson> const &list, double timeout = 2.0) {
   return {};
 }
 
-SimpleJson readAndCheck(SimpleJson const &list) {
+std::vector<SimpleJson> readAndCheck(std::vector<SimpleJson> const &list) {
   auto res = accessAgency("read", list);
-  assertEqual(res.statusCode, 200);
+  if (res.statusCode != 200) {
+    throw std::runtime_error("Unexpected read failure");
+  }
   return res.bodyParsed;
 }
 
-SimpleJson writeAndCheck(SimpleJson const &list, double timeout = 60) {
-  var res = accessAgency("write", list, timeout);
-  assertEqual(res.statusCode, 200);
+std::vector<SimpleJson> writeAndCheck(std::vector<SimpleJson> const &list, double timeout = 60) {
+  auto res = accessAgency("write", list, timeout);
+  if (res.statusCode != 200) {
+    throw std::runtime_error("Unexpected write failure");
+  }
   return res.bodyParsed;
 }
+
+#define ASSERT_EQ_J(x, y) ASSERT_EQ(x, std::vector<SimpleJson> y)
 
 AgencyResult request(std::string url, std::string method, bool followRedirect = false) {
   return {};
 }
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test transact interface
 ////////////////////////////////////////////////////////////////////////////////
@@ -365,18 +376,35 @@ TEST(StoreTest, transact) {
     }
 
 
+*/
+TEST(StoreTest, test_infrastructure) {
+  ASSERT_EQ(std::vector<SimpleJson>{},            std::vector<SimpleJson>());
+  ASSERT_EQ(std::vector<SimpleJson>{{}},          std::vector<SimpleJson>{{}});
+  {
+    std::vector<SimpleJson> v1{{"A", 123}};
+    std::vector<SimpleJson> v2{{"A", 123}};
+    ASSERT_EQ(v1,  v2);
+  }
+  {
+    std::vector<SimpleJson> v1{{{"A", 123}, {"B", 456}}};
+    std::vector<SimpleJson> v2{{{"A", 123}, {"B", 456}}};
+    ASSERT_EQ(v1,  v2);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single top level key
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST(StoreTest, single_top_level) {
-      ASSERT_EQ(readAndCheck([["/x"]]), [{}]);
-      writeAndCheck([[{x:12}]]);
-      ASSERT_EQ(readAndCheck([["/x"]]), [{x:12}]);
-      writeAndCheck([[{x:{"op":"delete"}}]]);
-      ASSERT_EQ(readAndCheck([["/x"]]), [{}]);
+      ASSERT_EQ(readAndCheck({"/x"}), std::vector<SimpleJson>());
+      writeAndCheck({{"x",12}});
+      ASSERT_EQ(readAndCheck({{"/x"}}),  (std::vector<SimpleJson>{{"x", 12}}));
+      writeAndCheck({{"x",SimpleJson{"op","delete"}}});
+      ASSERT_EQ((readAndCheck({{"/x"}})), std::vector<SimpleJson>());
     }
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single non-top level key
 ////////////////////////////////////////////////////////////////////////////////
@@ -1411,3 +1439,4 @@ TEST(StoreTest, transaction_different_keys) {
         ASSERT_EQ(readAndCheck([["a" + i]]), [{["a" + i]:1}]);
       }
     }
+*/
