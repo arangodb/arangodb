@@ -45,18 +45,6 @@ auto operator<<(std::ostream& out, SingleServerProvider::Step const& step) -> st
 }  // namespace graph
 }  // namespace arangodb
 
-IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
-                             aql::AstNode* condition, std::optional<size_t> memberToUpdate)
-    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {}
-
-aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
-transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
-  return _idx;
-}
-std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
-  return _memberToUpdate;
-}
-
 SingleServerProvider::Step::Step(VertexType v) : _vertex(v), _edge() {}
 
 SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev)
