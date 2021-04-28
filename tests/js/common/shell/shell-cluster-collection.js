@@ -703,7 +703,7 @@ function ClusterCollectionSuite () {
         } finally {
           // we need to wait for the collecion to show up before the drop can work.
           while (!db._collection(colName)) {
-            require("internal").sleep(.1);
+            require("internal").sleep(0.1);
           }
           db._drop(colName);
         }
