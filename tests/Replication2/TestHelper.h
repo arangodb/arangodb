@@ -17,7 +17,7 @@ struct DelayedFollowerLog : ReplicatedLog {
       -> arangodb::futures::Future<AppendEntriesResult> override;
   void runAsyncAppendEntries();
 
-  using WaitForAsyncPromise = futures::Promise<std::optional<AppendEntriesResult>>;
+  using WaitForAsyncPromise = futures::Promise<std::optional<AppendEntriesRequest>>;
 
   struct AsyncRequest {
     explicit AsyncRequest(AppendEntriesRequest request)

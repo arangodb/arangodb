@@ -62,7 +62,7 @@ auto LogManagerProxy::participantId() const noexcept -> ParticipantId {
 
 LogManagerProxy::LogManagerProxy(const LogId& logId, ParticipantId id,
                                  std::shared_ptr<LogManager> manager)
-    : _logId(logId), _id(id), _manager(manager) {}
+    : _logId(logId), _id(std::move(id)), _manager(manager) {}
 
 LogManager::LogManager(std::shared_ptr<LogWorkerExecutor> executor)
     : _executor(std::move(executor)) {}

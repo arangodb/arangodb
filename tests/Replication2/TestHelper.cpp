@@ -10,19 +10,19 @@ void DelayedFollowerLog::runAsyncAppendEntries() {
   });
 
   for (auto& p : asyncQueue) {
-    p->promise.setValue(std::nullopt);
+    p->promise.setValue(std::move(p->request));
   }
 }
 
 auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
-  auto entry = _asyncQueue.doUnderLock([&](auto& queue) {
-    return queue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)));
+  auto future = _asyncQueue.doUnderLock([&](auto& queue) {
+    return queue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)))->promise.getFuture();
   });
-  return entry->promise.getFuture().thenValue([this, &entry](auto&& result) mutable {
-    if (result) {
-      return futures::Future<AppendEntriesResult>(std::in_place, *result);
+  return std::move(future).thenValue([this](auto&& result) mutable {
+    if (!result.has_value()) {
+      return futures::Future<AppendEntriesResult>{AppendEntriesResult{false}};
     }
-    return ReplicatedLog::appendEntries(std::move(entry->request));
+    return ReplicatedLog::appendEntries(std::move(result).value());
   });
 }
