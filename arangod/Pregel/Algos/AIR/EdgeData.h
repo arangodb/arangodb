@@ -31,12 +31,12 @@
 
 #include <string>
 
-using namespace arangodb::velocypack;
-
 namespace arangodb {
 namespace pregel {
 namespace algos {
 namespace accumulators {
+
+using namespace arangodb::velocypack;
 
 struct EdgeData {
   void reset(VPackSlice const& doc);

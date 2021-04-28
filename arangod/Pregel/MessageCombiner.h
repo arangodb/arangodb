@@ -21,10 +21,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include <cstdint>
 
-#ifndef ARANGODB_PREGEL_COMBINER_H
-#define ARANGODB_PREGEL_COMBINER_H 1
 namespace arangodb {
 namespace pregel {
 
@@ -56,4 +56,3 @@ struct SumCombiner : public MessageCombiner<M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

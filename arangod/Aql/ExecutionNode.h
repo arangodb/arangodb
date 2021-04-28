@@ -52,8 +52,7 @@
 // If you wish to unlink (remove) or replace a node you should do it by using
 // one of the plans operations.
 
-#ifndef ARANGOD_AQL_EXECUTION_NODE_H
-#define ARANGOD_AQL_EXECUTION_NODE_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -1165,5 +1164,3 @@ MaterializeNode* createMaterializeNode(ExecutionPlan* plan,
 }  // namespace materialize
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

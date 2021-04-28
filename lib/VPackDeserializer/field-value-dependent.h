@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
 #include "plan-executor.h"
 #include "values.h"
+
 namespace arangodb {
 namespace velocypack {
-
 namespace deserializer {
 
 /*

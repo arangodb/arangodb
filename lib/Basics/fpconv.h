@@ -1,5 +1,3 @@
-#ifndef LIB_BASICS_FPCONV_H
-#define LIB_BASICS_FPCONV_H 1
 /* Fast and accurate double to string conversion based on Florian Loitsch's
  * Grisu-algorithm[1].
  *
@@ -25,8 +23,8 @@
  *
  */
 
-int fpconv_dtoa(double fp, char dest[24]);
+#pragma once
 
-#endif
+int fpconv_dtoa(double fp, char dest[24]);
 
 /* [1] http://florian.loitsch.com/publications/dtoa-pldi2010.pdf */
