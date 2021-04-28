@@ -84,6 +84,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/NodeTest.cpp
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
+  Agency/StoreTestAPI.cpp
   Agency/SupervisionTest.cpp
   Agency/TransactionBuilderTests.cpp
   Aql/AqlCallListTest.cpp
