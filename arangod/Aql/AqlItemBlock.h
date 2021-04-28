@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_H
-#define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Basics/ResourceUsage.h"
@@ -448,4 +447,3 @@ class AqlItemBlock {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

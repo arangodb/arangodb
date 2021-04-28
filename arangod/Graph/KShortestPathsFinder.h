@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_CONSTANT_WEIGHT_K_SHORTEST_PATHS_FINDER_H
-#define ARANGODB_GRAPH_CONSTANT_WEIGHT_K_SHORTEST_PATHS_FINDER_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Containers/HashSet.h"
@@ -302,4 +301,3 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

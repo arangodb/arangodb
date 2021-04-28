@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H
-#define ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H 1
+#pragma once
 
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ServerState.h"
@@ -186,4 +185,3 @@ class CollectionNameResolver {
 
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_IDENTIFIER_H
-#define ARANGODB_BASICS_IDENTIFIER_H 1
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -102,4 +101,3 @@ DECLARE_HASH_FOR_IDENTIFIER(arangodb::basics::Identifier)
   }  // namespace std
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::basics::Identifier)
 
-#endif

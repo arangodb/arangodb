@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_LIB_ASIO_NS_H
-#define ARANGOD_LIB_ASIO_NS_H 1
+#pragma once
 
 // make sure that IOCP is used on windows
 #if defined(_WIN32) && !defined(_WIN32_WINNT)
@@ -71,4 +70,3 @@ namespace asio_ns = boost::asio;
 
 #endif
 
-#endif

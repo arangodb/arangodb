@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXPRESSION_H
-#define ARANGOD_AQL_EXPRESSION_H 1
+#pragma once
 
 #include <cstdint>
 #include <unordered_map>
@@ -272,4 +271,3 @@ class Expression {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

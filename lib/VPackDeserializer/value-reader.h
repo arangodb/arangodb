@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_VALUE_READER_H
-#define VELOCYPACK_VALUE_READER_H
+
+#pragma once
 #include "deserializer.h"
 #include "gadgets.h"
 #include "types.h"
@@ -96,4 +96,3 @@ struct value_reader<T, std::void_t<std::enable_if_t<std::is_arithmetic_v<T>>>> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_VALUE_READER_H

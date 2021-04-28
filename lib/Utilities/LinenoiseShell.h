@@ -21,8 +21,7 @@
 /// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_LINENOISE_SHELL_H
-#define ARANGODB_UTILITIES_LINENOISE_SHELL_H 1
+#pragma once
 
 #include "ShellBase.h"
 
@@ -63,4 +62,3 @@ class LinenoiseShell final : public ShellBase {
   }
 };
 }  // namespace arangodb
-#endif

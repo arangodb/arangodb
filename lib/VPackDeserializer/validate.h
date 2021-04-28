@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef DESERIALIZE_VALIDATE_H
-#define DESERIALIZE_VALIDATE_H
+
+#pragma once
 #include "deserialize-with.h"
 #include "plan-executor.h"
 
@@ -143,4 +143,3 @@ struct executor::deserialize_plan_executor<validate<D, V>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // DESERIALIZE_VALIDATE_H

@@ -14,7 +14,7 @@ nparallel = cpu_count() * 2
 
 uname = uname()[0]
 
-if "BSD" in uname:
+if call("command -v gmake", shell=True) == 0:
     make_cmd = 'gmake'
 else:
     make_cmd = 'make'
@@ -41,6 +41,7 @@ possible_config_opts = [
     '--enable-prof',
     '--disable-stats',
     '--enable-opt-safety-checks',
+    '--with-lg-page=16',
 ]
 if bits_64:
     possible_config_opts.append('--with-lg-vaddr=56')

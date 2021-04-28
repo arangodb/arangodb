@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_PARAMETER_LIST_H
-#define VELOCYPACK_PARAMETER_LIST_H
+
+#pragma once
 #include "gadgets.h"
 #include "values.h"
 #include "vpack-types.h"
@@ -439,4 +439,3 @@ struct deserialize_plan_executor<parameter_list<Ps...>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_PARAMETER_LIST_H

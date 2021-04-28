@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
-#define ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
+#pragma once
 
 #include "Aql/Aggregator.h"
 #include "Aql/AqlValueGroup.h"
@@ -226,4 +225,3 @@ class HashedCollectExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

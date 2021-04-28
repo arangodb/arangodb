@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_LINK_META_H
-#define ARANGODB_IRESEARCH__IRESEARCH_LINK_META_H 1
+#pragma once
 
 #include <locale>
 #include <mutex>
@@ -291,4 +290,3 @@ struct IResearchLinkMeta : public FieldMeta {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

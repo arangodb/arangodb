@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ANALYZER_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ANALYZER_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "utils/string.hpp"
@@ -68,4 +67,3 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
 } // iresearch
 } // arangodb
 
-#endif

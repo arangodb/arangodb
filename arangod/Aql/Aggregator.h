@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AGGREGATOR_H
-#define ARANGOD_AQL_AGGREGATOR_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 
@@ -110,4 +109,3 @@ struct Aggregator {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

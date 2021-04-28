@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_AQL_V8_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_AQL_V8_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 #include "helpers.h"
@@ -84,4 +83,3 @@ struct AqlV8Test : public Benchmark<AqlV8Test> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

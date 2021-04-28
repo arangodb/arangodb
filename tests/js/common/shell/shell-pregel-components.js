@@ -243,7 +243,7 @@ function componentsTestSuite() {
 
       while (true) {
         var status = pregel.status(handle);
-        if (status.state !== 'running') {
+        if (status.state !== 'running' && status.state !== 'storing') {
           console.log(status);
           break;
         } else {

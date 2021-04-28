@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_BASE_OPTIONS_H
-#define ARANGOD_GRAPH_BASE_OPTIONS_H 1
+#pragma once
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
@@ -237,4 +236,3 @@ struct BaseOptions {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

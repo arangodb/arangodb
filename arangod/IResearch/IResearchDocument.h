@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_DOCUMENT_H
-#define ARANGOD_IRESEARCH__IRESEARCH_DOCUMENT_H 1
+#pragma once
 
 #include "VocBase/voc-types.h"
 
@@ -257,4 +256,3 @@ struct StoredValue {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

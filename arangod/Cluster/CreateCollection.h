@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_CREATE_COLLECTION_H
-#define ARANGODB_MAINTENANCE_CREATE_COLLECTION_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -50,4 +49,3 @@ class CreateCollection : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

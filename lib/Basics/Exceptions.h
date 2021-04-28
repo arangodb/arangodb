@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_EXCEPTIONS_H
-#define ARANGODB_BASICS_EXCEPTIONS_H 1
+#pragma once
 
 #include <exception>
 #include <new>
@@ -139,4 +138,3 @@ Result catchVoidToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

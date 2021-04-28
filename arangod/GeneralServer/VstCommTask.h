@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "GeneralServer/GeneralCommTask.h"
@@ -130,4 +129,3 @@ class VstCommTask final : public GeneralCommTask<T> {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

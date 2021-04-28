@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CALACULATION_EXECUTOR_H
-#define ARANGOD_AQL_CALACULATION_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -140,4 +139,3 @@ class CalculationExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

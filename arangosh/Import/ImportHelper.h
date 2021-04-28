@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IMPORT_IMPORT_HELPER_H
-#define ARANGODB_IMPORT_IMPORT_HELPER_H 1
+#pragma once
 
 #include <atomic>
 #include <unordered_map>
@@ -354,4 +353,3 @@ class ImportHelper {
 };
 }  // namespace import
 }  // namespace arangodb
-#endif

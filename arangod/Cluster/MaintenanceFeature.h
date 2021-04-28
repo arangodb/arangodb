@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_MAINTENANCE_FEATURE
-#define ARANGOD_CLUSTER_MAINTENANCE_FEATURE 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
@@ -516,4 +515,3 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

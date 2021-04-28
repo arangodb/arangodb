@@ -23,8 +23,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_METHODS_TASKS_H
-#define ARANGOD_VOCBASE_METHODS_TASKS_H 1
+#pragma once
 
 #include <chrono>
 
@@ -111,4 +110,3 @@ class Task : public std::enable_shared_from_this<Task> {
 
 }  // namespace arangodb
 
-#endif

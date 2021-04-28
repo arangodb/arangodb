@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H
-#define ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H 1
+#pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
@@ -187,4 +186,3 @@ struct TraverserOptions : public graph::BaseOptions {
 };
 }  // namespace traverser
 }  // namespace arangodb
-#endif

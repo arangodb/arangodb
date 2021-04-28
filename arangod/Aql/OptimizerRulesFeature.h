@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_OPTIMIZER_RULES_FEATURE_H
-#define ARANGOD_AQL_OPTIMIZER_RULES_FEATURE_H 1
+#pragma once
 
 #include <unordered_map>
 #include <vector>
@@ -100,4 +99,3 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

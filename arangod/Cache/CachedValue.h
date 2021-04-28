@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_CACHED_VALUE_H
-#define ARANGODB_CACHE_CACHED_VALUE_H
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -151,4 +150,3 @@ struct CachedValue {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

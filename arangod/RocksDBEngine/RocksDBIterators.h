@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATORS_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATORS_H 1
+#pragma once
 
 #include <rocksdb/options.h>
 
@@ -134,4 +133,3 @@ class RocksDBGenericIterator {
 RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx,
                                                   LogicalCollection* col);
 }  // namespace arangodb
-#endif

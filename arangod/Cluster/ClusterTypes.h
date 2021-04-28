@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTERTYPES_H
-#define ARANGOD_CLUSTER_CLUSTERTYPES_H
+#pragma once
 
 #include <limits>
 #include <string>
@@ -180,4 +179,3 @@ struct QueryAnalyzerRevisions {
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
 std::ostream& operator<<(std::ostream& o, arangodb::QueryAnalyzerRevisions const& r);
 
-#endif  // ARANGOD_CLUSTER_CLUSTERTYPES_H
