@@ -114,6 +114,11 @@ devel
 * Fixed BTS-360 and ES-826: sporadic ArangoSearch error `Invalid RL encoding in
   'dense_fixed_offset_column_key'`.
 
+* Add value of `_key` to more insert/update/replace/remove error messages
+  so it is easier to figure out which document caused unique constraint
+  violations and/or write-write conflict during a multi-document write
+  operation.
+
 * Fix cluster internal retry behavior for network communications. In particular
   retry on 421 (leader refuses operation). This leads to the cluster letting
   less internal errors out to clients.
