@@ -691,7 +691,6 @@ function ClusterCollectionSuite () {
           if (isServer) {
             assertTrue(e instanceof ArangoError);
             assertEqual(503, e.errorNum);
-            //assertEqual('intentional debug error', e.errorMessage);
           } else {
             const expected = {
               'error': true,
@@ -702,6 +701,10 @@ function ClusterCollectionSuite () {
             assertEqual(expected, e);
           }
         } finally {
+          // we need to wait for the collecion to show up before the drop can work.
+          while (!db._exists(colName)) {
+            require("internal").sleep(.1);
+          }
           db._drop(colName);
         }
         assertTrue(threw);
