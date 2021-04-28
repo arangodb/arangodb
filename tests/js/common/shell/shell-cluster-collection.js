@@ -702,7 +702,7 @@ function ClusterCollectionSuite () {
             assertEqual(expected, e);
           }
         } finally {
-          db._drop("UnitTestClusterShouldNotBeCreated1");
+          db._drop(colName);
         }
         assertTrue(threw);
       } finally {
