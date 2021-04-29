@@ -39,7 +39,7 @@ struct IndexTypeFactory;  // forward declaration
 namespace arangodb {
 namespace iresearch {
 
-class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
+class IResearchRocksDBLink : public RocksDBIndex, public IResearchLink {
  public:
   IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId);
 

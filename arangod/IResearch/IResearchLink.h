@@ -206,7 +206,7 @@ class IResearchLink {
   /// @brief fill and return a jSON description of a IResearchLink object
   ///        elements are appended to an existing object
   //////////////////////////////////////////////////////////////////////////////
-  Result properties(velocypack::Builder& builder, bool forPersistence) const;
+  virtual Result properties(velocypack::Builder& builder, bool forPersistence) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update runtine data processing properties (not persisted)
@@ -263,7 +263,7 @@ class IResearchLink {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice const& definition,
+  virtual Result init(velocypack::Slice const& definition,
               InitCallback const& initCallback = {});
               
   ////////////////////////////////////////////////////////////////////////////////
@@ -308,6 +308,15 @@ class IResearchLink {
   /// @brief get index stats for current snapshot
   ////////////////////////////////////////////////////////////////////////////////
   Stats stats() const;
+
+  Result initDataStore(
+    InitCallback const& initCallback, bool sorted,
+    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
+     irs::type_info::type_id primarySortCompression);
+
+  IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
+
+  LogicalCollection& _collection; // the linked collection
 
  private:
   friend struct CommitTask;
@@ -384,10 +393,6 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  Result initDataStore(
-    InitCallback const& initCallback, bool sorted,
-    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::type_info::type_id primarySortCompression);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -403,13 +408,11 @@ class IResearchLink {
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
-  LogicalCollection& _collection; // the linked collection
   DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;                 // the index identifier
   TRI_voc_tick_t _lastCommittedTick; // protected by _commitMutex
-  IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
   std::mutex _commitMutex; // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())

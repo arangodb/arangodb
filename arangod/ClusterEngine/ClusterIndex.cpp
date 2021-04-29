@@ -262,7 +262,8 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX: 
-    case TRI_IDX_TYPE_PERSISTENT_INDEX: {
+    case TRI_IDX_TYPE_PERSISTENT_INDEX:
+    case TRI_IDX_TYPE_SEARCH_INDEX: {
       // same for both engines
       return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
                                                                   node, reference, itemsInIndex);
@@ -302,6 +303,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditio
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+    case TRI_IDX_TYPE_SEARCH_INDEX: // FIXME: need to implement sorted index
     case TRI_IDX_TYPE_EDGE_INDEX: {
       return Index::supportsSortCondition(sortCondition, reference, itemsInIndex);
     }
@@ -314,7 +316,6 @@ Index::SortCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditio
       }
       break;
     }
-
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }

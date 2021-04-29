@@ -103,7 +103,8 @@ class Index {
     TRI_IDX_TYPE_TTL_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
     TRI_IDX_TYPE_IRESEARCH_LINK,
-    TRI_IDX_TYPE_NO_ACCESS_INDEX
+    TRI_IDX_TYPE_NO_ACCESS_INDEX,
+    TRI_IDX_TYPE_SEARCH_INDEX
   };
   
   /// @brief: helper struct returned by index methods that determine the costs
@@ -461,7 +462,7 @@ class Index {
   IndexId const _iid;
   LogicalCollection& _collection;
   std::string _name;
-  std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
+  std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
   bool const _useExpansion;
 
   mutable bool _unique;

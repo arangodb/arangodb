@@ -339,6 +339,9 @@ Index::IndexType Index::type(char const* type, size_t len) {
   if (::typeMatch(type, len, "noaccess")) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }
+  if (::typeMatch(type, len, "search")) {
+    return TRI_IDX_TYPE_SEARCH_INDEX;
+  }
 
   return TRI_IDX_TYPE_UNKNOWN;
 }
@@ -374,6 +377,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
+    case TRI_IDX_TYPE_SEARCH_INDEX:
+      return "search";
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }

@@ -354,11 +354,8 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
     } else {
       auto field = slice.get(fieldName);
 
-      if (!field.isObject()) {
-        errorField = fieldName;
+      if (field.isObject()) {
 
-        return false;
-      }
 
       auto subDefaults = *this;
 
@@ -392,6 +389,26 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
 
           return false;
         }
+      }
+      } else if (field.isArray()) {
+        for (velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
+          auto value = itr.value();
+          if (!value.isString()) {
+            errorField = fieldName + "[" +
+                     basics::StringUtils::itoa(itr.index()) + "]";
+            return false;
+          }
+          std::string childErrorField;
+          auto name = value.copyString();
+          if (!_fields[name]->init(
+                  server, VPackSlice::emptyObjectSlice(), childErrorField, defaultVocbase)) {
+            errorField = fieldName + "." + name + "." + childErrorField;
+            return false;
+          }
+        }
+      } else {
+        errorField = fieldName;
+        return false;
       }
     }
   }
