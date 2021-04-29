@@ -57,8 +57,8 @@ namespace tests {
 namespace graph {
 
 class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
-  using DFSFinder = DFSEnumerator<MockGraphProvider>;
-  // using DFSFinder = TracedDFSEnumerator<MockGraphProvider>; // not yet implemented
+  // using DFSFinder = DFSEnumerator<MockGraphProvider>;
+  using DFSFinder = TracedDFSEnumeratorWOPT<MockGraphProvider>;
 
  protected:
   bool activateLogging{false};
@@ -241,9 +241,8 @@ INSTANTIATE_TEST_CASE_P(DFSFinderTestRunner, DFSFinderTest,
 
 TEST_P(DFSFinderTest, no_path_exists) {
   VPackBuilder result;
-  // No path between those
   auto source = vId(91);
-  auto finder = pathFinder(1, 1);
+  auto finder = pathFinder(0, 0);
   finder.reset(toHashedStringRef(source));
 
   EXPECT_FALSE(finder.isDone());
@@ -275,7 +274,7 @@ TEST_P(DFSFinderTest, path_depth_0) {
   auto finder = pathFinder(0, 0);
 
   // Source
-  auto source = vId(91);
+  auto source = vId(1);
 
   finder.reset(toHashedStringRef(source));
 
@@ -283,11 +282,9 @@ TEST_P(DFSFinderTest, path_depth_0) {
   {
     result.clear();
     auto hasPath = finder.getNextPath(result);
-    EXPECT_TRUE(hasPath);
-    pathStructureValid(result.slice(), 0);
-    pathEquals(result.slice(), {91});
-
-    EXPECT_FALSE(finder.isDone());
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
   }
 
   {
@@ -298,17 +295,8 @@ TEST_P(DFSFinderTest, path_depth_0) {
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
-
   {
     aql::TraversalStats stats = finder.stealStats();
-    // We have to lookup the vertex
-    EXPECT_EQ(stats.getScannedIndex(), 1);
-  }
-
-  {
-    // Make sure stats are stolen and resettet
-    aql::TraversalStats stats = finder.stealStats();
-    // We have to lookup the vertex
     EXPECT_EQ(stats.getScannedIndex(), 0);
   }
 }
@@ -327,7 +315,9 @@ TEST_P(DFSFinderTest, path_depth_1) {
     result.clear();
     auto hasPath = finder.getNextPath(result);
     EXPECT_TRUE(hasPath);
+
     pathStructureValid(result.slice(), 1);
+    LOG_DEVEL << result.slice().toJson();
     pathEquals(result.slice(), {1, 2});
 
     EXPECT_FALSE(finder.isDone());

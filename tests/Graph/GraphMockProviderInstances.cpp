@@ -31,6 +31,7 @@
 
 #include "Graph/PathManagement/PathStoreTracer.cpp"
 #include "Graph/PathManagement/PathValidator.cpp"
+#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Queues/QueueTracer.cpp"
 
 template class ::arangodb::graph::PathResult<::arangodb::tests::graph::MockGraphProvider,
