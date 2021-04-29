@@ -127,6 +127,11 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::ApplicationServer& server) {
+  TRI_IF_FAILURE("QueryAllUsers") {
+    // simulates the case that the _users collection is not yet available
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+  
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
@@ -230,14 +235,14 @@ void auth::UserManager::loadFromDB() {
       _internalVersion.store(tmp);
     }
   } catch (basics::Exception const& ex) {
-    if (ex.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
-        (_server.hasFeature<BootstrapFeature>() &&
-         _server.getFeature<BootstrapFeature>().isReady())) {
-      LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
-          << "Exception when loading users from db: " << ex.what();
+    if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND &&
+        _server.hasFeature<BootstrapFeature>() &&
+        !_server.getFeature<BootstrapFeature>().isReady()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
+        "Cannot load users because the _users collection is not yet available");
     }
-    // suppress log messgage if we get here during the normal course of an
-    // agency callback during bootstrapping and carry on
+    LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
+        << "Exception when loading users from db: " << ex.what();
   } catch (std::exception const& ex) {
     LOG_TOPIC("b7342", WARN, Logger::AUTHENTICATION)
         << "Exception when loading users from db: " << ex.what();
