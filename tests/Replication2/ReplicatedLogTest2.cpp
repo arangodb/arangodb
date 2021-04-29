@@ -214,6 +214,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
     {
       // Expect the quorum to consist of the follower only
+      ASSERT_TRUE(f.isReady());
       auto quorum = f.get();
       EXPECT_EQ(quorum->index, LogIndex{1});
       EXPECT_EQ(quorum->term, LogTerm{1});
@@ -398,10 +399,16 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   follower_2->runAsyncAppendEntries();
   // now write concern 2 is reached, future is ready
   // and update of commitIndex on both follower
-  EXPECT_TRUE(future.isReady());
+  {
+    ASSERT_TRUE(future.isReady());
+    auto quorum = future.get();
+    EXPECT_EQ(quorum->term, LogTerm{1});
+    EXPECT_EQ(quorum->index, LogIndex{1});
+    EXPECT_EQ(quorum->quorum, (std::vector{followerId_1, followerId_2}));
+  }
+
   EXPECT_TRUE(follower_1->hasPendingAppendEntries());
   EXPECT_TRUE(follower_2->hasPendingAppendEntries());
-
   {
     // Leader has committed 1
     auto status = std::get<LeaderStatus>(leader->getStatus());

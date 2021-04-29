@@ -207,9 +207,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
                                      LogIndex currentCommitIndex, LogTerm currentTerm,
                                      futures::Try<AppendEntriesResult>&& res);
 
-    void checkCommitIndex();
+    void checkCommitIndex(std::weak_ptr<LogLeader> const& parentLog);
 
-    void updateCommitIndexLeader(LogIndex newIndex,
+    void updateCommitIndexLeader(std::weak_ptr<LogLeader> const& parentLog, LogIndex newIndex,
                                  const std::shared_ptr<QuorumData>& quorum);
 
     auto insert(LogPayload payload) -> LogIndex;

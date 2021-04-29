@@ -283,10 +283,14 @@ auto replicated_log::LogParticipant::getEntryByIndex(LogIndex idx) const
 }
 
 void replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
-    LogIndex newIndex, const std::shared_ptr<QuorumData>& quorum) {
+    std::weak_ptr<LogLeader> const& parentLog, LogIndex newIndex,
+    const std::shared_ptr<QuorumData>& quorum) {
   TRI_ASSERT(_participant._commitIndex < newIndex);
   _participant._commitIndex = newIndex;
   _lastQuorum = quorum;
+  for (auto& follower : _follower) {
+    sendAppendEntries(parentLog, follower);
+  }
   auto const end = _waitForQueue.upper_bound(_participant._commitIndex);
   for (auto it = _waitForQueue.begin(); it != end; it = _waitForQueue.erase(it)) {
     it->second.setValue(quorum);
@@ -362,7 +366,7 @@ void replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     if (response.success) {
       follower.lastAckedIndex = lastIndex;
       follower.lastAckedCommitIndex = currentCommitIndex;
-      checkCommitIndex();
+      checkCommitIndex(parentLog);
     } else {
       // TODO Optimally, we'd like this condition (lastAckedIndex > 0) to be
       //      assertable here. For that to work, we need to make sure that no
@@ -416,7 +420,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex fromI
   return std::make_shared<ReplicatedLogIterator>(from, to);
 }
 
-void replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() {
+void replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(std::weak_ptr<LogLeader> const& parentLog) {
   auto const quorum_size = _writeConcern;
 
   // TODO make this so that we can place any predicate here
@@ -449,7 +453,7 @@ void replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() {
     auto const quorum_data =
         std::make_shared<QuorumData>(commitIndex, _participant._currentTerm,
                                      std::move(quorum));
-    updateCommitIndexLeader(commitIndex, quorum_data);
+    updateCommitIndexLeader(parentLog, commitIndex, quorum_data);
   }
 }
 
