@@ -687,6 +687,23 @@ constexpr auto TRI_ERROR_REPLICATION_WRONG_CHECKSUM                             
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr auto TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = ErrorCode{1417};
 
+/// 1418: ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND
+/// "replicated log % PRIu64 " not found""
+/// Will be raised when a specific replicated log is not found
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND                    = ErrorCode{1418};
+
+/// 1419: ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER
+/// "not the log leader"
+/// Will be raised when a participant of a replicated log is ordered to do
+/// something only the leader can do
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER               = ErrorCode{1419};
+
+/// 1420: ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER
+/// "not a log follower"
+/// Will be raised when a participant of a replicated log is ordered to do
+/// something only a follower can do
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER               = ErrorCode{1420};
+
 /// 1446: ERROR_CLUSTER_NOT_FOLLOWER
 /// "not a follower"
 /// Will be raised when an operation is sent to a non-following server.

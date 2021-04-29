@@ -15,8 +15,11 @@ struct elsa<ErrorCode> {
 
 #include <frozen/unordered_map.h>
 
+// for format macro constants, e.g. PRIu64
+#include <cinttypes>
+
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 346> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -273,6 +276,12 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessage
       "wrong checksum"},
     {TRI_ERROR_REPLICATION_SHARD_NONEMPTY,  // 1417
       "shard not empty"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,  // 1418
+      "replicated log % PRIu64 \" not found\""},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,  // 1419
+      "not the log leader"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER,  // 1420
+      "not a log follower"},
     {TRI_ERROR_CLUSTER_NOT_FOLLOWER,  // 1446
       "not a follower"},
     {TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,  // 1447

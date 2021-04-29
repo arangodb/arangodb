@@ -144,6 +144,24 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
   return _guardedLeaderData.getLockedGuard();
 }
 
+auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
+  return _guardedLeaderData.doUnderLock([](auto& leaderData) {
+    return std::move(leaderData._participant._logCore);
+  });
+}
+
+auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
+    -> std::optional<LogEntry> {
+  return _guardedLeaderData.doUnderLock([&idx](auto& leaderData) -> std::optional<LogEntry> {
+    if (auto entry = leaderData._participant.getEntryByIndex(idx);
+        entry.has_value() && entry->logIndex() <= leaderData._participant._commitIndex) {
+      return entry;
+    } else {
+      return std::nullopt;
+    }
+  });
+}
+
 auto replicated_log::LogFollower::acquireMutex() -> replicated_log::LogFollower::Guard {
   return _guardedParticipant.getLockedGuard();
 }
@@ -169,12 +187,21 @@ auto replicated_log::LogFollower::getParticipantId() const noexcept -> Participa
   });
 }
 
+auto replicated_log::LogFollower::resign() && -> std::unique_ptr<LogCore> {
+  return _guardedParticipant.doUnderLock(
+      [](auto& participant) { return std::move(participant._logCore); });
+}
+
 auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus {
   return LogStatus{UnconfiguredStatus{}};
 }
 
 replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore)
     : _logCore(std::move(logCore)) {}
+
+auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::unique_ptr<LogCore>{
+  return std::move(_logCore);
+}
 
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
   return _guardedLeaderData.doUnderLock([](auto& leaderData) {
@@ -507,4 +534,23 @@ replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
   while (auto entry = iter->next()) {
     _log = _log.push_back(std::move(entry).value());
   }
+}
+
+auto replicated_log::ReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
+                                                 std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+                                                 std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+  auto logCore = std::move(*_participant).resign();
+  auto leader = std::make_shared<LogLeader>(id, std::move(logCore), term, follower, writeConcern);
+  _participant = std::static_pointer_cast<LogParticipantI>(leader);
+  return leader;
+}
+
+auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId const& id,
+                                                   LogTerm term, ParticipantId leaderId)
+    -> std::shared_ptr<LogFollower> {
+  auto logCore = std::move(*_participant).resign();
+  auto follower = std::make_shared<LogFollower>(id, std::move(logCore), term,
+                                                std::move(leaderId));
+  _participant = std::static_pointer_cast<LogParticipantI>(follower);
+  return follower;
 }

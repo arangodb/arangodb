@@ -104,15 +104,9 @@ RestStatus RestLogHandler::handlePostRequest() {
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  std::shared_ptr<ReplicatedLog> log;
-  log = _vocbase.getReplicatedLogById(logId);
-  if (log == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown log");
-    return RestStatus::DONE;
-  }
 
   if (auto& verb = suffixes[1]; verb == "insert") {
+    auto log = _vocbase.getReplicatedLogLeaderById(logId);
     auto idx = log->insert(LogPayload{body.toJson()});
 
     auto f = log->waitFor(idx).thenValue([this, idx](std::shared_ptr<QuorumData>&& quorum) {
@@ -134,6 +128,7 @@ RestStatus RestLogHandler::handlePostRequest() {
     return waitForFuture(std::move(f));
 
   } else if (verb == "insertBabies") {
+    auto log = _vocbase.getReplicatedLogLeaderById(logId);
 
     if (!body.isArray()) {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
@@ -166,6 +161,7 @@ RestStatus RestLogHandler::handlePostRequest() {
     return waitForFuture(std::move(f));
 
   } else if(verb == "becomeLeader") {
+    auto& log = _vocbase.getReplicatedLogById(logId);
 
     auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
     auto writeConcern = body.get("writeConcern").getNumericValue<std::size_t>();
@@ -178,15 +174,17 @@ RestStatus RestLogHandler::handlePostRequest() {
 
 
 
-    log->becomeLeader(term, follower, writeConcern);
+    log.becomeLeader(ServerState::instance()->getId(), term, follower, writeConcern);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
   } else if (verb == "becomeFollower") {
+    auto& log = _vocbase.getReplicatedLogById(logId);
     auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
     auto leaderId = body.get("leader").copyString();
-    log->becomeFollower(term, leaderId);
+    log.becomeFollower(ServerState::instance()->getId(), term, leaderId);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
 
   } else if (verb == "appendEntries") {
+    auto log = _vocbase.getReplicatedLogFollowerById(logId);
     auto request = AppendEntriesRequest::fromVelocyPack(body);
     auto f = log->appendEntries(std::move(request)).thenValue([this](AppendEntriesResult&& res) {
       VPackBuilder builder;
@@ -213,16 +211,11 @@ RestStatus RestLogHandler::handleGetRequest() {
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  std::shared_ptr<ReplicatedLog> log = _vocbase.getReplicatedLogById(logId);
-  if (!log) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown log");
-    return RestStatus::DONE;
-  }
 
   if (suffixes.size() == 1) {
+    replicated_log::ReplicatedLog& log = _vocbase.getReplicatedLogById(logId);
     VPackBuilder buffer;
-    std::visit([&](auto const& status) { status.toVelocyPack(buffer); }, log->getStatus());
+    std::visit([&](auto const& status) { status.toVelocyPack(buffer); }, log._participant->getStatus());
     generateOk(rest::ResponseCode::OK, buffer.slice());
     return RestStatus::DONE;
   }
@@ -237,23 +230,17 @@ RestStatus RestLogHandler::handleGetRequest() {
     }
 
     // dump log
-    auto [idx, snapshot] = log->createSnapshot();
     VPackBuilder result;
 
     {
       VPackObjectBuilder ob(&result);
       result.add("logId", VPackValue(logId.id()));
-      result.add("index", VPackValue(idx.value));
-      {
-        VPackObjectBuilder state(&result, "state");
-        for (auto const& kv : snapshot->_state) {
-          result.add(kv.first, kv.second.slice());
-        }
-      }
+      // result.add("index", VPackValue(idx.value));
     }
 
     generateOk(rest::ResponseCode::OK, result.slice());
   } else if (verb == "readEntry") {
+    auto log = _vocbase.getReplicatedLogLeaderById(logId);
     if (suffixes.size() != 3) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expect GET /_api/log/<log-id>/readEntry/<id>");
@@ -261,7 +248,7 @@ RestStatus RestLogHandler::handleGetRequest() {
     }
     LogIndex logIdx{basics::StringUtils::uint64(suffixes[2])};
 
-    auto entry = log->getEntryByIndex(logIdx);
+    auto entry = log->readReplicatedEntryByIndex(logIdx);
     if (entry) {
       VPackBuilder result;
       {

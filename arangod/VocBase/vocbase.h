@@ -57,7 +57,10 @@ class QueryList;
 namespace replication2 {
 struct LogManager;
 namespace replicated_log {
+class LogLeader;
+class LogFollower;
 struct LogParticipantI;
+struct ReplicatedLog;
 }
 }
 namespace velocypack {
@@ -168,7 +171,11 @@ struct TRI_vocbase_t {
  public:
   std::shared_ptr<arangodb::replication2::LogManager> _logManager;
   [[nodiscard]] auto getReplicatedLogById(arangodb::replication2::LogId id) const
-      -> std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI>;
+      -> arangodb::replication2::replicated_log::ReplicatedLog&;
+  [[nodiscard]] auto getReplicatedLogLeaderById(arangodb::replication2::LogId id) const
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
+  [[nodiscard]] auto getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
+  -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
   auto createReplicatedLog(arangodb::replication2::LogId id)
       -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI>>;
   auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;

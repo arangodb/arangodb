@@ -371,6 +371,8 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE):
     case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):
     case static_cast<int>(TRI_ERROR_FORBIDDEN):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER):
       return ResponseCode::FORBIDDEN;
 
     case static_cast<int>(TRI_ERROR_HTTP_NOT_FOUND):
@@ -391,6 +393,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST):
     case static_cast<int>(TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION):
     case static_cast<int>(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND):
       return ResponseCode::NOT_FOUND;
 
     case static_cast<int>(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION):

@@ -112,6 +112,9 @@ struct elsa<ErrorCode> {{
 
 #include <frozen/unordered_map.h>
 
+// for format macro constants, e.g. PRId64
+#include <cinttypes>
+
 namespace arangodb::error {{
 constexpr static frozen::unordered_map<ErrorCode, const char*, {numErrorMessages}> ErrorMessages = {{
 {initializerList}

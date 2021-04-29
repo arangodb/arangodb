@@ -169,6 +169,9 @@ ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the re
 ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."
 ERROR_REPLICATION_WRONG_CHECKSUM,1416,"wrong checksum","Will be raised when a new born follower submits a wrong checksum"
 ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a shard is not empty and the follower tries a shortcut"
+ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,1418,"replicated log %" PRIu64 " not found","Will be raised when a specific replicated log is not found"
+ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,1419,"not the log leader","Will be raised when a participant of a replicated log is ordered to do something only the leader can do"
+ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER,1420,"not a log follower","Will be raised when a participant of a replicated log is ordered to do something only a follower can do"
 
 ################################################################################
 ## ArangoDB cluster errors

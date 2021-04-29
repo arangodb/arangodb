@@ -120,14 +120,14 @@ struct alignas(64) LogCore {
 struct LogParticipantI {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   virtual ~LogParticipantI() = default;
-  // TODO virtual resign()&& = 0;
+  virtual auto resign() && -> std::unique_ptr<LogCore> = 0;
   // TODO waitFor() ?
 };
 
 struct LogParticipant {
  public:
-  explicit LogParticipant(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term)
-      : _id(std::move(id)), _currentTerm(term), _logCore(std::move(logCore)) {}
+  explicit LogParticipant(ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term)
+      : _id(id), _currentTerm(term), _logCore(std::move(logCore)) {}
 
   [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 
@@ -147,10 +147,10 @@ struct LogParticipant {
 class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogParticipantI {
  public:
   ~LogLeader() override = default;
-  LogLeader(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+  LogLeader(ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term,
             std::vector<std::shared_ptr<OldLogFollower>> const& follower,
             std::size_t writeConcern)
-      : _guardedLeaderData(std::move(id), std::move(logCore), term, follower, writeConcern) {}
+      : _guardedLeaderData(id, std::move(logCore), term, follower, writeConcern) {}
 
   auto insert(LogPayload) -> LogIndex;
 
@@ -158,9 +158,13 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   [[nodiscard]] auto getReplicatedLogSnapshot() const -> immer::flex_vector<LogEntry>;
 
+  [[nodiscard]] auto readReplicatedEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>;
+
   auto runAsyncStep() -> void;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
+
+  auto resign() && -> std::unique_ptr<LogCore> override;
 
  private:
   using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
@@ -181,12 +185,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   struct alignas(128) GuardedLeaderData {
     ~GuardedLeaderData() = default;
-    GuardedLeaderData(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    GuardedLeaderData(ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term,
                       std::vector<std::shared_ptr<OldLogFollower>> const& follower,
                       std::size_t writeConcern)
         : _follower(instantiateFollowers(follower, logCore->getLastIndex())),
           _writeConcern(writeConcern),
-          _participant(std::move(id), std::move(logCore), term) {}
+          _participant(id, std::move(logCore), term) {}
 
     GuardedLeaderData() = delete;
     GuardedLeaderData(GuardedLeaderData const&) = delete;
@@ -249,15 +253,16 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 class LogFollower : public LogParticipantI {
  public:
   ~LogFollower() override = default;
-  LogFollower(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-              ParticipantId leaderId)
+  LogFollower(ParticipantId const& id, std::unique_ptr<LogCore> logCore,
+              LogTerm term, ParticipantId leaderId)
       : _leaderId(std::move(leaderId)),
-        _guardedParticipant(std::move(id), std::move(logCore), term) {}
+        _guardedParticipant(id, std::move(logCore), term) {}
 
   // follower only
   auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult>;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
+  auto resign() && -> std::unique_ptr<LogCore> override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId;
 
@@ -279,8 +284,26 @@ struct LogUnconfiguredParticipant
   explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore);
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
-
+  auto resign() && -> std::unique_ptr<LogCore> override;
   std::unique_ptr<LogCore> _logCore;
+};
+
+struct alignas(16) ReplicatedLog {
+  ReplicatedLog() = delete;
+  ReplicatedLog(ReplicatedLog const&) = delete;
+  ReplicatedLog(ReplicatedLog&&) = delete;
+  auto operator=(ReplicatedLog const&) -> ReplicatedLog& = delete;
+  auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
+  explicit ReplicatedLog(std::shared_ptr<LogParticipantI> participant)
+      : _participant(std::move(participant)) {}
+
+  auto becomeLeader(ParticipantId const& id, LogTerm term,
+                    std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+                    std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
+  auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
+      -> std::shared_ptr<LogFollower>;
+
+  std::shared_ptr<LogParticipantI> _participant;
 };
 
 }  // namespace replicated_log
