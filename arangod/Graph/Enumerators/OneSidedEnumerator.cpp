@@ -103,10 +103,13 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   _provider.expand(step, previous, [&](Step n) -> void {
     ValidationResult res = _validator.validatePath(n);
 
-    if ((_currentDepth >= _options.getMinDepth()) && !res.isPruned() && !res.isFiltered()) {
+    if ((_currentDepth >= _options.getMinDepth()) && !res.isFiltered()) {
       // Include it in results.
       // Add the step to our shell
       _results.push_back(std::make_pair(step, n));
+    }
+    if (!res.isPruned()) {
+      _shell.emplace(std::move(n));
     }
   });
 }
@@ -165,7 +168,8 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       // and then iterate again to return the path
       // we should be able to return the path in the first go.
       _resultPath.clear();
-      _interior.buildPath(leftVertex, _resultPath);
+      //_interior.buildPath(leftVertex, _resultPath);
+      _interior.buildPath(rightVertex, _resultPath); // TODO: check
       TRI_ASSERT(!_resultPath.isEmpty());
       _results.pop_back();
       _resultPath.toVelocyPack(result);
@@ -248,9 +252,14 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   if (!_resultsFetched && !_results.empty()) {
     std::vector<Step*> looseEnds{};
 
-    for (auto& [step, unused] : _results) {
-      if (!step.isProcessable()) {
-        looseEnds.emplace_back(&step);
+    for (auto& [from, to] : _results) {
+      // TODO: Check ifs (discuss direction<->forward/backward)
+      TRI_ASSERT(from.isProcessable());
+      if (!from.isProcessable()) {
+        looseEnds.emplace_back(&from);
+      }
+      if (!to.isProcessable()) {
+        looseEnds.emplace_back(&to);
       }
     }
 
