@@ -736,6 +736,8 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(Context& ctx,
       }
     });
 
+    // TODO - we should also consider the limit here, but unfortunately the
+    // softLimit is currently also used for the batchSize
     if (std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
         _exeNode->isAsyncPrefetchEnabled()) {
       if (_prefetchTask == nullptr) {
@@ -744,6 +746,9 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(Context& ctx,
       TRI_ASSERT(!_prefetchTask->result);
       _prefetchTask->state.store(PrefetchTask::State::Pending);
 
+      // TODO - we should avoid flooding the queue with too many tasks as that
+      // can significantly delay processing of user REST requests.
+            
       // we can safely ignore the result here, because we will try to
       // claim the task ourselves anyway.
       std::ignore = SchedulerFeature::SCHEDULER->queue(
@@ -752,10 +757,12 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(Context& ctx,
             if (!task->tryClaim()) {
               return;
             }
-            // task is a copy of the PrefetchTask shared_ptr, and we will only attempt to execute the task on the
-            // execution block if we successfully claimed the task. i.e., it does not matter if this task lingers
-            // around in the scheduler queue even after the execution block has been destroyed, because in this case
-            // we will not be able to claim the task and simply return early without accessing the block.
+            // task is a copy of the PrefetchTask shared_ptr, and we will only
+            // attempt to execute the task if we successfully claimed the task.
+            // i.e., it does not matter if this task lingers around in the
+            // scheduler queue even after the execution block has been destroyed,
+            // because in this case we will not be able to claim the task and
+            // simply return early without accessing the block.
             task->execute(*block, stack);
           });
     }
