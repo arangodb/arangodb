@@ -163,6 +163,12 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   });
 }
 
+auto replicated_log::LogFollower::getParticipantId() const noexcept -> ParticipantId {
+  return _guardedParticipant.doUnderLock([](auto const& participant) -> ParticipantId const& {
+    return participant._id;
+  });
+}
+
 auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus {
   return LogStatus{UnconfiguredStatus{}};
 }

@@ -119,7 +119,7 @@ struct alignas(64) LogCore {
 
 struct LogParticipantI {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
-  virtual ~LogParticipantI() = 0;
+  virtual ~LogParticipantI() = default;
   // TODO virtual resign()&& = 0;
   // TODO waitFor() ?
 };
@@ -257,6 +257,8 @@ class LogFollower : public LogParticipantI {
   auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult>;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
+
+  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId;
 
  private:
   using Guard = MutexGuard<LogParticipant, std::unique_lock<std::mutex>>;

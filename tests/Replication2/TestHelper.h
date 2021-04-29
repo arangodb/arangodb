@@ -1,4 +1,4 @@
-
+#if 0
 #ifndef ARANGODB3_TESTHELPER_H
 #define ARANGODB3_TESTHELPER_H
 
@@ -129,3 +129,4 @@ struct LogTestBase : ::testing::Test {
 
 
 #endif  // ARANGODB3_TESTHELPER_H
+#endif

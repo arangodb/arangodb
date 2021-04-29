@@ -1,3 +1,4 @@
+#if 0
 #include "TestHelper.h"
 
 using namespace arangodb::replication2;
@@ -23,6 +24,7 @@ auto DelayedFollowerLog::appendEntries(AppendEntriesRequest req)
     if (!result.has_value()) {
       return futures::Future<AppendEntriesResult>{AppendEntriesResult{false}};
     }
-    return ReplicatedLog::appendEntries(std::move(result).value());
+    return ReplicatedLog::appendEntries(std::forward<decltype(result)>(result).value());
   });
 }
+#endif

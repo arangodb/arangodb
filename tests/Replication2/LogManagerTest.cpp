@@ -26,7 +26,7 @@
 #include <Replication2/ReplicatedLog.h>
 
 #include <gtest/gtest.h>
-
+#if 0
 using namespace arangodb::replication2;
 
 struct LogManagerTest : LogTestBase {};
@@ -57,3 +57,4 @@ TEST_F(LogManagerTest, simple_test) {
   entry = iter->next();
   ASSERT_FALSE(entry.has_value());
 }
+#endif

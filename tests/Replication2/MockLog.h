@@ -43,6 +43,9 @@ struct MockLog : replication2::PersistedLog {
   auto removeBack(replication2::LogIndex start) -> Result override;
   auto drop() -> Result override;
 
+  void setEntry(replication2::LogIndex idx, replication2::LogTerm term,
+                replication2::LogPayload payload);
+
   [[nodiscard]] storeType getStorage() const { return _storage; }
  private:
   using iteratorType = storeType::iterator;

@@ -94,6 +94,13 @@ auto arangodb::MockLog::drop() -> arangodb::Result {
   return Result();
 }
 
+void MockLog::setEntry(replication2::LogIndex idx, replication2::LogTerm term,
+                       replication2::LogPayload payload) {
+  _storage.emplace(std::piecewise_construct, std::forward_as_tuple(idx),
+                   std::forward_as_tuple(term, idx, std::move(payload)));
+}
+
 MockLog::MockLog(replication2::LogId id) : PersistedLog(id) {}
+
 MockLog::MockLog(replication2::LogId id, MockLog::storeType storage)
     : PersistedLog(id), _storage(std::move(storage)) {}

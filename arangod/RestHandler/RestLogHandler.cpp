@@ -20,20 +20,22 @@ using namespace arangodb::replication2;
 
 RestStatus RestLogHandler::execute() {
   switch (_request->requestType()) {
-    case rest::RequestType::GET:
+    /*
+case rest::RequestType::GET:
       return handleGetRequest();
     case rest::RequestType::POST:
       return handlePostRequest();
       break;
     case rest::RequestType::DELETE_REQ:
       return handleDeleteRequest();
+      */
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
   return RestStatus::DONE;
 }
 
-
+#if 0
 struct FakeLogFollower : OldLogFollower {
   explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
                            std::string database, LogId logId)
@@ -289,9 +291,6 @@ RestStatus RestLogHandler::handleGetRequest() {
   return RestStatus::DONE;
 }
 
-RestLogHandler::RestLogHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* req, GeneralResponse* resp)
-    : RestVocbaseBaseHandler(server, req, resp) {}
 
 RestStatus RestLogHandler::handleDeleteRequest() {
 
@@ -313,5 +312,10 @@ RestStatus RestLogHandler::handleDeleteRequest() {
 
   return RestStatus::DONE;
 }
+#endif
 
+
+RestLogHandler::RestLogHandler(application_features::ApplicationServer& server,
+                               GeneralRequest* req, GeneralResponse* resp)
+    : RestVocbaseBaseHandler(server, req, resp) {}
 RestLogHandler::~RestLogHandler() = default;

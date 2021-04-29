@@ -29,7 +29,7 @@
 #include <functional>
 
 #include <gtest/gtest.h>
-
+#if 0
 using namespace arangodb;
 using namespace arangodb::replication2;
 
@@ -790,3 +790,4 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   EXPECT_LE(LogIndex{8000}, stats.commitIndex);
   EXPECT_LE(stats.commitIndex, stats.spearHead);
 }
+#endif
