@@ -1592,16 +1592,17 @@ struct VocBaseLogManager : arangodb::replication2::LogManager {
   VocBaseLogManager(arangodb::application_features::ApplicationServer& server)
       : LogManager(std::make_shared<SchedulerExecutor>(server)) {}
 
-  auto getPersistedLogById(arangodb::replication2::LogId id)
-      -> std::shared_ptr<arangodb::replication2::PersistedLog> override {
-    if (auto iter = _logs.find(id); iter != _logs.end()) {
-      return iter->second->getPersistedLog();
-    }
+  // auto getPersistedLogById(arangodb::replication2::LogId id)
+  //     -> std::shared_ptr<arangodb::replication2::PersistedLog> override {
+  //   if (auto iter = _logs.find(id); iter != _logs.end()) {
+  //     return iter->second->getPersistedLog();
+  //   }
+  //
+  //   return nullptr;
+  // }
 
-    return nullptr;
-  }
-
-  auto getReplicatedLogById(arangodb::replication2::LogId id) const -> std::shared_ptr<arangodb::replication2::ReplicatedLog> {
+  auto getReplicatedLogById(arangodb::replication2::LogId id) const
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI> {
     if (auto iter = _logs.find(id); iter != _logs.end()) {
       return iter->second;
     }
@@ -1609,7 +1610,7 @@ struct VocBaseLogManager : arangodb::replication2::LogManager {
     return nullptr;
   }
 
-  std::unordered_map<arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::ReplicatedLog>> _logs;
+  std::unordered_map<arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI>> _logs;
 };
 
 TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
@@ -1875,7 +1876,7 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor, bool lock
 }
 
 auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
-    -> std::shared_ptr<arangodb::replication2::ReplicatedLog> {
+    -> std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI> {
   auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
   return manager->getReplicatedLogById(id);
 }
@@ -1904,21 +1905,19 @@ struct FakePersistedLog : PersistedLog {
   auto drop() -> Result override { return Result(); }
 };
 
-auto TRI_vocbase_t::createReplicatedLog(arangodb::replication2::LogId id)
-    -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::ReplicatedLog>> {
+auto TRI_vocbase_t::createReplicatedLog(LogId id)
+    -> arangodb::ResultT<std::shared_ptr<replicated_log::LogParticipantI>> {
   auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
 
   if (auto iter = manager->_logs.find(id); iter != manager->_logs.end()) {
     return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
   }
 
-  auto participantId = ServerState::instance()->getId();
-  auto state = std::make_shared<arangodb::replication2::InMemoryState>();
   auto persistedLog = std::make_shared<FakePersistedLog>(id);
-
-  auto log = std::make_shared<ReplicatedLog>(participantId, state, persistedLog);
+  auto logCore = std::make_unique<replicated_log::LogCore>(std::move(persistedLog));
+  auto log = std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(logCore));
   manager->_logs[id] = log;
-  return log;
+  return std::static_pointer_cast<replicated_log::LogParticipantI>(log);
 }
 
 auto TRI_vocbase_t::dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result {

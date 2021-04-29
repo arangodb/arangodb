@@ -81,7 +81,9 @@ auto LogManager::appendEntries(AppendEntriesRequest request, LogId logId)
 }
 
 void LogManager::workerEntryPoint() {
-
+  TRI_ASSERT(false);
+  // getPersistedLogById was removed, this doesn't work anymore
+#if 0
   while(true) {
     RequestVector request;
     {
@@ -121,4 +123,5 @@ void LogManager::workerEntryPoint() {
       });
     }
   }
+#endif
 }

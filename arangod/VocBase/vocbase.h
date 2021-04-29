@@ -55,8 +55,10 @@ namespace aql {
 class QueryList;
 }
 namespace replication2 {
-class ReplicatedLog;
 struct LogManager;
+namespace replicated_log {
+struct LogParticipantI;
+}
 }
 namespace velocypack {
 class Builder;
@@ -166,11 +168,10 @@ struct TRI_vocbase_t {
  public:
   std::shared_ptr<arangodb::replication2::LogManager> _logManager;
   [[nodiscard]] auto getReplicatedLogById(arangodb::replication2::LogId id) const
-      -> std::shared_ptr<arangodb::replication2::ReplicatedLog>;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI>;
   auto createReplicatedLog(arangodb::replication2::LogId id)
-  -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::ReplicatedLog>>;
-  auto dropReplicatedLog(arangodb::replication2::LogId id)
-  -> arangodb::Result;
+      -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI>>;
+  auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;
@@ -305,7 +306,7 @@ struct TRI_vocbase_t {
       noexcept;
 
   // TODO not yet implemented
-  std::shared_ptr<arangodb::replication2::ReplicatedLog> lookupLog(
+  std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI> lookupLog(
       arangodb::replication2::LogId id) const noexcept;
 
   /// @brief looks up a view by identifier

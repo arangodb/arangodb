@@ -269,7 +269,9 @@ class LogFollower : public LogParticipantI {
   auto acquireMutex() const -> ConstGuard;
 };
 
-struct LogUnconfiguredParticipant : public LogParticipantI {
+struct LogUnconfiguredParticipant
+    : std::enable_shared_from_this<LogUnconfiguredParticipant>,
+      LogParticipantI {
   ~LogUnconfiguredParticipant() override = default;
   explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore);
 

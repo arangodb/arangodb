@@ -97,7 +97,7 @@ struct LogManager : std::enable_shared_from_this<LogManager> {
 
  protected:
   virtual void workerEntryPoint();
-  virtual auto getPersistedLogById(LogId id) -> std::shared_ptr<PersistedLog> = 0;
+  // virtual auto getPersistedLogById(LogId id) -> std::shared_ptr<PersistedLog> = 0;
  private:
   using ResultPromise = arangodb::futures::Promise<AppendEntriesResult>;
 
