@@ -76,7 +76,7 @@ struct LogWorkerExecutor {
 
 struct LogManager;
 
-struct LogManagerProxy : LogFollower {
+struct LogManagerProxy : OldLogFollower {
   LogManagerProxy(const LogId& logId, ParticipantId id, std::shared_ptr<LogManager> manager);
   [[nodiscard]] auto participantId() const noexcept -> ParticipantId override;
   auto appendEntries(AppendEntriesRequest request)

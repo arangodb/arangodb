@@ -24,6 +24,7 @@
 #define ARANGOD_REPLICATION2_REPLICATEDLOG_H
 
 #include <Basics/Guarded.h>
+#include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 #include <velocypack/Builder.h>
 #include <velocypack/SharedSlice.h>
@@ -77,25 +78,8 @@ struct AppendEntriesRequest {
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
 };
 
-/**
- * @brief State stub, later to be replaced by a RocksDB state.
- * Currently unused.
- */
-
-class InMemoryState {
- public:
-  using state_container = immer::map<std::string, arangodb::velocypack::SharedSlice>;
-
-  auto createSnapshot() -> std::shared_ptr<InMemoryState const>;
-
-  state_container _state;
-
-  explicit InMemoryState(state_container state);
-  InMemoryState() = default;
-};
-
-struct LogFollower {
-  virtual ~LogFollower() = default;
+struct OldLogFollower {
+  virtual ~OldLogFollower() = default;
 
   [[nodiscard]] virtual auto participantId() const noexcept -> ParticipantId = 0;
   virtual auto appendEntries(AppendEntriesRequest)
@@ -110,158 +94,190 @@ struct QuorumData {
   std::vector<ParticipantId> quorum;
 };
 
-/**
- * @brief A simple replicated log implementation, mainly for prototyping
- * replication 2.0.
- */
-class ReplicatedLog : public LogFollower,
-                      public std::enable_shared_from_this<ReplicatedLog> {
+namespace replicated_log {
+
+struct alignas(64) LogCore {
+  explicit LogCore(std::shared_ptr<PersistedLog> persistedLog);
+
+  // There must only be one LogCore per physical log
+  LogCore() = delete;
+  LogCore(LogCore const&) = delete;
+  LogCore(LogCore&&) = delete;
+  auto operator=(LogCore const&) -> LogCore& = delete;
+  auto operator=(LogCore&&) -> LogCore& = delete;
+
+  [[nodiscard]] auto getLastIndex() const -> LogIndex {
+    return LogIndex{_log.size()};
+  }
+  [[nodiscard]] auto getNextIndex() const -> LogIndex {
+    return LogIndex{_log.size() + 1};
+  }
+
+  std::shared_ptr<PersistedLog> const _persistedLog;
+  immer::flex_vector<LogEntry> _log{};
+};
+
+struct LogParticipantI {
+  [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
+  virtual ~LogParticipantI() = 0;
+};
+
+struct LogParticipant {
  public:
-  ReplicatedLog() = delete;
-  explicit ReplicatedLog(ParticipantId participantId, std::shared_ptr<InMemoryState> state,
-                         std::shared_ptr<PersistedLog> persistedLog);
-
-  // follower only
-  auto appendEntries(AppendEntriesRequest)
-      -> arangodb::futures::Future<AppendEntriesResult> override;
-
-  // leader only
-  auto insert(LogPayload) -> LogIndex;
-
-  // leader only
-  [[nodiscard]] auto createSnapshot() const
-      -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
-
-  // leader only
-  auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
-
-  // Set to follower, and (strictly increase) term to the given value
-  auto becomeFollower(LogTerm, ParticipantId leaderId) -> void;
-
-  // Set to leader, and (strictly increase) term to the given value
-  auto becomeLeader(LogTerm term, std::vector<std::shared_ptr<LogFollower>> const& follower,
-                    std::size_t writeConcern) -> void;
+  explicit LogParticipant(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term)
+      : _id(std::move(id)), _currentTerm(term), _logCore(std::move(logCore)) {}
 
   [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
-  [[nodiscard]] auto getStatus() const -> LogStatus;
 
-  auto runAsyncStep() -> void;
+  // TODO virtual resign()&& = 0;
+  // TODO waitFor() ?
 
-  [[nodiscard]] auto participantId() const noexcept -> ParticipantId override;
+  [[nodiscard]] auto participantId() const noexcept -> ParticipantId;
 
-  // TODO Do we want another read function that only allows to read
-  //      committed entries?
   [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
-
-  [[nodiscard]] auto getReplicatedLogSnapshot() const -> immer::flex_vector<LogEntry>;
 
   [[nodiscard]] auto getPersistedLog() const noexcept -> std::shared_ptr<PersistedLog>;
 
- private:
-  struct GuardedReplicatedLog;
-  using Guard = MutexGuard<GuardedReplicatedLog, std::unique_lock<std::mutex>>;
-  using ConstGuard = MutexGuard<GuardedReplicatedLog const, std::unique_lock<std::mutex>>;
+  // private:
+  ParticipantId _id{};
+  LogTerm const _currentTerm = LogTerm{};
+  std::unique_ptr<LogCore> _logCore;
+  LogIndex _commitIndex{0};
+};
 
-  struct Follower {
-    explicit Follower(std::shared_ptr<LogFollower> impl, LogIndex lastLogIndex)
+class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogParticipantI {
+ public:
+  ~LogLeader() override = default;
+  LogLeader(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+            std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+            std::size_t writeConcern)
+      : _guardedLeaderData(std::move(id), std::move(logCore), term, follower, writeConcern) {}
+
+  auto insert(LogPayload) -> LogIndex;
+
+  auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
+
+  [[nodiscard]] auto getReplicatedLogSnapshot() const -> immer::flex_vector<LogEntry>;
+
+  auto runAsyncStep() -> void;
+
+  [[nodiscard]] auto getStatus() const -> LogStatus override;
+
+ private:
+  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
+  struct GuardedLeaderData;
+  using Guard = MutexGuard<GuardedLeaderData, std::unique_lock<std::mutex>>;
+  using ConstGuard = MutexGuard<GuardedLeaderData const, std::unique_lock<std::mutex>>;
+
+  struct alignas(64) Follower {
+    explicit Follower(std::shared_ptr<OldLogFollower> impl, LogIndex lastLogIndex)
         : _impl(std::move(impl)), lastAckedIndex(lastLogIndex) {}
 
-    std::shared_ptr<LogFollower> _impl;
+    std::shared_ptr<OldLogFollower> _impl;
     LogIndex lastAckedIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
-    bool requestInFlight = false;
     std::size_t numErrorsSinceLastAnswer = 0;
+    bool requestInFlight = false;
   };
 
-  struct Unconfigured {};
-  struct LeaderConfig {
-    std::vector<Follower> follower{};
-    std::size_t writeConcern{};
-  };
-  struct FollowerConfig {
-    ParticipantId leaderId{};
-  };
+  struct alignas(128) GuardedLeaderData {
+    ~GuardedLeaderData() = default;
+    GuardedLeaderData(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+                      std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+                      std::size_t writeConcern)
+        : _follower(instantiateFollowers(follower, logCore->getLastIndex())),
+          _writeConcern(writeConcern),
+          _participant(std::move(id), std::move(logCore), term) {}
 
-  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
+    GuardedLeaderData() = delete;
+    GuardedLeaderData(GuardedLeaderData const&) = delete;
+    GuardedLeaderData(GuardedLeaderData&&) = delete;
+    auto operator=(GuardedLeaderData const&) -> GuardedLeaderData& = delete;
+    auto operator=(GuardedLeaderData&&) -> GuardedLeaderData& = delete;
 
-  struct alignas(128) GuardedReplicatedLog {
-    GuardedReplicatedLog() = delete;
-    GuardedReplicatedLog(GuardedReplicatedLog const&) = delete;
-    GuardedReplicatedLog(GuardedReplicatedLog&&) = delete;
-    auto operator=(GuardedReplicatedLog const&) -> GuardedReplicatedLog& = delete;
-    auto operator=(GuardedReplicatedLog&&) -> GuardedReplicatedLog& = delete;
-    ~GuardedReplicatedLog() = default;
-    GuardedReplicatedLog(ParticipantId id, std::shared_ptr<InMemoryState> state,
-                         std::shared_ptr<PersistedLog> persistedLog, LogIndex logIndex)
-        : _id(std::move(id)),
-          _persistedLog(std::move(persistedLog)),
-          _state(std::move(state)),
-          _commitIndex{logIndex} {}
+    auto runAsyncStep(std::weak_ptr<LogLeader> const& leader) -> void;
 
-    // follower only
-    auto appendEntries(AppendEntriesRequest)
-        -> arangodb::futures::Future<AppendEntriesResult>;
+    void sendAppendEntries(std::weak_ptr<LogLeader> const& parentLog, Follower& follower);
 
-    // leader only
-    auto insert(LogPayload) -> LogIndex;
-
-    // leader only
-    [[nodiscard]] auto createSnapshot() const
-        -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
-
-    // leader only
-    [[nodiscard]] auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
-
-    // Set to follower, and (strictly increase) term to the given value
-    auto becomeFollower(LogTerm, ParticipantId leaderId) -> void;
-
-    // Set to leader, and (strictly increase) term to the given value
-    auto becomeLeader(LogTerm term, std::vector<std::shared_ptr<LogFollower>> const& follower,
-                      std::size_t writeConcern) -> void;
-
-    auto handleAppendEntriesResponse(std::weak_ptr<ReplicatedLog> const& parentLog,
+    void handleAppendEntriesResponse(std::weak_ptr<LogLeader> const& parentLog,
                                      Follower& follower, LogIndex lastIndex,
                                      LogIndex currentCommitIndex, LogTerm currentTerm,
-                                     futures::Try<AppendEntriesResult>&& res) -> void;
-
-    [[nodiscard]] auto getStatistics() const -> LogStatistics;
-
-    auto runAsyncStep(std::weak_ptr<ReplicatedLog> const& parentLog) -> void;
-
-    [[nodiscard]] auto participantId() const noexcept -> ParticipantId;
-    [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
-
-    [[nodiscard]] auto nextIndex() const -> LogIndex;
-    [[nodiscard]] auto getLastIndex() const -> LogIndex;
-    void assertLeader() const;
-    void assertFollower() const;
+                                     futures::Try<AppendEntriesResult>&& res);
 
     void checkCommitIndex();
+
     void updateCommitIndexLeader(LogIndex newIndex,
                                  const std::shared_ptr<QuorumData>& quorum);
 
-    [[nodiscard]] auto getLogIterator(LogIndex from) const -> std::shared_ptr<LogIterator>;
+    auto insert(LogPayload payload) -> LogIndex;
 
-    void sendAppendEntries(std::weak_ptr<ReplicatedLog> const& parentLog, Follower&);
+    auto waitFor(LogIndex index) -> futures::Future<std::shared_ptr<QuorumData>>;
 
-    std::variant<Unconfigured, LeaderConfig, FollowerConfig> _role;
-    ParticipantId _id{};
-    std::shared_ptr<PersistedLog> _persistedLog;
-    LogTerm _currentTerm = LogTerm{};
-    immer::flex_vector<LogEntry> _log{};
-    std::shared_ptr<InMemoryState> _state;
-    LogIndex _commitIndex{0};
-    std::shared_ptr<QuorumData> _lastQuorum;
-    std::multimap<LogIndex, WaitForPromise> _waitForQueue;
+    [[nodiscard]] auto getLogIterator(LogIndex fromIdx) const
+        -> std::shared_ptr<LogIterator>;
+
+    std::vector<Follower> _follower;
+    // TODO as writeConcern is really const, it doesn't have to be under the mutex
+    std::size_t const _writeConcern{};
+
+    std::multimap<LogIndex, WaitForPromise> _waitForQueue{};
+    std::shared_ptr<QuorumData> _lastQuorum{};
+
+    LogParticipant _participant;
+
+   private:
+    static auto instantiateFollowers(std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+                                     LogIndex lastIndex) -> std::vector<Follower> {
+      std::vector<Follower> follower_vec;
+      follower_vec.reserve(follower.size());
+      std::transform(follower.cbegin(), follower.cend(), std::back_inserter(follower_vec),
+                     [&](std::shared_ptr<OldLogFollower> const& impl) -> Follower {
+                       return Follower{impl, lastIndex};
+                     });
+      return follower_vec;
+    }
   };
 
   // make this thread safe in the most simple way possible, wrap everything in
   // a single mutex.
-  Guarded<GuardedReplicatedLog> _joermungandr;
+  Guarded<GuardedLeaderData> _guardedLeaderData;
 
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
 };
+
+class LogFollower : public LogParticipantI {
+ public:
+  ~LogFollower() override = default;
+  LogFollower(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+              ParticipantId leaderId)
+      : _leaderId(std::move(leaderId)),
+        _guardedParticipant(std::move(id), std::move(logCore), term) {}
+
+  // follower only
+  auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult>;
+
+  [[nodiscard]] auto getStatus() const -> LogStatus override;
+
+ private:
+  using Guard = MutexGuard<LogParticipant, std::unique_lock<std::mutex>>;
+  using ConstGuard = MutexGuard<LogParticipant const, std::unique_lock<std::mutex>>;
+
+  ParticipantId const _leaderId{};
+  Guarded<LogParticipant> _guardedParticipant;
+
+  auto acquireMutex() -> Guard;
+  auto acquireMutex() const -> ConstGuard;
+};
+
+struct LogUnconfiguredParticipant : public LogParticipantI {
+  ~LogUnconfiguredParticipant() override = default;
+  [[nodiscard]] auto getStatus() const -> LogStatus override;
+
+  LogParticipant _participant;
+};
+
+}  // namespace replicated_log
 
 }  // namespace arangodb::replication2
 

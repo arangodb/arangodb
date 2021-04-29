@@ -34,7 +34,7 @@ RestStatus RestLogHandler::execute() {
 }
 
 
-struct FakeLogFollower : LogFollower {
+struct FakeLogFollower : OldLogFollower {
   explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
                            std::string database, LogId logId)
       :  pool(pool), id(std::move(id)), database(database), logId(logId) {}
@@ -168,7 +168,7 @@ RestStatus RestLogHandler::handlePostRequest() {
     auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
     auto writeConcern = body.get("writeConcern").getNumericValue<std::size_t>();
 
-    std::vector<std::shared_ptr<LogFollower>> follower;
+    std::vector<std::shared_ptr<OldLogFollower>> follower;
     for (auto const& part : VPackArrayIterator(body.get("follower"))) {
       auto partId = part.copyString();
       follower.emplace_back(std::make_shared<FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
