@@ -344,7 +344,104 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
 
   auto index = leader->insert(LogPayload{"first entry"});
   auto future = leader->waitFor(index);
+  EXPECT_FALSE(future.isReady());
 
+  {
+    // Leader has spearhead at 1 but not committed
+    auto status = std::get<LeaderStatus>(leader->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(status.local.spearHead, LogIndex{1});
+  }
+  {
+    // Follower has nothing
+    auto status = std::get<FollowerStatus>(follower_1->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(status.local.spearHead, LogIndex{0});
+  }
+  {
+    // Follower has nothing
+    auto status = std::get<FollowerStatus>(follower_2->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(status.local.spearHead, LogIndex{0});
+  }
 
+  // sendAppendEntries
+  leader->runAsyncStep();
+  EXPECT_TRUE(follower_1->hasPendingAppendEntries());
+  EXPECT_TRUE(follower_2->hasPendingAppendEntries());
 
+  // follower 1 answers AppendEntries request
+  follower_1->runAsyncAppendEntries();
+  // We do not expect any requests pending
+  EXPECT_FALSE(follower_1->hasPendingAppendEntries());
+  EXPECT_FALSE(future.isReady());
+  {
+    // Leader has spearhead at 1 but not committed
+    auto status = std::get<LeaderStatus>(leader->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(status.local.spearHead, LogIndex{1});
+  }
+  {
+    // Follower has written 1 entry but not committed
+    auto status = std::get<FollowerStatus>(follower_1->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(status.local.spearHead, LogIndex{1});
+  }
+  {
+    // Follower has nothing
+    auto status = std::get<FollowerStatus>(follower_2->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(status.local.spearHead, LogIndex{0});
+  }
+
+  // handle append entries on second follower
+  follower_2->runAsyncAppendEntries();
+  // now write concern 2 is reached, future is ready
+  // and update of commitIndex on both follower
+  EXPECT_TRUE(future.isReady());
+  EXPECT_TRUE(follower_1->hasPendingAppendEntries());
+  EXPECT_TRUE(follower_2->hasPendingAppendEntries());
+
+  {
+    // Leader has committed 1
+    auto status = std::get<LeaderStatus>(leader->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(status.local.spearHead, LogIndex{1});
+  }
+  {
+    // Follower has written 1 entry but not committed
+    auto status = std::get<FollowerStatus>(follower_1->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(status.local.spearHead, LogIndex{1});
+  }
+  {
+    // Follower has written 1 entry but not committed
+    auto status = std::get<FollowerStatus>(follower_2->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(status.local.spearHead, LogIndex{1});
+  }
+
+  follower_1->runAsyncAppendEntries();
+  EXPECT_FALSE(follower_1->hasPendingAppendEntries());
+  follower_2->runAsyncAppendEntries();
+  EXPECT_FALSE(follower_2->hasPendingAppendEntries());
+
+  {
+    // Leader has committed 1
+    auto status = std::get<LeaderStatus>(leader->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(status.local.spearHead, LogIndex{1});
+  }
+  {
+    // Follower has committed 1
+    auto status = std::get<FollowerStatus>(follower_1->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(status.local.spearHead, LogIndex{1});
+  }
+  {
+    // Follower has committed 1
+    auto status = std::get<FollowerStatus>(follower_2->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(status.local.spearHead, LogIndex{1});
+  }
 }

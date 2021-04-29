@@ -235,8 +235,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
       follower_vec.reserve(follower.size());
       std::transform(follower.cbegin(), follower.cend(), std::back_inserter(follower_vec),
                      [&](std::shared_ptr<OldLogFollower> const& impl) -> Follower {
-                       return Follower{impl, LogIndex{std::max(LogIndex{0}.value,
-                                                               lastIndex.value - 1)}};
+                       return Follower{impl, lastIndex == LogIndex{0}
+                                                 ? LogIndex{0}
+                                                 : LogIndex{lastIndex.value - 1}};
                      });
       return follower_vec;
     }
