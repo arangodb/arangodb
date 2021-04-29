@@ -20,15 +20,14 @@ using namespace arangodb::replication2;
 
 RestStatus RestLogHandler::execute() {
   switch (_request->requestType()) {
-    /*
-case rest::RequestType::GET:
+    case rest::RequestType::GET:
       return handleGetRequest();
     case rest::RequestType::POST:
       return handlePostRequest();
       break;
     case rest::RequestType::DELETE_REQ:
       return handleDeleteRequest();
-      */
+
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }

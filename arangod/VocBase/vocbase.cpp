@@ -1930,7 +1930,7 @@ struct FakePersistedLog : PersistedLog {
       }
     };
 
-    return std::shared_ptr<FakeLogIterator>();
+    return std::make_shared<FakeLogIterator>();
   }
   auto removeFront(LogIndex stop) -> Result override { return Result(); }
   auto removeBack(LogIndex start) -> Result override { return Result(); }
