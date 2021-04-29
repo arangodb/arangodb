@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed various issues (mainly data races) reported by ThreadSanitizer.
+
 * Introduce a new internal error code for cases where a call cannot succeed
   because the server startup phase is still in progress. This error will be
   mapped to the HTTP status code 503 (service unavailable).
