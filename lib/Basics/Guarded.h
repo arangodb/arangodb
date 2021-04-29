@@ -132,7 +132,7 @@ class Guarded {
 
   explicit Guarded(T&& value = T());
   template <typename... Args>
-  explicit Guarded(Args...);
+  explicit Guarded(Args&&...);
 
   ~Guarded() = default;
   Guarded(Guarded const&) = delete;
@@ -177,7 +177,7 @@ Guarded<T, M, L>::Guarded(T&& value) : _value{std::move(value)}, _mutex{} {}
 
 template <class T, class M, template <class> class L>
 template <typename... Args>
-Guarded<T, M, L>::Guarded(Args... args) : _value{args...}, _mutex{} {}
+Guarded<T, M, L>::Guarded(Args&&... args) : _value{std::forward<Args>(args)...}, _mutex{} {}
 
 template <class T, class M, template <class> class L>
 template <class F, class R>
