@@ -7971,6 +7971,41 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+void arangodb::aql::asynchPrefetchRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const& rule) {
+  // at the moment we only allow async prefetching for read-only queries,
+  // ie., the query must not contain any modification nodes
+  struct ModificationNodeChecker : WalkerWorkerBase<ExecutionNode> {
+    virtual bool before(ExecutionNode* n) {
+      if (n->isModificationNode()) {
+        containsModificationNode = true;
+        return true; // found a modification node -> abort
+      }
+      return false;
+    }
+    bool containsModificationNode{false};
+  };
+  ModificationNodeChecker checker;
+  plan->root()->walk(checker);
+  
+  if (!checker.containsModificationNode) {
+    plan->enableAsyncPrefetching();
+  }
+  opt->addPlan(std::move(plan), rule, !checker.containsModificationNode);
+}
+
+void arangodb::aql::enableAsynchPrefetching(ExecutionPlan& plan) {
+  // TODO at the moment we enable prefetching on all nodes - this should be made configurable
+  struct AsyncPrefetchEnabler : WalkerWorkerBase<ExecutionNode> {
+    virtual bool before(ExecutionNode* n) {
+      TRI_ASSERT(!n->isModificationNode());
+      n->setIsAsyncPrefetchEnabled(true);
+      return false;
+    }
+  };
+  plan.root()->walk(AsyncPrefetchEnabler{});
+}
+
 namespace {
 
 void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,

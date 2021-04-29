@@ -474,6 +474,15 @@ void OptimizerRulesFeature::addRules() {
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
                OptimizerRule::makeFlags());
 
+  // allow nodes to asynchronously prefetch the next batch while processing the current batch.
+  // this effectively allows parts of the query to run in parallel, but as some internal details
+  // are currently not guaranteed to be thread safe (e.g., TransactionState), this is currently
+  // hidden and disabled, and should only be activated for experimental usage at one's own risk.
+  registerRule("asynch-prefetch", asynchPrefetchRule, OptimizerRule::asynchPrefetch,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::Hidden,
+                                        OptimizerRule::Flags::DisabledByDefault));
+
   // finally sort all rules by their level
   std::sort(
       _rules.begin(), _rules.end(),
