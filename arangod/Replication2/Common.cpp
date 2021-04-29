@@ -62,6 +62,11 @@ auto LogEntry::fromVelocyPack(velocypack::Slice slice) -> LogEntry {
   return LogEntry{logTerm, logIndex, std::move(payload)};
 }
 
+auto LogEntry::operator==(LogEntry const& other) const noexcept -> bool {
+  return other._logIndex == _logIndex && other._logTerm == _logTerm &&
+         other._payload == _payload;
+}
+
 auto LogTerm::operator<=(LogTerm other) const -> bool {
   return value <= other.value;
 }

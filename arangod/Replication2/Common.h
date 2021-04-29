@@ -129,6 +129,8 @@ class LogEntry {
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LogEntry;
 
+  auto operator==(LogEntry const&) const noexcept -> bool;
+
  private:
   LogTerm _logTerm{};
   LogIndex _logIndex{};

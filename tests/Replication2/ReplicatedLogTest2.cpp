@@ -32,13 +32,18 @@ using namespace arangodb::replication2::replicated_log;
 
 struct ReplicatedLogTest : ::testing::Test {
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
-    auto persisted = std::make_shared<MockLog>(id);
-    _persistedLogs[id] = persisted;
+    auto persisted = makePersistedLog(id);
     return std::make_unique<LogCore>(persisted);
   }
 
   auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLog> {
     return _persistedLogs.at(id);
+  }
+
+  auto makePersistedLog(LogId id) -> std::shared_ptr<MockLog> {
+    auto persisted = std::make_shared<MockLog>(id);
+    _persistedLogs[id] = persisted;
+    return persisted;
   }
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
@@ -231,21 +236,26 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   }
 }
 
-
 TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
-  auto coreA = makeLogCore(LogId{1});
-  auto coreB = makeLogCore(LogId{2});
+  auto const entries = {
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
 
+  auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
-    auto leaderLog = getPersistedLogById(LogId{1});
-    leaderLog->setEntry(LogIndex{1}, LogTerm{1}, LogPayload{"first entry"});
-    leaderLog->setEntry(LogIndex{2}, LogTerm{1}, LogPayload{"second entry"});
-    leaderLog->setEntry(LogIndex{3}, LogTerm{2}, LogPayload{"third entry"});
+    auto leaderLog = makePersistedLog(LogId{1});
+    for (auto const& entry : entries) {
+      leaderLog->setEntry(entry);
+    }
+    coreA = std::make_unique<LogCore>(leaderLog);
   }
 
   auto leaderId = ParticipantId{"leader"};
   auto followerId = ParticipantId{"follower"};
 
+
+  auto coreB = makeLogCore(LogId{2});
   auto follower = std::make_shared<DelayedFollowerLog>(followerId, std::move(coreB),
                                                        LogTerm{3}, leaderId);
   auto leader =
@@ -273,6 +283,68 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   EXPECT_FALSE(follower->hasPendingAppendEntries());
   leader->runAsyncStep();
   EXPECT_TRUE(follower->hasPendingAppendEntries());
+  {
+    std::size_t number_of_runs = 0;
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+      number_of_runs += 1;
+    }
+    // AppendEntries with prevLogIndex 2 -> success = false
+    // AppendEntries with prevLogIndex 1 -> success = false
+    // AppendEntries with prevLogIndex 0 -> success = true
+    // AppendEntries with new commitIndex
+    EXPECT_EQ(number_of_runs, 4);
+  }
+
+  {
+    // Leader has replicated all 3 entries
+    auto status = std::get<LeaderStatus>(leader->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{3});
+    EXPECT_EQ(status.local.spearHead, LogIndex{3});
+  }
+  {
+    // Follower knows that everything is replicated
+    auto status = std::get<FollowerStatus>(follower->getStatus());
+    EXPECT_EQ(status.local.commitIndex, LogIndex{3});
+    EXPECT_EQ(status.local.spearHead, LogIndex{3});
+  }
+
+  {
+    // check that the follower has all log entries in its store
+    auto iter = getPersistedLogById(LogId{2})->read(LogIndex{0});
+    for (auto const& test : entries) {
+      auto follower_entry = iter->next();
+      ASSERT_TRUE(follower_entry.has_value());
+      EXPECT_EQ(follower_entry.value(), test);
+    }
+  }
+
+}
+
+
+TEST_F(ReplicatedLogTest, multiple_follower) {
+
+  auto coreA = makeLogCore(LogId{1});
+  auto coreB = makeLogCore(LogId{2});
+  auto coreC = makeLogCore(LogId{3});
+
+  auto leaderId = ParticipantId{"leader"};
+  auto followerId_1 = ParticipantId{"follower1"};
+  auto followerId_2 = ParticipantId{"follower1"};
+
+  auto follower_1 = std::make_shared<DelayedFollowerLog>(followerId_1, std::move(coreB),
+                                                         LogTerm{1}, leaderId);
+  auto follower_2 = std::make_shared<DelayedFollowerLog>(followerId_2, std::move(coreC),
+                                                         LogTerm{1}, leaderId);
+  // create leader with write concern 2
+  auto leader = std::make_shared<LogLeader>(
+      leaderId, std::move(coreA), LogTerm{1},
+      std::vector<std::shared_ptr<OldLogFollower>>{follower_1, follower_2}, 2);
+
+
+  auto index = leader->insert(LogPayload{"first entry"});
+  auto future = leader->waitFor(index);
+
 
 
 }

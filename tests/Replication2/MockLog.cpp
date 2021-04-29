@@ -104,3 +104,7 @@ MockLog::MockLog(replication2::LogId id) : PersistedLog(id) {}
 
 MockLog::MockLog(replication2::LogId id, MockLog::storeType storage)
     : PersistedLog(id), _storage(std::move(storage)) {}
+
+void MockLog::setEntry(replication2::LogEntry entry) {
+  _storage.emplace(entry.logIndex(), std::move(entry));
+}

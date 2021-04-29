@@ -500,4 +500,11 @@ replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
         "When instantiating ReplicatedLog: "
         "persistedLog must not be a nullptr");
   }
+
+  // TODO this is a cheap trick for now. Later we should be aware of the fact
+  //      that the log might not start at 1.
+  auto iter = _persistedLog->read(LogIndex{0});
+  while (auto entry = iter->next()) {
+    _log = _log.push_back(std::move(entry).value());
+  }
 }

@@ -45,6 +45,7 @@ struct MockLog : replication2::PersistedLog {
 
   void setEntry(replication2::LogIndex idx, replication2::LogTerm term,
                 replication2::LogPayload payload);
+  void setEntry(replication2::LogEntry);
 
   [[nodiscard]] storeType getStorage() const { return _storage; }
  private:
