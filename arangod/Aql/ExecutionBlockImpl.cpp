@@ -340,6 +340,21 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   }
   initOnce();
   auto res = executeWithoutTrace(stack);
+  if (std::get<0>(res) != ExecutionState::WAITING) {
+    // if we have finished processing our input we reset _outputItemRow and
+    // _lastRange to release the SharedAqlItemBlockPtrs. This is necessary to
+    // avoid concurrent refCount updates in case of async prefetching because
+    // refCount is intentionally not atomic.
+    _outputItemRow.reset();
+    if (!_lastRange.hasValidRow()) {
+      _lastRange.reset();
+    }
+    
+    if constexpr (!isMultiDepExecutor<Executor>) {
+      TRI_ASSERT(_lastRange.hasValidRow() || !_lastRange.hasBlock());
+      TRI_ASSERT(_outputItemRow == nullptr);
+    }
+  }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto const& [state, skipped, block] = res;
   if (block != nullptr) {
@@ -710,22 +725,23 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(Context& ctx,
       if (_prefetchTask && !_prefetchTask->isConsumed() && !_prefetchTask->tryClaim()) {
         // some other thread is currently executing our prefetch task
         // -> wait till it has finished.
-        //LOG_DEVEL << "  >>> waiting for prefetch task";
         _prefetchTask->waitFor();
         TRI_ASSERT(_prefetchTask->result);
         _prefetchTask->state.store(PrefetchTask::State::Consumed, std::memory_order_relaxed);
-        return std::move(_prefetchTask->result).value();
+        auto result = std::move(_prefetchTask->result.value());
+        _prefetchTask->result.reset();
+        return result;
       } else {
         return _rowFetcher.execute(ctx.stack);
       }
     });
 
-    //LOG_DEVEL << "Fetcher state " << (unsigned)std::get<ExecutionState>(result)
-    //          << " hasLimit " << aqlCall.hasLimit();
-    if (false && std::get<ExecutionState>(result) == ExecutionState::HASMORE) {
+    if (std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
+        _exeNode->isAsyncPrefetchEnabled()) {
       if (_prefetchTask == nullptr) {
         _prefetchTask = std::make_shared<PrefetchTask>();
       }
+      TRI_ASSERT(!_prefetchTask->result);
       _prefetchTask->state.store(PrefetchTask::State::Pending);
 
       // we can safely ignore the result here, because we will try to
@@ -742,7 +758,6 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(Context& ctx,
             // we will not be able to claim the task and simply return early without accessing the block.
             task->execute(*block, stack);
           });
-      //LOG_DEVEL << "<<< SCHEDULED prefetch task";
     }
 
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
@@ -1691,6 +1706,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
   TRI_ASSERT(_upstreamState != ExecutionState::HASMORE ||
              (!skipped.nothingSkipped() ||
               (outputBlock != nullptr && outputBlock->numRows() > 0)));
+
   return {_upstreamState, skipped, std::move(outputBlock)};
 }
 
@@ -1896,6 +1912,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(ExecutionBlockImpl& blo
     TRI_ASSERT(false)
   } else {
     TRI_ASSERT(state.load() == State::InProgress);
+    TRI_ASSERT(!result);
     result = block._rowFetcher.execute(stack);
 
     // (3) - this release-store synchronizes with the acquire-load (1, 2)

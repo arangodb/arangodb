@@ -42,6 +42,9 @@ class AqlItemBlockInputMatrix {
   std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
   ShadowAqlItemRow peekShadowRow() const;
 
+  void reset() noexcept { _lastRange.reset(); }
+  bool hasBlock() noexcept { return _lastRange.hasBlock(); }
+  
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
   bool hasValidRow() const noexcept;
