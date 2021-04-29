@@ -587,6 +587,8 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
     return;
   }
 
+  using arangodb::basics::StringUtils::formatSize;
+
   if (totalLength == 0) {
     // length of input is unknown
     // in this case we cannot report the progress as a percentage
@@ -595,7 +597,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
 
     if (totalRead >= nextProcessed) {
       LOG_TOPIC("c0e6e", INFO, arangodb::Logger::FIXME)
-          << "processed " << totalRead << " bytes of input file";
+          << "processed " << formatSize(totalRead) << " of input file";
       nextProcessed += 10 * 1000 * 1000;
     }
   } else {
@@ -603,7 +605,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
 
     if (pct >= nextProgress && totalLength >= 1024) {
       LOG_TOPIC("9ddf3", INFO, arangodb::Logger::FIXME)
-          << "processed " << totalRead << " bytes (" << (int)nextProgress
+          << "processed " << formatSize(totalRead) << " (" << (int)nextProgress
           << "%) of input file";
       nextProgress = (double)((int)(pct + ProgressStep));
     }

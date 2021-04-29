@@ -50,6 +50,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+using namespace rocksdb;
+
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////

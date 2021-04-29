@@ -1590,7 +1590,13 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
       rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
   if (!s.ok()) {
     savepoint.cancel();
-    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    res.withError([&doc](result::Error& err) {
+      TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
+      err.appendErrorMessage("; key: ");
+      err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+    });
+    return res;
   }
  
   bool needReversal = false;
@@ -1652,7 +1658,13 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                           key.ref());
   if (!s.ok()) {
     savepoint.cancel();
-    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    res.withError([&doc](result::Error& err) {
+      TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
+      err.appendErrorMessage("; key: ");
+      err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+    });
+    return res;
   }
 
   /*LOG_TOPIC("17502", ERR, Logger::ENGINES)
@@ -1745,7 +1757,13 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
                               RocksDBColumnFamilyManager::Family::Documents),
                           key.ref());
   if (!s.ok()) {
-    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    res.withError([&newDoc](result::Error& err) {
+      TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
+      err.appendErrorMessage("; key: ");
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+    });
+    return res;
   }
 
   key->constructDocument(objectId(), newDocumentId);

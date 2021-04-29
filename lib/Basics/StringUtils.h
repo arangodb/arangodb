@@ -421,6 +421,15 @@ std::string decodeHex(std::string const& value);
 void escapeRegexParams(std::string& out, const char* ptr, size_t length);
 std::string escapeRegexParams(std::string const& in);
 
+/// @brief returns a human-readable size string, e.g.
+/// - 0 => "0 bytes"
+/// - 1 => "1 byte"
+/// - 255 => "255 bytes"
+/// - 2048 => "2.0 KB"
+/// - 1048576 => "1.0 MB"
+/// ...
+std::string formatSize(uint64_t value);
+
 namespace detail {
 template <typename T>
 auto constexpr isStringOrView = std::is_same_v<std::string, std::decay_t<T>> ||
