@@ -167,6 +167,9 @@ auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus 
   return LogStatus{UnconfiguredStatus{}};
 }
 
+replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore)
+    : _logCore(std::move(logCore)) {}
+
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
   return _guardedLeaderData.doUnderLock([](auto& leaderData) {
     LeaderStatus status;
@@ -231,7 +234,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::runAsyncStep(std::weak_ptr<Lo
   }
 }
 
-auto replicated_log::LogParticipant::participantId() const noexcept -> ParticipantId {
+auto replicated_log::LogParticipant::participantId() const noexcept -> ParticipantId const& {
   return _id;
 }
 

@@ -120,6 +120,8 @@ struct alignas(64) LogCore {
 struct LogParticipantI {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   virtual ~LogParticipantI() = 0;
+  // TODO virtual resign()&& = 0;
+  // TODO waitFor() ?
 };
 
 struct LogParticipant {
@@ -129,10 +131,7 @@ struct LogParticipant {
 
   [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 
-  // TODO virtual resign()&& = 0;
-  // TODO waitFor() ?
-
-  [[nodiscard]] auto participantId() const noexcept -> ParticipantId;
+  [[nodiscard]] auto participantId() const noexcept -> ParticipantId const&;
 
   [[nodiscard]] auto getEntryByIndex(LogIndex) const -> std::optional<LogEntry>;
 
@@ -272,9 +271,11 @@ class LogFollower : public LogParticipantI {
 
 struct LogUnconfiguredParticipant : public LogParticipantI {
   ~LogUnconfiguredParticipant() override = default;
+  explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore);
+
   [[nodiscard]] auto getStatus() const -> LogStatus override;
 
-  LogParticipant _participant;
+  std::unique_ptr<LogCore> _logCore;
 };
 
 }  // namespace replicated_log
