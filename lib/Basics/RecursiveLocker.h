@@ -36,14 +36,15 @@ namespace arangodb {
 template <typename T>
 class RecursiveMutexLocker {
  public:
-  RecursiveMutexLocker( // recursive locker
-      T& mutex, // mutex
-      std::atomic<std::thread::id>& owner, // owner
-      arangodb::basics::LockerType type, // locker type
-      bool acquire, // acquire flag
-      char const* file, // file
-      int line // line
-): _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
+  RecursiveMutexLocker(T& mutex, 
+                       std::atomic<std::thread::id>& owner, 
+                       arangodb::basics::LockerType type, 
+                       bool acquire, 
+                       char const* file, 
+                       int line)
+      : _locker(&mutex, type, false, file, line), // does not lock yet 
+         _owner(owner), 
+         _update(noop) {
     if (acquire) {
       lock();
     }
@@ -51,7 +52,7 @@ class RecursiveMutexLocker {
 
   ~RecursiveMutexLocker() { unlock(); }
 
-  bool isLocked() { return _locker.isLocked(); }
+  bool isLocked() const noexcept { return _locker.isLocked(); }
 
   void lock() {
     // recursive locking of the same instance is not yet supported (create a new instance instead)
@@ -59,8 +60,12 @@ class RecursiveMutexLocker {
 
     if (std::this_thread::get_id() != _owner.load()) {  // not recursive
       _locker.lock();
-      _owner.store(std::this_thread::get_id());
-      _update = owned;
+      // it is possible that we cannot acquire the mutex, e.g.
+      // if we are a TRY locker
+      if (_locker.isLocked()) {
+        _owner.store(std::this_thread::get_id());
+        _update = owned;
+      }
     }
   }
 
@@ -71,10 +76,9 @@ class RecursiveMutexLocker {
   std::atomic<std::thread::id>& _owner;
   void (*_update)(RecursiveMutexLocker& locker);
 
-  static void noop(RecursiveMutexLocker&) {}
-  static void owned(RecursiveMutexLocker& locker) {
-    static std::thread::id unowned;
-    locker._owner.store(unowned);
+  static void noop(RecursiveMutexLocker&) noexcept {}
+  static void owned(RecursiveMutexLocker& locker) noexcept {
+    locker._owner.store(std::thread::id());
     locker._locker.unlock();
     locker._update = noop;
   }
@@ -93,14 +97,18 @@ class RecursiveMutexLocker {
 template <typename T>
 class RecursiveReadLocker {
  public:
-  RecursiveReadLocker( // recursive locker
-      T& mutex, // mutex
-      std::atomic<std::thread::id>& owner, // owner
-      char const* file, // file
-      int line // line
-): _locker(&mutex, arangodb::basics::LockerType::TRY, true, file, line) {
-    if (!_locker.isLocked() && owner.load() != std::this_thread::get_id()) {
-      _locker.lock();
+  RecursiveReadLocker(T& mutex, 
+                      std::atomic<std::thread::id>& owner, 
+                      char const* file, 
+                      int line)
+      : _locker(&mutex, arangodb::basics::LockerType::TRY, false, file, line) { // does not lock yet 
+    if (owner.load() != std::this_thread::get_id()) {
+      // only try to lock if we don't already have the write-lock
+      while (!_locker.tryLock()) {
+        // it is possible that we cannot acquire the lock, because this
+        // is a TRY lock
+        std::this_thread::yield();
+      }
     }
   }
 
@@ -112,17 +120,16 @@ class RecursiveReadLocker {
 template <typename T>
 class RecursiveWriteLocker {
  public:
-  RecursiveWriteLocker( // recursive locker
-      T& mutex, // mutex
-      std::atomic<std::thread::id>& owner, // owner
-      arangodb::basics::LockerType type, // locker type
-      bool acquire, // acquire flag
-      char const* file, // file
-      int line // line
-): _locked(false), // locked
-   _locker(&mutex, type, false, file, line), // locker
-   _owner(owner), // owner
-   _update(noop) {
+  RecursiveWriteLocker(T& mutex, 
+                       std::atomic<std::thread::id>& owner, 
+                       arangodb::basics::LockerType type, 
+                       bool acquire, 
+                       char const* file, 
+                       int line)
+      : _locked(false),
+        _locker(&mutex, type, false, file, line), 
+        _owner(owner), 
+        _update(noop) {
     if (acquire) {
       lock();
     }
@@ -130,7 +137,7 @@ class RecursiveWriteLocker {
 
   ~RecursiveWriteLocker() { unlock(); }
 
-  bool isLocked() { return _locked; }
+  bool isLocked() const noexcept { return _locked; }
 
   void lock() {
     // recursive locking of the same instance is not yet supported (create a new instance instead)
@@ -138,11 +145,17 @@ class RecursiveWriteLocker {
 
     if (std::this_thread::get_id() != _owner.load()) {  // not recursive
       _locker.lock();
-      _owner.store(std::this_thread::get_id());
-      _update = owned;
+      // it is possible that we cannot acquire the lock, e.g.
+      // if we are a TRY locker
+      if (_locker.isLocked()) {
+        _owner.store(std::this_thread::get_id());
+        _update = owned;
+        _locked = true;
+      }
+    } else {
+      // we are the owning thread
+      _locked = true;
     }
-
-    _locked = true;
   }
 
   void unlock() {
@@ -156,10 +169,9 @@ class RecursiveWriteLocker {
   std::atomic<std::thread::id>& _owner;
   void (*_update)(RecursiveWriteLocker& locker);
 
-  static void noop(RecursiveWriteLocker&) {}
-  static void owned(RecursiveWriteLocker& locker) {
-    static std::thread::id unowned;
-    locker._owner.store(unowned);
+  static void noop(RecursiveWriteLocker&) noexcept {}
+  static void owned(RecursiveWriteLocker& locker) noexcept {
+    locker._owner.store(std::thread::id());
     locker._locker.unlock();
     locker._update = noop;
   }
