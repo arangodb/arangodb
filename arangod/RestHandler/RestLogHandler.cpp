@@ -35,7 +35,6 @@ case rest::RequestType::GET:
   return RestStatus::DONE;
 }
 
-#if 0
 struct FakeLogFollower : OldLogFollower {
   explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
                            std::string database, LogId logId)
@@ -172,8 +171,6 @@ RestStatus RestLogHandler::handlePostRequest() {
       follower.emplace_back(std::make_shared<FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
     }
 
-
-
     log.becomeLeader(ServerState::instance()->getId(), term, follower, writeConcern);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
   } else if (verb == "becomeFollower") {
@@ -278,7 +275,6 @@ RestStatus RestLogHandler::handleGetRequest() {
   return RestStatus::DONE;
 }
 
-
 RestStatus RestLogHandler::handleDeleteRequest() {
 
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -299,8 +295,6 @@ RestStatus RestLogHandler::handleDeleteRequest() {
 
   return RestStatus::DONE;
 }
-#endif
-
 
 RestLogHandler::RestLogHandler(application_features::ApplicationServer& server,
                                GeneralRequest* req, GeneralResponse* resp)

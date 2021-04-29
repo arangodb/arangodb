@@ -1643,6 +1643,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   _collections.reserve(32);
   _deadCollections.reserve(32);
 
+  _cacheData = std::make_unique<arangodb::DatabaseJavaScriptCache>();
   _logManager = std::make_shared<VocBaseLogManager>(_info.server());
 }
 
@@ -1892,9 +1893,8 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogLeaderById(arangodb::replication2::LogId id) const
     -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> {
   auto log = getReplicatedLogById(id)._participant;
-  if (auto const leader =
-          std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogLeader>(
-              std::move(log));
+  if (auto leader =
+          std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogLeader>(log);
       log != nullptr) {
     return leader;
   } else {
@@ -1905,9 +1905,8 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
     -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower> {
   auto log = getReplicatedLogById(id)._participant;
-  if (auto const follower =
-          std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogFollower>(
-              std::move(log));
+  if (auto follower =
+          std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogFollower>(log);
       log != nullptr) {
     return follower;
   } else {
