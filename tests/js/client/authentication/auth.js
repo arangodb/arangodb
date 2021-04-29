@@ -37,33 +37,10 @@ const crypto = require('@arangodb/crypto');
 const expect = require('chai').expect;
 const ERRORS = require('internal').errors;
 
-const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
-
-/// @brief set failure point
-function debugCanUseFailAt(endpoint) {
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    
-    let res = arango.GET_RAW('/_admin/debug/failat');
-    return res.code === 200;
-  } finally {
-    reconnectRetry(arango.getEndpoint(), "_system", "root", "");
-  }
-};
-
-/// @brief set failure point
-function debugSetFailAt(endpoint, failAt) {
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
-    if (res.parsedBody !== true) {
-      throw "Error setting failure point + " + res;
-    }
-    return true;
-  } finally {
-    reconnectRetry(arango.getEndpoint(), "_system", "root", "");
-  }
-};
+const { debugCanUseFailAt,
+    debugSetFailAt,
+    debugClearFailAt
+  } = require('@arangodb/test-helper');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
