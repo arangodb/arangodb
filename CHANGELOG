@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed a use after free bug in the connection pool.
+
 * Fixed bug in error reporting when a database create did not work, which
   lead to a busy loop reporting this error to the agency.
 
