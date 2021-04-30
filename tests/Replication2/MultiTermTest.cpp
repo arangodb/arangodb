@@ -241,3 +241,19 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     }
   }
 }
+
+TEST_F(MultiTermTest, become_leader_with_lower_term) {
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  std::ignore = leaderLog->becomeLeader("leader", LogTerm{3}, {}, 0);
+
+  EXPECT_ANY_THROW(
+      { std::ignore = leaderLog->becomeLeader("leader", LogTerm{2}, {}, 0); });
+}
+
+TEST_F(MultiTermTest, become_follower_with_lower_term) {
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  std::ignore = leaderLog->becomeFollower("follower", LogTerm{3}, "leader");
+
+  EXPECT_ANY_THROW(
+      { std::ignore = leaderLog->becomeFollower("follower", LogTerm{2}, "leader"); });
+}
