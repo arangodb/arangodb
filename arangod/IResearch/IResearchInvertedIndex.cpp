@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchInvertedIndex.h"
+#include "Basics/AttributenameParser.h"
 #include "Basics/Common.h"
 #include "Basics/StringUtils.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
@@ -73,6 +74,11 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   char const* typeName() const override { return "search-index-iterator"; }
  protected:
   bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
+    if (limit == 0) {
+      TRI_ASSERT(false);  // Someone called with limit == 0. Api broken
+                          // validate that Iterator is in a good shape and hasn't failed
+      return false;
+    }
     if (!_filter) {
       resetFilter();
       if (!_filter) {
@@ -80,16 +86,32 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       }
     }
     TRI_ASSERT(_reader);
-    while (_readerOffset < _reader->size()) {
-      auto& segmentReader = (*_reader)[_readerOffset];
-      _pkDocItr = ::pkColumn(segmentReader);
-      _pkValue = irs::get<irs::payload>(_pkDocItr);
-      if (ADB_UNLIKELY(!_pkValue)) {
-        _pkValue = &NoPayload;
+    auto const count  = _reader->size();
+    while (limit > 0) {
+      if(!_itr || !_itr->next()) {
+        if (_readerOffset >= count) {
+          break;
+        }
+        auto& segmentReader = (*_reader)[_readerOffset++];
+        _pkDocItr = ::pkColumn(segmentReader);
+        _pkValue = irs::get<irs::payload>(*_pkDocItr);
+        if (ADB_UNLIKELY(!_pkValue)) {
+          _pkValue = &NoPayload;
+        }
+        _itr = _filter->execute(segmentReader);
+        _doc = irs::get<irs::document>(*_itr);
+      } else {
+        if (_doc->value == _pkDocItr->seek(_doc->value)) {
+          LocalDocumentId documentId;
+          bool const readSuccess = DocumentPrimaryKey::read(documentId,  _pkValue->value);
+          if (readSuccess) {
+            --limit;
+            callback(documentId);
+          }
+        }
       }
-      _itr = _filter->execute(segmentReader);
     }
-    return false;
+    return limit == 0;
   }
 
   void resetFilter()  {
@@ -228,12 +250,12 @@ Result IResearchInvertedIndex::init(velocypack::Slice const& definition, InitCal
       "error parsing  search index parameters from json: " + error
     };
   }
-  std::vector<basics::AttributeName> fields;
   for (auto const& field : meta._fields) {
-    fields.push_back(basics::AttributeName(
-        velocypack::StringRef(field.key().c_str(), field.key().size())));
+    std::vector<basics::AttributeName> fields;
+    TRI_ParseAttributeString(field.key(), fields, false);
+    _fields.push_back(std::move(fields));
   }
-  _fields.push_back(std::move(fields));
+  
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   bool const sorted = !_meta._sort.empty();
   auto const& storedValuesColumns = _meta._storedValues.columns();
