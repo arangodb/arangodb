@@ -57,7 +57,8 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
       _authenticationSystemOnly(true),
       _localAuthentication(true),
       _active(true),
-      _authenticationTimeout(0.0) {
+      _authenticationTimeout(0.0),
+      _sessionTimeout(60.0 * 60.9 * 24.0 * 30.0 /*30 days*/) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -89,10 +90,23 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       "--server.authentication-timeout",
       "timeout for the authentication cache in seconds (0 = indefinitely)",
       new DoubleParameter(&_authenticationTimeout));
+  
+  options->addOption("--server.session-timeout",
+                     "timeout in seconds for web interface JWT sessions",
+                     new DoubleParameter(&_sessionTimeout),
+                     arangodb::options::makeFlags(
+                       arangodb::options::Flags::DefaultNoComponents,
+                       arangodb::options::Flags::OnCoordinator,
+                       arangodb::options::Flags::OnSingle))
+                     .setIntroducedIn(30712);
 
   options->addOption("--server.local-authentication",
                      "enable authentication using the local user database",
-                     new BooleanParameter(&_localAuthentication));
+                     new BooleanParameter(&_localAuthentication),
+                     arangodb::options::makeFlags(
+                       arangodb::options::Flags::DefaultNoComponents,
+                       arangodb::options::Flags::OnCoordinator,
+                       arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--server.authentication-system-only",
@@ -102,10 +116,13 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   options->addOption("--server.authentication-unix-sockets",
                      "authentication for requests via UNIX domain sockets",
-                     new BooleanParameter(&_authenticationUnixSockets));
+                     new BooleanParameter(&_authenticationUnixSockets),
+                     arangodb::options::makeFlags(
+                       arangodb::options::Flags::DefaultNoOs,
+                       arangodb::options::Flags::OsLinux,
+                       arangodb::options::Flags::OsMac));
 #endif
 
-  // Maybe deprecate this option in devel
   options
       ->addOption("--server.jwt-secret",
                   "secret to use when doing jwt authentication",
@@ -150,6 +167,12 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
       FATAL_ERROR_EXIT();
     }
+  }
+  
+  if (_sessionTimeout <= 1.0) {
+    LOG_TOPIC("85046", FATAL, arangodb::Logger::AUTHENTICATION)
+        << "--server.session-timeout has an invalid value: " << _sessionTimeout;
+    FATAL_ERROR_EXIT();
   }
 
   if (options->processingResult().touched("server.jwt-secret")) {

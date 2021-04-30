@@ -1,6 +1,10 @@
 devel
 -----
 
+* Revive startup parameter `--server.session-timeout` to control the timeout
+  for web interface sessions and other sessions that are based on JWTs created
+  by the `/_open/auth` API.
+
 * Fixed bug in error reporting when a database create did not work, which
   lead to a busy loop reporting this error to the agency.
 
