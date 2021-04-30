@@ -65,18 +65,19 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
   constexpr static auto alternatinglyInsertAndRead = [](ThreadIdx const threadIdx,
                                                         ThreadCoordinationData& data) {
     using namespace std::chrono_literals;
-    auto& log = *std::dynamic_pointer_cast<LogLeader>(data.log);
+    auto log = std::dynamic_pointer_cast<DelayedLogLeader>(data.log);
+    ASSERT_NE(log, nullptr);
     data.threadsReady.fetch_add(1);
     while (!data.go.load()) {
     }
 
     for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); ++i) {
       auto const payload = LogPayload{genPayload(threadIdx, i)};
-      auto const idx = log.insert(payload);
+      auto const idx = log->insert(payload);
       std::this_thread::sleep_for(1ns);
-      auto fut = log.waitFor(idx);
+      auto fut = log->waitFor(idx);
       fut.get();
-      auto snapshot = log.getReplicatedLogSnapshot();
+      auto snapshot = log->getReplicatedLogSnapshot();
       ASSERT_LT(0, idx.value);
       ASSERT_LE(idx.value, snapshot.size());
       auto const& entry = snapshot[idx.value - 1];
@@ -92,7 +93,8 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
   constexpr static auto insertManyThenRead = [](ThreadIdx const threadIdx,
                                                 ThreadCoordinationData& data) {
     using namespace std::chrono_literals;
-    auto& log = *std::dynamic_pointer_cast<LogLeader>(data.log);
+    auto log = std::dynamic_pointer_cast<DelayedLogLeader>(data.log);
+    ASSERT_NE(log, nullptr);
     data.threadsReady.fetch_add(1);
     while (!data.go.load()) {
     }
@@ -105,12 +107,12 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
          i < maxIter && !data.stopClientThreads.load(); i += batch) {
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
         auto const payload = LogPayload{genPayload(threadIdx, i + k)};
-        idxs[k] = log.insert(payload);
+        idxs[k] = log->insert(payload);
       }
       std::this_thread::sleep_for(1ns);
-      auto fut = log.waitFor(idxs.back());
+      auto fut = log->waitFor(idxs.back());
       fut.get();
-      auto snapshot = log.getReplicatedLogSnapshot();
+      auto snapshot = log->getReplicatedLogSnapshot();
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
         auto const payload = LogPayload{genPayload(threadIdx, i + k)};
         auto const idx = idxs[k];
@@ -130,9 +132,10 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
   constexpr static auto runReplicationWithIntermittentPauses =
       [](ThreadCoordinationData& data) {
         using namespace std::chrono_literals;
-        auto& log = *std::dynamic_pointer_cast<LogLeader>(data.log);
+        auto log = std::dynamic_pointer_cast<DelayedLogLeader>(data.log);
+        ASSERT_NE(log, nullptr);
         for (auto i = 0;; ++i) {
-          log.runAsyncStep();
+          log->runAsyncStep();
           if (i % 16) {
             std::this_thread::sleep_for(100ns);
             if (data.stopReplicationThreads.load()) {

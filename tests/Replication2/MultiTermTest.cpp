@@ -86,13 +86,13 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
   {
     auto follower =
         followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 1);
+    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
 
     auto idx = leader->insert(LogPayload{"first entry"});
     auto f = leader->waitFor(idx);
     EXPECT_FALSE(f.isReady());
     leader->runAsyncStep();
-    auto newLeader = leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 1);
+    auto newLeader = leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
     ASSERT_TRUE(f.isReady());
     EXPECT_ANY_THROW({ std::ignore = f.get(); });
     EXPECT_ANY_THROW({ std::ignore = leader->getStatus(); });
@@ -107,7 +107,7 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
   {
     auto follower =
         followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 1);
+    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
 
     auto idx = leader->insert(LogPayload{"first entry"});
     auto f = leader->waitFor(idx);

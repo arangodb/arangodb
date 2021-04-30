@@ -141,6 +141,10 @@ struct DelayedLogLeader : LogParticipantI {
   void runAsyncStep() {
     return _leader->runAsyncStep();
   }
+
+  auto getReplicatedLogSnapshot() {
+    return _leader->getReplicatedLogSnapshot();
+  }
  private:
   std::shared_ptr<LogLeader> _leader;
 };
