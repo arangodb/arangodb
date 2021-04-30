@@ -111,11 +111,7 @@ class RecursiveReadLocker {
       : _locker(&mutex, arangodb::basics::LockerType::TRY, false, file, line) { // does not lock yet 
     if (owner.load() != std::this_thread::get_id()) {
       // only try to lock if we don't already have the write-lock
-      while (!_locker.tryLock()) {
-        // it is possible that we cannot acquire the lock, because this
-        // is a TRY lock
-        std::this_thread::yield();
-      }
+      _locker.lock();
     }
   }
 
