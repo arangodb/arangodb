@@ -92,8 +92,8 @@ struct RocksDBLogIterator : replication2::LogIterator {
   bool _first = true;
 };
 
-auto RocksDBLog::read(LogIndex start) -> std::shared_ptr<LogIterator> {
-  return std::make_shared<RocksDBLogIterator>(this, _db, _cf, start);
+auto RocksDBLog::read(LogIndex start) -> std::unique_ptr<LogIterator> {
+  return std::make_unique<RocksDBLogIterator>(this, _db, _cf, start);
 }
 
 auto RocksDBLog::drop() -> Result {

@@ -297,6 +297,8 @@ struct alignas(16) ReplicatedLog {
   auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
   explicit ReplicatedLog(std::shared_ptr<LogParticipantI> participant)
       : _participant(std::move(participant)) {}
+  explicit ReplicatedLog(std::unique_ptr<LogCore> core)
+      : _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core))) {}
 
   auto becomeLeader(ParticipantId const& id, LogTerm term,
                     std::vector<std::shared_ptr<OldLogFollower>> const& follower,

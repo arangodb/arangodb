@@ -1923,14 +1923,14 @@ struct FakePersistedLog : PersistedLog {
     LOG_DEVEL << "Fake log insert";
     return Result();
   }
-  auto read(LogIndex start) -> std::shared_ptr<LogIterator> override {
+  auto read(LogIndex start) -> std::unique_ptr<LogIterator> override {
     struct FakeLogIterator : LogIterator {
       auto next() -> std::optional<LogEntry> override {
         return std::nullopt;
       }
     };
 
-    return std::make_shared<FakeLogIterator>();
+    return std::make_unique<FakeLogIterator>();
   }
   auto removeFront(LogIndex stop) -> Result override { return Result(); }
   auto removeBack(LogIndex start) -> Result override { return Result(); }

@@ -38,7 +38,7 @@ struct MockLog : replication2::PersistedLog {
   ~MockLog() override = default;
 
   auto insert(replication2::LogIterator& iter) -> Result override;
-  auto read(replication2::LogIndex start) -> std::shared_ptr<replication2::LogIterator> override;
+  auto read(replication2::LogIndex start) -> std::unique_ptr<replication2::LogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> Result override;
   auto removeBack(replication2::LogIndex start) -> Result override;
   auto drop() -> Result override;

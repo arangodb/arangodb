@@ -73,8 +73,8 @@ struct ContainerIterator : LogIterator {
 };
 
 auto arangodb::MockLog::read(arangodb::replication2::LogIndex start)
-    -> std::shared_ptr<LogIterator> {
-  return std::make_shared<ContainerIterator<iteratorType>>(_storage, start);
+    -> std::unique_ptr<LogIterator> {
+  return std::make_unique<ContainerIterator<iteratorType>>(_storage, start);
 }
 
 auto arangodb::MockLog::removeFront(arangodb::replication2::LogIndex stop)

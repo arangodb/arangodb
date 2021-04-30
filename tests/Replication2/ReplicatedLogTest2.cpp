@@ -46,6 +46,11 @@ struct ReplicatedLogTest : ::testing::Test {
     return persisted;
   }
 
+  auto makeReplicatedLog(LogId id) -> std::shared_ptr<ReplicatedLog> {
+    auto core = makeLogCore(id);
+    return std::make_shared<ReplicatedLog>(std::move(core));
+  }
+
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
 };
 
