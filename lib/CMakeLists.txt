@@ -194,6 +194,7 @@ add_library(arango STATIC
   Rest/HttpResponse.cpp
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
+  SimpleHttpClient/ConnectionCache.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp

@@ -36,7 +36,7 @@ namespace aql {
 // no-op statistics for all Executors that don't have custom stats.
 class NoStats {
  public:
-  void operator+= (NoStats const&) {}
+  void operator+=(NoStats const&) noexcept {}
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
@@ -81,7 +81,7 @@ class FilterStats {
 
   std::size_t getFiltered() const noexcept { return _filtered; }
   
-  void operator+= (FilterStats const& stats) {
+  void operator+=(FilterStats const& stats) noexcept {
     _filtered += stats._filtered;
   }
 
@@ -106,7 +106,7 @@ class EnumerateCollectionStats {
   std::size_t getScanned() const noexcept { return _scannedFull; }
   std::size_t getFiltered() const noexcept { return _filtered; }
   
-  void operator+= (EnumerateCollectionStats const& stats) {
+  void operator+=(EnumerateCollectionStats const& stats) noexcept {
     _scannedFull += stats._scannedFull;
     _filtered += stats._filtered;
   }
@@ -136,7 +136,7 @@ class IndexStats {
   std::size_t getScanned() const noexcept { return _scannedIndex; }
   std::size_t getFiltered() const noexcept { return _filtered; }
   
-  void operator+= (IndexStats const& stats) {
+  void operator+=(IndexStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
     _filtered += stats._filtered;
   }
@@ -175,7 +175,7 @@ class ModificationStats {
   void incrWritesIgnored() noexcept { _writesIgnored++; }
   std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
   
-  void operator+= (ModificationStats const& stats) {
+  void operator+=(ModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;
   }
@@ -224,7 +224,7 @@ class SingleRemoteModificationStats {
   void incrScannedIndex() noexcept { _scannedIndex++; }
   std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
   
-  void operator+= (SingleRemoteModificationStats const& stats) {
+  void operator+=(SingleRemoteModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;
     _scannedIndex += stats._scannedIndex;

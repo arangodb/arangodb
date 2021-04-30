@@ -223,7 +223,7 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
 auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const
     noexcept -> SharedAqlItemBlockPtr {
   TRI_ASSERT(dependency < _inputs.size());
-  return _inputs.at(dependency).getBlock();
+  return _inputs[dependency].getBlock();
 }
 
 auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
