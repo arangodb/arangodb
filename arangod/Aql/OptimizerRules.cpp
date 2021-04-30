@@ -7976,7 +7976,7 @@ void arangodb::aql::asynchPrefetchRule(Optimizer* opt, std::unique_ptr<Execution
   // at the moment we only allow async prefetching for read-only queries,
   // ie., the query must not contain any modification nodes
   struct ModificationNodeChecker : WalkerWorkerBase<ExecutionNode> {
-    virtual bool before(ExecutionNode* n) {
+    bool before(ExecutionNode* n) override {
       if (n->isModificationNode()) {
         containsModificationNode = true;
         return true; // found a modification node -> abort
@@ -8002,13 +8002,14 @@ void arangodb::aql::asynchPrefetchRule(Optimizer* opt, std::unique_ptr<Execution
 void arangodb::aql::enableAsynchPrefetching(ExecutionPlan& plan) {
   // TODO at the moment we enable prefetching on all nodes - this should be made configurable
   struct AsyncPrefetchEnabler : WalkerWorkerBase<ExecutionNode> {
-    virtual bool before(ExecutionNode* n) {
+    bool before(ExecutionNode* n) override {
       TRI_ASSERT(!n->isModificationNode());
       n->setIsAsyncPrefetchEnabled(true);
       return false;
     }
   };
-  plan.root()->walk(AsyncPrefetchEnabler{});
+  AsyncPrefetchEnabler walker{};
+  plan.root()->walk(walker);
 }
 
 namespace {

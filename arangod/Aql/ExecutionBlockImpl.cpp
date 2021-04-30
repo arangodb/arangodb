@@ -504,9 +504,7 @@ void ExecutionBlockImpl<Executor>::ensureOutputBlock(Context& ctx) {
   auto getCall = [&ctx]() {
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
       TRI_ASSERT(!ctx.stack.empty());
-      AqlCall const& subqueryCall = ctx.stack.peek();
-      AqlCall copyCall = subqueryCall;
-      return std::move(copyCall);
+      return ctx.stack.peek();
     } else {
       return std::move(ctx.clientCall);
     }
