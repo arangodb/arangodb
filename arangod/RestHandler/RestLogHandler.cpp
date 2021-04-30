@@ -24,10 +24,8 @@ RestStatus RestLogHandler::execute() {
       return handleGetRequest();
     case rest::RequestType::POST:
       return handlePostRequest();
-      break;
     case rest::RequestType::DELETE_REQ:
       return handleDeleteRequest();
-
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }

@@ -146,10 +146,11 @@ struct LogParticipant {
 class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogParticipantI {
  public:
   ~LogLeader() override = default;
-  LogLeader(ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term,
-            std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-            std::size_t writeConcern)
-      : _guardedLeaderData(id, std::move(logCore), term, follower, writeConcern) {}
+
+  static auto construct(ParticipantId const& id,
+                        std::unique_ptr<LogCore> logCore, LogTerm term,
+                        std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+                        std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload) -> LogIndex;
 
@@ -166,6 +167,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   auto resign() && -> std::unique_ptr<LogCore> override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
+
+ protected:
+  // Use the named constructor construct() to create a leader!
+  LogLeader(ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term,
+            std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+            std::size_t writeConcern);
 
  private:
   using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
@@ -271,7 +278,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
 };
-
 
 class LogFollower : public LogParticipantI, public AbstractFollower {
  public:

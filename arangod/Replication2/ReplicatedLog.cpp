@@ -136,6 +136,30 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   return follower::appendEntries(participantGuard.get(), std::move(req));
 }
 
+replicated_log::LogLeader::LogLeader(const ParticipantId& id, std::unique_ptr<LogCore> logCore, LogTerm term,
+                     const std::vector<std::shared_ptr<AbstractFollower>>& follower,
+                     std::size_t writeConcern)
+    : _guardedLeaderData(id, std::move(logCore), term, follower, writeConcern) {}
+
+auto replicated_log::LogLeader::construct(
+    ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+    std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+  // Workaround to be able to use make_shared, while LogLeader's constructor
+  // is actually protected.
+  struct MakeSharedLogLeader : LogLeader {
+   public:
+    MakeSharedLogLeader(ParticipantId const& id,
+                        std::unique_ptr<LogCore> logCore, LogTerm const& term,
+                        std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+                        size_t writeConcern)
+        : LogLeader(id, std::move(logCore), term, follower, writeConcern) {}
+  };
+  auto leader = std::make_shared<MakeSharedLogLeader>(id, std::move(logCore), term, follower, writeConcern);
+
+  return leader;
+}
+
 auto replicated_log::LogLeader::acquireMutex() -> LogLeader::Guard {
   return _guardedLeaderData.getLockedGuard();
 }
@@ -546,11 +570,12 @@ replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
   }
 }
 
-auto replicated_log::ReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
-                                                 std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-                                                 std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+auto replicated_log::ReplicatedLog::becomeLeader(
+    ParticipantId const& id, LogTerm term,
+    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+    std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
   auto logCore = std::move(*_participant).resign();
-  auto leader = std::make_shared<LogLeader>(id, std::move(logCore), term, follower, writeConcern);
+  auto leader = LogLeader::construct(id, std::move(logCore), term, follower, writeConcern);
   _participant = std::static_pointer_cast<LogParticipantI>(leader);
   return leader;
 }

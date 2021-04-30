@@ -28,7 +28,7 @@ const console = require('console');
 const request = require('@arangodb/request');
 const _ = require('lodash');
 const {checkRequestResult} = require('@arangodb/arangosh');
-const {assertEqual} = jsunity.jsUnity.assertions;
+const {assertEqual, assertInstanceOf} = jsunity.jsUnity.assertions;
 
 const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 
@@ -64,6 +64,7 @@ const replicationApi = {
     });
     checkRequestResult(res);
     const result = res.json.result;
+    assertInstanceOf(Array, result, JSON.stringify({res}));
     assertEqual(["index", "term", "quorum"].sort(), Object.keys(result).sort());
     return result;
   },
