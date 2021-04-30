@@ -35,6 +35,8 @@
 
 using namespace arangodb::basics;
 
+// RecursiveMutexLocker
+
 TEST(RecursiveLockerTest, testRecursiveMutexNoAcquire) {
   arangodb::Mutex mutex;
   std::atomic<std::thread::id> owner;
@@ -134,6 +136,123 @@ TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
         
         {
           RECURSIVE_MUTEX_LOCKER_NAMED(locker2, mutex, owner, true);
+          ASSERT_TRUE(locker2.isLocked());
+        
+          x = x + 1;
+        }
+      }
+    });
+  }
+
+  for (int i = 0; i < n; ++i) {
+    threads[i].join();
+  }
+  
+  ASSERT_EQ(n * iterations, total);
+  ASSERT_EQ(n * iterations * 2, x);
+}
+
+// RecursiveWriteLocker
+
+TEST(RecursiveLockerTest, testRecursiveWriteLockNoAcquire) {
+  arangodb::basics::ReadWriteLock rwlock;
+  std::atomic<std::thread::id> owner;
+
+  RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, false);
+  ASSERT_FALSE(locker.isLocked());
+
+  locker.lock();
+  ASSERT_TRUE(locker.isLocked());
+
+  locker.unlock();
+  ASSERT_FALSE(locker.isLocked());
+}
+
+TEST(RecursiveLockerTest, testRecursiveWriteLockAcquire) {
+  arangodb::basics::ReadWriteLock rwlock;
+  std::atomic<std::thread::id> owner;
+
+  RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
+  ASSERT_TRUE(locker.isLocked());
+  
+  locker.unlock();
+  ASSERT_FALSE(locker.isLocked());
+}
+
+TEST(RecursiveLockerTest, testRecursiveWriteLockUnlock) {
+  arangodb::basics::ReadWriteLock rwlock;
+  std::atomic<std::thread::id> owner;
+
+  RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
+  ASSERT_TRUE(locker.isLocked());
+  
+  for (int i = 0; i < 100; ++i) {
+    locker.unlock();
+    ASSERT_FALSE(locker.isLocked());
+    locker.lock();
+    ASSERT_TRUE(locker.isLocked());
+  }
+  
+  ASSERT_TRUE(locker.isLocked());
+  locker.unlock();
+  ASSERT_FALSE(locker.isLocked());
+}
+
+TEST(RecursiveLockerTest, testRecursiveWriteLockNested) {
+  arangodb::basics::ReadWriteLock rwlock;
+  std::atomic<std::thread::id> owner;
+
+  RECURSIVE_WRITE_LOCKER_NAMED(locker1, rwlock, owner, true);
+  ASSERT_TRUE(locker1.isLocked());
+
+  {
+    RECURSIVE_WRITE_LOCKER_NAMED(locker2, rwlock, owner, true);
+    ASSERT_TRUE(locker2.isLocked());
+  
+    {
+      RECURSIVE_WRITE_LOCKER_NAMED(locker3, rwlock, owner, true);
+      ASSERT_TRUE(locker3.isLocked());
+    }
+
+    ASSERT_TRUE(locker2.isLocked());
+  }
+
+  ASSERT_TRUE(locker1.isLocked());
+
+  locker1.unlock();
+  ASSERT_FALSE(locker1.isLocked());
+}
+
+TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
+  arangodb::basics::ReadWriteLock rwlock;
+  std::atomic<std::thread::id> owner;
+
+  // number of threads started
+  std::atomic<int> started{0};
+
+  // shared variables, only protected by rwlockes
+  uint64_t total = 0;
+  uint64_t x = 0;
+
+  constexpr int n = 4;
+  constexpr int iterations = 100000;
+
+  std::vector<std::thread> threads;
+
+  for (int i = 0; i < n; ++i) {
+    threads.emplace_back([&]() {
+      ++started;
+      while (started < n) { /*spin*/ }
+
+      for (int i = 0; i < iterations; ++i) {
+        RECURSIVE_WRITE_LOCKER_NAMED(locker1, rwlock, owner, true);
+        ASSERT_TRUE(locker1.isLocked());
+
+        total++;
+        x = x + 1;
+        
+        {
+          RECURSIVE_WRITE_LOCKER_NAMED(locker2, rwlock, owner, true);
           ASSERT_TRUE(locker2.isLocked());
         
           x = x + 1;
