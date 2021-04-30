@@ -1430,7 +1430,7 @@ if len(sys.argv) > 5:
     fileFilter = sys.argv[5]
     print >> sys.stderr, "Filtering for: [" + fileFilter + "]"
 # read ArangoDB version
-f = open(scriptDir + "VERSION", "r")
+f = open(scriptDir + "ARANGO-VERSION", "r")
 for version in f:
     version = version.strip('\n')
 f.close()
