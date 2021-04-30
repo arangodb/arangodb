@@ -653,7 +653,7 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
     cindex->compact(); // trigger compaction before deleting the object
   }
 
-  return true;
+  return res.ok();
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx) const {
