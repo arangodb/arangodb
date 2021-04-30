@@ -115,6 +115,10 @@ struct DelayedFollowerLog : AbstractFollower {
   auto getStatus() const noexcept -> LogStatus {
     return _follower->getStatus();
   }
+
+  auto resign() && {
+    return std::move(*_follower).resign();
+  }
  private:
   Guarded<std::deque<std::shared_ptr<AsyncRequest>>> _asyncQueue;
   std::shared_ptr<LogFollower> _follower;
@@ -125,6 +129,17 @@ struct DelayedLogLeader : LogParticipantI {
   auto getStatus() const -> LogStatus override;
   auto resign() && -> std::unique_ptr<LogCore> override;
 
+  auto insert(LogPayload payload) -> LogIndex {
+    return _leader->insert(std::move(payload));
+  }
+
+  auto waitFor(LogIndex idx) {
+    return _leader->waitFor(idx);
+  }
+
+  void runAsyncStep() {
+    return _leader->runAsyncStep();
+  }
  private:
   std::shared_ptr<LogLeader> _leader;
 };
