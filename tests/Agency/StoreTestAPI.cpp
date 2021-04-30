@@ -55,14 +55,30 @@ class StoreTestAPI : public ::testing::Test {
 
   auto write(std::string const &json)
   {
-    auto q {VPackParser::fromJson(json)};
-    return _store.applyTransactions(q);
+    try {
+      auto q {VPackParser::fromJson(json)};
+      return _store.applyTransactions(q);
+    }
+    catch(std::exception &err) {
+      throw std::runtime_error(std::string(err.what()) + " while parsing " + json );
+    }
   }
 
-  void writeAndCheck(std::string const &json) 
+  auto transactAndCheck(std::string const &json) {
+    auto q {VPackParser::fromJson(json)};
+    auto results { _store.applyTransactions(q)};
+    return results;
+  }
+
+  auto writeAndCheck(std::string const &json) 
   {
     auto r {write(json)};
-    ASSERT_TRUE(std::all_of(r.begin(), r.end(), [](auto const &result){ return result == consensus::apply_ret_t::APPLIED; }));
+    auto applied_all = std::all_of(r.begin(), r.end(), [](auto const &result){ return result == consensus::apply_ret_t::APPLIED; });
+    if (!applied_all)
+      {
+        throw std::runtime_error("This didn't work: " + json);
+      }
+    ASSERT_TRUE(applied_all);
   }
 
   void assertEqual(std::shared_ptr<velocypack::Builder> result, std::string const &expected_result) const {
@@ -100,155 +116,16 @@ TEST_F(StoreTestAPI, our_first_test) {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Test transact interface
-////////////////////////////////////////////////////////////////////////////////
 /*
-TEST_F(StoreTestAPI, testPoll) {
-      var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
-          bodyParsed.results[0];
-      var ret, result, log, ci, job, wr;
-
-      ret = request({url: agencyLeader + "/_api/agency/poll",
-                         method: "GET", followRedirect: true});
-      assertEqual(ret.statusCode, 200);
-      ret.bodyParsed = JSON.parse(ret.body);
-      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
-      result = ret.bodyParsed.result;
-      assertTrue(result.hasOwnProperty("readDB"));
-      assertEqual(result.readDB, {});
-      assertTrue(result.hasOwnProperty("commitIndex"));
-      ci = result.commitIndex;
-      assertTrue(result.hasOwnProperty("firstIndex"));
-      assertEqual(result.firstIndex, 0);
-
-      ret = request({url: agencyLeader + "/_api/agency/poll?index=0",
-                     method: "GET", followRedirect: true});
-      if (ret.statusCode === 200) {
-        ret.bodyParsed = JSON.parse(ret.body);
-      }
-      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
-      result = ret.bodyParsed.result;
-      assertTrue(result.hasOwnProperty("readDB"));
-      assertEqual(result.readDB, {});
-      assertTrue(result.hasOwnProperty("commitIndex"));
-      assertEqual(result.commitIndex, ci);
-      assertTrue(result.hasOwnProperty("firstIndex"));
-      assertEqual(result.firstIndex, 0);
-
-      ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
-                     method: "GET", followRedirect: true});
-      if (ret.statusCode === 200) {
-        ret.bodyParsed = JSON.parse(ret.body);
-      }
-      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
-      result = ret.bodyParsed.result;
-      assertTrue(result.hasOwnProperty("log"));
-      log = result.log;
-      assertTrue(Array.isArray(log));
-      assertEqual(result.commitIndex, ci);
-      assertEqual(result.firstIndex, 1);
-
-      ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
-                     method: "GET", followRedirect: true});
-      if (ret.statusCode === 200) {
-        ret.bodyParsed = JSON.parse(ret.body);
-      }
-      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
-      result = ret.bodyParsed.result;
-      assertTrue(result.hasOwnProperty("log"));
-      log = result.log;
-      assertTrue(Array.isArray(log));
-      assertEqual(result.commitIndex, ci);
-      assertEqual(result.firstIndex, 1);
-
-      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
-                     method: "GET", followRedirect: true});
-      if (ret.statusCode === 200) {
-        ret.bodyParsed = JSON.parse(ret.body);
-      }
-      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
-      result = ret.bodyParsed.result;
-      assertTrue(result.hasOwnProperty("log"));
-      log = result.log;
-      assertEqual(log.length, 1);
-      assertTrue(Array.isArray(log));
-      assertEqual(result.commitIndex, ci);
-      assertEqual(result.firstIndex, ci);
-
-
-      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
-                     method: "GET", followRedirect: true});
-      if (ret.statusCode === 200) {
-        ret.bodyParsed = JSON.parse(ret.body);
-      }
-      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
-      result = ret.bodyParsed.result;
-      assertTrue(result.hasOwnProperty("log"));
-      log = result.log;
-      assertEqual(log.length, 1);
-      assertTrue(Array.isArray(log));
-      assertEqual(result.commitIndex, ci);
-      assertEqual(result.firstIndex, ci);
-
-      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + (ci + 1),
-                     method: "GET", headers: {"X-arango-async": "store"}});
-
-      assertEqual(ret.statusCode, 202);
-      assertTrue(ret.headers.hasOwnProperty("x-arango-async-id"));
-      job = ret.headers["x-arango-async-id"];
-
-      wr = accessAgency("write",[[{"/": {"op":"delete"}}]]).
-          bodyParsed.results[0];
-      let tries = 0;
-      while (++tries <60) {
-        // jobs are processed asynchronously, so we need to poll here
-        // until the job has been processed
-        ret = request({url: agencyLeader + "/_api/job/" + job,
-                       method: "GET", followRedirect: true});
-        if (ret.statusCode !== 204) {
-          break;
-        }
-        wait(0.5);
-      }
-      assertEqual(ret.statusCode, 200);
-      ret = request({url: agencyLeader + "/_api/job/" + job, method: "PUT"});
-      assertEqual(ret.statusCode, 200);
-      ret.bodyParsed = JSON.parse(ret.body);
-      result = ret.bodyParsed.result;
-
-      assertTrue(result.hasOwnProperty("log"));
-      assertTrue(result.hasOwnProperty("commitIndex"));
-      assertTrue(result.hasOwnProperty("firstIndex"));
-      assertEqual(result.firstIndex, ci+1);
-      assertEqual(result.commitIndex, ci+1);
-
-      // Multiple writes
-      ci = result.commitIndex;
-      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + (ci + 1),
-                     method: "GET", followRedirect: true, headers: {"X-arango-async": "store"}});
-      assertTrue(ret.headers.hasOwnProperty("x-arango-async-id"));
-      job = ret.headers["x-arango-async-id"];
-      wr = accessAgency("write",[[{"/": {"op":"delete"}}],[{"/": {"op":"delete"}}],[{"/": {"op":"delete"}}]]).
-          bodyParsed.results[0];
-      ret = request({url: agencyLeader + "/_api/job/" + job,
-                     method: "PUT", followRedirect: true, body: {}});
-      assertEqual(ret.statusCode, 200);
-      ret.bodyParsed = JSON.parse(ret.body);
-      result = ret.bodyParsed.result;
-      assertEqual(result.firstIndex, ci+1);
-      assertEqual(result.commitIndex, ci+3);
-      ci = result.commitIndex;
-    },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test transact interface
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransact : function () {
+TEST_F(StoreTestAPI, transact) {
 
-      var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
-          bodyParsed.results[0];
-      assertEqual(readAndCheck([["/x"]]), [{}]);
+      auto cur = write(R"([[{"/": {"op":"delete"}}]])");
+      // bodyParsed.results[0];
+      assertEqual(readAndCheck(R"([["/x"]])"), R"([{}])");
       var res = transactAndCheck([["/x"],[{"/x":12}]],200);
       assertEqual(res, [{},++cur]);
       res = transactAndCheck([["/x"],[{"/x":12}]],200);
@@ -267,8 +144,7 @@ TEST_F(StoreTestAPI, testPoll) {
         [[{"/x":{"op":"increment"}}],[{"/x":{"op":"increment"}}],["/x"]],200);
       assertEqual(res, [++cur,++cur,{x:17}]);
       writeAndCheck([[{"/":{"op":"delete"}}]]);
-    },
-
+    }
 */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,56 +255,73 @@ TEST_F(StoreTestAPI, precondition) {
       ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
       assertEqual(readAndCheck(R"([["/b"]])"), R"([{"b":3}])");
       
-      // // Permute order of keys and objects within precondition
-      // var localObj =
-      //     {"foo" : "bar",
-      //      "baz" : {
-      //        "_id": "5a00203e4b660989b2ae5493", "index": 0,
-      //        "guid": "7a709cc2-1479-4079-a0a3-009cbe5674f4",
-      //        "isActive": true, "balance": "$3,072.23",
-      //        "picture": "http://placehold.it/32x32",
-      //        "age": 21, "eyeColor": "green", "name":
-      //        { "first": "Durham", "last": "Duke" },
-      //        "tags": ["anim","et","id","do","est",1.0,-1024,1024]
-      //      },
-      //      "qux" : ["3.14159265359",3.14159265359]
-      //     };
-      // var test;
-      // var localKeys = [];
-      // for (var i in localObj.baz) {
-      //   localKeys.push(i);
-      // }
-      // var permuted;
-      // res = accessAgency(
-      //   "write",
-      //   [[localObj,
-      //     {"foo":localObj.bar,
-      //      "baz":{"old":localObj.baz},
-      //      "qux":localObj.qux}]]);
-      // assertEqual(res.statusCode, 412);
+      // Permute order of keys and objects within precondition
+      std::map<std::string,std::string> baz {
+        {"_id", "\"5a00203e4b660989b2ae5493\""},
+        {"index", "0"},
+        {"guid", "\"7a709cc2-1479-4079-a0a3-009cbe5674f4\""},
+        {"isActive", "true"},
+        {"balance", "\"$3,072.23\""},
+        {"picture", "\"http://placehold.it/32x32\""},
+        {"age", "21"},
+        {"eyeColor", "\"green\""},
+        {"name", R"({ "first": "Durham", "last": "Duke" })"},
+        {"tags", R"(["anim","et","id","do","est",1.0,-1024,1024])"}
+      };
+      bool is_first{true};
+      std::string const baz_text = "{" + 
+        std::accumulate(baz.begin(), baz.end(), std::string(), [&is_first](std::string partial, auto const &kv){
+          if (is_first) is_first = false; else partial += ",";
+          partial += "\"" + kv.first + "\": " + kv.second;
+          return partial;
+        })
+        + "}";
+      std::string const qux {R"(["3.14159265359",3.14159265359])"};
+      std::string const foo_value {"\"bar\""};
+      std::string const localObj = R"(
+          {"foo" : )"+ foo_value + R"(,
+           "baz" : )" + baz_text + R"(,
+           "qux" : )" + qux + R"(
+          })";
 
-      // res = writeAndCheck([[localObj]]);
-      // res = writeAndCheck([[localObj, {"foo":localObj.foo,"baz":{"old":localObj.baz},"qux":localObj.qux}]]);
-      // res = writeAndCheck(
-      //   [[localObj, {"baz":{"old":localObj.baz},"foo":localObj.foo,"qux":localObj.qux}]]);
-      // res = writeAndCheck(
-      //   [[localObj, {"baz":{"old":localObj.baz},"qux":localObj.qux,"foo":localObj.foo}]]);
-      // res = writeAndCheck(
-      //   [[localObj, {"qux":localObj.qux,"baz":{"old":localObj.baz},"foo":localObj.foo}]]);
+      res = write(
+        std::string("[[") + localObj + R"(,
+          {
+           "baz":{"old": )" + baz_text + R"(},
+           "qux":)" + qux + R"(}]])");
+      ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
 
-      // for (var j in localKeys) {
-      //   permuted = {};
-      //   shuffle(localKeys);
-      //   for (var k in localKeys) {
-      //     permuted[localKeys[k]] = localObj.baz[localKeys[k]];
-      //   }
-      //   res = writeAndCheck(
-      //     [[localObj, {"baz":{"old":permuted},"foo":localObj.foo,"qux":localObj.qux}]]);
-      //   res = writeAndCheck(
-      //     [[localObj, {"foo":localObj.foo,"qux":localObj.qux,"baz":{"old":permuted}}]]);
-      //   res = writeAndCheck(
-      //     [[localObj, {"qux":localObj.qux,"baz":{"old":permuted},"foo":localObj.foo}]]);
-      // }
+      writeAndCheck("[[" + localObj + "]]");
+      writeAndCheck(
+        "[[" + localObj + R"(, {"foo":)" + foo_value + R"(,"baz":{"old":)" + baz_text + R"(},"qux":)" + qux + "}]]");
+      writeAndCheck(
+        "[[" + localObj + R"(, {"baz":{"old":)" + baz_text + R"(},"foo":)" + foo_value + R"(,"qux":)" + qux + R"(}]])");
+      writeAndCheck(
+        "[[" + localObj + R"(, {"baz":{"old":)" + baz_text + R"(},"qux":)" + qux + R"(,"foo":)" + foo_value + R"(}]])");
+      writeAndCheck(
+        "[[" + localObj + R"(, {"qux":)" + qux + R"(,"baz":{"old":)" + baz_text + R"(},"foo":)" + foo_value + R"(}]])");
+
+      std::vector<std::string> localKeys;
+      std::transform(baz.begin(), baz.end(), std::back_inserter(localKeys), [](auto kv){ return kv.first; });
+      for (std::sort(localKeys.begin(), localKeys.end()); std::next_permutation(localKeys.begin(), localKeys.end()); ) {
+        is_first = true;
+        auto pkey {localKeys.begin()};
+        std::string const permuted = "{" + 
+          std::accumulate(baz.begin(), baz.end(), std::string(), [&is_first, &pkey](std::string partial, auto const &kv){
+            if (is_first) is_first = false; else partial += ",";
+            partial += "\"" + (*pkey) + "\": " + kv.second;
+            ++pkey;
+            return partial;
+        }) + "}";
+        writeAndCheck(
+          "[[" + localObj + R"(, {"foo":)" + foo_value + R"(,"baz":{"old":)" + permuted + R"(},"qux":)" + qux + "}]]");
+        writeAndCheck(
+          "[[" + localObj + R"(, {"baz":{"old":)" + permuted + R"(},"foo":)" + foo_value + R"(,"qux":)" + qux + R"(}]])");
+        writeAndCheck(
+          "[[" + localObj + R"(, {"baz":{"old":)" + permuted + R"(},"qux":)" + qux + R"(,"foo":)" + foo_value + R"(}]])");
+        writeAndCheck(
+          "[[" + localObj + R"(, {"qux":)" + qux + R"(,"baz":{"old":)" + permuted + R"(},"foo":)" + foo_value + R"(}]])");
+      }
 
       // // Permute order of keys and objects within arrays in preconditions
       // writeAndCheck([[{"a":[{"b":12,"c":13}]}]]);
@@ -1265,6 +1158,7 @@ TEST_F(StoreTestAPI, precondition) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package
 ////////////////////////////////////////////////////////////////////////////////
+
 TEST_F(StoreTestAPI, huge_transaction_package) {
   writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
   std::stringstream ss;
