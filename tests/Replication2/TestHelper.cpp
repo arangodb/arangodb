@@ -22,6 +22,8 @@
 
 #include "TestHelper.h"
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -112,4 +114,21 @@ auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, Pa
     -> std::shared_ptr<DelayedFollowerLog> {
   auto ptr = ReplicatedLog::becomeFollower(id, term, std::move(leaderId));
   return std::make_shared<DelayedFollowerLog>(ptr);
+}
+
+auto TestReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
+                    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+                    std::size_t writeConcern) -> std::shared_ptr<DelayedLogLeader> {
+  auto ptr = ReplicatedLog::becomeLeader(id, term, follower, writeConcern);
+  return std::make_shared<DelayedLogLeader>(ptr);
+}
+
+DelayedLogLeader::DelayedLogLeader(std::shared_ptr<LogLeader>  leader)
+    : _leader(std::move(leader)) {}
+
+LogStatus DelayedLogLeader::getStatus() const {
+  return _leader->getStatus();
+}
+std::unique_ptr<LogCore> DelayedLogLeader::resign() && {
+  return std::move(*_leader).resign();
 }

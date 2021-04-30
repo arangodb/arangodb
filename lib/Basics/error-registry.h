@@ -14,7 +14,7 @@ struct elsa<ErrorCode> {
 
 #include <frozen/unordered_map.h>
 
-// for format macro constants, e.g. PRIu64
+// for format macro constants, e.g. PRId64
 #include <cinttypes>
 
 namespace arangodb::error {

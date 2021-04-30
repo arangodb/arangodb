@@ -120,9 +120,21 @@ struct DelayedFollowerLog : AbstractFollower {
   std::shared_ptr<LogFollower> _follower;
 };
 
+struct DelayedLogLeader : LogParticipantI {
+  DelayedLogLeader(std::shared_ptr<LogLeader>  leader);
+  auto getStatus() const -> LogStatus override;
+  auto resign() && -> std::unique_ptr<LogCore> override;
+
+ private:
+  std::shared_ptr<LogLeader> _leader;
+};
+
 struct TestReplicatedLog : ReplicatedLog {
   using ReplicatedLog::ReplicatedLog;
   auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<DelayedFollowerLog>;
+  auto becomeLeader(ParticipantId const& id, LogTerm term,
+                    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+                    std::size_t writeConcern) -> std::shared_ptr<DelayedLogLeader>;
 };
 
 struct ReplicatedLogTest : ::testing::Test {
