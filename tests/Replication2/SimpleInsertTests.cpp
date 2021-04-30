@@ -36,7 +36,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(followerId, std::move(coreB),
                                                        LogTerm{1}, leaderId);
   auto leader = LogLeader::construct(leaderId, std::move(coreA), LogTerm{1},
-                           std::vector<std::shared_ptr<AbstractFollower>>{follower}, 1);
+                           std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
 
   {
     // Nothing written on the leader
@@ -132,7 +132,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       auto quorum = f.get();
       EXPECT_EQ(quorum->index, LogIndex{1});
       EXPECT_EQ(quorum->term, LogTerm{1});
-      EXPECT_EQ(quorum->quorum, std::vector<ParticipantId>{followerId});
+      EXPECT_EQ(quorum->quorum, (std::vector<ParticipantId>{leaderId, followerId}));
     }
 
     // Follower should have pending append entries
@@ -255,7 +255,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   auto leader =
       LogLeader::construct(leaderId, std::move(coreA), LogTerm{1},
                            std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2},
-                           2);
+                           3);
 
   auto index = leader->insert(LogPayload{"first entry"});
   auto future = leader->waitFor(index);
@@ -318,7 +318,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
     auto quorum = future.get();
     EXPECT_EQ(quorum->term, LogTerm{1});
     EXPECT_EQ(quorum->index, LogIndex{1});
-    EXPECT_EQ(quorum->quorum, (std::vector{followerId_1, followerId_2}));
+    EXPECT_EQ(quorum->quorum, (std::vector{leaderId, followerId_1, followerId_2}));
   }
 
   EXPECT_TRUE(follower_1->hasPendingAppendEntries());
