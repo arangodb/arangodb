@@ -70,7 +70,6 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void checkVSTPrefix();
 
   void processRequest();
-  void doProcessRequest();
 
   // called on IO context thread
   void writeResponse(RequestStatistics::Item stat);
