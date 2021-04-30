@@ -42,9 +42,10 @@ class RecursiveMutexLocker {
                        bool acquire, 
                        char const* file, 
                        int line)
-      : _locker(&mutex, type, false, file, line), // does not lock yet 
-         _owner(owner), 
-         _update(noop) {
+      : _locked(false),
+        _locker(&mutex, type, false, file, line), // does not lock yet 
+        _owner(owner), 
+        _update(noop) {
     if (acquire) {
       lock();
     }
@@ -52,7 +53,7 @@ class RecursiveMutexLocker {
 
   ~RecursiveMutexLocker() { unlock(); }
 
-  bool isLocked() const noexcept { return _locker.isLocked(); }
+  bool isLocked() const noexcept { return _locked; }
 
   void lock() {
     // recursive locking of the same instance is not yet supported (create a new instance instead)
@@ -65,13 +66,18 @@ class RecursiveMutexLocker {
       if (_locker.isLocked()) {
         _owner.store(std::this_thread::get_id());
         _update = owned;
+        _locked = true;
       }
+    } else {
+      // we are the owning thread
+      _locked = true;
     }
   }
 
   void unlock() { _update(*this); }
 
  private:
+  bool _locked;  // track locked state separately for recursive lock acquisition
   arangodb::basics::MutexLocker<T> _locker;
   std::atomic<std::thread::id>& _owner;
   void (*_update)(RecursiveMutexLocker& locker);
@@ -81,6 +87,7 @@ class RecursiveMutexLocker {
     locker._owner.store(std::thread::id());
     locker._locker.unlock();
     locker._update = noop;
+    locker._locked = false;
   }
 };
 
@@ -88,7 +95,7 @@ class RecursiveMutexLocker {
 #define NAME_EXPANDER__(name, line) NAME__(name, line)
 #define NAME(name) NAME_EXPANDER__(name, __LINE__)
 #define RECURSIVE_MUTEX_LOCKER_NAMED(name, lock, owner, acquire)                     \
-  RecursiveMutexLocker<typename std::decay<decltype(lock)>::type> name(              \
+  arangodb::RecursiveMutexLocker<typename std::decay<decltype(lock)>::type> name(              \
     lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__ \
   )
 #define RECURSIVE_MUTEX_LOCKER(lock, owner) \
@@ -174,6 +181,7 @@ class RecursiveWriteLocker {
     locker._owner.store(std::thread::id());
     locker._locker.unlock();
     locker._update = noop;
+    locker._locked = false;
   }
 };
 
@@ -181,11 +189,11 @@ class RecursiveWriteLocker {
 #define NAME_EXPANDER__(name, line) NAME__(name, line)
 #define NAME(name) NAME_EXPANDER__(name, __LINE__)
 #define RECURSIVE_READ_LOCKER(lock, owner)                                             \
-  RecursiveReadLocker<typename std::decay<decltype(lock)>::type> NAME(RecursiveLocker)(\
+  arangodb::RecursiveReadLocker<typename std::decay<decltype(lock)>::type> NAME(RecursiveLocker)(\
     lock, owner, __FILE__, __LINE__                                                    \
   )
 #define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, acquire)                       \
-  RecursiveWriteLocker<typename std::decay<decltype(lock)>::type> name(                \
+  arangodb::RecursiveWriteLocker<typename std::decay<decltype(lock)>::type> name(                \
       lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__ \
   )
 #define RECURSIVE_WRITE_LOCKER(lock, owner) \
