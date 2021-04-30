@@ -51,8 +51,18 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   });
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{3}, {follower}, 1);
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{3}, {follower}, 2);
 
+  {
+    auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
+    EXPECT_EQ(stats.commitIndex, LogIndex{0});
+    EXPECT_EQ(stats.spearHead, LogIndex{1});
+  }
+  {
+    auto stats = std::get<FollowerStatus>(follower->getStatus()).local;
+    EXPECT_EQ(stats.commitIndex, LogIndex{0});
+    EXPECT_EQ(stats.spearHead, LogIndex{3});
+  }
   {
       auto idx = leader->insert(LogPayload{"new second entry"});
       EXPECT_EQ(idx, LogIndex{2});

@@ -88,11 +88,11 @@ namespace follower {
 
 auto appendEntries(LogTerm const currentTerm, LogIndex& commitIndex,
                    replicated_log::InMemoryLog& inMemoryLog,
-                   replicated_log::LogCore& logCore, AppendEntriesRequest const& req)
+                   replicated_log::LogCore* logCore, AppendEntriesRequest const& req)
     -> arangodb::futures::Future<AppendEntriesResult> {
   // TODO does >= suffice here? Maybe we want to do an atomic operation
   // before increasing our term
-  if (req.leaderTerm != currentTerm) {
+  if (req.leaderTerm != currentTerm || logCore == nullptr) {
     return AppendEntriesResult{false, currentTerm};
   }
   // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
@@ -104,14 +104,14 @@ auto appendEntries(LogTerm const currentTerm, LogIndex& commitIndex,
     }
   }
 
-  auto res = logCore._persistedLog->removeBack(req.prevLogIndex + 1);
+  auto res = logCore->_persistedLog->removeBack(req.prevLogIndex + 1);
   if (!res.ok()) {
     abort();
   }
 
   auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
       req.entries.begin(), req.entries.end());
-  res = logCore._persistedLog->insert(iter);
+  res = logCore->_persistedLog->insert(iter);
   if (!res.ok()) {
     abort();
   }
@@ -137,7 +137,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   auto logFollowerDataGuard = acquireMutex();
   return follower::appendEntries(_currentTerm, logFollowerDataGuard->_commitIndex,
                                  logFollowerDataGuard->_inMemoryLog,
-                                 *logFollowerDataGuard->_logCore, req);
+                                 logFollowerDataGuard->_logCore.get(), req);
 }
 
 replicated_log::LogLeader::LogLeader(ParticipantId const& id, LogTerm const term,
@@ -664,8 +664,15 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId const& id,
                                                    LogTerm term, ParticipantId leaderId)
     -> std::shared_ptr<LogFollower> {
   auto logCore = std::move(*_participant).resign();
+  // TODO this is a cheap trick for now. Later we should be aware of the fact
+  //      that the log might not start at 1.
+  auto iter = logCore->_persistedLog->read(LogIndex{0});
+  auto log = InMemoryLog{};
+  while (auto entry = iter->next()) {
+    log._log = log._log.push_back(std::move(entry).value());
+  }
   auto follower = std::make_shared<LogFollower>(id, std::move(logCore), term,
-                                                std::move(leaderId), InMemoryLog{});
+                                                std::move(leaderId), log);
   _participant = std::static_pointer_cast<LogParticipantI>(follower);
   return follower;
 }
@@ -681,14 +688,22 @@ auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
 
 auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesRequest const request)
     -> futures::Future<AppendEntriesResult> {
+  // TODO acquire mutex
+
+  auto result = AppendEntriesResult{};
+  result.logTerm = request.leaderTerm;
+
+  if (_logCore == nullptr) {
+    result.success = false;
+    return result;
+  }
+
   // TODO The LogCore should know its last log index, and we should assert here
   //      that the AppendEntriesRequest matches it.
   auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
       request.entries.begin(), request.entries.end());
   auto const res = _logCore->_persistedLog->insert(iter);
-  auto result = AppendEntriesResult{};
   result.success = res.ok();
-  result.logTerm = request.leaderTerm;
   return result;
 }
 
