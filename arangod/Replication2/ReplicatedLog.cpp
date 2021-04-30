@@ -106,7 +106,7 @@ auto appendEntries(replicated_log::LogParticipant& participant, AppendEntriesReq
     abort();
   }
 
-  auto iter = std::make_shared<ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>>(
+  auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
       req.entries.begin(), req.entries.end());
   res = participant._logCore->_persistedLog->insert(iter);
   if (!res.ok()) {

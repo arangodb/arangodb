@@ -36,11 +36,11 @@ auto operator<<(std::ostream& ostream, LogEntry const& logEntry) -> std::ostream
 }
 }
 
-auto arangodb::MockLog::insert(std::shared_ptr<LogIterator> iter) -> arangodb::Result {
+auto arangodb::MockLog::insert(LogIterator& iter) -> arangodb::Result {
   auto lastIndex = LogIndex{0};
   auto lastTerm = LogTerm{0};
 
-  while (auto entry = iter->next()) {
+  while (auto entry = iter.next()) {
     auto const res = _storage.try_emplace(entry->logIndex(), entry.value());
     TRI_ASSERT(res.second);
 

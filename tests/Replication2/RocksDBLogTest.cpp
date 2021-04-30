@@ -114,7 +114,7 @@ TEST_F(RocksDBLogTest, insert_iterate) {
     };
     auto iter = make_iterator(entries);
 
-    auto res = log->insert(iter);
+    auto res = log->insert(*iter);
     ASSERT_TRUE(res.ok());
   }
 
@@ -164,7 +164,7 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
     };
     auto iter = make_iterator(entries);
 
-    auto res = log->insert(iter);
+    auto res = log->insert(*iter);
     ASSERT_TRUE(res.ok());
   }
 
@@ -202,7 +202,7 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
     };
     auto iter = make_iterator(entries);
 
-    auto res = log->insert(iter);
+    auto res = log->insert(*iter);
     ASSERT_TRUE(res.ok());
   }
 

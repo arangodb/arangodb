@@ -1919,7 +1919,7 @@ using namespace arangodb::replication2;
 struct FakePersistedLog : PersistedLog {
   explicit FakePersistedLog(LogId id) : PersistedLog(id) {};
   ~FakePersistedLog() override = default;
-  auto insert(std::shared_ptr<LogIterator> iter) -> Result override {
+  auto insert(LogIterator& iter) -> Result override {
     LOG_DEVEL << "Fake log insert";
     return Result();
   }

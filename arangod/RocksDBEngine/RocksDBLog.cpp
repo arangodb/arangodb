@@ -34,7 +34,7 @@ RocksDBLog::RocksDBLog(replication2::LogId id, rocksdb::ColumnFamilyHandle* cf,
                        rocksdb::DB* db, uint64_t objectId)
     : PersistedLog(id), _objectId(objectId), _cf(cf), _db(db) {}
 
-auto RocksDBLog::insert(std::shared_ptr<LogIterator> iter) -> Result {
+auto RocksDBLog::insert(LogIterator& iter) -> Result {
   rocksdb::WriteBatch wb;
   auto res = insertWithBatch(iter, wb);
   if (!res.ok()) {
@@ -119,9 +119,9 @@ auto RocksDBLog::removeBack(replication2::LogIndex start) -> Result {
   return rocksutils::convertStatus(s);
 }
 
-auto RocksDBLog::insertWithBatch(std::shared_ptr<replication2::LogIterator> const& iter,
+auto RocksDBLog::insertWithBatch(replication2::LogIterator& iter,
                                  rocksdb::WriteBatch& wb) -> Result {
-  while (auto entry = iter->next()) {
+  while (auto entry = iter.next()) {
     auto key = RocksDBKey{};
     key.constructLogEntry(_objectId, entry->logIndex());
     auto value = RocksDBValue::LogEntry(entry->logTerm(), entry->logPayload());
