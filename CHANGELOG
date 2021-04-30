@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed a use after free bug in the connection pool.
+
 * Show peak memory usage in AQL query profiling output.
 
 * Fixed various issues (mainly data races) reported by ThreadSanitizer.
