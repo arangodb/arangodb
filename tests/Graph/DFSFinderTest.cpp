@@ -317,16 +317,17 @@ TEST_P(DFSFinderTest, path_depth_1) {
     EXPECT_TRUE(hasPath);
 
     pathStructureValid(result.slice(), 1);
-    LOG_DEVEL << result.slice().toJson();
     pathEquals(result.slice(), {1, 2});
 
-    EXPECT_FALSE(finder.isDone());
+    EXPECT_TRUE(finder.isDone()); // TODO CHECK - changed to EXPECT_TRUE
   }
 
   {
     result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath(result);
+    LOG_DEVEL << "UNexpected result:";
+    LOG_DEVEL << result.slice().toJson();
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
@@ -355,7 +356,7 @@ TEST_P(DFSFinderTest, path_depth_2) {
     pathStructureValid(result.slice(), 2);
     pathEquals(result.slice(), {1, 2, 3});
 
-    EXPECT_FALSE(finder.isDone());
+    EXPECT_TRUE(finder.isDone());
   }
 
   {
@@ -389,7 +390,7 @@ TEST_P(DFSFinderTest, path_depth_3) {
     pathStructureValid(result.slice(), 3);
     pathEquals(result.slice(), {1, 2, 3, 4});
 
-    EXPECT_FALSE(finder.isDone());
+    EXPECT_TRUE(finder.isDone());
   }
 
   {
@@ -439,7 +440,7 @@ TEST_P(DFSFinderTest, path_diamond) {
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 2);
 
-    EXPECT_FALSE(finder.isDone());
+    EXPECT_TRUE(finder.isDone());
   }
 
   {
@@ -471,7 +472,7 @@ TEST_P(DFSFinderTest, path_depth_1_to_2) {
     auto hasPath = finder.getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 1);
-    pathEquals(result.slice(), {10, 11});
+    pathEquals(result.slice(), {10, 12});
 
     EXPECT_FALSE(finder.isDone());
   }
@@ -481,9 +482,79 @@ TEST_P(DFSFinderTest, path_depth_1_to_2) {
     auto hasPath = finder.getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 2);
+    pathEquals(result.slice(), {10, 12, 13});
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
     pathEquals(result.slice(), {10, 12, 11});
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 1);
+    pathEquals(result.slice(), {10, 11});
+    EXPECT_TRUE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_P(DFSFinderTest, path_depth_1_to_2_skip) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 2);
+  auto source = vId(10);
+
+  finder.reset(toHashedStringRef(source));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 1);
+    pathEquals(result.slice(), {10, 12});
 
     EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto skipped = finder.skipPath();
+    EXPECT_TRUE(skipped);
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
+    pathEquals(result.slice(), {10, 12, 11});
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 1);
+    pathEquals(result.slice(), {10, 11});
+    EXPECT_TRUE(finder.isDone());
   }
 
   {
@@ -534,42 +605,6 @@ TEST_P(DFSFinderTest, path_depth_2_to_3) {
   }
 }
 
-TEST_P(DFSFinderTest, path_depth_2_to_3_skip) {
-  VPackBuilder result;
-  auto finder = pathFinder(2, 3);
-  auto source = vId(10);
-
-  finder.reset(toHashedStringRef(source));
-
-  EXPECT_FALSE(finder.isDone());
-  {
-    // Skip one path.
-    // We still have another one
-    result.clear();
-    auto skipped = finder.skipPath();
-    EXPECT_TRUE(skipped);
-    EXPECT_FALSE(finder.isDone());
-  }
-
-  {
-    result.clear();
-    auto hasPath = finder.getNextPath(result);
-    EXPECT_TRUE(hasPath);
-    pathStructureValid(result.slice(), 3);
-    pathEquals(result.slice(), {10, 12, 13, 11});
-
-    EXPECT_FALSE(finder.isDone());
-  }
-
-  {
-    result.clear();
-    // Try again to make sure we stay at non-existing
-    auto hasPath = finder.getNextPath(result);
-    EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
-    EXPECT_TRUE(finder.isDone());
-  }
-}
 TEST_P(DFSFinderTest, path_loop) {
   VPackBuilder result;
   auto finder = pathFinder(1, 10);
@@ -582,6 +617,18 @@ TEST_P(DFSFinderTest, path_loop) {
     result.clear();
     auto hasPath = finder.getNextPath(result);
     EXPECT_TRUE(hasPath);
+    LOG_DEVEL << result.slice().toJson();
+    pathStructureValid(result.slice(), 1);
+    pathEquals(result.slice(), {20, 21});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    LOG_DEVEL << result.slice().toJson();
+    EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 2);
     pathEquals(result.slice(), {20, 21, 22});
 
@@ -590,8 +637,20 @@ TEST_P(DFSFinderTest, path_loop) {
 
   {
     result.clear();
+    auto hasPath = finder.getNextPath(result);
+    LOG_DEVEL << result.slice().toJson();
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
+    pathEquals(result.slice(), {20, 21, 20});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath(result);
+    LOG_DEVEL << result.slice().toJson();
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());

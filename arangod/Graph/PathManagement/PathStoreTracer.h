@@ -60,6 +60,8 @@ class PathStoreTracer {
   // returns the index of inserted element
   size_t append(Step step);
 
+  auto get(size_t position) const -> Step;
+
   // @brief returns the current vector size
   size_t size() const;
 

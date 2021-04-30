@@ -70,6 +70,9 @@ class PathStore {
   // returns the index of inserted element
   size_t append(Step step);
 
+  // @briefs Method returns a step at given position
+  Step get(size_t position) const;
+
   // @brief returns the current vector size
   size_t size() const { return _schreier.size(); }
 

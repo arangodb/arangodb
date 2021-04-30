@@ -65,9 +65,17 @@ struct SingleServerProvider {
    public:
     class Vertex {
      public:
-      explicit Vertex(VertexType v) : _vertex(v) {}
+      explicit Vertex(VertexType v) : _vertex(v) {
+        _depth = 0;
+      }
+
+      explicit Vertex(VertexType v, size_t depth) : _vertex(v) {
+        _depth = depth;
+      }
 
       VertexType const& getID() const;
+
+      size_t getDepth() const;
       
       bool operator<(Vertex const& other) const noexcept {
         return _vertex < other._vertex;
@@ -79,6 +87,7 @@ struct SingleServerProvider {
 
      private:
       VertexType _vertex;
+      size_t _depth;
     };
 
     class Edge {
@@ -97,6 +106,7 @@ struct SingleServerProvider {
 
     Step(VertexType v);
     Step(VertexType v, EdgeDocumentToken edge, size_t prev);
+    Step(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth);
     ~Step();
 
     bool operator<(Step const& other) const noexcept {
@@ -113,6 +123,7 @@ struct SingleServerProvider {
     bool isLooseEnd() const { return false; }
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
+    size_t getDepth() const { return _vertex.getDepth(); }
 
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 

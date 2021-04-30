@@ -28,11 +28,11 @@
 #include <vector>
 
 #include "./MockGraph.h"
+#include "Aql/TraversalStats.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "Transaction/Methods.h"
-#include "Aql/TraversalStats.h"
 
 #include "Graph/Providers/BaseStep.h"
 
@@ -67,9 +67,11 @@ class MockGraphProvider {
    public:
     class Vertex {
      public:
-      explicit Vertex(VertexType v) : _vertex(v){};
+      explicit Vertex(VertexType v) : _vertex(v) { _depth = 0; };
+      explicit Vertex(VertexType v, size_t depth) : _vertex(v), _depth(depth){};
 
       VertexType getID() const { return _vertex; }
+      size_t getDepth() const { return _depth; }
 
       // Make the set work on the VertexRef attribute only
       bool operator<(Vertex const& other) const noexcept {
@@ -82,6 +84,7 @@ class MockGraphProvider {
 
      private:
       VertexType _vertex;
+      size_t _depth;
     };
 
     class Edge {
@@ -106,6 +109,7 @@ class MockGraphProvider {
 
     Step(VertexType v, bool isProcessable);
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
+    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable, size_t depth);
     ~Step();
 
     bool operator<(Step const& other) const noexcept {
@@ -142,6 +146,7 @@ class MockGraphProvider {
     }
 
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
+    size_t getDepth() const { return getVertex().getDepth(); }
 
     bool isProcessable() const { return _isProcessable; }
 

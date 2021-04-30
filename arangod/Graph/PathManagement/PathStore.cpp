@@ -77,6 +77,16 @@ size_t PathStore<Step>::append(Step step) {
 }
 
 template <class Step>
+Step PathStore<Step>::get(size_t position) const {
+  TRI_ASSERT(position <= size());
+  Step step = _schreier.at(position);
+  LOG_TOPIC("45bf4", TRACE, Logger::GRAPHS)
+  << "<PathStore> Get step: " << step.toString();
+
+  return step;
+}
+
+template <class Step>
 template <class ProviderType>
 auto PathStore<Step>::buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
     -> void {

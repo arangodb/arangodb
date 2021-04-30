@@ -74,7 +74,6 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::clear() {
-  _shell.clear();
   _interior.reset();
   _queue.clear();
   _currentDepth = 0;
@@ -99,19 +98,37 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   }
 
   auto step = _queue.pop();
-  auto previous = _interior.append(step);
-  _provider.expand(step, previous, [&](Step n) -> void {
-    ValidationResult res = _validator.validatePath(n);
+  auto posPrevious = _interior.append(step);
 
-    if ((_currentDepth >= _options.getMinDepth()) && !res.isFiltered()) {
+  if (!step.isFirst()) {
+    ValidationResult res = _validator.validatePath(step);
+    if ((step.getDepth() >= _options.getMinDepth()) && !res.isFiltered() && !res.isPruned()) {
       // Include it in results.
       // Add the step to our shell
-      _results.push_back(std::make_pair(step, n));
+      _results.push_back(std::make_pair(_interior.get(posPrevious), step));
     }
-    if (!res.isPruned()) {
-      _shell.emplace(std::move(n));
-    }
-  });
+    /*if () {
+      // evtl. auch vor expand
+      LOG_DEVEL << "Adding to shell:";
+      _results.push_back(std::make_pair(_interior.get(posPrevious), step));
+    }*/
+  }
+
+
+  /* WILL BE NEEDED FOR BFS (implement type)
+  if (_currentDepth < _options.getMaxDepth()) {
+    LOG_DEVEL << "Now expanding Step: " << step.toString();
+    _provider.expand(step, posPrevious, [&](Step n) -> void { _queue.append(n); });
+  }*/
+
+  LOG_DEVEL << "Before expand: Step Depth is: " << step.getDepth();
+  LOG_DEVEL << "Max depth is: " << _options.getMaxDepth();
+  if (step.getDepth() < _options.getMaxDepth()) {
+    LOG_DEVEL << "-> Will expand step: " << step.toString();
+    _provider.expand(step, posPrevious, [&](Step n) -> void {
+      LOG_DEVEL << "New step appended to queue: Inner Step Depth is: " << n.getDepth();
+      _queue.append(n); });
+  }
 }
 
 /**
@@ -138,7 +155,7 @@ template <class QueueType, class PathStoreType, class ProviderType, class PathVa
 void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::reset(VertexRef source) {
   clear();
   auto firstStep = _provider.startVertex(source);
-  _shell.emplace(std::move(firstStep));
+  _queue.append(std::move(firstStep));
 }
 
 /**
@@ -156,11 +173,14 @@ void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  */
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::getNextPath(VPackBuilder& result) {
+  LOG_DEVEL << "= getNextPath - searchDone(" << std::boolalpha << isDone() << ")";
+
   while (!isDone()) {
     searchMoreResults();
 
+    LOG_DEVEL << "= results size: " << _results.size();
     while (!_results.empty()) {
-      auto const& [leftVertex, rightVertex] = _results.back();
+      auto const& [unused, rightVertex] = _results.back();
 
       // Performance Optimization:
       // It seems to be pointless to first push
@@ -168,8 +188,7 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       // and then iterate again to return the path
       // we should be able to return the path in the first go.
       _resultPath.clear();
-      //_interior.buildPath(leftVertex, _resultPath);
-      _interior.buildPath(rightVertex, _resultPath); // TODO: check
+      _interior.buildPath(rightVertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
       _results.pop_back();
       _resultPath.toVelocyPack(result);
@@ -181,14 +200,9 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::searchMoreResults() {
-  while (_results.empty() && !searchDone()) {
+  while (_results.empty() && !searchDone()) { // TODO: check && !_queue.isEmpty()
     _resultsFetched = false;
-
-    if (ADB_UNLIKELY(doneWithDepth())) {
-      startNextDepth();
-    } else {
-      computeNeighbourhoodOfNextVertex();
-    }
+    computeNeighbourhoodOfNextVertex();
   }
 
   fetchResults();
@@ -216,32 +230,7 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 }
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::startNextDepth()
-    -> void {
-  // We start the next depth, build a new queue
-  // based on the shell contents.
-  TRI_ASSERT(_queue.isEmpty());
-  for (auto& step : _shell) {
-    _queue.append(std::move(step));
-  }
-  _shell.clear();
-  _currentDepth++;
-}
-
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::noPathLeft() const
-    -> bool {
-  return doneWithDepth() && _shell.empty();
-}
-
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::searchDone() const
-    -> bool {
-  return noPathLeft() || _currentDepth > _options.getMaxDepth();
-}
-
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::doneWithDepth() const
     -> bool {
   return _queue.isEmpty();
 }

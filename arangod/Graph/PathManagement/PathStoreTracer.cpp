@@ -63,6 +63,13 @@ size_t PathStoreTracer<PathStoreImpl>::append(Step step) {
 }
 
 template <class PathStoreImpl>
+typename PathStoreImpl::Step PathStoreTracer<PathStoreImpl>::get(size_t position) const {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["get"].addTiming(TRI_microtime() - start));
+  return _impl.get(position);
+}
+
+template <class PathStoreImpl>
 size_t PathStoreTracer<PathStoreImpl>::size() const {
   double start = TRI_microtime();
   TRI_DEFER(_stats["size"].addTiming(TRI_microtime() - start));

@@ -126,10 +126,6 @@ class OneSidedEnumerator {
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;
-  [[nodiscard]] auto noPathLeft() const -> bool;
-
-  auto startNextDepth() -> void;
-  auto doneWithDepth() const -> bool;
 
   auto computeNeighbourhoodOfNextVertex() -> void;
 
@@ -156,9 +152,6 @@ class OneSidedEnumerator {
 
   // This stores all paths processed
   PathStoreType _interior;
-
-  // Fast path, to test if we find a connecting vertex between left and right.
-  Shell _shell{};
 
   size_t _currentDepth;
 
