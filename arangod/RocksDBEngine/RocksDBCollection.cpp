@@ -582,6 +582,11 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
   if (iid.empty() || iid.isPrimary()) {
     return true;
   }
+  
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  bool const inRecovery = engine.inRecovery();
 
   std::shared_ptr<arangodb::Index> toRemove;
   {
@@ -593,68 +598,48 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
         break;
       }
     }
-  }
-
-  if (!toRemove) {  // index not found
-    // We tried to remove an index that does not exist
-    events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                      std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-    return false;
-  }
   
-  // there is a window of opportunity for another index-dropping
-  // thread to overtake us here, e.g.
-  // 1) - thread 1 acquires w-lock above and removes index A from vector
-  // 2) - thread 2 acquires w-lock above and removes index B from vector
-  // 3) - thread 2 continues with the r-lock and writes the dropping of index B
-  // 4) - thread 1  continues with the r-lock and writes the dropping of index A
-  // here threads 1 and 2 will race in steps 3) and 4), but it should be ok.
-  // both threads can concurrently drop unrelated indexes. when writing back the
-  // collection marker into RocksDB, the indexes should be both gone for both
-  // operations.
-  // the ideal fix for this will be to make all index DDL operations go to a 
-  // WriteBatch which can be written atomically. this is in the works for a 
-  // future version.
-
-  {
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-
-    RocksDBIndex* cindex = static_cast<RocksDBIndex*>(toRemove.get());
-    TRI_ASSERT(cindex != nullptr);
-
-    Result res = cindex->drop();
-
-    if (!res.ok()) {
+    if (!toRemove) {  // index not found
+      // We tried to remove an index that does not exist
+      events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                        std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
       return false;
     }
+  
+    // skip writing WAL marker if inRecovery()
+    if (!inRecovery) {
+      auto builder =  
+        _logicalCollection.toVelocyPackIgnore(
+            {"path", "statusString"},
+            LogicalDataSource::Serialization::PersistenceWithInProgress);
 
+      // log this event in the WAL and in the collection meta-data
+      Result res = engine.writeCreateCollectionMarker(  // write marker
+        _logicalCollection.vocbase().id(),     // vocbase id
+        _logicalCollection.id(),               // collection id
+        builder.slice(),                       // RocksDB path
+        RocksDBLogValue::IndexDrop(            // marker
+            _logicalCollection.vocbase().id(), _logicalCollection.id(), iid  // args
+            ));
+      if (res.fail()) {
+        return false;
+      }
+    }
+  }
+  
+  TRI_ASSERT(toRemove != nullptr);
+
+  RocksDBIndex* cindex = static_cast<RocksDBIndex*>(toRemove.get());
+  TRI_ASSERT(cindex != nullptr);
+
+  Result res = cindex->drop();
+
+  if (res.ok()) {
     events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
                       std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
 
     cindex->compact(); // trigger compaction before deleting the object
   }
-
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-
-  if (engine.inRecovery()) {
-    return true; // skip writing WAL marker if inRecovery()
-  }
-
-  auto builder =  // RocksDB path
-      _logicalCollection.toVelocyPackIgnore(
-          {"path", "statusString"},
-          LogicalDataSource::Serialization::PersistenceWithInProgress);
-
-  // log this event in the WAL and in the collection meta-data
-  Result res = engine.writeCreateCollectionMarker(  // write marker
-      _logicalCollection.vocbase().id(),     // vocbase id
-      _logicalCollection.id(),               // collection id
-      builder.slice(),                       // RocksDB path
-      RocksDBLogValue::IndexDrop(            // marker
-          _logicalCollection.vocbase().id(), _logicalCollection.id(), iid  // args
-          ));
 
   return res.ok();
 }
