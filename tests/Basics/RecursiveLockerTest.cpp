@@ -132,13 +132,13 @@ TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
         ASSERT_TRUE(locker1.isLocked());
 
         total++;
-        x = x + 1;
+        x++;
         
         {
           RECURSIVE_MUTEX_LOCKER_NAMED(locker2, mutex, owner, true);
           ASSERT_TRUE(locker2.isLocked());
         
-          x = x + 1;
+          x++;
         }
       }
     });
@@ -230,7 +230,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
   // number of threads started
   std::atomic<int> started{0};
 
-  // shared variables, only protected by rwlockes
+  // shared variables, only protected by rw-locks
   uint64_t total = 0;
   uint64_t x = 0;
 
@@ -249,13 +249,13 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
         ASSERT_TRUE(locker1.isLocked());
 
         total++;
-        x = x + 1;
+        x++;
         
         {
           RECURSIVE_WRITE_LOCKER_NAMED(locker2, rwlock, owner, true);
           ASSERT_TRUE(locker2.isLocked());
         
-          x = x + 1;
+          x++;
         }
       }
     });
@@ -267,4 +267,115 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
   
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations * 2, x);
+}
+
+TEST(RecursiveLockerTest, testRecursiveWriteWithNestedRead) {
+  arangodb::basics::ReadWriteLock rwlock;
+  std::atomic<std::thread::id> owner;
+
+  RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
+  ASSERT_TRUE(locker.isLocked());
+  
+  {
+    // should not block
+    RECURSIVE_READ_LOCKER(rwlock, owner);
+  }
+
+  locker.unlock();
+  ASSERT_FALSE(locker.isLocked());
+}
+
+TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteRead) {
+  arangodb::basics::ReadWriteLock rwlock;
+  std::atomic<std::thread::id> owner;
+
+  // number of threads started
+  std::atomic<int> started{0};
+
+  // shared variables, only protected by rw-locks
+  uint64_t total = 0;
+  uint64_t x = 0;
+
+  constexpr int n = 4;
+  constexpr int iterations = 100000;
+
+  std::vector<std::thread> threads;
+
+  for (int i = 0; i < n; ++i) {
+    threads.emplace_back([&]() {
+      ++started;
+      while (started < n) { /*spin*/ }
+
+      for (int i = 0; i < iterations; ++i) {
+        RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
+        ASSERT_TRUE(locker.isLocked());
+
+        total++;
+        x++;
+        
+        {
+          RECURSIVE_READ_LOCKER(rwlock, owner);
+          ASSERT_EQ(x, total);
+        }
+          
+        ASSERT_EQ(x, total);
+      }
+    });
+  }
+
+  for (int i = 0; i < n; ++i) {
+    threads[i].join();
+  }
+  
+  ASSERT_EQ(n * iterations, total);
+  ASSERT_EQ(n * iterations, x);
+}
+
+TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteAndReadMix) {
+  arangodb::basics::ReadWriteLock rwlock;
+  std::atomic<std::thread::id> owner;
+
+  // number of threads started
+  std::atomic<int> started{0};
+
+  // shared variables, only protected by rw-locks
+  uint64_t total = 0;
+  uint64_t x = 0;
+
+  constexpr int n = 4;
+  constexpr int iterations = 100000;
+
+  std::vector<std::thread> threads;
+
+  for (int i = 0; i < n; ++i) {
+    threads.emplace_back([&](int id) {
+      ++started;
+      while (started < n) { /*spin*/ }
+
+      if (id % 2 == 0) {
+        // read thread
+        for (int i = 0; i < iterations; ++i) {
+          RECURSIVE_READ_LOCKER(rwlock, owner);
+          ASSERT_EQ(x, total);
+        }
+      } else {
+        // write thread
+        for (int i = 0; i < iterations; ++i) {
+          RECURSIVE_WRITE_LOCKER_NAMED(locker, rwlock, owner, true);
+          ASSERT_TRUE(locker.isLocked());
+
+          total++;
+          x++;
+          ASSERT_EQ(x, total);
+        }
+      }
+    }, i);
+  }
+
+  for (int i = 0; i < n; ++i) {
+    threads[i].join();
+  }
+  
+  ASSERT_EQ((n / 2) * iterations, total);
+  ASSERT_EQ((n / 2) * iterations, x);
 }
