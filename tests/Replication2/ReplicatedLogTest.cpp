@@ -22,15 +22,39 @@
 
 #include "Replication2/TestHelper.h"
 
-#include <Basics/Exceptions.h>
-#include <Replication2/ReplicatedLog.h>
-
-#include <functional>
-
-#include <gtest/gtest.h>
-#if 0
 using namespace arangodb;
 using namespace arangodb::replication2;
+
+
+TEST(LogIndexTest, compareOperators) {
+  auto one = LogIndex{1};
+  auto two = LogIndex{2};
+
+  EXPECT_TRUE(one == one);
+  EXPECT_FALSE(one != one);
+  EXPECT_FALSE(one < one);
+  EXPECT_FALSE(one > one);
+  EXPECT_TRUE(one <= one);
+  EXPECT_TRUE(one >= one);
+
+  EXPECT_FALSE(one == two);
+  EXPECT_TRUE(one != two);
+  EXPECT_TRUE(one < two);
+  EXPECT_FALSE(one > two);
+  EXPECT_TRUE(one <= two);
+  EXPECT_FALSE(one >= two);
+
+  EXPECT_FALSE(two == one);
+  EXPECT_TRUE(two != one);
+  EXPECT_FALSE(two < one);
+  EXPECT_TRUE(two > one);
+  EXPECT_FALSE(two <= one);
+  EXPECT_TRUE(two >= one);
+}
+
+
+#if 0
+
 
 struct ReplicatedLogTest2 : LogTestBase {};
 
@@ -515,30 +539,5 @@ TEST_F(ReplicatedLogTest2, replicationTest2) {
 
   ASSERT_FALSE(followerLog->hasPendingAppendEntries());
 }
-
-TEST(LogIndexTest, compareOperators) {
-  auto one = LogIndex{1};
-  auto two = LogIndex{2};
-
-  EXPECT_TRUE(one == one);
-  EXPECT_FALSE(one != one);
-  EXPECT_FALSE(one < one);
-  EXPECT_FALSE(one > one);
-  EXPECT_TRUE(one <= one);
-  EXPECT_TRUE(one >= one);
-
-  EXPECT_FALSE(one == two);
-  EXPECT_TRUE(one != two);
-  EXPECT_TRUE(one < two);
-  EXPECT_FALSE(one > two);
-  EXPECT_TRUE(one <= two);
-  EXPECT_FALSE(one >= two);
-
-  EXPECT_FALSE(two == one);
-  EXPECT_TRUE(two != one);
-  EXPECT_FALSE(two < one);
-  EXPECT_TRUE(two > one);
-  EXPECT_FALSE(two <= one);
-  EXPECT_TRUE(two >= one);
-}
 #endif
+

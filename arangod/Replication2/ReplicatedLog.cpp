@@ -191,6 +191,8 @@ auto replicated_log::LogLeader::construct(
   leaderDataGuard->_follower =
       instantiateFollowers(follower, leaderDataGuard->_inMemoryLog.getLastIndex());
 
+  TRI_ASSERT(leaderDataGuard->_follower.size() >= writeConcern);
+
   return leader;
 }
 
@@ -205,7 +207,13 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
 auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
   // TODO Do we need to do more than that, like make sure to refuse future
   //      requests?
-  return std::move(*_localFollower).resign();
+  return _guardedLeaderData.doUnderLock([&localFollower = *_localFollower](GuardedLeaderData& leaderData) {
+    for (auto& [idx, promise] : leaderData._waitForQueue) {
+      promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
+                                             __FILE__, __LINE__));
+    }
+    return std::move(localFollower).resign();
+  });
 }
 
 auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const

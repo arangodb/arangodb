@@ -167,11 +167,11 @@ TEST_F(ReplicatedLogConcurrentTest, genPayloadTest) {
   EXPECT_EQ("65535:4294967295", genPayload(65535, 4294967295));
 }
 
-
 TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   using namespace std::chrono_literals;
 
   auto replicatedLog = makeReplicatedLog(LogId{1});
+  // TODO this test hangs because there is not local follower currently
   auto leaderLog = replicatedLog->becomeLeader("leader", LogTerm{1}, {}, 1);
 
   auto data = ThreadCoordinationData{leaderLog};

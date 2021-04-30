@@ -174,8 +174,8 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto follower = std::make_shared<DelayedFollowerLog>(followerId, std::move(coreB),
                                                        LogTerm{3}, leaderId);
   auto leader =
-      std::make_shared<LogLeader>(leaderId, std::move(coreA), LogTerm{3},
-                                  std::vector<std::shared_ptr<AbstractFollower>>{follower}, 1);
+      LogLeader::construct(leaderId, std::move(coreA), LogTerm{3},
+                           std::vector<std::shared_ptr<AbstractFollower>>{follower}, 1);
 
   {
     // Leader should know it spearhead, but commitIndex is 0
@@ -252,10 +252,10 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   auto follower_2 = std::make_shared<DelayedFollowerLog>(followerId_2, std::move(coreC),
                                                          LogTerm{1}, leaderId);
   // create leader with write concern 2
-  auto leader = std::make_shared<LogLeader>(
-      leaderId, std::move(coreA), LogTerm{1},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2}, 2);
-
+  auto leader =
+      LogLeader::construct(leaderId, std::move(coreA), LogTerm{1},
+                           std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2},
+                           2);
 
   auto index = leader->insert(LogPayload{"first entry"});
   auto future = leader->waitFor(index);
