@@ -214,7 +214,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
                       std::size_t writeConcern)
         : _follower(instantiateFollowers(follower, logCore->getLastIndex())),
           _writeConcern(writeConcern),
-          _participant(id, std::move(logCore), term) {}
+          _participant(id, std::move(logCore), term) {
+      TRI_ASSERT(_follower.size() >= writeConcern);
+    }
 
     GuardedLeaderData() = delete;
     GuardedLeaderData(GuardedLeaderData const&) = delete;
