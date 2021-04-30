@@ -20,6 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <utility>
+
 #include "Replication2/TestHelper.h"
 
 using namespace arangodb;
@@ -155,7 +157,7 @@ struct FollowerProxy : AbstractFollower {
       : _follower(std::move(follower)) {}
 
   void replaceFollower(std::shared_ptr<AbstractFollower> newFollower) {
-    _follower = newFollower;
+    _follower = std::move(newFollower);
   }
   auto getParticipantId() const noexcept -> ParticipantId const& override {
     return _follower->getParticipantId();
@@ -213,6 +215,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     // we expect a retry request
     EXPECT_TRUE(follower->hasPendingAppendEntries());
     auto newFollower = followerLog->becomeFollower("newFollower", LogTerm{2}, "newLeader");
+    // simulate the database server has updated its follower
     followerProxy->replaceFollower(newFollower);
 
     EXPECT_TRUE(follower->hasPendingAppendEntries());
