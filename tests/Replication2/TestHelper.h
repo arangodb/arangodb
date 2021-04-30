@@ -56,17 +56,18 @@ struct MockLog : replication2::PersistedLog {
   storeType _storage;
 };
 
-
 struct DelayedFollowerLog : AbstractFollower {
   explicit DelayedFollowerLog(std::shared_ptr<LogFollower> follower)
       : _follower(std::move(follower)) {}
+
   DelayedFollowerLog(ParticipantId const& id, std::unique_ptr<LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
-      : _follower(std::make_shared<LogFollower>(id, std::move(logCore), term,
-                                                std::move(leaderId))) {}
+      : DelayedFollowerLog(std::make_shared<LogFollower>(id, std::move(logCore),
+                                                         term, std::move(leaderId),
+                                                         InMemoryLog{})) {}
 
   auto appendEntries(AppendEntriesRequest req)
-  -> arangodb::futures::Future<AppendEntriesResult> override {
+      -> arangodb::futures::Future<AppendEntriesResult> override {
     auto future = _asyncQueue.doUnderLock([&](auto& queue) {
       return queue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)))
           ->promise.getFuture();

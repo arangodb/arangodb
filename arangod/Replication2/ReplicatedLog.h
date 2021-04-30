@@ -190,6 +190,16 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     std::unique_ptr<LogCore> _logCore;
   };
 
+  struct PreparedAppendEntryRequest {
+    // TODO Write a constructor, delete the default constructor
+    FollowerInfo* _follower;
+    AppendEntriesRequest _request;
+    std::weak_ptr<LogLeader> _parentLog;
+    LogIndex _lastIndex;
+    LogIndex _currentCommitIndex;
+    LogTerm _currentTerm;
+  };
+
   struct alignas(128) GuardedLeaderData {
     ~GuardedLeaderData() = default;
     GuardedLeaderData(LogLeader const& self, InMemoryLog inMemoryLog);
@@ -200,14 +210,17 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     auto operator=(GuardedLeaderData const&) -> GuardedLeaderData& = delete;
     auto operator=(GuardedLeaderData&&) -> GuardedLeaderData& = delete;
 
-    auto runAsyncStep(std::weak_ptr<LogLeader> const& leader) -> void;
+    [[nodiscard]] auto prepareAppendEntry(std::weak_ptr<LogLeader> const& parentLog,
+                                          FollowerInfo& follower)
+        -> std::optional<PreparedAppendEntryRequest>;
+    [[nodiscard]] auto prepareAppendEntries(std::weak_ptr<LogLeader> const& parentLog)
+        -> std::vector<std::optional<PreparedAppendEntryRequest>>;
 
-    void sendAppendEntries(std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower);
-
-    void handleAppendEntriesResponse(std::weak_ptr<LogLeader> const& parentLog,
-                                     FollowerInfo& follower, LogIndex lastIndex,
-                                     LogIndex currentCommitIndex, LogTerm currentTerm,
-                                     futures::Try<AppendEntriesResult>&& res);
+    [[nodiscard]] auto handleAppendEntriesResponse(
+        std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
+        LogIndex lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
+        futures::Try<AppendEntriesResult>&& res)
+        -> std::vector<std::optional<PreparedAppendEntryRequest>>;
 
     void checkCommitIndex(std::weak_ptr<LogLeader> const& parentLog);
 
@@ -216,7 +229,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
     auto insert(LogPayload payload) -> LogIndex;
 
-    auto waitFor(LogIndex index) -> futures::Future<std::shared_ptr<QuorumData>>;
+    [[nodiscard]] auto waitFor(LogIndex index)
+        -> futures::Future<std::shared_ptr<QuorumData>>;
 
     [[nodiscard]] auto getLogIterator(LogIndex fromIdx) const
         -> std::shared_ptr<LogIterator>;
@@ -234,16 +248,20 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   ParticipantId const _participantId;
   LogTerm const _currentTerm;
   std::size_t const _writeConcern;
-  std::shared_ptr<LocalFollower> const _localFollower;
+  // _localFollower is const after construction
+  std::shared_ptr<LocalFollower> _localFollower;
   // make this thread safe in the most simple way possible, wrap everything in
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
   static auto instantiateFollowers(std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+                                   std::shared_ptr<LocalFollower> const& localFollower,
                                    LogIndex lastIndex) -> std::vector<FollowerInfo>;
 
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
+
+  static void executeAppendEntriesRequests(std::vector<std::optional<PreparedAppendEntryRequest>> requests);
 };
 
 class LogFollower : public LogParticipantI, public AbstractFollower {
