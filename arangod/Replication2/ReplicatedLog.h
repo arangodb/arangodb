@@ -272,11 +272,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   auto acquireMutex() const -> ConstGuard;
 };
 
-auto LogLeader::getParticipantId() const noexcept -> ParticipantId const& {
-  return _guardedLeaderData.doUnderLock([](GuardedLeaderData const& data) -> ParticipantId const& {
-    return data._participant.participantId();
-  });
-}
 
 class LogFollower : public LogParticipantI, public AbstractFollower {
  public:

@@ -107,3 +107,9 @@ MockLog::MockLog(replication2::LogId id, MockLog::storeType storage)
 void MockLog::setEntry(replication2::LogEntry entry) {
   _storage.emplace(entry.logIndex(), std::move(entry));
 }
+
+auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
+    -> std::shared_ptr<DelayedFollowerLog> {
+  auto ptr = ReplicatedLog::becomeFollower(id, term, std::move(leaderId));
+  return std::make_shared<DelayedFollowerLog>(ptr);
+}

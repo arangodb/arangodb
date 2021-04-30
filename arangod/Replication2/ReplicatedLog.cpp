@@ -256,6 +256,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::waitFor(LogIndex index)
   return result;
 }
 
+auto replicated_log::LogLeader::getParticipantId() const noexcept -> ParticipantId const& {
+  return _guardedLeaderData.doUnderLock([](GuardedLeaderData const& data) -> ParticipantId const& {
+    return data._participant.participantId();
+  });
+}
+
 auto replicated_log::LogLeader::runAsyncStep() -> void {
   auto guard = acquireMutex();
   return guard->runAsyncStep(weak_from_this());

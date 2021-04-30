@@ -24,6 +24,8 @@
 
 #include <gtest/gtest.h>
 
+#include <utility>
+
 namespace arangodb::replication2 {
 
 using namespace replicated_log;
@@ -54,33 +56,15 @@ struct MockLog : replication2::PersistedLog {
   storeType _storage;
 };
 
-struct ReplicatedLogTest : ::testing::Test {
-  auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
-    auto persisted = makePersistedLog(id);
-    return std::make_unique<LogCore>(persisted);
-  }
 
-  auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLog> {
-    return _persistedLogs.at(id);
-  }
+struct DelayedFollowerLog : AbstractFollower {
+  explicit DelayedFollowerLog(std::shared_ptr<LogFollower> follower)
+      : _follower(std::move(follower)) {}
+  DelayedFollowerLog(ParticipantId const& id, std::unique_ptr<LogCore> logCore,
+                     LogTerm term, ParticipantId leaderId)
+      : _follower(std::make_shared<LogFollower>(id, std::move(logCore), term,
+                                                std::move(leaderId))) {}
 
-  auto makePersistedLog(LogId id) -> std::shared_ptr<MockLog> {
-    auto persisted = std::make_shared<MockLog>(id);
-    _persistedLogs[id] = persisted;
-    return persisted;
-  }
-
-  auto makeReplicatedLog(LogId id) -> std::shared_ptr<ReplicatedLog> {
-    auto core = makeLogCore(id);
-    return std::make_shared<ReplicatedLog>(std::move(core));
-  }
-
-  std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
-};
-
-
-struct DelayedFollowerLog : LogFollower {
-  using LogFollower::LogFollower;
   auto appendEntries(AppendEntriesRequest req)
   -> arangodb::futures::Future<AppendEntriesResult> override {
     auto future = _asyncQueue.doUnderLock([&](auto& queue) {
@@ -91,7 +75,7 @@ struct DelayedFollowerLog : LogFollower {
       if (!result.has_value()) {
         return futures::Future<AppendEntriesResult>{AppendEntriesResult{false}};
       }
-      return LogFollower::appendEntries(std::forward<decltype(result)>(result).value());
+      return _follower->appendEntries(std::forward<decltype(result)>(result).value());
     });
   }
 
@@ -124,8 +108,45 @@ struct DelayedFollowerLog : LogFollower {
         [](auto const& queue) { return !queue.empty(); });
   }
 
+  auto getParticipantId() const noexcept -> ParticipantId const& override {
+    return _follower->getParticipantId();
+  }
+
+  auto getStatus() const noexcept -> LogStatus {
+    return _follower->getStatus();
+  }
  private:
   Guarded<std::deque<std::shared_ptr<AsyncRequest>>> _asyncQueue;
+  std::shared_ptr<LogFollower> _follower;
+};
+
+struct TestReplicatedLog : ReplicatedLog {
+  using ReplicatedLog::ReplicatedLog;
+  auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<DelayedFollowerLog>;
+};
+
+struct ReplicatedLogTest : ::testing::Test {
+  auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
+    auto persisted = makePersistedLog(id);
+    return std::make_unique<LogCore>(persisted);
+  }
+
+  auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLog> {
+    return _persistedLogs.at(id);
+  }
+
+  auto makePersistedLog(LogId id) -> std::shared_ptr<MockLog> {
+    auto persisted = std::make_shared<MockLog>(id);
+    _persistedLogs[id] = persisted;
+    return persisted;
+  }
+
+  auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
+    auto core = makeLogCore(id);
+    return std::make_shared<TestReplicatedLog>(std::move(core));
+  }
+
+  std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
 };
 
 
