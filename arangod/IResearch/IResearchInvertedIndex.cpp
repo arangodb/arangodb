@@ -98,7 +98,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
         if (ADB_UNLIKELY(!_pkValue)) {
           _pkValue = &NoPayload;
         }
-        _itr = _filter->execute(segmentReader);
+        _itr = segmentReader.mask(_filter->execute(segmentReader));
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if (_doc->value == _pkDocItr->seek(_doc->value)) {
