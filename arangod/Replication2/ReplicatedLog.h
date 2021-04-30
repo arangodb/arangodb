@@ -295,6 +295,8 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   auto resign() && -> std::unique_ptr<LogCore> override;
 
+  // TODO does the follower provide a waitFor?
+
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
 
  private:

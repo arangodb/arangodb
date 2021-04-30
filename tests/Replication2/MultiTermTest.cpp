@@ -196,8 +196,8 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
 
     EXPECT_TRUE(follower->hasPendingAppendEntries());
     follower->runAsyncAppendEntries();
-    // we expect the leader to retry
-    EXPECT_TRUE(follower->hasPendingAppendEntries());
+    // the old leader is already gone, so we expect no new append entries
+    EXPECT_FALSE(follower->hasPendingAppendEntries());
 
     // the old future should have failed
     ASSERT_TRUE(f.isReady());
@@ -234,7 +234,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
       auto quorum = f2.get();
       EXPECT_EQ(quorum->index, LogIndex{1});
       EXPECT_EQ(quorum->term, LogTerm{2});
-      EXPECT_EQ(quorum->quorum, (std::vector<ParticipantId>{"newLeader", "newFollower"}));
+      EXPECT_EQ(quorum->quorum, (std::vector<ParticipantId>{"newFollower"}));
     }
   }
 }

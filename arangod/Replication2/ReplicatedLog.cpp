@@ -169,7 +169,11 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
 }
 
 auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
-  return _guardedLeaderData.doUnderLock([](auto& leaderData) {
+  return _guardedLeaderData.doUnderLock([](GuardedLeaderData& leaderData) {
+    for (auto& [idx, promise] : leaderData._waitForQueue) {
+      promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
+                                             __FILE__, __LINE__));
+    }
     return std::move(leaderData._participant._logCore);
   });
 }
