@@ -181,7 +181,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   });
 }
 
-auto replicated_log::LogFollower::getParticipantId() const noexcept -> ParticipantId {
+auto replicated_log::LogFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return _guardedParticipant.doUnderLock([](auto const& participant) -> ParticipantId const& {
     return participant._id;
   });
@@ -209,7 +209,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.local = leaderData._participant.getLocalStatistics();
     status.term = leaderData._participant._currentTerm;
     for (auto const& f : leaderData._follower) {
-      status.follower[f._impl->participantId()] =
+      status.follower[f._impl->getParticipantId()] =
           LogStatistics{f.lastAckedIndex, f.lastAckedCommitIndex};
     }
     return LogStatus{std::move(status)};
@@ -392,15 +392,15 @@ void replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     } catch (std::exception const& e) {
       LOG_TOPIC("e094b", INFO, Logger::REPLICATION2)
           << "exception in appendEntries to follower "
-          << follower._impl->participantId() << ": " << e.what();
+          << follower._impl->getParticipantId() << ": " << e.what();
     } catch (...) {
       LOG_TOPIC("05608", INFO, Logger::REPLICATION2)
           << "exception in appendEntries to follower "
-          << follower._impl->participantId() << ".";
+          << follower._impl->getParticipantId() << ".";
     }
   } else {
     LOG_TOPIC("dc441", FATAL, Logger::REPLICATION2)
-        << "in appendEntries to follower " << follower._impl->participantId()
+        << "in appendEntries to follower " << follower._impl->getParticipantId()
         << ", result future has neither value nor exception.";
     TRI_ASSERT(false);
     using namespace std::chrono_literals;
@@ -427,7 +427,7 @@ void replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(std::weak_pt
   std::vector<std::pair<LogIndex, ParticipantId>> indexes;
   std::transform(_follower.begin(), _follower.end(),
                  std::back_inserter(indexes), [](Follower const& f) {
-                   return std::make_pair(f.lastAckedIndex, f._impl->participantId());
+                   return std::make_pair(f.lastAckedIndex, f._impl->getParticipantId());
                  });
   TRI_ASSERT(indexes.size() == _follower.size());
 
@@ -541,7 +541,7 @@ replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
 }
 
 auto replicated_log::ReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
-                                                 std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+                                                 std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                                                  std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
   auto logCore = std::move(*_participant).resign();
   auto leader = std::make_shared<LogLeader>(id, std::move(logCore), term, follower, writeConcern);
@@ -557,4 +557,17 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId const& id,
                                                 std::move(leaderId));
   _participant = std::static_pointer_cast<LogParticipantI>(follower);
   return follower;
+}
+
+replicated_log::LogLeader::LocalFollower::LocalFollower(replicated_log::LogLeader& self)
+    : self(self) {}
+
+const ParticipantId& replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept {
+  return self.getParticipantId();
+}
+
+futures::Future<AppendEntriesResult> replicated_log::LogLeader::LocalFollower::appendEntries(
+    AppendEntriesRequest request) {
+  // TODO
+  TRI_ASSERT(false);
 }

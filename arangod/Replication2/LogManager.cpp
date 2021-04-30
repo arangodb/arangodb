@@ -56,7 +56,7 @@ auto LogManagerProxy::appendEntries(AppendEntriesRequest request)
   return _manager->appendEntries(std::move(request), _logId);
 }
 
-auto LogManagerProxy::participantId() const noexcept -> ParticipantId {
+auto LogManagerProxy::getParticipantId() const noexcept -> const ParticipantId& {
   return _id;
 }
 

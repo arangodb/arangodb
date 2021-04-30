@@ -1,21 +1,111 @@
-#if 0
-#ifndef ARANGODB3_TESTHELPER_H
-#define ARANGODB3_TESTHELPER_H
-
-#include "Basics/Guarded.h"
-
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
+////////////////////////////////////////////////////////////////////////////////
+#pragma once
 #include "Replication2/ReplicatedLog.h"
-#include "Replication2/LogManager.h"
-#include "MockLog.h"
 
 #include <gtest/gtest.h>
 
 namespace arangodb::replication2 {
-struct DelayedFollowerLog : ReplicatedLog {
-  using ReplicatedLog::ReplicatedLog;
-  auto appendEntries(AppendEntriesRequest)
-      -> arangodb::futures::Future<AppendEntriesResult> override;
-  void runAsyncAppendEntries();
+
+using namespace replicated_log;
+
+
+struct MockLog : replication2::PersistedLog {
+
+  using storeType = std::map<replication2::LogIndex, replication2::LogEntry>;
+
+  explicit MockLog(replication2::LogId id);
+  MockLog(replication2::LogId id, storeType storage);
+
+  ~MockLog() override = default;
+
+  auto insert(replication2::LogIterator& iter) -> Result override;
+  auto read(replication2::LogIndex start) -> std::unique_ptr<replication2::LogIterator> override;
+  auto removeFront(replication2::LogIndex stop) -> Result override;
+  auto removeBack(replication2::LogIndex start) -> Result override;
+  auto drop() -> Result override;
+
+  void setEntry(replication2::LogIndex idx, replication2::LogTerm term,
+                replication2::LogPayload payload);
+  void setEntry(replication2::LogEntry);
+
+  [[nodiscard]] storeType getStorage() const { return _storage; }
+ private:
+  using iteratorType = storeType::iterator;
+  storeType _storage;
+};
+
+struct ReplicatedLogTest : ::testing::Test {
+  auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
+    auto persisted = makePersistedLog(id);
+    return std::make_unique<LogCore>(persisted);
+  }
+
+  auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLog> {
+    return _persistedLogs.at(id);
+  }
+
+  auto makePersistedLog(LogId id) -> std::shared_ptr<MockLog> {
+    auto persisted = std::make_shared<MockLog>(id);
+    _persistedLogs[id] = persisted;
+    return persisted;
+  }
+
+  auto makeReplicatedLog(LogId id) -> std::shared_ptr<ReplicatedLog> {
+    auto core = makeLogCore(id);
+    return std::make_shared<ReplicatedLog>(std::move(core));
+  }
+
+  std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
+};
+
+
+struct DelayedFollowerLog : LogFollower {
+  using LogFollower::LogFollower;
+  auto appendEntries(AppendEntriesRequest req)
+  -> arangodb::futures::Future<AppendEntriesResult> override {
+    auto future = _asyncQueue.doUnderLock([&](auto& queue) {
+      return queue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)))
+          ->promise.getFuture();
+    });
+    return std::move(future).thenValue([this](auto&& result) mutable {
+      if (!result.has_value()) {
+        return futures::Future<AppendEntriesResult>{AppendEntriesResult{false}};
+      }
+      return LogFollower::appendEntries(std::forward<decltype(result)>(result).value());
+    });
+  }
+
+  void runAsyncAppendEntries() {
+    auto asyncQueue = _asyncQueue.doUnderLock([](auto& _queue) {
+      auto queue = std::move(_queue);
+      _queue.clear();
+      return queue;
+    });
+
+    for (auto& p : asyncQueue) {
+      p->promise.setValue(std::move(p->request));
+    }
+  }
 
   using WaitForAsyncPromise = futures::Promise<std::optional<AppendEntriesRequest>>;
 
@@ -25,7 +115,8 @@ struct DelayedFollowerLog : ReplicatedLog {
     AppendEntriesRequest request;
     WaitForAsyncPromise promise;
   };
-  [[nodiscard]] auto pendingAppendEntries() const -> std::deque<std::shared_ptr<AsyncRequest>> {
+  [[nodiscard]] auto pendingAppendEntries() const
+  -> std::deque<std::shared_ptr<AsyncRequest>> {
     return _asyncQueue.copy();
   }
   [[nodiscard]] auto hasPendingAppendEntries() const -> bool {
@@ -37,96 +128,5 @@ struct DelayedFollowerLog : ReplicatedLog {
   Guarded<std::deque<std::shared_ptr<AsyncRequest>>> _asyncQueue;
 };
 
-struct LogTestBase;
-
-struct MockExecutor : LogWorkerExecutor {
-  void operator()(fu2::unique_function<void()> func) override {
-    std::unique_lock guard(_mutex);
-    _actions.emplace_back(std::move(func));
-  }
-
-  void executeAllActions() {
-    while (true) {
-      std::vector<fu2::unique_function<void()>> actions;
-      {
-        std::unique_lock guard(_mutex);
-        if (_actions.empty()) {
-          break;
-        }
-        std::swap(actions, _actions);
-      }
-
-      for (auto& action : actions) {
-        action();
-      }
-    }
-  }
-
-  [[nodiscard]] auto hasPendingActions() const noexcept -> bool {
-    std::unique_lock guard(_mutex);
-    return _actions.empty();
-  }
-
-  std::mutex mutable _mutex;
-  std::vector<fu2::unique_function<void()>> _actions;
-};
-
-struct MockLogManager : LogManager {
-
-  using LogManager::LogManager;
-
-  std::shared_ptr<PersistedLog> getPersistedLogById(LogId id) override {
-    if (auto iter = _mocksById.find(id); iter != _mocksById.end()) {
-      return iter->second;
-    }
-    return nullptr;
-  }
-
-  std::unordered_map<LogId, std::shared_ptr<MockLog>> _mocksById;
-};
-
-struct LogTestBase : ::testing::Test {
-
-  LogTestBase() {
-    _executor = std::make_shared<MockExecutor>();
-    _manager = std::make_shared<MockLogManager>(_executor);
-  }
-
-  auto getNextLogId() -> LogId {
-    return _nextLogId = LogId{_nextLogId.id() + 1};
-  }
-
-  auto createPersistedLog(LogId id) -> std::shared_ptr<MockLog> {
-    auto log = std::make_shared<MockLog>(id);
-    _manager->_mocksById[id] = log;
-    return log;
-  }
-
-  auto addLogInstance(ParticipantId const& id) -> std::pair<std::shared_ptr<ReplicatedLog>, std::shared_ptr<LogManagerProxy>> {
-    auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
-    auto logId = getNextLogId();
-    auto persistedLog = createPersistedLog(logId);
-    auto log = std::make_shared<ReplicatedLog>(id, state, persistedLog);
-    auto local = std::make_shared<LogManagerProxy>(logId, id, _manager);
-    return std::make_pair(log, local);
-  }
-
-  auto addFollowerLogInstance(ParticipantId const& id) -> std::shared_ptr<DelayedFollowerLog> {
-    auto const state = std::make_shared<InMemoryState>(InMemoryState::state_container{});
-    auto persistedLog = createPersistedLog(getNextLogId());
-    auto log = std::make_shared<DelayedFollowerLog>(id, state, persistedLog);
-    return log;
-  }
-
-
-  LogId _nextLogId{0};
-  std::shared_ptr<MockExecutor> _executor;
-  std::shared_ptr<MockLogManager> _manager;
-};
 
 }
-
-
-
-#endif  // ARANGODB3_TESTHELPER_H
-#endif

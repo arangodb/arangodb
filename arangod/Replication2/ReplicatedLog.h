@@ -78,10 +78,9 @@ struct AppendEntriesRequest {
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
 };
 
-struct OldLogFollower {
-  virtual ~OldLogFollower() = default;
-
-  [[nodiscard]] virtual auto participantId() const noexcept -> ParticipantId = 0;
+struct AbstractFollower {
+  virtual ~AbstractFollower() = default;
+  [[nodiscard]] virtual auto getParticipantId() const noexcept -> ParticipantId const& = 0;
   virtual auto appendEntries(AppendEntriesRequest)
       -> arangodb::futures::Future<AppendEntriesResult> = 0;
 };
@@ -148,7 +147,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
  public:
   ~LogLeader() override = default;
   LogLeader(ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term,
-            std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+            std::vector<std::shared_ptr<AbstractFollower>> const& follower,
             std::size_t writeConcern)
       : _guardedLeaderData(id, std::move(logCore), term, follower, writeConcern) {}
 
@@ -166,6 +165,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   auto resign() && -> std::unique_ptr<LogCore> override;
 
+  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
+
  private:
   using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
   struct GuardedLeaderData;
@@ -173,20 +174,36 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   using ConstGuard = MutexGuard<GuardedLeaderData const, std::unique_lock<std::mutex>>;
 
   struct alignas(64) Follower {
-    explicit Follower(std::shared_ptr<OldLogFollower> impl, LogIndex lastLogIndex)
+    explicit Follower(std::shared_ptr<AbstractFollower> impl, LogIndex lastLogIndex)
         : _impl(std::move(impl)), lastAckedIndex(lastLogIndex) {}
 
-    std::shared_ptr<OldLogFollower> _impl;
+    std::shared_ptr<AbstractFollower> _impl;
     LogIndex lastAckedIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     bool requestInFlight = false;
   };
 
+  struct LocalFollower : AbstractFollower {
+    explicit LocalFollower(LogLeader& self);
+    LocalFollower(LocalFollower const&) = delete;
+    LocalFollower(LocalFollower &&) noexcept = delete;
+    LocalFollower& operator=(LocalFollower const&) = delete;
+    LocalFollower& operator=(LocalFollower &&) noexcept = delete;
+    auto getParticipantId() const noexcept -> ParticipantId const& override;
+    auto appendEntries(AppendEntriesRequest request)
+    -> arangodb::futures::Future<AppendEntriesResult> override;
+
+   private:
+    LogLeader& self;
+  };
+
+  std::shared_ptr<LocalFollower> const _localFollower;
+
   struct alignas(128) GuardedLeaderData {
     ~GuardedLeaderData() = default;
     GuardedLeaderData(ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term,
-                      std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+                      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                       std::size_t writeConcern)
         : _follower(instantiateFollowers(follower, logCore->getLastIndex())),
           _writeConcern(writeConcern),
@@ -219,6 +236,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     [[nodiscard]] auto getLogIterator(LogIndex fromIdx) const
         -> std::shared_ptr<LogIterator>;
 
+
     std::vector<Follower> _follower;
     // TODO as writeConcern is really const, it doesn't have to be under the mutex
     std::size_t const _writeConcern{};
@@ -229,29 +247,38 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     LogParticipant _participant;
 
    private:
-    static auto instantiateFollowers(std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+    static auto instantiateFollowers(std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                                      LogIndex lastIndex) -> std::vector<Follower> {
+      auto initLastIndex = lastIndex == LogIndex{0}
+                           ? LogIndex{0}
+                           : LogIndex{lastIndex.value - 1};
       std::vector<Follower> follower_vec;
       follower_vec.reserve(follower.size());
       std::transform(follower.cbegin(), follower.cend(), std::back_inserter(follower_vec),
-                     [&](std::shared_ptr<OldLogFollower> const& impl) -> Follower {
-                       return Follower{impl, lastIndex == LogIndex{0}
-                                                 ? LogIndex{0}
-                                                 : LogIndex{lastIndex.value - 1}};
+                     [&](std::shared_ptr<AbstractFollower> const& impl) -> Follower {
+                       return Follower{impl, initLastIndex};
                      });
       return follower_vec;
     }
+
   };
 
   // make this thread safe in the most simple way possible, wrap everything in
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
+
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
 };
 
-class LogFollower : public LogParticipantI {
+auto LogLeader::getParticipantId() const noexcept -> ParticipantId const& {
+  return _guardedLeaderData.doUnderLock([](GuardedLeaderData const& data) -> ParticipantId const& {
+    return data._participant.participantId();
+  });
+}
+
+class LogFollower : public LogParticipantI, public AbstractFollower {
  public:
   ~LogFollower() override = default;
   LogFollower(ParticipantId const& id, std::unique_ptr<LogCore> logCore,
@@ -260,12 +287,12 @@ class LogFollower : public LogParticipantI {
         _guardedParticipant(id, std::move(logCore), term) {}
 
   // follower only
-  auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult>;
+  auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult> override;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   auto resign() && -> std::unique_ptr<LogCore> override;
 
-  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId;
+  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
 
  private:
   using Guard = MutexGuard<LogParticipant, std::unique_lock<std::mutex>>;
@@ -301,7 +328,7 @@ struct alignas(16) ReplicatedLog {
       : _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core))) {}
 
   auto becomeLeader(ParticipantId const& id, LogTerm term,
-                    std::vector<std::shared_ptr<OldLogFollower>> const& follower,
+                    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                     std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
   auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
       -> std::shared_ptr<LogFollower>;

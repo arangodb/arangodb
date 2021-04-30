@@ -34,11 +34,11 @@ RestStatus RestLogHandler::execute() {
   return RestStatus::DONE;
 }
 
-struct FakeLogFollower : OldLogFollower {
+struct FakeLogFollower : AbstractFollower {
   explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
                            std::string database, LogId logId)
       :  pool(pool), id(std::move(id)), database(database), logId(logId) {}
-  auto participantId() const noexcept -> ParticipantId override { return id; }
+  auto getParticipantId() const noexcept -> ParticipantId const& override { return id; }
   auto appendEntries(AppendEntriesRequest request)
       -> arangodb::futures::Future<AppendEntriesResult> override {
     VPackBufferUInt8  buffer;
@@ -164,7 +164,7 @@ RestStatus RestLogHandler::handlePostRequest() {
     auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
     auto writeConcern = body.get("writeConcern").getNumericValue<std::size_t>();
 
-    std::vector<std::shared_ptr<OldLogFollower>> follower;
+    std::vector<std::shared_ptr<AbstractFollower>> follower;
     for (auto const& part : VPackArrayIterator(body.get("follower"))) {
       auto partId = part.copyString();
       follower.emplace_back(std::make_shared<FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));

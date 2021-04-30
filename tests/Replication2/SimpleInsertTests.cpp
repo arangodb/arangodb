@@ -20,101 +20,11 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
-
-#include <Replication2/ReplicatedLog.h>
-
-#include "MockLog.h"
+#include "TestHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
-
-struct ReplicatedLogTest : ::testing::Test {
-  auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
-    auto persisted = makePersistedLog(id);
-    return std::make_unique<LogCore>(persisted);
-  }
-
-  auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLog> {
-    return _persistedLogs.at(id);
-  }
-
-  auto makePersistedLog(LogId id) -> std::shared_ptr<MockLog> {
-    auto persisted = std::make_shared<MockLog>(id);
-    _persistedLogs[id] = persisted;
-    return persisted;
-  }
-
-  auto makeReplicatedLog(LogId id) -> std::shared_ptr<ReplicatedLog> {
-    auto core = makeLogCore(id);
-    return std::make_shared<ReplicatedLog>(std::move(core));
-  }
-
-  std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
-};
-
-// TODO remove this once the LogFollower implements the OldLogFollower
-struct FakeOldFollower : LogFollower, OldLogFollower {
-  using LogFollower::LogFollower;
-
-  auto participantId() const noexcept -> ParticipantId override {
-    return LogFollower::getParticipantId();
-  }
-  auto appendEntries(AppendEntriesRequest request)
-      -> arangodb::futures::Future<AppendEntriesResult> override {
-    return LogFollower::appendEntries(std::move(request));
-  }
-};
-
-struct DelayedFollowerLog : FakeOldFollower {
-  using FakeOldFollower::FakeOldFollower;
-  auto appendEntries(AppendEntriesRequest req)
-      -> arangodb::futures::Future<AppendEntriesResult> override {
-    auto future = _asyncQueue.doUnderLock([&](auto& queue) {
-      return queue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)))
-          ->promise.getFuture();
-    });
-    return std::move(future).thenValue([this](auto&& result) mutable {
-      if (!result.has_value()) {
-        return futures::Future<AppendEntriesResult>{AppendEntriesResult{false}};
-      }
-      return LogFollower::appendEntries(std::forward<decltype(result)>(result).value());
-    });
-  }
-
-  void runAsyncAppendEntries() {
-    auto asyncQueue = _asyncQueue.doUnderLock([](auto& _queue) {
-      auto queue = std::move(_queue);
-      _queue.clear();
-      return queue;
-    });
-
-    for (auto& p : asyncQueue) {
-      p->promise.setValue(std::move(p->request));
-    }
-  }
-
-  using WaitForAsyncPromise = futures::Promise<std::optional<AppendEntriesRequest>>;
-
-  struct AsyncRequest {
-    explicit AsyncRequest(AppendEntriesRequest request)
-        : request(std::move(request)) {}
-    AppendEntriesRequest request;
-    WaitForAsyncPromise promise;
-  };
-  [[nodiscard]] auto pendingAppendEntries() const
-      -> std::deque<std::shared_ptr<AsyncRequest>> {
-    return _asyncQueue.copy();
-  }
-  [[nodiscard]] auto hasPendingAppendEntries() const -> bool {
-    return _asyncQueue.doUnderLock(
-        [](auto const& queue) { return !queue.empty(); });
-  }
-
- private:
-  Guarded<std::deque<std::shared_ptr<AsyncRequest>>> _asyncQueue;
-};
 
 TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto coreA = makeLogCore(LogId{1});
@@ -127,7 +37,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
                                                        LogTerm{1}, leaderId);
   auto leader =
       std::make_shared<LogLeader>(leaderId, std::move(coreA), LogTerm{1},
-                                  std::vector<std::shared_ptr<OldLogFollower>>{follower}, 1);
+                                  std::vector<std::shared_ptr<AbstractFollower>>{follower}, 1);
 
   {
     // Nothing written on the leader
@@ -266,7 +176,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
                                                        LogTerm{3}, leaderId);
   auto leader =
       std::make_shared<LogLeader>(leaderId, std::move(coreA), LogTerm{3},
-                                  std::vector<std::shared_ptr<OldLogFollower>>{follower}, 1);
+                                  std::vector<std::shared_ptr<AbstractFollower>>{follower}, 1);
 
   {
     // Leader should know it spearhead, but commitIndex is 0
@@ -345,7 +255,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   // create leader with write concern 2
   auto leader = std::make_shared<LogLeader>(
       leaderId, std::move(coreA), LogTerm{1},
-      std::vector<std::shared_ptr<OldLogFollower>>{follower_1, follower_2}, 2);
+      std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2}, 2);
 
 
   auto index = leader->insert(LogPayload{"first entry"});
