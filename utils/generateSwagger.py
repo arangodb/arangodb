@@ -1435,7 +1435,7 @@ if len(sys.argv) > 5:
     print("Filtering for: [" + fileFilter + "]", file=sys.stderr)
 
 # read ArangoDB version and use it as API version
-f = io.open(scriptDir + "VERSION", encoding="utf-8", newline=None)
+f = io.open(scriptDir + "ARANGO-VERSION", encoding="utf-8", newline=None)
 version = f.read().strip()
 f.close()
 swagger['info']['version'] = version

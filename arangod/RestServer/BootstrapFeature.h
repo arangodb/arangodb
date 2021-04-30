@@ -38,7 +38,7 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 
   static std::string const& name() noexcept;
 
-  bool isReady() const { return _isReady; }
+  bool isReady() const;
 
  private:
   void waitForHealthEntry();
