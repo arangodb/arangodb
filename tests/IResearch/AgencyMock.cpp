@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#define ENABLE_MOCKS
 #include "AgencyMock.h"
 
 #include <fuerte/requests.h>

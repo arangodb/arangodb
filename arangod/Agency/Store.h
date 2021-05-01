@@ -163,6 +163,13 @@ class Store {
   /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string const& str);
 
+#if defined(ENABLE_MOCKS)
+public:
+#endif // defined(ENABLE_MOCKS)
+
+  /// @brief Notify observers
+  void notifyObservers() const;
+
  private:
   friend class consensus::Node;
   std::multimap<TimePoint, std::string>& timeTable();
@@ -172,10 +179,6 @@ class Store {
 
   /// @brief Clear entries, whose time to live has expired
   query_t clearExpired() const;
-
-  /// @brief Notify observers
-  void notifyObservers() const;
-
 
  private:
   /// @brief underlying application server, needed for testing code
