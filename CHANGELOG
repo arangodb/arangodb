@@ -1,6 +1,8 @@
 devel
 -----
 
+* Reduced the agency store public members, for simpler support long-term.
+
 * Fixed bug in error reporting when a database create did not work, which
   lead to a busy loop reporting this error to the agency.
 
