@@ -249,8 +249,9 @@ TEST_P(DFSFinderTest, no_path_exists) {
   {
     result.clear();
     auto hasPath = finder.getNextPath(result);
-    EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(hasPath);
+    pathEquals(result.slice(), {91});
+    pathStructureValid(result.slice(), 0);
     EXPECT_TRUE(finder.isDone());
   }
 
@@ -264,7 +265,7 @@ TEST_P(DFSFinderTest, no_path_exists) {
   }
   {
     aql::TraversalStats stats = finder.stealStats();
-    EXPECT_EQ(stats.getScannedIndex(), 0);
+    EXPECT_EQ(stats.getScannedIndex(), 1);
   }
 }
 
@@ -282,8 +283,9 @@ TEST_P(DFSFinderTest, path_depth_0) {
   {
     result.clear();
     auto hasPath = finder.getNextPath(result);
-    EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(hasPath);
+    pathEquals(result.slice(), {1});
+    pathStructureValid(result.slice(), 0);
     EXPECT_TRUE(finder.isDone());
   }
 
@@ -297,7 +299,7 @@ TEST_P(DFSFinderTest, path_depth_0) {
   }
   {
     aql::TraversalStats stats = finder.stealStats();
-    EXPECT_EQ(stats.getScannedIndex(), 0);
+    EXPECT_EQ(stats.getScannedIndex(), 1);
   }
 }
 

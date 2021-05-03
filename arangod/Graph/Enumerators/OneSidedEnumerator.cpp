@@ -94,17 +94,14 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   auto step = _queue.pop();
   auto posPrevious = _interior.append(step);
 
-  if (!step.isFirst()) {
-    ValidationResult res = _validator.validatePath(step);
-    if ((step.getDepth() >= _options.getMinDepth()) && !res.isFiltered() && !res.isPruned()) {
-      // Include it in results.
-      _results.push_back(step);
-    }
+  ValidationResult res = _validator.validatePath(step);
+  if ((step.getDepth() >= _options.getMinDepth()) && !res.isFiltered()) {
+    // Include it in results.
+    _results.push_back(step);
   }
 
-  if (step.getDepth() < _options.getMaxDepth()) {
-    _provider.expand(step, posPrevious, [&](Step n) -> void {
-      _queue.append(n); });
+  if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
+    _provider.expand(step, posPrevious, [&](Step n) -> void { _queue.append(n); });
   }
 }
 
@@ -174,7 +171,7 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::searchMoreResults() {
-  while (_results.empty() && !searchDone()) { // TODO: check && !_queue.isEmpty()
+  while (_results.empty() && !searchDone()) {  // TODO: check && !_queue.isEmpty()
     _resultsFetched = false;
     computeNeighbourhoodOfNextVertex();
   }
