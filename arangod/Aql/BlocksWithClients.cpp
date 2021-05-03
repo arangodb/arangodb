@@ -242,8 +242,7 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
   // NOTE: We do not handle limits / skip here
   // They can differ between different calls to this executor.
   // We may need to revisit this for performance reasons.
-  AqlCall call{};
-  stack.pushCall(AqlCallList{std::move(call)});
+  stack.pushCall(AqlCallList{AqlCall{}});
 
   TRI_ASSERT(_dependencies.size() == 1);
   auto [state, skipped, block] = _dependencies[0]->execute(stack);
