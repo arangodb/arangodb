@@ -3,6 +3,9 @@ v3.7.12 (XXXX-XX-XX)
 
 * Fixed a use after free bug in the connection pool.
 
+* Fix DEVSUP-749: Fix potential deadlock when executing concurrent view/link DDL
+  operations and index DDL operations on the same collection.
+
 * Fixed bug in error reporting when a database create did not work, which lead
   to a busy loop reporting this error to the agency.
 

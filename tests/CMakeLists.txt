@@ -114,6 +114,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/RandomTest.cpp
+  Basics/RecursiveLockerTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp
