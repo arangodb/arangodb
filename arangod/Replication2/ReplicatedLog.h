@@ -58,7 +58,7 @@
 namespace arangodb::replication2 {
 
 enum class AppendEntriesErrorReason {
-  NO_ERROR,
+  NONE,
   INVALID_LEADER_ID,
   LOST_LOG_CORE,
   WRONG_TERM,
@@ -68,7 +68,7 @@ enum class AppendEntriesErrorReason {
 struct AppendEntriesResult {
   LogTerm const logTerm = LogTerm{};
   ErrorCode const errorCode = TRI_ERROR_NO_ERROR;
-  AppendEntriesErrorReason const reason = AppendEntriesErrorReason::NO_ERROR;
+  AppendEntriesErrorReason const reason = AppendEntriesErrorReason::NONE;
 
   [[nodiscard]] auto isSuccess() const noexcept -> bool {
     return errorCode == TRI_ERROR_NO_ERROR;

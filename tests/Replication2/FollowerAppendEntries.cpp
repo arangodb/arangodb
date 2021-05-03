@@ -52,7 +52,7 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NO_ERROR);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NONE);
     }
   }
 
@@ -71,7 +71,7 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NO_ERROR);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NONE);
     }
   }
 }

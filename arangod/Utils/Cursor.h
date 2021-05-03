@@ -112,7 +112,7 @@ class Cursor {
    *
    * @return First: ExecutionState either DONE or WAITING. On Waiting we need to
    * free this thread on DONE we have a result. Second: Result If State==DONE
-   * this contains Error information or NO_ERROR. On NO_ERROR result is filled.
+   * this contains Error information or NONE. On NONE result is filled.
    */
   virtual std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) = 0;
 

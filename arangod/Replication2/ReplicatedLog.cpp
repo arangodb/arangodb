@@ -610,16 +610,16 @@ auto AppendEntriesResult::fromVelocyPack(velocypack::Slice slice) -> AppendEntri
   auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
   auto reason = AppendEntriesErrorReason{slice.get("reason").extract<int>()};
 
-  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != AppendEntriesErrorReason::NO_ERROR);
+  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != AppendEntriesErrorReason::NONE);
   return AppendEntriesResult{logTerm, errorCode, reason};
 }
 
 AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode, AppendEntriesErrorReason reason)
     : logTerm(logTerm), errorCode(errorCode), reason(reason) {
-  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != AppendEntriesErrorReason::NO_ERROR);
+  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != AppendEntriesErrorReason::NONE);
 }
 AppendEntriesResult::AppendEntriesResult(LogTerm logTerm)
-    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NO_ERROR) {}
+    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NONE) {}
 
 void AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
   {
