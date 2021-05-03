@@ -99,9 +99,12 @@ class RecursiveReadLocker {
       std::atomic<std::thread::id>& owner, // owner
       char const* file, // file
       int line // line
-): _locker(&mutex, arangodb::basics::LockerType::TRY, true, file, line) {
-    if (!_locker.isLocked() && owner.load() != std::this_thread::get_id()) {
-      _locker.lock();
+): _locker(&mutex, arangodb::basics::LockerType::TRY, false, file, line) {
+    // if we are the owner of a write lock there is nothing to do here!
+    if (owner.load() != std::this_thread::get_id()) {
+      // if we do not own the write lock we acquire a read lock
+      // Important: 
+      _locker.lockPrivileged();
     }
   }
 

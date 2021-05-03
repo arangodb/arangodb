@@ -24,6 +24,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/RecursiveLocker.h"
 
 #include "gtest/gtest.h"
 
@@ -241,4 +242,68 @@ TEST(ReadWriteLockTest, testLockWriteAttempted) {
   ASSERT_FALSE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
+}
+
+TEST(ReadWriteLockTest, recursiveReadLock) {
+  using namespace arangodb;
+
+  ReadWriteLock lock;
+  std::atomic<std::thread::id> writeLockOwner;
+  
+  std::atomic<bool> attemptWriteLock{false};
+   
+  std::thread reader([&]() {
+    RECURSIVE_READ_LOCKER(lock, writeLockOwner);
+    
+    // signal the writer thread that it should attempt to acquire the write lock
+    attemptWriteLock = true;
+    
+    // give the writer thread a chance to register the queued writer before we
+    // acquire the recursive read lock (again)
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    
+    RECURSIVE_READ_LOCKER(lock, writeLockOwner);
+  });
+  
+  std::thread writer([&]() {
+    while (!attemptWriteLock) {
+      // wait until the reader thread has acquired the first read lock
+    }
+    ASSERT_TRUE(lock.lockWrite(std::chrono::seconds(10)));
+  });
+
+  reader.join();
+  writer.join();
+}
+
+TEST(ReadWriteLockTest, recursiveWriteLock) {
+  using namespace arangodb;
+
+  ReadWriteLock lock;
+  std::atomic<std::thread::id> writeLockOwner;
+
+  std::atomic<bool> attemptWriteLock{false};
+
+  std::thread readerWriter([&]() {
+    RECURSIVE_WRITE_LOCKER(lock, writeLockOwner);
+
+    // signal the writer thread that it should attempt to acquire the write lock
+    attemptWriteLock = true;
+
+    // give the writer thread a chance to register the queued writer before we
+    // acquire the recursive read lock
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+    RECURSIVE_READ_LOCKER(lock, writeLockOwner);
+  });
+
+  std::thread writer([&]() {
+    while (!attemptWriteLock) {
+      // wait until the readerWriter thread has acquired the first write lock
+    }
+    ASSERT_TRUE(lock.lockWrite(std::chrono::seconds(10)));
+  });
+
+  readerWriter.join();
+  writer.join();
 }

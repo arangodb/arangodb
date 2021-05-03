@@ -129,12 +129,42 @@ void ReadWriteLock::lockRead() {
   }
 }
 
+/// @brief locks for reading, regardless of pending queued writers
+void ReadWriteLock::lockReadPrivileged() {
+  if (tryLockReadPrivileged()) {
+    return;
+  }
+
+  std::unique_lock<std::mutex> guard(_reader_mutex);
+  while (true) {
+    if (tryLockReadPrivileged()) {
+      return;
+    }
+
+    _readers_bell.wait(guard);
+  }
+}
+
 /// @brief locks for reading, tries only
 bool ReadWriteLock::tryLockRead() noexcept {
   // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire read lock as long as no writers are active or queued
   while ((state & ~READER_MASK) == 0) {
+    if (_state.compare_exchange_weak(state, state + READER_INC, std::memory_order_acquire)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// @brief tries to locks for reading, regardless of pending queued writers
+bool ReadWriteLock::tryLockReadPrivileged() noexcept {
+  // order_relaxed is an optimization, cmpxchg will synchronize side-effects
+  auto state = _state.load(std::memory_order_relaxed);
+  // try to acquire read lock as long as no writers are active, but we deliberately ignore
+  // queued writers here.
+  while ((state & WRITE_LOCK) == 0) {
     if (_state.compare_exchange_weak(state, state + READER_INC, std::memory_order_acquire)) {
       return true;
     }
