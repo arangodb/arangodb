@@ -259,7 +259,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   // Ensure that we have an output block of the desired dimensions
   // Will as a side effect modify _outputItemRow
-  void ensureOutputBlock(Context& ctx);
+  void ensureOutputBlock(AqlCall&& call);
 
   // Compute the next state based on the given call.
   // Can only be one of Skip/Produce/FullCount/FastForward/Done

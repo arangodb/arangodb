@@ -500,20 +500,11 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
 }
 
 template <class Executor>
-void ExecutionBlockImpl<Executor>::ensureOutputBlock(Context& ctx) {
-  auto getCall = [&ctx]() {
-    if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-      TRI_ASSERT(!ctx.stack.empty());
-      return ctx.stack.peek();
-    } else {
-      return std::move(ctx.clientCall);
-    }
-  };
-    
+void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {  
   if (_outputItemRow == nullptr || !_outputItemRow->isInitialized()) {
-    _outputItemRow = allocateOutputBlock(getCall());
+    _outputItemRow = allocateOutputBlock(std::move(call));
   } else {
-    _outputItemRow->setCall(getCall());
+    _outputItemRow->setCall(std::move(call));
   }
 }
 
@@ -1409,7 +1400,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           break;
         }
 
-        ensureOutputBlock(ctx);
+        if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+          TRI_ASSERT(!ctx.stack.empty());
+          AqlCall subqueryCall = ctx.stack.peek();
+          ensureOutputBlock(std::move(subqueryCall));
+        } else {
+          ensureOutputBlock(std::move(ctx.clientCall));
+        }
         TRI_ASSERT(_outputItemRow);
 
         // Execute getSome
@@ -1617,7 +1614,16 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           _execState = ExecState::DONE;
           break;
         }
-        ensureOutputBlock(ctx);
+
+        if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+          TRI_ASSERT(!ctx.stack.empty());
+          // unfortunately we cannot move here, because clientCall can still be
+          // read-from later
+          AqlCall copyCall = ctx.clientCall;
+          ensureOutputBlock(std::move(copyCall));
+        } else {
+          ensureOutputBlock(std::move(ctx.clientCall));
+        }
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
         if constexpr (executorHasSideEffects<Executor>) {
