@@ -208,7 +208,7 @@ class FollowerInfo {
         LOG_TOPIC("7c1d4", INFO, Logger::REPLICATION)
             << "Shard "
             << _docColl->name() << " is temporarily in read-only mode, since we have not yet run TakeoverShardLeadership since the last restart.";
-        return STARTUP;
+        return WriteState::STARTUP;
       }
       if (_followers->size() + 1 < _docColl->writeConcern()) {
         // We know that we still do not have enough followers
@@ -216,7 +216,7 @@ class FollowerInfo {
             << "Shard " << _docColl->name() << " is temporarily in read-only mode, since we have less than writeConcern ("
             << basics::StringUtils::itoa(_docColl->writeConcern())
             << ") replicas in sync.";
-        return FORBIDDEN;
+        return WriteState::FORBIDDEN;
       }
     }
     bool res = updateFailoverCandidates();
@@ -225,7 +225,7 @@ class FollowerInfo {
           << "Shard "
           << _docColl->name() << " is temporarily in read-only mode, since we could not update the failover candidates in the agency.";
     }
-    return res ? ALLOWED : FORBIDDEN;
+    return res ? WriteState::ALLOWED : WriteState::FORBIDDEN;
   }
 
   //////////////////////////////////////////////////////////////////////////////
