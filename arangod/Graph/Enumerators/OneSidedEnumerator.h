@@ -61,7 +61,7 @@ class OneSidedEnumerator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
   using Shell = std::multiset<Step>;
-  using ResultList = std::vector<std::pair<Step, Step>>;
+  using ResultList = std::vector<Step>;
   using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
 
  public:

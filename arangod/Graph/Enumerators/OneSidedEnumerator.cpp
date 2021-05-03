@@ -98,12 +98,11 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     ValidationResult res = _validator.validatePath(step);
     if ((step.getDepth() >= _options.getMinDepth()) && !res.isFiltered() && !res.isPruned()) {
       // Include it in results.
-      _results.push_back(std::make_pair(_interior.get(posPrevious), step));
+      _results.push_back(step);
     }
   }
 
   if (step.getDepth() < _options.getMaxDepth()) {
-    // DFS Path Check (will need different check for BFS traversal - global depth vs. specific step depth)
     _provider.expand(step, posPrevious, [&](Step n) -> void {
       _queue.append(n); });
   }
@@ -155,7 +154,7 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     searchMoreResults();
 
     while (!_results.empty()) {
-      auto const& [unused, rightVertex] = _results.back();
+      auto const& vertex = _results.back();
 
       // Performance Optimization:
       // It seems to be pointless to first push
@@ -163,7 +162,7 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       // and then iterate again to return the path
       // we should be able to return the path in the first go.
       _resultPath.clear();
-      _interior.buildPath(rightVertex, _resultPath);
+      _interior.buildPath(vertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
       _results.pop_back();
       _resultPath.toVelocyPack(result);
@@ -216,14 +215,9 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   if (!_resultsFetched && !_results.empty()) {
     std::vector<Step*> looseEnds{};
 
-    for (auto& [from, to] : _results) {
-      // TODO: Check ifs (discuss direction<->forward/backward)
-      TRI_ASSERT(from.isProcessable());
-      if (!from.isProcessable()) {
-        looseEnds.emplace_back(&from);
-      }
-      if (!to.isProcessable()) {
-        looseEnds.emplace_back(&to);
+    for (auto& vertex : _results) {
+      if (!vertex.isProcessable()) {
+        looseEnds.emplace_back(&vertex);
       }
     }
 
