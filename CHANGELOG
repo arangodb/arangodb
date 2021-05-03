@@ -1,8 +1,16 @@
 devel
 -----
 
+* Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied,
+  it may rename some variables in the query. The variable renaming was however
+  not carried out for traversal PRUNE conditions, so the PRUNE conditions 
+  could still refer to obsolete variables, which would make the query fail with
+  errors such as 
+    
+      Query: AQL: missing variable ... for node ... while planning registers
+
 * Fixed bug in error reporting when a database create did not work, which
-  lead to a busy loop reporting this error to the agency.
+  led to a busy loop reporting this error to the agency.
 
 * Fixed the error response if the HTTP version is not 1.0 or 1.1 and if
   the Content-Length is too large (> 1 GB).
