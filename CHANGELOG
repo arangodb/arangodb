@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue BTS-354: Assertion related to getCollection. 
+
 * Fixed a use after free bug in the connection pool.
 
 * Show peak memory usage in AQL query profiling output.
