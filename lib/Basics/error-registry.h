@@ -18,7 +18,7 @@ struct elsa<ErrorCode> {
 #include <cinttypes>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 346> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 347> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -281,6 +281,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 346> ErrorMessage
       "not the log leader"},
     {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER,  // 1420
       "not a log follower"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,  // 1421
+      "follower rejected append entries request"},
     {TRI_ERROR_CLUSTER_NOT_FOLLOWER,  // 1446
       "not a follower"},
     {TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,  // 1447

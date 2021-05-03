@@ -52,16 +52,19 @@ struct FakeLogFollower : AbstractFollower {
     LOG_DEVEL << "sending append entries to " << id << " with payload " << VPackSlice(buffer.data()).toJson();
     auto f = network::sendRequest(pool, "server:" + id, fuerte::RestVerb::Post, path, std::move(buffer), opts);
 
-    return std::move(f).thenValue([this](network::Response result) -> AppendEntriesResult {
-      LOG_DEVEL << "Append entries for " << id << " returned, fuerte ok = " << result.ok();
-      if (result.fail()) {
-        return AppendEntriesResult{false, LogTerm(0)};
-      }
-      LOG_DEVEL << "Result for " << id << " is " << result.slice().toJson();
-      TRI_ASSERT(result.slice().get("error").isFalse()); // TODO
-      return AppendEntriesResult::fromVelocyPack(result.slice().get("result"));
-    });
-
+    return std::move(f).thenValue(
+        [this](network::Response result) -> AppendEntriesResult {
+          LOG_DEVEL << "Append entries for " << id
+                    << " returned, fuerte ok = " << result.ok();
+          if (result.fail()) {
+            // TODO use better exception calss
+            throw std::runtime_error("network error");
+          }
+          LOG_DEVEL << "Result for " << id << " is " << result.slice().toJson();
+          TRI_ASSERT(result.slice().get("error").isFalse());  // TODO
+          return AppendEntriesResult::fromVelocyPack(
+              result.slice().get("result"));
+        });
   }
 
   network::ConnectionPool *pool;

@@ -57,10 +57,25 @@
 
 namespace arangodb::replication2 {
 
-struct AppendEntriesResult {
-  bool success = false;
-  LogTerm logTerm = LogTerm{};
+enum class AppendEntriesErrorReason {
+  NO_ERROR,
+  INVALID_LEADER_ID,
+  LOST_LOG_CORE,
+  WRONG_TERM,
+  NO_PREV_LOG_MATCH
+};
 
+struct AppendEntriesResult {
+  LogTerm const logTerm = LogTerm{};
+  ErrorCode const errorCode = TRI_ERROR_NO_ERROR;
+  AppendEntriesErrorReason const reason = AppendEntriesErrorReason::NO_ERROR;
+
+  [[nodiscard]] auto isSuccess() const noexcept -> bool {
+    return errorCode == TRI_ERROR_NO_ERROR;
+  }
+
+  explicit AppendEntriesResult(LogTerm);
+  AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode, AppendEntriesErrorReason reason);
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 };

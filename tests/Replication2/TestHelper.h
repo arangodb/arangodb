@@ -72,12 +72,10 @@ struct DelayedFollowerLog : AbstractFollower {
       return queue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)))
           ->promise.getFuture();
     });
-    return std::move(future).thenValue([this](auto&& result) mutable {
-      if (!result.has_value()) {
-        return futures::Future<AppendEntriesResult>{AppendEntriesResult{false}};
-      }
-      return _follower->appendEntries(std::forward<decltype(result)>(result).value());
-    });
+    return std::move(future).thenValue(
+        [this](auto&& result) mutable {
+          return _follower->appendEntries(std::forward<decltype(result)>(result));
+        });
   }
 
   void runAsyncAppendEntries() {
@@ -92,7 +90,7 @@ struct DelayedFollowerLog : AbstractFollower {
     }
   }
 
-  using WaitForAsyncPromise = futures::Promise<std::optional<AppendEntriesRequest>>;
+  using WaitForAsyncPromise = futures::Promise<AppendEntriesRequest>;
 
   struct AsyncRequest {
     explicit AsyncRequest(AppendEntriesRequest request)
