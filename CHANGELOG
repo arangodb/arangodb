@@ -1,6 +1,20 @@
 devel
 -----
 
+* Fixed a potential deadlock in RecursiveReadLocker. This could happen if 
+  some thread A has acquired a read-lock, then some thread B signals that
+  it wants to acquire a write-lock and now thread A recursively wants to
+  acquire another read-lock. Since our ReadWriteLocks usually prefer writers,
+  the second attempt to acquire the read-lock would block, waiting for the
+  writer to finish while the writer would block, waiting for the first read
+  to finish. To solve this, the RecursiveReadLock does no longer follow the
+  principal that writes have precedence over reads.
+  
+  Our , i.e., if a pending writer has
+  signaled that it wants to acquire the lock, readers will have to wait for
+  the writer to finish.
+  
+
 * Fixed bug in error reporting when a database create did not work, which
   lead to a busy loop reporting this error to the agency.
 

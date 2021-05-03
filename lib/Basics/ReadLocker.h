@@ -142,6 +142,13 @@ class ReadLocker {
     _readWriteLock->lockRead();
     _isLocked = true;
   }
+  
+  /// @brief acquire the read lock, regardless of queued writers, blocking
+  void lockPrivileged() {
+    TRI_ASSERT(!_isLocked);
+    _readWriteLock->lockReadPrivileged();
+    _isLocked = true;
+  }
 
   /// @brief unlocks the lock if we own it
   bool unlock() {

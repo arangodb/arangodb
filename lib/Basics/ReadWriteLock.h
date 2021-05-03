@@ -66,9 +66,15 @@ class ReadWriteLock {
   /// @brief locks for reading
   void lockRead();
 
+  /// @brief locks for reading, regardless of pending queued writers
+  void lockReadPrivileged();
+  
   /// @brief locks for reading, tries only
   [[nodiscard]] bool tryLockRead() noexcept;
 
+  /// @brief tries to lock for reading, regardless of pending queued writers
+  [[nodiscard]] bool tryLockReadPrivileged() noexcept;
+  
   /// @brief releases the read-lock or write-lock
   void unlock() noexcept;
 
