@@ -323,57 +323,55 @@ TEST_F(StoreTestAPI, precondition) {
           "[[" + localObj + R"(, {"qux":)" + qux + R"(,"baz":{"old":)" + permuted + R"(},"foo":)" + foo_value + R"(}]])");
       }
 
-      // // Permute order of keys and objects within arrays in preconditions
-      // writeAndCheck([[{"a":[{"b":12,"c":13}]}]]);
-      // writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"b":12,"c":13}]}]]);
-      // writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"c":13,"b":12}]}]]);
+      // Permute order of keys and objects within arrays in preconditions
+      // writeAndCheck(R"([[{"a":[{"b":12,"c":13}]}]])");
+      // writeAndCheck(R"([[{"a":[{"b":12,"c":13}]},{"a":[{"b":12,"c":13}]}]])");
+      // writeAndCheck(R"([[{"a":[{"b":12,"c":13}]},{"a":[{"c":13,"b":12}]}]])");
 
-      // localObj = {"b":"Hello world!", "c":3.14159265359, "d":314159265359, "e": -3};
-      // var localObk = {"b":1, "c":1.0, "d": 100000000001, "e": -1};
-      // localKeys  = [];
-      // for (var l in localObj) {
+      // std::map<std::string,std::string> localObj {
+      //   {"b","\"Hello world!\""}, {"c","3.14159265359"}, {"d","314159265359"}, {"e", "-3"}};
+      // std::map<std::string,std::string> localObk {
+      //   {"b","1"}, {"c","1.0"}, {"d", "100000000001"}, {"e", "-1"}};
+      // localKeys.resize(0);
+      // for (auto const &l: localObj) {
       //   localKeys.push(l);
       // }
-      // permuted = {};
-      // var per2 = {};
-      // writeAndCheck([[ { "a" : [localObj,localObk] } ]]);
-      // writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [localObj,localObk] }]]);
-      // for (var m = 0; m < 7; m++) {
+      // writeAndCheck(R"([[ { "a" : [localObj,localObk] } ]])");
+      // writeAndCheck(R"([[ { "a" : [localObj,localObk] }, {"a" : [localObj,localObk] }]])");
+      // for (int m = 0; m < 7; ++m) {
       //   permuted = {};
-      //   shuffle(localKeys);
+      //   std::shuffle(localKeys.begin(), localKeys.end());
       //   for (k in localKeys) {
       //     permuted[localKeys[k]] = localObj[localKeys[k]];
       //     per2 [localKeys[k]] = localObk[localKeys[k]];
       //   }
-      //   writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [permuted,per2] }]]);
-      //   res = accessAgency("write",
-      //                      [[ { "a" : [localObj,localObk] }, {"a" : [per2,permuted] }]]);
-      //   assertEqual(res.statusCode, 412);
+      //   writeAndCheck(R"([[ { "a" : [localObj,localObk] }, {"a" : [permuted,per2] }]])");
+      //   res = write(R"([[ { "a" : [localObj,localObk] }, {"a" : [per2,permuted] }]])");
+      //   ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
       // }
 
-      // res = accessAgency("write", [[{"a":12},{"a":{"intersectionEmpty":""}}]]);
-      // assertEqual(res.statusCode, 412);
-      // res = accessAgency("write", [[{"a":12},{"a":{"intersectionEmpty":[]}}]]);
-      // assertEqual(res.statusCode, 200);
-      // res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":[]}}]]);
-      // assertEqual(res.statusCode, 200);
-      // res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":[false,"Pi"]}}]]);
-      // assertEqual(res.statusCode, 412);
-      // res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":["Pi",false]}}]]);
-      // assertEqual(res.statusCode, 412);
-      // res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":[false,false,false]}}]]);
-      // assertEqual(res.statusCode, 412);
-      // res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":["pi",3.1415926535]}}]]);
-      // assertEqual(res.statusCode, 200);
-      // res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"instersectionEmpty":[]}}]]);
-      // assertEqual(res.statusCode, 412);
-
+      // res = write(R"([[{"a":12},{"a":{"intersectionEmpty":""}}]])");
+      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+      // res = write(R"([[{"a":12},{"a":{"intersectionEmpty":[]}}]])");
+      // ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
+      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+      //                               {"a":{"intersectionEmpty":[]}}]])");
+      // ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
+      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+      //                               {"a":{"intersectionEmpty":[false,"Pi"]}}]]))";
+      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+      //                               {"a":{"intersectionEmpty":["Pi",false]}}]])");
+      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+      //                               {"a":{"intersectionEmpty":[false,false,false]}}]])");
+      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+      //                               {"a":{"intersectionEmpty":["pi",3.1415926535]}}]])");
+      // ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
+      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+      //                               {"a":{"instersectionEmpty":[]}}]])");
+      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
     }
 
 /*
