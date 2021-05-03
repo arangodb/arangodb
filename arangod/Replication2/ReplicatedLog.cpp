@@ -24,6 +24,7 @@
 
 #include "Basics/Exceptions.h"
 
+#include <Basics/StringUtils.h>
 #include <Basics/application-exit.h>
 #include <Basics/overload.h>
 #include <velocypack/Iterator.h>
@@ -90,21 +91,23 @@ auto appendEntries(LogTerm const currentTerm, LogIndex& commitIndex,
                    replicated_log::InMemoryLog& inMemoryLog,
                    replicated_log::LogCore* logCore, AppendEntriesRequest const& req)
     -> arangodb::futures::Future<AppendEntriesResult> {
-
   if (logCore == nullptr) {
-    return AppendEntriesResult(currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, AppendEntriesErrorReason::LOST_LOG_CORE);
+    return AppendEntriesResult(currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                               AppendEntriesErrorReason::LOST_LOG_CORE);
   }
   // TODO does >= suffice here? Maybe we want to do an atomic operation
   // before increasing our term
   if (req.leaderTerm != currentTerm) {
-    return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, AppendEntriesErrorReason::WRONG_TERM};
+    return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                               AppendEntriesErrorReason::WRONG_TERM};
   }
   // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
 
   if (req.prevLogIndex > LogIndex{0}) {
     auto entry = inMemoryLog.getEntryByIndex(req.prevLogIndex);
     if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
-      return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, AppendEntriesErrorReason::NO_PREV_LOG_MATCH};
+      return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                                 AppendEntriesErrorReason::NO_PREV_LOG_MATCH};
     }
   }
 
@@ -193,8 +196,21 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 
 auto replicated_log::LogLeader::construct(
     ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term,
-    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+    std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+  if (ADB_UNLIKELY(logCore == nullptr)) {
+    auto followerIds = std::vector<std::string>{};
+    std::transform(followers.begin(), followers.end(), std::back_inserter(followerIds),
+                   [](auto const& follower) -> std::string {
+                     return follower->getParticipantId();
+                   });
+    auto message = basics::StringUtils::concatT(
+        "LogCore missing when constructing LogLeader, leader id: ", id,
+        "term: ", term.value, "writeConcern: ", writeConcern,
+        "followers: ", basics::StringUtils::join(followerIds, ", "));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
+  }
+
   // Workaround to be able to use make_shared, while LogLeader's constructor
   // is actually protected.
   struct MakeSharedLogLeader : LogLeader {
@@ -218,7 +234,7 @@ auto replicated_log::LogLeader::construct(
 
   auto leaderDataGuard = leader->acquireMutex();
 
-  leaderDataGuard->_follower = instantiateFollowers(follower, localFollower, lastIndex);
+  leaderDataGuard->_follower = instantiateFollowers(followers, localFollower, lastIndex);
 
   leader->_localFollower = std::move(localFollower);
 
@@ -238,13 +254,14 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
 auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
   // TODO Do we need to do more than that, like make sure to refuse future
   //      requests?
-  return _guardedLeaderData.doUnderLock([&localFollower = *_localFollower](GuardedLeaderData& leaderData) {
-    for (auto& [idx, promise] : leaderData._waitForQueue) {
-      promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
-                                             __FILE__, __LINE__));
-    }
-    return std::move(localFollower).resign();
-  });
+  return _guardedLeaderData.doUnderLock(
+      [&localFollower = *_localFollower](GuardedLeaderData& leaderData) {
+        for (auto& [idx, promise] : leaderData._waitForQueue) {
+          promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
+                                                 __FILE__, __LINE__));
+        }
+        return std::move(localFollower).resign();
+      });
 }
 
 auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
@@ -614,7 +631,8 @@ auto AppendEntriesResult::fromVelocyPack(velocypack::Slice slice) -> AppendEntri
   return AppendEntriesResult{logTerm, errorCode, reason};
 }
 
-AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode, AppendEntriesErrorReason reason)
+AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
+                                         AppendEntriesErrorReason reason)
     : logTerm(logTerm), errorCode(errorCode), reason(reason) {
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != AppendEntriesErrorReason::NONE);
 }
@@ -660,8 +678,8 @@ replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
   if (ADB_UNLIKELY(_persistedLog == nullptr)) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-        "When instantiating ReplicatedLog: "
-        "persistedLog must not be a nullptr");
+                                   "When instantiating ReplicatedLog: "
+                                   "persistedLog must not be a nullptr");
   }
 }
 
@@ -707,7 +725,8 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
   auto& logCore = logCoreGuard.get();
 
   if (logCore == nullptr) {
-    return AppendEntriesResult{request.leaderTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, AppendEntriesErrorReason::LOST_LOG_CORE};
+    return AppendEntriesResult{request.leaderTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                               AppendEntriesErrorReason::LOST_LOG_CORE};
   }
 
   // TODO The LogCore should know its last log index, and we should assert here
@@ -715,14 +734,14 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
   auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
       request.entries.begin(), request.entries.end());
   if (auto const res = logCore->_persistedLog->insert(iter); !res.ok()) {
-    abort(); // TODO abort
+    abort();  // TODO abort
   }
 
   return AppendEntriesResult{request.leaderTerm};
 }
 
 auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<LogCore> {
-  return _guardedLogCore.doUnderLock([](auto& guardedLogCore){
+  return _guardedLogCore.doUnderLock([](auto& guardedLogCore) {
     auto logCore = std::move(guardedLogCore);
     return logCore;
   });

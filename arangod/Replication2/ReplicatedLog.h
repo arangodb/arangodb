@@ -143,7 +143,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   static auto construct(ParticipantId const& id,
                         std::unique_ptr<LogCore> logCore, LogTerm term,
-                        std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+                        std::vector<std::shared_ptr<AbstractFollower>> const& followers,
                         std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload) -> LogIndex;
