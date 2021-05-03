@@ -703,6 +703,11 @@ constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER              
 /// something only a follower can do
 constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER               = ErrorCode{1420};
 
+/// 1421: ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED
+/// "follower rejected append entries request"
+/// Will be raised when a follower rejects an append entries request
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED      = ErrorCode{1421};
+
 /// 1446: ERROR_CLUSTER_NOT_FOLLOWER
 /// "not a follower"
 /// Will be raised when an operation is sent to a non-following server.

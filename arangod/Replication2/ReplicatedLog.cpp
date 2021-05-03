@@ -90,30 +90,34 @@ auto appendEntries(LogTerm const currentTerm, LogIndex& commitIndex,
                    replicated_log::InMemoryLog& inMemoryLog,
                    replicated_log::LogCore* logCore, AppendEntriesRequest const& req)
     -> arangodb::futures::Future<AppendEntriesResult> {
+
+  if (logCore == nullptr) {
+    return AppendEntriesResult(currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, AppendEntriesErrorReason::LOST_LOG_CORE);
+  }
   // TODO does >= suffice here? Maybe we want to do an atomic operation
   // before increasing our term
-  if (req.leaderTerm != currentTerm || logCore == nullptr) {
-    return AppendEntriesResult{false, currentTerm};
+  if (req.leaderTerm != currentTerm) {
+    return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, AppendEntriesErrorReason::WRONG_TERM};
   }
   // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
 
   if (req.prevLogIndex > LogIndex{0}) {
     auto entry = inMemoryLog.getEntryByIndex(req.prevLogIndex);
     if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
-      return AppendEntriesResult{false, currentTerm};
+      return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, AppendEntriesErrorReason::NO_PREV_LOG_MATCH};
     }
   }
 
   auto res = logCore->_persistedLog->removeBack(req.prevLogIndex + 1);
   if (!res.ok()) {
-    abort();
+    abort();  // TODO abort?
   }
 
   auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
       req.entries.begin(), req.entries.end());
   res = logCore->_persistedLog->insert(iter);
   if (!res.ok()) {
-    abort();
+    abort();  // TODO abort?
   }
 
   auto transientLog = inMemoryLog._log.transient();
@@ -124,9 +128,10 @@ auto appendEntries(LogTerm const currentTerm, LogIndex& commitIndex,
   if (commitIndex < req.leaderCommit && !inMemoryLog._log.empty()) {
     commitIndex = std::min(req.leaderCommit, inMemoryLog._log.back().logIndex());
     // TODO Apply operations to state machine here?
+    //      Trigger log consumer streams.
   }
 
-  return AppendEntriesResult{true, currentTerm};
+  return AppendEntriesResult{currentTerm};
 }
 
 }  // namespace follower
@@ -468,7 +473,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   if (res.hasValue()) {
     follower.numErrorsSinceLastAnswer = 0;
     auto& response = res.get();
-    if (response.success) {
+    if (response.isSuccess()) {
       follower.lastAckedIndex = lastIndex;
       follower.lastAckedCommitIndex = currentCommitIndex;
       checkCommitIndex(parentLog);
@@ -595,16 +600,26 @@ void AppendEntriesResult::toVelocyPack(velocypack::Builder& builder) const {
   {
     velocypack::ObjectBuilder ob(&builder);
     builder.add("term", VPackValue(logTerm.value));
-    builder.add("success", VPackValue(success));
+    builder.add("errorCode", VPackValue(errorCode));
+    builder.add("reason", VPackValue(int(reason)));
   }
 }
 
 auto AppendEntriesResult::fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult {
-  bool success = slice.get("success").getBool();
-  auto logTerm = LogTerm{slice.get("term").getNumericValue<size_t>()};
+  auto logTerm = LogTerm{slice.get("term").extract<size_t>()};
+  auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
+  auto reason = AppendEntriesErrorReason{slice.get("reason").extract<int>()};
 
-  return AppendEntriesResult{success, logTerm};
+  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != AppendEntriesErrorReason::NO_ERROR);
+  return AppendEntriesResult{logTerm, errorCode, reason};
 }
+
+AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode, AppendEntriesErrorReason reason)
+    : logTerm(logTerm), errorCode(errorCode), reason(reason) {
+  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != AppendEntriesErrorReason::NO_ERROR);
+}
+AppendEntriesResult::AppendEntriesResult(LogTerm logTerm)
+    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NO_ERROR) {}
 
 void AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
   {
@@ -691,21 +706,19 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
   auto logCoreGuard = _guardedLogCore.getLockedGuard();
   auto& logCore = logCoreGuard.get();
 
-  auto result = AppendEntriesResult{};
-  result.logTerm = request.leaderTerm;
-
   if (logCore == nullptr) {
-    result.success = false;
-    return result;
+    return AppendEntriesResult{request.leaderTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, AppendEntriesErrorReason::LOST_LOG_CORE};
   }
 
   // TODO The LogCore should know its last log index, and we should assert here
   //      that the AppendEntriesRequest matches it.
   auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
       request.entries.begin(), request.entries.end());
-  auto const res = logCore->_persistedLog->insert(iter);
-  result.success = res.ok();
-  return result;
+  if (auto const res = logCore->_persistedLog->insert(iter); !res.ok()) {
+    abort(); // TODO abort
+  }
+
+  return AppendEntriesResult{request.leaderTerm};
 }
 
 auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<LogCore> {

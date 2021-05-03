@@ -139,6 +139,7 @@
     "ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND" : { "code" : 1418, "message" : "replicated log % PRIu64 \" not found\"" },
     "ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER" : { "code" : 1419, "message" : "not the log leader" },
     "ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER" : { "code" : 1420, "message" : "not a log follower" },
+    "ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED" : { "code" : 1421, "message" : "follower rejected append entries request" },
     "ERROR_CLUSTER_NOT_FOLLOWER"   : { "code" : 1446, "message" : "not a follower" },
     "ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED" : { "code" : 1447, "message" : "follower transaction intermediate commit already performed" },
     "ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED" : { "code" : 1448, "message" : "creating collection failed due to precondition" },
