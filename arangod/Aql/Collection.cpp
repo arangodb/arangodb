@@ -64,6 +64,7 @@ Collection::Collection(std::string const& name,
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
+      //ensureCollection(); // will throw if collection does not exist
     }
   } else if (hint == Hint::Shard) {
     if (ServerState::instance()->isCoordinator()) {
@@ -71,6 +72,7 @@ Collection::Collection(std::string const& name,
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
+      //ensureCollection(); // will throw if collection does not exist
     }
   } else if (hint == Hint::None) {
     // nothing special to do here
@@ -280,7 +282,8 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
 
 /// @brief use the already set collection 
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
-  checkCollection();
+  TRI_ASSERT(_collection != nullptr);
+  ensureCollection();
   return _collection;
 }
   
@@ -291,7 +294,7 @@ bool Collection::hasCollectionObject() const noexcept {
 }
 
 /// @brief throw if the underlying collection has not been set
-void Collection::checkCollection() const {
+void Collection::ensureCollection() const {
   if (_collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ": " + _name);
