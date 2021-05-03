@@ -141,7 +141,6 @@ class OneSidedEnumerator {
 
  private:
   GraphOptions _options;
-  bool _searchLeft{true};
   ResultList _results{};
   bool _resultsFetched{false};
 
@@ -152,8 +151,6 @@ class OneSidedEnumerator {
 
   // This stores all paths processed
   PathStoreType _interior;
-
-  size_t _currentDepth;
 
   PathResult<ProviderType, Step> _resultPath;
 };
