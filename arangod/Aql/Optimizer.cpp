@@ -376,7 +376,7 @@ void Optimizer::finalizePlans() {
   for (auto& plan : _plans.list) {
     insertDistributeInputCalculation(*plan.first);
     if (plan.first->isAsyncPrefetchEnabled()) {
-      enableAsynchPrefetching(*plan.first);
+      enableAsyncPrefetching(*plan.first);
     }
     
     plan.first->findVarUsage();

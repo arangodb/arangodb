@@ -310,9 +310,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     std::condition_variable bell;
     std::optional<std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>> result;
     
-    bool isConsumed() const;
-    bool tryClaim();
-    void waitFor();
+    bool isConsumed() const noexcept;
+    bool tryClaim() noexcept;
+    void waitFor() noexcept;
     
     void execute(ExecutionBlockImpl& block, AqlCallStack& stack);
   };

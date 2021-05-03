@@ -48,7 +48,7 @@ class AqlItemBlockInputRange {
                          std::size_t startIndex) noexcept;
 
   void reset() noexcept { _block.reset(nullptr); }
-  bool hasBlock() noexcept { return _block.get() != nullptr; }
+  bool hasBlock() const noexcept { return _block.get() != nullptr; }
   
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 

@@ -7971,7 +7971,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-void arangodb::aql::asynchPrefetchRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+void arangodb::aql::asyncPrefetchRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                       OptimizerRule const& rule) {
   // at the moment we only allow async prefetching for read-only queries,
   // ie., the query must not contain any modification nodes
@@ -7999,7 +7999,7 @@ void arangodb::aql::asynchPrefetchRule(Optimizer* opt, std::unique_ptr<Execution
   opt->addPlan(std::move(plan), rule, !checker.containsModificationNode);
 }
 
-void arangodb::aql::enableAsynchPrefetching(ExecutionPlan& plan) {
+void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
   // TODO at the moment we enable prefetching on all nodes - this should be made configurable
   struct AsyncPrefetchEnabler : WalkerWorkerBase<ExecutionNode> {
     bool before(ExecutionNode* n) override {

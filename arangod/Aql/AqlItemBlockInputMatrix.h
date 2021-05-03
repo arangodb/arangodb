@@ -43,7 +43,7 @@ class AqlItemBlockInputMatrix {
   ShadowAqlItemRow peekShadowRow() const;
 
   void reset() noexcept { _lastRange.reset(); }
-  bool hasBlock() noexcept { return _lastRange.hasBlock(); }
+  bool hasBlock() const noexcept { return _lastRange.hasBlock(); }
   
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;

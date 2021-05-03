@@ -45,7 +45,7 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, 
 
 void insertDistributeInputCalculation(ExecutionPlan& plan);
 
-void enableAsynchPrefetching(ExecutionPlan& plan);
+void enableAsyncPrefetching(ExecutionPlan& plan);
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
@@ -298,7 +298,7 @@ void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 
 /// @brief allows execution nodes to asynchronously prefetch the next batch from their
 /// upstream node.
-void asynchPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);

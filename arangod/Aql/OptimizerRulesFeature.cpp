@@ -478,7 +478,7 @@ void OptimizerRulesFeature::addRules() {
   // this effectively allows parts of the query to run in parallel, but as some internal details
   // are currently not guaranteed to be thread safe (e.g., TransactionState), this is currently
   // disabled, and should only be activated for experimental usage at one's own risk.
-  registerRule("asynch-prefetch", asynchPrefetchRule, OptimizerRule::asynchPrefetch,
+  registerRule("async-prefetch", asyncPrefetchRule, OptimizerRule::asyncPrefetch,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault));
 

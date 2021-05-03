@@ -1872,10 +1872,8 @@ ExecutionBlockImpl<Executor>::Context::Context(ExecutionBlockImpl& block, AqlCal
     }
     stack.pushCall(std::move(clientCallList));
     clientCallList = AqlCallList{AqlCall{}, AqlCall{}};
-    clientCall = clientCallList.popNextCall();
-  } else {
-    clientCall = clientCallList.popNextCall();
   }
+  clientCall = clientCallList.popNextCall();
   // We got called with a skip count already set!
   // Caller is wrong fix it.
   TRI_ASSERT(clientCall.getSkipCount() == 0);
@@ -1886,19 +1884,19 @@ ExecutionBlockImpl<Executor>::Context::Context(ExecutionBlockImpl& block, AqlCal
 }
 
 template <class Executor>
-bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const {
+bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
   return state.load(std::memory_order_relaxed) == State::Consumed;
 }
 
 template <class Executor>
-bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() {
+bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
   auto expected = State::Pending;
   return state.load(std::memory_order_relaxed) == expected &&
     state.compare_exchange_strong(expected, State::InProgress, std::memory_order_relaxed);
 }
 
 template <class Executor>
-void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() {
+void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() noexcept {
   // (1) - this acquire-load synchronizes with the release-store (3)
   if (state.load(std::memory_order_acquire) == State::Finished) {
     return;
