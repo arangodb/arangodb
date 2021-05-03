@@ -24,14 +24,11 @@
 
 #include "OneSidedEnumerator.h"
 
-#include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
-#include "Basics/voc-errors.h"
 
 #include "Futures/Future.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
-#include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
@@ -40,12 +37,10 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
-#include "Graph/algorithm-aliases.h"
 
 #include <Graph/Types/ValidationResult.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
-#include <velocypack/HashedStringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -238,7 +233,7 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
       futureEnds.get();
       // Notes for the future:
-      // Vertices are now fetched. Thnink about other less-blocking and
+      // Vertices are now fetched. Think about other less-blocking and
       // batch-wise fetching (e.g. re-fetch at some later point).
       // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
       // fetch as fetched. This works, but we might create a batch limit here in
