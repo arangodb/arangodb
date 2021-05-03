@@ -30,8 +30,6 @@
 
 var jsunity = require("jsunity");
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 function BaseMiddlewareSpec () {
   'use strict';
   var request, response, options, next, baseMiddleware;

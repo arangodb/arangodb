@@ -1736,13 +1736,19 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     ++count;
 
     instanceInfo.arangods.forEach(arangod => {
-      if (arangod.suspended) {
+      if (arangod.suspended || arangod.upAndRunning) {
         // just fake the availability here
         arangod.upAndRunning = true;
         return;
       }
-      print(Date() + " tickeling cluster node " + arangod.url);
-      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
+      let url = arangod.url;
+      if (arangod.role === "coordinator") {
+        url += '/_admin/aardvark/index.html';
+      } else {
+        url += '/_api/version';
+      }
+      const reply = download(url, '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
         return true;
@@ -1888,6 +1894,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       coordinatorArgs['cluster.my-address'] = endpoint;
       coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
       coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
+      coordinatorArgs['foxx.force-update-on-startup'] = 'true';
       if (!addArgs.hasOwnProperty('cluster.default-replication-factor')) {
         coordinatorArgs['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
       }
