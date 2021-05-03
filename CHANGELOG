@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix DEVSUP-749: Fix potential deadlock when executing concurrent view/link DDL
+  operations and index DDL operations on the same collection.
+
 * When writing to starting shard leader respond with specific 503.
   Fixes BTS-390.
 
