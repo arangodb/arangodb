@@ -28,6 +28,7 @@
 #include "Logger/LogMacros.h"
 
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
@@ -77,9 +78,8 @@ size_t PathStoreTracer<PathStoreImpl>::size() const {
 }
 
 template <class PathStoreImpl>
-template <class ProviderType>
-auto PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex,
-                                               PathResult<ProviderType, Step>& path) const
+template <class PathResultType>
+auto PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex, PathResultType& path) const
     -> void {
   double start = TRI_microtime();
   TRI_DEFER(_stats["buildPath"].addTiming(TRI_microtime() - start));
@@ -109,9 +109,15 @@ auto PathStoreTracer<PathStoreImpl>::visitReversePath(
 template class ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>;
 
 // Tracing
-template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<ProviderTracer<SingleServerProvider>>(
+template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<
+    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
+
+template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<
+    SingleProviderPathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
+    ProviderTracer<SingleServerProvider>::Step const& vertex,
+    SingleProviderPathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
 
 template void arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
@@ -122,7 +128,8 @@ template void arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::S
 template class ::arangodb::graph::PathStoreTracer<PathStore<ClusterProvider::Step>>;
 
 // Tracing
-template void ::arangodb::graph::PathStoreTracer<PathStore<ClusterProvider::Step>>::buildPath<ProviderTracer<ClusterProvider>>(
+template void ::arangodb::graph::PathStoreTracer<PathStore<ClusterProvider::Step>>::buildPath<
+    PathResult<ProviderTracer<ClusterProvider>, ProviderTracer<ClusterProvider>::Step>>(
     ProviderTracer<ClusterProvider>::Step const& vertex,
     PathResult<ProviderTracer<ClusterProvider>, ProviderTracer<ClusterProvider>::Step>& path) const;
 

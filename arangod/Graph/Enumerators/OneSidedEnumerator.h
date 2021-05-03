@@ -29,7 +29,7 @@
 #include "Basics/ResourceUsage.h"
 
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
-#include "Graph/PathManagement/PathResult.h"
+#include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Transaction/Methods.h"
 
 #include <set>
@@ -152,7 +152,7 @@ class OneSidedEnumerator {
   // This stores all paths processed
   PathStoreType _interior;
 
-  PathResult<ProviderType, Step> _resultPath;
+  SingleProviderPathResult<ProviderType, Step> _resultPath;
 };
 }  // namespace graph
 }  // namespace arangodb

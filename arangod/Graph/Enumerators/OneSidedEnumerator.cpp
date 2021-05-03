@@ -55,7 +55,7 @@ OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::OneSi
       _provider(std::move(forwardProvider)),
       _validator(_interior),
       _interior(resourceMonitor),
-      _resultPath{_provider, _provider} {}
+      _resultPath{_provider} {}
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::~OneSidedEnumerator() {

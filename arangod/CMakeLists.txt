@@ -194,6 +194,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Helpers/TraceEntry.cpp
   Graph/Queues/QueueTracer.cpp
   Graph/PathManagement/PathResult.cpp
+  Graph/PathManagement/SingleProviderPathResult.cpp
   Graph/PathManagement/PathStore.cpp
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
