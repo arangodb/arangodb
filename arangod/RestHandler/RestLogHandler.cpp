@@ -186,6 +186,9 @@ RestStatus RestLogHandler::handlePostRequest() {
     auto f = log->appendEntries(std::move(request)).thenValue([this](AppendEntriesResult&& res) {
       VPackBuilder builder;
       res.toVelocyPack(builder);
+      // TODO fix the result type here. Currently we always return the error under the
+      //      `result` field. Maybe we want to change the HTTP status code as well?
+      //      Don't forget to update the deserializer that reads the response!
       generateOk(rest::ResponseCode::ACCEPTED, builder.slice());
     });
 

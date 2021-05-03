@@ -490,6 +490,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   if (res.hasValue()) {
     follower.numErrorsSinceLastAnswer = 0;
     auto& response = res.get();
+    follower.lastErrorReason = response.reason;
     if (response.isSuccess()) {
       follower.lastAckedIndex = lastIndex;
       follower.lastAckedCommitIndex = currentCommitIndex;
@@ -500,7 +501,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
       //      other failures than "I don't have that log entry" can lead to this
       //      branch.
       TRI_ASSERT(response.reason != AppendEntriesErrorReason::NONE);
-      follower.lastErrorReason = response.reason;
       if (follower.lastAckedIndex > LogIndex{0}) {
         follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
       }
