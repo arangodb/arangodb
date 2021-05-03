@@ -169,9 +169,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     bool requestInFlight = false;
   };
 
-  struct LocalFollower : AbstractFollower {
-    explicit LocalFollower(LogLeader& self, std::unique_ptr<LogCore>);
-    ~LocalFollower() = default;
+  struct LocalFollower final : AbstractFollower {
+    LocalFollower(LogLeader& self, std::unique_ptr<LogCore> logCore);
+    ~LocalFollower() override = default;
 
     LocalFollower(LocalFollower const&) = delete;
     LocalFollower(LocalFollower&&) noexcept = delete;
@@ -185,9 +185,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     auto resign() && -> std::unique_ptr<LogCore>;
 
    private:
-    // TODO We need a mutex
     LogLeader& _self;
-    std::unique_ptr<LogCore> _logCore;
+    Guarded<std::unique_ptr<LogCore>> _guardedLogCore;
   };
 
   struct PreparedAppendEntryRequest {

@@ -679,7 +679,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId const& id,
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(replicated_log::LogLeader& self,
                                                         std::unique_ptr<LogCore> logCore)
-    : _self(self), _logCore(std::move(logCore)) {}
+    : _self(self), _guardedLogCore(std::move(logCore)) {}
 
 auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
     -> ParticipantId const& {
@@ -688,12 +688,13 @@ auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
 
 auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesRequest const request)
     -> futures::Future<AppendEntriesResult> {
-  // TODO acquire mutex
+  auto logCoreGuard = _guardedLogCore.getLockedGuard();
+  auto& logCore = logCoreGuard.get();
 
   auto result = AppendEntriesResult{};
   result.logTerm = request.leaderTerm;
 
-  if (_logCore == nullptr) {
+  if (logCore == nullptr) {
     result.success = false;
     return result;
   }
@@ -702,13 +703,16 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
   //      that the AppendEntriesRequest matches it.
   auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
       request.entries.begin(), request.entries.end());
-  auto const res = _logCore->_persistedLog->insert(iter);
+  auto const res = logCore->_persistedLog->insert(iter);
   result.success = res.ok();
   return result;
 }
 
 auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<LogCore> {
-  return std::move(_logCore);
+  return _guardedLogCore.doUnderLock([](auto& guardedLogCore){
+    auto logCore = std::move(guardedLogCore);
+    return logCore;
+  });
 }
 
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
