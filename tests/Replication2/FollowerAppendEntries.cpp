@@ -191,7 +191,6 @@ TEST_F(FollowerAppendEntriesTest, wrong_leader_name) {
 TEST_F(FollowerAppendEntriesTest, resigned_follower) {
   auto follower = makeFollower("follower", LogTerm{5}, "leader");
 
-
   {
     // First add a valid entry
     AppendEntriesRequest request;

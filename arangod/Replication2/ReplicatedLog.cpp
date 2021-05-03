@@ -51,7 +51,7 @@ template <typename I>
 struct ContainerIterator : LogIterator {
   static_assert(std::is_same_v<typename I::value_type, LogEntry>);
 
-  ContainerIterator(I begin, I end) : _current(begin), _end(end) {}
+  ContainerIterator(I begin, I end) : _current(std::move(begin)), _end(std::move(end)) {}
 
   auto next() -> std::optional<LogEntry> override {
     if (_current == _end) {
@@ -87,7 +87,7 @@ class ReplicatedLogIterator : public LogIterator {
 namespace {
 namespace follower {
 
-auto appendEntries(LogTerm const currentTerm, LogIndex& commitIndex,
+auto appendEntries(ParticipantId const& leader, LogTerm const currentTerm, LogIndex& commitIndex,
                    replicated_log::InMemoryLog& inMemoryLog,
                    replicated_log::LogCore* logCore, AppendEntriesRequest const& req)
     -> arangodb::futures::Future<AppendEntriesResult> {
@@ -95,8 +95,14 @@ auto appendEntries(LogTerm const currentTerm, LogIndex& commitIndex,
     return AppendEntriesResult(currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
                                AppendEntriesErrorReason::LOST_LOG_CORE);
   }
+
+  if (req.leaderId != leader) {
+    return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                               AppendEntriesErrorReason::INVALID_LEADER_ID};
+  }
+
   // TODO does >= suffice here? Maybe we want to do an atomic operation
-  // before increasing our term
+  //      before increasing our term
   if (req.leaderTerm != currentTerm) {
     return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
                                AppendEntriesErrorReason::WRONG_TERM};
@@ -143,14 +149,14 @@ auto appendEntries(LogTerm const currentTerm, LogIndex& commitIndex,
 auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
   auto logFollowerDataGuard = acquireMutex();
-  return follower::appendEntries(_currentTerm, logFollowerDataGuard->_commitIndex,
+  return follower::appendEntries(_leaderId, _currentTerm, logFollowerDataGuard->_commitIndex,
                                  logFollowerDataGuard->_inMemoryLog,
                                  logFollowerDataGuard->_logCore.get(), req);
 }
 
-replicated_log::LogLeader::LogLeader(ParticipantId const& id, LogTerm const term,
+replicated_log::LogLeader::LogLeader(ParticipantId  id, LogTerm const term,
                                      std::size_t const writeConcern, InMemoryLog inMemoryLog)
-    : _participantId(id),
+    : _participantId(std::move(id)),
       _currentTerm(term),
       _writeConcern(writeConcern),
       _guardedLeaderData(*this, std::move(inMemoryLog)) {}
@@ -305,11 +311,11 @@ auto replicated_log::LogFollower::resign() && -> std::unique_ptr<LogCore> {
       [](auto& followerData) { return std::move(followerData._logCore); });
 }
 
-replicated_log::LogFollower::LogFollower(ParticipantId const& id,
+replicated_log::LogFollower::LogFollower(ParticipantId id,
                                          std::unique_ptr<LogCore> logCore,
                                          LogTerm term, ParticipantId leaderId,
                                          replicated_log::InMemoryLog inMemoryLog)
-    : _participantId(id),
+    : _participantId(std::move(id)),
       _leaderId(std::move(leaderId)),
       _currentTerm(term),
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {}

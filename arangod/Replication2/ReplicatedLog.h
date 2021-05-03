@@ -200,7 +200,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
  protected:
   // Use the named constructor construct() to create a leader!
-  LogLeader(ParticipantId const& id, LogTerm term, std::size_t writeConcern,
+  LogLeader(ParticipantId id, LogTerm term, std::size_t writeConcern,
             InMemoryLog inMemoryLog);
 
  private:
@@ -318,7 +318,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 class LogFollower : public LogParticipantI, public AbstractFollower {
  public:
   ~LogFollower() override = default;
-  LogFollower(ParticipantId const& id, std::unique_ptr<LogCore> logCore,
+  LogFollower(ParticipantId id, std::unique_ptr<LogCore> logCore,
               LogTerm term, ParticipantId leaderId, InMemoryLog inMemoryLog);
 
   // follower only
