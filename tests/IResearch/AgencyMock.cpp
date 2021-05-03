@@ -22,7 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#define ENABLE_MOCKS
+#define MAKE_NOTIFY_OBSERVERS_PUBLIC
 #include "AgencyMock.h"
 
 #include <fuerte/requests.h>

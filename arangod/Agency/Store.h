@@ -143,9 +143,6 @@ class Store {
 
   void clear();
 
-  /// @brief Apply single slice
-  bool applies(arangodb::velocypack::Slice const&);
-
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);
 
@@ -163,14 +160,17 @@ class Store {
   /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string const& str);
 
-#if defined(ENABLE_MOCKS)
-public:
-#endif // defined(ENABLE_MOCKS)
+#if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
+ private:
+#endif // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
 
   /// @brief Notify observers
   void notifyObservers() const;
 
  private:
+  /// @brief Apply single slice
+  bool applies(arangodb::velocypack::Slice const&);
+
   friend class consensus::Node;
   std::multimap<TimePoint, std::string>& timeTable();
   std::multimap<TimePoint, std::string> const& timeTable() const;
