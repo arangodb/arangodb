@@ -4270,6 +4270,48 @@ function pruneTraversalSuite() {
 
   // We have identical tests for all traversal options.
   const appendTests = (testObj, name, opts) => {
+    
+    testObj['testRenamePruneVariablesNested'] = () => {
+      const q = `
+        WITH ${vn}
+        LET sub = (FOR s IN ['C'] RETURN s)
+        FOR sub2 IN sub
+          FOR v IN 1..3 ANY "${vertex.B}" ${en}
+            PRUNE v._key == sub2
+            OPTIONS ${JSON.stringify(opts)}
+            RETURN v._key
+      `;
+      const res = db._query(q);
+
+      if (name === "Neighbors") {
+        assertEqual(res.count(), 4, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      }
+    };
+
+    testObj['testPruneVariableReferringToOuter'] = () => {
+      const q = `
+        WITH ${vn}
+        LET sub = (FOR s IN ['C'] RETURN s)
+        FOR v IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE v._key IN sub 
+          OPTIONS ${JSON.stringify(opts)}
+          RETURN v._key
+      `;
+      db._explain(q);
+      const res = db._query(q);
+
+      if (name === "Neighbors") {
+        assertEqual(res.count(), 4, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      }
+    };
 
     testObj[`testAllowPruningOnV${name}`] = () => {
       const q = `
@@ -4518,8 +4560,6 @@ function unusedVariableSuite() {
     },
   };
 }
-
-
 
 jsunity.run(invalidStartVertexSuite);
 jsunity.run(simpleInboundOutboundSuite);
