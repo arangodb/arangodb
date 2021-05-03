@@ -33,6 +33,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <unordered_set>
 
 namespace arangodb {
@@ -156,8 +157,13 @@ class ActionBase {
   ///  Thread safety of this function is questionable for some member objects
   //  virtual Result toJson(/* builder */) {return Result;}
 
-  /// @brief Return Result object contain action specific status
-  Result result() const { return _result; }
+  /// @brief Return Result object containing action specific status
+  Result result() const;
+
+  /// @brief Set the contained result object
+  void result(Result const& result);
+  void result(ErrorCode errorNumber, std::string const& errorMessage = std::string());
+
 
   /// @brief When object was constructed
   std::chrono::system_clock::time_point getCreateTime() const {
@@ -219,9 +225,12 @@ class ActionBase {
 
   std::atomic<uint64_t> _progress;
 
+  int _priority;
+
+private: 
+  mutable std::mutex resLock;
   Result _result;
 
-  int _priority;
 };  // class ActionBase
 
 }  // namespace maintenance

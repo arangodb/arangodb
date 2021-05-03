@@ -1,2 +1,27 @@
 race:boost/lockfree/queue.hpp
 race:boost/lockfree/detail/freelist.hpp
+
+# These operators contain an assertion that checks the refCount.
+# That read operation is racy, but since it is just an assert we don't care!
+race:SharedAqlItemBlockPtr::operator*
+race:SharedAqlItemBlockPtr::operator->
+
+# logCrashInfo calls LOG_TOPIC which in turn calls std::string::reserve
+signal:lib/Basics/CrashHandler.cpp
+
+# accesses to the function pointers can be racy
+# this is most likely benign, but strictly speaking it is still UB so should be
+# addressed eventually
+race:3rdParty/velocypack/src/asm-functions.cpp
+
+# A compiler optimization in DBImpl::ReleaseSnapshot() produces code where a
+# register is populated with different addresses based on some condition, and
+# this register is later read to populate the variable `oldest_snapshot`.
+# However, this generated read is a non-atomic read, which therefore results in
+# a false positive race warning. I have created an according GitHub issue:
+# https://github.com/google/sanitizers/issues/1398
+race:VersionSet::SetLastSequence
+
+# The assertion `seq > _count._committedSeq` causes a data race on
+# _committedSeq, but since this is just an assert we don't care!
+race:RocksDBMetadata::adjustNumberDocuments

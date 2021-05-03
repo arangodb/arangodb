@@ -38,8 +38,6 @@ var stub,
   transformRoute = require("@arangodb/foxx/legacy/routing").__test_transformControllerToRoute,
   _ = require("lodash");
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 // Sorry for Yak Shaving. But I can't take it anymore.
 
 // x = stub();

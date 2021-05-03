@@ -364,11 +364,18 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     }
 
     auto now = std::chrono::steady_clock::now();
-    if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
+    if (now > _endTime) {
       _tmp_err = Error::RequestTimeout;
       _tmp_res = nullptr;
       resolvePromise();
       return;  // we are done
+    }
+    if (_pool->config().clusterInfo->server().isStopping()) {
+      _tmp_err = Error::NoError;
+      _tmp_res = buildResponse(fuerte::StatusServiceUnavailable, Result{TRI_ERROR_SHUTTING_DOWN});
+      resolvePromise();
+      return;  // we are done
+
     }
 
     arangodb::network::EndpointSpec spec;

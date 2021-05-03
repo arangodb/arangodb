@@ -736,7 +736,7 @@ arangodb::Result MaintenanceFeature::dbError(std::string const& database,
 arangodb::Result MaintenanceFeature::removeDBError(std::string const& database) {
   try {
     MUTEX_LOCKER(guard, _seLock);
-    _shardErrors.erase(database);
+    _dbErrors.erase(database);
   } catch (std::exception const&) {
     std::stringstream error;
     error << "erasing database error for " << database << " failed";
