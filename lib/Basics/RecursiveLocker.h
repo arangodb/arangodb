@@ -64,6 +64,7 @@ class RecursiveMutexLocker {
       _owner.store(std::this_thread::get_id());
       _update = owned;
     }
+    _locked = true;
   }
 
   void unlock() { _update(*this); }
