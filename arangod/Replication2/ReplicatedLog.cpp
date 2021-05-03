@@ -331,8 +331,8 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.local = leaderData.getLocalStatistics();
     status.term = term;
     for (auto const& f : leaderData._follower) {
-      status.follower[f._impl->getParticipantId()] =
-          LogStatistics{f.lastAckedIndex, f.lastAckedCommitIndex};
+      status.follower[f._impl->getParticipantId()] = {LogStatistics{f.lastAckedIndex, f.lastAckedCommitIndex},
+                                                      f.lastErrorReason};
     }
     return LogStatus{std::move(status)};
   });
@@ -499,6 +499,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
       //      assertable here. For that to work, we need to make sure that no
       //      other failures than "I don't have that log entry" can lead to this
       //      branch.
+      TRI_ASSERT(response.reason != AppendEntriesErrorReason::NONE);
+      follower.lastErrorReason = response.reason;
       if (follower.lastAckedIndex > LogIndex{0}) {
         follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
       }
@@ -750,3 +752,62 @@ auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<Lo
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
     LogFollower const& self, std::unique_ptr<LogCore> logCore, InMemoryLog inMemoryLog)
     : _self(self), _inMemoryLog(std::move(inMemoryLog)), _logCore(std::move(logCore)) {}
+
+std::string arangodb::replication2::to_string(AppendEntriesErrorReason reason) {
+  switch (reason) {
+    case AppendEntriesErrorReason::NONE:
+      return {};
+    case AppendEntriesErrorReason::INVALID_LEADER_ID:
+      return "leader id was invalid";
+    case AppendEntriesErrorReason::LOST_LOG_CORE:
+      return "term has changed and an internal state was lost";
+    case AppendEntriesErrorReason::WRONG_TERM:
+      return "current term is different from leader term";
+    case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
+      return "previous log index did not match";
+  }
+}
+
+void LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("commitIndex", VPackValue(commitIndex.value));
+  builder.add("spearHead", VPackValue(spearHead.value));
+}
+
+void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("role", VPackValue("unconfigured"));
+}
+
+void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("role", VPackValue("follower"));
+  builder.add("leader", VPackValue(leader));
+  builder.add("term", VPackValue(term.value));
+  builder.add(VPackValue("local"));
+  local.toVelocyPack(builder);
+}
+
+void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("role", VPackValue("leader"));
+  builder.add("term", VPackValue(term.value));
+  builder.add(VPackValue("local"));
+  local.toVelocyPack(builder);
+  {
+    VPackObjectBuilder ob2(&builder, "follower");
+    for (auto const& [id, stat] : follower) {
+      builder.add(VPackValue(id));
+      stat.toVelocyPack(builder);
+    }
+  }
+}
+
+void LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add(VPackValue("local"));
+  builder.add("commitIndex", VPackValue(commitIndex.value));
+  builder.add("spearHead", VPackValue(spearHead.value));
+  builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
+  builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
+}

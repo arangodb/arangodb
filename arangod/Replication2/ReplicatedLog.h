@@ -65,6 +65,8 @@ enum class AppendEntriesErrorReason {
   NO_PREV_LOG_MATCH
 };
 
+std::string to_string(AppendEntriesErrorReason reason);
+
 struct AppendEntriesResult {
   LogTerm const logTerm = LogTerm{};
   ErrorCode const errorCode = TRI_ERROR_NO_ERROR;
@@ -92,6 +94,40 @@ struct AppendEntriesRequest {
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
 };
+
+struct LogStatistics {
+  LogIndex spearHead{};
+  LogIndex commitIndex{};
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
+
+struct LeaderStatus {
+  struct FollowerStatistics : LogStatistics {
+    AppendEntriesErrorReason lastErrorReason;
+    void toVelocyPack(velocypack::Builder& builder) const;
+  };
+
+  LogStatistics local;
+  LogTerm term;
+  std::unordered_map<ParticipantId, FollowerStatistics> follower;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
+
+struct FollowerStatus {
+  LogStatistics local;
+  ParticipantId leader;
+  LogTerm term;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
+
+struct UnconfiguredStatus {
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
+
+using LogStatus = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
 
 struct AbstractFollower {
   virtual ~AbstractFollower() = default;
@@ -181,6 +217,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     LogIndex lastAckedIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     std::size_t numErrorsSinceLastAnswer = 0;
+    AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
     bool requestInFlight = false;
   };
 

@@ -74,37 +74,3 @@ auto LogPayload::operator==(LogPayload const& other) const -> bool {
   return dummy == other.dummy;
 }
 
-void LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("commitIndex", VPackValue(commitIndex.value));
-  builder.add("spearHead", VPackValue(spearHead.value));
-}
-
-void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("role", VPackValue("unconfigured"));
-}
-
-void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("role", VPackValue("follower"));
-  builder.add("leader", VPackValue(leader));
-  builder.add("term", VPackValue(term.value));
-  builder.add(VPackValue("local"));
-  local.toVelocyPack(builder);
-}
-
-void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("role", VPackValue("leader"));
-  builder.add("term", VPackValue(term.value));
-  builder.add(VPackValue("local"));
-  local.toVelocyPack(builder);
-  {
-    VPackObjectBuilder ob2(&builder, "follower");
-    for (auto const& [id, stat] : follower) {
-      builder.add(VPackValue(id));
-      stat.toVelocyPack(builder);
-    }
-  }
-}

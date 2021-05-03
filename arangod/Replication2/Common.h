@@ -91,34 +91,6 @@ struct LogPayload {
 
 // just a placeholder for now, must have a hash<>
 using ParticipantId = std::string;
-struct LogStatistics {
-  LogIndex spearHead{};
-  LogIndex commitIndex{};
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-};
-
-struct LeaderStatus {
-  LogStatistics local;
-  LogTerm term;
-  std::unordered_map<ParticipantId, LogStatistics> follower;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-};
-
-struct FollowerStatus {
-  LogStatistics local;
-  ParticipantId leader;
-  LogTerm term;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-};
-
-struct UnconfiguredStatus {
-  void toVelocyPack(velocypack::Builder& builder) const;
-};
-
-using LogStatus = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
 
 // TODO This should probably be moved into a separate file
 class LogEntry {
