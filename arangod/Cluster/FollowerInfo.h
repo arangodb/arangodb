@@ -85,7 +85,7 @@ class FollowerInfo {
     // This should also disable satellite tracking.
   }
 
-  enum WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
+  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
