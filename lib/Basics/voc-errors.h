@@ -1,6 +1,5 @@
 
-#ifndef ARANGODB_BASICS_VOC_ERRORS_H
-#define ARANGODB_BASICS_VOC_ERRORS_H 1
+#pragma once
 
 #include "Basics/ErrorCode.h"
 
@@ -1841,4 +1840,3 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN             
 /// During the execution of an AIR program an error occurred
 constexpr auto TRI_ERROR_AIR_EXECUTION_ERROR                                     = ErrorCode{8001};
 
-#endif

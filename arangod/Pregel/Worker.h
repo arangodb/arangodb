@@ -25,8 +25,6 @@
 
 #include "Basics/Common.h"
 
-#include <boost/date_time/posix_time/posix_time.hpp>
-
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/asio_ns.h"
