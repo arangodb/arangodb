@@ -50,6 +50,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
+#include "Logger/LogMacros.h"
 
 namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
@@ -130,6 +131,8 @@ constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::minimumF
   if (target == current) {
     return 2;
   }
+  
+  TRI_ASSERT(current != 0);
 
   std::uint64_t rawFactor = target / current;
   std::uint64_t correctedFactor = static_cast<std::uint64_t>(1)
@@ -138,6 +141,7 @@ constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::minimumF
   TRI_ASSERT(target >= (current * correctedFactor / 2));
   return correctedFactor;
 }
+
 class TestMinimumFactorFor : public MerkleTree<FnvHashProvider, 3, 64> {
   static_assert(minimumFactorFor(1, 2) == 4);
   static_assert(minimumFactorFor(1, 4) == 8);
@@ -384,7 +388,7 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::insert(std::uint64_t key) {
   if (key >= meta().rangeMax) {
     // unlock so we can get exclusive access to grow the range
     guard.unlock();
-    grow(key);
+    grow(key, "insertSingle");
     guard.lock();
   }
 
@@ -416,7 +420,7 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::insert(std::vector<std::uin
   if (maxKey >= meta().rangeMax) {
     // unlock so we can get exclusive access to grow the range
     guard.unlock();
-    grow(maxKey);
+    grow(maxKey, "insertBatch");
     guard.lock();
   }
 
@@ -541,12 +545,12 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
     if (this->meta().rangeMax < other.meta().rangeMax) {
       // grow this to match other range
       guard1.unlock();
-      this->grow(other.meta().rangeMax - 1);
+      this->grow(other.meta().rangeMax - 1, "diffOurs");
       guard1.lock();
     } else {
       // grow other to match this range
       guard2.unlock();
-      other.grow(this->meta().rangeMax - 1);
+      other.grow(this->meta().rangeMax - 1, "diffOther");
       guard2.lock();
     }
     // loop to repeat check to make sure someone else didn't grow while we
@@ -842,7 +846,10 @@ bool MerkleTree<Hasher, BranchingBits, LockStripes>::modifyLocal(
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::grow(std::uint64_t key) {
+void MerkleTree<Hasher, BranchingBits, LockStripes>::grow(std::uint64_t key, char const* context) {
+  // context is here for debugging only
+  TRI_ASSERT(context != nullptr);
+
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
   // no need to lock nodes as we have an exclusive lock on the buffer
 
@@ -853,7 +860,20 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::grow(std::uint64_t key) {
     return;
   }
 
-  std::uint64_t factor = minimumFactorFor(rangeMax - rangeMin, key - rangeMin);
+  std::uint64_t factor = 0;
+  try {
+    factor = minimumFactorFor(rangeMax - rangeMin, key - rangeMin);
+  } catch (...) {
+    LOG_TOPIC("15384", WARN, Logger::ENGINES)
+        << "invalid tree grow command. key: " << key 
+        << ", rangeMin: " << rangeMin
+        << ", rangeMax: " << rangeMax
+        << ", maxDepth: " << meta().maxDepth
+        << ", context: " << context;
+    throw;
+  }
+
+  TRI_ASSERT(factor != 0);
 
   for (std::uint64_t depth = 1; depth <= meta().maxDepth; ++depth) {
     // iterate over all nodes and left-combine, (skipping the first, identity)

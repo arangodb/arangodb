@@ -297,7 +297,7 @@ class MerkleTree {
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
   bool modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert, bool doLock);
-  void grow(std::uint64_t key);
+  void grow(std::uint64_t key, char const* context);
   bool equalAtIndex(MerkleTree<Hasher, BranchingBits, LockStripes> const& other,
                     std::uint64_t index) const;
   bool childrenAreLeaves(std::uint64_t index);
