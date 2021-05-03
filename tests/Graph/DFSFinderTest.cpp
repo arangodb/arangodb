@@ -321,7 +321,7 @@ TEST_P(DFSFinderTest, path_depth_1) {
     pathStructureValid(result.slice(), 1);
     pathEquals(result.slice(), {1, 2});
 
-    EXPECT_TRUE(finder.isDone()); // TODO CHECK - changed to EXPECT_TRUE
+    EXPECT_TRUE(finder.isDone());
   }
 
   {
