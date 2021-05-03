@@ -65,6 +65,7 @@ class RecursiveMutexLocker {
       _update = owned;
     }
     _locked = true;
+    _locked = true;
   }
 
   void unlock() { _update(*this); }
