@@ -4301,7 +4301,6 @@ function pruneTraversalSuite() {
           OPTIONS ${JSON.stringify(opts)}
           RETURN v._key
       `;
-      db._explain(q);
       const res = db._query(q);
 
       if (name === "Neighbors") {
