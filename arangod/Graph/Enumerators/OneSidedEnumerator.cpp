@@ -71,7 +71,6 @@ template <class QueueType, class PathStoreType, class ProviderType, class PathVa
 void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::clear() {
   _interior.reset();
   _queue.clear();
-  _currentDepth = 0;
   _results.clear();
 }
 
