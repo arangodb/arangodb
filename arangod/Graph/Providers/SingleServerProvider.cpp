@@ -51,16 +51,12 @@ SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t pr
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)) {}
 
 SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth)
-    : BaseStep(prev), _vertex(v, depth), _edge(std::move(edge)) {}
+    : BaseStep(prev, depth), _vertex(v), _edge(std::move(edge)) {}
 
 SingleServerProvider::Step::~Step() = default;
 
 VertexType const& SingleServerProvider::Step::Vertex::getID() const {
   return _vertex;
-}
-
-size_t SingleServerProvider::Step::Vertex::getDepth() const {
-  return _depth;
 }
 
 EdgeDocumentToken const& SingleServerProvider::Step::Edge::getID() const {

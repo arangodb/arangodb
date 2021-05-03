@@ -67,11 +67,9 @@ class MockGraphProvider {
    public:
     class Vertex {
      public:
-      explicit Vertex(VertexType v) : _vertex(v) { _depth = 0; };
-      explicit Vertex(VertexType v, size_t depth) : _vertex(v), _depth(depth){};
+      explicit Vertex(VertexType v) : _vertex(v) {};
 
       VertexType getID() const { return _vertex; }
-      size_t getDepth() const { return _depth; }
 
       // Make the set work on the VertexRef attribute only
       bool operator<(Vertex const& other) const noexcept {
@@ -84,7 +82,6 @@ class MockGraphProvider {
 
      private:
       VertexType _vertex;
-      size_t _depth;
     };
 
     class Edge {
@@ -146,7 +143,6 @@ class MockGraphProvider {
     }
 
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
-    size_t getDepth() const { return getVertex().getDepth(); }
 
     bool isProcessable() const { return _isProcessable; }
 
