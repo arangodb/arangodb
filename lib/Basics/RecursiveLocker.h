@@ -61,16 +61,8 @@ class RecursiveMutexLocker {
 
     if (std::this_thread::get_id() != _owner.load()) {  // not recursive
       _locker.lock();
-      // it is possible that we cannot acquire the mutex, e.g.
-      // if we are a TRY locker
-      if (_locker.isLocked()) {
-        _owner.store(std::this_thread::get_id());
-        _update = owned;
-        _locked = true;
-      }
-    } else {
-      // we are the owning thread
-      _locked = true;
+      _owner.store(std::this_thread::get_id());
+      _update = owned;
     }
   }
 
@@ -196,4 +188,3 @@ class RecursiveWriteLocker {
   RECURSIVE_WRITE_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
 
 } // arangodb
-
