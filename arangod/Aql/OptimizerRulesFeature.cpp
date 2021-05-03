@@ -480,7 +480,8 @@ void OptimizerRulesFeature::addRules() {
   // disabled, and should only be activated for experimental usage at one's own risk.
   registerRule("async-prefetch", asyncPrefetchRule, OptimizerRule::asyncPrefetch,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault));
+                                        OptimizerRule::Flags::DisabledByDefault,
+                                        OptimizerRule::Flags::Hidden));
 
   // finally sort all rules by their level
   std::sort(
