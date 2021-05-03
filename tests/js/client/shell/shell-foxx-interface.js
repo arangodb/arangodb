@@ -45,8 +45,6 @@ const pixelStr = 'R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
 const pixelGif = new Buffer(pixelStr, 'base64');
 const vpackObjectSize = forceJson ? 75: 73;
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 const cmpBuffer = function(a, b) {
   if (a.length !== b.length) {
     return false;
@@ -171,7 +169,6 @@ function foxxInterfaceSuite () {
       let res = arango.HEAD_RAW(binUrl);
       assertEqual(res.code, 200, res.parsedBody);
       assertUndefined(res.body);
-
       assertEqual(res.headers['content-length'], pixelGif.length);
       assertEqual(res.headers['content-type'], binaryMime);
       assertEqual(res.headers['test'], 'header');

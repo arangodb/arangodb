@@ -227,12 +227,14 @@ PregelFeature::PregelFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
+  
+  // don't delete the pointer to the feature on shutdown, as the ApplicationServer
+  // owns it
+  ::instance.reset(this, ::NonDeleter());
 }
 
 PregelFeature::~PregelFeature() {
-  if (_recoveryManager) {
-    _recoveryManager.reset();
-  }
+  _recoveryManager.reset();
   cleanupAll();
 }
 
@@ -244,17 +246,14 @@ size_t PregelFeature::availableParallelism() {
 }
 
 void PregelFeature::start() {
-  // don't delete the pointer to the feature on shutdown, as the ApplicationServer
-  // owns it
-  ::instance.reset(this, ::NonDeleter());
-
   if (ServerState::instance()->isAgent()) {
     return;
   }
 
   if (ServerState::instance()->isCoordinator()) {
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    _recoveryManager.reset(new RecoveryManager(ci));
+    _recoveryManager = std::make_unique<RecoveryManager>(ci);
+    _recoveryManagerPtr.store(_recoveryManager.get(), std::memory_order_release);
   }
 }
 

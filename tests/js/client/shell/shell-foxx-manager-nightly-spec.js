@@ -37,8 +37,6 @@ const arango = require('@arangodb').arango;
 const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 const expect = require('chai').expect;
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 describe('Foxx Manager', function () {
   describe('using different dbs', function () {
     beforeEach(function () {
