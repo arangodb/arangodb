@@ -23,15 +23,15 @@
 
 #pragma once
 
-#include <Graph/Enumerators/OneSidedEnumerator.h>
-#include <Graph/Enumerators/TwoSidedEnumerator.h>
+#include "Graph/Enumerators/OneSidedEnumerator.h"
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
 
-#include <Graph/Queues/FifoQueue.h>
-#include <Graph/Queues/LifoQueue.h>
+#include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/LifoQueue.h"
 
-#include <Graph/PathManagement/PathValidator.h>
-#include <Graph/Providers/ProviderTracer.h>
-#include <Graph/Types/UniquenessLevel.h>
+#include "Graph/PathManagement/PathValidator.h"
+#include "Graph/Providers/ProviderTracer.h"
+#include "Graph/Types/UniquenessLevel.h"
 
 namespace arangodb {
 namespace graph {
