@@ -104,29 +104,13 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     ValidationResult res = _validator.validatePath(step);
     if ((step.getDepth() >= _options.getMinDepth()) && !res.isFiltered() && !res.isPruned()) {
       // Include it in results.
-      // Add the step to our shell
       _results.push_back(std::make_pair(_interior.get(posPrevious), step));
     }
-    /*if () {
-      // evtl. auch vor expand
-      LOG_DEVEL << "Adding to shell:";
-      _results.push_back(std::make_pair(_interior.get(posPrevious), step));
-    }*/
   }
 
-
-  /* WILL BE NEEDED FOR BFS (implement type)
-  if (_currentDepth < _options.getMaxDepth()) {
-    LOG_DEVEL << "Now expanding Step: " << step.toString();
-    _provider.expand(step, posPrevious, [&](Step n) -> void { _queue.append(n); });
-  }*/
-
-  LOG_DEVEL << "Before expand: Step Depth is: " << step.getDepth();
-  LOG_DEVEL << "Max depth is: " << _options.getMaxDepth();
   if (step.getDepth() < _options.getMaxDepth()) {
-    LOG_DEVEL << "-> Will expand step: " << step.toString();
+    // DFS Path Check (will need different check for BFS traversal - global depth vs. specific step depth)
     _provider.expand(step, posPrevious, [&](Step n) -> void {
-      LOG_DEVEL << "New step appended to queue: Inner Step Depth is: " << n.getDepth();
       _queue.append(n); });
   }
 }
@@ -173,12 +157,9 @@ void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  */
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::getNextPath(VPackBuilder& result) {
-  LOG_DEVEL << "= getNextPath - searchDone(" << std::boolalpha << isDone() << ")";
-
   while (!isDone()) {
     searchMoreResults();
 
-    LOG_DEVEL << "= results size: " << _results.size();
     while (!_results.empty()) {
       auto const& [unused, rightVertex] = _results.back();
 
