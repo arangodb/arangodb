@@ -303,14 +303,14 @@ TEST_F(StoreTestAPI, precondition) {
 
       std::vector<std::string> localKeys;
       std::transform(baz.begin(), baz.end(), std::back_inserter(localKeys), [](auto kv){ return kv.first; });
-      for (std::sort(localKeys.begin(), localKeys.end()); std::next_permutation(localKeys.begin(), localKeys.end()); ) {
+      for (int permutation_count{}; permutation_count < 2000; ++permutation_count) {
+        std::random_shuffle(localKeys.begin(), localKeys.end());
         is_first = true;
         auto pkey {localKeys.begin()};
         std::string const permuted = "{" + 
-          std::accumulate(baz.begin(), baz.end(), std::string(), [&is_first, &pkey](std::string partial, auto const &kv){
+          std::accumulate(localKeys.begin(), localKeys.end(), std::string(), [&is_first, &baz](std::string partial, auto const &key){
             if (is_first) is_first = false; else partial += ",";
-            partial += "\"" + (*pkey) + "\": " + kv.second;
-            ++pkey;
+            partial += "\"" + key + "\": " + baz[key];
             return partial;
         }) + "}";
         writeAndCheck(
