@@ -138,7 +138,7 @@ function basicTestSuite() {
     do {
       internal.wait(0.2);
       var stats = pregel.status(pid);
-      if (stats.state !== "running") {
+      if (stats.state !== "running" && stats.state !== "storing") {
         assertEqual(stats.vertexCount, 11, stats);
         assertEqual(stats.edgeCount, 17, stats);
   
@@ -260,7 +260,7 @@ function basicTestSuite() {
       do {
         internal.wait(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running") {
+        if (stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
 

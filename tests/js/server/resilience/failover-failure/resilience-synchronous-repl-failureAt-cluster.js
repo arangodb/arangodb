@@ -133,7 +133,7 @@ function SynchronousReplicationSuite() {
       x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      debugSetFailAt(endpoint, failAt);
+      debugSetFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have added failure in follower", follower, " at ", failAt);
     } else {
       assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
@@ -154,7 +154,7 @@ function SynchronousReplicationSuite() {
       x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      debugRemoveFailAt(endpoint, failAt);
+      debugRemoveFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have removed failure in follower", follower, " at ", failAt);
     } else {
       assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
@@ -175,7 +175,7 @@ function SynchronousReplicationSuite() {
       x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      debugSetFailAt(endpoint, failAt);
+      debugSetFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have failed leader", leader, " at ", failAt);
     } else {
       assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
@@ -197,7 +197,7 @@ function SynchronousReplicationSuite() {
       x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      debugRemoveFailAt(endpoint, failAt);
+      debugRemoveFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have removed failure in leader", leader, " at ", failAt);
     } else {
       assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
@@ -362,7 +362,7 @@ function SynchronousReplicationSuite() {
       var servers = global.ArangoClusterInfo.getDBServers();
       servers.forEach(s => {
         let endpoint = global.ArangoClusterInfo.getServerEndpoint(s.serverId);
-        debugClearFailAt(endpoint);
+        debugClearFailAt(endpoint.replace('tcp://', 'http://'));
       });
       if(failedState.leader != null) healLeader(failedState.leader.failAt, failedState.leader.failedServer);
       if(failedState.follower != null) healFollower(failedState.follower.failAt, failedState.follower.failedServer);
