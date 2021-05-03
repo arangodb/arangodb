@@ -1,8 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* When writing to starting shard leader respond with specific
-  503. Fixes BTS-390.
+* When writing to starting shard leader respond with specific 503.
+  Fixes BTS-390.
 
 * Fixed a use after free bug in the connection pool.
 
