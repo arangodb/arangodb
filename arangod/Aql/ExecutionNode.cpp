@@ -502,6 +502,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
+      
+  _isAsyncPrefetchEnabled =
+      VelocyPackHelper::getBooleanValue(slice, "isAsyncPrefetchEnabled", false);
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
@@ -936,6 +939,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     }
 
     nodes.add("isInSplicedSubquery", VPackValue(_isInSplicedSubquery));
+    nodes.add("isAsyncPrefetchEnabled", VPackValue(_isAsyncPrefetchEnabled));
   }
   TRI_ASSERT(nodes.isOpenObject());
 }
