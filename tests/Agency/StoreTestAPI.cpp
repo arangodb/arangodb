@@ -594,51 +594,53 @@ TEST_F(StoreTestAPI, opPush) {
 
     }
 
-/*
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "remove" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpRemove : function () {
-      writeAndCheck([[{"/a/euler":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/a/euler"]]), [{a:{}}]);
-    },
+TEST_F(StoreTestAPI, opRemove) {
+      writeAndCheck(R"([[{"/a/euler":2.71828182845904523536}]])");
+      writeAndCheck(R"([[{"/a/euler":{"op":"delete"}}]])");
+      assertEqual(readAndCheck(R"([["/a/euler"]])"), R"([{"a":{}}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "prepend" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpPrepend : function () {
-      writeAndCheck([[{"/a/b/c":{"op":"prepend","new":3.141592653589793}}]]);
-      assertEqual(readAndCheck([["/a/b/c"]]),
-                  [{a:{b:{c:[3.141592653589793,1,2,3,"max"]}}}]);
+TEST_F(StoreTestAPI, opPrepend) {
+      writeAndCheck(R"([[{"/a/b/c":[1,2,3,"max"]}]])");
+      writeAndCheck(R"([[{"/a/b/c":{"op":"prepend","new":3.141592653589793}}]])");
+      assertEqual(readAndCheck(R"([["/a/b/c"]])"),
+                  R"([{"a":{"b":{"c":[3.141592653589793,1,2,3,"max"]}}}])");
       writeAndCheck(
-        [[{"/a/euler":{"op":"prepend","new":2.71828182845904523536}}]]);
-      assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:[2.71828182845904523536]}}]);
+        R"([[{"/a/euler":{"op":"prepend","new":2.71828182845904523536}}]])");
+      assertEqual(readAndCheck(R"([["/a/euler"]])"),
+                  R"([{"a":{"euler":[2.71828182845904523536]}}])");
       writeAndCheck(
-        [[{"/a/euler":{"op":"set","new":2.71828182845904523536}}]]);
-      assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:2.71828182845904523536}}]);
+        R"([[{"/a/euler":{"op":"set","new":2.71828182845904523536}}]])");
+      assertEqual(readAndCheck(R"([["/a/euler"]])"),
+                  R"([{"a":{"euler":2.71828182845904523536}}])");
       writeAndCheck(
-        [[{"/a/euler":{"op":"prepend","new":2.71828182845904523536}}]]);
+        R"([[{"/a/euler":{"op":"prepend","new":2.71828182845904523536}}]])");
       assertEqual(readAndCheck(
-        [["/a/euler"]]), [{a:{euler:[2.71828182845904523536]}}]);
-      writeAndCheck([[{"/a/euler":{"op":"prepend","new":1.25}}]]);
-      assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:[1.25,2.71828182845904523536]}}]);
+        R"([["/a/euler"]])"), R"([{"a":{"euler":[2.71828182845904523536]}}])");
+      writeAndCheck(R"([[{"/a/euler":{"op":"prepend","new":1.25}}]])");
+      assertEqual(readAndCheck(R"([["/a/euler"]])"),
+                  R"([{"a":{"euler":[1.25,2.71828182845904523536]}}])");
 
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-      writeAndCheck([[{"/version/c":{"op":"prepend", "new":"world"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["world","hello"]}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"prepend", "new":"hello"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+      writeAndCheck(R"([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
+      writeAndCheck(R"([[{"/version/c":{"op":"prepend", "new":"world"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["world","hello"]}}])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{3100});
+      assertEqual(readAndCheck(R"([["version"]])"), "[{}]");
+      writeAndCheck(R"([[{"/version/c":{"op":"prepend", "new":"hello"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
 
-    },
+    }
+/*
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "shift" operator
