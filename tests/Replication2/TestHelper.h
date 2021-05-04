@@ -132,7 +132,7 @@ struct DelayedLogLeader : LogParticipantI {
     return _leader->insert(std::move(payload));
   }
 
-  auto waitFor(LogIndex idx) {
+  auto waitFor(LogIndex idx) -> WaitForFuture override {
     return _leader->waitFor(idx);
   }
 

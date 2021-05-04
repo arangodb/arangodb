@@ -51,7 +51,8 @@ template <typename I>
 struct ContainerIterator : LogIterator {
   static_assert(std::is_same_v<typename I::value_type, LogEntry>);
 
-  ContainerIterator(I begin, I end) : _current(std::move(begin)), _end(std::move(end)) {}
+  ContainerIterator(I begin, I end)
+      : _current(std::move(begin)), _end(std::move(end)) {}
 
   auto next() -> std::optional<LogEntry> override {
     if (_current == _end) {
@@ -84,77 +85,81 @@ class ReplicatedLogIterator : public LogIterator {
   immer::flex_vector<LogEntry>::const_iterator _end;
 };
 
-namespace {
-namespace follower {
-
-auto appendEntries(ParticipantId const& leader, LogTerm const currentTerm, LogIndex& commitIndex,
-                   replicated_log::InMemoryLog& inMemoryLog,
-                   replicated_log::LogCore* logCore, AppendEntriesRequest const& req)
-    -> arangodb::futures::Future<AppendEntriesResult> {
-  if (logCore == nullptr) {
-    return AppendEntriesResult(currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                               AppendEntriesErrorReason::LOST_LOG_CORE);
-  }
-
-  if (req.leaderId != leader) {
-    return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                               AppendEntriesErrorReason::INVALID_LEADER_ID};
-  }
-
-  // TODO does >= suffice here? Maybe we want to do an atomic operation
-  //      before increasing our term
-  if (req.leaderTerm != currentTerm) {
-    return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                               AppendEntriesErrorReason::WRONG_TERM};
-  }
-  // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
-
-  if (req.prevLogIndex > LogIndex{0}) {
-    auto entry = inMemoryLog.getEntryByIndex(req.prevLogIndex);
-    if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
-      return AppendEntriesResult{currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                 AppendEntriesErrorReason::NO_PREV_LOG_MATCH};
-    }
-  }
-
-  auto res = logCore->_persistedLog->removeBack(req.prevLogIndex + 1);
-  if (!res.ok()) {
-    abort();  // TODO abort?
-  }
-
-  auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
-      req.entries.begin(), req.entries.end());
-  res = logCore->_persistedLog->insert(iter);
-  if (!res.ok()) {
-    abort();  // TODO abort?
-  }
-
-  auto transientLog = inMemoryLog._log.transient();
-  transientLog.take(req.prevLogIndex.value);
-  transientLog.append(req.entries.transient());
-  inMemoryLog._log = std::move(transientLog).persistent();
-
-  if (commitIndex < req.leaderCommit && !inMemoryLog._log.empty()) {
-    commitIndex = std::min(req.leaderCommit, inMemoryLog._log.back().logIndex());
-    // TODO Apply operations to state machine here?
-    //      Trigger log consumer streams.
-  }
-
-  return AppendEntriesResult{currentTerm};
-}
-
-}  // namespace follower
-}  // namespace
-
 auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
-  auto logFollowerDataGuard = acquireMutex();
-  return follower::appendEntries(_leaderId, _currentTerm, logFollowerDataGuard->_commitIndex,
-                                 logFollowerDataGuard->_inMemoryLog,
-                                 logFollowerDataGuard->_logCore.get(), req);
+  auto [result, toBeResolved] = _guardedFollowerData.doUnderLock(
+      [&](GuardedFollowerData& self) -> std::pair<AppendEntriesResult, WaitForQueue> {
+        if (self._logCore == nullptr) {
+          return std::make_pair(AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                                                    AppendEntriesErrorReason::LOST_LOG_CORE),
+                                WaitForQueue{});
+        }
+
+        if (req.leaderId != _leaderId) {
+          return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                                                    AppendEntriesErrorReason::INVALID_LEADER_ID},
+                                WaitForQueue{});
+        }
+
+        // TODO does >= suffice here? Maybe we want to do an atomic operation
+        //      before increasing our term
+        if (req.leaderTerm != _currentTerm) {
+          return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                                                    AppendEntriesErrorReason::WRONG_TERM},
+                                WaitForQueue{});
+        }
+        // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
+
+        if (req.prevLogIndex > LogIndex{0}) {
+          auto entry = self._inMemoryLog.getEntryByIndex(req.prevLogIndex);
+          if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
+            return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                                                      AppendEntriesErrorReason::NO_PREV_LOG_MATCH},
+                                  WaitForQueue{});
+          }
+        }
+
+        auto res = self._logCore->_persistedLog->removeBack(req.prevLogIndex + 1);
+        if (!res.ok()) {
+          abort();  // TODO abort?
+        }
+
+        auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
+            req.entries.begin(), req.entries.end());
+        res = self._logCore->_persistedLog->insert(iter);
+        if (!res.ok()) {
+          abort();  // TODO abort?
+        }
+
+        auto transientLog = self._inMemoryLog._log.transient();
+        transientLog.take(req.prevLogIndex.value);
+        transientLog.append(req.entries.transient());
+        self._inMemoryLog._log = std::move(transientLog).persistent();
+
+        WaitForQueue toBeResolved;
+        if (self._commitIndex < req.leaderCommit && !self._inMemoryLog._log.empty()) {
+          self._commitIndex =
+              std::min(req.leaderCommit, self._inMemoryLog._log.back().logIndex());
+
+          auto const end = self._waitForQueue.upper_bound(self._commitIndex);
+          for (auto it = self._waitForQueue.begin(); it != end;) {
+            toBeResolved.insert(self._waitForQueue.extract(it++));
+          }
+        }
+
+        return std::make_pair(AppendEntriesResult{_currentTerm}, std::move(toBeResolved));
+      });
+
+  for (auto& promise : toBeResolved) {
+    // TODO what do we resolve this with? QuorumData is not available on follower
+    // TODO execute this in a different context.
+    promise.second.setValue(std::shared_ptr<QuorumData>{});
+  }
+
+  return std::move(result);
 }
 
-replicated_log::LogLeader::LogLeader(ParticipantId  id, LogTerm const term,
+replicated_log::LogLeader::LogLeader(ParticipantId id, LogTerm const term,
                                      std::size_t const writeConcern, InMemoryLog inMemoryLog)
     : _participantId(std::move(id)),
       _currentTerm(term),
@@ -187,7 +192,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                       currentTerm = it->_currentTerm](futures::Try<AppendEntriesResult>&& res) {
             // TODO This has to be noexcept
             if (auto self = parentLog.lock()) {
-              auto preparedRequests = std::invoke([&] {
+              auto [preparedRequests, resolvedPromises] = std::invoke([&] {
                 auto guarded = self->acquireMutex();
                 if (guarded->_didResign) {
                   // Is throwing the right thing to do here?
@@ -197,6 +202,12 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                                                             currentCommitIndex, currentTerm,
                                                             std::move(res));
               });
+
+              // TODO execute this in a different context
+              for (auto& promise : resolvedPromises._set) {
+                promise.second.setValue(resolvedPromises._quorum);
+              }
+
               executeAppendEntriesRequests(std::move(preparedRequests));
             }
           });
@@ -205,7 +216,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    ParticipantId const& id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
@@ -262,20 +273,26 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
 }
 
 auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
-  return _guardedLeaderData.doUnderLock(
-      [&localFollower = *_localFollower, &participantId = _participantId](GuardedLeaderData& leaderData) {
+  // TODO Do we need to do more than that, like make sure to refuse future
+  //      requests?
+  auto [core, promises] = _guardedLeaderData.doUnderLock(
+      [&localFollower = *_localFollower,
+       &participantId = _participantId](GuardedLeaderData& leaderData) {
         if (leaderData._didResign) {
           LOG_TOPIC("5d3b8", ERR, Logger::REPLICATION2)
               << "Leader " << participantId << " already resigned!";
           TRI_ASSERT(false);
         }
-        leaderData._didResign = true;
-        for (auto& [idx, promise] : leaderData._waitForQueue) {
-          promise.setException(basics::Exception(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-                                                 __FILE__, __LINE__));
-        }
-        return std::move(localFollower).resign();
+        auto queue = std::move(leaderData._waitForQueue);
+        leaderData._waitForQueue.clear();
+        return std::make_pair(std::move(localFollower).resign(), std::move(queue));
       });
+
+  for (auto& [idx, promise] : promises) {
+    promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
+                                           __FILE__, __LINE__));
+  }
+  return std::move(core);
 }
 
 auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
@@ -325,14 +342,19 @@ auto replicated_log::LogFollower::resign() && -> std::unique_ptr<LogCore> {
       [](auto& followerData) { return std::move(followerData._logCore); });
 }
 
-replicated_log::LogFollower::LogFollower(ParticipantId id,
-                                         std::unique_ptr<LogCore> logCore,
+replicated_log::LogFollower::LogFollower(ParticipantId id, std::unique_ptr<LogCore> logCore,
                                          LogTerm term, ParticipantId leaderId,
                                          replicated_log::InMemoryLog inMemoryLog)
     : _participantId(std::move(id)),
       _leaderId(std::move(leaderId)),
       _currentTerm(term),
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {}
+
+auto replicated_log::LogFollower::waitFor(LogIndex idx)
+    -> replicated_log::LogParticipantI::WaitForFuture {
+  auto self = acquireMutex();
+  return self->waitFor(idx);
+}
 
 auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus {
   return LogStatus{UnconfiguredStatus{}};
@@ -343,6 +365,12 @@ replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(std::uniq
 
 auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::unique_ptr<LogCore> {
   return std::move(_logCore);
+}
+
+auto replicated_log::LogUnconfiguredParticipant::waitFor(LogIndex)
+    -> replicated_log::LogParticipantI::WaitForFuture {
+  // TODO how to resolve a future with an exception?
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
@@ -432,16 +460,19 @@ auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const
   return e;
 }
 
-void replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
+auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     std::weak_ptr<LogLeader> const& parentLog, LogIndex newIndex,
-    std::shared_ptr<QuorumData> const& quorum) {
+    std::shared_ptr<QuorumData> const& quorum) -> ResolvedPromiseSet {
   TRI_ASSERT(_commitIndex < newIndex);
   _commitIndex = newIndex;
   _lastQuorum = quorum;
+
+  WaitForQueue toBeResolved;
   auto const end = _waitForQueue.upper_bound(_commitIndex);
-  for (auto it = _waitForQueue.begin(); it != end; it = _waitForQueue.erase(it)) {
-    it->second.setValue(quorum);
+  for (auto it = _waitForQueue.begin(); it != end;) {
+    toBeResolved.insert(_waitForQueue.extract(it++));
   }
+  return ResolvedPromiseSet{std::move(toBeResolved), quorum};
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntries(std::weak_ptr<LogLeader> const& parentLog)
@@ -512,10 +543,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
     LogIndex lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
     futures::Try<AppendEntriesResult>&& res)
-    -> std::vector<std::optional<PreparedAppendEntryRequest>> {
+    -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet> {
   if (currentTerm != _self._currentTerm) {
     return {};
   }
+    ResolvedPromiseSet toBeResolved;
+
   follower.requestInFlight = false;
   if (res.hasValue()) {
     follower.numErrorsSinceLastAnswer = 0;
@@ -524,7 +557,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     if (response.isSuccess()) {
       follower.lastAckedIndex = lastIndex;
       follower.lastAckedCommitIndex = currentCommitIndex;
-      checkCommitIndex(parentLog);
+      toBeResolved = checkCommitIndex(parentLog);
     } else {
       // TODO Optimally, we'd like this condition (lastAckedIndex > 0) to be
       //      assertable here. For that to work, we need to make sure that no
@@ -566,7 +599,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     std::this_thread::sleep_for(1s);
   }
   // try sending the next batch
-  return prepareAppendEntries(parentLog);
+  return std::make_pair(prepareAppendEntries(parentLog), std::move(toBeResolved));
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex fromIdx) const
@@ -579,7 +612,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex fromI
   return std::make_shared<ReplicatedLogIterator>(from, to);
 }
 
-void replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(std::weak_ptr<LogLeader> const& parentLog) {
+auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
+    std::weak_ptr<LogLeader> const& parentLog) -> ResolvedPromiseSet {
   auto const quorum_size = _self._writeConcern;
 
   // TODO make this so that we can place any predicate here
@@ -591,7 +625,7 @@ void replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(std::weak_pt
   TRI_ASSERT(indexes.size() == _follower.size());
 
   if (quorum_size <= 0 || quorum_size > indexes.size()) {
-    return;
+    return {};
   }
 
   auto nth = indexes.begin();
@@ -611,8 +645,9 @@ void replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(std::weak_pt
 
     auto const quorum_data =
         std::make_shared<QuorumData>(commitIndex, _self._currentTerm, std::move(quorum));
-    updateCommitIndexLeader(parentLog, commitIndex, quorum_data);
+    return updateCommitIndexLeader(parentLog, commitIndex, quorum_data);
   }
+  return {};
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const -> LogStatistics {
@@ -719,7 +754,7 @@ replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
 }
 
 auto replicated_log::ReplicatedLog::becomeLeader(
-    ParticipantId const& id, LogTerm term,
+    ParticipantId id, LogTerm term,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
   auto logCore = std::move(*_participant).resign();
@@ -728,7 +763,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
   return leader;
 }
 
-auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId const& id,
+auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id,
                                                    LogTerm term, ParticipantId leaderId)
     -> std::shared_ptr<LogFollower> {
   auto logCore = std::move(*_participant).resign();
@@ -785,6 +820,19 @@ auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<Lo
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
     LogFollower const& self, std::unique_ptr<LogCore> logCore, InMemoryLog inMemoryLog)
     : _self(self), _inMemoryLog(std::move(inMemoryLog)), _logCore(std::move(logCore)) {}
+
+auto replicated_log::LogFollower::GuardedFollowerData::waitFor(LogIndex index)
+    -> replicated_log::LogParticipantI::WaitForFuture {
+  if (_commitIndex >= index) {
+    // TODO give current term?
+    return futures::Future<std::shared_ptr<QuorumData>>{std::in_place, nullptr};
+  }
+  auto it = _waitForQueue.emplace(index, WaitForPromise{});
+  auto& promise = it->second;
+  auto&& future = promise.getFuture();
+  TRI_ASSERT(future.valid());
+  return std::move(future);
+}
 
 std::string arangodb::replication2::to_string(AppendEntriesErrorReason reason) {
   switch (reason) {
