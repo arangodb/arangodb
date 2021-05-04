@@ -46,7 +46,7 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries) {
   auto leader = LogLeader::construct("leader", std::move(coreA), LogTerm{3}, {}, 1);
   leader->runAsyncStep();
   {
-    auto fut = leader->waitForIterator(LogIndex{1});
+    auto fut = leader->waitForIterator(LogIndex{2});
     ASSERT_TRUE(fut.isReady());
     {
       auto entry = std::optional<LogEntry>{};
@@ -66,6 +66,7 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries) {
   }
 }
 
+
 TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
   auto const entries = {
       replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
@@ -80,49 +81,6 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
     }
     coreA = std::make_unique<LogCore>(leaderLog);
   }
-
-  auto coreB = makeLogCore(LogId{2});
-  auto follower = std::make_shared<DelayedFollowerLog>("follower", std::move(coreB),
-                                                       LogTerm{3}, "leader");
-  auto leader = LogLeader::construct("leader", std::move(coreA), LogTerm{3}, {}, 1);
-  leader->runAsyncStep();
-
-  auto fut = leader->waitForIterator(LogIndex{4});
-  ASSERT_FALSE(fut.isReady());
-
-  leader->insert(LogPayload{"fourth entry"});
-  leader->runAsyncStep();
-
-  ASSERT_TRUE(fut.isReady());
-  {
-    auto entry = std::optional<LogEntry>{};
-    auto iter = std::move(fut).get();
-
-    entry = iter->next();
-    ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(entry->logIndex(), LogIndex{4});
-
-    entry = iter->next();
-    ASSERT_FALSE(entry.has_value());
-  }
-}
-
-TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
-  auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
-
-  auto coreA = std::unique_ptr<LogCore>(nullptr);
-  {
-    auto leaderLog = makePersistedLog(LogId{1});
-    for (auto const& entry : entries) {
-      leaderLog->setEntry(entry);
-    }
-    coreA = std::make_unique<LogCore>(leaderLog);
-  }
-
-
 
   auto leader = LogLeader::construct("leader", std::move(coreA), LogTerm{3}, {}, 1);
   leader->runAsyncStep();
@@ -144,6 +102,64 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
     EXPECT_EQ(entry->logIndex(), LogIndex{4});
 
     entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(entry->logIndex(), LogIndex{5});
+
+    entry = iter->next();
     ASSERT_FALSE(entry.has_value());
   }
 }
+
+TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
+  auto const entries = {
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+
+  auto coreA = std::unique_ptr<LogCore>(nullptr);
+  {
+    auto leaderLog = makePersistedLog(LogId{1});
+    for (auto const& entry : entries) {
+      leaderLog->setEntry(entry);
+    }
+    coreA = std::make_unique<LogCore>(leaderLog);
+  }
+
+  auto coreB = makeLogCore(LogId{2});
+  auto follower = std::make_shared<DelayedFollowerLog>("follower", std::move(coreB),
+                                                       LogTerm{3}, "leader");
+  auto leader = LogLeader::construct("leader", std::move(coreA), LogTerm{3}, {follower}, 2);
+  leader->runAsyncStep();
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
+  auto fut = leader->waitForIterator(LogIndex{4});
+  ASSERT_FALSE(fut.isReady());
+
+  leader->insert(LogPayload{"fourth entry"});
+  leader->insert(LogPayload{"fifth entry"});
+  leader->runAsyncStep();
+
+  ASSERT_FALSE(fut.isReady());
+  ASSERT_TRUE(follower->hasPendingAppendEntries());
+  follower->runAsyncAppendEntries();
+  ASSERT_TRUE(fut.isReady());
+
+  {
+    auto entry = std::optional<LogEntry>{};
+    auto iter = std::move(fut).get();
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(entry->logIndex(), LogIndex{4});
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(entry->logIndex(), LogIndex{5});
+
+    entry = iter->next();
+    ASSERT_FALSE(entry.has_value());
+  }
+}
+

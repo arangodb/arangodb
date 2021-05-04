@@ -261,7 +261,7 @@ auto replicated_log::LogLeader::construct(
   leader->_localFollower = std::move(localFollower);
 
   // TODO hack
-  if (writeConcern <= 1) {
+  if (leaderDataGuard->_follower.size() == 1) {
     leaderDataGuard->_commitIndex = leaderDataGuard->_inMemoryLog.getLastIndex();
   }
 
