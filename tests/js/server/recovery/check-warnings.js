@@ -63,7 +63,7 @@ function recoverySuite () {
           return false;
         }
 
-        if (line.match(/\{(memory|performance)\}/)) {
+        if (line.match(/\{(memory|performance|slow background)\}/)) {
           // ignore errors about memory/performance configuration
           return false;
         }
