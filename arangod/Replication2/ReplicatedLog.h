@@ -51,10 +51,11 @@
 #include <variant>
 #include <vector>
 
-#include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 
 namespace arangodb::replication2 {
 
@@ -146,21 +147,6 @@ struct QuorumData {
 };
 
 namespace replicated_log {
-
-struct LogParticipantI {
-  [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
-  virtual ~LogParticipantI() = default;
-  [[nodiscard]] virtual auto resign() && -> std::unique_ptr<LogCore> = 0;
-
-  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
-  using WaitForFuture = futures::Future<std::shared_ptr<QuorumData>>;
-  using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
-
-  [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
-
-  using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogIterator>>;
-  [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture;
-};
 
 class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogParticipantI {
  public:

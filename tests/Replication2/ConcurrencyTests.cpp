@@ -1,6 +1,7 @@
 //
 // Created by lars on 30/04/2021.
 //
+#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "TestHelper.h"
 
 using namespace arangodb;
