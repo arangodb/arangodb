@@ -345,18 +345,15 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
 }
 
 auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
-  auto self = acquireMutex();
-  return self->insert(std::move(payload));
-}
-
-auto replicated_log::LogLeader::GuardedLeaderData::insert(LogPayload payload) -> LogIndex {
   // TODO this has to be lock free
   // TODO investigate what order between insert-increaseTerm is required?
   // Currently we use a mutex. Is this the only valid semantic?
-  auto const index = _inMemoryLog.getNextIndex();
-  _inMemoryLog._log = _inMemoryLog._log.push_back(
-      LogEntry{_self._currentTerm, index, std::move(payload)});
-  return index;
+  return _guardedLeaderData.doUnderLock([self = this, &payload](auto& leaderData) {
+    auto const index = leaderData._inMemoryLog.getNextIndex();
+    leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(
+        LogEntry{self->_currentTerm, index, std::move(payload)});
+    return index;
+  });
 }
 
 auto replicated_log::LogLeader::waitFor(LogIndex index)
