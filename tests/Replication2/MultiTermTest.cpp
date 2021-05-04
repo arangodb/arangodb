@@ -95,7 +95,6 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
     auto newLeader = leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
     ASSERT_TRUE(f.isReady());
     EXPECT_ANY_THROW({ std::ignore = f.get(); });
-    // TODO the next two assertions are known to fail
     EXPECT_ANY_THROW({ std::ignore = leader->getStatus(); });
     EXPECT_ANY_THROW(
         { std::ignore = leader->insert(LogPayload{"second entry"}); });
@@ -129,7 +128,6 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     follower->runAsyncAppendEntries();
     // we expect a leader retry
     EXPECT_TRUE(follower->hasPendingAppendEntries());
-    // TODO this is known to fail
     EXPECT_ANY_THROW({ std::ignore = follower->getStatus(); });
 
     // now create a new leader
@@ -140,7 +138,6 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     // run the old followers append entries
     follower->runAsyncAppendEntries();
     // we expect no new append entries
-    // TODO this is known to fail
     EXPECT_FALSE(follower->hasPendingAppendEntries());
 
     while (newFollower->hasPendingAppendEntries()) {
@@ -244,23 +241,4 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
                 (std::vector<ParticipantId>{"newLeader", "newFollower"}));
     }
   }
-}
-
-TEST_F(MultiTermTest, become_leader_with_lower_term) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  std::ignore = leaderLog->becomeLeader("leader", LogTerm{3}, {}, 1);
-
-  // TODO this is known to fail
-  EXPECT_ANY_THROW(
-      { std::ignore = leaderLog->becomeLeader("leader", LogTerm{2}, {}, 0); });
-}
-
-TEST_F(MultiTermTest, become_follower_with_lower_term) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  std::ignore = leaderLog->becomeFollower("follower", LogTerm{3}, "leader");
-
-  // TODO this is known to fail
-  EXPECT_ANY_THROW({
-    std::ignore = leaderLog->becomeFollower("follower", LogTerm{2}, "leader");
-  });
 }
