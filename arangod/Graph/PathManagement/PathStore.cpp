@@ -81,7 +81,7 @@ template <class Step>
 Step PathStore<Step>::get(size_t position) const {
   TRI_ASSERT(position <= size());
   Step step = _schreier.at(position);
-  LOG_TOPIC("45bf4", TRACE, Logger::GRAPHS)
+  LOG_TOPIC("45bf5", TRACE, Logger::GRAPHS)
       << "<PathStore> Get step: " << step.toString();
 
   return step;
@@ -177,6 +177,18 @@ template void PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServ
     PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
 
 // Tracing
+
+template void PathStore<SingleServerProvider::Step>::buildPath<
+    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
+    ProviderTracer<SingleServerProvider>::Step const& vertex,
+    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
+
+template void PathStore<SingleServerProvider::Step>::buildPath<
+    SingleProviderPathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
+    ProviderTracer<SingleServerProvider>::Step const& vertex,
+    SingleProviderPathResult<ProviderTracer<SingleServerProvider>,
+                             ProviderTracer<SingleServerProvider>::Step>& path) const;
+
 template void PathStore<ProviderTracer<SingleServerProvider>::Step>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
@@ -193,7 +205,8 @@ template void PathStore<ClusterProvider::Step>::reverseBuildPath<ClusterProvider
     PathResult<ClusterProvider, ClusterProvider::Step>& path) const;
 
 // Tracing
-template void PathStore<ClusterProvider::Step>::buildPath<PathResult<ProviderTracer<ClusterProvider>, ProviderTracer<ClusterProvider>::Step>>(
+template void PathStore<ClusterProvider::Step>::buildPath<
+    PathResult<ProviderTracer<ClusterProvider>, ProviderTracer<ClusterProvider>::Step>>(
     ProviderTracer<ClusterProvider>::Step const& vertex,
     PathResult<ProviderTracer<ClusterProvider>, ProviderTracer<ClusterProvider>::Step>& path) const;
 

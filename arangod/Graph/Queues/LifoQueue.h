@@ -85,7 +85,7 @@ class LifoQueue {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
-    LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS) << "<LifoQueue> Pop: " << first.toString();
+    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS) << "<LifoQueue> Pop: " << first.toString();
     _queue.pop_front();
     return first;
   }
