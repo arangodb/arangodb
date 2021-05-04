@@ -44,7 +44,6 @@ namespace aql {
 /// @brief class KShortestPathsNode
 class KShortestPathsNode : public virtual GraphNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  protected:
@@ -125,24 +124,14 @@ class KShortestPathsNode : public virtual GraphNode {
   }
 
   std::string const getTargetVertex() const { return _targetVertexId; }
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> vars;
-    TRI_ASSERT(_pathOutVariable != nullptr);
-    vars.emplace_back(_pathOutVariable);
-    return vars;
-  }
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const override {
-    if (_inStartVariable != nullptr) {
-      vars.emplace(_inStartVariable);
-    }
-    if (_inTargetVariable != nullptr) {
-      vars.emplace(_inTargetVariable);
-    }
-  }
+  void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
   arangodb::graph::ShortestPathType::Type shortestPathType() const {

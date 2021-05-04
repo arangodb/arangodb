@@ -329,6 +329,43 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
   }
   return -1;
 }
+  
+void TraversalNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
+
+/// @brief getVariablesUsedHere
+void TraversalNode::getVariablesUsedHere(VarSet& result) const {
+  for (auto const& condVar : _conditionVariables) {
+    if (condVar != getTemporaryVariable()) {
+      result.emplace(condVar);
+    }
+  }
+  for (auto const& pruneVar : _pruneVariables) {
+    if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
+        pruneVar != pathOutVariable()) {
+      result.emplace(pruneVar);
+    }
+  }
+  if (usesInVariable()) {
+    result.emplace(_inVariable);
+  }
+}
+
+/// @brief getVariablesSetHere
+std::vector<Variable const*> TraversalNode::getVariablesSetHere() const {
+  std::vector<Variable const*> vars;
+  if (isVertexOutVariableUsedLater()) {
+    vars.emplace_back(vertexOutVariable());
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    vars.emplace_back(edgeOutVariable());
+  }
+  if (isPathOutVariableUsedLater()) {
+    vars.emplace_back(pathOutVariable());
+  }
+  return vars;
+}
 
 /// @brief check whether an access is inside the specified range
 bool TraversalNode::isInRange(uint64_t depth, bool isEdge) const {
