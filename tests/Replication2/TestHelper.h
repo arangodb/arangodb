@@ -111,7 +111,7 @@ struct DelayedFollowerLog : AbstractFollower {
     return _follower->getParticipantId();
   }
 
-  auto getStatus() const noexcept -> LogStatus {
+  auto getStatus() const -> LogStatus {
     return _follower->getStatus();
   }
 

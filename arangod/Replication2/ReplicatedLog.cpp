@@ -305,6 +305,9 @@ auto replicated_log::LogFollower::acquireMutex() const
 auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   return _guardedFollowerData.doUnderLock(
       [term = _currentTerm, &leaderId = _leaderId](auto const& followerData) {
+        if (followerData._logCore == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+        }
         FollowerStatus status;
         status.local = followerData.getLocalStatistics();
         status.leader = leaderId;
@@ -796,6 +799,7 @@ std::string arangodb::replication2::to_string(AppendEntriesErrorReason reason) {
     case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
       return "previous log index did not match";
   }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 void LogStatistics::toVelocyPack(velocypack::Builder& builder) const {

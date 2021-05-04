@@ -716,6 +716,13 @@ constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED     
 /// a configuration change), even if the leader stays the same.
 constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED              = ErrorCode{1422};
 
+/// 1423: ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
+/// "a resigned follower instance rejected a request"
+/// Will be raised when a follower instance of a replicated log rejects a
+/// request because it just resigned. This can also happen if the term changes
+/// (due to a configuration change), even if the server stays a follower.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED            = ErrorCode{1423};
+
 /// 1446: ERROR_CLUSTER_NOT_FOLLOWER
 /// "not a follower"
 /// Will be raised when an operation is sent to a non-following server.

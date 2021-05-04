@@ -18,7 +18,7 @@ struct elsa<ErrorCode> {
 #include <cinttypes>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 348> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 349> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -285,6 +285,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 348> ErrorMessage
       "follower rejected append entries request"},
     {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,  // 1422
       "a resigned leader instance rejected a request"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,  // 1423
+      "a resigned follower instance rejected a request"},
     {TRI_ERROR_CLUSTER_NOT_FOLLOWER,  // 1446
       "not a follower"},
     {TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,  // 1447

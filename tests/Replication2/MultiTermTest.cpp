@@ -212,12 +212,12 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     EXPECT_FALSE(f2.isReady());
     leader->runAsyncStep();
 
-
     // run the old followers append entries
     follower->runAsyncAppendEntries();
     // we expect a retry request
     EXPECT_TRUE(follower->hasPendingAppendEntries());
-    auto newFollower = followerLog->becomeFollower("newFollower", LogTerm{2}, "newLeader");
+    auto newFollower =
+        followerLog->becomeFollower("newFollower", LogTerm{2}, "newLeader");
     // simulate the database server has updated its follower
     followerProxy->replaceFollower(newFollower);
 
@@ -240,7 +240,8 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
       auto quorum = f2.get();
       EXPECT_EQ(quorum->index, LogIndex{1});
       EXPECT_EQ(quorum->term, LogTerm{2});
-      EXPECT_EQ(quorum->quorum, (std::vector<ParticipantId>{"newLeader", "newFollower"}));
+      EXPECT_EQ(quorum->quorum,
+                (std::vector<ParticipantId>{"newLeader", "newFollower"}));
     }
   }
 }
@@ -259,6 +260,7 @@ TEST_F(MultiTermTest, become_follower_with_lower_term) {
   std::ignore = leaderLog->becomeFollower("follower", LogTerm{3}, "leader");
 
   // TODO this is known to fail
-  EXPECT_ANY_THROW(
-      { std::ignore = leaderLog->becomeFollower("follower", LogTerm{2}, "leader"); });
+  EXPECT_ANY_THROW({
+    std::ignore = leaderLog->becomeFollower("follower", LogTerm{2}, "leader");
+  });
 }
