@@ -21,9 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef ARANGODB3_PERSISTEDLOG_H
 #define ARANGODB3_PERSISTEDLOG_H
-#include <memory>
-#include "Basics/Result.h"
+
 #include "Common.h"
+
+#include "Basics/Result.h"
+
+#include <memory>
 
 namespace arangodb::replication2 {
 
@@ -38,10 +41,11 @@ struct PersistedLog {
   virtual auto removeBack(LogIndex start) -> Result = 0;
 
   virtual auto drop() -> Result = 0;
+
  private:
   LogId _lid;
 };
 
-}
+}  // namespace arangodb::replication2
 
 #endif  // ARANGODB3_PERSISTEDLOG_H

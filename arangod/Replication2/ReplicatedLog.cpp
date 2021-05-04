@@ -283,6 +283,7 @@ auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
               << "Leader " << participantId << " already resigned!";
           TRI_ASSERT(false);
         }
+        leaderData._didResign = true;
         auto queue = std::move(leaderData._waitForQueue);
         leaderData._waitForQueue.clear();
         return std::make_pair(std::move(localFollower).resign(), std::move(queue));
