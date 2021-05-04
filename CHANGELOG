@@ -1,5 +1,7 @@
 devel
 -----
+* When writing to starting shard leader respond with specific
+  503. Fixes BTS-390.
 
 * Fixed issue BTS-354: Assertion related to getCollection. 
 
