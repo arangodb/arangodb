@@ -331,7 +331,30 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
 }
   
 void TraversalNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  // this is an important assertion: if options are already built,
+  // we would need to carry out the replacements in several other
+  // places as well
+  TRI_ASSERT(!_optionsBuilt);
+
   _inVariable = Variable::replace(_inVariable, replacements);
+
+  if (_pruneExpression != nullptr) {
+    // need to replace variables in the prune expression
+    VarSet variables;
+    _pruneExpression->variables(variables);
+    for (auto const& it : variables) {
+      if (replacements.find(it->id) != replacements.end()) {
+        _pruneExpression->replaceVariables(replacements);
+
+        // and need to recalculate the set of variables used
+        // by the prune expression
+        variables.clear();
+        _pruneExpression->variables(variables);
+        _pruneVariables = variables;
+        break;
+      }
+    }
+  }
 }
 
 /// @brief getVariablesUsedHere
