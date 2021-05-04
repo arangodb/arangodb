@@ -656,7 +656,6 @@ function ClusterCollectionSuite () {
     testCreateFailureWhenRemovingIsBuilding : function () {
       if (!isServer) {
         console.info('Skipping client test');
-        // TODO make client tests work
         return;
       }
       let setFailAt;
@@ -688,18 +687,8 @@ function ClusterCollectionSuite () {
           db._create(colName);
         } catch (e) {
           threw = true;
-          if (isServer) {
-            assertTrue(e instanceof ArangoError);
-            assertEqual(503, e.errorNum);
-          } else {
-            const expected = {
-              'error': true,
-              'errorNum': 22,
-              'code': 503,
-              'errorMessage': 'intentional debug error',
-            };
-            assertEqual(expected, e);
-          }
+          assertTrue(e instanceof ArangoError);
+          assertEqual(503, e.errorNum);
         } finally {
           // we need to wait for the collecion to show up before the drop can work.
           while (!db._collection(colName)) {
