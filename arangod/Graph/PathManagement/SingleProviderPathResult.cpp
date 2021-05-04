@@ -46,7 +46,8 @@ auto SingleProviderPathResult<ProviderType, Step>::clear() -> void {
 }
 
 template <class ProviderType, class Step>
-auto SingleProviderPathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v) -> void {
+auto SingleProviderPathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v)
+    -> void {
   _vertices.push_back(std::move(v));
 }
 
@@ -57,12 +58,14 @@ auto SingleProviderPathResult<ProviderType, Step>::prependVertex(typename Step::
 }
 
 template <class ProviderType, class Step>
-auto SingleProviderPathResult<ProviderType, Step>::appendEdge(typename Step::Edge e) -> void {
+auto SingleProviderPathResult<ProviderType, Step>::appendEdge(typename Step::Edge e)
+    -> void {
   _edges.push_back(std::move(e));
 }
 
 template <class ProviderType, class Step>
-auto SingleProviderPathResult<ProviderType, Step>::prependEdge(typename Step::Edge e) -> void {
+auto SingleProviderPathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
+    -> void {
   _edges.insert(_edges.begin(), std::move(e));
 }
 
@@ -96,15 +99,17 @@ auto SingleProviderPathResult<ProviderType, Step>::isEmpty() const -> bool {
 
 /* SingleServerProvider Section */
 
-template class ::arangodb::graph::SingleProviderPathResult<::arangodb::graph::SingleServerProvider,
-                                                   ::arangodb::graph::SingleServerProvider::Step>;
+template class ::arangodb::graph::SingleProviderPathResult<
+    ::arangodb::graph::SingleServerProvider, ::arangodb::graph::SingleServerProvider::Step>;
 
-template class ::arangodb::graph::SingleProviderPathResult<::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider>,
-                                                   ::arangodb::graph::SingleServerProvider::Step>;
+template class ::arangodb::graph::SingleProviderPathResult<
+    ::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider>,
+    ::arangodb::graph::SingleServerProvider::Step>;
 
 /* ClusterProvider Section */
 
-template class ::arangodb::graph::SingleProviderPathResult<::arangodb::graph::ClusterProvider, ::arangodb::graph::ClusterProvider::Step>;
+template class ::arangodb::graph::SingleProviderPathResult<
+    ::arangodb::graph::ClusterProvider, ::arangodb::graph::ClusterProvider::Step>;
 
-template class ::arangodb::graph::SingleProviderPathResult<::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
-                                                   ::arangodb::graph::ClusterProvider::Step>;
+template class ::arangodb::graph::SingleProviderPathResult<
+    ::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>, ::arangodb::graph::ClusterProvider::Step>;
