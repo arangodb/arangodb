@@ -234,6 +234,7 @@ PregelFeature::PregelFeature(application_features::ApplicationServer& server)
 }
 
 PregelFeature::~PregelFeature() {
+  _recoveryManagerPtr.store(nullptr);
   _recoveryManager.reset();
   cleanupAll();
 }
