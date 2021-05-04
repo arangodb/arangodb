@@ -307,4 +307,3 @@ auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::LimitPrinter& l
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;
 
 }  // namespace arangodb::aql
-

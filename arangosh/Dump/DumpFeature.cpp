@@ -24,6 +24,7 @@
 
 #include "DumpFeature.h"
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
 
@@ -31,7 +32,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <boost/algorithm/clamp.hpp>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -722,9 +722,9 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
 
   // clamp chunk values to allowed ranges
   _options.initialChunkSize =
-      boost::algorithm::clamp(_options.initialChunkSize, ::MinChunkSize, ::MaxChunkSize);
+      std::clamp(_options.initialChunkSize, ::MinChunkSize, ::MaxChunkSize);
   _options.maxChunkSize =
-      boost::algorithm::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
+      std::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
 
   if (_options.tickEnd < _options.tickStart) {
     LOG_TOPIC("25a0a", FATAL, arangodb::Logger::DUMP)
@@ -748,8 +748,8 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
   TRI_NormalizePath(_options.outputPath);
 
   uint32_t clamped =
-      boost::algorithm::clamp(_options.threadCount, 1,
-                              4 * static_cast<uint32_t>(NumberOfCores::getValue()));
+      std::clamp(_options.threadCount, uint32_t(1),
+                 4 * static_cast<uint32_t>(NumberOfCores::getValue()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC("0460e", WARN, Logger::DUMP) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
@@ -1043,6 +1043,8 @@ ClientTaskQueue<DumpFeature::DumpJob>& DumpFeature::taskQueue() {
 }
 
 void DumpFeature::start() {
+  using arangodb::basics::StringUtils::formatSize;
+
   if (!_options.maskingsFile.empty()) {
     maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
 
@@ -1197,7 +1199,7 @@ void DumpFeature::start() {
       LOG_TOPIC("66c0e", INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
           << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s,"
-          << " wrote " << _stats.totalWritten.load() << " byte(s) into datafiles, sent "
+          << " wrote " << formatSize(_stats.totalWritten.load()) << " into datafiles, sent "
           << _stats.totalBatches.load() << " batch(es)";
     } else {
       LOG_TOPIC("aaa17", INFO, Logger::DUMP)

@@ -182,6 +182,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/ParametersTest.cpp
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
+  Basics/RecursiveLockerTest.cpp
   Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
@@ -260,6 +261,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
+  SimpleHttpClient/ConnectionCacheTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
   Transaction/Manager-test.cpp

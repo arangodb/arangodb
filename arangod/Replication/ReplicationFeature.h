@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/Metrics.h"
+#include "SimpleHttpClient/ConnectionCache.h"
 
 struct TRI_vocbase_t;
 
@@ -49,6 +50,8 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+
+  httpclient::ConnectionCache& connectionCache();
 
   /// @brief return a pointer to the global replication applier
   GlobalReplicationApplier* globalReplicationApplier() const;
@@ -127,6 +130,9 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 
   /// Use the revision-based replication protocol
   bool _syncByRevision;
+  
+  /// @brief cache for reusable connections
+  httpclient::ConnectionCache _connectionCache;
 
   /// @brief number of currently operating tailing operations
   std::atomic<uint64_t> _parallelTailingInvocations;
