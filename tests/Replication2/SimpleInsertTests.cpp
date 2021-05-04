@@ -20,6 +20,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Replication2/ReplicatedLog/LogCore.h"
 #include "TestHelper.h"
 
 using namespace arangodb;

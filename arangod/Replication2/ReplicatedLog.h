@@ -51,9 +51,9 @@
 #include <variant>
 #include <vector>
 
-#include "Replication2/PersistedLog.h"
-
-#include "ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/Common.h"
 
 namespace arangodb::replication2 {
@@ -146,18 +146,6 @@ struct QuorumData {
 };
 
 namespace replicated_log {
-
-struct alignas(64) LogCore {
-  explicit LogCore(std::shared_ptr<PersistedLog> persistedLog);
-
-  // There must only be one LogCore per physical log
-  LogCore() = delete;
-  LogCore(LogCore const&) = delete;
-  LogCore(LogCore&&) = delete;
-  auto operator=(LogCore const&) -> LogCore& = delete;
-  auto operator=(LogCore&&) -> LogCore& = delete;
-  std::shared_ptr<PersistedLog> const _persistedLog;
-};
 
 struct LogParticipantI {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;

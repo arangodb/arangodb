@@ -35,8 +35,8 @@
 #pragma warning(pop)
 #endif
 
-#include "PersistedLog.h"
 #include "ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 
 namespace arangodb::replication2 {
 #if 0

@@ -22,7 +22,6 @@
 
 #pragma once
 
-
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
@@ -50,7 +49,7 @@
 #include <variant>
 #include <vector>
 #include "Common.h"
-#include "Replication2/PersistedLog.h"
+#include "PersistedLog.h"
 
 namespace arangodb::replication2::replicated_log {
 struct InMemoryLog {

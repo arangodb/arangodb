@@ -59,6 +59,7 @@
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Logger/LogMacros.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"

@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TestHelper.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
 
 #include <utility>
 

@@ -23,6 +23,7 @@
 #include "ReplicatedLog.h"
 
 #include "Basics/Exceptions.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
 
 #include <Basics/StringUtils.h>
 #include <Basics/application-exit.h>

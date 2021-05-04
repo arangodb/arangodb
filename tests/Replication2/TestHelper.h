@@ -21,8 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 
 #include <gtest/gtest.h>
 

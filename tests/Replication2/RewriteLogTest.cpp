@@ -20,6 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/TestHelper.h"
 
 using namespace arangodb;
