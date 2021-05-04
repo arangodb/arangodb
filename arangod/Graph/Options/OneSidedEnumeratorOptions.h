@@ -19,40 +19,31 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <numeric>
+#include <cstddef>
 
 namespace arangodb {
+
 namespace graph {
 
-template <class StepDetails>
-class BaseStep {
+struct OneSidedEnumeratorOptions {
  public:
-  BaseStep() : _previous{std::numeric_limits<size_t>::max()}, _depth{0} {}
+  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth);
 
-  BaseStep(size_t prev) : _previous{prev}, _depth{0} {}
-  BaseStep(size_t prev, size_t depth) : _previous{prev}, _depth{depth} {}
+  ~OneSidedEnumeratorOptions();
 
-  size_t getPrevious() const { return _previous; }
-
-  bool isFirst() const {
-    return _previous == std::numeric_limits<size_t>::max();
-  }
-
-  bool isLooseEnd() const {
-    return static_cast<StepDetails*>(this)->isLooseEnd();
-  }
-
-  size_t getDepth() const {
-    return _depth;
-  }
+  size_t getMinDepth() const;
+  size_t getMaxDepth() const;
 
  private:
-  size_t const _previous;
-  size_t const _depth;
+  size_t _minDepth;
+  size_t _maxDepth;
 };
 }  // namespace graph
 }  // namespace arangodb
+
