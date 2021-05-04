@@ -174,6 +174,27 @@ TEST_F(StoreTestAPI, single_non_top_level) {
   assertEqual(readAndCheck(R"([["/x"]])"), R"([{}])");
 }
 
+template<typename TSource>
+std::string to_json_object(TSource const &src, std::function<std::string(typename TSource::const_reference)> extractName, std::function<std::string(typename TSource::const_reference)> extractValue)
+{
+  bool is_first{true};
+  return "{" + 
+        std::accumulate(src.begin(), src.end(), std::string(), [&is_first, extractName, extractValue](std::string partial, auto const &element){
+          if (is_first) is_first = false; else partial += ",";
+          partial += "\"" + extractName(element) + "\": " + extractValue(element);
+          return partial;
+        })
+        + "}";
+}
+
+template<typename TSource>
+std::string to_json_object(TSource const &src)
+{
+  return to_json_object(src, 
+    [](auto const &element){ return element.first;}, 
+    [](auto const &element){ return element.second;});
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test preconditions
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,14 +289,7 @@ TEST_F(StoreTestAPI, precondition) {
         {"name", R"({ "first": "Durham", "last": "Duke" })"},
         {"tags", R"(["anim","et","id","do","est",1.0,-1024,1024])"}
       };
-      bool is_first{true};
-      std::string const baz_text = "{" + 
-        std::accumulate(baz.begin(), baz.end(), std::string(), [&is_first](std::string partial, auto const &kv){
-          if (is_first) is_first = false; else partial += ",";
-          partial += "\"" + kv.first + "\": " + kv.second;
-          return partial;
-        })
-        + "}";
+      std::string const baz_text = to_json_object(baz);
       std::string const qux {R"(["3.14159265359",3.14159265359])"};
       std::string const foo_value {"\"bar\""};
       std::string const localObj = R"(
@@ -303,16 +317,11 @@ TEST_F(StoreTestAPI, precondition) {
 
       std::vector<std::string> localKeys;
       std::transform(baz.begin(), baz.end(), std::back_inserter(localKeys), [](auto kv){ return kv.first; });
-      for (int permutation_count{}; permutation_count < 2000; ++permutation_count) {
+      for (int permutation_count{}; permutation_count < 5; ++permutation_count) {
         std::random_shuffle(localKeys.begin(), localKeys.end());
-        is_first = true;
-        auto pkey {localKeys.begin()};
-        std::string const permuted = "{" + 
-          std::accumulate(localKeys.begin(), localKeys.end(), std::string(), [&is_first, &baz](std::string partial, auto const &key){
-            if (is_first) is_first = false; else partial += ",";
-            partial += "\"" + key + "\": " + baz[key];
-            return partial;
-        }) + "}";
+        std::string const permuted = to_json_object(localKeys, 
+          [](std::string const &k){ return k; },
+          [&baz](std::string const &k){ return baz[k]; });
         writeAndCheck(
           "[[" + localObj + R"(, {"foo":)" + foo_value + R"(,"baz":{"old":)" + permuted + R"(},"qux":)" + qux + "}]]");
         writeAndCheck(
@@ -324,54 +333,59 @@ TEST_F(StoreTestAPI, precondition) {
       }
 
       // Permute order of keys and objects within arrays in preconditions
-      // writeAndCheck(R"([[{"a":[{"b":12,"c":13}]}]])");
-      // writeAndCheck(R"([[{"a":[{"b":12,"c":13}]},{"a":[{"b":12,"c":13}]}]])");
-      // writeAndCheck(R"([[{"a":[{"b":12,"c":13}]},{"a":[{"c":13,"b":12}]}]])");
+      {
+        writeAndCheck(R"([[{"a":[{"b":12,"c":13}]}]])");
+        writeAndCheck(R"([[{"a":[{"b":12,"c":13}]},{"a":[{"b":12,"c":13}]}]])");
+        writeAndCheck(R"([[{"a":[{"b":12,"c":13}]},{"a":[{"c":13,"b":12}]}]])");
 
-      // std::map<std::string,std::string> localObj {
-      //   {"b","\"Hello world!\""}, {"c","3.14159265359"}, {"d","314159265359"}, {"e", "-3"}};
-      // std::map<std::string,std::string> localObk {
-      //   {"b","1"}, {"c","1.0"}, {"d", "100000000001"}, {"e", "-1"}};
-      // localKeys.resize(0);
-      // for (auto const &l: localObj) {
-      //   localKeys.push(l);
-      // }
-      // writeAndCheck(R"([[ { "a" : [localObj,localObk] } ]])");
-      // writeAndCheck(R"([[ { "a" : [localObj,localObk] }, {"a" : [localObj,localObk] }]])");
-      // for (int m = 0; m < 7; ++m) {
-      //   permuted = {};
-      //   std::shuffle(localKeys.begin(), localKeys.end());
-      //   for (k in localKeys) {
-      //     permuted[localKeys[k]] = localObj[localKeys[k]];
-      //     per2 [localKeys[k]] = localObk[localKeys[k]];
-      //   }
-      //   writeAndCheck(R"([[ { "a" : [localObj,localObk] }, {"a" : [permuted,per2] }]])");
-      //   res = write(R"([[ { "a" : [localObj,localObk] }, {"a" : [per2,permuted] }]])");
-      //   ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
-      // }
+        std::map<std::string,std::string> localObj {
+          {"b","\"Hello world!\""}, {"c","3.14159265359"}, {"d","314159265359"}, {"e", "-3"}};
+        std::map<std::string,std::string> localObk {
+          {"b","1"}, {"c","1.0"}, {"d", "100000000001"}, {"e", "-1"}};
+        localKeys.resize(0);
+        for (auto const &l: localObj) {
+          localKeys.push_back(l.first);
+        }
+        std::string const localObj_text {to_json_object(localObj)};
+        std::string const localObk_text {to_json_object(localObk)};
+        writeAndCheck(R"([[ { "a" : [)" + localObj_text + "," + localObk_text + R"(] } ]])");
+        writeAndCheck(R"([[ { "a" : [)" + localObj_text + "," + localObk_text + R"(] }, {"a" : [)" + localObj_text + "," + localObk_text + R"(] }]])");
+        for (int m = 0; m < 7; ++m) {
+          std::random_shuffle(localKeys.begin(), localKeys.end());
+          auto per1 = to_json_object(localKeys, 
+            [](std::string const &key){ return key; },
+            [&localObj](std::string const &key){ return localObj.at(key); });
+          auto per2 = to_json_object(localKeys, 
+            [](std::string const &key){ return key; },
+            [&localObk](std::string const &key){ return localObk.at(key); });
+          writeAndCheck(R"([[ { "a" : [)" + localObj_text + "," + localObk_text + R"(] }, {"a" : [)" + per1 + "," + per2 + R"(] }]])");
+          res =   write(R"([[ { "a" : [)" + localObj_text + "," + localObk_text + R"(] }, {"a" : [)" + per2 + "," + per1 + R"(] }]])");
+          ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+        }
 
-      // res = write(R"([[{"a":12},{"a":{"intersectionEmpty":""}}]])");
-      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
-      // res = write(R"([[{"a":12},{"a":{"intersectionEmpty":[]}}]])");
-      // ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
-      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":[]}}]])");
-      // ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
-      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":[false,"Pi"]}}]]))";
-      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
-      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":["Pi",false]}}]])");
-      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
-      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":[false,false,false]}}]])");
-      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
-      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"intersectionEmpty":["pi",3.1415926535]}}]])");
-      // ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
-      // res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
-      //                               {"a":{"instersectionEmpty":[]}}]])");
-      // ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+        res = write(R"([[{"a":12},{"a":{"intersectionEmpty":""}}]])");
+        ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+        res = write(R"([[{"a":12},{"a":{"intersectionEmpty":[]}}]])");
+        ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
+        res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[]}}]])");
+        ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
+        res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[false,"Pi"]}}]])");
+        ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+        res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":["Pi",false]}}]])");
+        ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+        res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[false,false,false]}}]])");
+        ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+        res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":["pi",3.1415926535]}}]])");
+        ASSERT_EQ(consensus::apply_ret_t::APPLIED, res.front());
+        res = write(R"([[{"a":[12,"Pi",3.14159265359,true,false]},
+                                      {"a":{"instersectionEmpty":[]}}]])");
+        ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
+      }
     }
 
 /*
@@ -502,18 +516,19 @@ TEST_F(StoreTestAPI, precondition) {
       writeAndCheck([[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]]);
       assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]);
     },
+*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test multiple transaction
-////////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////////
+// /// @brief test multiple transaction
+// ////////////////////////////////////////////////////////////////////////////////
 
-    testTransaction : function () {
-      writeAndCheck([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
-                     [{"a":{"b":{"c":[1,2,3]}}}]]);
-      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{}},{a:{b:{c:[1,2,3]},d:false}}]);
-    },
-
+// TEST_F(StoreTestAPI, transaction) {
+//       writeAndCheck(R"([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
+//                      [{"a":{"b":{"c":[1,2,3]}}}]])");
+//       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+//                   [{a:{}},{a:{b:{c:[1,2,3]},d:false}}]);
+//     }
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "new" operator
 ////////////////////////////////////////////////////////////////////////////////
