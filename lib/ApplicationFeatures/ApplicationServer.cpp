@@ -451,27 +451,23 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
   // first insert all features, even the inactive ones
   std::vector<std::reference_wrapper<ApplicationFeature>> features;
-  for (auto& it : _features) {
-    auto& us = *it.second;
-    auto insertPosition = features.end();
-
-    for (size_t i = features.size(); i > 0; --i) {
-      auto const& other = features[i - 1].get();
-      if (us.doesStartBefore(other.registration())) {
-        // we start before the other feature. so move ourselves up
-        insertPosition = features.begin() + (i - 1);
-      } else if (other.doesStartBefore(us.registration())) {
-        // the other feature starts before us. so stop moving up
-        break;
-      } else {
-        // no dependencies between the two features
-        if (us.name() < other.name()) {
-          insertPosition = features.begin() + (i - 1);
-        }
-      }
-    }
-    features.insert(insertPosition, us);
+  features.reserve(_features.size());
+  for (auto const& it : _features) {
+    features.emplace_back(*it.second);
   }
+
+  std::sort(features.begin(), features.end(), [](auto const& lhs, auto const& rhs) {
+    if (lhs.get().doesStartBefore(rhs.get().registration())) {
+      // lhs starts before rhs
+      return true;
+    } 
+    if (rhs.get().doesStartBefore(lhs.get().registration())) {
+      // rhs starts before lhs
+      return false;
+    }
+    // no dependencies between the two features
+    return lhs.get().name() < rhs.get().name();
+  });
 
   LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";
 
@@ -503,7 +499,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     }
   }
 
-  _orderedFeatures = features;
+  _orderedFeatures = std::move(features);
 }
 
 void ApplicationServer::daemonize() {
