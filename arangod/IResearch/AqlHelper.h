@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
@@ -31,9 +33,6 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 #include "Cluster/ClusterInfo.h"
-
-#ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
-#define ARANGOD_IRESEARCH__AQL_HELPER_H 1
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -523,9 +522,3 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
-
-#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

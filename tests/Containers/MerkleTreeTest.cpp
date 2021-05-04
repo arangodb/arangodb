@@ -395,13 +395,13 @@ TEST_F(InternalMerkleTreeTest, test_partition) {
        {55, 56}, {57, 58}, {59, 60}, {61, 62}}));
 
   // now let's make the distribution more uneven and see how things go
-  this->grow(511);
+  this->grow(511, "test");
 
   ASSERT_TRUE(::partitionAsExpected(*this, 3, {{0, 23}, {24, 47}, {48, 511}}));
   ASSERT_TRUE(::partitionAsExpected(*this, 4, {{0, 15}, {16, 31}, {32, 47}, {48, 511}}));
 
   // lump it all in one cell
-  this->grow(4095);
+  this->grow(4095, "test");
 
   ASSERT_TRUE(::partitionAsExpected(*this, 4, {{0, 63}}));
 }
