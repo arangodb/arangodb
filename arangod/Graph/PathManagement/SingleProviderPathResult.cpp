@@ -22,7 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./SingleProviderPathResult.h"
+#include "SingleProviderPathResult.h"
 #include "Basics/StaticStrings.h"
 
 #include "Graph/Providers/ClusterProvider.h"
