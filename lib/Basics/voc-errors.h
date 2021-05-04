@@ -705,8 +705,16 @@ constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER              
 
 /// 1421: ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED
 /// "follower rejected append entries request"
-/// Will be raised when a follower rejects an append entries request
+/// Will be raised when a follower of a replicated log rejects an append
+/// entries request
 constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED      = ErrorCode{1421};
+
+/// 1422: ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED
+/// "a resigned leader instance rejected a request"
+/// Will be raised when a leader instance of a replicated log rejects a request
+/// because it just resigned. This can also happen if the term changes (due to
+/// a configuration change), even if the leader stays the same.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED              = ErrorCode{1422};
 
 /// 1446: ERROR_CLUSTER_NOT_FOLLOWER
 /// "not a follower"

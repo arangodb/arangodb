@@ -189,6 +189,10 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
             if (auto self = parentLog.lock()) {
               auto preparedRequests = std::invoke([&] {
                 auto guarded = self->acquireMutex();
+                if (guarded->_didResign) {
+                  // Is throwing the right thing to do here?
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+                }
                 return guarded->handleAppendEntriesResponse(parentLog, follower, lastIndex,
                                                             currentCommitIndex, currentTerm,
                                                             std::move(res));
@@ -258,12 +262,16 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
 }
 
 auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
-  // TODO Do we need to do more than that, like make sure to refuse future
-  //      requests?
   return _guardedLeaderData.doUnderLock(
-      [&localFollower = *_localFollower](GuardedLeaderData& leaderData) {
+      [&localFollower = *_localFollower, &participantId = _participantId](GuardedLeaderData& leaderData) {
+        if (leaderData._didResign) {
+          LOG_TOPIC("5d3b8", ERR, Logger::REPLICATION2)
+              << "Leader " << participantId << " already resigned!";
+          TRI_ASSERT(false);
+        }
+        leaderData._didResign = true;
         for (auto& [idx, promise] : leaderData._waitForQueue) {
-          promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
+          promise.setException(basics::Exception(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
                                                  __FILE__, __LINE__));
         }
         return std::move(localFollower).resign();
@@ -273,6 +281,9 @@ auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
 auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
     -> std::optional<LogEntry> {
   return _guardedLeaderData.doUnderLock([&idx](auto& leaderData) -> std::optional<LogEntry> {
+    if (leaderData._didResign) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
     if (auto entry = leaderData._inMemoryLog.getEntryByIndex(idx);
         entry.has_value() && entry->logIndex() <= leaderData._commitIndex) {
       return entry;
@@ -333,6 +344,9 @@ auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::unique_ptr<
 
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
   return _guardedLeaderData.doUnderLock([term = _currentTerm](auto& leaderData) {
+    if (leaderData._didResign) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
     LeaderStatus status;
     status.local = leaderData.getLocalStatistics();
     status.term = term;
@@ -344,11 +358,15 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
   });
 }
 
+// NOLINTNEXTLINE(performance-unnecessary-value-param)
 auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
   // TODO this has to be lock free
   // TODO investigate what order between insert-increaseTerm is required?
   // Currently we use a mutex. Is this the only valid semantic?
   return _guardedLeaderData.doUnderLock([self = this, &payload](auto& leaderData) {
+    if (leaderData._didResign) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
     auto const index = leaderData._inMemoryLog.getNextIndex();
     leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(
         LogEntry{self->_currentTerm, index, std::move(payload)});
@@ -358,20 +376,23 @@ auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
 
 auto replicated_log::LogLeader::waitFor(LogIndex index)
     -> futures::Future<std::shared_ptr<QuorumData>> {
-  auto self = acquireMutex();
-  return self->waitFor(index);
-}
-
-auto replicated_log::LogLeader::GuardedLeaderData::waitFor(LogIndex index)
-    -> futures::Future<std::shared_ptr<QuorumData>> {
-  if (_commitIndex >= index) {
-    return futures::Future<std::shared_ptr<QuorumData>>{std::in_place, _lastQuorum};
-  }
-  auto it = _waitForQueue.emplace(index, WaitForPromise{});
-  auto& promise = it->second;
-  auto&& future = promise.getFuture();
-  TRI_ASSERT(future.valid());
-  return std::move(future);
+  return _guardedLeaderData.doUnderLock([index](auto& leaderData) {
+    if (leaderData._didResign) {
+      auto promise = WaitForPromise{};
+      promise.setException(basics::Exception(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                                             __FILE__, __LINE__));
+      return promise.getFuture();
+    }
+    if (leaderData._commitIndex >= index) {
+      return futures::Future<std::shared_ptr<QuorumData>>{std::in_place,
+                                                          leaderData._lastQuorum};
+    }
+    auto it = leaderData._waitForQueue.emplace(index, WaitForPromise{});
+    auto& promise = it->second;
+    auto&& future = promise.getFuture();
+    TRI_ASSERT(future.valid());
+    return std::move(future);
+  });
 }
 
 auto replicated_log::LogLeader::getParticipantId() const noexcept -> ParticipantId const& {
@@ -381,6 +402,9 @@ auto replicated_log::LogLeader::getParticipantId() const noexcept -> Participant
 auto replicated_log::LogLeader::runAsyncStep() -> void {
   auto preparedRequests =
       _guardedLeaderData.doUnderLock([self = weak_from_this()](auto& leaderData) {
+        if (leaderData._didResign) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+        }
         return leaderData.prepareAppendEntries(self);
       });
   executeAppendEntriesRequests(std::move(preparedRequests));
@@ -610,6 +634,9 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(replicated_log::
 auto replicated_log::LogLeader::getReplicatedLogSnapshot() const
     -> immer::flex_vector<LogEntry> {
   auto [log, commitIndex] = _guardedLeaderData.doUnderLock([](auto const& leaderData) {
+    if (leaderData._didResign) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
     return std::make_pair(leaderData._inMemoryLog._log, leaderData._commitIndex);
   });
   return log.take(commitIndex.value);

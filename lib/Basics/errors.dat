@@ -172,7 +172,8 @@ ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a s
 ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,1418,"replicated log %" PRIu64 " not found","Will be raised when a specific replicated log is not found"
 ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,1419,"not the log leader","Will be raised when a participant of a replicated log is ordered to do something only the leader can do"
 ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER,1420,"not a log follower","Will be raised when a participant of a replicated log is ordered to do something only a follower can do"
-ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,1421,"follower rejected append entries request","Will be raised when a follower rejects an append entries request"
+ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,1421,"follower rejected append entries request","Will be raised when a follower of a replicated log rejects an append entries request"
+ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,1422,"a resigned leader instance rejected a request","Will be raised when a leader instance of a replicated log rejects a request because it just resigned. This can also happen if the term changes (due to a configuration change), even if the leader stays the same."
 
 ################################################################################
 ## ArangoDB cluster errors

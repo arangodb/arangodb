@@ -278,9 +278,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     void updateCommitIndexLeader(std::weak_ptr<LogLeader> const& parentLog, LogIndex newIndex,
                                  std::shared_ptr<QuorumData> const& quorum);
 
-    [[nodiscard]] auto waitFor(LogIndex index)
-        -> futures::Future<std::shared_ptr<QuorumData>>;
-
     [[nodiscard]] auto getLogIterator(LogIndex fromIdx) const
         -> std::shared_ptr<LogIterator>;
 
@@ -292,6 +289,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     std::multimap<LogIndex, WaitForPromise> _waitForQueue{};
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
+    bool _didResign{false};
   };
 
   ParticipantId const _participantId;
