@@ -83,7 +83,9 @@ class StoreTestAPI : public ::testing::Test {
 
   void assertEqual(std::shared_ptr<velocypack::Builder> result, std::string const &expected_result) const {
     auto expected {VPackParser::fromJson(expected_result)};
-    ASSERT_TRUE(velocypack::NormalizedCompare::equals(result->slice(), expected->slice()));
+    if (!velocypack::NormalizedCompare::equals(result->slice(), expected->slice())) {
+      throw std::runtime_error(result->toJson() + " should have been equal to " + expected->toJson());
+    }
   }
 
 
@@ -525,120 +527,74 @@ TEST_F(StoreTestAPI, precondition) {
 // TEST_F(StoreTestAPI, transaction) {
 //       writeAndCheck(R"([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
 //                      [{"a":{"b":{"c":[1,2,3]}}}]])");
-//       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-//                   [{a:{}},{a:{b:{c:[1,2,3]},d:false}}]);
+//       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
+//                   R"([{"a":{}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
 //     }
-/*
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "new" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpSetNew : function () {
-      writeAndCheck([[{"a/z":{"op":"set","new":12}}]]);
-      assertEqual(readAndCheck([["/a/z"]]), [{"a":{"z":12}}]);
-      writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
-      assertEqual(readAndCheck([["/a/y"]]), [{"a":{"y":12}}]);
-      wait(1.1);
-      assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
-      writeAndCheck([[{"/a/y":{"op":"set","new":12, "ttl": 3}}]]);
-      assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
-      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
-      assertEqual(readAndCheck([["/foo/bar/baz"]]),
-                  [{"foo":{"bar":{"baz":12}}}]);
-      assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
-      assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
-      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":3}}]]);
-      wait(3.1);
-      assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
-      assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
-      assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
-      writeAndCheck([[{"a/u":{"op":"set","new":25, "ttl": 3}}]]);
-      assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":25}}]);
-      writeAndCheck([[{"a/u":{"op":"set","new":26}}]]);
-      assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
-      wait(3.0);  // key should still be there
-      assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
-      writeAndCheck([
-        [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}}, "ttl":30 }}]]);
+TEST_F(StoreTestAPI, opSetNew) {
+      writeAndCheck(R"([[{"a/z":{"op":"set","new":12}}]])");
+      assertEqual(readAndCheck(R"([["/a/z"]])"), R"([{"a":{"z":12}}])");
+      writeAndCheck(R"([[{"a/y":{"op":"set","new":12, "ttl": 1}}]])");
+      assertEqual(readAndCheck(R"([["/a/y"]])"), R"([{"a":{"y":12}}])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{1100});
+      assertEqual(readAndCheck(R"([["/a/y"]])"), R"([{"a":{}}])");
+      writeAndCheck(R"([[{"/a/y":{"op":"set","new":12, "ttl": 3}}]])");
+      assertEqual(readAndCheck(R"([["a/y"]])"), R"([{"a":{"y":12}}])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{3100});
+      assertEqual(readAndCheck(R"([["/a/y"]])"), R"([{"a":{}}])");
+      writeAndCheck(R"([[{"foo/bar":{"op":"set","new":{"baz":12}}}]])");
+      assertEqual(readAndCheck(R"([["/foo/bar/baz"]])"),
+                  R"([{"foo":{"bar":{"baz":12}}}])");
+      assertEqual(readAndCheck(R"([["/foo/bar"]])"), R"([{"foo":{"bar":{"baz":12}}}])");
+      assertEqual(readAndCheck(R"([["/foo"]])"), R"([{"foo":{"bar":{"baz":12}}}])");
+      writeAndCheck(R"([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":3}}]])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{3100});
+      assertEqual(readAndCheck(R"([["/foo"]])"), R"([{"foo":{}}])");
+      assertEqual(readAndCheck(R"([["/foo/bar"]])"), R"([{"foo":{}}])");
+      assertEqual(readAndCheck(R"([["/foo/bar/baz"]])"), R"([{"foo":{}}])");
+      writeAndCheck(R"([[{"a/u":{"op":"set","new":25, "ttl": 3}}]])");
+      assertEqual(readAndCheck(R"([["/a/u"]])"), R"([{"a":{"u":25}}])");
+      writeAndCheck(R"([[{"a/u":{"op":"set","new":26}}]])");
+      assertEqual(readAndCheck(R"([["/a/u"]])"), R"([{"a":{"u":26}}])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{3000});
+      assertEqual(readAndCheck(R"([["/a/u"]])"), R"([{"a":{"u":26}}])");
 
-      // temporary to make sure we remain with same leader.
-      var tmp = agencyLeader;
-      var leaderErr = false;
-
-      let res = request({url: agencyLeader + "/_api/agency/stores",
-                         method: "GET", followRedirect: true});
-      if (res.statusCode === 200) {
-        res.bodyParsed = JSON.parse(res.body);
-        if (res.bodyParsed.read_db[0].a !== undefined) {
-          assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
-        } else {
-          leaderErr = true; // not leader
-        }
-      } else {
-        assertTrue(false); // no point in continuing
-      }
-
-      // continue ttl test only, if we have not already lost
-      // touch with the leader
-      if (!leaderErr) {
-        writeAndCheck([
-          [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}} }}]]);
-
-        res = request({url: agencyLeader + "/_api/agency/stores",
-                       method: "GET", followRedirect: true});
-
-        // only, if agency is still led by same guy/girl
-        if (agencyLeader === tmp) {
-          if (res.statusCode === 200) {
-            res.bodyParsed = JSON.parse(res.body);
-            console.warn(res.bodyParsed.read_db[0]);
-            if (res.bodyParsed.read_db[0].a !== undefined) {
-              assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
-            } else {
-              leaderErr = true;
-            }
-          } else {
-            assertTrue(false); // no point in continuing
-          }
-        } else {
-          leaderErr = true;
-        }
-      }
-
-      if (leaderErr) {
-        require("console").warn("on the record: status code was " + res.statusCode + " couldn't test proper implementation of TTL at this point. not going to startle the chickens over this however and assume rare leader change within.");
-      }
-     },
+     }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "push" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpPush : function () {
-      writeAndCheck([[{"/a/b/c":{"op":"push","new":"max"}}]]);
-      assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
-      writeAndCheck([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]]);
-      assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:[2.71828182845904523536]}}]);
-      writeAndCheck([[{"/a/euler":{"op":"set","new":2.71828182845904523536}}]]);
-      assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:2.71828182845904523536}}]);
-      writeAndCheck([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]]);
-      assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:[2.71828182845904523536]}}]);
+TEST_F(StoreTestAPI, opPush) {
+      writeAndCheck(R"([[{"/a/b/c":[1,2,3]}]])");
+      writeAndCheck(R"([[{"/a/b/c":{"op":"push","new":"max"}}]])");
+      assertEqual(readAndCheck(R"([["/a/b/c"]])"), R"([{"a":{"b":{"c":[1,2,3,"max"]}}}])");
+      writeAndCheck(R"([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]])");
+      assertEqual(readAndCheck(R"([["/a/euler"]])"),
+                  R"([{"a":{"euler":[2.71828182845904523536]}}])");
+      writeAndCheck(R"([[{"/a/euler":{"op":"set","new":2.71828182845904523536}}]])");
+      assertEqual(readAndCheck(R"([["/a/euler"]])"),
+                  R"([{"a":{"euler":2.71828182845904523536}}])");
+      writeAndCheck(R"([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]])");
+      assertEqual(readAndCheck(R"([["/a/euler"]])"),
+                  R"([{"a":{"euler":[2.71828182845904523536]}}])");
 
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-      writeAndCheck([[{"/version/c":{"op":"push", "new":"world"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"push", "new":"hello"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+      writeAndCheck(R"([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
+      writeAndCheck(R"([[{"/version/c":{"op":"push", "new":"world"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["hello","world"]}}])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{3100});
+      assertEqual(readAndCheck(R"([["version"]])"), "[{}]");
+      writeAndCheck(R"([[{"/version/c":{"op":"push", "new":"hello"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
 
-    },
+    }
+
+/*
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "remove" operator

@@ -982,6 +982,7 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOpPush : function () {
+      writeAndCheck([[{"/a/b/c":[1,2,3]}]]);
       writeAndCheck([[{"/a/b/c":{"op":"push","new":"max"}}]]);
       assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
       writeAndCheck([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]]);
