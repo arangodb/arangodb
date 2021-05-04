@@ -1892,26 +1892,12 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogLeaderById(arangodb::replication2::LogId id) const
     -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> {
-  auto log = getReplicatedLogById(id)._participant;
-  if (auto leader =
-          std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogLeader>(log);
-      log != nullptr) {
-    return leader;
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
-  }
+  return getReplicatedLogById(id).getLeader();
 }
 
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
     -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower> {
-  auto log = getReplicatedLogById(id)._participant;
-  if (auto follower =
-          std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogFollower>(log);
-      log != nullptr) {
-    return follower;
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER);
-  }
+  return getReplicatedLogById(id).getFollower();
 }
 
 using namespace arangodb::replication2;

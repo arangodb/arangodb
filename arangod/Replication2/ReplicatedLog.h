@@ -176,6 +176,9 @@ struct LogParticipantI {
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
+
+  using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogIterator>>;
+  [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture;
 };
 
 class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogParticipantI {
@@ -190,6 +193,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   auto insert(LogPayload) -> LogIndex;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
+
+  [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
 
   [[nodiscard]] auto getReplicatedLogSnapshot() const -> immer::flex_vector<LogEntry>;
 
@@ -288,12 +293,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     [[nodiscard]] auto updateCommitIndexLeader(std::weak_ptr<LogLeader> const& parentLog, LogIndex newIndex,
                                  std::shared_ptr<QuorumData> const& quorum) -> ResolvedPromiseSet;
 
-    auto insert(LogPayload payload) -> LogIndex;
-
-    [[nodiscard]] auto waitFor(LogIndex index) -> WaitForFuture;
-
     [[nodiscard]] auto getLogIterator(LogIndex fromIdx) const
-        -> std::shared_ptr<LogIterator>;
+        -> std::unique_ptr<LogIterator>;
 
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 
@@ -400,6 +401,13 @@ struct alignas(16) ReplicatedLog {
   auto becomeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId)
       -> std::shared_ptr<LogFollower>;
 
+  auto getParticipant() const -> std::shared_ptr<LogParticipantI>;
+
+  auto getLeader() const -> std::shared_ptr<LogLeader>;
+  auto getFollower() const -> std::shared_ptr<LogFollower>;
+
+ private:
+  mutable std::mutex _mutex;
   std::shared_ptr<LogParticipantI> _participant;
 };
 

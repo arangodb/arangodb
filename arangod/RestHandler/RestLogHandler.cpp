@@ -215,7 +215,7 @@ RestStatus RestLogHandler::handleGetRequest() {
   if (suffixes.size() == 1) {
     replicated_log::ReplicatedLog& log = _vocbase.getReplicatedLogById(logId);
     VPackBuilder buffer;
-    std::visit([&](auto const& status) { status.toVelocyPack(buffer); }, log._participant->getStatus());
+    std::visit([&](auto const& status) { status.toVelocyPack(buffer); }, log.getParticipant()->getStatus());
     generateOk(rest::ResponseCode::OK, buffer.slice());
     return RestStatus::DONE;
   }
