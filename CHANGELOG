@@ -3,8 +3,13 @@ devel
 
 * Fixed issue BTS-354: Assertion related to getCollection. 
 
-* Fixed bug in error reporting when a database create did not work, which
-  lead to a busy loop reporting this error to the agency.
+* Fixed a use after free bug in the connection pool.
+
+* Fix DEVSUP-749: Fix potential deadlock when executing concurrent view/link
+  DDL operations and index DDL operations on the same collection.
+
+* Fixed bug in error reporting when a database create did not work, which led
+  to a busy loop reporting this error to the agency.
 
 * Fixed the error response if the HTTP version is not 1.0 or 1.1 and if
   the Content-Length is too large (> 1 GB).
