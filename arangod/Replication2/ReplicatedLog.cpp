@@ -67,9 +67,10 @@ struct ContainerIterator : LogIterator {
 
 class ReplicatedLogIterator : public LogIterator {
  public:
-  explicit ReplicatedLogIterator(immer::flex_vector<LogEntry>::const_iterator begin,
-                                 immer::flex_vector<LogEntry>::const_iterator end)
-      : _begin(std::move(begin)), _end(std::move(end)) {}
+  explicit ReplicatedLogIterator(immer::flex_vector<LogEntry> container)
+      : _container(std::move(container)),
+        _begin(_container.begin()),
+        _end(_container.end()) {}
 
   auto next() -> std::optional<LogEntry> override {
     if (_begin != _end) {
@@ -81,6 +82,7 @@ class ReplicatedLogIterator : public LogIterator {
   }
 
  private:
+  immer::flex_vector<LogEntry> _container;
   immer::flex_vector<LogEntry>::const_iterator _begin;
   immer::flex_vector<LogEntry>::const_iterator _end;
 };
@@ -256,8 +258,12 @@ auto replicated_log::LogLeader::construct(
   auto leaderDataGuard = leader->acquireMutex();
 
   leaderDataGuard->_follower = instantiateFollowers(followers, localFollower, lastIndex);
-
   leader->_localFollower = std::move(localFollower);
+
+  // TODO hack
+  if (writeConcern <= 1) {
+    leaderDataGuard->_commitIndex = leaderDataGuard->_inMemoryLog.getLastIndex();
+  }
 
   TRI_ASSERT(leaderDataGuard->_follower.size() >= writeConcern);
 
@@ -604,13 +610,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex fromIdx) const
-    -> std::shared_ptr<LogIterator> {
-  auto from = _inMemoryLog._log.begin();
+    -> std::unique_ptr<LogIterator> {
   auto const endIdx = _inMemoryLog.getNextIndex();
   TRI_ASSERT(fromIdx < endIdx);
-  std::advance(from, fromIdx.value);
-  auto to = _inMemoryLog._log.end();
-  return std::make_shared<ReplicatedLogIterator>(from, to);
+  auto log = _inMemoryLog._log.drop(fromIdx.value);
+  return std::make_unique<ReplicatedLogIterator>(std::move(log));
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
@@ -679,6 +683,15 @@ auto replicated_log::LogLeader::getReplicatedLogSnapshot() const
     return std::make_pair(leaderData._inMemoryLog._log, leaderData._commitIndex);
   });
   return log.take(commitIndex.value);
+}
+
+auto replicated_log::LogLeader::waitForIterator(LogIndex index)
+    -> replicated_log::LogParticipantI::WaitForIteratorFuture {
+  TRI_ASSERT(index != LogIndex{0});
+  return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
+    return _guardedLeaderData.doUnderLock(
+        [&](GuardedLeaderData& leaderData) { return leaderData.getLogIterator(LogIndex{index.value - 1}); });
+  });
 }
 
 QuorumData::QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum)
@@ -758,9 +771,18 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     ParticipantId id, LogTerm term,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
-  auto logCore = std::move(*_participant).resign();
-  auto leader = LogLeader::construct(id, std::move(logCore), term, follower, writeConcern);
-  _participant = std::static_pointer_cast<LogParticipantI>(leader);
+  auto leader = std::shared_ptr<LogLeader>{};
+  {
+    std::unique_lock guard(_mutex);
+    // TODO Resign: will resolve some promises because leader resigned
+    //      those promises will call ReplicatedLog::getLeader() -> DEADLOCK
+    auto logCore = std::move(*_participant).resign();
+    leader = LogLeader::construct(std::move(id), std::move(logCore), term, follower, writeConcern);
+    _participant = std::static_pointer_cast<LogParticipantI>(leader);
+  }
+
+  //resolve(promises);
+
   return leader;
 }
 
@@ -779,6 +801,34 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id,
                                                 std::move(leaderId), log);
   _participant = std::static_pointer_cast<LogParticipantI>(follower);
   return follower;
+}
+
+auto replicated_log::ReplicatedLog::getParticipant() const
+    -> std::shared_ptr<LogParticipantI> {
+  std::unique_lock guard(_mutex);
+  return _participant;
+}
+
+auto replicated_log::ReplicatedLog::getLeader() const -> std::shared_ptr<LogLeader> {
+    auto log = getParticipant();
+    if (auto leader =
+                std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogLeader>(log);
+            log != nullptr) {
+        return leader;
+    } else {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
+    }
+}
+
+auto replicated_log::ReplicatedLog::getFollower() const -> std::shared_ptr<LogFollower> {
+    auto log = getParticipant();
+    if (auto leader =
+                std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogFollower>(log);
+            log != nullptr) {
+        return leader;
+    } else {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
+    }
 }
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(replicated_log::LogLeader& self,
@@ -893,4 +943,10 @@ void LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder
   builder.add("spearHead", VPackValue(spearHead.value));
   builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
   builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
+}
+
+auto replicated_log::LogParticipantI::waitForIterator(LogIndex index)
+    -> replicated_log::LogParticipantI::WaitForIteratorFuture {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
