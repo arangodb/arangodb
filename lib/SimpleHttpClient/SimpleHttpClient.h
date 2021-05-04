@@ -200,6 +200,8 @@ class SimpleHttpClient {
  public:
   void setInterrupted(bool value);
 
+  request_state state() const { return _state; }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates the connection used by the client
   /// this may be called from other objects that are responsible for managing
