@@ -555,7 +555,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/LogLeader.cpp
   Replication2/ReplicatedLog/LogParticipantI.cpp
   Replication2/ReplicatedLog/ReplicatedLog.cpp
-  Replication2/ReplicatedLog/types.h
+  Replication2/ReplicatedLog/rtypes.h
   RestHandler/RestLogHandler.cpp
   )
 
