@@ -19,40 +19,45 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include <velocypack/HashedStringRef.h>
+#include "Containers/HashSet.h"
+
 #include <numeric>
 
 namespace arangodb {
+
+namespace velocypack {
+class Builder;
+}  // namespace velocypack
+
 namespace graph {
 
-template <class StepDetails>
-class BaseStep {
+template <class ProviderType, class Step>
+class SingleProviderPathResult {
+  using VertexRef = arangodb::velocypack::HashedStringRef;
+
  public:
-  BaseStep() : _previous{std::numeric_limits<size_t>::max()}, _depth{0} {}
-
-  BaseStep(size_t prev) : _previous{prev}, _depth{0} {}
-  BaseStep(size_t prev, size_t depth) : _previous{prev}, _depth{depth} {}
-
-  size_t getPrevious() const { return _previous; }
-
-  bool isFirst() const {
-    return _previous == std::numeric_limits<size_t>::max();
-  }
-
-  bool isLooseEnd() const {
-    return static_cast<StepDetails*>(this)->isLooseEnd();
-  }
-
-  size_t getDepth() const {
-    return _depth;
-  }
+  SingleProviderPathResult(ProviderType& provider);
+  auto clear() -> void;
+  auto appendVertex(typename Step::Vertex v) -> void;
+  auto prependVertex(typename Step::Vertex v) -> void;
+  auto appendEdge(typename Step::Edge e) -> void;
+  auto prependEdge(typename Step::Edge e) -> void;
+  auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  
+  auto isEmpty() const -> bool;
 
  private:
-  size_t const _previous;
-  size_t const _depth;
+  std::vector<typename Step::Vertex> _vertices;
+  std::vector<typename Step::Edge> _edges;
+  
+  // Provider for the path
+  ProviderType& _provider;
 };
 }  // namespace graph
 }  // namespace arangodb
