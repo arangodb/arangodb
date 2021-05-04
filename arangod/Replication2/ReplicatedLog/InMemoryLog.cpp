@@ -1,0 +1,2 @@
+
+#include "InMemoryLog.h"
