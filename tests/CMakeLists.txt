@@ -230,7 +230,8 @@ set(ARANGODB_TESTS_SOURCES
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/PathValidatorTest.cpp
-  Graph/QueueTest.cpp
+  Graph/FifoQueueTest.cpp
+  Graph/LifoQueueTest.cpp
   Graph/SingleServerProviderTest.cpp
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
