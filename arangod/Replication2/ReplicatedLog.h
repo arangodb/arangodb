@@ -169,22 +169,27 @@ struct InMemoryLog {
 struct LogParticipantI {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   virtual ~LogParticipantI() = default;
-  virtual auto resign() && -> std::unique_ptr<LogCore> = 0;
-  // TODO waitFor() ?
+  [[nodiscard]] virtual auto resign() && -> std::unique_ptr<LogCore> = 0;
+
+  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
+  using WaitForFuture = futures::Future<std::shared_ptr<QuorumData>>;
+  using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
+
+  [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
 };
 
 class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogParticipantI {
  public:
   ~LogLeader() override = default;
 
-  static auto construct(ParticipantId const& id,
+  static auto construct(ParticipantId id,
                         std::unique_ptr<LogCore> logCore, LogTerm term,
                         std::vector<std::shared_ptr<AbstractFollower>> const& followers,
                         std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload) -> LogIndex;
 
-  auto waitFor(LogIndex) -> arangodb::futures::Future<std::shared_ptr<QuorumData>>;
+  [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 
   [[nodiscard]] auto getReplicatedLogSnapshot() const -> immer::flex_vector<LogEntry>;
 
@@ -204,7 +209,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
             InMemoryLog inMemoryLog);
 
  private:
-  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
   struct GuardedLeaderData;
   using Guard = MutexGuard<GuardedLeaderData, std::unique_lock<std::mutex>>;
   using ConstGuard = MutexGuard<GuardedLeaderData const, std::unique_lock<std::mutex>>;
@@ -251,6 +255,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     LogTerm _currentTerm;
   };
 
+  struct ResolvedPromiseSet {
+    WaitForQueue _set;
+    std::shared_ptr<QuorumData> _quorum;
+  };
+
   struct alignas(128) GuardedLeaderData {
     ~GuardedLeaderData() = default;
     GuardedLeaderData(LogLeader const& self, InMemoryLog inMemoryLog);
@@ -271,12 +280,17 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
         std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
         LogIndex lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
         futures::Try<AppendEntriesResult>&& res)
-        -> std::vector<std::optional<PreparedAppendEntryRequest>>;
+        -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet>;
 
-    void checkCommitIndex(std::weak_ptr<LogLeader> const& parentLog);
+    [[nodiscard]] auto checkCommitIndex(std::weak_ptr<LogLeader> const& parentLog)
+        -> ResolvedPromiseSet;
 
-    void updateCommitIndexLeader(std::weak_ptr<LogLeader> const& parentLog, LogIndex newIndex,
-                                 std::shared_ptr<QuorumData> const& quorum);
+    [[nodiscard]] auto updateCommitIndexLeader(std::weak_ptr<LogLeader> const& parentLog, LogIndex newIndex,
+                                 std::shared_ptr<QuorumData> const& quorum) -> ResolvedPromiseSet;
+
+    auto insert(LogPayload payload) -> LogIndex;
+
+    [[nodiscard]] auto waitFor(LogIndex index) -> WaitForFuture;
 
     [[nodiscard]] auto getLogIterator(LogIndex fromIdx) const
         -> std::shared_ptr<LogIterator>;
@@ -286,7 +300,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     LogLeader const& _self;
     InMemoryLog _inMemoryLog{};
     std::vector<FollowerInfo> _follower{};
-    std::multimap<LogIndex, WaitForPromise> _waitForQueue{};
+    WaitForQueue _waitForQueue{};
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
     bool _didResign{false};
@@ -324,7 +338,7 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   auto resign() && -> std::unique_ptr<LogCore> override;
 
-  // TODO does the follower provide a waitFor?
+  [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
 
@@ -340,9 +354,12 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
 
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 
+    [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture;
+
     LogFollower const& _self;
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
+    std::multimap<LogIndex, WaitForPromise> _waitForQueue{};
     LogIndex _commitIndex{0};
   };
   ParticipantId const _participantId;
@@ -362,6 +379,7 @@ struct LogUnconfiguredParticipant
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   auto resign() && -> std::unique_ptr<LogCore> override;
+  [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   std::unique_ptr<LogCore> _logCore;
 };
 
@@ -376,10 +394,10 @@ struct alignas(16) ReplicatedLog {
   explicit ReplicatedLog(std::unique_ptr<LogCore> core)
       : _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core))) {}
 
-  auto becomeLeader(ParticipantId const& id, LogTerm term,
+  auto becomeLeader(ParticipantId id, LogTerm term,
                     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                     std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
-  auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
+  auto becomeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId)
       -> std::shared_ptr<LogFollower>;
 
   std::shared_ptr<LogParticipantI> _participant;
