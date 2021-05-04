@@ -546,7 +546,7 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   )
 
 set(LIB_ARANGO_REPLICATION2_SOURCES
-  Replication2/Common.cpp
+  Replication2/ReplicatedLog/Common.cpp
   Replication2/LogManager.cpp
   Replication2/ReplicatedLog.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp

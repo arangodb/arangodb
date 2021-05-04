@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Replication2/ReplicatedLog/Common.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "Replication2/Common.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"

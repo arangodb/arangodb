@@ -73,4 +73,3 @@ auto LogTerm::operator<=(LogTerm other) const -> bool {
 auto LogPayload::operator==(LogPayload const& other) const -> bool {
   return dummy == other.dummy;
 }
-

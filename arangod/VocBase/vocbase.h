@@ -39,11 +39,11 @@
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
+#include "Replication2/ReplicatedLog/Common.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
-#include "Replication2/Common.h"
 
 #include <velocypack/Slice.h>
 

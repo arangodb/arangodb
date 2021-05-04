@@ -53,7 +53,8 @@
 
 #include "Replication2/PersistedLog.h"
 
-#include "Common.h"
+#include "ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/Common.h"
 
 namespace arangodb::replication2 {
 
@@ -156,14 +157,6 @@ struct alignas(64) LogCore {
   auto operator=(LogCore const&) -> LogCore& = delete;
   auto operator=(LogCore&&) -> LogCore& = delete;
   std::shared_ptr<PersistedLog> const _persistedLog;
-};
-
-struct InMemoryLog {
-  [[nodiscard]] auto getLastIndex() const -> LogIndex;
-  [[nodiscard]] auto getNextIndex() const -> LogIndex;
-  [[nodiscard]] auto getEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>;
-
-  immer::flex_vector<LogEntry> _log{};
 };
 
 struct LogParticipantI {

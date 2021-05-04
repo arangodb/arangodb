@@ -22,7 +22,7 @@
 #ifndef ARANGODB3_PERSISTEDLOG_H
 #define ARANGODB3_PERSISTEDLOG_H
 
-#include "Common.h"
+#include "Replication2/ReplicatedLog/Common.h"
 
 #include "Basics/Result.h"
 
