@@ -1954,11 +1954,18 @@ auto TRI_vocbase_t::createReplicatedLog(LogId id)
 
 auto TRI_vocbase_t::dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result {
   auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   if (auto iter = manager->_logs.find(id); iter != manager->_logs.end()) {
-    return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
-  } else {
+    auto core = iter->second.drop();
+    auto res = engine.dropReplicatedLog(*this, core->_persistedLog);
+    if (res.fail()) {
+      return res;
+    }
+    // Now we can drop the persisted log
     manager->_logs.erase(iter);
+  } else {
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   return Result();

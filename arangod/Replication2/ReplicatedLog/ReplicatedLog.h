@@ -84,6 +84,8 @@ struct alignas(64) ReplicatedLog {
   auto getLeader() const -> std::shared_ptr<LogLeader>;
   auto getFollower() const -> std::shared_ptr<LogFollower>;
 
+  auto drop() -> std::unique_ptr<LogCore>;
+
  private:
   mutable std::mutex _mutex;
   std::shared_ptr<LogParticipantI> _participant;
