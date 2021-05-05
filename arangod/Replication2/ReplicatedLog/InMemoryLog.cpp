@@ -21,3 +21,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InMemoryLog.h"
+
+using namespace arangodb;
+using namespace arangodb::replication2;
+
+auto replicated_log::InMemoryLog::getLastIndex() const -> LogIndex {
+  return LogIndex{_log.size()};
+}
+
+auto replicated_log::InMemoryLog::getNextIndex() const -> LogIndex {
+  return LogIndex{_log.size() + 1};
+}
+
+auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const
+    -> std::optional<LogEntry> {
+  if (_log.size() < idx.value || idx.value == 0) {
+    return std::nullopt;
+  }
+
+  auto const& e = _log.at(idx.value - 1);
+  TRI_ASSERT(e.logIndex() == idx);
+  return e;
+}

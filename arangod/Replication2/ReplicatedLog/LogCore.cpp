@@ -21,3 +21,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/ReplicatedLog/LogCore.h"
+
+#include <Basics/Exceptions.h>
+#include <Basics/debugging.h>
+#include <Basics/system-compiler.h>
+#include <Basics/voc-errors.h>
+
+using namespace arangodb;
+using namespace arangodb::replication2;
+
+replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
+    : _persistedLog(std::move(persistedLog)) {
+  if (ADB_UNLIKELY(_persistedLog == nullptr)) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "When instantiating ReplicatedLog: "
+                                   "persistedLog must not be a nullptr");
+  }
+}

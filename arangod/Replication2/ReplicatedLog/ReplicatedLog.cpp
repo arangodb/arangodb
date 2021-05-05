@@ -21,3 +21,72 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+
+#include <Basics/Exceptions.h>
+
+using namespace arangodb;
+using namespace arangodb::replication2;
+
+auto replicated_log::ReplicatedLog::becomeLeader(
+    ParticipantId id, LogTerm term,
+    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+    std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+  auto leader = std::shared_ptr<LogLeader>{};
+  {
+    std::unique_lock guard(_mutex);
+    // TODO Resign: will resolve some promises because leader resigned
+    //      those promises will call ReplicatedLog::getLeader() -> DEADLOCK
+    auto logCore = std::move(*_participant).resign();
+    leader = LogLeader::construct(std::move(id), std::move(logCore), term,
+                                  follower, writeConcern);
+    _participant = std::static_pointer_cast<LogParticipantI>(leader);
+  }
+
+  // resolve(promises);
+
+  return leader;
+}
+
+auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm term,
+                                                   ParticipantId leaderId)
+    -> std::shared_ptr<LogFollower> {
+  auto logCore = std::move(*_participant).resign();
+  // TODO this is a cheap trick for now. Later we should be aware of the fact
+  //      that the log might not start at 1.
+  auto iter = logCore->_persistedLog->read(LogIndex{0});
+  auto log = InMemoryLog{};
+  while (auto entry = iter->next()) {
+    log._log = log._log.push_back(std::move(entry).value());
+  }
+  auto follower = std::make_shared<LogFollower>(id, std::move(logCore), term,
+                                                std::move(leaderId), log);
+  _participant = std::static_pointer_cast<LogParticipantI>(follower);
+  return follower;
+}
+
+auto replicated_log::ReplicatedLog::getParticipant() const
+    -> std::shared_ptr<LogParticipantI> {
+  std::unique_lock guard(_mutex);
+  return _participant;
+}
+
+auto replicated_log::ReplicatedLog::getLeader() const -> std::shared_ptr<LogLeader> {
+  auto log = getParticipant();
+  if (auto leader =
+          std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogLeader>(log);
+      log != nullptr) {
+    return leader;
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
+  }
+}
+
+auto replicated_log::ReplicatedLog::getFollower() const -> std::shared_ptr<LogFollower> {
+  auto log = getParticipant();
+  if (auto leader = std::dynamic_pointer_cast<replicated_log::LogFollower>(log);
+      log != nullptr) {
+    return leader;
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
+  }
+}

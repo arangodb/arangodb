@@ -124,6 +124,24 @@ struct LogIterator {
   virtual auto next() -> std::optional<LogEntry> = 0;
 };
 
+template <typename I>
+struct ContainerIterator : LogIterator {
+  static_assert(std::is_same_v<typename I::value_type, LogEntry>);
+
+  ContainerIterator(I begin, I end)
+      : _current(std::move(begin)), _end(std::move(end)) {}
+
+  auto next() -> std::optional<LogEntry> override {
+    if (_current == _end) {
+      return std::nullopt;
+    }
+    return *(_current++);
+  }
+
+  I _current;
+  I _end;
+};
+
 }  // namespace arangodb::replication2
 
 template<>

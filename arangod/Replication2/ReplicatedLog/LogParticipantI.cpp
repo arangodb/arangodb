@@ -21,3 +21,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
+
+#include <Basics/Exceptions.h>
+
+using namespace arangodb;
+using namespace arangodb::replication2;
+
+auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus {
+  return LogStatus{UnconfiguredStatus{}};
+}
+
+replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore)
+    : _logCore(std::move(logCore)) {}
+
+auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::unique_ptr<LogCore> {
+  return std::move(_logCore);
+}
+
+auto replicated_log::LogUnconfiguredParticipant::waitFor(LogIndex)
+    -> replicated_log::LogParticipantI::WaitForFuture {
+  // TODO how to resolve a future with an exception?
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto replicated_log::LogParticipantI::waitForIterator(LogIndex index)
+    -> replicated_log::LogParticipantI::WaitForIteratorFuture {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
