@@ -163,6 +163,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                   OperationOptions const& options) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice doc,
                                   OperationOptions const& options) const;
