@@ -215,7 +215,7 @@ bool CreateCollection::first() {
 void CreateCollection::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
     // calling unlockShard here is safe, because nothing before it
-    // can go throw. if some code is added before the unlock that
+    // can throw. if some code is added before the unlock that
     // can throw, it must be made sure that the unlock is always called
     _feature.unlockShard(getShard());
     if (!_doNotIncrement) {
