@@ -21,8 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogManager.h"
+
 #include "Replication2/ReplicatedLog/types.h"
 
+#include <Basics/debugging.h>
+#include <Futures/Promise.h>
+
+#include <algorithm>
 #include <utility>
 
 using namespace arangodb::replication2;

@@ -23,19 +23,19 @@
 #ifndef ARANGODB3_REPLICATION_COMMON_H
 #define ARANGODB3_REPLICATION_COMMON_H
 
-#include <velocypack/Slice.h>
+#include <Basics/Identifier.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <variant>
-
-#include <Basics/Identifier.h>
 
 namespace arangodb::velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace arangodb::velocypack
 
 namespace arangodb::replication2 {
 

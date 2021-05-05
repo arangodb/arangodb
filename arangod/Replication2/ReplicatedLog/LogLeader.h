@@ -24,15 +24,17 @@
 
 #include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 #include <Basics/Guarded.h>
-#include <Futures/Future.h>
 
 #include <cstddef>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #if (_MSC_VER >= 1)
@@ -47,6 +49,15 @@
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
+
+namespace arangodb::futures {
+template <typename T>
+class Try;
+}
+
+namespace arangodb::replication2::replicated_log {
+struct LogCore;
+}
 
 namespace arangodb::replication2::replicated_log {
 

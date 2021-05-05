@@ -22,9 +22,21 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogFollower.h"
-#include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
+
+#include <iosfwd>
+#include <memory>
+#include <mutex>
+#include <utility>
+#include <vector>
+
+namespace arangodb::replication2::replicated_log {
+class LogFollower;
+class LogLeader;
+struct AbstractFollower;
+struct LogCore;
+}  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_log {
 

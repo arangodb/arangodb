@@ -20,9 +20,23 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "ReplicatedLog.h"
+
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/LogFollower.h"
+#include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 
 #include <Basics/Exceptions.h>
+#include <Basics/voc-errors.h>
+
+#include <optional>
+#include <type_traits>
+
+namespace arangodb::replication2::replicated_log {
+struct AbstractFollower;
+}
 
 using namespace arangodb;
 using namespace arangodb::replication2;

@@ -24,11 +24,12 @@
 
 #include "Replication2/ReplicatedLog/Common.h"
 
+#include <Basics/ErrorCode.h>
 #include <Basics/voc-errors.h>
-#include <Futures/Future.h>
-#include <velocypack/Slice.h>
 
+#include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #if (_MSC_VER >= 1)
@@ -44,9 +45,15 @@
 #pragma warning(pop)
 #endif
 
+namespace arangodb::futures {
+template <typename T>
+class Future;
+}
+
 namespace arangodb::velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace arangodb::velocypack
 
 namespace arangodb::replication2::replicated_log {
 

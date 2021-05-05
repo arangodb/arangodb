@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
+#include "LogParticipantI.h"
 
 #include <Basics/Exceptions.h>
 

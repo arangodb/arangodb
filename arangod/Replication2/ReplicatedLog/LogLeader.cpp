@@ -20,11 +20,29 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication2/ReplicatedLog/LogLeader.h"
+#include "LogLeader.h"
+
+#include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 
 #include <Basics/Exceptions.h>
+#include <Basics/Guarded.h>
 #include <Basics/StringUtils.h>
 #include <Basics/application-exit.h>
+#include <Basics/debugging.h>
+#include <Basics/system-compiler.h>
+#include <Basics/voc-errors.h>
+#include <Futures/Future.h>
+#include <Futures/Try.h>
+#include <Logger/LogMacros.h>
+#include <Logger/Logger.h>
+#include <Logger/LoggerStream.h>
+
+#include <chrono>
+#include <cstdlib>
+#include <functional>
+#include <thread>
+#include <type_traits>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -34,6 +52,7 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
+#include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
@@ -450,7 +469,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     using namespace std::chrono_literals;
     // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
     // until at most 100us * 2 ** 17 == 13.11s.
-    auto const sleepFor = 100us * (1 << std::min(exp, std::size_t{17}));
+    auto const sleepFor = 100us * (1u << std::min(exp, std::size_t{17}));
 
     std::this_thread::sleep_for(sleepFor);
 

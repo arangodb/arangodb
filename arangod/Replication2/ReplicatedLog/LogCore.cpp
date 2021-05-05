@@ -20,12 +20,18 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication2/ReplicatedLog/LogCore.h"
+#include "LogCore.h"
+
+#include "Replication2/ReplicatedLog/Common.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/debugging.h>
 #include <Basics/system-compiler.h>
 #include <Basics/voc-errors.h>
+
+#include <utility>
+
+namespace arangodb::replication2 { struct PersistedLog; }
 
 using namespace arangodb;
 using namespace arangodb::replication2;

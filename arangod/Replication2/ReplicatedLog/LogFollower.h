@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <Basics/Guarded.h>
+#include <Futures/Future.h>
 
 #include <map>
 #include <memory>

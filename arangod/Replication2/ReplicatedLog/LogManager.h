@@ -22,23 +22,16 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-#include <mutex>
+#include <Futures/Promise.h>
 
-#if (_MSC_VER >= 1)
-// suppress warnings:
-#pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
-#pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-#pragma warning(disable : 4334)
-#endif
-#include <immer/flex_vector.hpp>
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
+#include <function2.hpp>
+
+#include <memory>
+#include <mutex>
+#include <utility>
+#include <vector>
 
 namespace arangodb::replication2 {
 

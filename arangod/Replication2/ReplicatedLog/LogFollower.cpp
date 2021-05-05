@@ -20,9 +20,20 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication2/ReplicatedLog/LogFollower.h"
+#include "LogFollower.h"
+
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 
 #include <Basics/Exceptions.h>
+#include <Basics/Result.h>
+#include <Basics/debugging.h>
+#include <Basics/voc-errors.h>
+#include <Futures/Promise.h>
+
+#include <algorithm>
+#include <cstdlib>
+#include <string>
+#include <utility>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:

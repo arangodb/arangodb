@@ -23,9 +23,15 @@
 #include "types.h"
 
 #include <Basics/Exceptions.h>
+#include <Basics/debugging.h>
+#include <Basics/voc-errors.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <cstddef>
+#include <functional>
+#include <utility>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:

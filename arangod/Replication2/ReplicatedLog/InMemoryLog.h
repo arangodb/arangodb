@@ -23,7 +23,6 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/Common.h"
-#include "Replication2/ReplicatedLog/types.h"
 
 #include <optional>
 

@@ -24,7 +24,9 @@
 
 #include <memory>
 
-#include "Replication2/ReplicatedLog/PersistedLog.h"
+namespace arangodb::replication2 {
+struct PersistedLog;
+}
 
 namespace arangodb::replication2::replicated_log {
 

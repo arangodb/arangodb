@@ -22,12 +22,10 @@
 
 #include "Common.h"
 
-#include <Basics/debugging.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
+#include <velocypack/Slice.h>
 
-#include <velocypack/velocypack-aliases.h>
 #include <utility>
 
 using namespace arangodb;
