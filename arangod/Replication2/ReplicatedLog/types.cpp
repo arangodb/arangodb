@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "rtypes.h"
+#include "types.h"
 
 #include <Basics/Exceptions.h>
 #include <velocypack/Builder.h>

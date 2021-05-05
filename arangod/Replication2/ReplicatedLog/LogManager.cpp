@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogManager.h"
-#include "Replication2/ReplicatedLog/rtypes.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 #include <utility>
 

@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/rtypes.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 #include <mutex>
 

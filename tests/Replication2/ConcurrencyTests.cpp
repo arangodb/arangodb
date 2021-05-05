@@ -2,8 +2,8 @@
 // Created by lars on 30/04/2021.
 //
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
+#include "Replication2/ReplicatedLog/types.h"
 #include "TestHelper.h"
-#include "Replication2/ReplicatedLog/rtypes.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

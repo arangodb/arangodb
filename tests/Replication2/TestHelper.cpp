@@ -22,10 +22,10 @@
 
 #include "TestHelper.h"
 
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/rtypes.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 #include <utility>
 
