@@ -602,18 +602,9 @@ function ClusterCollectionSuite () {
       }
       let setFailAt;
       let removeFailAt;
-      if (isServer) {
-        if (internal.debugCanUseFailAt()) {
-          setFailAt = internal.debugSetFailAt;
-          removeFailAt = internal.debugRemoveFailAt;
-        }
-      } else {
-        const arango = internal.arango;
-        const coordinatorEndpoint = arango.getEndpoint();
-        if (debugCanUseFailAt(coordinatorEndpoint)) {
-          setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
-          removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
-        }
+      if (internal.debugCanUseFailAt()) {
+        setFailAt = internal.debugSetFailAt;
+        removeFailAt = internal.debugRemoveFailAt;
       }
       if (!setFailAt) {
         console.info('Failure tests disabled, skipping...');
@@ -648,6 +639,46 @@ function ClusterCollectionSuite () {
           .arango.Plan.Collections[db._name()];
         assertEqual([], Object.values(collections).filter(col => col.name === colName),
           'Collection should have been deleted');
+      } finally {
+        removeFailAt(failurePoint);
+      }
+    },
+
+    testCreateFailureWhenRemovingIsBuilding : function () {
+      if (!isServer) {
+        console.info('Skipping client test');
+        return;
+      }
+      let setFailAt;
+      let removeFailAt;
+      if (internal.debugCanUseFailAt()) {
+        setFailAt = internal.debugSetFailAt;
+        removeFailAt = internal.debugRemoveFailAt;
+      }
+      if (!setFailAt) {
+        console.info('Failure tests disabled, skipping...');
+        return;
+      }
+
+      const failurePoint = 'ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding';
+      try {
+        setFailAt(failurePoint);
+        const colName = "UnitTestClusterShouldNotBeCreated1";
+        let threw = false;
+        try {
+          db._create(colName);
+        } catch (e) {
+          threw = true;
+          assertTrue(e instanceof ArangoError);
+          assertEqual(503, e.errorNum);
+        } finally {
+          // we need to wait for the collecion to show up before the drop can work.
+          while (!db._collection(colName)) {
+            require("internal").sleep(0.1);
+          }
+          db._drop(colName);
+        }
+        assertTrue(threw);
       } finally {
         removeFailAt(failurePoint);
       }

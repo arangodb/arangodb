@@ -1,8 +1,11 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* Improve exception safety for maintenance thread and shard unlock
-  operations.
+* Improve exception safety for maintenance thread and shard unlock operations.
+
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own rebootId
+  increment has triggered plan entry to be removed.
 
 * Fixed issue BTS-354: Assertion related to getCollection. 
 
