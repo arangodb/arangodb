@@ -1,5 +1,9 @@
 devel
 -----
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own
+  rebootId increment has triggered plan entry to be removed.
+
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
 
