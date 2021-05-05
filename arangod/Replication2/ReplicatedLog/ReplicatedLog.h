@@ -44,15 +44,19 @@ namespace arangodb::replication2::replicated_log {
  * @brief Container for a replicated log. These are managed by the responsible
  * vocbase. Exactly one instance exists for each replicated log this server is a
  * participant of.
+ *
  * It holds a single LogParticipantI; starting with a LogUnconfiguredParticipant,
  * this will usually be either a LogLeader or a LogFollower.
+ *
  * The active participant is also responsible for the singular LogCore of this
  * log, providing access to the physical log. The fact that only one LogCore
  * exists, and only one participant has access to it, asserts that only the
  * active instance can write to (or read from) the physical log.
+ *
  * ReplicatedLog is responsible for instantiating Participants, and moving the
  * LogCore from the previous active participant to a new one. This happens in
  * becomeLeader and becomeFollower.
+ *
  * A mutex must be used to make sure that moving the LogCore from the old to
  * the new participant, and switching the participant pointer, happen
  * atomically.
