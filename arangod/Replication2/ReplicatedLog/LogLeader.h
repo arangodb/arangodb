@@ -55,7 +55,7 @@ namespace arangodb::replication2::replicated_log {
  */
 class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogParticipantI {
  public:
-  ~LogLeader() override = default;
+  ~LogLeader() override;
 
   static auto construct(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
                         std::vector<std::shared_ptr<AbstractFollower>> const& followers,
@@ -194,6 +194,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   auto acquireMutex() const -> ConstGuard;
 
   static void executeAppendEntriesRequests(std::vector<std::optional<PreparedAppendEntryRequest>> requests);
+
+  auto tryHardToClearQueue() noexcept -> void;
 };
 
 }  // namespace arangodb::replication2::replicated_log

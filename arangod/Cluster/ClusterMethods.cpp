@@ -1405,7 +1405,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
 /// If one of them fails, this error is reported.
 /// There is NO guarantee for the stored documents of all other shards, they may
 /// be stored or not. All answers of these shards are dropped.
-/// If we return with NONE it is guaranteed that all shards reported success
+/// If we return with NO_ERROR it is guaranteed that all shards reported success
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 

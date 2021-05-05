@@ -24,6 +24,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
+#include <Basics/application-exit.h>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -63,7 +64,7 @@ class ReplicatedLogIterator : public LogIterator {
   immer::flex_vector<LogEntry>::const_iterator _begin;
   immer::flex_vector<LogEntry>::const_iterator _end;
 };
-}
+}  // namespace
 
 replicated_log::LogLeader::LogLeader(ParticipantId id, LogTerm const term,
                                      std::size_t const writeConcern, InMemoryLog inMemoryLog)
@@ -71,6 +72,51 @@ replicated_log::LogLeader::LogLeader(ParticipantId id, LogTerm const term,
       _currentTerm(term),
       _writeConcern(writeConcern),
       _guardedLeaderData(*this, std::move(inMemoryLog)) {}
+
+replicated_log::LogLeader::~LogLeader() { tryHardToClearQueue(); }
+
+auto replicated_log::LogLeader::tryHardToClearQueue() noexcept -> void {
+  bool finished = false;
+  auto consecutiveTriesWithoutProgress = 0;
+  do {
+    ++consecutiveTriesWithoutProgress;
+    try {
+      auto leaderDataGuard = acquireMutex();
+      auto& queue = leaderDataGuard->_waitForQueue;
+      if (!queue.empty()) {
+        LOG_TOPIC("8b8a2", ERR, Logger::REPLICATION2)
+            << "Leader destroyed, but queue isn't empty!";
+        for (auto it = queue.begin(); it != queue.end();) {
+          if (!it->second.isFulfilled()) {
+            it->second.setException(basics::Exception(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                                                      __FILE__, __LINE__));
+          } else {
+            LOG_TOPIC("002b2", ERR, Logger::REPLICATION2)
+                << "Fulfilled promise in replication queue!";
+          }
+          it = queue.erase(it);
+          consecutiveTriesWithoutProgress = 0;
+        }
+      }
+      finished = true;
+    } catch (basics::Exception const& exception) {
+      LOG_TOPIC("eadb8", ERR, Logger::REPLICATION2)
+          << "Caught exception while destroying a log leader: " << exception.message();
+    } catch (std::exception const& exception) {
+      LOG_TOPIC("35d0b", ERR, Logger::REPLICATION2)
+          << "Caught exception while destroying a log leader: " << exception.what();
+    } catch (...) {
+      LOG_TOPIC("0c972", ERR, Logger::REPLICATION2)
+          << "Caught unknown exception while destroying a log leader!";
+    }
+    if (!finished && consecutiveTriesWithoutProgress > 10) {
+      LOG_TOPIC("d5d25", FATAL, Logger::REPLICATION2)
+          << "We keep failing at destroying a log leader instance. Giving up "
+             "now.";
+      FATAL_ERROR_EXIT();
+    }
+  } while (!finished);
+}
 
 auto replicated_log::LogLeader::instantiateFollowers(
     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
