@@ -32,8 +32,8 @@
 #include "Basics/asio_ns.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Pregel/Statistics.h"
 #include "Pregel/Reports.h"
+#include "Pregel/Statistics.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -61,10 +61,11 @@ struct Error {
   std::string message;
 };
 
-class Conductor {
+class Conductor : public std::enable_shared_from_this<Conductor> {
   friend class PregelFeature;
 
   ExecutionState _state = ExecutionState::DEFAULT;
+  PregelFeature& _feature;
   const DatabaseGuard _vocbaseGuard;
   const uint64_t _executionNumber;
   VPackBuilder _userParams;
@@ -85,8 +86,7 @@ class Conductor {
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   /// tracks the servers which responded, only used for stages where we expect
-  /// an
-  /// unique response, not necessarily during the async mode
+  /// an unique response, not necessarily during the async mode
   std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
   /// adjustable maximum gss for some algorithms
@@ -133,7 +133,8 @@ class Conductor {
             std::vector<CollectionID> const& vertexCollections,
             std::vector<CollectionID> const& edgeCollections,
             std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
-            std::string const& algoName, VPackSlice const& userConfig);
+            std::string const& algoName, VPackSlice const& userConfig,
+            PregelFeature& feature);
 
   ~Conductor();
 

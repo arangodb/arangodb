@@ -26,6 +26,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <unordered_map>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -49,10 +50,9 @@ class PregelFeature final : public application_features::ApplicationFeature {
   explicit PregelFeature(application_features::ApplicationServer& server);
   ~PregelFeature();
 
-  static std::shared_ptr<PregelFeature> instance();
   static size_t availableParallelism();
 
-  static std::pair<Result, uint64_t> startExecution(
+  std::pair<Result, uint64_t> startExecution(
       TRI_vocbase_t& vocbase, std::string algorithm,
       std::vector<std::string> const& vertexCollections,
       std::vector<std::string> const& edgeCollections, 
@@ -64,6 +64,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void stop() override final;
   void unprepare() override final;
 
+  bool isStopping() const noexcept;
+  
   uint64_t createExecutionNumber();
   void addConductor(std::shared_ptr<Conductor>&&, uint64_t executionNumber);
   std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
@@ -73,16 +75,14 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   void cleanupConductor(uint64_t executionNumber);
   void cleanupWorker(uint64_t executionNumber);
-  void cleanupAll();
 
-  // ThreadPool* threadPool() { return _threadPool.get(); }
   RecoveryManager* recoveryManager() {
     return _recoveryManagerPtr.load(std::memory_order_acquire);
   }
 
-  static void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
+  void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                                      VPackSlice const& body, VPackBuilder& outResponse);
-  static void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
+  void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                                   VPackSlice const& body, VPackBuilder& outBuilder);
 
  private:
@@ -94,6 +94,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   /// pointer. This only works because _recoveryManager is only initialzed once and lives until the
   /// owning PregelFeature instance is also destroyed.
   std::atomic<RecoveryManager*> _recoveryManagerPtr;
+  
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<Conductor>>> _conductors;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>> _workers;
 };
