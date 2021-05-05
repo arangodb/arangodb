@@ -826,6 +826,8 @@ void RocksDBEngine::start() {
                                   cfHandles[5]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::FulltextIndex,
                                   cfHandles[6]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::ReplicatedLogs,
+                                  cfHandles[7]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
 
@@ -2345,7 +2347,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       auto logId = arangodb::replication2::LogId{
           it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
-      auto objectId = it.get(StaticStrings::DataSourceId).getNumericValue<uint64_t>();
+      auto objectId = it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
       auto log = std::make_shared<RocksDBLog>(logId, logCf, _db, objectId);
       StorageEngine::registerReplicatedLog(*vocbase, logId, log);
     }
@@ -2939,7 +2941,8 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
   } while (true);
 }
 
-auto RocksDBEngine::dropReplicatedLog(std::shared_ptr<arangodb::replication2::PersistedLog> const& log)
+auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t&,
+                                      std::shared_ptr<arangodb::replication2::PersistedLog> const& log)
     -> Result {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
