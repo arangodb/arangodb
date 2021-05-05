@@ -1374,7 +1374,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     ScopeGuard guard([this](){
       // If we exit here we need to throw the error.
       // The caller will handle the error and will call this method
-      // again using an errorCode != NONE.
+      // again using an errorCode != NO_ERROR.
       // If we do not reset to None here, this additional call will cause endless
       // looping.
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
