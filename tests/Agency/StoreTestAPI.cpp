@@ -131,20 +131,20 @@ TEST_F(StoreTestAPI, transact) {
       var res = transactAndCheck([["/x"],[{"/x":12}]],200);
       assertEqual(res, [{},++cur]);
       res = transactAndCheck([["/x"],[{"/x":12}]],200);
-      assertEqual(res, [{x:12},++cur]);
+      assertEqual(res, [{"x":12},++cur]);
       res = transactAndCheck([["/x"],[{"/x":12}],["/x"]],200);
-      assertEqual(res, [{x:12},++cur,{x:12}]);
+      assertEqual(res, [{"x":12},++cur,{"x":12}]);
       res = transactAndCheck([["/x"],[{"/x":12}],["/x"]],200);
-      assertEqual(res, [{x:12},++cur,{x:12}]);
+      assertEqual(res, [{"x":12},++cur,{"x":12}]);
       res = transactAndCheck([["/x"],[{"/x":{"op":"increment"}}],["/x"]],200);
-      assertEqual(res, [{x:12},++cur,{x:13}]);
+      assertEqual(res, [{"x":12},++cur,{"x":13}]);
       res = transactAndCheck(
         [["/x"],[{"/x":{"op":"increment"}}],["/x"],[{"/x":{"op":"increment"}}]],
         200);
-      assertEqual(res, [{x:13},++cur,{x:14},++cur]);
+      assertEqual(res, [{"x":13},++cur,{"x":14},++cur]);
       res = transactAndCheck(
         [[{"/x":{"op":"increment"}}],[{"/x":{"op":"increment"}}],["/x"]],200);
-      assertEqual(res, [++cur,++cur,{x:17}]);
+      assertEqual(res, [++cur,++cur,{"x":17}]);
       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
     }
 */
@@ -205,7 +205,7 @@ TEST_F(StoreTestAPI, precondition) {
       assertEqual(readAndCheck(R"([["/a"]])"), R"([{"a":12}])");
       writeAndCheck(R"([[{"/a":13},{"/a":12}]])");
       assertEqual(readAndCheck(R"([["/a"]])"), R"([{"a":13}])");
-      auto res = write(R"([[{"/a":14},{"/a":12}]])"); // fail precond {a:12}
+      auto res = write(R"([[{"/a":14},{"/a":12}]])"); // fail precond {"a":12}
       ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
       writeAndCheck(R"([[{"a":{"op":"delete"}}]])");
       
@@ -307,7 +307,7 @@ TEST_F(StoreTestAPI, precondition) {
            "qux":)" + qux + R"(}]])");
       ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
 
-      writeAndCheck(R"("[[" + localObj + "]]")");
+      writeAndCheck("[[" + localObj + "]]");
       writeAndCheck(
         "[[" + localObj + R"(, {"foo":)" + foo_value + R"(,"baz":{"old":)" + baz_text + R"(},"qux":)" + qux + "}]]");
       writeAndCheck(
@@ -485,7 +485,7 @@ TEST_F(StoreTestAPI, precondition) {
     TEST_F(StoreTestAPI, Document) {
       writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}]);
       writeAndCheck(R"([[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"@":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]])");
       assertEqual(readAndCheck(R"([["/!!@#$%^&*)/address"]])"), R"([{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}])");
     }
@@ -502,7 +502,7 @@ TEST_F(StoreTestAPI, precondition) {
       writeAndCheck(R"([[{"/":[1,2,3]}]])");
       assertEqual(readAndCheck(R"([["/"]])"), R"([[1,2,3]])");
       writeAndCheck(R"([[{"/a":[1,2,3]}]])");
-      assertEqual(readAndCheck(R"([["/"]])"), R"([{a:[1,2,3]}])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"([{"a":[1,2,3]}])");
       writeAndCheck(R"([[{"1":["C","C++","Java","Python"]}]])");
       assertEqual(readAndCheck(R"([["/1"]])"), R"([{1:["C","C++","Java","Python"]}])");
       writeAndCheck(R"([[{"1":["C",2.0,"Java","Python"]}]])");
@@ -651,14 +651,14 @@ TEST_F(StoreTestAPI, opShift) {
       writeAndCheck(R"([[{"/a/e":{"op":"shift"}}]])"); // on empty array
       assertEqual(readAndCheck(R"([["/a/f"]])"), R"([{"a":{"f":[]}}])");
       writeAndCheck(R"([[{"/a/b/c":{"op":"shift"}}]])"); // on existing array
-      assertEqual(readAndCheck(R"([["/a/b/c"]])"), R"([{a:{b:{c:[1,2,3,"max"]}}}])");
+      assertEqual(readAndCheck(R"([["/a/b/c"]])"), R"([{"a":{"b":{"c":[1,2,3,"max"]}}}])");
       writeAndCheck(R"([[{"/a/b/d":{"op":"shift"}}]])"); // on existing scalar
-      assertEqual(readAndCheck(R"([["/a/b/d"]])"), R"([{a:{b:{d:[]}}}])");
+      assertEqual(readAndCheck(R"([["/a/b/d"]])"), R"([{"a":{"b":{"d":[]}}}])");
 
       writeAndCheck(R"([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]])");
-      assertEqual(readAndCheck(R"([["version"]])"), R"([{version:{c:["hello","world"]}}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["hello","world"]}}])");
       writeAndCheck(R"([[{"/version/c":{"op":"shift"}}]])"); // int before
-      assertEqual(readAndCheck(R"([["version"]])"), R"([{version:{c:["world"]}}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["world"]}}])");
       std::this_thread::sleep_for(std::chrono::milliseconds{3100});
       assertEqual(readAndCheck(R"([["version"]])"), "[{}]");
       writeAndCheck(R"([[{"/version/c":{"op":"shift"}}]])"); // int before
@@ -699,50 +699,50 @@ TEST_F(StoreTestAPI, opPop) {
       writeAndCheck(R"([[{"/version":{"op":"delete"}}]])");
 
       writeAndCheck(R"([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]])"); // none before
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,3,4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,1,2,3,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":3}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,1,2,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":3}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,1,2,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":0}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[1,2,4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[1,2,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":1}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[2,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":2}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":4}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":5}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":9}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[6,7,8]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[6,7,8]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":7}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[6,8]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[6,8]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","val":6}}],
                      [{"a":{"op":"erase","val":8}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[]}])");
 
       writeAndCheck(R"([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]])"); // none before
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,3,4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,1,2,3,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","pos":3}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,1,2,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","pos":0}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[1,2,4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[1,2,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","pos":0}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[2,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","pos":2}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[2,4,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","pos":4}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,6,7,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[2,4,6,7,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","pos":2}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,7,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[2,4,7,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","pos":2}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[2,4,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","pos":0}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[4,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[4,9]}])");
       writeAndCheck(R"([[{"a":{"op":"erase","pos":1}}],
                      [{"a":{"op":"erase","pos":0}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[]}])");
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -754,30 +754,30 @@ TEST_F(StoreTestAPI, opPop) {
       writeAndCheck(R"([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]])");
       assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,1,2,3,4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"replace","val":3,"new":"three"}}]])");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,"three",4,5,6,7,8,9]}])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,1,2,"three",4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"replace","val":1,"new":[1]}}]])");
       assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,[1],2,"three",4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"replace","val":[1],"new":[1,2,3]}}]])");
       assertEqual(readAndCheck(R"([["/a"]])"),
-                  R"([{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}])");
+                  R"([{"a":[0,[1,2,3],2,"three",4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"replace","val":[1,2,3],"new":[1,2,3]}}]])");
       assertEqual(readAndCheck(R"([["/a"]])"),
-                  R"([{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}])");
+                  R"([{"a":[0,[1,2,3],2,"three",4,5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"replace","val":4,"new":[1,2,3]}}]])");
       assertEqual(readAndCheck(R"([["/a"]])"),
-                  R"([{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,9]}])");
+                  R"([{"a":[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,9]}])");
       writeAndCheck(R"([[{"a":{"op":"replace","val":9,"new":[1,2,3]}}]])");
       assertEqual(readAndCheck(R"([["/a"]])"),
-                  R"([{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,[1,2,3]]}])");
+                  R"([{"a":[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,[1,2,3]]}])");
       writeAndCheck(R"([[{"a":{"op":"replace","val":[1,2,3],"new":{"a":0}}}]])");
       assertEqual(readAndCheck(R"([["/a"]])"),
                   R"([{"a":[0,{"a":0},2,"three",{"a":0},5,6,7,8,{"a":0}]}])");
       writeAndCheck(R"([[{"a":{"op":"replace","val":{"a":0},"new":"a"}}]])");
       assertEqual(readAndCheck(R"([["/a"]])"),
-                  R"([{a:[0,"a",2,"three","a",5,6,7,8,"a"]}])");
+                  R"([{"a":[0,"a",2,"three","a",5,6,7,8,"a"]}])");
       writeAndCheck(R"([[{"a":{"op":"replace","val":"a","new":"/a"}}]])");
       assertEqual(readAndCheck(R"([["/a"]])"),
-                  R"([{a:[0,"/a",2,"three","/a",5,6,7,8,"/a"]}])");
+                  R"([{"a":[0,"/a",2,"three","/a",5,6,7,8,"/a"]}])");
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -787,17 +787,17 @@ TEST_F(StoreTestAPI, opPop) {
     TEST_F(StoreTestAPI, OpIncrement) {
       writeAndCheck(R"([[{"/version":{"op":"delete"}}]])");
       writeAndCheck(R"([[{"/version":{"op":"increment"}}]])"); // none before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:1}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":1}])");
       writeAndCheck(R"([[{"/version":{"op":"increment"}}]])"); // int before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:2}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":2}])");
       writeAndCheck(R"([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]])"); // int before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:12}}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":{"c":12}}])");
       writeAndCheck(R"([[{"/version/c":{"op":"increment"}}]])"); // int before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:13}}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":{"c":13}}])");
       std::this_thread::sleep_for(std::chrono::milliseconds{3100});
       assertEqual(readAndCheck(R"([["version"]])"), R"( [{}])");
       writeAndCheck(R"([[{"/version/c":{"op":"increment"}}]])"); // int before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:1}}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":{"c":1}}])");
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -807,17 +807,17 @@ TEST_F(StoreTestAPI, opPop) {
     TEST_F(StoreTestAPI, OpDecrement) {
       writeAndCheck(R"([[{"/version":{"op":"delete"}}]])");
       writeAndCheck(R"([[{"/version":{"op":"decrement"}}]])"); // none before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:-1}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":-1}])");
       writeAndCheck(R"([[{"/version":{"op":"decrement"}}]])"); // int before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:-2}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":-2}])");
       writeAndCheck(R"([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]])"); // int before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:12}}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":{"c":12}}])");
       writeAndCheck(R"([[{"/version/c":{"op":"decrement"}}]])"); // int before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:11}}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":{"c":11}}])");
       std::this_thread::sleep_for(std::chrono::milliseconds{3100});
       assertEqual(readAndCheck(R"([["version"]])"), R"( [{}])");
       writeAndCheck(R"([[{"/version/c":{"op":"decrement"}}]])"); // int before
-      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:-1}}])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":{"c":-1}}])");
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -826,30 +826,30 @@ TEST_F(StoreTestAPI, opPop) {
 
     TEST_F(StoreTestAPI, OpInStrangePlaces) {
       writeAndCheck(R"([[{"/op":12}]])");
-      assertEqual(readAndCheck(R"([["/op"]])"), R"( [{op:12}])");
-      writeAndCheck(R"([[{"/op":{op:"delete"}}]])");
+      assertEqual(readAndCheck(R"([["/op"]])"), R"( [{"op":12}])");
+      writeAndCheck(R"([[{"/op":{"op":"delete"}}]])");
       writeAndCheck(R"([[{"/op/a/b/c":{"op":"set","new":{"op":13}}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:13}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{"op":{"a":{"b":{"c":{"op":13}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"increment"}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:14}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{"op":{"a":{"b":{"c":{"op":14}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"decrement"}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:13}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{"op":{"a":{"b":{"c":{"op":13}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"pop"}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:[]}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{"op":{"a":{"b":{"c":{"op":[]}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"increment"}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:1}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{"op":{"a":{"b":{"c":{"op":1}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"shift"}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:[]}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{"op":{"a":{"b":{"c":{"op":[]}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"decrement"}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:-1}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{"op":{"a":{"b":{"c":{"op":-1}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"push","new":-1}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:[-1]}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{"op":{"a":{"b":{"c":{"op":[-1]}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/d":{"op":"set","new":{"ttl":14}}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/d"]])"), R"( [{op:{a:{b:{d:{ttl:14}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/d"]])"), R"( [{"op":{"a":{"b":{"d":{"ttl":14}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/d/ttl":{"op":"increment"}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/d"]])"), R"( [{op:{a:{b:{d:{ttl:15}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/d"]])"), R"( [{"op":{"a":{"b":{"d":{"ttl":15}}}}}])");
       writeAndCheck(R"([[{"/op/a/b/d/ttl":{"op":"decrement"}}]])");
-      assertEqual(readAndCheck(R"([["/op/a/b/d"]])"), R"( [{op:{a:{b:{d:{ttl:14}}}}}])");
+      assertEqual(readAndCheck(R"([["/op/a/b/d"]])"), R"( [{"op":{"a":{"b":{"d":{"ttl":14}}}}}])");
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -900,7 +900,7 @@ TEST_F(StoreTestAPI, opPop) {
 //       var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}];
 
 //       // In the beginning
-//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
 //       assertEqual(200, res.statusCode);
 //       clean = JSON.parse(res.body);
 
@@ -916,11 +916,11 @@ TEST_F(StoreTestAPI, opPop) {
 //       var c = agencyConfig().term;
 
 //       // No duplicate entries in
-//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
 //       assertEqual(200, res.statusCode);
 //       before = JSON.parse(res.body);
 //       writeAndCheck(R"([[{"/a":{"op":"observe", "url":"https://google.com"}}]])");
-//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
 //       assertEqual(200, res.statusCode);
 //       after = JSON.parse(res.body);
 //       if (!_.isEqual(before, after)) {
@@ -933,14 +933,14 @@ TEST_F(StoreTestAPI, opPop) {
 //       }
 
 //       // Normalization
-//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
 //       assertEqual(200, res.statusCode);
 //       before = JSON.parse(res.body);
 //       writeAndCheck(R"([[{"//////a////":{"op":"observe", "url":"https://google.com"}}]])");
 //       writeAndCheck(R"([[{"a":{"op":"observe", "url":"https://google.com"}}]])");
 //       writeAndCheck(R"([[{"a/":{"op":"observe", "url":"https://google.com"}}]])");
 //       writeAndCheck(R"([[{"/a/":{"op":"observe", "url":"https://google.com"}}]])");
-//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
 //       assertEqual(200, res.statusCode);
 //       after = JSON.parse(res.body);
 //       if (!_.isEqual(before, after)) {
@@ -953,11 +953,11 @@ TEST_F(StoreTestAPI, opPop) {
 //       }
 
 //       // Unobserve
-//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
 //       assertEqual(200, res.statusCode);
 //       before = JSON.parse(res.body);
 //       writeAndCheck(R"([[{"//////a":{"op":"unobserve", "url":"https://google.com"}}]])");
-//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
 //       assertEqual(200, res.statusCode);
 //       after = JSON.parse(res.body);
 //       assertEqual(clean, after);
@@ -1021,17 +1021,17 @@ TEST_F(StoreTestAPI, opPop) {
     TEST_F(StoreTestAPI, Order) {
       writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
-                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
       writeAndCheck(R"([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
-                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
       writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
-                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
       writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
       assertEqual(readAndCheck(R"([["a/e"],["a/b","d"]])"),
-                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1041,17 +1041,17 @@ TEST_F(StoreTestAPI, opPop) {
     TEST_F(StoreTestAPI, order_evil) {
       writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
-                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
       writeAndCheck(R"([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
-                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
       writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
-                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
       writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
       assertEqual(readAndCheck(R"([["a/e"],["a/b","d"]])"),
-                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1062,7 +1062,7 @@ TEST_F(StoreTestAPI, opPop) {
       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
       writeAndCheck(R"([[{"//////////////////////a/////////////////////b//":
                        {"b///////c":4}}]])");
-      assertEqual(readAndCheck(R"([["/"]])"), R"( [{a:{b:{b:{c:4}}}}])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [{"a":{"b":{"b":{"c":4}}}}])");
       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
       writeAndCheck(R"([[{"////////////////////////": "Hi there!"}]])");
       assertEqual(readAndCheck(R"([["/"]])"), R"(["Hi there!"])");
