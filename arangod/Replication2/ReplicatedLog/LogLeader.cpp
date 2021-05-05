@@ -102,6 +102,10 @@ auto replicated_log::LogLeader::tryHardToClearQueue() noexcept -> void {
     try {
       auto leaderDataGuard = acquireMutex();
       auto& queue = leaderDataGuard->_waitForQueue;
+      // The queue cannot be empty: resign() clears it while under the mutex,
+      // and waitFor also holds the mutex, but refuses to add entries after
+      // the leader resigned.
+      TRI_ASSERT(queue.empty());
       if (!queue.empty()) {
         LOG_TOPIC("8b8a2", ERR, Logger::REPLICATION2)
             << "Leader destroyed, but queue isn't empty!";
