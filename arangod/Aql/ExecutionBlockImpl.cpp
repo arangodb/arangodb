@@ -346,13 +346,10 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     // avoid concurrent refCount updates in case of async prefetching because
     // refCount is intentionally not atomic.
     _outputItemRow.reset();
-    if (!_lastRange.hasValidRow()) {
-      _lastRange.reset();
-    }
-    
     if constexpr (!isMultiDepExecutor<Executor>) {
-      TRI_ASSERT(_lastRange.hasValidRow() || !_lastRange.hasBlock());
-      TRI_ASSERT(_outputItemRow == nullptr);
+      if (!_lastRange.hasValidRow()) {
+        _lastRange.reset();
+      }
     }
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
