@@ -26,6 +26,20 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
+                             aql::AstNode* condition, std::optional<size_t> memberToUpdate)
+    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {}
+
+aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
+
+transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
+  return _idx;
+}
+
+std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
+  return _memberToUpdate;
+}
+
 BaseProviderOptions::BaseProviderOptions(aql::Variable const* tmpVar,
                                          std::vector<IndexAccessor> indexInfo,
                                          std::map<std::string, std::string> const& collectionToShardMap)
