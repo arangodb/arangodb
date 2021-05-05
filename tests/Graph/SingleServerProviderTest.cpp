@@ -51,7 +51,7 @@ class SingleServerProviderTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
 
-  std::map<std::string, std::string> _emptyShardMap{};
+  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
 
   SingleServerProviderTest() {}
   ~SingleServerProviderTest() {}
@@ -77,9 +77,7 @@ class SingleServerProviderTest : public ::testing::Test {
   }
 };
 
-TEST_F(SingleServerProviderTest, it_must_be_described) {
-  ASSERT_TRUE(true);
-}
+TEST_F(SingleServerProviderTest, it_must_be_described) { ASSERT_TRUE(true); }
 
 }  // namespace single_server_provider_test
 }  // namespace tests

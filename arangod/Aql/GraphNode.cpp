@@ -90,7 +90,7 @@ TRI_edge_direction_e parseDirection(AstNode const* node) {
   return uint64ToDirection(dirNode->getIntValue());
 }
 
-}
+}  // namespace
 
 GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
                      TRI_vocbase_t* vocbase, AstNode const* direction,
@@ -357,7 +357,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection& {
     // if the collection was already existent in the query, addCollection will
     // just return it.
-    return *query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Collection);
+    return *query.collections().add(name, AccessMode::Type::READ,
+                                    aql::Collection::Hint::Collection);
   };
 
   auto vPackDirListIter = VPackArrayIterator(dirList);
@@ -397,7 +398,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
         "graph needs a translation from collection to shard names");
   }
   for (auto const& item : VPackObjectIterator(collectionToShard)) {
-    _collectionToShard.insert({item.key.copyString(), item.value.copyString()});
+    _collectionToShard.insert({item.key.copyString(),
+                               std::vector<std::string>{item.value.copyString()}});
   }
 
   // Out variables
@@ -510,9 +512,11 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
 
   auto found = _collectionToShard.find(collName);
   if (found == _collectionToShard.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "unable to find shard '" + collName + "' in query shard map");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                   "unable to find shard '" + collName +
+                                       "' in query shard map");
   }
-  return found->second;
+  return found->second.front();
 }
 
 void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -581,7 +585,8 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackObjectBuilder guard(&nodes);
     for (auto const& item : _collectionToShard) {
-      nodes.add(item.first, VPackValue(item.second));
+      TRI_ASSERT(item.second.size() == 1);
+      nodes.add(item.first, VPackValue(item.second.front()));
     }
   }
 
@@ -714,8 +719,8 @@ void GraphNode::enhanceEngineInfo(VPackBuilder& builder) const {
 }
 #endif
 
-void GraphNode::addEdgeCollection(Collections const& collections, std::string const& name,
-                                  TRI_edge_direction_e dir) {
+void GraphNode::addEdgeCollection(Collections const& collections,
+                                  std::string const& name, TRI_edge_direction_e dir) {
   auto aqlCollection = collections.get(name);
   if (aqlCollection != nullptr) {
     addEdgeCollection(*aqlCollection, dir);

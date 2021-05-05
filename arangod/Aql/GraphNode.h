@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include "Aql/types.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
+#include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
@@ -192,20 +192,21 @@ class GraphNode : public ExecutionNode {
   void injectVertexCollection(aql::Collection& other);
 
   std::vector<aql::Collection const*> collections() const;
-  void setCollectionToShard(std::map<std::string, std::string> const& map) {
+  void setCollectionToShard(std::unordered_map<std::string, std::vector<std::string>> const& map) {
     _collectionToShard = map;
   }
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
     // NOTE: Do not replace this by emplace or insert.
     // This is also used to overwrite the existing entry.
-    _collectionToShard[coll] = shard;
+    _collectionToShard[coll] = std::vector<std::string>{shard};
   }
 
  public:
   graph::Graph const* graph() const noexcept;
 
  private:
-  void addEdgeCollection(aql::Collections const& collections, std::string const& name, TRI_edge_direction_e dir);
+  void addEdgeCollection(aql::Collections const& collections,
+                         std::string const& name, TRI_edge_direction_e dir);
   void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);
   void addVertexCollection(aql::Collections const& collections, std::string const& name);
   void addVertexCollection(aql::Collection& collection);
@@ -268,7 +269,7 @@ class GraphNode : public ExecutionNode {
   std::unordered_map<ServerID, aql::EngineId> _engines;
 
   /// @brief list of shards involved, required for one-shard-databases
-  std::map<std::string, std::string> _collectionToShard;
+  std::unordered_map<std::string, std::vector<std::string>> _collectionToShard;
 };
 
 }  // namespace aql

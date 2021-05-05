@@ -134,6 +134,8 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
   TRI_ASSERT(_cursor != nullptr);
+  LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
+      << "<SingleServerProvider> Expanding " << vertex.getID();
   _cursor->rearm(vertex.getID(), 0);
   _cursor->readAll(_stats, [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
     VertexType id = _cache.persistString(([&]() -> auto {
@@ -147,7 +149,9 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
         return other;
       }
     })());
-    callback(Step{id, std::move(eid), previous});
+    LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
+        << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
+    callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
   });
 }
 

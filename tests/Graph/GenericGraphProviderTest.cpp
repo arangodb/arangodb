@@ -68,7 +68,7 @@ class GraphProviderTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
 
-  std::map<std::string, std::string> _emptyShardMap{};
+  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
 
   GraphProviderTest() {}
   ~GraphProviderTest() {}
@@ -122,10 +122,9 @@ class GraphProviderTest : public ::testing::Test {
             server.getSystemDatabase());
         arangodb::aql::Query fakeQuery(ctx, queryString, nullptr);
         try {
-        fakeQuery.collections().add("s9880", AccessMode::Type::READ,
-                          arangodb::aql::Collection::Hint::Shard);
-        } catch(...) {
-
+          fakeQuery.collections().add("s9880", AccessMode::Type::READ,
+                                      arangodb::aql::Collection::Hint::Shard);
+        } catch (...) {
         }
         fakeQuery.prepareQuery(SerializationFormat::SHADOWROWS);
         auto ast = fakeQuery.ast();
@@ -137,10 +136,10 @@ class GraphProviderTest : public ::testing::Test {
         opts.setVariable(tmpVar);
 
         auto const* access =
-            ast->createNodeAttributeAccess(tmpVarRef,
-                                          StaticStrings::FromString.c_str(),
-                                          StaticStrings::FromString.length());
-        auto const* cond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpIdNode);
+            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::FromString.c_str(),
+                                           StaticStrings::FromString.length());
+        auto const* cond =
+            ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpIdNode);
         auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         fromCondition->addMember(cond);
         opts.addLookupInfo(fakeQuery.plan(), "s9880", StaticStrings::FromString, fromCondition);
@@ -189,8 +188,7 @@ class GraphProviderTest : public ::testing::Test {
       clusterEngines = std::make_unique<std::unordered_map<ServerID, aql::EngineId>>();
       clusterEngines->emplace("PRMR_0001", engineId);
 
-      auto clusterCache =
-          std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
+      auto clusterCache = std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
 
       ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(), false);
       return ClusterProvider(*query.get(), std::move(opts), resourceMonitor);
@@ -299,8 +297,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   std::unordered_set<std::string> found{};
 
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch = {
-      {0, {}}
-  };
+      {0, {}}};
   auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
   std::string startString = g.vertexToId(0);
   VPackHashedStringRef startH{startString.c_str(),

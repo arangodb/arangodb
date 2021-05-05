@@ -62,11 +62,10 @@ struct EdgeDocumentToken;
 
 class RefactoredTraverserCache {
  public:
-  explicit RefactoredTraverserCache(arangodb::transaction::Methods* trx,
-                                    aql::QueryContext* query,
-                                    arangodb::ResourceMonitor& resourceMonitor,
-                                    arangodb::aql::TraversalStats& stats,
-                                    std::map<std::string, std::string> const& collectionToShardMap);
+  explicit RefactoredTraverserCache(
+      arangodb::transaction::Methods* trx, aql::QueryContext* query,
+      arangodb::ResourceMonitor& resourceMonitor, arangodb::aql::TraversalStats& stats,
+      std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
   ~RefactoredTraverserCache();
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
@@ -81,8 +80,7 @@ class RefactoredTraverserCache {
   /// @brief Inserts the real document stored within the token
   ///        into the given builder.
   //////////////////////////////////////////////////////////////////////////////
-  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
-                            velocypack::Builder& builder);
+  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn, velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
@@ -148,9 +146,9 @@ class RefactoredTraverserCache {
   std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
 
  private:
-  std::map<std::string, std::string> const& _collectionToShardMap;
+  std::unordered_map<std::string, std::vector<std::string>> const& _collectionToShardMap;
   arangodb::ResourceMonitor& _resourceMonitor;
-  
+
   /// @brief whether or not to allow adding of previously unknown collections
   /// during the traversal
   bool const _allowImplicitCollections;

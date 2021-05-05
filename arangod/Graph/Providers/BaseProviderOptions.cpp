@@ -40,9 +40,9 @@ std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
   return _memberToUpdate;
 }
 
-BaseProviderOptions::BaseProviderOptions(aql::Variable const* tmpVar,
-                                         std::vector<IndexAccessor> indexInfo,
-                                         std::map<std::string, std::string> const& collectionToShardMap)
+BaseProviderOptions::BaseProviderOptions(
+    aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
+    std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _collectionToShardMap(collectionToShardMap) {}
@@ -55,7 +55,7 @@ std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const
   return _indexInformation;
 }
 
-std::map<std::string, std::string> const& BaseProviderOptions::collectionToShardMap() const {
+std::unordered_map<std::string, std::vector<std::string>> const& BaseProviderOptions::collectionToShardMap() const {
   return _collectionToShardMap;
 }
 

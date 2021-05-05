@@ -365,7 +365,8 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   _expressionCtx.serializeAllVariables(_query.vpackOptions(), builder);
 }
 
-void BaseOptions::setCollectionToShard(std::map<std::string, std::string> const& in) {
+void BaseOptions::setCollectionToShard(
+    std::unordered_map<std::string, std::vector<std::string>> const& in) {
   _collectionToShard = std::move(in);
 }
 

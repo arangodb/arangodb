@@ -117,7 +117,7 @@ struct BaseOptions {
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
-  void setCollectionToShard(std::map<std::string, std::string> const&);
+  void setCollectionToShard(std::unordered_map<std::string, std::vector<std::string>> const&);
 
   bool produceVertices() const { return _produceVertices; }
 
@@ -157,7 +157,7 @@ struct BaseOptions {
   void activateCache(bool enableDocumentCache,
                      std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  std::map<std::string, std::string> const& collectionToShard() const {
+  std::unordered_map<std::string, std::vector<std::string>> const& collectionToShard() const {
     return _collectionToShard;
   }
 
@@ -215,7 +215,7 @@ struct BaseOptions {
   std::unique_ptr<TraverserCache> _cache;
 
   // @brief - translations for one-shard-databases
-  std::map<std::string, std::string> _collectionToShard;
+  std::unordered_map<std::string, std::vector<std::string>> _collectionToShard;
 
   /// @brief a value of 1 (which is the default) means "no parallelism"
   size_t _parallelism;

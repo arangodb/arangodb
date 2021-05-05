@@ -28,21 +28,16 @@
 
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
+#include "Graph/Queues/QueueTracer.h"
 
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Types/UniquenessLevel.h"
 
 namespace arangodb {
 namespace graph {
-
-template <class Step>
-class PathStore;
-template <class PathStore>
-class PathStoreTracer;
-
-template <class Queue>
-class QueueTracer;
 
 // K_PATH implementation
 template <class Provider>

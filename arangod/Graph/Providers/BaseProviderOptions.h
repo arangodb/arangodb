@@ -56,12 +56,12 @@ struct IndexAccessor {
 struct BaseProviderOptions {
  public:
   BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
-                      std::map<std::string, std::string> const& collectionToShardMap);
+                      std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
 
   aql::Variable const* tmpVar() const;
   std::vector<IndexAccessor> const& indexInformations() const;
 
-  std::map<std::string, std::string> const& collectionToShardMap() const;
+  std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap() const;
 
  private:
   // The temporary Variable used in the Indexes
@@ -71,7 +71,7 @@ struct BaseProviderOptions {
   std::vector<IndexAccessor> _indexInformation;
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
-  std::map<std::string, std::string> const& _collectionToShardMap;
+  std::unordered_map<std::string, std::vector<std::string>> const& _collectionToShardMap;
 };
 
 struct ClusterBaseProviderOptions {

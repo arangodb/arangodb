@@ -96,7 +96,13 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   auto posPrevious = _interior.append(step);
 
   ValidationResult res = _validator.validatePath(step);
-  if ((step.getDepth() >= _options.getMinDepth()) && !res.isFiltered()) {
+
+  LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
+      << std::boolalpha << "<Traverser> Validated Vertex: " << step.getVertex().getID()
+      << " filtered " << res.isFiltered() << " pruned " << res.isPruned()
+      << " depth " << _options.getMinDepth() << " <= " << step.getDepth()
+      << "<= " << _options.getMaxDepth();
+  if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
     // Include it in results.
     _results.push_back(step);
   }
