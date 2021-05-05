@@ -1,3 +1,9 @@
+Snappy v1.1.9, May 4th 2021:
+
+  * Performance improvements.
+
+  * Google Test and Google Benchmark are now bundled in third_party/.
+
 Snappy v1.1.8, January 15th 2020:
 
   * Small performance improvements.

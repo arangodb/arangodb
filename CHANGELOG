@@ -1,5 +1,8 @@
 devel
 -----
+
+* Updated bundled version of Snappy library to 1.1.9.
+
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
 
