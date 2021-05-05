@@ -3,6 +3,9 @@ devel
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
 
+* Improve exception safety for maintenance thread and shard unlock
+  operations.
+
 * Fixed issue BTS-354: Assertion related to getCollection. 
 
 * Fixed a use after free bug in the connection pool.

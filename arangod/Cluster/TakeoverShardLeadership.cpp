@@ -71,25 +71,20 @@ std::string stripServerPrefix(std::string const& destination) {
 
 TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
                                                  ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
-
-  if (!desc.has(DATABASE)) {
-    error << "database must be specified";
-  }
-  TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(COLLECTION)) {
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
-
-  if (!desc.has(SHARD)) {
-    error << "shard must be specified";
+  
+  if (!ShardDefinition::isValid()) {
+    error << "database and shard must be specified. ";
   }
-  TRI_ASSERT(desc.has(SHARD));
 
   if (!desc.has(THE_LEADER)) {
     error << "leader must be specified. ";
@@ -246,9 +241,9 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
 }
 
 bool TakeoverShardLeadership::first() {
-  std::string const& database = _description.get(DATABASE);
+  std::string const& database = getDatabase();
   std::string const& collection = _description.get(COLLECTION);
-  std::string const& shard = _description.get(SHARD);
+  std::string const& shard = getShard();
   std::string const& plannedLeader = _description.get(THE_LEADER);
   std::string const& localLeader = _description.get(LOCAL_LEADER);
   std::string const& planRaftIndex = _description.get(PLAN_RAFT_INDEX);
@@ -300,7 +295,7 @@ bool TakeoverShardLeadership::first() {
 
 void TakeoverShardLeadership::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    _feature.unlockShard(_description.get(SHARD));
+    _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
 }
