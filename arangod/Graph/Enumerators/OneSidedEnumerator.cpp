@@ -36,6 +36,7 @@
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
 
 #include <Graph/Types/ValidationResult.h>
@@ -251,6 +252,17 @@ template class ::arangodb::graph::OneSidedEnumerator<
 
 template class ::arangodb::graph::OneSidedEnumerator<
     ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>>,
+    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
+    ::arangodb::graph::ProviderTracer<SingleServerProvider>,
+    ::arangodb::graph::PathValidator<::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::OneSidedEnumerator<
+    ::arangodb::graph::LifoQueue<::arangodb::graph::SingleServerProvider::Step>,
+    ::arangodb::graph::PathStore<SingleServerProvider::Step>, SingleServerProvider,
+    ::arangodb::graph::PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::OneSidedEnumerator<
+    ::arangodb::graph::QueueTracer<::arangodb::graph::LifoQueue<::arangodb::graph::SingleServerProvider::Step>>,
     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
     ::arangodb::graph::ProviderTracer<SingleServerProvider>,
     ::arangodb::graph::PathValidator<::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>>;

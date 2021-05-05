@@ -36,6 +36,14 @@
 namespace arangodb {
 namespace graph {
 
+template <class Step>
+class PathStore;
+template <class PathStore>
+class PathStoreTracer;
+
+template <class Queue>
+class QueueTracer;
+
 // K_PATH implementation
 template <class Provider>
 using KPathEnumerator =
