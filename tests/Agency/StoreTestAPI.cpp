@@ -650,6 +650,7 @@ TEST_F(StoreTestAPI, opShift) {
       assertEqual(readAndCheck(R"([["/a/f"]])"), R"([{"a":{"f":[]}}])");
       writeAndCheck(R"([[{"/a/e":{"op":"shift"}}]])"); // on empty array
       assertEqual(readAndCheck(R"([["/a/f"]])"), R"([{"a":{"f":[]}}])");
+      writeAndCheck(R"([[{"/a/b/c":["this-will-be-removed", 1,2,3,"max"]}]])");
       writeAndCheck(R"([[{"/a/b/c":{"op":"shift"}}]])"); // on existing array
       assertEqual(readAndCheck(R"([["/a/b/c"]])"), R"([{"a":{"b":{"c":[1,2,3,"max"]}}}])");
       writeAndCheck(R"([[{"/a/b/d":{"op":"shift"}}]])"); // on existing scalar
@@ -674,6 +675,7 @@ TEST_F(StoreTestAPI, opPop) {
       assertEqual(readAndCheck(R"([["/a/f"]])"), R"( [{"a":{"f":[]}}])");
       writeAndCheck(R"([[{"/a/e":{"op":"pop"}}]])"); // on empty array
       assertEqual(readAndCheck(R"([["/a/f"]])"), R"( [{"a":{"f":[]}}])");
+      writeAndCheck(R"([[{"/a/b/c":[1,2,3,"max"]}]])");
       writeAndCheck(R"([[{"/a/b/c":{"op":"pop"}}]])"); // on existing array
       assertEqual(readAndCheck(R"([["/a/b/c"]])"), R"( [{"a":{"b":{"c":[1,2,3]}}}])");
       writeAndCheck(R"([[{"a/b/d":1}]])"); // on existing scalar
@@ -694,7 +696,7 @@ TEST_F(StoreTestAPI, opPop) {
 /// @brief Test "pop" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, OpErase) {
+TEST_F(StoreTestAPI, OpErase) {
 
       writeAndCheck(R"([[{"/version":{"op":"delete"}}]])");
 
@@ -1018,7 +1020,7 @@ TEST_F(StoreTestAPI, opPop) {
 /// @brief Test that order should not matter
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, Order) {
+    TEST_F(StoreTestAPI, order) {
       writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
                   R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
@@ -1141,7 +1143,7 @@ TEST_F(StoreTestAPI, huge_transaction_package) {
     ss << R"([{"a":{"op":"increment"}}, {}, "huge)" << i << R"("])";
   }
   ss << "]";
-  writeAndCheck(R"(ss.str())");
+  writeAndCheck(ss.str());
   assertEqual(readAndCheck(R"([["a"]])"), R"([{"a":20000}])");
 }
 
