@@ -19,40 +19,18 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "OneSidedEnumeratorOptions.h"
 
-#include <numeric>
+using namespace arangodb;
+using namespace arangodb::graph;
 
-namespace arangodb {
-namespace graph {
+OneSidedEnumeratorOptions::OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth)
+    : _minDepth(minDepth), _maxDepth(maxDepth) {}
 
-template <class StepDetails>
-class BaseStep {
- public:
-  BaseStep() : _previous{std::numeric_limits<size_t>::max()}, _depth{0} {}
+OneSidedEnumeratorOptions::~OneSidedEnumeratorOptions() = default;
 
-  BaseStep(size_t prev) : _previous{prev}, _depth{0} {}
-  BaseStep(size_t prev, size_t depth) : _previous{prev}, _depth{depth} {}
-
-  size_t getPrevious() const { return _previous; }
-
-  bool isFirst() const {
-    return _previous == std::numeric_limits<size_t>::max();
-  }
-
-  bool isLooseEnd() const {
-    return static_cast<StepDetails*>(this)->isLooseEnd();
-  }
-
-  size_t getDepth() const {
-    return _depth;
-  }
-
- private:
-  size_t const _previous;
-  size_t const _depth;
-};
-}  // namespace graph
-}  // namespace arangodb
+size_t OneSidedEnumeratorOptions::getMinDepth() const { return _minDepth; }
+size_t OneSidedEnumeratorOptions::getMaxDepth() const { return _maxDepth; }
