@@ -108,6 +108,7 @@ else
   echo -n $ENCRYPTION_SECRET > cluster/encryption-secret.txt
   ENCRYPTION="--rocksdb.encryption-keyfile cluster/encryption-secret.txt"
 fi
+ENCRYPTION="--rocksdb.encryption-keyfile /home/kaveh/git/3.8/enc"
 
 if [ "$TRANSPORT" == "ssl" ]; then
   SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
