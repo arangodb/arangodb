@@ -81,6 +81,11 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
 auto replicated_log::ReplicatedLog::getParticipant() const
     -> std::shared_ptr<LogParticipantI> {
   std::unique_lock guard(_mutex);
+  if (_participant == nullptr) {
+    // TODO better error message
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
   return _participant;
 }
 
@@ -103,4 +108,11 @@ auto replicated_log::ReplicatedLog::getFollower() const -> std::shared_ptr<LogFo
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
   }
+}
+
+auto replicated_log::ReplicatedLog::drop() -> std::unique_ptr<LogCore> {
+  std::unique_lock guard(_mutex);
+  auto core = std::move(*_participant).resign();
+  _participant = nullptr;
+  return core;
 }
