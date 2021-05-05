@@ -61,8 +61,10 @@ using namespace arangodb::pregel;
                                  true, __FILE__, __LINE__)
 
 template <typename V, typename E, typename M>
-Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackSlice initConfig)
-    : _state(WorkerState::IDLE),
+Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
+                        VPackSlice initConfig, PregelFeature& feature)
+    : _feature(feature),
+      _state(WorkerState::IDLE),
       _config(&vocbase, initConfig),
       _algorithm(algo),
       _nextGSSSendMessageCount(0),
@@ -157,7 +159,7 @@ void Worker<V, E, M>::setupWorker() {
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, cb = std::move(cb)] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), cb = std::move(cb)] {
     try {
       _graphStore->loadShards(&_config, cb);
     } catch (std::exception const& ex) {
@@ -556,7 +558,7 @@ void Worker<V, E, M>::_continueAsync() {
   // start next iteration in $milli mseconds.
   bool queued = false;
   std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli), [this](bool cancelled) {
+      RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli), [this, self = shared_from_this()](bool cancelled) {
         if (!cancelled) {
           {  // swap these pointers atomically
             MY_WRITE_LOCKER(guard, _cacheRWLock);
@@ -583,7 +585,7 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
                                         std::function<void()> cb) {
   // Only expect serial calls from the conductor.
-  // Lock to prevent malicous activity
+  // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
     LOG_TOPIC("4067a", DEBUG, Logger::PREGEL) << "removing worker";
@@ -761,19 +763,13 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const& message) {
-  application_features::ApplicationServer& server = _config.vocbase()->server();
-  if (server.isStopping()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-
   if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    auto self = shared_from_this();
-    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self, path, message] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), path, message] {
       VPackBuilder response;
-      PregelFeature::handleConductorRequest(*_config.vocbase(), path,
-                                            message.slice(), response);
+      _feature.handleConductorRequest(*_config.vocbase(), path,
+                                      message.slice(), response);
     });
     if (!queued) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
@@ -784,7 +780,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
 
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
-    auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+    auto const& nf = _config.vocbase()->server().getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
 
     network::RequestOptions reqOpts;
@@ -803,7 +799,7 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
   LOG_TOPIC("6d349", TRACE, Logger::PREGEL) << "Calling the conductor";
   if (ServerState::instance()->isRunningInCluster() == false) {
     VPackBuilder response;
-    PregelFeature::handleConductorRequest(*_config.vocbase(), path, message.slice(), response);
+    _feature.handleConductorRequest(*_config.vocbase(), path, message.slice(), response);
     handle(response.slice());
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);

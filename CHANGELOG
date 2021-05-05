@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixes pregel lifetime management. Previously shutting down the server while a
+  pregel job was still running could result in a segfault or a shutdown hanger.
+  
 * Log a proper message if an unexpected state is encountered when taking over
   shard leadership. In addition, make the change to the internal followerinfo 
   state atomic so that it cannot be semi-changed.

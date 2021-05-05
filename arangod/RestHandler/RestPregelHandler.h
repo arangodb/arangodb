@@ -26,6 +26,10 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
+  
+namespace pregel {
+  class PregelFeature;
+}
 class RestPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   explicit RestPregelHandler(application_features::ApplicationServer&,
@@ -35,6 +39,9 @@ class RestPregelHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus execute() override;
   char const* name() const override { return "Pregel Rest Handler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  
+ private:
+  pregel::PregelFeature& _pregel;
 };
 }  // namespace arangodb
 
