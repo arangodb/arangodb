@@ -21,20 +21,41 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
+
 namespace arangodb::replication2::replicated_log {
-struct alignas(16) ReplicatedLog {
+
+/**
+ * @brief Container for a replicated log. These are managed by the responsible
+ * vocbase. Exactly one instance exists for each replicated log this server is a
+ * participant of.
+ * It holds a single LogParticipantI; starting with a LogUnconfiguredParticipant,
+ * this will usually be either a LogLeader or a LogFollower.
+ * The active participant is also responsible for the singular LogCore of this
+ * log, providing access to the physical log. The fact that only one LogCore
+ * exists, and only one participant has access to it, asserts that only the
+ * active instance can write to (or read from) the physical log.
+ * ReplicatedLog is responsible for instantiating Participants, and moving the
+ * LogCore from the previous active participant to a new one. This happens in
+ * becomeLeader and becomeFollower.
+ * A mutex must be used to make sure that moving the LogCore from the old to
+ * the new participant, and switching the participant pointer, happen
+ * atomically.
+ */
+struct alignas(64) ReplicatedLog {
+  explicit ReplicatedLog(std::shared_ptr<LogParticipantI> participant)
+      : _participant(std::move(participant)) {}
+  explicit ReplicatedLog(std::unique_ptr<LogCore> core)
+      : _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core))) {}
+
   ReplicatedLog() = delete;
   ReplicatedLog(ReplicatedLog const&) = delete;
   ReplicatedLog(ReplicatedLog&&) = delete;
   auto operator=(ReplicatedLog const&) -> ReplicatedLog& = delete;
   auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
-  explicit ReplicatedLog(std::shared_ptr<LogParticipantI> participant)
-      : _participant(std::move(participant)) {}
-  explicit ReplicatedLog(std::unique_ptr<LogCore> core)
-      : _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core))) {}
 
   auto becomeLeader(ParticipantId id, LogTerm term,
                     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
@@ -51,4 +72,5 @@ struct alignas(16) ReplicatedLog {
   mutable std::mutex _mutex;
   std::shared_ptr<LogParticipantI> _participant;
 };
+
 }  // namespace arangodb::replication2::replicated_log

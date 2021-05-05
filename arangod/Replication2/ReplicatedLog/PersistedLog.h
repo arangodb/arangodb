@@ -30,6 +30,10 @@
 
 namespace arangodb::replication2 {
 
+/**
+ * @brief Interface to persist a replicated log locally. Implemented by
+ * arango::RocksDBLog.
+ */
 struct PersistedLog {
   virtual ~PersistedLog() = default;
   explicit PersistedLog(LogId lid) : _lid(lid) {}

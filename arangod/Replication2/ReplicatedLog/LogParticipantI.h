@@ -45,6 +45,13 @@
 
 namespace arangodb::replication2::replicated_log {
 
+/**
+* @brief Interface for a log participant: That is, usually either a leader or a
+* follower (LogLeader and LogFollower). Can also be a LogUnconfiguredParticipant,
+* e.g. during startup.
+* The most prominent thing this interface provides is that each instance is
+* responsible for a singular LogCore, which can be moved out with resign().
+*/
 struct LogParticipantI {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   virtual ~LogParticipantI() = default;
@@ -60,6 +67,10 @@ struct LogParticipantI {
   [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture;
 };
 
+/**
+* @brief Unconfigured log participant, i.e. currently neither a leader nor
+* follower. Holds a LogCore, does nothing else.
+*/
 struct LogUnconfiguredParticipant
     : std::enable_shared_from_this<LogUnconfiguredParticipant>,
       LogParticipantI {

@@ -35,6 +35,10 @@
 #include <mutex>
 
 namespace arangodb::replication2::replicated_log {
+
+/**
+ * @brief Follower isntance of a replicated log.
+ */
 class LogFollower : public LogParticipantI, public AbstractFollower {
  public:
   ~LogFollower() override = default;

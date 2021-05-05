@@ -41,35 +41,6 @@
 #endif
 
 namespace arangodb::replication2 {
-#if 0
-struct LogInterface {
-  virtual ~LogInterface() = default;
-  virtual auto getPersistedLog() -> std::shared_ptr<PersistedLog> = 0;
-  virtual auto getDirtyLogEntries(std::size_t limit) -> std::shared_ptr<LogIterator> = 0;
-  virtual auto updatePersistedIndex(LogIndex newIndex) -> void = 0;
-  virtual auto removeDirtyFlag() -> void = 0;
-};
-
-struct LogWorkerExecutor {
-  virtual ~LogWorkerExecutor() = default;
-  virtual void operator()(std::function<void()>) = 0;
-};
-
-struct LogManager {
-  explicit LogManager(std::shared_ptr<LogWorkerExecutor> executor)
-      : _executor(std::move(executor)) {}
-  virtual ~LogManager() = default;
-  void markLogAsDirty(std::shared_ptr<LogInterface> log);
- protected:
-  virtual void workerEntryPoint() = 0;
-
- private:
-  std::mutex _mutex;
-  bool workerActive;
-  immer::flex_vector<std::shared_ptr<LogInterface>> _logs;
-  std::shared_ptr<LogWorkerExecutor> _executor;
-};
-#endif
 
 struct LogWorkerExecutor {
   virtual ~LogWorkerExecutor() = default;

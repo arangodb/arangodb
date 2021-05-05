@@ -27,6 +27,22 @@
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 
 namespace arangodb::replication2::replicated_log {
+
+/**
+ * @brief The persistent core of a replicated log. There must only ever by one
+ * instance of LogCore for a particular physical log. It is always held by the
+ * single active LogParticipantI instance, which in turn lives in the
+ * ReplicatedLog instance for this particular log. That is, usually by either a
+ * LogLeader, or a LogFollower. If the term changes (and with that
+ * leader/followers and/or configuration like writeConcern), a new participant
+ * instance is created, and the core moved from the old to the new instance. If
+ * the server is currently neither a leader nor follower for the log, e.g.
+ * during startup, the LogCore is held by a LogUnconfiguredParticipant instance.
+ *
+ * TODO When the unique_ptr to the LogCore is destroyed by accident, it must be
+ *      moved back to the responsible ReplicatedLog instance in the vocbase.
+ *      Add a deleter that does this, or something similar.
+ */
 struct alignas(64) LogCore {
   explicit LogCore(std::shared_ptr<PersistedLog> persistedLog);
 
@@ -38,4 +54,5 @@ struct alignas(64) LogCore {
   auto operator=(LogCore&&) -> LogCore& = delete;
   std::shared_ptr<PersistedLog> const _persistedLog;
 };
+
 }  // namespace arangodb::replication2::replicated_log

@@ -41,6 +41,13 @@
 #endif
 
 namespace arangodb::replication2::replicated_log {
+
+/**
+ * @brief The ephemeral part of the replicated log held in memory. Can hold more
+ * recent entries than the corresponding persisted log, while the latter is
+ * catching up. On startup (or currently, on creation of a leader or follower
+ * instance), this is restored from the persisted log.
+ */
 struct InMemoryLog {
   [[nodiscard]] auto getLastIndex() const -> LogIndex;
   [[nodiscard]] auto getNextIndex() const -> LogIndex;
@@ -48,4 +55,5 @@ struct InMemoryLog {
 
   immer::flex_vector<LogEntry> _log{};
 };
+
 }  // namespace arangodb::replication2::replicated_log
