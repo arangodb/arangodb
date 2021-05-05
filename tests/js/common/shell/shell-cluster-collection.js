@@ -602,18 +602,9 @@ function ClusterCollectionSuite () {
       }
       let setFailAt;
       let removeFailAt;
-      if (isServer) {
-        if (internal.debugCanUseFailAt()) {
-          setFailAt = internal.debugSetFailAt;
-          removeFailAt = internal.debugRemoveFailAt;
-        }
-      } else {
-        const arango = internal.arango;
-        const coordinatorEndpoint = arango.getEndpoint();
-        if (debugCanUseFailAt(coordinatorEndpoint)) {
-          setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
-          removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
-        }
+      if (internal.debugCanUseFailAt()) {
+        setFailAt = internal.debugSetFailAt;
+        removeFailAt = internal.debugRemoveFailAt;
       }
       if (!setFailAt) {
         console.info('Failure tests disabled, skipping...');
