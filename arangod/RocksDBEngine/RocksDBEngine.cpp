@@ -826,6 +826,8 @@ void RocksDBEngine::start() {
                                   cfHandles[5]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::FulltextIndex,
                                   cfHandles[6]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::ReplicatedLogs,
+                                  cfHandles[7]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
 
@@ -2345,7 +2347,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       auto logId = arangodb::replication2::LogId{
           it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
-      auto objectId = it.get(StaticStrings::DataSourceId).getNumericValue<uint64_t>();
+      auto objectId = it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
       auto log = std::make_shared<RocksDBLog>(logId, logCf, _db, objectId);
       StorageEngine::registerReplicatedLog(*vocbase, logId, log);
     }
@@ -2939,10 +2941,15 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
   } while (true);
 }
 
-auto RocksDBEngine::dropReplicatedLog(std::shared_ptr<arangodb::replication2::PersistedLog> const& log)
+auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,
+                                      std::shared_ptr<arangodb::replication2::PersistedLog> const& log)
     -> Result {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto key = RocksDBKey{};
+  key.constructReplicatedLog(vocbase.id(), log->id());
+
+  auto s = _db->Delete(rocksdb::WriteOptions{}, RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions), key.string());
+  return rocksutils::convertStatus(s);
 }
 
 auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replication2::LogId logId)
@@ -2953,8 +2960,6 @@ auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replic
 
   auto objectId = TRI_NewTickServer();
 
-  LOG_DEVEL << "new objectID = " << objectId;
-
   VPackBuilder valueBuilder;
   {
     VPackObjectBuilder ob(&valueBuilder);
@@ -2963,7 +2968,6 @@ auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replic
     valueBuilder.add(StaticStrings::ObjectId, VPackValue(objectId));
   }
   auto value = RocksDBValue::ReplicatedLog(valueBuilder.slice());
-  LOG_DEVEL << "new value = " << valueBuilder.toJson();
 
   rocksdb::WriteOptions opts;
   auto s = _db->GetRootDB()->Put(opts, RocksDBColumnFamilyManager::get(

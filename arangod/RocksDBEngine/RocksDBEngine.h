@@ -251,7 +251,8 @@ class RocksDBEngine final : public StorageEngine {
 
   virtual auto createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
       -> ResultT<std::shared_ptr<arangodb::replication2::PersistedLog>> override;
-  virtual auto dropReplicatedLog(std::shared_ptr<arangodb::replication2::PersistedLog> const&)
+  virtual auto dropReplicatedLog(TRI_vocbase_t&,
+                                 std::shared_ptr<arangodb::replication2::PersistedLog> const&)
       -> Result override;
 
   void createCollection(TRI_vocbase_t& vocbase,

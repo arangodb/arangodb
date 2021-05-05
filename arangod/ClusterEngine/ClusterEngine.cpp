@@ -309,7 +309,8 @@ auto ClusterEngine::createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-auto ClusterEngine::dropReplicatedLog(const std::shared_ptr<arangodb::replication2::PersistedLog>&)
+auto ClusterEngine::dropReplicatedLog(TRI_vocbase_t&,
+                                      const std::shared_ptr<arangodb::replication2::PersistedLog>&)
     -> Result {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }

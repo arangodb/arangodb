@@ -220,7 +220,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual auto createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
       -> ResultT<std::shared_ptr<arangodb::replication2::PersistedLog>> = 0;
 
-  virtual auto dropReplicatedLog(std::shared_ptr<arangodb::replication2::PersistedLog> const&)
+  virtual auto dropReplicatedLog(TRI_vocbase_t&,
+                                 std::shared_ptr<arangodb::replication2::PersistedLog> const&)
       -> Result = 0;
 
   //// Operations on Collections
