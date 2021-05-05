@@ -70,7 +70,7 @@ class StoreTestAPI : public ::testing::Test {
     return results;
   }
 
-  auto writeAndCheck(std::string const &json) 
+  auto writeAndCheck(std::string const &json)
   {
     auto r {write(json)};
     auto applied_all = std::all_of(r.begin(), r.end(), [](auto const &result){ return result == consensus::apply_ret_t::APPLIED; });
@@ -145,7 +145,7 @@ TEST_F(StoreTestAPI, transact) {
       res = transactAndCheck(
         [[{"/x":{"op":"increment"}}],[{"/x":{"op":"increment"}}],["/x"]],200);
       assertEqual(res, [++cur,++cur,{x:17}]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
     }
 */
 
@@ -307,7 +307,7 @@ TEST_F(StoreTestAPI, precondition) {
            "qux":)" + qux + R"(}]])");
       ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
 
-      writeAndCheck("[[" + localObj + "]]");
+      writeAndCheck(R"("[[" + localObj + "]]")");
       writeAndCheck(
         "[[" + localObj + R"(, {"foo":)" + foo_value + R"(,"baz":{"old":)" + baz_text + R"(},"qux":)" + qux + "}]]");
       writeAndCheck(
@@ -395,14 +395,14 @@ TEST_F(StoreTestAPI, precondition) {
   /// @brief test clientIds
   ////////////////////////////////////////////////////////////////////////////////
 
-    testClientIds : function () {
+    TEST_F(StoreTestAPI, ClientIds) {
       var res;
       var cur;
 
       res = accessAgency("write", [[{"a":12}]]).bodyParsed;
       cur = res.results[0];
 
-      writeAndCheck([[{"/a":12}]]);
+      writeAndCheck(R"([[{"/a":12}]])");
       var id = [guid(),guid(),guid(),guid(),guid(),guid(),
                 guid(),guid(),guid(),guid(),guid(),guid(),
                 guid(),guid(),guid()];
@@ -476,19 +476,19 @@ TEST_F(StoreTestAPI, precondition) {
       assertEqual(res.statusCode,404);
       assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
-    },
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document/transaction assignment
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDocument : function () {
-      writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
+    TEST_F(StoreTestAPI, Document) {
+      writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-      writeAndCheck([[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"@":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]]);
-      assertEqual(readAndCheck([["/!!@#$%^&*)/address"]]),[{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}]);
-    },
+      writeAndCheck(R"([[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"@":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]])");
+      assertEqual(readAndCheck(R"([["/!!@#$%^&*)/address"]])"), R"([{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}])");
+    }
 
 
 
@@ -496,28 +496,28 @@ TEST_F(StoreTestAPI, precondition) {
 /// @brief test arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-    testArrays : function () {
-      writeAndCheck([[{"/":[]}]]);
-      assertEqual(readAndCheck([["/"]]),[[]]);
-      writeAndCheck([[{"/":[1,2,3]}]]);
-      assertEqual(readAndCheck([["/"]]),[[1,2,3]]);
-      writeAndCheck([[{"/a":[1,2,3]}]]);
-      assertEqual(readAndCheck([["/"]]),[{a:[1,2,3]}]);
-      writeAndCheck([[{"1":["C","C++","Java","Python"]}]]);
-      assertEqual(readAndCheck([["/1"]]),[{1:["C","C++","Java","Python"]}]);
-      writeAndCheck([[{"1":["C",2.0,"Java","Python"]}]]);
-      assertEqual(readAndCheck([["/1"]]),[{1:["C",2.0,"Java","Python"]}]);
-      writeAndCheck([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7}]}]]);
-      assertEqual(readAndCheck([["/1"]]),[{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7}]}]);
-      writeAndCheck([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}]]);
-      assertEqual(readAndCheck([["/1"]]),[{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}]);
-      writeAndCheck([[{"2":[[],[],[],[],[[[[[]]]]]]}]]);
-      assertEqual(readAndCheck([["/2"]]),[{"2":[[],[],[],[],[[[[[]]]]]]}]);
-      writeAndCheck([[{"2":[[[[[[]]]]],[],[],[],[[]]]}]]);
-      assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[[]]]]],[],[],[],[[]]]}]);
-      writeAndCheck([[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]]);
-      assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]);
-    },
+    TEST_F(StoreTestAPI, Arrays) {
+      writeAndCheck(R"([[{"/":[]}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"([[]])");
+      writeAndCheck(R"([[{"/":[1,2,3]}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"([[1,2,3]])");
+      writeAndCheck(R"([[{"/a":[1,2,3]}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"([{a:[1,2,3]}])");
+      writeAndCheck(R"([[{"1":["C","C++","Java","Python"]}]])");
+      assertEqual(readAndCheck(R"([["/1"]])"), R"([{1:["C","C++","Java","Python"]}])");
+      writeAndCheck(R"([[{"1":["C",2.0,"Java","Python"]}]])");
+      assertEqual(readAndCheck(R"([["/1"]])"), R"([{1:["C",2.0,"Java","Python"]}])");
+      writeAndCheck(R"([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7}]}]])");
+      assertEqual(readAndCheck(R"([["/1"]])"), R"([{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7}]}])");
+      writeAndCheck(R"([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}]])");
+      assertEqual(readAndCheck(R"([["/1"]])"), R"([{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}])");
+      writeAndCheck(R"([[{"2":[[],[],[],[],[[[[[]]]]]]}]])");
+      assertEqual(readAndCheck(R"([["/2"]])"), R"([{"2":[[],[],[],[],[[[[[]]]]]]}])");
+      writeAndCheck(R"([[{"2":[[[[[[]]]]],[],[],[],[[]]]}]])");
+      assertEqual(readAndCheck(R"([["/2"]])"), R"([{"2":[[[[[[]]]]],[],[],[],[[]]]}])");
+      writeAndCheck(R"([[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]])");
+      assertEqual(readAndCheck(R"([["/2"]])"), R"([{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}])");
+    }
 */
 
 // ////////////////////////////////////////////////////////////////////////////////
@@ -640,491 +640,489 @@ TEST_F(StoreTestAPI, opPrepend) {
       assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
 
     }
-/*
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "shift" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpShift : function () {
-      writeAndCheck([[{"/a/f":{"op":"shift"}}]]); // none before
-      assertEqual(readAndCheck([["/a/f"]]), [{a:{f:[]}}]);
-      writeAndCheck([[{"/a/e":{"op":"shift"}}]]); // on empty array
-      assertEqual(readAndCheck([["/a/f"]]), [{a:{f:[]}}]);
-      writeAndCheck([[{"/a/b/c":{"op":"shift"}}]]); // on existing array
-      assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
-      writeAndCheck([[{"/a/b/d":{"op":"shift"}}]]); // on existing scalar
-      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
+TEST_F(StoreTestAPI, opShift) {
+      writeAndCheck(R"([[{"/a/f":{"op":"shift"}}]])"); // none before
+      assertEqual(readAndCheck(R"([["/a/f"]])"), R"([{"a":{"f":[]}}])");
+      writeAndCheck(R"([[{"/a/e":{"op":"shift"}}]])"); // on empty array
+      assertEqual(readAndCheck(R"([["/a/f"]])"), R"([{"a":{"f":[]}}])");
+      writeAndCheck(R"([[{"/a/b/c":{"op":"shift"}}]])"); // on existing array
+      assertEqual(readAndCheck(R"([["/a/b/c"]])"), R"([{a:{b:{c:[1,2,3,"max"]}}}])");
+      writeAndCheck(R"([[{"/a/b/d":{"op":"shift"}}]])"); // on existing scalar
+      assertEqual(readAndCheck(R"([["/a/b/d"]])"), R"([{a:{b:{d:[]}}}])");
 
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
-      writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["world"]}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Test "pop" operator
-////////////////////////////////////////////////////////////////////////////////
-
-    testOpPop : function () {
-      writeAndCheck([[{"/a/f":{"op":"pop"}}]]); // none before
-      assertEqual(readAndCheck([["/a/f"]]), [{a:{f:[]}}]);
-      writeAndCheck([[{"/a/e":{"op":"pop"}}]]); // on empty array
-      assertEqual(readAndCheck([["/a/f"]]), [{a:{f:[]}}]);
-      writeAndCheck([[{"/a/b/c":{"op":"pop"}}]]); // on existing array
-      assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3]}}}]);
-      writeAndCheck([[{"a/b/d":1}]]); // on existing scalar
-      writeAndCheck([[{"/a/b/d":{"op":"pop"}}]]); // on existing scalar
-      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
-
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
-      writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
-    },
+      writeAndCheck(R"([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{version:{c:["hello","world"]}}])");
+      writeAndCheck(R"([[{"/version/c":{"op":"shift"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{version:{c:["world"]}}])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{3100});
+      assertEqual(readAndCheck(R"([["version"]])"), "[{}]");
+      writeAndCheck(R"([[{"/version/c":{"op":"shift"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":[]}}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "pop" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpErase : function () {
+TEST_F(StoreTestAPI, opPop) {
+      writeAndCheck(R"([[{"/a/f":{"op":"pop"}}]])"); // none before
+      assertEqual(readAndCheck(R"([["/a/f"]])"), R"( [{"a":{"f":[]}}])");
+      writeAndCheck(R"([[{"/a/e":{"op":"pop"}}]])"); // on empty array
+      assertEqual(readAndCheck(R"([["/a/f"]])"), R"( [{"a":{"f":[]}}])");
+      writeAndCheck(R"([[{"/a/b/c":{"op":"pop"}}]])"); // on existing array
+      assertEqual(readAndCheck(R"([["/a/b/c"]])"), R"( [{"a":{"b":{"c":[1,2,3]}}}])");
+      writeAndCheck(R"([[{"a/b/d":1}]])"); // on existing scalar
+      writeAndCheck(R"([[{"/a/b/d":{"op":"pop"}}]])"); // on existing scalar
+      assertEqual(readAndCheck(R"([["/a/b/d"]])"), R"( [{"a":{"b":{"d":[]}}}])");
 
-      writeAndCheck([[{"/version":{"op":"delete"}}]]);
-
-      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
-      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":3}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":3}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":0}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[1,2,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":1}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":2}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":4}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":5}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":9}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[6,7,8]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":7}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[6,8]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":6}}],
-                     [{"a":{"op":"erase","val":8}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[]}]);
-
-      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
-      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","pos":3}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","pos":0}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[1,2,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","pos":0}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","pos":2}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","pos":4}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,6,7,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","pos":2}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,7,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","pos":2}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","pos":0}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[4,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","pos":1}}],
-                     [{"a":{"op":"erase","pos":0}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[]}]);
-    },
+      writeAndCheck(R"([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]])");
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":{"c":["hello","world"]}}])");
+      writeAndCheck(R"([[{"/version/c":{"op":"pop"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{3100});
+      assertEqual(readAndCheck(R"([["version"]])"), R"([{}])");
+      writeAndCheck(R"([[{"/version/c":{"op":"pop"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{"version":{"c":[]}}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "pop" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpReplace : function () {
-      writeAndCheck([[{"/version":{"op":"delete"}}]]); // clear
-      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":3,"new":"three"}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,"three",4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":1,"new":[1]}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[0,[1],2,"three",4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":[1],"new":[1,2,3]}}]]);
-      assertEqual(readAndCheck([["/a"]]),
-                  [{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":[1,2,3],"new":[1,2,3]}}]]);
-      assertEqual(readAndCheck([["/a"]]),
-                  [{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":4,"new":[1,2,3]}}]]);
-      assertEqual(readAndCheck([["/a"]]),
-                  [{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":9,"new":[1,2,3]}}]]);
-      assertEqual(readAndCheck([["/a"]]),
-                  [{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,[1,2,3]]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":[1,2,3],"new":{"a":0}}}]]);
-      assertEqual(readAndCheck([["/a"]]),
-                  [{a:[0,{a:0},2,"three",{a:0},5,6,7,8,{a:0}]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":{"a":0},"new":"a"}}]]);
-      assertEqual(readAndCheck([["/a"]]),
-                  [{a:[0,"a",2,"three","a",5,6,7,8,"a"]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":"a","new":"/a"}}]]);
-      assertEqual(readAndCheck([["/a"]]),
-                  [{a:[0,"/a",2,"three","/a",5,6,7,8,"/a"]}]);
-    },
+    TEST_F(StoreTestAPI, OpErase) {
+
+      writeAndCheck(R"([[{"/version":{"op":"delete"}}]])");
+
+      writeAndCheck(R"([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]])"); // none before
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,3,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":3}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":3}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":0}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[1,2,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":1}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":2}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":4}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":5}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":9}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[6,7,8]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":7}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[6,8]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","val":6}}],
+                     [{"a":{"op":"erase","val":8}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[]}])");
+
+      writeAndCheck(R"([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]])"); // none before
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,3,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","pos":3}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","pos":0}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[1,2,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","pos":0}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","pos":2}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","pos":4}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,6,7,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","pos":2}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,7,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","pos":2}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[2,4,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","pos":0}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[4,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"erase","pos":1}}],
+                     [{"a":{"op":"erase","pos":0}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[]}])");
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "pop" operator
+////////////////////////////////////////////////////////////////////////////////
+
+    TEST_F(StoreTestAPI, OpReplace) {
+      writeAndCheck(R"([[{"/version":{"op":"delete"}}]])"); // clear
+      writeAndCheck(R"([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,1,2,3,4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"replace","val":3,"new":"three"}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{a:[0,1,2,"three",4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"replace","val":1,"new":[1]}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{"a":[0,[1],2,"three",4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"replace","val":[1],"new":[1,2,3]}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"),
+                  R"([{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"replace","val":[1,2,3],"new":[1,2,3]}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"),
+                  R"([{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"replace","val":4,"new":[1,2,3]}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"),
+                  R"([{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,9]}])");
+      writeAndCheck(R"([[{"a":{"op":"replace","val":9,"new":[1,2,3]}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"),
+                  R"([{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,[1,2,3]]}])");
+      writeAndCheck(R"([[{"a":{"op":"replace","val":[1,2,3],"new":{"a":0}}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"),
+                  R"([{"a":[0,{"a":0},2,"three",{"a":0},5,6,7,8,{"a":0}]}])");
+      writeAndCheck(R"([[{"a":{"op":"replace","val":{"a":0},"new":"a"}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"),
+                  R"([{a:[0,"a",2,"three","a",5,6,7,8,"a"]}])");
+      writeAndCheck(R"([[{"a":{"op":"replace","val":"a","new":"/a"}}]])");
+      assertEqual(readAndCheck(R"([["/a"]])"),
+                  R"([{a:[0,"/a",2,"three","/a",5,6,7,8,"/a"]}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "increment" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpIncrement : function () {
-      writeAndCheck([[{"/version":{"op":"delete"}}]]);
-      writeAndCheck([[{"/version":{"op":"increment"}}]]); // none before
-      assertEqual(readAndCheck([["version"]]), [{version:1}]);
-      writeAndCheck([[{"/version":{"op":"increment"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:2}]);
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
-      writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:13}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:1}}]);
-    },
+    TEST_F(StoreTestAPI, OpIncrement) {
+      writeAndCheck(R"([[{"/version":{"op":"delete"}}]])");
+      writeAndCheck(R"([[{"/version":{"op":"increment"}}]])"); // none before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:1}])");
+      writeAndCheck(R"([[{"/version":{"op":"increment"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:2}])");
+      writeAndCheck(R"([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:12}}])");
+      writeAndCheck(R"([[{"/version/c":{"op":"increment"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:13}}])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{3100});
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{}])");
+      writeAndCheck(R"([[{"/version/c":{"op":"increment"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:1}}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "decrement" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpDecrement : function () {
-      writeAndCheck([[{"/version":{"op":"delete"}}]]);
-      writeAndCheck([[{"/version":{"op":"decrement"}}]]); // none before
-      assertEqual(readAndCheck([["version"]]), [{version:-1}]);
-      writeAndCheck([[{"/version":{"op":"decrement"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:-2}]);
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
-      writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:11}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:-1}}]);
-    },
+    TEST_F(StoreTestAPI, OpDecrement) {
+      writeAndCheck(R"([[{"/version":{"op":"delete"}}]])");
+      writeAndCheck(R"([[{"/version":{"op":"decrement"}}]])"); // none before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:-1}])");
+      writeAndCheck(R"([[{"/version":{"op":"decrement"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:-2}])");
+      writeAndCheck(R"([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:12}}])");
+      writeAndCheck(R"([[{"/version/c":{"op":"decrement"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:11}}])");
+      std::this_thread::sleep_for(std::chrono::milliseconds{3100});
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{}])");
+      writeAndCheck(R"([[{"/version/c":{"op":"decrement"}}]])"); // int before
+      assertEqual(readAndCheck(R"([["version"]])"), R"( [{version:{c:-1}}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "op" keyword in other places than as operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOpInStrangePlaces : function () {
-      writeAndCheck([[{"/op":12}]]);
-      assertEqual(readAndCheck([["/op"]]), [{op:12}]);
-      writeAndCheck([[{"/op":{op:"delete"}}]]);
-      writeAndCheck([[{"/op/a/b/c":{"op":"set","new":{"op":13}}}]]);
-      assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:13}}}}}]);
-      writeAndCheck([[{"/op/a/b/c/op":{"op":"increment"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:14}}}}}]);
-      writeAndCheck([[{"/op/a/b/c/op":{"op":"decrement"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:13}}}}}]);
-      writeAndCheck([[{"/op/a/b/c/op":{"op":"pop"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:[]}}}}}]);
-      writeAndCheck([[{"/op/a/b/c/op":{"op":"increment"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:1}}}}}]);
-      writeAndCheck([[{"/op/a/b/c/op":{"op":"shift"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:[]}}}}}]);
-      writeAndCheck([[{"/op/a/b/c/op":{"op":"decrement"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:-1}}}}}]);
-      writeAndCheck([[{"/op/a/b/c/op":{"op":"push","new":-1}}]]);
-      assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:[-1]}}}}}]);
-      writeAndCheck([[{"/op/a/b/d":{"op":"set","new":{"ttl":14}}}]]);
-      assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:14}}}}}]);
-      writeAndCheck([[{"/op/a/b/d/ttl":{"op":"increment"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:15}}}}}]);
-      writeAndCheck([[{"/op/a/b/d/ttl":{"op":"decrement"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:14}}}}}]);
-    },
+    TEST_F(StoreTestAPI, OpInStrangePlaces) {
+      writeAndCheck(R"([[{"/op":12}]])");
+      assertEqual(readAndCheck(R"([["/op"]])"), R"( [{op:12}])");
+      writeAndCheck(R"([[{"/op":{op:"delete"}}]])");
+      writeAndCheck(R"([[{"/op/a/b/c":{"op":"set","new":{"op":13}}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:13}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"increment"}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:14}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"decrement"}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:13}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"pop"}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:[]}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"increment"}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:1}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"shift"}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:[]}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"decrement"}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:-1}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/c/op":{"op":"push","new":-1}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/c"]])"), R"( [{op:{a:{b:{c:{op:[-1]}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/d":{"op":"set","new":{"ttl":14}}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/d"]])"), R"( [{op:{a:{b:{d:{ttl:14}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/d/ttl":{"op":"increment"}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/d"]])"), R"( [{op:{a:{b:{d:{ttl:15}}}}}])");
+      writeAndCheck(R"([[{"/op/a/b/d/ttl":{"op":"decrement"}}]])");
+      assertEqual(readAndCheck(R"([["/op/a/b/d"]])"), R"( [{op:{a:{b:{d:{ttl:14}}}}}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief op delete on top node
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOperatorsOnRootNode : function () {
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
-      writeAndCheck([[{"/":{"op":"increment"}}]]);
-      assertEqual(readAndCheck([["/"]]), [1]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"/":{"op":"decrement"}}]]);
-      assertEqual(readAndCheck([["/"]]), [-1]);
-      writeAndCheck([[{"/":{"op":"push","new":"Hello"}}]]);
-      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"/":{"op":"push","new":"Hello"}}]]);
-      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
-      writeAndCheck([[{"/":{"op":"pop"}}]]);
-      assertEqual(readAndCheck([["/"]]), [[]]);
-      writeAndCheck([[{"/":{"op":"pop"}}]]);
-      assertEqual(readAndCheck([["/"]]), [[]]);
-      writeAndCheck([[{"/":{"op":"push","new":"Hello"}}]]);
-      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
-      writeAndCheck([[{"/":{"op":"shift"}}]]);
-      assertEqual(readAndCheck([["/"]]), [[]]);
-      writeAndCheck([[{"/":{"op":"shift"}}]]);
-      assertEqual(readAndCheck([["/"]]), [[]]);
-      writeAndCheck([[{"/":{"op":"prepend","new":"Hello"}}]]);
-      assertEqual(readAndCheck([["/"]]), [["Hello"]]);
-      writeAndCheck([[{"/":{"op":"shift"}}]]);
-      assertEqual(readAndCheck([["/"]]), [[]]);
-      writeAndCheck([[{"/":{"op":"pop"}}]]);
-      assertEqual(readAndCheck([["/"]]), [[]]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
-    },
+    TEST_F(StoreTestAPI, OperatorsOnRootNode) {
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+      writeAndCheck(R"([[{"/":{"op":"increment"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [1])");
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      writeAndCheck(R"([[{"/":{"op":"decrement"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [-1])");
+      writeAndCheck(R"([[{"/":{"op":"push","new":"Hello"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [["Hello"]])");
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      writeAndCheck(R"([[{"/":{"op":"push","new":"Hello"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [["Hello"]])");
+      writeAndCheck(R"([[{"/":{"op":"pop"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [[]])");
+      writeAndCheck(R"([[{"/":{"op":"pop"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [[]])");
+      writeAndCheck(R"([[{"/":{"op":"push","new":"Hello"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [["Hello"]])");
+      writeAndCheck(R"([[{"/":{"op":"shift"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [[]])");
+      writeAndCheck(R"([[{"/":{"op":"shift"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [[]])");
+      writeAndCheck(R"([[{"/":{"op":"prepend","new":"Hello"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [["Hello"]])");
+      writeAndCheck(R"([[{"/":{"op":"shift"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [[]])");
+      writeAndCheck(R"([[{"/":{"op":"pop"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [[]])");
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Test observe / unobserve
-////////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////////
+// /// @brief Test observe / unobserve
+// ////////////////////////////////////////////////////////////////////////////////
 
-    testObserve : function () {
-      var res, before, after, clean;
-      var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}];
+//     TEST_F(StoreTestAPI, Observe) {
+//       var res, before, after, clean;
+//       var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}];
 
-      // In the beginning
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      clean = JSON.parse(res.body);
+//       // In the beginning
+//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       assertEqual(200, res.statusCode);
+//       clean = JSON.parse(res.body);
 
-      // Don't create empty object for observation
-      writeAndCheck([[{"/a":{"op":"observe", "url":"https://google.com"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 200);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 412);
+//       // Don't create empty object for observation
+//       writeAndCheck(R"([[{"/a":{"op":"observe", "url":"https://google.com"}}]])");
+//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+//       res = accessAgency("write",[trx]);
+//       assertEqual(res.statusCode, 200);
+//       res = accessAgency("write",[trx]);
+//       assertEqual(res.statusCode, 412);
 
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      var c = agencyConfig().term;
+//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+//       var c = agencyConfig().term;
 
-      // No duplicate entries in
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      before = JSON.parse(res.body);
-      writeAndCheck([[{"/a":{"op":"observe", "url":"https://google.com"}}]]);
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      after = JSON.parse(res.body);
-      if (!_.isEqual(before, after)) {
-        if (agencyConfig().term === c) {
-          assertEqual(before, after); //peng
-        } else {
-          require("console").warn("skipping remaining callback tests this time around");
-          return; //
-        }
-      }
+//       // No duplicate entries in
+//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       assertEqual(200, res.statusCode);
+//       before = JSON.parse(res.body);
+//       writeAndCheck(R"([[{"/a":{"op":"observe", "url":"https://google.com"}}]])");
+//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       assertEqual(200, res.statusCode);
+//       after = JSON.parse(res.body);
+//       if (!_.isEqual(before, after)) {
+//         if (agencyConfig().term === c) {
+//           assertEqual(before, after); //peng
+//         } else {
+//           require("console").warn("skipping remaining callback tests this time around");
+//           return; //
+//         }
+//       }
 
-      // Normalization
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      before = JSON.parse(res.body);
-      writeAndCheck([[{"//////a////":{"op":"observe", "url":"https://google.com"}}]]);
-      writeAndCheck([[{"a":{"op":"observe", "url":"https://google.com"}}]]);
-      writeAndCheck([[{"a/":{"op":"observe", "url":"https://google.com"}}]]);
-      writeAndCheck([[{"/a/":{"op":"observe", "url":"https://google.com"}}]]);
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      after = JSON.parse(res.body);
-      if (!_.isEqual(before, after)) {
-        if (agencyConfig().term === c) {
-          assertEqual(before, after); //peng
-        } else {
-          require("console").warn("skipping remaining callback tests this time around");
-          return; //
-        }
-      }
+//       // Normalization
+//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       assertEqual(200, res.statusCode);
+//       before = JSON.parse(res.body);
+//       writeAndCheck(R"([[{"//////a////":{"op":"observe", "url":"https://google.com"}}]])");
+//       writeAndCheck(R"([[{"a":{"op":"observe", "url":"https://google.com"}}]])");
+//       writeAndCheck(R"([[{"a/":{"op":"observe", "url":"https://google.com"}}]])");
+//       writeAndCheck(R"([[{"/a/":{"op":"observe", "url":"https://google.com"}}]])");
+//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       assertEqual(200, res.statusCode);
+//       after = JSON.parse(res.body);
+//       if (!_.isEqual(before, after)) {
+//         if (agencyConfig().term === c) {
+//           assertEqual(before, after); //peng
+//         } else {
+//           require("console").warn("skipping remaining callback tests this time around");
+//           return; //
+//         }
+//       }
 
-      // Unobserve
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      before = JSON.parse(res.body);
-      writeAndCheck([[{"//////a":{"op":"unobserve", "url":"https://google.com"}}]]);
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      after = JSON.parse(res.body);
-      assertEqual(clean, after);
-      if (!_.isEqual(clean, after)) {
-        if (agencyConfig().term === c) {
-          assertEqual(clean, after); //peng
-        } else {
-          require("console").warn("skipping remaining callback tests this time around");
-          return; //
-        }
-      }
+//       // Unobserve
+//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       assertEqual(200, res.statusCode);
+//       before = JSON.parse(res.body);
+//       writeAndCheck(R"([[{"//////a":{"op":"unobserve", "url":"https://google.com"}}]])");
+//       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+//       assertEqual(200, res.statusCode);
+//       after = JSON.parse(res.body);
+//       assertEqual(clean, after);
+//       if (!_.isEqual(clean, after)) {
+//         if (agencyConfig().term === c) {
+//           assertEqual(clean, after); //peng
+//         } else {
+//           require("console").warn("skipping remaining callback tests this time around");
+//           return; //
+//         }
+//       }
 
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
+//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
 
-    },
+//     }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Test delete / replace / erase should not create new stuff in agency
-////////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////////
+// /// @brief Test delete / replace / erase should not create new stuff in agency
+// ////////////////////////////////////////////////////////////////////////////////
 
-    testNotCreate : function () {
-      var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}], res;
+//     TEST_F(StoreTestAPI, NotCreate) {
+//       var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}], res;
 
-      // Don't create empty object for observation
-      writeAndCheck([[{"a":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 200);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 412);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
+//       // Don't create empty object for observation
+//       writeAndCheck(R"([[{"a":{"op":"delete"}}]])");
+//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+//       res = accessAgency("write",[trx]);
+//       assertEqual(res.statusCode, 200);
+//       res = accessAgency("write",[trx]);
+//       assertEqual(res.statusCode, 412);
+//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
 
-      // Don't create empty object for observation
-      writeAndCheck([[{"a":{"op":"replace", "val":1, "new":2}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 200);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 412);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
+//       // Don't create empty object for observation
+//       writeAndCheck(R"([[{"a":{"op":"replace", "val":1, "new":2}}]])");
+//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+//       res = accessAgency("write",[trx]);
+//       assertEqual(res.statusCode, 200);
+//       res = accessAgency("write",[trx]);
+//       assertEqual(res.statusCode, 412);
+//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
 
-      // Don't create empty object for observation
-      writeAndCheck([[{"a":{"op":"erase", "val":1}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 200);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 412);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
+//       // Don't create empty object for observation
+//       writeAndCheck(R"([[{"a":{"op":"erase", "val":1}}]])");
+//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+//       res = accessAgency("write",[trx]);
+//       assertEqual(res.statusCode, 200);
+//       res = accessAgency("write",[trx]);
+//       assertEqual(res.statusCode, 412);
+//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
 
-    },
+//     }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test that order should not matter
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOrder : function () {
-      writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
-      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]]);
-      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
-      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
-      assertEqual(readAndCheck([["a/e"],["a/b","d"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-    },
+    TEST_F(StoreTestAPI, Order) {
+      writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
+      assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
+                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      writeAndCheck(R"([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]])");
+      assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
+                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+      writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
+      assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
+                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+      writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
+      assertEqual(readAndCheck(R"([["a/e"],["a/b","d"]])"),
+                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOrderEvil : function () {
-      writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
-      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]]);
-      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
-      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-      writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
-      assertEqual(readAndCheck([["a/e"],["a/b","d"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-    },
+    TEST_F(StoreTestAPI, order_evil) {
+      writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
+      assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
+                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      writeAndCheck(R"([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]])");
+      assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
+                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+      writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
+      assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
+                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+      writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
+      assertEqual(readAndCheck(R"([["a/e"],["a/b","d"]])"),
+                  R"([{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSlashORama : function () {
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"//////////////////////a/////////////////////b//":
-                       {"b///////c":4}}]]);
-      assertEqual(readAndCheck([["/"]]), [{a:{b:{b:{c:4}}}}]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"////////////////////////": "Hi there!"}]]);
-      assertEqual(readAndCheck([["/"]]), ["Hi there!"]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
+    TEST_F(StoreTestAPI, SlashORama) {
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      writeAndCheck(R"([[{"//////////////////////a/////////////////////b//":
+                       {"b///////c":4}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [{a:{b:{b:{c:4}}}}])");
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      writeAndCheck(R"([[{"////////////////////////": "Hi there!"}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"(["Hi there!"])");
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
       writeAndCheck(
-        [[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
-           {"b///////c":4}}]]);
-      assertEqual(readAndCheck([["/"]]),
-                  [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
-    },
+        R"([[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
+           {"b///////c":4}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"),
+                  R"([{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}])");
+    }
 
-    testKeysBeginningWithSameString: function() {
-      var res = accessAgency("write",[[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
-      assertEqual(res.statusCode, 200);
-      assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
-    },
+    TEST_F(StoreTestAPI, KeysBeginningWithSameString) {
+      writeAndCheck(R"([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]])");
+      assertEqual(readAndCheck(R"([["/bumms", "/bummsfallera"]])"), R"( [{"bumms":"fallera", "bummsfallera": "lalalala"}])");
+    }
 
-    testHiddenAgencyWrite: function() {
-      var res = accessAgency("write",[[{".agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 403);
-    },
+    TEST_F(StoreTestAPI, HiddenAgencyWrite) {
+      auto res = write(R"([[{".agency": {"op":"set","new":"fallera"}}]])");
+      ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
+    }
 
-    testHiddenAgencyWriteSlash: function() {
-      var res = accessAgency("write",[[{"/.agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 403);
-    },
+    TEST_F(StoreTestAPI, HiddenAgencyWriteSlash) {
+      auto res = write(R"([[{"/.agency": {"op":"set","new":"fallera"}}]])");
+      ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
+    }
 
-    testHiddenAgencyWriteDeep: function() {
-      var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 403);
-    },
+    TEST_F(StoreTestAPI, HiddenAgencyWriteDeep) {
+      auto res = write(R"([[{"/.agency/hans": {"op":"set","new":"fallera"}}]])");
+      ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Compaction
-////////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////////
+// /// @brief Compaction
+// ////////////////////////////////////////////////////////////////////////////////
 
-    testLogCompaction: function() {
-      // Find current log index and erase all data:
-      let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
-          bodyParsed.results[0];
+//     TEST_F(StoreTestAPI, LogCompaction) {
+//       // Find current log index and erase all data:
+//       let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+//           bodyParsed.results[0];
 
-      let count = compactionConfig.compactionStepSize - 100 - cur;
-      require("console").topic("agency=info", "Avoiding log compaction for now with", count,
-        "keys, from log entry", cur, "on.");
-      doCountTransactions(count, 0);
+//       let count = compactionConfig.compactionStepSize - 100 - cur;
+//       require("console").topic("agency=info", "Avoiding log compaction for now with", count,
+//         "keys, from log entry", cur, "on.");
+//       doCountTransactions(count, 0);
 
-      // Now trigger one log compaction and check all keys:
-      let count2 = compactionConfig.compactionStepSize + 100 - (cur + count);
-      require("console").topic("agency=info", "Provoking log compaction for now with", count2,
-        "keys, from log entry", cur + count, "on.");
-      doCountTransactions(count2, count);
+//       // Now trigger one log compaction and check all keys:
+//       let count2 = compactionConfig.compactionStepSize + 100 - (cur + count);
+//       require("console").topic("agency=info", "Provoking log compaction for now with", count2,
+//         "keys, from log entry", cur + count, "on.");
+//       doCountTransactions(count2, count);
 
-      // All tests so far have not really written many log entries in
-      // comparison to the compaction interval (with the default settings),
-      let count3 = 2 * compactionConfig.compactionStepSize + 100
-        - (cur + count + count2);
-      require("console").topic("agency=info", "Provoking second log compaction for now with",
-        count3, "keys, from log entry", cur + count + count2, "on.");
-      doCountTransactions(count3, count + count2);
-    },
-*/
+//       // All tests so far have not really written many log entries in
+//       // comparison to the compaction interval (with the default settings),
+//       let count3 = 2 * compactionConfig.compactionStepSize + 100
+//         - (cur + count + count2);
+//       require("console").topic("agency=info", "Provoking second log compaction for now with",
+//         count3, "keys, from log entry", cur + count + count2, "on.");
+//       doCountTransactions(count3, count + count2);
+//     }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package
@@ -1143,7 +1141,7 @@ TEST_F(StoreTestAPI, huge_transaction_package) {
     ss << R"([{"a":{"op":"increment"}}, {}, "huge)" << i << R"("])";
   }
   ss << "]";
-  writeAndCheck(ss.str());
+  writeAndCheck(R"(ss.str())");
   assertEqual(readAndCheck(R"([["a"]])"), R"([{"a":20000}])");
 }
 
@@ -1152,58 +1150,58 @@ TEST_F(StoreTestAPI, huge_transaction_package) {
 /// @brief Huge transaction package, inc/dec
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionWithIncDec : function() {
-      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+    TEST_F(StoreTestAPI, TransactionWithIncDec ) {
+      writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
       var trx = [];
       for (var i = 0; i < 100; ++i) {
         trx.push([{"a":{"op":"increment"}}, {}, "inc" + i]);
         trx.push([{"a":{"op":"decrement"}}, {}, "dec" + i]);
       }
-      writeAndCheck(trx);
-      assertEqual(readAndCheck([["a"]]), [{"a":0}]);
-    },
+      writeAndCheck(R"(trx)");
+      assertEqual(readAndCheck(R"([["a"]])"), R"( [{"a":0}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction, update of same key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionUpdateSameKey : function() {
-      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+    TEST_F(StoreTestAPI, TransactionUpdateSameKey ) {
+      writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
       var trx = [];
       trx.push([{"a":"foo"}]);
       trx.push([{"a":"bar"}]);
-      writeAndCheck(trx);
-      assertEqual(readAndCheck([["a"]]), [{"a":"bar"}]);
-    },
+      writeAndCheck(R"(trx)");
+      assertEqual(readAndCheck(R"([["a"]])"), R"( [{"a":"bar"}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction, insert and remove of same key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionInsertRemoveSameKey : function() {
-      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+    TEST_F(StoreTestAPI, TransactionInsertRemoveSameKey ) {
+      writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
       var trx = [];
       trx.push([{"a":"foo"}]);
       trx.push([{"a":{"op":"delete"}}]);
-      writeAndCheck(trx);
-      assertEqual(readAndCheck([["/a"]]), [{}]);
-    },
+      writeAndCheck(R"(trx)");
+      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package, all different keys
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionDifferentKeys : function() {
-      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+    TEST_F(StoreTestAPI, TransactionDifferentKeys ) {
+      writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
       var huge = [], i;
       for (i = 0; i < 100; ++i) {
         huge.push([{["a" + i]:{"op":"increment"}}, {}, "diff" + i]);
       }
-      writeAndCheck(huge);
+      writeAndCheck(R"(huge)");
       for (i = 0; i < 100; ++i) {
-        assertEqual(readAndCheck([["a" + i]]), [{["a" + i]:1}]);
+        assertEqual(readAndCheck(R"([["a" + i]])"), R"( [{["a" + i]:1}])");
       }
-    },
+    }
 
 */
 
