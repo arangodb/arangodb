@@ -239,6 +239,8 @@ class ShardDefinition {
   ShardDefinition& operator=(ShardDefinition const&) = delete;
 
   ShardDefinition(std::string const& database, std::string const& shard);
+  
+  virtual ~ShardDefinition() = default;
 
   std::string const& getDatabase() const noexcept {
     return _database;
