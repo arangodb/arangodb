@@ -49,9 +49,6 @@ namespace graph {
 
 struct OneSidedEnumeratorOptions;
 
-template <class ProviderType, class Step>
-class PathResult;
-
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidatorType>
 class OneSidedEnumerator {
  public:
@@ -106,7 +103,7 @@ class OneSidedEnumerator {
    * @return true Found and written a path, result is modified.
    * @return false No path found, result has not been changed.
    */
-  bool getNextPath(arangodb::velocypack::Builder& result);
+  auto getNextPath() -> std::optional<SingleProviderPathResult<ProviderType, Step>>;
 
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
@@ -151,8 +148,6 @@ class OneSidedEnumerator {
 
   // This stores all paths processed
   PathStoreType _interior;
-
-  SingleProviderPathResult<ProviderType, Step> _resultPath;
 };
 }  // namespace graph
 }  // namespace arangodb

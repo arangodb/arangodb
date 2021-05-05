@@ -55,8 +55,7 @@ OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::OneSi
       _queue(resourceMonitor),
       _provider(std::move(forwardProvider)),
       _validator(_interior),
-      _interior(resourceMonitor),
-      _resultPath{_provider} {}
+      _interior(resourceMonitor) {}
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::~OneSidedEnumerator() {
@@ -153,7 +152,8 @@ void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  * @return false No path found, result has not been changed.
  */
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::getNextPath(VPackBuilder& result) {
+auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::getNextPath()
+    -> std::optional<SingleProviderPathResult<ProviderType, typename ProviderType::Step>> {
   while (!isDone()) {
     searchMoreResults();
 
@@ -165,15 +165,15 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       // everything in to the _resultPath object
       // and then iterate again to return the path
       // we should be able to return the path in the first go.
-      _resultPath.clear();
-      _interior.buildPath(vertex, _resultPath);
-      TRI_ASSERT(!_resultPath.isEmpty());
+      auto resultPath = SingleProviderPathResult<ProviderType, Step>{_provider};
+      _interior.buildPath(vertex, resultPath);
+      TRI_ASSERT(!resultPath.isEmpty());
       _results.pop_back();
-      _resultPath.toVelocyPack(result);
-      return true;
+
+      return resultPath; // TODO: Please let us check alternatives here (e.g. std::move)
     }
   }
-  return false;
+  return std::nullopt;
 }
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
