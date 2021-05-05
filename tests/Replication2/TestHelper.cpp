@@ -60,8 +60,8 @@ auto MockLog::insert(LogIterator& iter) -> arangodb::Result {
 }
 
 template <typename I>
-struct ContainerIterator : LogIterator {
-  ContainerIterator(MockLog::storeType store, LogIndex start)
+struct MockLogContainerIterator : LogIterator {
+  MockLogContainerIterator(MockLog::storeType store, LogIndex start)
       : _store(std::move(store)),
         _current(_store.lower_bound(start)),
         _end(_store.end()) {}
@@ -80,7 +80,7 @@ struct ContainerIterator : LogIterator {
 
 auto MockLog::read(replication2::LogIndex start)
 -> std::unique_ptr<LogIterator> {
-  return std::make_unique<ContainerIterator<iteratorType>>(_storage, start);
+  return std::make_unique<MockLogContainerIterator<iteratorType>>(_storage, start);
 }
 
 auto MockLog::removeFront(replication2::LogIndex stop)
