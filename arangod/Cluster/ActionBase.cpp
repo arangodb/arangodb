@@ -241,19 +241,19 @@ void ActionBase::setState(ActionState state) {
 Result ActionBase::result() const {
   Result result;
   {
-    std::lock_guard<std::mutex> lock(resLock);
+    const std::lock_guard<std::mutex> lock(resLock);
     result.reset(_result);
   }
   return result;
 }
 
 void ActionBase::result(Result const& result) {
-  std::lock_guard<std::mutex> lock(resLock);
+  const std::lock_guard<std::mutex> lock(resLock);
   _result.reset(result);
 }
 
 void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
-  std::lock_guard<std::mutex> lock(resLock);
+  const std::lock_guard<std::mutex> lock(resLock);
   _result.reset(errorNumber, errorString);
 }
 
