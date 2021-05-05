@@ -23,6 +23,8 @@
 #include "ReplicatedLog.h"
 
 #include "Basics/Exceptions.h"
+#include "Replication2/ReplicatedLog/LogFollower.h"
+#include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/rtypes.h"
@@ -826,7 +828,7 @@ auto replicated_log::ReplicatedLog::getLeader() const -> std::shared_ptr<LogLead
 auto replicated_log::ReplicatedLog::getFollower() const -> std::shared_ptr<LogFollower> {
     auto log = getParticipant();
     if (auto leader =
-                std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogFollower>(log);
+                std::dynamic_pointer_cast<replicated_log::LogFollower>(log);
             log != nullptr) {
         return leader;
     } else {

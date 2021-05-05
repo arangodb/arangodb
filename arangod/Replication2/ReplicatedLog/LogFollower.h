@@ -21,3 +21,63 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
+#include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/LogParticipantI.h"
+#include "Replication2/ReplicatedLog/rtypes.h"
+
+#include <Basics/Guarded.h>
+
+#include <map>
+#include <memory>
+#include <mutex>
+
+namespace arangodb::replication2::replicated_log {
+class LogFollower : public LogParticipantI, public AbstractFollower {
+ public:
+  ~LogFollower() override = default;
+  LogFollower(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+              ParticipantId leaderId, InMemoryLog inMemoryLog);
+
+  // follower only
+  auto appendEntries(AppendEntriesRequest) -> futures::Future<AppendEntriesResult> override;
+
+  [[nodiscard]] auto getStatus() const -> LogStatus override;
+  auto resign() && -> std::unique_ptr<LogCore> override;
+
+  [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
+
+  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
+
+ private:
+  struct GuardedFollowerData;
+  using Guard = MutexGuard<GuardedFollowerData, std::unique_lock<std::mutex>>;
+  using ConstGuard = MutexGuard<GuardedFollowerData const, std::unique_lock<std::mutex>>;
+
+  struct GuardedFollowerData {
+    GuardedFollowerData() = delete;
+    GuardedFollowerData(LogFollower const& self, std::unique_ptr<LogCore> logCore,
+                        InMemoryLog inMemoryLog);
+
+    [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
+
+    [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture;
+
+    LogFollower const& _self;
+    InMemoryLog _inMemoryLog;
+    std::unique_ptr<LogCore> _logCore;
+    std::multimap<LogIndex, WaitForPromise> _waitForQueue{};
+    LogIndex _commitIndex{0};
+  };
+  ParticipantId const _participantId;
+  ParticipantId const _leaderId;
+  LogTerm const _currentTerm;
+  Guarded<GuardedFollowerData> _guardedFollowerData;
+
+  auto acquireMutex() -> Guard;
+  auto acquireMutex() const -> ConstGuard;
+};
+
+}  // namespace arangodb::replication2::replicated_log

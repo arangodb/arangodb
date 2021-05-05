@@ -59,6 +59,8 @@
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Replication2/ReplicatedLog/LogFollower.h"
+#include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Logger/LogMacros.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -66,6 +68,7 @@
 #include "Replication2/LogManager.h"
 #include "Replication2/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1898,7 +1901,7 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 }
 
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
-    -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower> {
+    -> std::shared_ptr<replication2::replicated_log::LogFollower> {
   return getReplicatedLogById(id).getFollower();
 }
 
