@@ -20,6 +20,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #include "LogManager.h"
+#include "rtypes.h"
 
 #include <utility>
 
@@ -51,8 +52,8 @@ void LogManager::markLogAsDirty(std::shared_ptr<LogInterface> log) {
 }
 #endif
 
-auto LogManagerProxy::appendEntries(AppendEntriesRequest request)
-    -> arangodb::futures::Future<AppendEntriesResult> {
+auto LogManagerProxy::appendEntries(replicated_log::AppendEntriesRequest request)
+    -> arangodb::futures::Future<replicated_log::AppendEntriesResult> {
   return _manager->appendEntries(std::move(request), _logId);
 }
 
@@ -67,8 +68,8 @@ LogManagerProxy::LogManagerProxy(const LogId& logId, ParticipantId id,
 LogManager::LogManager(std::shared_ptr<LogWorkerExecutor> executor)
     : _executor(std::move(executor)) {}
 
-auto LogManager::appendEntries(AppendEntriesRequest request, LogId logId)
-    -> arangodb::futures::Future<AppendEntriesResult> {
+auto LogManager::appendEntries(replicated_log::AppendEntriesRequest request, LogId logId)
+    -> arangodb::futures::Future<replicated_log::AppendEntriesResult> {
   std::unique_lock guard(_mutex);
   auto f = _requests.emplace_back(std::move(request), logId).promise.getFuture();
   if (!_isWorkerActive) {

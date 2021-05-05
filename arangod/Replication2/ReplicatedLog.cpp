@@ -23,8 +23,9 @@
 #include "ReplicatedLog.h"
 
 #include "Basics/Exceptions.h"
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/LogParticipantI.h"
+#include "rtypes.h"
 
 #include <Basics/StringUtils.h>
 #include <Basics/application-exit.h>
@@ -696,10 +697,10 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
   });
 }
 
-QuorumData::QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum)
+replicated_log::QuorumData::QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum)
     : index(index), term(term), quorum(std::move(quorum)) {}
 
-void AppendEntriesResult::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::AppendEntriesResult::toVelocyPack(velocypack::Builder& builder) const {
   {
     velocypack::ObjectBuilder ob(&builder);
     builder.add("term", VPackValue(logTerm.value));
@@ -708,24 +709,24 @@ void AppendEntriesResult::toVelocyPack(velocypack::Builder& builder) const {
   }
 }
 
-auto AppendEntriesResult::fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult {
+auto replicated_log::AppendEntriesResult::fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult {
   auto logTerm = LogTerm{slice.get("term").extract<size_t>()};
   auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
   auto reason = AppendEntriesErrorReason{slice.get("reason").extract<int>()};
 
-  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != AppendEntriesErrorReason::NONE);
+  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != replicated_log::AppendEntriesErrorReason::NONE);
   return AppendEntriesResult{logTerm, errorCode, reason};
 }
 
-AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
+replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
                                          AppendEntriesErrorReason reason)
     : logTerm(logTerm), errorCode(errorCode), reason(reason) {
-  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != AppendEntriesErrorReason::NONE);
+  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR || reason != replicated_log::AppendEntriesErrorReason::NONE);
 }
-AppendEntriesResult::AppendEntriesResult(LogTerm logTerm)
+replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm)
     : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NONE) {}
 
-void AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
   {
     velocypack::ObjectBuilder ob(&builder);
     builder.add("leaderTerm", VPackValue(leaderTerm.value));
@@ -741,7 +742,7 @@ void AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
   }
 }
 
-auto AppendEntriesRequest::fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest {
+auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest {
   auto leaderTerm = LogTerm{slice.get("leaderTerm").getNumericValue<size_t>()};
   auto leaderId = ParticipantId{slice.get("leaderId").copyString()};
   auto prevLogTerm = LogTerm{slice.get("prevLogTerm").getNumericValue<size_t>()};
@@ -887,34 +888,34 @@ auto replicated_log::LogFollower::GuardedFollowerData::waitFor(LogIndex index)
   return std::move(future);
 }
 
-std::string arangodb::replication2::to_string(AppendEntriesErrorReason reason) {
+std::string arangodb::replication2::to_string(replicated_log::AppendEntriesErrorReason reason) {
   switch (reason) {
-    case AppendEntriesErrorReason::NONE:
+    case replicated_log::AppendEntriesErrorReason::NONE:
       return {};
-    case AppendEntriesErrorReason::INVALID_LEADER_ID:
+    case replicated_log::AppendEntriesErrorReason::INVALID_LEADER_ID:
       return "leader id was invalid";
-    case AppendEntriesErrorReason::LOST_LOG_CORE:
+    case replicated_log::AppendEntriesErrorReason::LOST_LOG_CORE:
       return "term has changed and an internal state was lost";
-    case AppendEntriesErrorReason::WRONG_TERM:
+    case replicated_log::AppendEntriesErrorReason::WRONG_TERM:
       return "current term is different from leader term";
-    case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
+    case replicated_log::AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
       return "previous log index did not match";
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-void LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("commitIndex", VPackValue(commitIndex.value));
   builder.add("spearHead", VPackValue(spearHead.value));
 }
 
-void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue("unconfigured"));
 }
 
-void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue("follower"));
   builder.add("leader", VPackValue(leader));
@@ -923,7 +924,7 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
   local.toVelocyPack(builder);
 }
 
-void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue("leader"));
   builder.add("term", VPackValue(term.value));
@@ -938,7 +939,7 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   }
 }
 
-void LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(VPackValue("local"));
   builder.add("commitIndex", VPackValue(commitIndex.value));

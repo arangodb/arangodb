@@ -53,6 +53,7 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "rtypes.h"
 
 namespace arangodb::replication2::replicated_log {
 struct LogParticipantI {

@@ -37,6 +37,7 @@
 
 #include "ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "rtypes.h"
 
 namespace arangodb::replication2 {
 #if 0
@@ -76,11 +77,11 @@ struct LogWorkerExecutor {
 
 struct LogManager;
 
-struct LogManagerProxy : AbstractFollower {
+struct LogManagerProxy : arangodb::replication2::replicated_log::AbstractFollower {
   LogManagerProxy(const LogId& logId, ParticipantId id, std::shared_ptr<LogManager> manager);
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
-  auto appendEntries(AppendEntriesRequest request)
-      -> arangodb::futures::Future<AppendEntriesResult> override;
+  auto appendEntries(replicated_log::AppendEntriesRequest request)
+      -> arangodb::futures::Future<replicated_log::AppendEntriesResult> override;
 
   [[nodiscard]] auto getLogId() const noexcept -> LogId { return _logId; }
  private:
@@ -93,18 +94,18 @@ struct LogManager : std::enable_shared_from_this<LogManager> {
   virtual ~LogManager() = default;
   explicit LogManager(std::shared_ptr<LogWorkerExecutor> executor);
 
-  auto appendEntries(AppendEntriesRequest, LogId) -> arangodb::futures::Future<AppendEntriesResult>;
+  auto appendEntries(replicated_log::AppendEntriesRequest, LogId) -> arangodb::futures::Future<replicated_log::AppendEntriesResult>;
 
  protected:
   virtual void workerEntryPoint();
   // virtual auto getPersistedLogById(LogId id) -> std::shared_ptr<PersistedLog> = 0;
  private:
-  using ResultPromise = arangodb::futures::Promise<AppendEntriesResult>;
+  using ResultPromise = arangodb::futures::Promise<replicated_log::AppendEntriesResult>;
 
   struct RequestRecord {
-    RequestRecord(AppendEntriesRequest request, LogId logId) : request(std::move(request)), logId(logId) {}
+    RequestRecord(replicated_log::AppendEntriesRequest request, LogId logId) : request(std::move(request)), logId(logId) {}
 
-    AppendEntriesRequest request;
+    replicated_log::AppendEntriesRequest request;
     ResultPromise promise;
     LogId logId;
   };

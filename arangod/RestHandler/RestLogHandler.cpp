@@ -14,6 +14,7 @@
 
 #include "Basics/overload.h"
 #include "RestLogHandler.h"
+#include "rtypes.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -32,13 +33,13 @@ RestStatus RestLogHandler::execute() {
   return RestStatus::DONE;
 }
 
-struct FakeLogFollower : AbstractFollower {
+struct FakeLogFollower : replicated_log::AbstractFollower {
   explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
                            std::string database, LogId logId)
       :  pool(pool), id(std::move(id)), database(database), logId(logId) {}
   auto getParticipantId() const noexcept -> ParticipantId const& override { return id; }
-  auto appendEntries(AppendEntriesRequest request)
-      -> arangodb::futures::Future<AppendEntriesResult> override {
+  auto appendEntries(replicated_log::AppendEntriesRequest request)
+      -> arangodb::futures::Future<replicated_log::AppendEntriesResult> override {
     VPackBufferUInt8  buffer;
     {
       VPackBuilder builder(buffer);
@@ -53,7 +54,7 @@ struct FakeLogFollower : AbstractFollower {
     auto f = network::sendRequest(pool, "server:" + id, fuerte::RestVerb::Post, path, std::move(buffer), opts);
 
     return std::move(f).thenValue(
-        [this](network::Response result) -> AppendEntriesResult {
+        [this](network::Response result) -> replicated_log::AppendEntriesResult {
           LOG_DEVEL << "Append entries for " << id
                     << " returned, fuerte ok = " << result.ok();
           if (result.fail()) {
@@ -62,7 +63,7 @@ struct FakeLogFollower : AbstractFollower {
           }
           LOG_DEVEL << "Result for " << id << " is " << result.slice().toJson();
           TRI_ASSERT(result.slice().get("error").isFalse());  // TODO
-          return AppendEntriesResult::fromVelocyPack(
+          return replicated_log::AppendEntriesResult::fromVelocyPack(
               result.slice().get("result"));
         });
   }
@@ -108,7 +109,7 @@ RestStatus RestLogHandler::handlePostRequest() {
     auto log = _vocbase.getReplicatedLogLeaderById(logId);
     auto idx = log->insert(LogPayload{body.toJson()});
 
-    auto f = log->waitFor(idx).thenValue([this, idx](std::shared_ptr<QuorumData>&& quorum) {
+    auto f = log->waitFor(idx).thenValue([this, idx](std::shared_ptr<replicated_log::QuorumData>&& quorum) {
       VPackBuilder response;
       {
         VPackObjectBuilder ob(&response);
@@ -141,7 +142,7 @@ RestStatus RestLogHandler::handlePostRequest() {
       lastIndex = log->insert(LogPayload{entry.toJson()});
     }
 
-    auto f = log->waitFor(lastIndex).thenValue([this, lastIndex](std::shared_ptr<QuorumData>&& quorum) {
+    auto f = log->waitFor(lastIndex).thenValue([this, lastIndex](std::shared_ptr<replicated_log::QuorumData>&& quorum) {
       VPackBuilder response;
       {
         VPackObjectBuilder ob(&response);
@@ -165,7 +166,7 @@ RestStatus RestLogHandler::handlePostRequest() {
     auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
     auto writeConcern = body.get("writeConcern").getNumericValue<std::size_t>();
 
-    std::vector<std::shared_ptr<AbstractFollower>> follower;
+    std::vector<std::shared_ptr<replicated_log::AbstractFollower>> follower;
     for (auto const& part : VPackArrayIterator(body.get("follower"))) {
       auto partId = part.copyString();
       follower.emplace_back(std::make_shared<FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
@@ -182,8 +183,8 @@ RestStatus RestLogHandler::handlePostRequest() {
 
   } else if (verb == "appendEntries") {
     auto log = _vocbase.getReplicatedLogFollowerById(logId);
-    auto request = AppendEntriesRequest::fromVelocyPack(body);
-    auto f = log->appendEntries(std::move(request)).thenValue([this](AppendEntriesResult&& res) {
+    auto request = replicated_log::AppendEntriesRequest::fromVelocyPack(body);
+    auto f = log->appendEntries(std::move(request)).thenValue([this](replicated_log::AppendEntriesResult&& res) {
       VPackBuilder builder;
       res.toVelocyPack(builder);
       // TODO fix the result type here. Currently we always return the error under the
