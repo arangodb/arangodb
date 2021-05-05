@@ -319,6 +319,7 @@ class RocksDBKey {
       case RocksDBEntryType::IndexEstimateValue:
       case RocksDBEntryType::KeyGeneratorValue:
       case RocksDBEntryType::View:
+      case RocksDBEntryType::ReplicatedLog:
         return type;
       default:
         return RocksDBEntryType::Placeholder;

@@ -1992,6 +1992,18 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   }
 }
 
+void TRI_vocbase_t::registerReplicatedLog(arangodb::replication2::LogId logId, std::shared_ptr<arangodb::replication2::PersistedLog> peristedLog) {
+  auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
+  auto core = std::make_unique<arangodb::replication2::replicated_log::LogCore>(peristedLog);
+  auto [iter, inserted] = manager->_logs.try_emplace(logId, std::move(core));
+  TRI_ASSERT(inserted);
+}
+
+void TRI_vocbase_t::unregisterReplicatedLog(arangodb::replication2::LogId id) {
+  auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
+  manager->_logs.erase(id);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

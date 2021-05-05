@@ -102,6 +102,10 @@ static RocksDBEntryType logEntry = RocksDBEntryType::LogEntry;
 static rocksdb::Slice LogEntry(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&logEntry), 1);
 
+static RocksDBEntryType replicatedLog = RocksDBEntryType::ReplicatedLog;
+static rocksdb::Slice ReplicatedLog(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&replicatedLog), 1);
+
 static RocksDBEntryType revisionTreeValue = RocksDBEntryType::RevisionTreeValue;
 static rocksdb::Slice RevisionTreeValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&revisionTreeValue), 1);
@@ -146,7 +150,9 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
     case arangodb::RocksDBEntryType::RevisionTreeValue:
       return "RevisionTreeValue";
     case RocksDBEntryType::LogEntry:
-      return "LogEntry";
+      return "ReplicatedLogEntry";
+    case RocksDBEntryType::ReplicatedLog:
+      return "ReplicatedLog";
   }
   return "Invalid";
 }
@@ -247,6 +253,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return RevisionTreeValue;
     case RocksDBEntryType::LogEntry:
       return LogEntry;
+    case RocksDBEntryType::ReplicatedLog:
+      return ReplicatedLog;
   }
 
   return Placeholder;  // avoids warning - errorslice instead ?!

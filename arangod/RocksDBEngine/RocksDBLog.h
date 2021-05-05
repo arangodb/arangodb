@@ -43,7 +43,7 @@ class RocksDBLog : public replication2::PersistedLog {
   auto removeBack(replication2::LogIndex start) -> Result override;
 
 
-  uint64_t objectId() const { return _objectId.load(); }
+  uint64_t objectId() const { return _objectId; }
 
   auto drop() -> Result override;
 
@@ -51,9 +51,9 @@ class RocksDBLog : public replication2::PersistedLog {
   RocksDBKeyBounds getBounds() const { return RocksDBKeyBounds::LogRange(_objectId); }
 
  protected:
-  std::atomic<uint64_t> _objectId;
-  rocksdb::ColumnFamilyHandle* _cf;
-  rocksdb::DB *_db;
+  uint64_t const _objectId;
+  rocksdb::ColumnFamilyHandle* const _cf;
+  rocksdb::DB* const _db;
 };
 
 }  // namespace arangodb

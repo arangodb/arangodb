@@ -406,6 +406,12 @@ struct TRI_vocbase_t {
   /// @brief removes a view from the global list of views
   /// This function is called when a view is dropped.
   bool unregisterView(arangodb::LogicalView const& view);
+
+  /// @brief adds a new replicated log with given log id
+  void registerReplicatedLog(arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::PersistedLog>);
+
+  /// @brief removes the replicated log with the given id
+  void unregisterReplicatedLog(arangodb::replication2::LogId);
 };
 
 /// @brief sanitize an object, given as slice, builder must contain an

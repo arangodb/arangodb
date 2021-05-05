@@ -228,8 +228,9 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex);
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
-    case RocksDBEntryType::LogEntry:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex);
+    case RocksDBEntryType::LogEntry:
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::CounterValue:
@@ -239,6 +240,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::RevisionTreeValue:
     case RocksDBEntryType::View:
+    case RocksDBEntryType::ReplicatedLog:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);

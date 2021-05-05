@@ -173,6 +173,8 @@ class RocksDBEngine final : public StorageEngine {
                                      arangodb::velocypack::Builder& result,
                                      bool wasCleanShutdown, bool isUpgrade) override;
 
+  ErrorCode getReplicatedLogs(TRI_vocbase_t& vocbase,
+                              arangodb::velocypack::Builder& result);
   ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;

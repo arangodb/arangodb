@@ -68,6 +68,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBLog.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
@@ -1097,6 +1098,37 @@ ErrorCode RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
   result.openArray();
 
   auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
+
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice); iter->Next()) {
+    if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
+      continue;
+    }
+
+    auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::DataSourceDeleted,
+                                                            false)) {
+      continue;
+    }
+
+    result.add(slice);
+  }
+
+  result.close();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+ErrorCode RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
+                                           arangodb::velocypack::Builder& result) {
+  rocksdb::ReadOptions readOptions;
+  std::unique_ptr<rocksdb::Iterator> iter(
+      _db->NewIterator(readOptions, RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::Definitions)));
+
+  result.openArray();
+
+  auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedLog);
 
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice); iter->Next()) {
     if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
@@ -2287,6 +2319,41 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   } catch (...) {
     LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: unknown exception";
+    throw;
+  }
+
+
+  // scan the database path for replicated logs
+  try {
+    VPackBuilder builder;
+    auto res = getReplicatedLogs(*vocbase, builder);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    VPackSlice const slice = builder.slice();
+    TRI_ASSERT(slice.isArray());
+
+    auto logCf = RocksDBColumnFamilyManager::get(
+        RocksDBColumnFamilyManager::Family::ReplicatedLogs);
+
+    for (VPackSlice it : VPackArrayIterator(slice)) {
+      // we found a view that is still active
+      TRI_ASSERT(!it.get("id").isNone());
+
+      auto logId = arangodb::replication2::LogId{
+          it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
+      auto objectId = it.get(StaticStrings::DataSourceId).getNumericValue<uint64_t>();
+      auto log = std::make_shared<RocksDBLog>(logId, logCf, _db, objectId);
+      StorageEngine::registerReplicatedLog(*vocbase, logId, log);
+    }
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
+    << "error while opening database: " << ex.what();
+    throw;
+  } catch (...) {
+    LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
+    << "error while opening database: unknown exception";
     throw;
   }
 

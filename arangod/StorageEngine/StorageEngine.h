@@ -390,6 +390,11 @@ class StorageEngine : public application_features::ApplicationFeature {
     vocbase.registerView(true, view);
   }
 
+  static void registerReplicatedLog(TRI_vocbase_t& vocbase,
+                          arangodb::replication2::LogId id, std::shared_ptr<arangodb::replication2::PersistedLog> log) {
+    vocbase.registerReplicatedLog(id, std::move(log));
+  }
+
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;
   std::string const _typeName;

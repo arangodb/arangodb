@@ -403,6 +403,7 @@ TRI_voc_tick_t RocksDBKey::databaseId(char const* data, size_t size) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::View:
+    case RocksDBEntryType::ReplicatedLog:
     case RocksDBEntryType::ReplicationApplierConfig: {
       TRI_ASSERT(size >= (sizeof(char) + sizeof(uint64_t)));
       return uint64FromPersistent(data + sizeof(char));
