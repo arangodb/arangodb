@@ -1,3 +1,8 @@
+  <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <button id="toggleAllShards" class="button-success">Toggle all</button>
+      </div>
+  <div>
 
   <div id="shardsContent" class="innerContent">
       <% var genClass1 = 'pure-u-6-24'; %>
@@ -29,11 +34,12 @@
 
           <div class="pure-u-22-24">
             <div class="title" style="position: relative; top: -4px;">
-              <%= name %>
+              <% var numShards = Object.keys(collection.Plan).length; %>
+              Collection <%= name %> (<%= numShards + ' shard' + (numShards !== 1 ? 's' : '') %>)
             </div>
           </div>
           <div class="pure-u-2-24 shardSyncIcons">
-              <% if (visible === name) { %>
+              <% if (visible.indexOf(name) !== -1) { %>
                 <i style="margin-left: 10px; color: #fff;" class="fa fa-arrow-down"></i>
               <% } else { %>
                 <i style="margin-left: 10px; color: #fff;" class="fa fa-arrow-right"></i>
@@ -46,7 +52,7 @@
           </div>
         </div>
 
-        <% if (visible === name) { %>
+        <% if (visible.indexOf(name) !== -1) { %>
           <div class="sectionShardContent">
         <% } else { %>
           <div class="sectionShardContent" style="display: none">
