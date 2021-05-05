@@ -21,3 +21,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "Replication2/ReplicatedLog/LogFollower.h"
+#include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/LogParticipantI.h"
+namespace arangodb::replication2::replicated_log {
+struct alignas(16) ReplicatedLog {
+  ReplicatedLog() = delete;
+  ReplicatedLog(ReplicatedLog const&) = delete;
+  ReplicatedLog(ReplicatedLog&&) = delete;
+  auto operator=(ReplicatedLog const&) -> ReplicatedLog& = delete;
+  auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
+  explicit ReplicatedLog(std::shared_ptr<LogParticipantI> participant)
+      : _participant(std::move(participant)) {}
+  explicit ReplicatedLog(std::unique_ptr<LogCore> core)
+      : _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core))) {}
+
+  auto becomeLeader(ParticipantId id, LogTerm term,
+                    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+                    std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
+  auto becomeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId)
+      -> std::shared_ptr<LogFollower>;
+
+  auto getParticipant() const -> std::shared_ptr<LogParticipantI>;
+
+  auto getLeader() const -> std::shared_ptr<LogLeader>;
+  auto getFollower() const -> std::shared_ptr<LogFollower>;
+
+ private:
+  mutable std::mutex _mutex;
+  std::shared_ptr<LogParticipantI> _participant;
+};
+}  // namespace arangodb::replication2::replicated_log

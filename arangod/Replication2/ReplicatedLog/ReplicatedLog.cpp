@@ -20,4 +20,4 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"

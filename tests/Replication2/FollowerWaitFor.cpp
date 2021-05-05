@@ -22,6 +22,7 @@
 
 #include "TestHelper.h"
 
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 
 using namespace arangodb;
