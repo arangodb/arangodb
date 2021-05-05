@@ -24,22 +24,24 @@
 
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <gtest/gtest.h>
 
+#include <deque>
+#include <memory>
 #include <utility>
 
 namespace arangodb::replication2 {
 
 using namespace replicated_log;
 
-
 struct MockLog : replication2::PersistedLog {
-
   using storeType = std::map<replication2::LogIndex, replication2::LogEntry>;
 
   explicit MockLog(replication2::LogId id);
