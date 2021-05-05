@@ -257,6 +257,25 @@ RestStatus RestLogHandler::handleGetRequest() {
     }
 
     generateOk(rest::ResponseCode::OK, result.slice());
+  } else if (verb == "tail") {
+    LogIndex logIdx{basics::StringUtils::uint64(_request->value("lastId"))};
+    auto log = _vocbase.getReplicatedLogLeaderById(logId);
+
+    auto fut = log->waitForIterator(logIdx).thenValue([&](std::unique_ptr<LogIterator> iter) {
+
+      VPackBuilder builder;
+      {
+        VPackArrayBuilder ab(&builder);
+        while (auto entry = iter->next()) {
+          entry->toVelocyPack(builder);
+        }
+      }
+
+      generateOk(rest::ResponseCode::OK, builder.slice());
+    });
+
+    return waitForFuture(std::move(fut));
+
   } else if (verb == "readEntry") {
     auto log = _vocbase.getReplicatedLogLeaderById(logId);
     if (suffixes.size() != 3) {
