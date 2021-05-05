@@ -82,6 +82,9 @@ void MaintenanceWorker::run() {
                 << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
 
         }  // switch
+      
+        // determine next loop state
+        nextState(more);
 
       } catch (std::exception const& ex) {
         if (_curAction) {
@@ -108,9 +111,6 @@ void MaintenanceWorker::run() {
               << " state:" << _loopState;
         }
       }
-
-      // determine next loop state
-      nextState(more);
 
     } else {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));

@@ -28,12 +28,10 @@
 #include "ActionBase.h"
 #include "ActionDescription.h"
 
-#include <chrono>
-
 namespace arangodb {
 namespace maintenance {
 
-class UpdateCollection : public ActionBase {
+class UpdateCollection : public ActionBase, public ShardDefinition {
  public:
   UpdateCollection(MaintenanceFeature&, ActionDescription const&);
 

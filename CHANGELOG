@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Improve exception safety for maintenance thread and shard unlock
+  operations.
+
 * Fixed issue BTS-354: Assertion related to getCollection. 
 
 * Fix DEVSUP-749: Fix potential deadlock when executing concurrent view/link DDL
