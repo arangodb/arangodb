@@ -39,7 +39,11 @@ RocksDBValue RocksDBValue::Database(VPackSlice const& data) {
 }
 
 RocksDBValue RocksDBValue::Collection(VPackSlice const& data) {
-  return RocksDBValue(RocksDBEntryType::Collection, data);
+    return RocksDBValue(RocksDBEntryType::Collection, data);
+}
+
+RocksDBValue RocksDBValue::ReplicatedLog(VPackSlice const& data) {
+    return RocksDBValue(RocksDBEntryType::ReplicatedLog, data);
 }
 
 RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId, RevisionId rev) {
@@ -185,6 +189,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   switch (_type) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
+    case RocksDBEntryType::ReplicatedLog:
     case RocksDBEntryType::View:
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {

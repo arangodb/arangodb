@@ -1932,9 +1932,16 @@ auto TRI_vocbase_t::createReplicatedLog(LogId id)
   auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
   auto& logs = manager->_logs;
 
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+
   if (auto iter = logs.lower_bound(id); iter == logs.end() || iter->first != id) {
-    auto&& persistedLog = std::make_shared<FakePersistedLog>(id);
-    auto&& logCore = std::make_unique<replicated_log::LogCore>(std::move(persistedLog));
+    auto&& persistedLog = engine.createReplicatedLog(*this, id);
+    if (persistedLog.fail()) {
+      return persistedLog.result();
+    }
+    LOG_DEVEL << "created replicated log";
+    auto&& logCore =
+        std::make_unique<replicated_log::LogCore>(std::move(persistedLog.get()));
     auto&& log =
         std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(logCore));
     manager->_logs.emplace_hint(iter, id, std::move(log));

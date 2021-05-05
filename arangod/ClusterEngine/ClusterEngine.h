@@ -194,6 +194,12 @@ class ClusterEngine final : public StorageEngine {
 
   arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
+  virtual auto createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
+      -> ResultT<std::shared_ptr<arangodb::replication2::PersistedLog>> override;
+
+  virtual auto dropReplicatedLog(std::shared_ptr<arangodb::replication2::PersistedLog> const&)
+      -> Result override;
+
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 

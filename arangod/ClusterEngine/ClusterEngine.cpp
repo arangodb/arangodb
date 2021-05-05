@@ -304,6 +304,16 @@ void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
   std::this_thread::sleep_for(std::chrono::seconds(5));
 }
 
+auto ClusterEngine::createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
+    -> ResultT<std::shared_ptr<arangodb::replication2::PersistedLog>> {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+
+auto ClusterEngine::dropReplicatedLog(const std::shared_ptr<arangodb::replication2::PersistedLog>&)
+    -> Result {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

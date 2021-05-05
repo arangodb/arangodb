@@ -708,6 +708,7 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::VPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   size_t const numberOfColumnFamilies = RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
@@ -2336,10 +2337,11 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
     auto logCf = RocksDBColumnFamilyManager::get(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-
+    LOG_DEVEL << "slices: " << slice.toJson();
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a view that is still active
       TRI_ASSERT(!it.get("id").isNone());
+      LOG_DEVEL << "load replciated log " << it.toJson();
 
       auto logId = arangodb::replication2::LogId{
           it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
@@ -2935,6 +2937,47 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
     // RocksDB's compaction job(s) to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   } while (true);
+}
+
+auto RocksDBEngine::dropReplicatedLog(std::shared_ptr<arangodb::replication2::PersistedLog> const& log)
+    -> Result {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replication2::LogId logId)
+    -> ResultT<std::shared_ptr<arangodb::replication2::PersistedLog>> {
+
+  auto key = RocksDBKey{};
+  key.constructReplicatedLog(vocbase.id(), logId);
+
+  auto objectId = TRI_NewTickServer();
+
+  LOG_DEVEL << "new objectID = " << objectId;
+
+  VPackBuilder valueBuilder;
+  {
+    VPackObjectBuilder ob(&valueBuilder);
+    valueBuilder.add(StaticStrings::DataSourceId, VPackValue(logId.id()));
+    valueBuilder.add(StaticStrings::DataSourcePlanId, VPackValue(logId.id()));
+    valueBuilder.add(StaticStrings::ObjectId, VPackValue(objectId));
+  }
+  auto value = RocksDBValue::ReplicatedLog(valueBuilder.slice());
+  LOG_DEVEL << "new value = " << valueBuilder.toJson();
+
+  rocksdb::WriteOptions opts;
+  auto s = _db->GetRootDB()->Put(opts, RocksDBColumnFamilyManager::get(
+                            RocksDBColumnFamilyManager::Family::Definitions),
+                        key.string(), value.string());
+  if (s.ok()) {
+    auto log = std::make_shared<RocksDBLog>(logId,
+                                            RocksDBColumnFamilyManager::get(
+                                                RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+                                            _db, objectId);
+    return {log};
+  }
+
+  return rocksutils::convertStatus(s);
 }
 
 }  // namespace arangodb

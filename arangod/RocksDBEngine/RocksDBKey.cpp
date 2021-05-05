@@ -288,6 +288,19 @@ void RocksDBKey::constructLogEntry(uint64_t objectId, replication2::LogIndex idx
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
+void RocksDBKey::constructReplicatedLog(TRI_voc_tick_t databaseId,
+                                        arangodb::replication2::LogId logId) {
+    TRI_ASSERT(databaseId != 0);
+    _type = RocksDBEntryType::ReplicatedLog;
+    size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
+    _buffer->clear();
+    _buffer->reserve(keyLength);
+    _buffer->push_back(static_cast<char>(_type));
+    uint64ToPersistent(*_buffer, databaseId);
+    uint64ToPersistent(*_buffer, logId.id());
+    TRI_ASSERT(_buffer->size() == keyLength);
+}
+
 // ========================= Member methods ===========================
 
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
