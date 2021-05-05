@@ -25,7 +25,7 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
-#include "rtypes.h"
+#include "Replication2/ReplicatedLog/rtypes.h"
 
 #include <gtest/gtest.h>
 

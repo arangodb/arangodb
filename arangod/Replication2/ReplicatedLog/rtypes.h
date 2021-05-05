@@ -22,6 +22,15 @@
 
 #pragma once
 
+#include "Replication2/ReplicatedLog/Common.h"
+
+#include <Basics/voc-errors.h>
+#include <Futures/Future.h>
+#include <velocypack/Slice.h>
+
+#include <unordered_map>
+#include <vector>
+
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
@@ -30,29 +39,14 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
-#include <immer/map.hpp>
 #include <immer/flex_vector.hpp>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
 
-#include <Basics/Guarded.h>
-#include <Basics/voc-errors.h>
-#include <Futures/Future.h>
-#include <velocypack/Builder.h>
-#include <velocypack/SharedSlice.h>
-#include <deque>
-#include <map>
-#include <optional>
-#include <string>
-#include <utility>
-#include <variant>
-#include <vector>
-#include "Replication2/ReplicatedLog/Common.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
+namespace arangodb::velocypack {
+class Builder;
+}
 
 namespace arangodb::replication2::replicated_log {
 

@@ -20,6 +20,11 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
+#include "Replication2/ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/rtypes.h"
+
 #include <mutex>
 
 #if (_MSC_VER >= 1)
@@ -34,10 +39,6 @@
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
-
-#include "ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "rtypes.h"
 
 namespace arangodb::replication2 {
 #if 0

@@ -23,7 +23,6 @@
 #ifndef ARANGODB3_REPLICATION_COMMON_H
 #define ARANGODB3_REPLICATION_COMMON_H
 
-#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 #include <cstddef>
@@ -33,6 +32,10 @@
 #include <variant>
 
 #include <Basics/Identifier.h>
+
+namespace arangodb::velocypack {
+class Builder;
+}
 
 namespace arangodb::replication2 {
 

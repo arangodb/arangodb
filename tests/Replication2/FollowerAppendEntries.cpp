@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TestHelper.h"
-#include "rtypes.h"
+#include "Replication2/ReplicatedLog/rtypes.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

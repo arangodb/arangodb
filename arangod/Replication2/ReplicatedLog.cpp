@@ -25,7 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
-#include "rtypes.h"
+#include "Replication2/ReplicatedLog/rtypes.h"
 
 #include <Basics/StringUtils.h>
 #include <Basics/application-exit.h>
@@ -888,7 +888,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::waitFor(LogIndex index)
   return std::move(future);
 }
 
-std::string arangodb::replication2::to_string(replicated_log::AppendEntriesErrorReason reason) {
+std::string arangodb::replication2::replicated_log::to_string(replicated_log::AppendEntriesErrorReason reason) {
   switch (reason) {
     case replicated_log::AppendEntriesErrorReason::NONE:
       return {};

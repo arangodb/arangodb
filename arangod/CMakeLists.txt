@@ -982,18 +982,24 @@ target_link_libraries(arango_graph boost_boost)
 target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
 target_link_libraries(arango_indexes arango::validation)
+target_link_libraries(arango_indexes arango_replication2)
+target_link_libraries(arango_indexes immer)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
 
 target_link_libraries(arango_metrics arango)
 target_link_libraries(arango_metrics arango::validation)
+target_link_libraries(arango_metrics arango_replication2)
+target_link_libraries(arango_metrics immer)
 
 target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)
 target_link_libraries(arango_network llhttp)
 target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
+target_link_libraries(arango_network arango_replication2)
+target_link_libraries(arango_network immer)
 
 target_link_libraries(arango_pregel arango)
 target_link_libraries(arango_pregel arango_agency)
@@ -1020,6 +1026,8 @@ target_link_libraries(arango_rocksdb arango::validation)
 target_link_libraries(arango_rocksdb arango_restart_action)
 
 target_link_libraries(arango_storage_engine_common arango::validation)
+target_link_libraries(arango_storage_engine_common arango_replication2)
+target_link_libraries(arango_storage_engine_common immer)
 
 if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
@@ -1032,9 +1040,13 @@ target_link_libraries(arango_storage_engine arango_cluster_engine)
 target_link_libraries(arango_storage_engine arango_cluster_methods)
 target_link_libraries(arango_storage_engine arango_rocksdb)
 target_link_libraries(arango_storage_engine arango::validation)
+target_link_libraries(arango_storage_engine arango_replication2)
+target_link_libraries(arango_storage_engine immer)
 
 target_link_libraries(arango_utils boost_boost)
 target_link_libraries(arango_utils arango::validation)
+target_link_libraries(arango_utils arango_replication2)
+target_link_libraries(arango_utils immer)
 
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_iresearch)
