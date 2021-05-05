@@ -1060,41 +1060,41 @@ TEST_F(StoreTestAPI, OpErase) {
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, SlashORama) {
-      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-      writeAndCheck(R"([[{"//////////////////////a/////////////////////b//":
-                       {"b///////c":4}}]])");
-      assertEqual(readAndCheck(R"([["/"]])"), R"( [{"a":{"b":{"b":{"c":4}}}}])");
-      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-      writeAndCheck(R"([[{"////////////////////////": "Hi there!"}]])");
-      assertEqual(readAndCheck(R"([["/"]])"), R"(["Hi there!"])");
-      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-      writeAndCheck(
-        R"([[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
-           {"b///////c":4}}]])");
-      assertEqual(readAndCheck(R"([["/"]])"),
-                  R"([{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}])");
-    }
+TEST_F(StoreTestAPI, SlashORama) {
+  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+  writeAndCheck(R"([[{"//////////////////////a/////////////////////b//":
+                    {"b///////c":4}}]])");
+  assertEqual(readAndCheck(R"([["/"]])"), R"( [{"a":{"b":{"b":{"c":4}}}}])");
+  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+  writeAndCheck(R"([[{"////////////////////////": "Hi there!"}]])");
+  assertEqual(readAndCheck(R"([["/"]])"), R"(["Hi there!"])");
+  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+  writeAndCheck(
+    R"([[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
+        {"b///////c":4}}]])");
+  assertEqual(readAndCheck(R"([["/"]])"),
+              R"([{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}])");
+}
 
-    TEST_F(StoreTestAPI, KeysBeginningWithSameString) {
-      writeAndCheck(R"([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]])");
-      assertEqual(readAndCheck(R"([["/bumms", "/bummsfallera"]])"), R"( [{"bumms":"fallera", "bummsfallera": "lalalala"}])");
-    }
+TEST_F(StoreTestAPI, keys_beginning_with_same_string) {
+  writeAndCheck(R"([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]])");
+  assertEqual(readAndCheck(R"([["/bumms", "/bummsfallera"]])"), R"( [{"bumms":"fallera", "bummsfallera": "lalalala"}])");
+}
 
-    TEST_F(StoreTestAPI, HiddenAgencyWrite) {
-      auto res = write(R"([[{".agency": {"op":"set","new":"fallera"}}]])");
-      ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
-    }
+TEST_F(StoreTestAPI, hidden_agency_write) {
+  auto res = write(R"([[{".agency": {"op":"set","new":"fallera"}}]])");
+  ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
+}
 
-    TEST_F(StoreTestAPI, HiddenAgencyWriteSlash) {
-      auto res = write(R"([[{"/.agency": {"op":"set","new":"fallera"}}]])");
-      ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
-    }
+TEST_F(StoreTestAPI, hidden_agency_write_slash) {
+  auto res = write(R"([[{"/.agency": {"op":"set","new":"fallera"}}]])");
+  ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
+}
 
-    TEST_F(StoreTestAPI, HiddenAgencyWriteDeep) {
-      auto res = write(R"([[{"/.agency/hans": {"op":"set","new":"fallera"}}]])");
-      ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
-    }
+TEST_F(StoreTestAPI, hidden_agency_write_deep) {
+  auto res = write(R"([[{"/.agency/hans": {"op":"set","new":"fallera"}}]])");
+  ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
+}
 
 // ////////////////////////////////////////////////////////////////////////////////
 // /// @brief Compaction
@@ -1162,33 +1162,29 @@ TEST_F(StoreTestAPI, huge_transaction_package) {
       writeAndCheck(R"(trx)");
       assertEqual(readAndCheck(R"([["a"]])"), R"( [{"a":0}])");
     }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction, update of same key
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, TransactionUpdateSameKey ) {
-      writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
-      var trx = [];
-      trx.push([{"a":"foo"}]);
-      trx.push([{"a":"bar"}]);
-      writeAndCheck(R"(trx)");
-      assertEqual(readAndCheck(R"([["a"]])"), R"( [{"a":"bar"}])");
-    }
+TEST_F(StoreTestAPI, transaction_update_same_key ) {
+  writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
+  writeAndCheck(R"([[{"a": "foo"}],[{"a":"bar"}]])");
+  assertEqual(readAndCheck(R"([["a"]])"), R"( [{"a":"bar"}])");
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction, insert and remove of same key
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, TransactionInsertRemoveSameKey ) {
-      writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
-      var trx = [];
-      trx.push([{"a":"foo"}]);
-      trx.push([{"a":{"op":"delete"}}]);
-      writeAndCheck(R"(trx)");
-      assertEqual(readAndCheck(R"([["/a"]])"), R"( [{}])");
-    }
+TEST_F(StoreTestAPI, transaction_insert_remove_same_key ) {
+  writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
+  writeAndCheck(R"([[{"a":"foo"}],[{"a":{"op":"delete"}}]])");
+  assertEqual(readAndCheck(R"([["/a"]])"), R"( [{}])");
+}
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package, all different keys
 ////////////////////////////////////////////////////////////////////////////////
