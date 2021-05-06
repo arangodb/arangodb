@@ -40,8 +40,6 @@
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
 #include "Replication2/ReplicatedLog/Common.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
-#include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/Version.h"
@@ -61,6 +59,7 @@ class QueryList;
 }
 namespace replication2 {
 struct LogManager;
+struct PersistedLog;
 namespace replicated_log {
 class LogLeader;
 class LogFollower;
