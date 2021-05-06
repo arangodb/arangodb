@@ -5,6 +5,10 @@ devel
   One could lead to ordered timeouts not being honoured. The other could
   lead to an ordered callback be called multiple times.
 
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own
+  rebootId increment has triggered plan entry to be removed.
+
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
 
