@@ -68,10 +68,13 @@ auto replicated_log::LogCore::insertAsync(std::unique_ptr<LogIterator> iter)
   std::unique_lock guard(_operationMutex);
   // This will hold the mutex
   return _persistor->persist(_persistedLog, std::move(iter))
-      .thenValue(
-          [guard = std::move(guard)](Result&& res) { return std::move(res); });
+      .thenValue([guard = std::move(guard)](Result&& res) mutable {
+        guard.unlock();
+        return std::move(res);
+      });
 }
 
 auto replicated_log::LogCore::releasePersistedLog() && -> std::shared_ptr<PersistedLog> {
+  std::unique_lock guard(_operationMutex);
   return std::move(_persistedLog);
 }
