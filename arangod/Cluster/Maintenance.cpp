@@ -1612,14 +1612,14 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
           continue;
         }
 
-        auto const leader = pservers[0].copyString();
+        std::string leader = pservers[0].copyString();
         std::shared_ptr<ActionDescription> description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
             {NAME, SYNCHRONIZE_SHARD},
             {DATABASE, dbname},
             {COLLECTION, colname.toString()},
             {SHARD, shname.toString()},
-            {THE_LEADER, leader},
+            {THE_LEADER, std::move(leader)},
             {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
           SYNCHRONIZE_PRIORITY, true);
         std::string shardName = description->get(SHARD);
