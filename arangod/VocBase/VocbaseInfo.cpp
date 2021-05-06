@@ -254,6 +254,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
   _replicationFactor = vocopts.replicationFactor;
   _writeConcern = vocopts.writeConcern;
   _sharding = vocopts.sharding;
+  _replicationVersion = vocopts.replicationVersion;
 
   if (extractName) {
     auto nameSlice = options.get(StaticStrings::DatabaseName);
