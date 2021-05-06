@@ -30,6 +30,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Replication2/ReplicatedLog/FakeLogFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
@@ -49,47 +50,6 @@ RestStatus RestLogHandler::execute() {
   }
   return RestStatus::DONE;
 }
-
-struct FakeLogFollower : replicated_log::AbstractFollower {
-  explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
-                           std::string database, LogId logId)
-      :  pool(pool), id(std::move(id)), database(database), logId(logId) {}
-  auto getParticipantId() const noexcept -> ParticipantId const& override { return id; }
-  auto appendEntries(replicated_log::AppendEntriesRequest request)
-      -> arangodb::futures::Future<replicated_log::AppendEntriesResult> override {
-    VPackBufferUInt8  buffer;
-    {
-      VPackBuilder builder(buffer);
-      request.toVelocyPack(builder);
-    }
-
-    auto path = "_api/log/" + std::to_string(logId.id()) + "/appendEntries";
-
-    network::RequestOptions opts;
-    opts.database = database;
-    LOG_DEVEL << "sending append entries to " << id << " with payload " << VPackSlice(buffer.data()).toJson();
-    auto f = network::sendRequest(pool, "server:" + id, fuerte::RestVerb::Post, path, std::move(buffer), opts);
-
-    return std::move(f).thenValue(
-        [this](network::Response result) -> replicated_log::AppendEntriesResult {
-          LOG_DEVEL << "Append entries for " << id
-                    << " returned, fuerte ok = " << result.ok();
-          if (result.fail()) {
-            // TODO use better exception calss
-            throw std::runtime_error("network error");
-          }
-          LOG_DEVEL << "Result for " << id << " is " << result.slice().toJson();
-          TRI_ASSERT(result.slice().get("error").isFalse());  // TODO
-          return replicated_log::AppendEntriesResult::fromVelocyPack(
-              result.slice().get("result"));
-        });
-  }
-
-  network::ConnectionPool *pool;
-  ParticipantId id;
-  std::string database;
-  LogId logId;
-};
 
 RestStatus RestLogHandler::handlePostRequest() {
 
@@ -186,7 +146,7 @@ RestStatus RestLogHandler::handlePostRequest() {
     std::vector<std::shared_ptr<replicated_log::AbstractFollower>> follower;
     for (auto const& part : VPackArrayIterator(body.get("follower"))) {
       auto partId = part.copyString();
-      follower.emplace_back(std::make_shared<FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
+      follower.emplace_back(std::make_shared<replicated_log::FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
     }
 
     log.becomeLeader(ServerState::instance()->getId(), term, follower, writeConcern);

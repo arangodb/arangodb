@@ -547,6 +547,7 @@ set(LIB_ARANGO_REPLICATION_SOURCES
 
 set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/Common.cpp
+  Replication2/ReplicatedLog/FakeLogFollower.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp
   Replication2/ReplicatedLog/LogCore.cpp
   Replication2/ReplicatedLog/LogFollower.cpp
