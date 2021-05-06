@@ -218,7 +218,7 @@ auto replicated_log::LogLeader::construct(
 
   // TODO this is a cheap trick for now. Later we should be aware of the fact
   //      that the log might not start at 1.
-  auto iter = logCore->_persistedLog->read(LogIndex{0});
+  auto iter = logCore->read(LogIndex{0});
   auto log = InMemoryLog{};
   while (auto entry = iter->next()) {
     log._log = log._log.push_back(std::move(entry).value());
@@ -599,13 +599,13 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
 
   // TODO The LogCore should know its last log index, and we should assert here
   //      that the AppendEntriesRequest matches it.
-  auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
-      request.entries.begin(), request.entries.end());
-  if (auto const res = logCore->_persistedLog->insert(iter); !res.ok()) {
-    abort();  // TODO abort
-  }
-
-  return AppendEntriesResult{request.leaderTerm};
+  auto iter = std::make_unique<ReplicatedLogIterator>(request.entries);
+  return logCore->insertAsync(std::move(iter)).thenValue([term = request.leaderTerm](Result const& res){
+    if (!res.ok()) {
+      abort();  // TODO abort
+    }
+    return AppendEntriesResult{term};
+  });
 }
 
 auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<LogCore> {

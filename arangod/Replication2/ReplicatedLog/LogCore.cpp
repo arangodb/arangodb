@@ -22,7 +22,8 @@
 
 #include "LogCore.h"
 
-#include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/Persistor.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/debugging.h>
@@ -31,17 +32,46 @@
 
 #include <utility>
 
-namespace arangodb::replication2 { struct PersistedLog; }
-
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
-    : _persistedLog(std::move(persistedLog)) {
+replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog,
+                                 std::shared_ptr<Persistor> persistor)
+    : _persistedLog(std::move(persistedLog)), _persistor(std::move(persistor)) {
   if (ADB_UNLIKELY(_persistedLog == nullptr)) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "When instantiating ReplicatedLog: "
                                    "persistedLog must not be a nullptr");
   }
+}
+
+auto replicated_log::LogCore::removeBack(LogIndex first) -> Result {
+  std::unique_lock guard(_operationMutex);
+  return _persistedLog->removeBack(first);
+}
+
+auto replicated_log::LogCore::insert(LogIterator& iter) -> Result {
+  std::unique_lock guard(_operationMutex);
+  return _persistedLog->insert(iter);
+}
+
+auto replicated_log::LogCore::read(LogIndex first) -> std::unique_ptr<LogIterator> {
+  std::unique_lock guard(_operationMutex);
+  // TODO is this safe? Or do we have to hold the lock as long as the iterator exists?
+  //      I think this is safe because of rocksdb but at this point its an implementation detail.
+  return _persistedLog->read(first);
+}
+
+auto replicated_log::LogCore::insertAsync(std::unique_ptr<LogIterator> iter)
+    -> futures::Future<Result> {
+  std::unique_lock guard(_operationMutex);
+  // This will hold the mutex
+  return _persistor->persist(_persistedLog, std::move(iter))
+      .thenValue(
+          [guard = std::move(guard)](Result&& res) { return std::move(res); });
+}
+
+auto replicated_log::LogCore::releasePersistedLog() && -> std::shared_ptr<PersistedLog> {
+  return std::move(_persistedLog);
 }

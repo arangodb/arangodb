@@ -154,7 +154,6 @@ void replicated_log::LeaderStatus::toVelocyPack(velocypack::Builder& builder) co
 
 void replicated_log::LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add(VPackValue("local"));
   builder.add("commitIndex", VPackValue(commitIndex.value));
   builder.add("spearHead", VPackValue(spearHead.value));
   builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));

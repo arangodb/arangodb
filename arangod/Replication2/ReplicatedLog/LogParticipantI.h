@@ -23,7 +23,6 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/Common.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <Futures/Future.h>
@@ -33,6 +32,8 @@
 #include <memory>
 
 namespace arangodb::replication2::replicated_log {
+
+struct LogCore;
 
 /**
 * @brief Interface for a log participant: That is, usually either a leader or a

@@ -86,14 +86,16 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
           }
         }
 
-        auto res = self._logCore->_persistedLog->removeBack(req.prevLogIndex + 1);
+        auto res = self._logCore->removeBack(req.prevLogIndex + 1);
         if (!res.ok()) {
           abort();  // TODO abort?
         }
 
-        auto iter = ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
-            req.entries.begin(), req.entries.end());
-        res = self._logCore->_persistedLog->insert(iter);
+        auto iter =
+            ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
+                req.entries.begin(), req.entries.end());
+        // TODO can we make this async?
+        res = self._logCore->insert(iter);
         if (!res.ok()) {
           abort();  // TODO abort?
         }

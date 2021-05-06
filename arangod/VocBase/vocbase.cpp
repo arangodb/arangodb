@@ -68,6 +68,7 @@
 #include "Replication2/ReplicatedLog/LogManager.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/Persistor.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -1594,7 +1595,7 @@ struct SchedulerExecutor : arangodb::replication2::LogWorkerExecutor {
   Scheduler* _scheduler;
 };
 
-struct VocBaseLogManager : arangodb::replication2::LogManager {
+struct VocBaseLogManager : arangodb::replication2::LogManager, arangodb::replication2::Persistor {
   VocBaseLogManager(arangodb::application_features::ApplicationServer& server)
       : LogManager(std::make_shared<SchedulerExecutor>(server)) {}
 
@@ -1621,6 +1622,23 @@ struct VocBaseLogManager : arangodb::replication2::LogManager {
       return iter->second;
     }
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
+  }
+
+  auto persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,
+               std::unique_ptr<arangodb::replication2::LogIterator> iter)
+      -> futures::Future<Result> override {
+    auto p = futures::Promise<Result>{};
+    auto f = p.getFuture();
+
+    _executor->operator()([p = std::move(p), log, iter = std::move(iter)]() mutable noexcept {
+      try {
+        auto res = log->insert(*iter);
+        p.setValue(res);
+      } catch(...) {
+        p.setException(std::current_exception());
+      }
+    });
+    return f;
   }
 
   // Needs to be a map for stable pointers
@@ -1947,7 +1965,7 @@ auto TRI_vocbase_t::createReplicatedLog(LogId id)
     }
     LOG_DEVEL << "created replicated log";
     auto&& logCore =
-        std::make_unique<replicated_log::LogCore>(std::move(persistedLog.get()));
+        std::make_unique<replicated_log::LogCore>(std::move(persistedLog.get()), manager);
     auto&& log =
         std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(logCore));
     manager->_logs.emplace_hint(iter, id, std::move(log));
@@ -1963,7 +1981,7 @@ auto TRI_vocbase_t::dropReplicatedLog(arangodb::replication2::LogId id) -> arang
 
   if (auto iter = manager->_logs.find(id); iter != manager->_logs.end()) {
     auto core = iter->second.drop();
-    auto res = engine.dropReplicatedLog(*this, core->_persistedLog);
+    auto res = engine.dropReplicatedLog(*this, std::move(*core).releasePersistedLog());
     if (res.fail()) {
       return res;
     }
@@ -2012,9 +2030,11 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   }
 }
 
-void TRI_vocbase_t::registerReplicatedLog(arangodb::replication2::LogId logId, std::shared_ptr<arangodb::replication2::PersistedLog> peristedLog) {
+void TRI_vocbase_t::registerReplicatedLog(arangodb::replication2::LogId logId,
+                                          std::shared_ptr<arangodb::replication2::PersistedLog> peristedLog) {
   auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
-  auto core = std::make_unique<arangodb::replication2::replicated_log::LogCore>(peristedLog);
+  auto core =
+      std::make_unique<arangodb::replication2::replicated_log::LogCore>(peristedLog, manager);
   auto [iter, inserted] = manager->_logs.try_emplace(logId, std::move(core));
   TRI_ASSERT(inserted);
 }

@@ -23,9 +23,16 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
+
+#include "Basics/Result.h"
+#include "Futures/Future.h"
+
+#include "Replication2/ReplicatedLog/Common.h"
 
 namespace arangodb::replication2 {
 struct PersistedLog;
+struct Persistor;
 }
 
 namespace arangodb::replication2::replicated_log {
@@ -46,7 +53,7 @@ namespace arangodb::replication2::replicated_log {
  *      Add a deleter that does this, or something similar.
  */
 struct alignas(64) LogCore {
-  explicit LogCore(std::shared_ptr<PersistedLog> persistedLog);
+  explicit LogCore(std::shared_ptr<PersistedLog> persistedLog, std::shared_ptr<Persistor> persistor);
 
   // There must only be one LogCore per physical log
   LogCore() = delete;
@@ -54,7 +61,18 @@ struct alignas(64) LogCore {
   LogCore(LogCore&&) = delete;
   auto operator=(LogCore const&) -> LogCore& = delete;
   auto operator=(LogCore&&) -> LogCore& = delete;
+
+  auto insertAsync(std::unique_ptr<LogIterator> iter) -> futures::Future<Result>;
+  auto insert(LogIterator& iter) -> Result;
+  [[nodiscard]] auto read(LogIndex first) -> std::unique_ptr<LogIterator>;
+  auto removeBack(LogIndex first) -> Result;
+
+  auto releasePersistedLog() && -> std::shared_ptr<PersistedLog>;
+
+ private:
   std::shared_ptr<PersistedLog> const _persistedLog;
+  std::shared_ptr<Persistor> const _persistor;
+  std::mutex _operationMutex;
 };
 
 }  // namespace arangodb::replication2::replicated_log

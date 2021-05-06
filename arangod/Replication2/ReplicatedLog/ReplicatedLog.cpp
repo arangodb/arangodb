@@ -67,7 +67,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
   auto logCore = std::move(*_participant).resign();
   // TODO this is a cheap trick for now. Later we should be aware of the fact
   //      that the log might not start at 1.
-  auto iter = logCore->_persistedLog->read(LogIndex{0});
+  auto iter = logCore->read(LogIndex{0});
   auto log = InMemoryLog{};
   while (auto entry = iter->next()) {
     log._log = log._log.push_back(std::move(entry).value());

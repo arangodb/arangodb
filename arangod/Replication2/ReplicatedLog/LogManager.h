@@ -64,6 +64,8 @@ struct LogManager : std::enable_shared_from_this<LogManager> {
  protected:
   virtual void workerEntryPoint();
   // virtual auto getPersistedLogById(LogId id) -> std::shared_ptr<PersistedLog> = 0;
+
+  std::shared_ptr<LogWorkerExecutor> _executor;
  private:
   using ResultPromise = arangodb::futures::Promise<replicated_log::AppendEntriesResult>;
 
@@ -78,7 +80,6 @@ struct LogManager : std::enable_shared_from_this<LogManager> {
   std::mutex _mutex;
   bool _isWorkerActive = false;
   RequestVector _requests;
-  std::shared_ptr<LogWorkerExecutor> _executor;
 };
 
 }  // namespace arangodb::replication2
