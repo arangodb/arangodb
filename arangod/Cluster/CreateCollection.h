@@ -33,7 +33,7 @@
 namespace arangodb {
 namespace maintenance {
 
-class CreateCollection : public ActionBase {
+class CreateCollection : public ActionBase, public ShardDefinition {
  public:
   CreateCollection(MaintenanceFeature&, ActionDescription const& d);
 

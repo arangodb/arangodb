@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Improve exception safety for maintenance thread and shard unlock operations.
+
 * Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied, it
   may rename some variables in the query. The variable renaming was however not
   carried out for traversal PRUNE conditions, so the PRUNE conditions could
