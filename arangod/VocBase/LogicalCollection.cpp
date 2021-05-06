@@ -1199,3 +1199,7 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VP
 void LogicalCollection::setReplicatedLogId(replication2::LogId logId) {
   _replicatedLogId = logId;
 }
+
+auto LogicalCollection::replicatedLogId() const noexcept -> std::optional<replication2::LogId> const& {
+  return _replicatedLogId;
+}

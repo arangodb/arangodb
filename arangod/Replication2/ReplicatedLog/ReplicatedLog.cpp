@@ -93,7 +93,7 @@ auto replicated_log::ReplicatedLog::getLeader() const -> std::shared_ptr<LogLead
   auto log = getParticipant();
   if (auto leader =
           std::dynamic_pointer_cast<arangodb::replication2::replicated_log::LogLeader>(log);
-      log != nullptr) {
+      leader != nullptr) {
     return leader;
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
@@ -102,9 +102,9 @@ auto replicated_log::ReplicatedLog::getLeader() const -> std::shared_ptr<LogLead
 
 auto replicated_log::ReplicatedLog::getFollower() const -> std::shared_ptr<LogFollower> {
   auto log = getParticipant();
-  if (auto leader = std::dynamic_pointer_cast<replicated_log::LogFollower>(log);
-      log != nullptr) {
-    return leader;
+  if (auto follower = std::dynamic_pointer_cast<replicated_log::LogFollower>(log);
+      follower != nullptr) {
+    return follower;
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
   }

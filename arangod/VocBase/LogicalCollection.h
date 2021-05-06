@@ -326,6 +326,8 @@ class LogicalCollection : public LogicalDataSource {
   /// returns false for all collections with no data backing.
   bool useSyncByRevision() const;
 
+  auto replicatedLogId() const noexcept -> std::optional<replication2::LogId> const&;
+
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;
