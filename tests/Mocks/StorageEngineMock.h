@@ -266,6 +266,12 @@ class StorageEngineMock : public arangodb::StorageEngine {
   static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
     arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info);
 
+  auto createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replication2::LogId id)
+      -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::PersistedLog>> override;
+  auto dropReplicatedLog(TRI_vocbase_t& vocbase,
+                         std::shared_ptr<arangodb::replication2::PersistedLog> const& ptr)
+      -> arangodb::Result override;
+
  private:
   TRI_voc_tick_t _releasedTick;
 };
