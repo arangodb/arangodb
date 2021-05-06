@@ -23,7 +23,6 @@
 
 #include "PathStore.h"
 #include "Graph/PathManagement/PathResult.h"
-#include "Graph/PathManagement/SingleProviderPathResult.h"
 
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
@@ -167,11 +166,6 @@ template void PathStore<SingleServerProvider::Step>::buildPath<PathResult<Single
     SingleServerProvider::Step const& vertex,
     PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
 
-template void PathStore<SingleServerProvider::Step>::buildPath<
-    SingleProviderPathResult<SingleServerProvider, SingleServerProvider::Step>>(
-    SingleServerProvider::Step const& vertex,
-    SingleProviderPathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
-
 template void PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServerProvider>(
     SingleServerProvider::Step const& vertex,
     PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
@@ -182,12 +176,6 @@ template void PathStore<SingleServerProvider::Step>::buildPath<
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
-
-template void PathStore<SingleServerProvider::Step>::buildPath<
-    SingleProviderPathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
-    ProviderTracer<SingleServerProvider>::Step const& vertex,
-    SingleProviderPathResult<ProviderTracer<SingleServerProvider>,
-                             ProviderTracer<SingleServerProvider>::Step>& path) const;
 
 template void PathStore<ProviderTracer<SingleServerProvider>::Step>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,

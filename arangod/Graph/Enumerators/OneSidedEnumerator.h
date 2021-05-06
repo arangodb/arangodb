@@ -53,6 +53,7 @@ template <class QueueType, class PathStoreType, class ProviderType, class PathVa
 class OneSidedEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access
+  using ResultPathType = SingleProviderPathResult<ProviderType, PathStoreType, Step>;
 
  private:
   using VertexRef = arangodb::velocypack::HashedStringRef;
@@ -103,7 +104,7 @@ class OneSidedEnumerator {
    * @return true Found and written a path, result is modified.
    * @return false No path found, result has not been changed.
    */
-  auto getNextPath() -> std::optional<SingleProviderPathResult<ProviderType, Step>>;
+  auto getNextPath() -> std::optional<ResultPathType>;
 
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.

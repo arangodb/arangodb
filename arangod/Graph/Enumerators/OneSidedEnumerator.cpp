@@ -153,24 +153,18 @@ void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  */
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::getNextPath()
-    -> std::optional<SingleProviderPathResult<ProviderType, typename ProviderType::Step>> {
+    -> std::optional<ResultPathType> {
   while (!isDone()) {
     searchMoreResults();
 
     while (!_results.empty()) {
-      auto const& vertex = _results.back();
-
-      // Performance Optimization:
-      // It seems to be pointless to first push
-      // everything in to the _resultPath object
-      // and then iterate again to return the path
-      // we should be able to return the path in the first go.
-      auto resultPath = SingleProviderPathResult<ProviderType, Step>{_provider};
-      _interior.buildPath(vertex, resultPath);
-      TRI_ASSERT(!resultPath.isEmpty());
+      auto step = std::move(_results.back());
       _results.pop_back();
 
-      return resultPath; // TODO: Please let us check alternatives here (e.g. std::move)
+      auto resultPath = ResultPathType{std::move(step), _provider, _interior};
+      TRI_ASSERT(!resultPath.isEmpty());
+
+      return resultPath;
     }
   }
   return std::nullopt;

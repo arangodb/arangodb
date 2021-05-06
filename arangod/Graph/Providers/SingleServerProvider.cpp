@@ -64,12 +64,16 @@ EdgeDocumentToken const& SingleServerProvider::Step::Edge::getID() const {
 }
 
 bool SingleServerProvider::Step::Edge::isValid() const {
-  return getID().localDocumentId() != DataSourceId::none();
+  return getID().isValid();
 };
 
 void SingleServerProvider::addEdgeToBuilder(Step::Edge const& edge,
                                             arangodb::velocypack::Builder& builder) {
-  insertEdgeIntoResult(edge.getID(), builder);
+  if (edge.isValid()) {
+    insertEdgeIntoResult(edge.getID(), builder);
+  } else {
+    builder.add(VPackSlice::nullSlice());
+  }
 };
 
 void SingleServerProvider::Step::Edge::addToBuilder(SingleServerProvider& provider,

@@ -25,8 +25,8 @@
 #include "Graph/Enumerators/OneSidedEnumerator.cpp"
 #include "Graph/Enumerators/TwoSidedEnumerator.cpp"
 #include "Graph/PathManagement/PathResult.cpp"
-#include "Graph/PathManagement/SingleProviderPathResult.cpp"
 #include "Graph/PathManagement/PathStore.cpp"
+#include "Graph/PathManagement/SingleProviderPathResult.cpp"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
 
@@ -39,7 +39,14 @@ template class ::arangodb::graph::PathResult<::arangodb::tests::graph::MockGraph
                                              ::arangodb::tests::graph::MockGraphProvider::Step>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::tests::graph::MockGraphProvider, ::arangodb::tests::graph::MockGraphProvider::Step>;
+    ::arangodb::tests::graph::MockGraphProvider,
+    ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>,
+    ::arangodb::tests::graph::MockGraphProvider::Step>;
+
+template class ::arangodb::graph::SingleProviderPathResult<
+    ::arangodb::tests::graph::MockGraphProvider,
+    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>>,
+    ::arangodb::tests::graph::MockGraphProvider::Step>;
 
 template class ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>;
 

@@ -37,12 +37,12 @@ class Builder;
 
 namespace graph {
 
-template <class ProviderType, class Step>
+template <class ProviderType, class PathStoreType, class Step>
 class SingleProviderPathResult {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  SingleProviderPathResult(ProviderType& provider);
+  SingleProviderPathResult(Step step, ProviderType& provider, PathStoreType& store);
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;
@@ -59,12 +59,14 @@ class SingleProviderPathResult {
   auto isEmpty() const -> bool;
 
  private:
-  // TODO: We may be able to only use a single step here, and let the reverse lookup only happen when required.
+  Step _step;
+
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
 
   // Provider for the path
   ProviderType& _provider;
+  PathStoreType& _store;
 };
 }  // namespace graph
 }  // namespace arangodb
