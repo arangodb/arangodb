@@ -372,8 +372,8 @@
             window.setTimeout(function () {
               self.render(false);
             }, 3000);
-            arangoHelper.arangoNotification('Started rebalance process.');
           }
+          arangoHelper.arangoNotification('Started rebalance process.');
         },
         error: function () {
           arangoHelper.arangoError('Could not start rebalance process.');
