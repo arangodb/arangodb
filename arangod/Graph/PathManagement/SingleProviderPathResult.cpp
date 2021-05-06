@@ -93,6 +93,27 @@ auto SingleProviderPathResult<ProviderType, Step>::toVelocyPack(arangodb::velocy
 }
 
 template <class ProviderType, class Step>
+auto SingleProviderPathResult<ProviderType, Step>::toSchreierEntry(arangodb::velocypack::Builder& result)
+    -> void {
+  VPackArrayBuilder arrayGuard(&result);
+  // Create a VPackValue based on the char* inside the HashsedStringRef, will save us a String copy each time.
+  result.add(VPackValue(_vertices.back().getID().begin()));
+  // TODO We need to have the Step as well, in order to prepare previous
+  result.add(VPackValue(0));
+  // TODO we need to add the starting depth here. Alternative we can take this from the Step entry
+  result.add(VPackValue(_edges.size()));
+  // TODO require the Step to know if the Vertex isOpen or not.
+  result.add(VPackValue(false));
+
+  _provider.addVertexToBuilder(_vertices.back(), result);
+  if (!_edges.empty()) {
+    _provider.addEdgeToBuilder(_edges.back(), result);
+  } else {
+    result.add(VPackSlice::nullSlice());
+  }
+}
+
+template <class ProviderType, class Step>
 auto SingleProviderPathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
 }

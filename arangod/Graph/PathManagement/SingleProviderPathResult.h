@@ -48,14 +48,21 @@ class SingleProviderPathResult {
   auto prependVertex(typename Step::Vertex v) -> void;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
+
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
-  
+
+  /**
+   * @brief Appends this path as a SchreierVector entry into the given builder
+   */
+  auto toSchreierEntry(arangodb::velocypack::Builder& builder) -> void;
+
   auto isEmpty() const -> bool;
 
  private:
+  // TODO: We may be able to only use a single step here, and let the reverse lookup only happen when required.
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
-  
+
   // Provider for the path
   ProviderType& _provider;
 };
