@@ -1,5 +1,10 @@
 devel
 -----
+
+* Fixed two bugs in fuerte with HTTP/2 and VST connections.
+  One could lead to ordered timeouts not being honoured. The other could
+  lead to an ordered callback be called multiple times.
+
 * Fix response when isBuilding could not be removed from newly created
   collection, when agency precondition fails. This can happen, when own
   rebootId increment has triggered plan entry to be removed.
