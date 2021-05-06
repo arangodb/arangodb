@@ -5628,23 +5628,27 @@ arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
 
 arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   // Apply only Collections and DBServers
-  AgencyWriteTransaction planTransaction(std::vector<AgencyOperation>{
+  AgencyWriteTransaction transaction(std::vector<AgencyOperation>{
+      {"Current/Collections", AgencySimpleOperationType::DELETE_OP},
       {"Plan/Collections", AgencyValueOperationType::SET,
         plan.get({"arango", "Plan", "Collections"})},
+      {"Current/Databases", AgencySimpleOperationType::DELETE_OP},
       {"Plan/Databases", AgencyValueOperationType::SET,
         plan.get({"arango", "Plan", "Databases"})},
+      {"Current/Views", AgencySimpleOperationType::DELETE_OP},
       {"Plan/Views", AgencyValueOperationType::SET,
         plan.get({"arango", "Plan", "Views"})},
+      {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}});
 
   VPackSlice latestIdSlice = plan.get({"arango", "Sync", "LatestID"});
   if (!latestIdSlice.isNone()) {
-    planTransaction.operations.push_back(
+    transaction.operations.push_back(
       {"Sync/LatestID", AgencyValueOperationType::SET, latestIdSlice});
   }
-  AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
+  AgencyCommResult r = _agency.sendTransactionWithFailover(transaction);
   if (!r.successful()) {
     arangodb::Result result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
