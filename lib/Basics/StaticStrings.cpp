@@ -260,6 +260,7 @@ std::string const StaticStrings::Schema("schema");
 std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
+std::string const StaticStrings::ReplicationVersion("replicationVersion");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

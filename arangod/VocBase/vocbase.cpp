@@ -69,8 +69,10 @@
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -84,7 +86,6 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
 
-#include <Scheduler/SchedulerFeature.h>
 #include <thread>
 
 using namespace arangodb;
@@ -1689,6 +1690,10 @@ std::uint32_t TRI_vocbase_t::replicationFactor() const {
 
 std::uint32_t TRI_vocbase_t::writeConcern() const {
   return _info.writeConcern();
+}
+
+replication::Version TRI_vocbase_t::replicationVersion() const {
+  return _info.replicationVersion();
 }
 
 bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {

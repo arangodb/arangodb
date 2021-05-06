@@ -153,7 +153,7 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
 
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer()) {
-    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern);
+    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern, _replicationVersion);
   } 
 
   if (withUsers) {
@@ -316,6 +316,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
   vocbaseOptions.replicationFactor = 1;
   vocbaseOptions.writeConcern = 1;
   vocbaseOptions.sharding = "";
+  vocbaseOptions.replicationVersion = replication::Version::ONE;
 
   //  sanitize input for vocbase creation
   //  sharding -- must be "", "flexible" or "single"
@@ -380,12 +381,28 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
     }
   }
 
+  {
+    auto replicationVersionSlice = options.get(StaticStrings::ReplicationVersion);
+    if (!replicationVersionSlice.isNone()) {
+      auto res = replication::parseVersion(replicationVersionSlice);
+      if (res.ok()) {
+        vocbaseOptions.replicationVersion = res.get();
+      } else {
+        THROW_ARANGO_EXCEPTION(std::move(res).result().withError([&](result::Error& err) {
+          err.resetErrorMessage(
+              basics::StringUtils::concatT("Error parsing ", StaticStrings::ReplicationVersion,
+                                           ": ", err.errorMessage()));
+        }));
+      }
+    }
+  }
+
   return vocbaseOptions;
 }
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
-                                   std::uint32_t replicationFactor,
-                                   std::uint32_t writeConcern) {
+                       std::uint32_t replicationFactor, std::uint32_t writeConcern,
+                       replication::Version replicationVersion) {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(StaticStrings::Sharding, VPackValue(sharding));
   if (replicationFactor) {
@@ -394,9 +411,12 @@ void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
     builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
   }
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+  builder.add(StaticStrings::ReplicationVersion,
+              VPackValue(replication::versionToString(replicationVersion)));
 }
 
 void addClusterOptions(VPackBuilder& builder, VocbaseOptions const& opt) {
-  addClusterOptions(builder, opt.sharding, opt.replicationFactor, opt.writeConcern);
+  addClusterOptions(builder, opt.sharding, opt.replicationFactor,
+                    opt.writeConcern, opt.replicationVersion);
 }
 }  // namespace arangodb
