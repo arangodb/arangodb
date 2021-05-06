@@ -68,12 +68,6 @@
       });
             
       self.render(false);
-
-      if (!wasVisible) {
-        this.visibleCollections.forEach(function(colName) {
-          self.getShardDetails(colName);
-        });
-      }
     },
 
     toggleSection: function (e) {
