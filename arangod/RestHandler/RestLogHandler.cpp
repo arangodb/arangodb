@@ -32,6 +32,8 @@
 
 #include "Replication2/ReplicatedLog/FakeLogFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 using namespace arangodb;

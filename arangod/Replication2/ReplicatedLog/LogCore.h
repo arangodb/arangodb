@@ -53,7 +53,8 @@ namespace arangodb::replication2::replicated_log {
  *      Add a deleter that does this, or something similar.
  */
 struct alignas(64) LogCore {
-  explicit LogCore(std::shared_ptr<PersistedLog> persistedLog, std::shared_ptr<Persistor> persistor);
+  explicit LogCore(std::shared_ptr<PersistedLog> persistedLog,
+                   std::shared_ptr<Persistor> persistor);
 
   // There must only be one LogCore per physical log
   LogCore() = delete;

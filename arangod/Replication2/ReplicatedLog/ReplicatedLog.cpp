@@ -41,6 +41,12 @@ struct AbstractFollower;
 using namespace arangodb;
 using namespace arangodb::replication2;
 
+replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core)
+    : _participant(std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(core))) {}
+
+replicated_log::ReplicatedLog::ReplicatedLog(std::shared_ptr<LogParticipantI> participant)
+    : _participant(std::move(participant)) {}
+
 auto replicated_log::ReplicatedLog::becomeLeader(
     ParticipantId id, LogTerm term,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower,

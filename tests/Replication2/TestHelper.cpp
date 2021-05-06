@@ -137,3 +137,8 @@ LogStatus DelayedLogLeader::getStatus() const {
 std::unique_ptr<LogCore> DelayedLogLeader::resign() && {
   return std::move(*_leader).resign();
 }
+
+futures::Future<Result> SyncPersistor::persist(std::shared_ptr<PersistedLog> log,
+                                               std::unique_ptr<LogIterator> iter) {
+  return log->insert(*iter);
+}

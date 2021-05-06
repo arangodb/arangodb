@@ -43,7 +43,7 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries) {
     for (auto const& entry : entries) {
       leaderLog->setEntry(entry);
     }
-    coreA = std::make_unique<LogCore>(leaderLog);
+    coreA = std::make_unique<LogCore>(leaderLog, _persistor);
   }
 
   auto leader = LogLeader::construct("leader", std::move(coreA), LogTerm{3}, {}, 1);
@@ -82,7 +82,7 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
     for (auto const& entry : entries) {
       leaderLog->setEntry(entry);
     }
-    coreA = std::make_unique<LogCore>(leaderLog);
+    coreA = std::make_unique<LogCore>(leaderLog, _persistor);
   }
 
   auto leader = LogLeader::construct("leader", std::move(coreA), LogTerm{3}, {}, 1);
@@ -125,7 +125,7 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
     for (auto const& entry : entries) {
       leaderLog->setEntry(entry);
     }
-    coreA = std::make_unique<LogCore>(leaderLog);
+    coreA = std::make_unique<LogCore>(leaderLog, _persistor);
   }
 
   auto coreB = makeLogCore(LogId{2});

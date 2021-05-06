@@ -62,10 +62,8 @@ namespace arangodb::replication2::replicated_log {
  * atomically.
  */
 struct alignas(64) ReplicatedLog {
-  explicit ReplicatedLog(std::shared_ptr<LogParticipantI> participant)
-      : _participant(std::move(participant)) {}
-  explicit ReplicatedLog(std::unique_ptr<LogCore> core)
-      : _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core))) {}
+  explicit ReplicatedLog(std::shared_ptr<LogParticipantI> participant);
+  explicit ReplicatedLog(std::unique_ptr<LogCore> core);
 
   ReplicatedLog() = delete;
   ReplicatedLog(ReplicatedLog const&) = delete;

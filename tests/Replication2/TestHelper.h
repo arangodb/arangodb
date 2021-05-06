@@ -28,6 +28,7 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/Persistor.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
@@ -164,10 +165,17 @@ struct TestReplicatedLog : ReplicatedLog {
                     std::size_t writeConcern) -> std::shared_ptr<DelayedLogLeader>;
 };
 
+struct SyncPersistor : Persistor {
+  auto persist(std::shared_ptr<PersistedLog> log, std::unique_ptr<LogIterator> iter)
+      -> futures::Future<Result> override;
+};
+
 struct ReplicatedLogTest : ::testing::Test {
+  ReplicatedLogTest() : _persistor(std::make_shared<SyncPersistor>()) {}
+
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
     auto persisted = makePersistedLog(id);
-    return std::make_unique<LogCore>(persisted);
+    return std::make_unique<LogCore>(persisted, _persistor);
   }
 
   auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLog> {
@@ -186,6 +194,7 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
+  std::shared_ptr<SyncPersistor> _persistor;
 };
 
 

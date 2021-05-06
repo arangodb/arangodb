@@ -42,14 +42,16 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     for (auto const& entry : entries) {
       persistedLog->setEntry(entry);
     }
-    return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog));
+    return std::make_shared<TestReplicatedLog>(
+        std::make_unique<LogCore>(persistedLog, _persistor));
   });
 
   // create different log that has only one entry
   auto leaderLog = std::invoke([&] {
     auto persistedLog = makePersistedLog(LogId{2});
     persistedLog->setEntry(entries[0]);
-    return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog));
+    return std::make_shared<TestReplicatedLog>(
+        std::make_unique<LogCore>(persistedLog, _persistor));
   });
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
