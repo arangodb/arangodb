@@ -21,8 +21,7 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DATETIME_H
-#define ARANGODB_BASICS_DATETIME_H 1
+#pragma once
 
 #include <chrono>
 #include <regex>
@@ -68,4 +67,3 @@ bool parseIsoDuration(arangodb::velocypack::StringRef duration,
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

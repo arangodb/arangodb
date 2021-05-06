@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H 1
+#pragma once
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -162,4 +161,3 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

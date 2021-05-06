@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
+#pragma once
 
 #include "GeneralServer/GeneralCommTask.h"
 
@@ -97,4 +96,3 @@ class HttpCommTask final : public GeneralCommTask<T> {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

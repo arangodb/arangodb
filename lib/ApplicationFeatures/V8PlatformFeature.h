@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_V8PLATFORM_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_V8PLATFORM_FEATURE_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
@@ -99,4 +98,3 @@ class V8PlatformFeature final : public application_features::ApplicationFeature 
 
 }  // namespace arangodb
 
-#endif

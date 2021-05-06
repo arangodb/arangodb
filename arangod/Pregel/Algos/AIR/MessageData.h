@@ -23,20 +23,19 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MESSAGEDATA_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MESSAGEDATA_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <string>
 
-using namespace arangodb::velocypack;
-
 namespace arangodb {
 namespace pregel {
 namespace algos {
 namespace accumulators {
+
+using namespace arangodb::velocypack;
 
 struct MessageData {
   void reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender);
@@ -59,4 +58,3 @@ struct MessageData {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

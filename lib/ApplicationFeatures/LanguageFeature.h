@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H 1
+#pragma once
 
 #include <unicode/locid.h>
 #include <memory>
@@ -62,4 +61,3 @@ class LanguageFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

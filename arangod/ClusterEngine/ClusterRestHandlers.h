@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_HANDLERS_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_HANDLERS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -37,4 +36,3 @@ struct ClusterRestHandlers {
 
 }  // namespace arangodb
 
-#endif

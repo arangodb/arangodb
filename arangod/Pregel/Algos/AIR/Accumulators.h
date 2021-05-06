@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H
-#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H 1
+#pragma once
 #include <Greenspun/Interpreter.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -280,4 +279,3 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
 
 }  // namespace arangodb
 
-#endif

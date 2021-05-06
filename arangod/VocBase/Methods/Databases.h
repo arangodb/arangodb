@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_DATABASE_H
-#define ARANGOD_VOC_BASE_API_DATABASE_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -62,4 +61,3 @@ struct Databases {
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

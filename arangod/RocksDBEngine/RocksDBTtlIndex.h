@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -74,4 +73,3 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
 
 }
 
-#endif

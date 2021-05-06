@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
-#define ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlItemMatrix.h"
@@ -102,4 +101,3 @@ class AqlItemBlockInputMatrix {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H

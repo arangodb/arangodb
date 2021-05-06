@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_LOGICAL_COLLECTION_H
-#define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -452,4 +451,3 @@ class LogicalCollection : public LogicalDataSource {
 
 }  // namespace arangodb
 
-#endif

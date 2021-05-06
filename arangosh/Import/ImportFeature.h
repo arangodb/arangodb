@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IMPORT_IMPORT_FEATURE_H
-#define ARANGODB_IMPORT_IMPORT_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Shell/ClientFeature.h"
@@ -80,4 +79,3 @@ class ImportFeature final : public application_features::ApplicationFeature,
 
 }  // namespace arangodb
 
-#endif

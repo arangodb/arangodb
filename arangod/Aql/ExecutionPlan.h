@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_PLAN_H
-#define ARANGOD_AQL_EXECUTION_PLAN_H 1
+#pragma once
 
 #include <array>
 
@@ -433,4 +432,3 @@ Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
   return ExecutionNode::castTo<Node*>(registerNode(std::move(node)));
 }
 
-#endif

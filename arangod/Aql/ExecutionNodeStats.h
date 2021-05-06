@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_NODE_STATS_H
-#define ARANGOD_AQL_EXECUTION_NODE_STATS_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -40,4 +39,3 @@ struct ExecutionNodeStats {
   }
 };
 
-#endif

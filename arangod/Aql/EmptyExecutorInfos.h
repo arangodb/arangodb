@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EMPTYEXECUTORINFOS_H
-#define ARANGOD_AQL_EMPTYEXECUTORINFOS_H 1
+#pragma once
 
 namespace arangodb::aql {
 
@@ -32,4 +31,3 @@ class EmptyExecutorInfos {};
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_EMPTYEXECUTORINFOS_H

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TRAVERSAL_NODE_H
-#define ARANGOD_AQL_TRAVERSAL_NODE_H 1
+#pragma once
 
 #include "Aql/Condition.h"
 #include "Aql/GraphNode.h"
@@ -72,7 +71,6 @@ class TraversalNode : public virtual GraphNode {
   };
 
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  public:
@@ -123,39 +121,14 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere
-  void getVariablesUsedHere(VarSet& result) const override final {
-    for (auto const& condVar : _conditionVariables) {
-      if (condVar != getTemporaryVariable()) {
-        result.emplace(condVar);
-      }
-    }
-    for (auto const& pruneVar : _pruneVariables) {
-      if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
-          pruneVar != pathOutVariable()) {
-        result.emplace(pruneVar);
-      }
-    }
-    if (usesInVariable()) {
-      result.emplace(_inVariable);
-    }
-  }
+  void getVariablesUsedHere(VarSet& result) const override final;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> vars;
-    if (isVertexOutVariableUsedLater()) {
-      vars.emplace_back(vertexOutVariable());
-    }
-    if (isEdgeOutVariableUsedLater()) {
-      vars.emplace_back(edgeOutVariable());
-    }
-    if (isPathOutVariableUsedLater()) {
-      vars.emplace_back(pathOutVariable());
-    }
-    return vars;
-  }
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief checks if the path out variable is used by other nodes
   bool isPathOutVariableUsedLater() const;
@@ -189,7 +162,7 @@ class TraversalNode : public virtual GraphNode {
   void setCondition(std::unique_ptr<Condition> condition);
 
   /// @brief return the condition for the node
-  Condition* condition() const { return _condition.get(); }
+  Condition const* condition() const { return _condition.get(); }
 
   /// @brief which variable? -1 none, 0 Edge, 1 Vertex, 2 path
   int checkIsOutVariable(size_t variableId) const;
@@ -278,4 +251,3 @@ class TraversalNode : public virtual GraphNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

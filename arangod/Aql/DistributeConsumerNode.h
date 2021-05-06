@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DISTRIBUTE_CONSUMER_NODE_H
-#define ARANGOD_AQL_DISTRIBUTE_CONSUMER_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -110,4 +109,3 @@ class DistributeConsumerNode : public ExecutionNode {
 
 }  // namespace arangodb::aql
 
-#endif

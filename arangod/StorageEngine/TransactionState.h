@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H
-#define ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -310,4 +309,3 @@ class TransactionState {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGEX_CACHE_H
-#define ARANGOD_AQL_REGEX_CACHE_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Basics/Common.h"
@@ -99,4 +98,3 @@ class AqlFunctionsInternalCache final {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

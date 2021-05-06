@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_COLLECTION_CREATION_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_COLLECTION_CREATION_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 
@@ -82,4 +81,3 @@ struct CollectionCreationTest : public Benchmark<CollectionCreationTest> {
 std::atomic<uint64_t> CollectionCreationTest::_counter(0);
 
 }  // namespace arangodb::arangobench
-#endif

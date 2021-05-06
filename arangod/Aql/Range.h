@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_RANGE_H
-#define ARANGOD_AQL_RANGE_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -59,4 +58,3 @@ struct Range {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MESSAGES_H
-#define ARANGODB_BASICS_MESSAGES_H 1
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bye bye message
@@ -91,4 +90,3 @@
   " " TRI_BYE_MESSAGE_FR " " TRI_BYE_MESSAGE_JP " " TRI_BYE_MESSAGE_RU  \
   " " TRI_BYE_MESSAGE_PT " " TRI_BYE_MESSAGE_FA " " TRI_BYE_MESSAGE_LV  \
   " " TRI_BYE_MESSAGE_GE " " TRI_BYE_MESSAGE_KR " " TRI_BYE_MESSAGE_ID
-#endif

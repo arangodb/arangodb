@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H
-#define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -73,4 +72,3 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SHARDING_INFO_H
-#define ARANGOD_CLUSTER_SHARDING_INFO_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -138,4 +137,3 @@ class ShardingInfo {
 };
 }  // namespace arangodb
 
-#endif

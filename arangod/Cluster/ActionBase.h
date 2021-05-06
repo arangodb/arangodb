@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_ACTION_BASE_H
-#define ARANGODB_MAINTENANCE_ACTION_BASE_H
+#pragma once
 
 #include "ActionDescription.h"
 
@@ -243,4 +242,3 @@ Result actionWarn(ErrorCode errorCode, std::string const& errorMessage);
 namespace std {
 ostream& operator<<(ostream& o, arangodb::maintenance::ActionBase const& d);
 }
-#endif

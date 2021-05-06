@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REST_AQL_HANDLER_H
-#define ARANGOD_AQL_REST_AQL_HANDLER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -146,4 +145,3 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

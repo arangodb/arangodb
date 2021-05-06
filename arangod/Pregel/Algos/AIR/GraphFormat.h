@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_GRAPHFORMAT_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_GRAPHFORMAT_H 1
+#pragma once
 
 #include "AIR.h"
 
@@ -79,4 +78,3 @@ struct GraphFormat final : public graph_format {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

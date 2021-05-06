@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_UTILS_PROGRESS_TRACKER_H
-#define ARANGOSH_UTILS_PROGRESS_TRACKER_H 1
+#pragma once
 
 #include "ManagedDirectory.h"
 #include "Basics/FileUtils.h"
@@ -124,4 +123,3 @@ std::string ProgressTracker<T>::filename() const {
 
 }
 
-#endif

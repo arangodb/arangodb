@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SCOPE_GUARD_H
-#define ARANGODB_BASICS_SCOPE_GUARD_H 1
+#pragma once
 
 #include <type_traits>
 #include <utility>
@@ -107,4 +106,3 @@ ScopeGuard<T> scopeGuard(T&& f) {
 
 }  // namespace arangodb
 
-#endif

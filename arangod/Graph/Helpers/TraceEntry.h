@@ -22,8 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_HELPERS_TRACE_ENTRY_H
-#define ARANGOD_GRAPH_HELPERS_TRACE_ENTRY_H 1
+#pragma once
 
 #include <limits>
 #include <numeric>
@@ -51,4 +50,3 @@ class TraceEntry {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

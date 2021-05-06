@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_RESULT_V8_H
-#define ARANGOD_AQL_QUERY_RESULT_V8_H 1
+#pragma once
 
 #include "Aql/QueryResult.h"
 
@@ -63,4 +62,3 @@ struct QueryResultV8 : public QueryResult {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

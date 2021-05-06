@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_VERSION_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_VERSION_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -43,4 +42,3 @@ class VersionFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AUTHENTICATION_HANDLER_H
-#define ARANGOD_AUTHENTICATION_HANDLER_H 1
+#pragma once
 
 #include "Auth/Common.h"
 #include "Basics/Result.h"
@@ -81,4 +80,3 @@ class Handler {
 }  // namespace auth
 }  // namespace arangodb
 
-#endif

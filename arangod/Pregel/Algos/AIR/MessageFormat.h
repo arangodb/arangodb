@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MESSAGEFORMAT_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MESSAGEFORMAT_H 1
+#pragma once
 
 #include "AIR.h"
 
@@ -47,4 +46,3 @@ struct MessageFormat : public message_format {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

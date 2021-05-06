@@ -21,8 +21,7 @@
 /// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PROCESS__UTILS_H
-#define ARANGODB_BASICS_PROCESS__UTILS_H 1
+#pragma once
 
 #include <string>
 #include <vector>
@@ -212,4 +211,3 @@ bool TRI_ContinueExternalProcess(ExternalId pid);
 
 void TRI_ShutdownProcess();
 
-#endif

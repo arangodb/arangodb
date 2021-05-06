@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MEMORY_H
-#define ARANGODB_BASICS_MEMORY_H 1
+#pragma once
 
 /// @brief basic memory management for allocate
 void* TRI_Allocate(size_t);
@@ -33,4 +32,3 @@ void* TRI_Reallocate(void*, size_t);
 /// @brief basic memory management for deallocate
 void TRI_Free(void*);
 
-#endif

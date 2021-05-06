@@ -23,8 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_COMMON_H
-#define ARANGO_ROCKSDB_ROCKSDB_COMMON_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -103,4 +102,3 @@ void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T
 }  // namespace rocksutils
 }  // namespace arangodb
 
-#endif

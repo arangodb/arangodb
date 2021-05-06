@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H
-#define ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterTypes.h"
@@ -80,4 +79,3 @@ struct ClusterCollectionCreationInfo {
 };
 }  // namespace arangodb
 
-#endif

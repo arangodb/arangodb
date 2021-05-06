@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_OPTIONS_H
-#define ARANGOD_AQL_MODIFICATION_OPTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Utils/OperationOptions.h"
@@ -60,4 +59,3 @@ struct ModificationOptions : OperationOptions {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

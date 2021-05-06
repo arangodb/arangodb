@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GRAPH_STORE_H
-#define ARANGODB_PREGEL_GRAPH_STORE_H 1
+#pragma once
 
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
@@ -141,4 +140,3 @@ class GraphStore final {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

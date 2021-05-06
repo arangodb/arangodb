@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_JAVASCRIPT_SECURITY_CONTEXT_H
-#define ARANGODB_V8_JAVASCRIPT_SECURITY_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -110,4 +109,3 @@ class JavaScriptSecurityContext {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_V8EXECUTOR_H
-#define ARANGOD_AQL_V8EXECUTOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -44,4 +43,3 @@ class V8Executor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

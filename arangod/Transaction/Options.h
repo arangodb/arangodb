@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_OPTIONS_H
-#define ARANGOD_TRANSACTION_OPTIONS_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -107,4 +106,3 @@ struct AllowImplicitCollectionsSwitcher {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

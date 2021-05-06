@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHORTEST_PATH_EXECUTOR_H
-#define ARANGOD_AQL_SHORTEST_PATH_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -219,4 +218,3 @@ class ShortestPathExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -194,4 +193,3 @@ class ModificationExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

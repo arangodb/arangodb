@@ -21,8 +21,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_IDENTITY_ANALYZER
-#define ARANGODB_IRESEARCH__IRESEARCH_IDENTITY_ANALYZER 1
+#pragma once
 
 #include "analysis/analyzer.hpp"
 #include "analysis/token_attributes.hpp"
@@ -70,5 +69,4 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_IDENTITY_ANALYZER
 

@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H
-#define ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -130,4 +129,3 @@ class AqlItemBlockInputRange {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H

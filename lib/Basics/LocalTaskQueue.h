@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_LOCAL_TASK_QUEUE_H
-#define ARANGODB_BASICS_LOCAL_TASK_QUEUE_H 1
+#pragma once
 
 #include <atomic>
 #include <condition_variable>
@@ -183,4 +182,3 @@ class LocalTaskQueue {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

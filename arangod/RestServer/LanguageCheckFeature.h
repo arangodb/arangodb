@@ -21,8 +21,7 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_LANGUAGE_CHECK_FEATURE_H
-#define ARANGODB_REST_SERVER_LANGUAGE_CHECK_FEATURE_H 1
+#pragma once
 
 #include <unicode/locid.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -40,4 +39,3 @@ class LanguageCheckFeature final : public application_features::ApplicationFeatu
 
 }  // namespace arangodb
 
-#endif

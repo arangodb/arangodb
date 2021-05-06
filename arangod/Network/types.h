@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_TYPES_H
-#define ARANGOD_NETWORK_TYPES_H 1
+#pragma once
 
 #include <fuerte/types.h>
 #include <chrono>
@@ -45,4 +44,3 @@ struct EndpointSpec {
 }  // namespace network
 }  // namespace arangodb
 
-#endif

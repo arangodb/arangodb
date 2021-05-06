@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_WORKER_CONTEXT_H
-#define ARANGODB_PREGEL_WORKER_CONTEXT_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -82,4 +81,3 @@ class WorkerContext {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_DEADLOCK_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_DEADLOCK_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 #include "helpers.h"
@@ -98,4 +97,3 @@ struct TransactionDeadlockTest : public Benchmark<TransactionDeadlockTest> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

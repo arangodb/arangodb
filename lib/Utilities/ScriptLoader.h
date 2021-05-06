@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_SCRIPT_LOADER_H
-#define ARANGODB_UTILITIES_SCRIPT_LOADER_H 1
+#pragma once
 
 #include <map>
 #include <string>
@@ -105,4 +104,3 @@ class ScriptLoader {
 };
 }  // namespace arangodb
 
-#endif

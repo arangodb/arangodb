@@ -21,12 +21,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_CONDUCTOR_H
-#define ARANGODB_PREGEL_CONDUCTOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
-
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "Basics/Mutex.h"
 #include "Basics/asio_ns.h"
@@ -152,4 +149,3 @@ class Conductor {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

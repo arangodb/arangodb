@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_REPLICATION_H
-#define ARANGOD_V8_SERVER_V8_REPLICATION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "v8-vocbase.h"
@@ -31,4 +30,3 @@ void TRI_InitV8Replication(v8::Isolate* isolate, v8::Handle<v8::Context> context
                            TRI_vocbase_t* vocbase, size_t threadNumber,
                            TRI_v8_global_t* v8g);
 
-#endif

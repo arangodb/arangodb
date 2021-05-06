@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_CONTEXT_H
-#define ARANGOD_AQL_QUERY_CONTEXT_H 1
+#pragma once
 
 #include "Aql/Collections.h"
 #include "Aql/Graphs.h"
@@ -181,4 +180,3 @@ class QueryContext {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

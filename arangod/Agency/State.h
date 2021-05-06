@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_STATE_H
-#define ARANGOD_CONSENSUS_STATE_H 1
+#pragma once
 
 #include "Agency/Store.h"
 #include "AgencyCommon.h"
@@ -303,4 +302,3 @@ class State {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

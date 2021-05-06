@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H 1
+#pragma once
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
@@ -209,8 +208,6 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
-  bool _blockers = false;
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;
@@ -246,4 +243,3 @@ class RocksDBKeyLeaser {
 
 }  // namespace arangodb
 
-#endif

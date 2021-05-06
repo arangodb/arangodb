@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -236,4 +235,3 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
 }  // namespace arangodb
 
-#endif

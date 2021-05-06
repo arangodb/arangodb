@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CONSTRAINED_SORT_EXECUTOR_H
-#define ARANGOD_AQL_CONSTRAINED_SORT_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -34,7 +33,6 @@
 #include <vector>
 
 namespace arangodb {
-class Result;
 namespace transaction {
 class Methods;
 }
@@ -95,8 +93,8 @@ class ConstrainedSortExecutor {
                                              AqlCall const& call) const noexcept -> size_t;
 
  private:
-  bool compareInput(size_t const& rosPos, InputAqlItemRow const& row) const;
-  arangodb::Result pushRow(InputAqlItemRow const& row);
+  bool compareInput(size_t rosPos, InputAqlItemRow const& row) const;
+  void pushRow(InputAqlItemRow const& row);
 
   // We're done producing when we've emitted all rows from our heap.
   bool doneProducing() const noexcept;
@@ -126,4 +124,3 @@ class ConstrainedSortExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

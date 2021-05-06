@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_H
-#define ARANGO_ROCKSDB_ROCKSDB_KEY_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -338,4 +337,3 @@ std::ostream& operator<<(std::ostream&, RocksDBKey const&);
 
 }  // namespace arangodb
 
-#endif

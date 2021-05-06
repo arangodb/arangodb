@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_SSL_SERVER_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_SSL_SERVER_FEATURE_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -102,4 +101,3 @@ class SslServerFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

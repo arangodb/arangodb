@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_OPTIMIZER_UTILS_H
-#define ARANGOD_AQL_OPTIMIZER_UTILS_H 1
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -76,4 +75,3 @@ bool getIndexForSortCondition(
 } // namespace aql
 } // namespace arangodb
 
-#endif

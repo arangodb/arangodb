@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_STRING_MASK_H
-#define ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_STRING_MASK_H 1
+#pragma once
 
 #include "Maskings/AttributeMasking.h"
 #include "Maskings/MaskingFunction.h"
@@ -46,4 +45,3 @@ class RandomStringMask : public MaskingFunction {
 }  // namespace maskings
 }  // namespace arangodb
 
-#endif

@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
-#define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallSet.h"
@@ -350,4 +349,3 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 };
 
 }  // namespace arangodb::aql
-#endif

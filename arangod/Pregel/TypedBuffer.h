@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_BUFFER_H
-#define ARANGODB_PREGEL_BUFFER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -287,4 +286,3 @@ class MappedFileBuffer : public TypedBuffer<T> {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

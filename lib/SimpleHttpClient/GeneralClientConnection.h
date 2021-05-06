@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H 1
+#pragma once
 
 #include <stddef.h>
 #include <atomic>
@@ -119,6 +118,9 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   inline size_t connectRetries() const { return _connectRetries; }
+
+  void repurpose(double connectTimeout, double requestTimeout,
+                 size_t connectRetries);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -285,4 +287,3 @@ class GeneralClientConnection {
 }  // namespace httpclient
 }  // namespace arangodb
 
-#endif

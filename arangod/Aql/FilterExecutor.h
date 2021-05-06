@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FILTER_EXECUTOR_H
-#define ARANGOD_AQL_FILTER_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
@@ -106,4 +105,3 @@ class FilterExecutor {
 
 }  // namespace arangodb::aql
 
-#endif

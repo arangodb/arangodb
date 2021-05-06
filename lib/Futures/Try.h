@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_TRY_H
-#define ARANGOD_FUTURES_TRY_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -435,4 +434,3 @@ struct isTry<Try<T>&&> {
 
 }  // namespace futures
 }  // namespace arangodb
-#endif  // ARANGOD_FUTURES_TRY_H

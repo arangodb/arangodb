@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_VOC_TYPES_H
-#define ARANGOD_VOC_BASE_VOC_TYPES_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -80,4 +79,3 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
 /// @brief databases list structure
 struct TRI_vocbase_t;
 
-#endif

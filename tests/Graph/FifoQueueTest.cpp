@@ -62,24 +62,24 @@ class Step : public arangodb::graph::BaseStep<Step> {
   }
 };
 
-class QueueTest : public ::testing::Test {
+class FifoQueueTest : public ::testing::Test {
  //protected:
  public:
-  QueueTest() {}
-  ~QueueTest() {}
+  FifoQueueTest() {}
+  ~FifoQueueTest() {}
 
  public:
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
 };
 
-TEST_F(QueueTest, it_should_be_empty_if_new_queue_initialized) {
+TEST_F(FifoQueueTest, it_should_be_empty_if_new_queue_initialized) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   ASSERT_EQ(queue.size(), 0);
   ASSERT_TRUE(queue.isEmpty());
 }
 
-TEST_F(QueueTest, it_should_contain_element_after_insertion) {
+TEST_F(FifoQueueTest, it_should_contain_element_after_insertion) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   auto step = Step{1, 1, false};
   queue.append(step);
@@ -87,7 +87,7 @@ TEST_F(QueueTest, it_should_contain_element_after_insertion) {
   ASSERT_FALSE(queue.isEmpty());
 }
 
-TEST_F(QueueTest, it_should_contain_zero_elements_after_clear) {
+TEST_F(FifoQueueTest, it_should_contain_zero_elements_after_clear) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 1, false});
@@ -98,7 +98,7 @@ TEST_F(QueueTest, it_should_contain_zero_elements_after_clear) {
   ASSERT_TRUE(queue.isEmpty());
 }
 
-TEST_F(QueueTest, it_should_contain_processable_elements) {
+TEST_F(FifoQueueTest, it_should_contain_processable_elements) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 1, false});
@@ -108,7 +108,7 @@ TEST_F(QueueTest, it_should_contain_processable_elements) {
   ASSERT_TRUE(queue.hasProcessableElement());
 }
 
-TEST_F(QueueTest, it_should_not_contain_processable_elements) {
+TEST_F(FifoQueueTest, it_should_not_contain_processable_elements) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, true});
   queue.append(Step{2, 1, true});
@@ -118,7 +118,7 @@ TEST_F(QueueTest, it_should_not_contain_processable_elements) {
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
-TEST_F(QueueTest, it_should_pop_first_element_if_processable) {
+TEST_F(FifoQueueTest, it_should_pop_first_element_if_processable) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 1, false});
@@ -133,7 +133,7 @@ TEST_F(QueueTest, it_should_pop_first_element_if_processable) {
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
-TEST_F(QueueTest, it_should_pop_in_correct_order) {
+TEST_F(FifoQueueTest, it_should_pop_in_correct_order) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 1, false});
@@ -151,7 +151,7 @@ TEST_F(QueueTest, it_should_pop_in_correct_order) {
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
-TEST_F(QueueTest, it_should_pop_all_loose_ends) {
+TEST_F(FifoQueueTest, it_should_pop_all_loose_ends) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   queue.append(Step{1, 1, true});
   queue.append(Step{2, 1, true});

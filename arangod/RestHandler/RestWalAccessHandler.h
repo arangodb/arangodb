@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_WAL_ACCESS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_WAL_ACCESS_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "StorageEngine/WalAccess.h"
@@ -52,4 +51,3 @@ class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

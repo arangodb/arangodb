@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_DESCRIPTIONS_H
-#define ARANGOD_STATISTICS_DESCRIPTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -103,4 +102,3 @@ class Descriptions final {
 }  // namespace stats
 }  // namespace arangodb
 
-#endif

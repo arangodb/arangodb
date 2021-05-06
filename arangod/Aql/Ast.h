@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AST_H
-#define ARANGOD_AQL_AST_H 1
+#pragma once
 
 #include <functional>
 #include <iterator>
@@ -682,4 +681,3 @@ class Ast {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

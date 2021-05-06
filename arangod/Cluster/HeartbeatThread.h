@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_HEARTBEAT_THREAD_H
-#define ARANGOD_CLUSTER_HEARTBEAT_THREAD_H 1
+#pragma once
 
 #include "Basics/Thread.h"
 
@@ -330,4 +329,3 @@ class HeartbeatThread : public Thread,
 };
 }  // namespace arangodb
 
-#endif

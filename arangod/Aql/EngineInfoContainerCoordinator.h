@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H
-#define ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Aql/ExecutionEngine.h"
@@ -113,4 +112,3 @@ class EngineInfoContainerCoordinator {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

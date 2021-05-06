@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H
-#define ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
@@ -65,4 +64,3 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H 1
+#pragma once
 
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -174,4 +173,3 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

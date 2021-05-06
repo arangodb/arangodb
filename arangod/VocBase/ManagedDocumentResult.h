@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H
-#define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -94,4 +93,3 @@ class ManagedDocumentResult {
 
 }  // namespace arangodb
 
-#endif

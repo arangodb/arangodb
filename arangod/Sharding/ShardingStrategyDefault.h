@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SHARDING_SHARDING_STRATEGY_DEFAULT_H
-#define ARANGOD_SHARDING_SHARDING_STRATEGY_DEFAULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -155,4 +154,3 @@ class ShardingStrategyHash final : public ShardingStrategyHashBase {
 
 }  // namespace arangodb
 
-#endif

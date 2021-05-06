@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
-#define ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
+#pragma once
 
 #include <type_traits>
 
@@ -41,4 +40,3 @@ using SerializationFormatType = std::underlying_type_t<SerializationFormat>;
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

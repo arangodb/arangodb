@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHORT_STRING_STORAGE_H
-#define ARANGOD_AQL_SHORT_STRING_STORAGE_H 1
+#pragma once
 
 #include <cstddef>
 #include <memory>
@@ -76,4 +75,3 @@ class ShortStringStorage {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -31,6 +31,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Mutex.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -38,6 +39,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -172,29 +174,27 @@ Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& ap
     : _endpointString{applierConfig._endpoint},
       _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId().id())},
       _clientInfo{applierConfig._clientInfoString} {
-  std::unique_ptr<httpclient::GeneralClientConnection> connection;
-  std::unique_ptr<Endpoint> endpoint{Endpoint::clientFactory(_endpointString)};
-  if (endpoint != nullptr) {
-    connection.reset(httpclient::GeneralClientConnection::factory(
-        applierConfig._server, endpoint, applierConfig._requestTimeout,
-        applierConfig._connectTimeout, static_cast<size_t>(applierConfig._maxConnectRetries),
-        static_cast<uint32_t>(applierConfig._sslProtocol)));
-  }
 
-  if (connection != nullptr) {
+  _connectionLease = applierConfig._server.getFeature<ReplicationFeature>().connectionCache().acquire(
+      _endpointString, applierConfig._requestTimeout, applierConfig._connectTimeout, 
+      static_cast<size_t>(applierConfig._maxConnectRetries),
+      static_cast<uint64_t>(applierConfig._sslProtocol));
+
+  if (_connectionLease._connection != nullptr) {
     std::string retryMsg =
         std::string("retrying failed HTTP request for endpoint '") +
-        applierConfig._endpoint + std::string("' for replication applier");
+        applierConfig._endpoint + "' for replication applier";
     std::string databaseName = applierConfig._database;
     if (!databaseName.empty()) {
       retryMsg +=
-          std::string(" in database '") + databaseName + std::string("'");
+          std::string(" in database '") + databaseName + "'";
     }
 
     httpclient::SimpleHttpClientParams params(applierConfig._requestTimeout, false);
     params.setMaxRetries(2);
     params.setRetryWaitTime(2 * 1000 * 1000);  // 2s
     params.setRetryMessage(retryMsg);
+    params.keepConnectionOnDestruction(true);
 
     std::string username = applierConfig._username;
     std::string password = applierConfig._password;
@@ -205,7 +205,7 @@ Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& ap
     }
     params.setMaxPacketSize(applierConfig._maxPacketSize);
     params.setLocationRewriter(syncer, &(syncer->rewriteLocation));
-    _client.reset(new httpclient::SimpleHttpClient(connection, params));
+    _client = std::make_unique<httpclient::SimpleHttpClient>(_connectionLease._connection.get(), params);
   }
 }
 
