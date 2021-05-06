@@ -92,7 +92,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   /// lazily at a time when other threads are already running and potentially trying to read the
   /// pointer. This only works because _recoveryManager is only initialzed once and lives until the
   /// owning PregelFeature instance is also destroyed.
-  std::atomic<RecoveryManager*> _recoveryManagerPtr;
+  std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<Conductor>>> _conductors;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>> _workers;
 };
