@@ -1,6 +1,10 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed two bugs in fuerte with HTTP/2 and VST connections.
+  One could lead to ordered timeouts not being honoured. The other could
+  lead to an ordered callback be called multiple times.
+
 * Improve exception safety for maintenance thread and shard unlock operations.
 
 * Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied, it
