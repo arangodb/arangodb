@@ -173,6 +173,12 @@ void ActionBase::endStats() {
 
 }  // ActionBase::endStats
 
+ShardDefinition::ShardDefinition(std::string const& database, std::string const& shard)
+    : _database(database), _shard(shard) {
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+}
+
 Result arangodb::actionError(ErrorCode errorCode, std::string const& errorMessage) {
   LOG_TOPIC("c889d", ERR, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
@@ -257,7 +263,7 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
  */
 arangodb::Result ActionBase::progress(double& progress) {
   progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
+  return {};
 }
 
 namespace std {
