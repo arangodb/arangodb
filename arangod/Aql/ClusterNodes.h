@@ -193,7 +193,6 @@ class ScatterNode : public ExecutionNode {
 /// @brief class DistributeNode
 class DistributeNode final : public ScatterNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with an id
  public:
@@ -218,6 +217,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -242,7 +243,6 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 /// @brief class GatherNode
 class GatherNode final : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   enum class SortMode : uint32_t { MinElement, Heap, Default };
@@ -293,6 +293,8 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -340,7 +342,6 @@ class GatherNode final : public ExecutionNode {
 /// @brief class RemoteNode
 class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
   friend class SingleRemoteOperationBlock;
   /// @brief constructor with an id
  public:

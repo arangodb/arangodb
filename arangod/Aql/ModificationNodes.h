@@ -152,7 +152,6 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
 class RemoveNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   RemoveNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
@@ -180,6 +179,8 @@ class RemoveNode : public ModificationNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -199,7 +200,6 @@ class RemoveNode : public ModificationNode {
 class InsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   InsertNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
@@ -228,6 +228,8 @@ class InsertNode : public ModificationNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -246,7 +248,6 @@ class InsertNode : public ModificationNode {
 class UpdateReplaceNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   UpdateReplaceNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
@@ -274,6 +275,8 @@ class UpdateReplaceNode : public ModificationNode {
       vars.emplace(_inKeyVariable);
     }
   }
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief set the input key variable
   void setInKeyVariable(Variable const* var) { _inKeyVariable = var; }
@@ -297,7 +300,6 @@ class UpdateReplaceNode : public ModificationNode {
 class UpdateNode : public UpdateReplaceNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  public:
@@ -331,7 +333,6 @@ class UpdateNode : public UpdateReplaceNode {
 class ReplaceNode : public UpdateReplaceNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  public:
@@ -365,7 +366,6 @@ class ReplaceNode : public UpdateReplaceNode {
 class UpsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  public:
@@ -402,6 +402,8 @@ class UpsertNode : public ModificationNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
