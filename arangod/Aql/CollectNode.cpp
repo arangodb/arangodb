@@ -645,6 +645,25 @@ void CollectNode::calculateAccessibleUserVariables(ExecutionNode const& node,
   std::ignore = ::calculateAccessibleUserVariables(node, userVariables, false, 0);
 }
 
+void CollectNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  for (auto& variable : _groupVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  for (auto& variable : _keepVariables) {
+    auto old = variable;
+    variable = Variable::replace(old, replacements);
+  }
+  for (auto& variable : _aggregateVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  if (_expressionVariable != nullptr) {
+    _expressionVariable = Variable::replace(_expressionVariable, replacements);
+  }
+  for (auto const& it : replacements) {
+    _variableMap.try_emplace(it.second->id, it.second->name);
+  }
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void CollectNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& p : _groupVariables) {
