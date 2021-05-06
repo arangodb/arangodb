@@ -3,6 +3,10 @@ devel
 
 * Updated bundled version of Snappy library to 1.1.9.
 
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own
+  rebootId increment has triggered plan entry to be removed.
+
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
 
@@ -12,6 +16,14 @@ devel
 
 * Fix DEVSUP-749: Fix potential deadlock when executing concurrent view/link
   DDL operations and index DDL operations on the same collection.
+
+* Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied,
+  it may rename some variables in the query. The variable renaming was however
+  not carried out for traversal PRUNE conditions, so the PRUNE conditions 
+  could still refer to obsolete variables, which would make the query fail with
+  errors such as 
+    
+      Query: AQL: missing variable ... for node ... while planning registers
 
 * Fixed bug in error reporting when a database create did not work, which led
   to a busy loop reporting this error to the agency.
