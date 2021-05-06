@@ -413,6 +413,30 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
   auto collection =
       std::make_shared<arangodb::LogicalCollection>(*this, parameters, false);
 
+  if (replicationVersion() == replication::Version::TWO) {
+    TRI_ASSERT(!name.empty());
+    TRI_ASSERT(name[0] == 's');
+    TRI_ASSERT(std::all_of(name.begin() + 1, name.end(),
+                           [](char c) { return isdigit(c); }));
+    bool valid = false;
+    auto const shardId = NumberUtils::atoi<std::uint64_t>((name.begin() + 1).base(),
+                                                          name.end().base(), valid);
+    if (!valid) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, basics::StringUtils::concatT("Expected shard id, got ",
+                                                                                      name));
+    }
+    auto const logId = replication2::LogId{shardId};
+
+    auto logRes = createReplicatedLog(logId);
+    if (!logRes.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(logRes).result());
+    }
+    // Note: We could also add the reference to the ReplicatedLog (*logRes) to
+    // the logical collection, for direct access.
+    collection->setReplicatedLogId(logId);
+    LOG_DEVEL << "Set logId of " << dbName << "/" << name << " to " << logId.id();
+  }
+
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   // reserve room for the new collection
@@ -1952,7 +1976,7 @@ struct FakePersistedLog : PersistedLog {
 };
 
 auto TRI_vocbase_t::createReplicatedLog(LogId id)
-    -> arangodb::ResultT<std::shared_ptr<replicated_log::LogParticipantI>> {
+    -> arangodb::ResultT<std::reference_wrapper<replicated_log::ReplicatedLog>> {
   auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
   auto& logs = manager->_logs;
 
@@ -1963,13 +1987,13 @@ auto TRI_vocbase_t::createReplicatedLog(LogId id)
     if (persistedLog.fail()) {
       return persistedLog.result();
     }
-    LOG_DEVEL << "created replicated log";
+    LOG_DEVEL << "created replicated log " << id;
     auto&& logCore =
         std::make_unique<replicated_log::LogCore>(std::move(persistedLog.get()), manager);
     auto&& log =
         std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(logCore));
-    manager->_logs.emplace_hint(iter, id, std::move(log));
-    return std::static_pointer_cast<replicated_log::LogParticipantI>(log);
+    auto it = manager->_logs.emplace_hint(iter, id, std::move(log));
+    return std::ref(it->second);
   } else {
     return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
   }

@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 params=("$@")
 
-ulimit -H -n 131072 || true
-ulimit -S -n 131072 || true
+if [ $(ulimit -S -n) -lt 131072 ]; then
+    if [ $(ulimit -H -n) -lt 131072 ]; then
+        ulimit -H -n 131072 || true
+    fi
+    ulimit -S -n 131072 || true
+fi
 
 rm -rf cluster
 if [ -d cluster-init ];then

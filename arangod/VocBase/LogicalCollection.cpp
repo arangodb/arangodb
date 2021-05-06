@@ -1195,3 +1195,7 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VP
   }
   return {};
 }
+
+void LogicalCollection::setReplicatedLogId(replication2::LogId logId) {
+  _replicatedLogId = logId;
+}

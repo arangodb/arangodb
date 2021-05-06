@@ -332,6 +332,8 @@ class LogicalCollection : public LogicalDataSource {
 
   Result updateSchema(VPackSlice schema);
 
+  void setReplicatedLogId(replication2::LogId logId);
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -394,6 +396,10 @@ class LogicalCollection : public LogicalDataSource {
   std::unique_ptr<KeyGenerator> _keyGenerator;
 
   std::unique_ptr<PhysicalCollection> _physical;
+
+  // If using the new replication (set via database option), this holds the
+  // id of the corresponding replicated log.
+  std::optional<replication2::LogId> _replicatedLogId;
 
   mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
