@@ -87,7 +87,7 @@ function runStressTest (options, command, testname) {
 
     return {
       status: false,
-      message: reply.hasOwnProperty('body') ? reply.body : yaml.safeDump(reply),
+      message: reply.hasOwnProperty('body') ? reply.body : yaml.dump(reply),
       shutdown: shutdownStatus
     };
   }
@@ -116,13 +116,13 @@ function runStressTest (options, command, testname) {
       }
     }
 
-    print(yaml.safeDump(check));
+    print(yaml.dump(check));
 
     let shutdownStatus = pu.shutdownInstance(instanceInfo, options);
 
     return {
       status: false,
-      message: check.hasOwnProperty('body') ? check.body : yaml.safeDump(check),
+      message: check.hasOwnProperty('body') ? check.body : yaml.dump(check),
       shutdown: shutdownStatus
     };
   }

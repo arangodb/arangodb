@@ -309,7 +309,7 @@ function importing (options) {
     result.teardown.failed = result.teardown.success ? 0 : 1;
   } catch (banana) {
     print('An exceptions of the following form was caught:',
-          yaml.safeDump(banana));
+          yaml.dump(banana));
   }
 
   print('Shutting down...');

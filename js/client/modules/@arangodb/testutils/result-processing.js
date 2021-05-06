@@ -796,7 +796,7 @@ function locateLongRunning(options, results, otherResults) {
           results[key]['setupStatistics'] = setupStatistics;
         }
       }
-      testRunStatistics +=  yaml.safeDump(results);
+      testRunStatistics +=  yaml.dump(results);
       sortedByDuration = [];
     }
   });
@@ -999,7 +999,7 @@ function addFailRunsMessage(testcase, message) {
 
 function yamlDumpResults(options, results) {
   try {
-    print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
+    print(yaml.dump(JSON.parse(JSON.stringify(results))));
   } catch (err) {
     print(RED + 'cannot dump results: ' + String(err) + RESET);
     print(RED + require('internal').inspect(results) + RESET);

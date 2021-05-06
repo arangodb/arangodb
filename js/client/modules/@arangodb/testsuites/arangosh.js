@@ -125,7 +125,7 @@ function arangosh (options) {
       ret[section].failed = 1;
       ret[section]['message'] =
         'didn\'t get expected return code (' + expectedReturnCode + '): \n' +
-        yaml.safeDump(rc);
+        yaml.dump(rc);
     } else {
       ret[section].failed = 0;
     }
@@ -170,7 +170,7 @@ function arangosh (options) {
       ret[section].failed = 1;
       ret[section]['message'] =
         'didn\'t get expected return code (' + expectedReturnCode + '): \n' +
-        yaml.safeDump(rc2);
+        yaml.safe(rc2);
     } else {
       ret[section].failed = 0;
     }
@@ -282,7 +282,7 @@ function arangosh (options) {
       ret.testArangoshExitCodeEcho.failed = 1;
       ret.testArangoshExitCodeEcho['message'] =
         'didn\'t get expected return code (1): \n' +
-        yaml.safeDump(rc);
+        yaml.dump(rc);
     } else {
       ret.testArangoshExitCodeEcho.failed = 0;
     }
@@ -330,7 +330,7 @@ function arangosh (options) {
       ret.testArangoshShebang.failed = 1;
       ret.testArangoshShebang['message'] =
         'didn\'t get expected return code (0): \n' +
-        yaml.safeDump(rc);
+        yaml.dump(rc);
     } else {
       ret.testArangoshShebang.failed = 0;
     }
