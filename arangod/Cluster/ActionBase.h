@@ -232,6 +232,32 @@ private:
 
 };  // class ActionBase
 
+class ShardDefinition {
+ public:
+  ShardDefinition(ShardDefinition const&) = delete;
+  ShardDefinition& operator=(ShardDefinition const&) = delete;
+
+  ShardDefinition(std::string const& database, std::string const& shard);
+  
+  virtual ~ShardDefinition() = default;
+
+  std::string const& getDatabase() const noexcept {
+    return _database;
+  }
+  
+  std::string const& getShard() const noexcept {
+    return _shard;
+  }
+
+  bool isValid() const noexcept {
+    return !_database.empty() && !_shard.empty();
+  }
+
+ private:
+  std::string const _database;
+  std::string const _shard;
+};
+
 }  // namespace maintenance
 
 Result actionError(ErrorCode errorCode, std::string const& errorMessage);
