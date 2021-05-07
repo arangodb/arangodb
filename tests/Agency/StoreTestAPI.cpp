@@ -486,16 +486,16 @@ TEST_F(StoreTestAPI, precondition) {
     }
 */
 
-// ////////////////////////////////////////////////////////////////////////////////
-// /// @brief test multiple transaction
-// ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple transaction
+////////////////////////////////////////////////////////////////////////////////
 
-// TEST_F(StoreTestAPI, transaction) {
-//       writeAndCheck(R"([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
-//                      [{"a":{"b":{"c":[1,2,3]}}}]])");
-//       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
-//                   R"([{"a":{}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
-//     }
+TEST_F(StoreTestAPI, transaction) {
+      writeAndCheck(R"([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
+                     [{"a":{"b":{"c":[1,2,3]}}}]])");
+      assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
+                  R"([{"a":{}},{"a":{"b":{"c":[1,2,3]}},"d":false}])");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "new" operator
@@ -636,7 +636,7 @@ TEST_F(StoreTestAPI, op_shift) {
 /// @brief Test "pop" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StoreTestAPI, opPop) {
+TEST_F(StoreTestAPI, op_pop) {
       writeAndCheck(R"([[{"/a/f":{"op":"pop"}}]])"); // none before
       assertEqual(readAndCheck(R"([["/a/f"]])"), R"( [{"a":{"f":[]}}])");
       writeAndCheck(R"([[{"/a/e":{"op":"pop"}}]])"); // on empty array
@@ -859,89 +859,89 @@ TEST_F(StoreTestAPI, OpErase) {
       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
     }
 
-// ////////////////////////////////////////////////////////////////////////////////
-// /// @brief Test observe / unobserve
-// ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test observe / unobserve
+////////////////////////////////////////////////////////////////////////////////
 
-//     TEST_F(StoreTestAPI, Observe) {
-//       var res, before, after, clean;
-//       var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}];
+TEST_F(StoreTestAPI, observe) {
+  // var res, before, after, clean;
+  // var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}];
 
-//       // In the beginning
-//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-//       assertEqual(200, res.statusCode);
-//       clean = JSON.parse(res.body);
+  // // In the beginning
+  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
+  // assertEqual(200, res.statusCode);
+  // clean = JSON.parse(res.body);
 
-//       // Don't create empty object for observation
-//       writeAndCheck(R"([[{"/a":{"op":"observe", "url":"https://google.com"}}]])");
-//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
-//       res = accessAgency("write",[trx]);
-//       assertEqual(res.statusCode, 200);
-//       res = accessAgency("write",[trx]);
-//       assertEqual(res.statusCode, 412);
+  // Don't create empty object for observation
+  writeAndCheck(R"([[{"/a":{"op":"observe", "url":"https://google.com"}}]])");
+  assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+  // res = accessAgency("write",[trx]);
+  // assertEqual(res.statusCode, 200);
+  // res = accessAgency("write",[trx]);
+  // assertEqual(res.statusCode, 412);
 
-//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-//       var c = agencyConfig().term;
+  // writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+  // var c = agencyConfig().term;
 
-//       // No duplicate entries in
-//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-//       assertEqual(200, res.statusCode);
-//       before = JSON.parse(res.body);
-//       writeAndCheck(R"([[{"/a":{"op":"observe", "url":"https://google.com"}}]])");
-//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-//       assertEqual(200, res.statusCode);
-//       after = JSON.parse(res.body);
-//       if (!_.isEqual(before, after)) {
-//         if (agencyConfig().term === c) {
-//           assertEqual(before, after); //peng
-//         } else {
-//           require("console").warn("skipping remaining callback tests this time around");
-//           return; //
-//         }
-//       }
+  // // No duplicate entries in
+  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
+  // assertEqual(200, res.statusCode);
+  // before = JSON.parse(res.body);
+  // writeAndCheck(R"([[{"/a":{"op":"observe", "url":"https://google.com"}}]])");
+  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
+  // assertEqual(200, res.statusCode);
+  // after = JSON.parse(res.body);
+  // if (!_.isEqual(before, after)) {
+  //   if (agencyConfig().term === c) {
+  //     assertEqual(before, after); //peng
+  //   } else {
+  //     require("console").warn("skipping remaining callback tests this time around");
+  //     return; //
+  //   }
+  // }
 
-//       // Normalization
-//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-//       assertEqual(200, res.statusCode);
-//       before = JSON.parse(res.body);
-//       writeAndCheck(R"([[{"//////a////":{"op":"observe", "url":"https://google.com"}}]])");
-//       writeAndCheck(R"([[{"a":{"op":"observe", "url":"https://google.com"}}]])");
-//       writeAndCheck(R"([[{"a/":{"op":"observe", "url":"https://google.com"}}]])");
-//       writeAndCheck(R"([[{"/a/":{"op":"observe", "url":"https://google.com"}}]])");
-//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-//       assertEqual(200, res.statusCode);
-//       after = JSON.parse(res.body);
-//       if (!_.isEqual(before, after)) {
-//         if (agencyConfig().term === c) {
-//           assertEqual(before, after); //peng
-//         } else {
-//           require("console").warn("skipping remaining callback tests this time around");
-//           return; //
-//         }
-//       }
+  // // Normalization
+  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
+  // assertEqual(200, res.statusCode);
+  // before = JSON.parse(res.body);
+  // writeAndCheck(R"([[{"//////a////":{"op":"observe", "url":"https://google.com"}}]])");
+  // writeAndCheck(R"([[{"a":{"op":"observe", "url":"https://google.com"}}]])");
+  // writeAndCheck(R"([[{"a/":{"op":"observe", "url":"https://google.com"}}]])");
+  // writeAndCheck(R"([[{"/a/":{"op":"observe", "url":"https://google.com"}}]])");
+  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
+  // assertEqual(200, res.statusCode);
+  // after = JSON.parse(res.body);
+  // if (!_.isEqual(before, after)) {
+  //   if (agencyConfig().term === c) {
+  //     assertEqual(before, after); //peng
+  //   } else {
+  //     require("console").warn("skipping remaining callback tests this time around");
+  //     return; //
+  //   }
+  // }
 
-//       // Unobserve
-//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-//       assertEqual(200, res.statusCode);
-//       before = JSON.parse(res.body);
-//       writeAndCheck(R"([[{"//////a":{"op":"unobserve", "url":"https://google.com"}}]])");
-//       res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-//       assertEqual(200, res.statusCode);
-//       after = JSON.parse(res.body);
-//       assertEqual(clean, after);
-//       if (!_.isEqual(clean, after)) {
-//         if (agencyConfig().term === c) {
-//           assertEqual(clean, after); //peng
-//         } else {
-//           require("console").warn("skipping remaining callback tests this time around");
-//           return; //
-//         }
-//       }
+  // // Unobserve
+  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
+  // assertEqual(200, res.statusCode);
+  // before = JSON.parse(res.body);
+  // writeAndCheck(R"([[{"//////a":{"op":"unobserve", "url":"https://google.com"}}]])");
+  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
+  // assertEqual(200, res.statusCode);
+  // after = JSON.parse(res.body);
+  // assertEqual(clean, after);
+  // if (!_.isEqual(clean, after)) {
+  //   if (agencyConfig().term === c) {
+  //     assertEqual(clean, after); //peng
+  //   } else {
+  //     require("console").warn("skipping remaining callback tests this time around");
+  //     return; //
+  //   }
+  // }
 
-//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+  // writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+  // assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
 
-//     }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test delete / replace / erase should not create new stuff in agency
