@@ -108,9 +108,13 @@ template <class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntry(
     arangodb::velocypack::Builder& result) -> void {
   VPackArrayBuilder arrayGuard(&result);
-  // Create a VPackValue based on the char* inside the HashsedStringRef, will save us a String copy each time.
+  // Create a VPackValue based on the char* inside the HashedStringRef, will save us a String copy each time.
   result.add(VPackValue(_step.getVertex().getID().begin()));
-  result.add(VPackValue(_step.getPrevious()));
+  if (_step.getPrevious() == std::numeric_limits<size_t>::max()) {
+    result.add(VPackValue(0));
+  } else {
+    result.add(VPackValue(_step.getPrevious()));
+  }
   result.add(VPackValue(_step.getDepth()));
 
   // TODO require the Step to know if the Vertex isOpen or not.
