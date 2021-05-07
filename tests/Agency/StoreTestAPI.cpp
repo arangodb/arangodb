@@ -92,13 +92,12 @@ class StoreTestAPI : public ::testing::Test {
 };
 
 TEST_F(StoreTestAPI, our_first_test) {
-  std::shared_ptr<VPackBuilder> q
-    = VPackParser::fromJson(R"=(
+  auto q = VPackParser::fromJson(R"=(
         [[{"/": {"op":"delete"}}]]
       )=");
-  std::vector<consensus::apply_ret_t> v = _store.applyTransactions(q);
+  auto v = _store.applyTransactions(q);
   ASSERT_EQ(1, v.size());
-  ASSERT_EQ(consensus::APPLIED, v[0]);
+  ASSERT_EQ(consensus::APPLIED, v.front());
   
   q = VPackParser::fromJson(R"=(
         ["/x"]
@@ -117,38 +116,6 @@ TEST_F(StoreTestAPI, our_first_test) {
   ASSERT_TRUE(velocypack::NormalizedCompare::equals(j->slice(), result.slice()));
 }
 
-
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Test transact interface
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_F(StoreTestAPI, transact) {
-
-      auto cur = write(R"([[{"/": {"op":"delete"}}]])");
-      // bodyParsed.results[0];
-      assertEqual(readAndCheck(R"([["/x"]])"), R"([{}])");
-      var res = transactAndCheck([["/x"],[{"/x":12}]],200);
-      assertEqual(res, [{},++cur]);
-      res = transactAndCheck([["/x"],[{"/x":12}]],200);
-      assertEqual(res, [{"x":12},++cur]);
-      res = transactAndCheck([["/x"],[{"/x":12}],["/x"]],200);
-      assertEqual(res, [{"x":12},++cur,{"x":12}]);
-      res = transactAndCheck([["/x"],[{"/x":12}],["/x"]],200);
-      assertEqual(res, [{"x":12},++cur,{"x":12}]);
-      res = transactAndCheck([["/x"],[{"/x":{"op":"increment"}}],["/x"]],200);
-      assertEqual(res, [{"x":12},++cur,{"x":13}]);
-      res = transactAndCheck(
-        [["/x"],[{"/x":{"op":"increment"}}],["/x"],[{"/x":{"op":"increment"}}]],
-        200);
-      assertEqual(res, [{"x":13},++cur,{"x":14},++cur]);
-      res = transactAndCheck(
-        [[{"/x":{"op":"increment"}}],[{"/x":{"op":"increment"}}],["/x"]],200);
-      assertEqual(res, [++cur,++cur,{"x":17}]);
-      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-    }
-*/
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single top level key
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +127,6 @@ TEST_F(StoreTestAPI, single_top_level) {
   writeAndCheck(R"([[{"x":{"op":"delete"}}]])");
   assertEqual(readAndCheck(R"([["/x"]])"), R"([{}])");
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single non-top level key
@@ -535,7 +501,7 @@ TEST_F(StoreTestAPI, precondition) {
 /// @brief Test "new" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StoreTestAPI, opSetNew) {
+TEST_F(StoreTestAPI, op_set_new) {
       writeAndCheck(R"([[{"a/z":{"op":"set","new":12}}]])");
       assertEqual(readAndCheck(R"([["/a/z"]])"), R"([{"a":{"z":12}}])");
       writeAndCheck(R"([[{"a/y":{"op":"set","new":12, "ttl": 1}}]])");
@@ -569,7 +535,7 @@ TEST_F(StoreTestAPI, opSetNew) {
 /// @brief Test "push" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StoreTestAPI, opPush) {
+TEST_F(StoreTestAPI, op_push) {
       writeAndCheck(R"([[{"/a/b/c":[1,2,3]}]])");
       writeAndCheck(R"([[{"/a/b/c":{"op":"push","new":"max"}}]])");
       assertEqual(readAndCheck(R"([["/a/b/c"]])"), R"([{"a":{"b":{"c":[1,2,3,"max"]}}}])");
@@ -599,7 +565,7 @@ TEST_F(StoreTestAPI, opPush) {
 /// @brief Test "remove" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StoreTestAPI, opRemove) {
+TEST_F(StoreTestAPI, op_remove) {
       writeAndCheck(R"([[{"/a/euler":2.71828182845904523536}]])");
       writeAndCheck(R"([[{"/a/euler":{"op":"delete"}}]])");
       assertEqual(readAndCheck(R"([["/a/euler"]])"), R"([{"a":{}}])");
@@ -609,7 +575,7 @@ TEST_F(StoreTestAPI, opRemove) {
 /// @brief Test "prepend" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StoreTestAPI, opPrepend) {
+TEST_F(StoreTestAPI, op_prepend) {
       writeAndCheck(R"([[{"/a/b/c":[1,2,3,"max"]}]])");
       writeAndCheck(R"([[{"/a/b/c":{"op":"prepend","new":3.141592653589793}}]])");
       assertEqual(readAndCheck(R"([["/a/b/c"]])"),
@@ -645,7 +611,7 @@ TEST_F(StoreTestAPI, opPrepend) {
 /// @brief Test "shift" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StoreTestAPI, opShift) {
+TEST_F(StoreTestAPI, op_shift) {
       writeAndCheck(R"([[{"/a/f":{"op":"shift"}}]])"); // none before
       assertEqual(readAndCheck(R"([["/a/f"]])"), R"([{"a":{"f":[]}}])");
       writeAndCheck(R"([[{"/a/e":{"op":"shift"}}]])"); // on empty array
@@ -858,7 +824,7 @@ TEST_F(StoreTestAPI, OpErase) {
 /// @brief op delete on top node
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, OperatorsOnRootNode) {
+    TEST_F(StoreTestAPI, operators_on_root_node) {
       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
       writeAndCheck(R"([[{"/":{"op":"increment"}}]])");
@@ -977,44 +943,45 @@ TEST_F(StoreTestAPI, OpErase) {
 
 //     }
 
-// ////////////////////////////////////////////////////////////////////////////////
-// /// @brief Test delete / replace / erase should not create new stuff in agency
-// ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test delete / replace / erase should not create new stuff in agency
+////////////////////////////////////////////////////////////////////////////////
 
-//     TEST_F(StoreTestAPI, NotCreate) {
-//       var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}], res;
+    TEST_F(StoreTestAPI, not_create) {
+      std::string trx = R"([{"/a":"a"}, {"a":{"oldEmpty":true}}])";
 
-//       // Don't create empty object for observation
-//       writeAndCheck(R"([[{"a":{"op":"delete"}}]])");
-//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
-//       res = accessAgency("write",[trx]);
-//       assertEqual(res.statusCode, 200);
-//       res = accessAgency("write",[trx]);
-//       assertEqual(res.statusCode, 412);
-//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+      // Don't create empty object for observation
+      writeAndCheck(R"([[{"a":{"op":"delete"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+      auto res = write(trx);
+      ASSERT_EQ(consensus::APPLIED, res.front());
+      res = write(trx);
+      ASSERT_EQ(consensus::PRECONDITION_FAILED, res.front());
+      // assertEqual(res.statusCode, 412);
+      // writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      // assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
 
-//       // Don't create empty object for observation
-//       writeAndCheck(R"([[{"a":{"op":"replace", "val":1, "new":2}}]])");
-//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
-//       res = accessAgency("write",[trx]);
-//       assertEqual(res.statusCode, 200);
-//       res = accessAgency("write",[trx]);
-//       assertEqual(res.statusCode, 412);
-//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+      // // Don't create empty object for observation
+      // writeAndCheck(R"([[{"a":{"op":"replace", "val":1, "new":2}}]])");
+      // assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+      // res = accessAgency("write",[trx]);
+      // assertEqual(res.statusCode, 200);
+      // res = accessAgency("write",[trx]);
+      // assertEqual(res.statusCode, 412);
+      // writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      // assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
 
-//       // Don't create empty object for observation
-//       writeAndCheck(R"([[{"a":{"op":"erase", "val":1}}]])");
-//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
-//       res = accessAgency("write",[trx]);
-//       assertEqual(res.statusCode, 200);
-//       res = accessAgency("write",[trx]);
-//       assertEqual(res.statusCode, 412);
-//       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-//       assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+      // // Don't create empty object for observation
+      // writeAndCheck(R"([[{"a":{"op":"erase", "val":1}}]])");
+      // assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+      // res = accessAgency("write",[trx]);
+      // assertEqual(res.statusCode, 200);
+      // res = accessAgency("write",[trx]);
+      // assertEqual(res.statusCode, 412);
+      // writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      // assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
 
-//     }
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test that order should not matter
@@ -1023,14 +990,14 @@ TEST_F(StoreTestAPI, OpErase) {
     TEST_F(StoreTestAPI, order) {
       writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
-                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]}},"d":false}])");
       writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
       writeAndCheck(R"([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
                   R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
       writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
       assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
-                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
+                  R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]}},"d":false}])");
       writeAndCheck(R"([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]])");
       assertEqual(readAndCheck(R"([["a/e"],["a/b","d"]])"),
                   R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}])");
@@ -1060,7 +1027,7 @@ TEST_F(StoreTestAPI, OpErase) {
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StoreTestAPI, SlashORama) {
+TEST_F(StoreTestAPI, slash_o_rama) {
   writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
   writeAndCheck(R"([[{"//////////////////////a/////////////////////b//":
                     {"b///////c":4}}]])");
@@ -1096,35 +1063,6 @@ TEST_F(StoreTestAPI, hidden_agency_write_deep) {
   ASSERT_EQ(res.front(), consensus::apply_ret_t::FORBIDDEN);
 }
 
-// ////////////////////////////////////////////////////////////////////////////////
-// /// @brief Compaction
-// ////////////////////////////////////////////////////////////////////////////////
-
-//     TEST_F(StoreTestAPI, LogCompaction) {
-//       // Find current log index and erase all data:
-//       let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
-//           bodyParsed.results[0];
-
-//       let count = compactionConfig.compactionStepSize - 100 - cur;
-//       require("console").topic("agency=info", "Avoiding log compaction for now with", count,
-//         "keys, from log entry", cur, "on.");
-//       doCountTransactions(count, 0);
-
-//       // Now trigger one log compaction and check all keys:
-//       let count2 = compactionConfig.compactionStepSize + 100 - (cur + count);
-//       require("console").topic("agency=info", "Provoking log compaction for now with", count2,
-//         "keys, from log entry", cur + count, "on.");
-//       doCountTransactions(count2, count);
-
-//       // All tests so far have not really written many log entries in
-//       // comparison to the compaction interval (with the default settings),
-//       let count3 = 2 * compactionConfig.compactionStepSize + 100
-//         - (cur + count + count2);
-//       require("console").topic("agency=info", "Provoking second log compaction for now with",
-//         count3, "keys, from log entry", cur + count + count2, "on.");
-//       doCountTransactions(count3, count + count2);
-//     }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package
@@ -1147,22 +1085,24 @@ TEST_F(StoreTestAPI, huge_transaction_package) {
   assertEqual(readAndCheck(R"([["a"]])"), R"([{"a":20000}])");
 }
 
-/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package, inc/dec
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, TransactionWithIncDec ) {
-      writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
-      var trx = [];
-      for (var i = 0; i < 100; ++i) {
-        trx.push([{"a":{"op":"increment"}}, {}, "inc" + i]);
-        trx.push([{"a":{"op":"decrement"}}, {}, "dec" + i]);
-      }
-      writeAndCheck(R"(trx)");
-      assertEqual(readAndCheck(R"([["a"]])"), R"( [{"a":0}])");
-    }
-*/
+TEST_F(StoreTestAPI, transaction_with_inc_dec) {
+  writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
+  std::stringstream ss;
+  int i {};
+  ss << R"([[{"a":{"op":"increment"}}, {}, "inc)" << i << "\"]";
+  ss << R"(,[{"a":{"op":"decrement"}}, {}, "dec)" << i << "\"]";
+  for (++i; i < 100; ++i) {
+    ss << R"(,[{"a":{"op":"increment"}}, {}, "inc)" << i << "\"]";
+    ss << R"(,[{"a":{"op":"decrement"}}, {}, "dec)" << i << "\"]";
+  }
+  ss << "]";
+  writeAndCheck(ss.str());
+  assertEqual(readAndCheck(R"([["a"]])"), R"( [{"a":0}])");
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction, update of same key
@@ -1184,24 +1124,24 @@ TEST_F(StoreTestAPI, transaction_insert_remove_same_key ) {
   assertEqual(readAndCheck(R"([["/a"]])"), R"( [{}])");
 }
 
-/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package, all different keys
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, TransactionDifferentKeys ) {
-      writeAndCheck(R"([[{"a":{"op":"delete"}}]])"); // cleanup first
-      var huge = [], i;
-      for (i = 0; i < 100; ++i) {
-        huge.push([{["a" + i]:{"op":"increment"}}, {}, "diff" + i]);
-      }
-      writeAndCheck(R"(huge)");
-      for (i = 0; i < 100; ++i) {
-        assertEqual(readAndCheck(R"([["a" + i]])"), R"( [{["a" + i]:1}])");
-      }
-    }
+TEST_F(StoreTestAPI, transaction_different_keys ) {
+  std::stringstream ss;
+  int i{};
+  ss << R"([[{"a)" << i << R"(":{"op":"increment"}}, {}, "diff)" << i << "\"]";
+  for (++i; i < 100; ++i) {
+    ss << R"(,[{"a)" << i << R"(":{"op":"increment"}}, {}, "diff)" << i << "\"]";
+  }
+  ss << "]";
+  writeAndCheck(ss.str());
+  for (i = 0; i < 100; ++i) {
+    assertEqual(readAndCheck(R"([["a)" + std::to_string(i) + "]]"), R"([{["a)" + std::to_string(i) + R"(":1}])");
+  }
+}
 
-*/
 
 }  // namespace
 }  // namespace
