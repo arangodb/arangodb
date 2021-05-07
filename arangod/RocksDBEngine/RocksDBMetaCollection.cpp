@@ -393,9 +393,10 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
 
   EngineSelectorFeature& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  // first apply any updates that can be safely applied
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
+  
+  // first apply any updates that can be safely applied
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -574,9 +575,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 }
 
 void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter) {
-  std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  auto newTree = allocateEmptyRevisionTree();
 
-  _revisionTree = allocateEmptyRevisionTree();
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
   // okay, we are in recovery and can't open a transaction, so we need to
   // read the raw RocksDB data; on the plus side, we are in recovery, so we
@@ -602,14 +603,16 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
     revisions.emplace_back(docId.id());
     if (revisions.size() >= 5000) {  // arbitrary batch size
-      _revisionTree->insert(revisions);
+      newTree->insert(revisions);
       revisions.clear();
     }
   }
   if (!revisions.empty()) {
-    _revisionTree->insert(revisions);
+    newTree->insert(revisions);
   }
+
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
+  _revisionTree = std::move(newTree);
   _revisionTreeApplied.store(seq);
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = seq;
@@ -692,10 +695,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     return;  // collection empty
   }
 
-  bool haveTree = ensureRevisionTree();
-  if (!haveTree) {
-    return;
-  }
+  // make sure we will have a _revisionTree ready after this
+  ensureRevisionTree();
+  TRI_ASSERT(_revisionTree != nullptr);
 
   Result res = basics::catchVoidToResult([&]() -> void {
     decltype(_revisionInsertBuffers)::const_iterator insertIt;
@@ -765,14 +767,14 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 
       // apply inserts
       if (!inserts.empty()) {
+        // TODO: if this throws, we will lose this batch of inserts
         _revisionTree->insert(inserts);
-        inserts.clear();
       }
 
       // apply removals
       if (!removals.empty()) {
+        // TODO: if this throws, we will lose this batch of removals
         _revisionTree->remove(removals);
-        removals.clear();
       }
     }
   });
@@ -1009,26 +1011,23 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRe
       revisionTreeDepth(), _logicalCollection.minRevision().id());
 }
 
-bool RocksDBMetaCollection::ensureRevisionTree() {
-  try {
-    if (_revisionTree) {
-      std::size_t targetDepth = revisionTreeDepth();
-      if (_revisionTree->maxDepth() < targetDepth) {
-        // grow tree
-        auto newTree = _revisionTree->cloneWithDepth(targetDepth);
-        _revisionTree = std::move(newTree);
-      }
-      return true;
+void RocksDBMetaCollection::ensureRevisionTree() {
+  if (_revisionTree) {
+    std::size_t targetDepth = revisionTreeDepth();
+    if (_revisionTree->maxDepth() < targetDepth) {
+      // grow tree
+      auto newTree = _revisionTree->cloneWithDepth(targetDepth);
+      _revisionTree = std::move(newTree);
     }
+  } else {
     auto& selector =
         _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
     auto& engine = selector.engine<RocksDBEngine>();
+    auto newTree = allocateEmptyRevisionTree();
     _revisionTreeCreationSeq = engine.db()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
-    _revisionTree = allocateEmptyRevisionTree();
-    return true;
-  } catch (...) {
-    _revisionTree.reset();  // should be unnecessary, but just in case
-    return false;
+    _revisionTree = std::move(newTree);
   }
+
+  TRI_ASSERT(_revisionTree != nullptr);
 }

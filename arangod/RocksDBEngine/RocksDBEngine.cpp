@@ -918,7 +918,10 @@ void RocksDBEngine::stop() {
     _backgroundThread->beginShutdown();
 
     if (_settingsManager) {
-      _settingsManager->sync(true);
+      try {
+        _settingsManager->sync(true);
+      } catch (...) {
+      }
     }
 
     // wait until background thread stops

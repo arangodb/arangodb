@@ -1611,6 +1611,11 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         if (indexOf(cservers, serverId) > 0) {
           continue;
         }
+       
+        auto properties = std::make_shared<VPackBuilder>();
+        properties->openObject();
+        properties->add("failuresInRow", VPackValue(feature.replicationErrors(dbname, shname.toString())));
+        properties->close();
 
         std::string leader = pservers[0].copyString();
         std::shared_ptr<ActionDescription> description = std::make_shared<ActionDescription>(
@@ -1621,7 +1626,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
             {SHARD, shname.toString()},
             {THE_LEADER, std::move(leader)},
             {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
-          SYNCHRONIZE_PRIORITY, true);
+          SYNCHRONIZE_PRIORITY, true, std::move(properties));
         std::string shardName = description->get(SHARD);
         bool ok = feature.lockShard(shardName, description);
         TRI_ASSERT(ok);

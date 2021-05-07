@@ -125,7 +125,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   bool haveBufferedOperations() const;
   std::size_t revisionTreeDepth() const;
   std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree() const;
-  bool ensureRevisionTree();
+  void ensureRevisionTree();
 
  protected:
   RocksDBMetadata _meta;     /// collection metadata

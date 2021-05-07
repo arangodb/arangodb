@@ -252,9 +252,10 @@ class MerkleTree {
   /**
    * @brief Convert to a human-readable string for printing
    *
+   * @param full Whether or not to include meta data
    * @return String representing the tree
    */
-  std::string toString() const;
+  std::string toString(bool full) const;
 
   /**
    * @brief Serialize the tree for transport or storage in portable format
@@ -284,6 +285,13 @@ class MerkleTree {
    * @return Vector of (inclusive) ranges that partiion the keyspace
    */
   std::vector<std::pair<std::uint64_t, std::uint64_t>> partitionKeys(std::uint64_t count);
+  
+  /**
+   * @brief Checks the consistency of the tree
+   *
+   * If any inconsistency is found, this function will throw
+   */
+  void checkConsistency() const;
 
  protected:
   explicit MerkleTree(std::string_view buffer);
