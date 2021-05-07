@@ -43,25 +43,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
 
   auto persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,
                std::unique_ptr<arangodb::replication2::LogIterator> iter)
-  -> futures::Future<Result> {
-    auto p = futures::Promise<Result>{};
-    auto f = p.getFuture();
-
-    {
-      std::unique_lock guard(_persistorMutex);
-      _pendingPersistRequests.emplace_back(log, std::move(iter), std::move(p));
-
-      if (_activePersistorThreads == 0 || (_pendingPersistRequests.size() > 100 && _activePersistorThreads < 2)) {
-        // start a new worker thread
-        _activePersistorThreads += 1;
-        guard.unlock();
-        _executor->operator()([this, self = shared_from_this()] {
-          this->runPersistorWorker();
-        });
-      }
-    }
-    return f;
-  }
+  -> futures::Future<Result>;
 
   std::mutex _persistorMutex;
   std::atomic<unsigned> _activePersistorThreads = 0;

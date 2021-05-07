@@ -20,9 +20,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #include <Basics/ScopeGuard.h>
-#include "Basics/Exceptions.h"
-#include "Basics/RocksDBUtils.h"
-#include "Basics/debugging.h"
+#include <Basics/Exceptions.h>
+#include <Basics/RocksDBUtils.h>
+#include <Basics/debugging.h>
 
 #include "RocksDBKey.h"
 #include "RocksDBLog.h"
@@ -147,6 +147,7 @@ RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
     : _cf(cf), _db(db), _executor(std::move(executor)) {}
 
 void RocksDBLogPersistor::runPersistorWorker() noexcept {
+  // TODO check this code for exception safety
   // This function is noexcept so in case a exception bubbles up we
   // rather crash instead of losing one thread.
   while (true) {
@@ -210,4 +211,26 @@ void RocksDBLogPersistor::runPersistorWorker() noexcept {
       }
     }
   }
+}
+
+auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,
+                                  std::unique_ptr<arangodb::replication2::LogIterator> iter)
+    -> futures::Future<Result> {
+  auto p = futures::Promise<Result>{};
+  auto f = p.getFuture();
+
+  {
+    std::unique_lock guard(_persistorMutex);
+    _pendingPersistRequests.emplace_back(log, std::move(iter), std::move(p));
+
+    if (_activePersistorThreads == 0 || (_pendingPersistRequests.size() > 100 && _activePersistorThreads < 2)) {
+      // start a new worker thread
+      _activePersistorThreads += 1;
+      guard.unlock();
+      _executor->operator()([this, self = shared_from_this()] {
+        this->runPersistorWorker();
+      });
+    }
+  }
+  return f;
 }
