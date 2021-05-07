@@ -28,7 +28,7 @@
 namespace arangodb {
 
 namespace pregel {
-  class PregelFeature;
+class PregelFeature;
 }
 class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
@@ -51,4 +51,3 @@ class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
   pregel::PregelFeature& _pregel;
 };
 }  // namespace arangodb
-
