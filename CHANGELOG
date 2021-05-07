@@ -1,13 +1,13 @@
 v3.6.14 (XXXX-XX-XX)
 --------------------
 
-* Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied,
-  it may rename some variables in the query. The variable renaming was however
-  not carried out for traversal PRUNE conditions, so the PRUNE conditions 
-  could still refer to obsolete variables, which would make the query fail with
-  errors such as 
-    
-      Query: AQL: missing variable ... for node ... while planning registers
+* Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied, it
+  may rename some variables in the query. The variable renaming was however not
+  carried out for traversal PRUNE conditions, so the PRUNE conditions could
+  still refer to obsolete variables, which would make the query fail with errors
+  such as
+
+    Query: AQL: missing variable ... for node ... while planning registers
 
 * Fixed a use after free bug in the connection pool.
 
