@@ -6,6 +6,13 @@ devel
   shards. Also added a "Toggle all" button the web UI to expand/collapse the
   shards for all collections.
 
+* Log a proper message if an unexpected state is encountered when taking over
+  shard leadership. In addition, make the change to the internal followerinfo 
+  state atomic so that it cannot be semi-changed.
+
+* Improve exception safety for maintenance thread and shard unlock
+  operations.
+
 * Fixed two bugs in fuerte with HTTP/2 and VST connections.
   One could lead to ordered timeouts not being honoured. The other could
   lead to an ordered callback be called multiple times.
@@ -16,6 +23,12 @@ devel
 
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
+
+* Introduce a new internal error code for cases where a call cannot succeed
+  because the server startup phase is still in progress. This error will be
+  mapped to the HTTP status code 503 (service unavailable).
+  One example where this can happen is when trying to authenticate a request,
+  but the _users collection is not yet available in the cluster.
 
 * Fixed issue BTS-354: Assertion related to getCollection. 
 
