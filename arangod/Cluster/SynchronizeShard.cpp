@@ -665,67 +665,59 @@ bool SynchronizeShard::first() {
   std::string planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
   std::string leader = _description.get(THE_LEADER);
+ 
+  size_t failuresInRow = feature().replicationErrors(database, shard);
   
-  auto const& props = properties();
-  TRI_ASSERT(props.isObject());
-  TRI_ASSERT(props.hasKey("failuresInRow"));
+  if (failuresInRow >= 10) {
+    //      MaintenanceFeature::maxReplicationErrorsPerShard) 
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
+    auto vocbase = &guard.database();
+    
+    auto collection = vocbase->lookupCollection(shard);
+    if (collection != nullptr) {
+      LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
+          << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
+          << "' for central '" << database << "/" << planId << "' encountered "
+          << failuresInRow << " failures in a row. now dropping follower shard for "
+          << "a full rebuild";
 
-  if (props.isObject() && props.hasKey("failuresInRow")) {
-    VPackSlice f = props.get("failuresInRow"); 
-    if (f.isNumber()) {
-      size_t failuresInRow = f.getNumber<size_t>();
-      if (failuresInRow >= 10) {
-        //      MaintenanceFeature::maxReplicationErrorsPerShard) 
-        auto& df = _feature.server().getFeature<DatabaseFeature>();
-        DatabaseGuard guard(df, database);
-        auto vocbase = &guard.database();
-        
-        auto collection = vocbase->lookupCollection(shard);
-        if (collection != nullptr) {
-          LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
-              << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
-              << "' for central '" << database << "/" << planId << "' encountered "
-              << failuresInRow << " failures in a row. now dropping follower shard for "
-              << "a full rebuild";
+      // remove all recorded failures, so in next run we can start with a clean state
+      _feature.removeReplicationError(getDatabase(), getShard());
 
-          // remove all recorded failures, so in next run we can start with a clean state
-          _feature.removeReplicationError(getDatabase(), getShard());
+      // drop shard (💥)
+      methods::Collections::drop(*collection, false, 3.0); 
+      result(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
+      return false;
+    }
+  }
 
-          // drop shard (💥)
-          methods::Collections::drop(*collection, false, 3.0); 
-          result(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
-          return false;
-        }
+  if (failuresInRow >= 4) {
+    double sleepTime = 2.0;
+    double add = 0.1;
+    for (size_t i = 0; i < failuresInRow; ++i) {
+      sleepTime += add;
+      add += 0.1;
+    }
+
+    sleepTime = std::min<double>(sleepTime, 15.0);
+    
+    LOG_TOPIC("40376", WARN, Logger::MAINTENANCE)
+        << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
+        << "' for central '" << database << "/" << planId << "' encountered "
+        << failuresInRow << " failures in a row. delaying next sync by " 
+        << sleepTime << " s";
+
+    while (sleepTime > 0.0) {
+      if (feature().server().isStopping()) {
+        result(TRI_ERROR_SHUTTING_DOWN);
+        return false;
       }
-
-      if (failuresInRow >= 4) {
-        double sleepTime = 2.0;
-        double add = 0.1;
-        for (size_t i = 0; i < failuresInRow; ++i) {
-          sleepTime += add;
-          add += 0.1;
-        }
-
-        sleepTime = std::min<double>(sleepTime, 15.0);
-        
-        LOG_TOPIC("40376", WARN, Logger::MAINTENANCE)
-            << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
-            << "' for central '" << database << "/" << planId << "' encountered "
-            << failuresInRow << " failures in a row. delaying next sync by " 
-            << sleepTime << " s";
-
-        while (sleepTime > 0.0) {
-          if (feature().server().isStopping()) {
-            result(TRI_ERROR_SHUTTING_DOWN);
-            return false;
-          }
-           
-          constexpr double sleepPerRound = 0.5;
-          // sleep only for up to 0.5 seconds at a time so we can react quickly to shutdown
-          std::this_thread::sleep_for(std::chrono::duration<double>(std::min(sleepTime, sleepPerRound)));
-          sleepTime -= sleepPerRound;
-        }
-      }
+       
+      constexpr double sleepPerRound = 0.5;
+      // sleep only for up to 0.5 seconds at a time so we can react quickly to shutdown
+      std::this_thread::sleep_for(std::chrono::duration<double>(std::min(sleepTime, sleepPerRound)));
+      sleepTime -= sleepPerRound;
     }
   }
 
