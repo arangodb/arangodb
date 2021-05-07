@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cstdint>
+#include <atomic>
 #include <unordered_map>
 
 #include <velocypack/Builder.h>
