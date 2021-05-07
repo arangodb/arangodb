@@ -68,7 +68,6 @@ using namespace arangodb::iresearch;
 aql::AstNode const ALL(aql::AstNodeValue(true));
 
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--       helpers for std::vector<arangodb::iresearch::IResearchSort>
 // -----------------------------------------------------------------------------
@@ -1393,6 +1392,36 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   estimate.estimatedNrItems *= estimatedNrItems;
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void IResearchViewNode::replaceVariables(std::unordered_map<arangodb::aql::VariableId, arangodb::aql::Variable const*> const& replacements) {
+  arangodb::aql::AstNode const& search = filterCondition();
+  if (filterConditionIsEmpty(&search)) {
+    // nothing to do
+    return;
+  }
+
+  arangodb::aql::VarSet variables;
+  arangodb::aql::Ast::getReferencedVariables(&search, variables);
+  // check if the search condition uses any of the variables that we want to
+  // replace
+  arangodb::aql::AstNode* cloned = nullptr;
+  for (auto const& it : variables) {
+    if (replacements.find(it->id) != replacements.end()) {
+      if (cloned == nullptr) {
+        // only clone the original search condition once
+        cloned = plan()->getAst()->clone(&search);
+      }
+      plan()->getAst()->replaceVariables(cloned, replacements);
+    }
+  }
+
+  if (cloned != nullptr) {
+    // exchange the filter condition
+    filterCondition(cloned);
+  }
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
