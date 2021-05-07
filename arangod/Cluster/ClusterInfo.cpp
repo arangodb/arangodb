@@ -5629,15 +5629,12 @@ arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
 arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   // Apply only Collections and DBServers
   AgencyWriteTransaction transaction(std::vector<AgencyOperation>{
-      {"Current/Collections", AgencySimpleOperationType::DELETE_OP},
-      {"Plan/Collections", AgencyValueOperationType::SET,
-        plan.get({"arango", "Plan", "Collections"})},
-      {"Current/Databases", AgencySimpleOperationType::DELETE_OP},
-      {"Plan/Databases", AgencyValueOperationType::SET,
-        plan.get({"arango", "Plan", "Databases"})},
-      {"Current/Views", AgencySimpleOperationType::DELETE_OP},
-      {"Plan/Views", AgencyValueOperationType::SET,
-        plan.get({"arango", "Plan", "Views"})},
+      {"Current/Collections", AgencyValueOperationType::SET, VPackSlice::emptyObjectSlice()},
+      {"Plan/Collections", AgencyValueOperationType::SET, plan.get({"arango", "Plan", "Collections"})},
+      {"Current/Databases", AgencyValueOperationType::SET, VPackSlice::emptyObjectSlice()},
+      {"Plan/Databases", AgencyValueOperationType::SET, plan.get({"arango", "Plan", "Databases"})},
+      {"Current/Views", AgencyValueOperationType::SET, VPackSlice::emptyObjectSlice()},
+      {"Plan/Views", AgencyValueOperationType::SET, plan.get({"arango", "Plan", "Views"})},
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
