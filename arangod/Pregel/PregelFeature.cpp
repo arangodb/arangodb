@@ -240,7 +240,8 @@ void PregelFeature::start() {
 
   if (ServerState::instance()->isCoordinator()) {
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    _recoveryManager.reset(new RecoveryManager(ci));
+    _recoveryManager = std::make_unique<RecoveryManager>(ci);
+    _recoveryManagerPtr.store(_recoveryManager.get(), std::memory_order_release);
   }
 }
 
