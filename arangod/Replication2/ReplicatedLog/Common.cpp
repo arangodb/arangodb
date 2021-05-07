@@ -23,9 +23,10 @@
 #include "Common.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Value.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Value.h>
 
+#include <Basics/StringUtils.h>
 #include <utility>
 
 using namespace arangodb;
@@ -71,4 +72,20 @@ auto LogTerm::operator<=(LogTerm other) const -> bool {
 }
 auto LogPayload::operator==(LogPayload const& other) const -> bool {
   return dummy == other.dummy;
+}
+
+auto LogId::fromShardName(std::string_view name) noexcept -> std::optional<LogId> {
+  using namespace basics::StringUtils;
+  constexpr auto isShardName = [](auto const& name) {
+    return !name.empty() && name[0] == 's' &&
+           std::all_of(name.begin() + 1, name.end(),
+                       [](char c) { return isdigit(c); });
+  };
+  if (isShardName(name)) {
+    auto const shardId = uint64({name.begin() + 1, name.end()});
+    if (shardId > 0) {
+      return LogId{shardId};
+    }
+  }
+  return std::nullopt;
 }

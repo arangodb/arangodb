@@ -26,6 +26,8 @@
 #include <Network/ConnectionPool.h>
 #include <Network/Methods.h>
 
+#include <utility>
+
 #include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/ReplicatedLog/types.h"
 
@@ -35,7 +37,7 @@ using namespace arangodb::replication2::replicated_log;
 
 FakeLogFollower::FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
                                  std::string database, LogId logId)
-    : pool(pool), id(std::move(id)), database(database), logId(logId) {}
+    : pool(pool), id(std::move(id)), database(std::move(database)), logId(logId) {}
 
 auto FakeLogFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
@@ -49,8 +51,7 @@ auto FakeLogFollower::appendEntries(AppendEntriesRequest request)
     request.toVelocyPack(builder);
   }
 
-  auto path =
-      "_api/log/" + std::__cxx11::to_string(logId.id()) + "/appendEntries";
+  auto path = "_api/log/" + std::to_string(logId.id()) + "/appendEntries";
 
   network::RequestOptions opts;
   opts.database = database;

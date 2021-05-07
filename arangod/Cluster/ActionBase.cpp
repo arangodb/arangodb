@@ -260,6 +260,10 @@ arangodb::Result ActionBase::progress(double& progress) {
   return arangodb::Result(TRI_ERROR_NO_ERROR);
 }
 
+auto ActionBase::get(std::string const& key) const -> std::string const& {
+  return _description.get(key);
+}
+
 namespace std {
 ostream& operator<<(ostream& out, arangodb::maintenance::ActionBase const& d) {
   out << d.toVelocyPack().toJson();

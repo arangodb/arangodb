@@ -84,6 +84,21 @@ struct alignas(64) ReplicatedLog {
 
   auto drop() -> std::unique_ptr<LogCore>;
 
+  // TODO allow non-void return values
+  //template <typename F, std::enable_if_t<std::is_invocable_v<F, std::shared_ptr<LogLeader>>> = 0>
+  template <typename F>
+  void executeIfLeader(F&& f) {
+    auto leaderPtr = std::dynamic_pointer_cast<LogLeader>(getParticipant());
+    if (leaderPtr != nullptr) {
+      return std::invoke(f, leaderPtr);
+    }
+  }
+
+  // TODO delete this again, it's a workaround
+  bool isUnconfigured() const {
+    auto leaderPtr = std::dynamic_pointer_cast<LogUnconfiguredParticipant>(getParticipant());
+    return leaderPtr != nullptr;
+  }
  private:
   mutable std::mutex _mutex;
   std::shared_ptr<LogParticipantI> _participant;

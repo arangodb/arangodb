@@ -24,6 +24,7 @@
 #define ARANGODB3_REPLICATION_COMMON_H
 
 #include <Basics/Identifier.h>
+#include <Basics/ResultT.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -116,7 +117,10 @@ class LogEntry {
 };
 
 class LogId : public arangodb::basics::Identifier {
+ public:
   using arangodb::basics::Identifier::Identifier;
+
+  static auto fromShardName(std::string_view) noexcept -> std::optional<LogId>;
 };
 
 struct LogIterator {
@@ -144,7 +148,7 @@ struct ContainerIterator : LogIterator {
 
 }  // namespace arangodb::replication2
 
-template<>
+template <>
 struct std::hash<arangodb::replication2::LogId> {
   auto operator()(arangodb::replication2::LogId const& v) const noexcept -> std::size_t {
     return std::hash<arangodb::basics::Identifier>{}(v);

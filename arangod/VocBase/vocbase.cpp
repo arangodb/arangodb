@@ -25,10 +25,11 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cinttypes>
 #include <exception>
+#include <memory>
 #include <type_traits>
 #include <utility>
-#include <memory>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
@@ -154,9 +155,9 @@ bool TRI_vocbase_t::markAsDropped() {
   // been marked as deleted
   return (oldValue % 2 == 0);
 }
-  
+
 bool TRI_vocbase_t::isSystem() const {
-  return _info.getName() == StaticStrings::SystemDatabase; 
+  return _info.getName() == StaticStrings::SystemDatabase;
 }
 
 void TRI_vocbase_t::checkCollectionInvariants() const {
@@ -405,37 +406,28 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
   std::string name =
       arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
   TRI_ASSERT(!name.empty());
-  
+
   std::string const& dbName = _info.getName();
+
+  // Create replicated log first, if necessary
+  if (replicationVersion() == replication::Version::TWO) {
+    if (auto logId = replication2::LogId::fromShardName(name)) {
+      auto logRes = createReplicatedLog(*logId);
+      if (!logRes.ok()) {
+        THROW_ARANGO_EXCEPTION(std::move(logRes).result());
+      }
+      LOG_DEVEL << "Created log of " << dbName << "/" << name << ": " << logId->id();
+    } else {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, basics::StringUtils::concatT("Expected shard id, got ",
+                                                                                      name));
+    }
+  }
 
   // Try to create a new collection. This is not registered yet
 
   auto collection =
       std::make_shared<arangodb::LogicalCollection>(*this, parameters, false);
-
-  if (replicationVersion() == replication::Version::TWO) {
-    TRI_ASSERT(!name.empty());
-    TRI_ASSERT(name[0] == 's');
-    TRI_ASSERT(std::all_of(name.begin() + 1, name.end(),
-                           [](char c) { return isdigit(c); }));
-    bool valid = false;
-    auto const shardId = NumberUtils::atoi<std::uint64_t>((name.begin() + 1).base(),
-                                                          name.end().base(), valid);
-    if (!valid) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, basics::StringUtils::concatT("Expected shard id, got ",
-                                                                                      name));
-    }
-    auto const logId = replication2::LogId{shardId};
-
-    auto logRes = createReplicatedLog(logId);
-    if (!logRes.ok()) {
-      THROW_ARANGO_EXCEPTION(std::move(logRes).result());
-    }
-    // Note: We could also add the reference to the ReplicatedLog (*logRes) to
-    // the logical collection, for direct access.
-    collection->setReplicatedLogId(logId);
-    LOG_DEVEL << "Set logId of " << dbName << "/" << name << " to " << logId.id();
-  }
 
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
@@ -472,7 +464,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
 /// @brief loads an existing collection
 /// Note that this will READ lock the collection. You have to release the
 /// collection lock by yourself.
-arangodb::Result TRI_vocbase_t::loadCollection(arangodb::LogicalCollection& collection, 
+arangodb::Result TRI_vocbase_t::loadCollection(arangodb::LogicalCollection& collection,
                                                bool checkPermissions) {
   TRI_ASSERT(collection.id().isSet());
 
@@ -511,7 +503,7 @@ arangodb::Result TRI_vocbase_t::loadCollection(arangodb::LogicalCollection& coll
   // .............................................................................
 
   WRITE_LOCKER_EVENTUAL(locker, collection.statusLock());
-    
+
   TRI_vocbase_col_status_e status = collection.status();
 
   // someone else loaded the collection, release the WRITE lock and try again
@@ -847,7 +839,7 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
 void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
                               std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
   TRI_ASSERT(result.isOpenObject());
-  
+
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
   std::unordered_map<DataSourceId, std::shared_ptr<LogicalDataSource>> dataSourceById;
 
@@ -1097,7 +1089,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
 arangodb::Result TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, bool force) {
   {
     WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
-        
+
     TRI_vocbase_col_status_e status = collection->status();
 
     // an unloaded collection is unloaded
@@ -1107,7 +1099,7 @@ arangodb::Result TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* co
         status == TRI_VOC_COL_STATUS_DELETED) {
       return {};
     }
-    
+
     // cannot unload a corrupted collection
     if (status == TRI_VOC_COL_STATUS_CORRUPTED) {
       return {TRI_ERROR_ARANGO_CORRUPTED_COLLECTION};
@@ -1146,7 +1138,7 @@ arangodb::Result TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* co
   }  // release locks
 
   collection->unload();
-  
+
   collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 
   return {};
@@ -1170,7 +1162,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropS
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
-  
+
   if (ServerState::instance()->isDBServer()) {  // maybe unconditionally ?
     // hack to avoid busy looping on DBServers
     try {
@@ -1433,7 +1425,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(std::s
   return useCollectionInternal(std::move(collection), checkPermissions);
 }
 
-std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInternal(std::shared_ptr<arangodb::LogicalCollection> const& coll, 
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInternal(std::shared_ptr<arangodb::LogicalCollection> const& coll,
                                                                                   bool checkPermissions) {
   if (!coll) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -1637,15 +1629,18 @@ struct VocBaseLogManager : arangodb::replication2::LogManager, arangodb::replica
     if (auto iter = _logs.find(id); iter != _logs.end()) {
       return iter->second;
     }
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
+    // THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, "replicated log %" PRIu64 " not found", id.id());
   }
 
   auto getReplicatedLogById(arangodb::replication2::LogId id)
       -> arangodb::replication2::replicated_log::ReplicatedLog& {
+    LOG_DEVEL << "getReplicatedLogById(" << id << ")";
     if (auto iter = _logs.find(id); iter != _logs.end()) {
       return iter->second;
     }
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
+    //THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, "replicated log %" PRIu64 " not found", id.id());
   }
 
   auto persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,

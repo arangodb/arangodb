@@ -31,6 +31,7 @@
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
 
+#include <Basics/StringUtils.h>
 #include <optional>
 #include <type_traits>
 

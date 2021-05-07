@@ -206,16 +206,35 @@ static std::string CreateLeaderString(std::string const& leaderId, bool shouldBe
   return leaderId;
 }
 
-void handlePlanShard(StorageEngine& engine, uint64_t planIndex, VPackSlice const& cprops,
-                     VPackSlice const& ldb, std::string const& dbname,
-                     std::string const& colname, std::string const& shname,
-                     std::string const& serverId, std::string const& leaderId,
-                     std::unordered_set<std::string>& commonShrds,
-                     std::unordered_set<std::string>& indis,
-                     MaintenanceFeature::errors_t& errors,
-                     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
-                     std::vector<std::shared_ptr<ActionDescription>>& actions,
-                     MaintenanceFeature::ShardActionMap const& shardActionMap) {
+static void handleReplicationConfiguration(
+    const std::string& dbname, const std::string& colname, const std::string& shname,
+    const std::string& serverId, const std::string& leaderId,
+    bool shouldBeLeading, std::unordered_set<DatabaseID>& makeDirty,
+    bool& callNotify, std::vector<std::shared_ptr<ActionDescription>>& actions) {
+    // TODO Create action only if necessary
+
+    makeDirty.emplace(dbname);
+    callNotify = true;
+    actions.emplace_back(std::make_shared<ActionDescription>(
+        std::map<std::string, std::string>{
+            {NAME, UPDATE_REPLICATION_CONFIGURATION},
+            {DATABASE, dbname},
+            {COLLECTION, colname},
+            {SHARD, shname},
+            {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)},
+        },
+        LEADER_PRIORITY, false));
+}
+
+static void handlePlanShard(
+    StorageEngine& engine, uint64_t planIndex, VPackSlice const& cprops,
+    VPackSlice const& ldb, std::string const& dbname, std::string const& colname,
+    std::string const& shname, std::string const& serverId,
+    std::string const& leaderId, std::unordered_set<std::string>& commonShrds,
+    std::unordered_set<std::string>& indis, MaintenanceFeature::errors_t& errors,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions,
+    MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // First check if the shard is locked:
   auto it = shardActionMap.find(shname);
   if (it != shardActionMap.end()) {
@@ -230,6 +249,8 @@ void handlePlanShard(StorageEngine& engine, uint64_t planIndex, VPackSlice const
   std::shared_ptr<ActionDescription> description;
 
   bool shouldBeLeading = serverId == leaderId;
+
+  handleReplicationConfiguration(dbname, colname, shname, serverId, leaderId, shouldBeLeading, makeDirty, callNotify, actions);
 
   commonShrds.emplace(shname);
 
@@ -383,13 +404,14 @@ void handlePlanShard(StorageEngine& engine, uint64_t planIndex, VPackSlice const
   }
 }
 
-void handleLocalShard(
-  std::string const& dbname, std::string const& colname, VPackSlice const& cprops,
-  VPackSlice const& shardMap, std::unordered_set<std::string>& commonShrds,
-  std::unordered_set<std::string>& indis, std::string const& serverId,
-  std::vector<std::shared_ptr<ActionDescription>>& actions,
-  std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
-  MaintenanceFeature::ShardActionMap const& shardActionMap) {
+static void handleLocalShard(std::string const& dbname, std::string const& colname,
+                             VPackSlice const& cprops, VPackSlice const& shardMap,
+                             std::unordered_set<std::string>& commonShrds,
+                             std::unordered_set<std::string>& indis,
+                             std::string const& serverId,
+                             std::vector<std::shared_ptr<ActionDescription>>& actions,
+                             std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+                             MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // First check if the shard is locked:
   auto iter = shardActionMap.find(colname);
   if (iter != shardActionMap.end()) {

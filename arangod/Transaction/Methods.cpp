@@ -29,6 +29,8 @@
 
 #include "Methods.h"
 
+#include "Replication2/ReplicatedLog/LogLeader.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -1031,6 +1033,30 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
                                                           OperationOptions& options) {
   DataSourceId cid = addCollectionAtRuntime(cname, AccessMode::Type::WRITE);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+  if (collection->vocbase().replicationVersion() == replication::Version::TWO) {
+    TRI_ASSERT(collection->replicatedLogId().has_value());
+    if (auto const logId = collection->replicatedLogId()) {
+      LOG_DEVEL << "insertLocal in " << cname << ", replicated log is "
+                << logId->id() << ", doc: " << value.toJson();
+      try {
+        auto log = collection->vocbase().getReplicatedLogLeaderById(logId.value());
+      } catch (arangodb::basics::Exception const& e) {
+        LOG_DEVEL << "Caught exception " << e.message();
+      }
+      auto& log = collection->vocbase().getReplicatedLogById(logId.value());
+      log.executeIfLeader(
+          [&](std::shared_ptr<replication2::replicated_log::LogLeader> const& leaderPtr) {
+            LOG_DEVEL << "leading: calling insert";
+            using namespace std::string_literals;
+            leaderPtr->insert(replication2::LogPayload{"Replicating document "s + value.toJson()});
+            leaderPtr->runAsyncStep();
+          });
+    } else {
+      LOG_DEVEL << "Collection " << collection << " has no replicated log instance!";
+      // TODO Update all constructors of LogicalCollection
+      // TRI_ASSERT(false);
+    }
+  }
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 

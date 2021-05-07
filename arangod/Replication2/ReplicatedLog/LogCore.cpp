@@ -78,3 +78,7 @@ auto replicated_log::LogCore::releasePersistedLog() && -> std::shared_ptr<Persis
   std::unique_lock guard(_operationMutex);
   return std::move(_persistedLog);
 }
+
+auto replicated_log::LogCore::logId() const noexcept -> LogId {
+  return _persistedLog->id();
+}
