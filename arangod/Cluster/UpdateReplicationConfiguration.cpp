@@ -46,6 +46,7 @@ UpdateReplicationConfiguration::UpdateReplicationConfiguration(MaintenanceFeatur
       _leader(get(THE_LEADER)) {}
 
 bool UpdateReplicationConfiguration::first() {
+#if 0
   using namespace replication2;
   using namespace replication2::replicated_log;
   auto db = feature().server().getFeature<DatabaseFeature>().lookupDatabase(_databaseName);
@@ -84,6 +85,7 @@ bool UpdateReplicationConfiguration::first() {
       }
     }
   }
+#endif
 
   return false;
 }

@@ -39,6 +39,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
+#include <Replication2/ReplicatedLog/FakeLogFollower.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -187,6 +188,30 @@ bool CreateCollection::first() {
         col->followers()->takeOverLeadership(noFollowers, nullptr);
       } else {
         col->followers()->setTheLeader(leader);
+      }
+      if (vocbase.replicationVersion() == replication::Version::TWO) {
+        using namespace replication2;
+        using namespace replication2::replicated_log;
+        if (auto logId = LogId::fromShardName(col->name())) {
+          auto& log = vocbase.getReplicatedLogById(*logId);
+          if (leader.empty()) {
+            auto replicationFollowers =
+                std::vector<std::shared_ptr<AbstractFollower>>{};
+            replicationFollowers.reserve(follower.size());
+            auto& networkFeature = vocbase.server().getFeature<NetworkFeature>();
+            std::transform(follower.begin(), follower.end(),
+                           std::back_inserter(replicationFollowers),
+                           [&](auto const& followerId) {
+                             return std::make_shared<FakeLogFollower>(
+                                 networkFeature.pool(), followerId, vocbase.name(), *logId);
+                           });
+
+            log.becomeLeader(ServerState::instance()->getId(), LogTerm{1},
+                             replicationFollowers, col->writeConcern());
+          } else {
+            log.becomeFollower(ServerState::instance()->getId(), LogTerm{1}, leader);
+          }
+        }
       }
     }
 
