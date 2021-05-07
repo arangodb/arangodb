@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improve exception safety for maintenance thread and shard unlock
+  operations.
+
 * Fixed two bugs in fuerte with HTTP/2 and VST connections.
   One could lead to ordered timeouts not being honoured. The other could
   lead to an ordered callback be called multiple times.
