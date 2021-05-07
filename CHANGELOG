@@ -19,6 +19,12 @@ devel
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
 
+* Introduce a new internal error code for cases where a call cannot succeed
+  because the server startup phase is still in progress. This error will be
+  mapped to the HTTP status code 503 (service unavailable).
+  One example where this can happen is when trying to authenticate a request,
+  but the _users collection is not yet available in the cluster.
+
 * Fixed issue BTS-354: Assertion related to getCollection. 
 
 * Fixed a use after free bug in the connection pool.
