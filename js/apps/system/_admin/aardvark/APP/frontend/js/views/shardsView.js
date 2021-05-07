@@ -72,7 +72,7 @@
 
     toggleSection: function (e) {
       var colName = $(e.currentTarget).parent().attr('id');
-      var wasVisible = (this.visibleCollections.indexOf(colName) !==-1);
+      var wasVisible = (this.visibleCollections.indexOf(colName) !== -1);
       if (wasVisible) {
         // remove the collection from the array
         this.visibleCollections = this.visibleCollections.filter(function(c) { return c !== colName; });
