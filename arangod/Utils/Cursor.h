@@ -137,7 +137,7 @@ class Cursor {
   double _expires;
   bool const _hasCount;
   bool _isDeleted;
-  bool _isUsed;
+  std::atomic<bool> _isUsed;
 };
 }  // namespace arangodb
 

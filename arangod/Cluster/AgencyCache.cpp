@@ -267,7 +267,7 @@ void AgencyCache::run() {
   TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
 
   {
-    std::shared_lock g(_storeLock);
+    std::unique_lock g(_storeLock);
     // technically it is not necessary to acquire the lock here,
     // as there shouldn't be any concurrency when we get here.
     // however, the code may change later, so let's play nice

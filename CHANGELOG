@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed various issues (mainly data races) reported by ThreadSanitizer.
+
 * Improve "Shards" view in web UI so that the shards of individual collections
   can be expanded and collapsed without affecting the display of any other
   shards. Also added a "Toggle all" button the web UI to expand/collapse the
