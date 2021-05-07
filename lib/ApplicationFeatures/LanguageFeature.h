@@ -50,6 +50,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
                           std::string& path, std::string const& binaryName);
   icu::Locale& getLocale();
   std::string const& getDefaultLanguage() const;
+  bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
   void resetDefaultLanguage(std::string const& language);
 
@@ -58,6 +59,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   std::string _language;
   char const* _binaryPath;
   void* _icuDataPtr;
+  bool _forceLanguageCheck;
 };
 
 }  // namespace arangodb
