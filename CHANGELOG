@@ -1,6 +1,11 @@
 devel
 -----
 
+* Improve "Shards" view in web UI so that the shards of individual collections
+  can be expanded and collapsed without affecting the display of any other
+  shards. Also added a "Toggle all" button the web UI to expand/collapse the
+  shards for all collections.
+
 * Log a proper message if an unexpected state is encountered when taking over
   shard leadership. In addition, make the change to the internal followerinfo 
   state atomic so that it cannot be semi-changed.
