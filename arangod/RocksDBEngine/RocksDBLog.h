@@ -83,7 +83,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   std::shared_ptr<Executor> _executor;
 };
 
-class RocksDBLog : public replication2::PersistedLog, std::enable_shared_from_this<RocksDBLog> {
+class RocksDBLog : public replication2::PersistedLog, public std::enable_shared_from_this<RocksDBLog> {
  public:
   ~RocksDBLog() override = default;
   RocksDBLog(replication2::LogId id, uint64_t objectId, std::shared_ptr<RocksDBLogPersistor> persistor);
