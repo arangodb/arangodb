@@ -118,7 +118,18 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntr
   result.add(VPackValue(_step.getDepth()));
 
   // TODO require the Step to know if the Vertex isOpen or not.
-  result.add(VPackValue(false));
+  /*
+   * tmp messy workaround for isOpen
+   */
+  VPackBuilder tmpResult;
+  _provider.addVertexToBuilder(_step.getVertex(), tmpResult);
+  LOG_DEVEL << "tmpResult"; // TODO: needs to be removed later - anyway just tmp workaround
+  LOG_DEVEL << tmpResult.slice().toJson();
+  if (tmpResult.slice().isNull()) {
+    result.add(VPackValue(true));
+  } else {
+    result.add(VPackValue(false));
+  }
 
   _provider.addVertexToBuilder(_step.getVertex(), result);
   _provider.addEdgeToBuilder(_step.getEdge(), result);

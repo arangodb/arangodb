@@ -117,6 +117,8 @@ class BaseTraverserEngine : public BaseEngine {
 
   virtual void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) = 0;
 
+  virtual void smartSearchNew(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) = 0;
+
   virtual void smartSearchBFS(arangodb::velocypack::Slice,
                               arangodb::velocypack::Builder&) = 0;
 
@@ -179,6 +181,8 @@ class TraverserEngine : public BaseTraverserEngine {
   ~TraverserEngine();
 
   void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
+
+  void smartSearchNew(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
 
   void smartSearchBFS(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
 
