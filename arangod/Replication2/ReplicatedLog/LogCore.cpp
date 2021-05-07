@@ -23,7 +23,6 @@
 #include "LogCore.h"
 
 #include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/Persistor.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/debugging.h>
@@ -35,9 +34,8 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog,
-                                 std::shared_ptr<Persistor> persistor)
-    : _persistedLog(std::move(persistedLog)), _persistor(std::move(persistor)) {
+replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
+    : _persistedLog(std::move(persistedLog)) {
   if (ADB_UNLIKELY(_persistedLog == nullptr)) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -67,7 +65,7 @@ auto replicated_log::LogCore::insertAsync(std::unique_ptr<LogIterator> iter)
     -> futures::Future<Result> {
   std::unique_lock guard(_operationMutex);
   // This will hold the mutex
-  return _persistor->persist(_persistedLog, std::move(iter))
+  return _persistedLog->insertAsync(std::move(iter))
       .thenValue([guard = std::move(guard)](Result&& res) mutable {
         guard.unlock();
         return std::move(res);

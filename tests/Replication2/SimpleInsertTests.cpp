@@ -167,7 +167,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
     for (auto const& entry : entries) {
       leaderLog->setEntry(entry);
     }
-    coreA = std::make_unique<LogCore>(leaderLog, _persistor);
+    coreA = std::make_unique<LogCore>(leaderLog);
   }
 
   auto leaderId = ParticipantId{"leader"};

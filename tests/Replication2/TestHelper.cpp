@@ -115,6 +115,11 @@ void MockLog::setEntry(replication2::LogEntry entry) {
   _storage.emplace(entry.logIndex(), std::move(entry));
 }
 
+auto MockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter)
+    -> futures::Future<Result> {
+  return insert(*iter);
+}
+
 auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
     -> std::shared_ptr<DelayedFollowerLog> {
   auto ptr = ReplicatedLog::becomeFollower(id, term, std::move(leaderId));
@@ -138,7 +143,3 @@ std::unique_ptr<LogCore> DelayedLogLeader::resign() && {
   return std::move(*_leader).resign();
 }
 
-futures::Future<Result> SyncPersistor::persist(std::shared_ptr<PersistedLog> log,
-                                               std::unique_ptr<LogIterator> iter) {
-  return log->insert(*iter);
-}

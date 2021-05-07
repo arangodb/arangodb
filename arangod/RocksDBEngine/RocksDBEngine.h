@@ -50,6 +50,7 @@ class EncryptionProvider;
 
 namespace arangodb {
 
+struct RocksDBLogPersistor;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
@@ -550,6 +551,9 @@ class RocksDBEngine final : public StorageEngine {
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   // number of currently running compaction jobs
   size_t _runningCompactions;
+
+  // @brief persistor for replicated logs
+  std::shared_ptr<RocksDBLogPersistor> _logPersistor;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

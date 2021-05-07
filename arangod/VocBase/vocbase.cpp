@@ -68,7 +68,6 @@
 #include "Replication2/ReplicatedLog/LogManager.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/Persistor.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -1608,29 +1607,9 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem)
   return TRI_ERROR_NO_ERROR;
 }
 
-struct SchedulerExecutor : arangodb::replication2::LogWorkerExecutor {
-  explicit SchedulerExecutor(arangodb::application_features::ApplicationServer& server)
-      : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
-  void operator()(fu2::unique_function<void()> func) override {
-    std::ignore = _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
-  }
-
-  Scheduler* _scheduler;
-};
-
-struct VocBaseLogManager : arangodb::replication2::LogManager, arangodb::replication2::Persistor {
-  VocBaseLogManager(arangodb::application_features::ApplicationServer& server)
-      : LogManager(std::make_shared<SchedulerExecutor>(server)) {}
-
-  // auto getPersistedLogById(arangodb::replication2::LogId id)
-  //     -> std::shared_ptr<arangodb::replication2::PersistedLog> override {
-  //   if (auto iter = _logs.find(id); iter != _logs.end()) {
-  //     return iter->second->getPersistedLog();
-  //   }
-  //
-  //   return nullptr;
-  // }
+struct arangodb::VocBaseLogManager {
+  explicit VocBaseLogManager(arangodb::application_features::ApplicationServer& server) {}
 
   auto getReplicatedLogById(arangodb::replication2::LogId id) const
       -> arangodb::replication2::replicated_log::ReplicatedLog const& {
@@ -1646,23 +1625,6 @@ struct VocBaseLogManager : arangodb::replication2::LogManager, arangodb::replica
       return iter->second;
     }
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
-  }
-
-  auto persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,
-               std::unique_ptr<arangodb::replication2::LogIterator> iter)
-      -> futures::Future<Result> override {
-    auto p = futures::Promise<Result>{};
-    auto f = p.getFuture();
-
-    _executor->operator()([p = std::move(p), log, iter = std::move(iter)]() mutable noexcept {
-      try {
-        auto res = log->insert(*iter);
-        p.setValue(res);
-      } catch(...) {
-        p.setException(std::current_exception());
-      }
-    });
-    return f;
   }
 
   // Needs to be a map for stable pointers
@@ -1954,26 +1916,6 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 
 using namespace arangodb::replication2;
 
-struct FakePersistedLog : PersistedLog {
-  explicit FakePersistedLog(LogId id) : PersistedLog(id) {};
-  ~FakePersistedLog() override = default;
-  auto insert(LogIterator& iter) -> Result override {
-    LOG_DEVEL << "Fake log insert";
-    return Result();
-  }
-  auto read(LogIndex start) -> std::unique_ptr<LogIterator> override {
-    struct FakeLogIterator : LogIterator {
-      auto next() -> std::optional<LogEntry> override {
-        return std::nullopt;
-      }
-    };
-
-    return std::make_unique<FakeLogIterator>();
-  }
-  auto removeFront(LogIndex stop) -> Result override { return Result(); }
-  auto removeBack(LogIndex start) -> Result override { return Result(); }
-  auto drop() -> Result override { return Result(); }
-};
 
 auto TRI_vocbase_t::createReplicatedLog(LogId id)
     -> arangodb::ResultT<std::reference_wrapper<replicated_log::ReplicatedLog>> {
@@ -1989,7 +1931,7 @@ auto TRI_vocbase_t::createReplicatedLog(LogId id)
     }
     LOG_DEVEL << "created replicated log " << id;
     auto&& logCore =
-        std::make_unique<replicated_log::LogCore>(std::move(persistedLog.get()), manager);
+        std::make_unique<replicated_log::LogCore>(std::move(persistedLog.get()));
     auto&& log =
         std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(logCore));
     auto it = manager->_logs.emplace_hint(iter, id, std::move(log));
@@ -2058,7 +2000,7 @@ void TRI_vocbase_t::registerReplicatedLog(arangodb::replication2::LogId logId,
                                           std::shared_ptr<arangodb::replication2::PersistedLog> peristedLog) {
   auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
   auto core =
-      std::make_unique<arangodb::replication2::replicated_log::LogCore>(peristedLog, manager);
+      std::make_unique<arangodb::replication2::replicated_log::LogCore>(peristedLog);
   auto [iter, inserted] = manager->_logs.try_emplace(logId, std::move(core));
   TRI_ASSERT(inserted);
 }
