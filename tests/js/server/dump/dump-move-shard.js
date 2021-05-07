@@ -4,25 +4,25 @@
 
 // /////////////////////////////////////////////////////////////////////////////
 // DISCLAIMER
-// 
+//
 // Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
 // Copyright 2014 triagens GmbH, Cologne, Germany
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //      http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// 
+//
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
-// @author Wilfried Goesgens
+//
+// @author Kaveh Vahedipour
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -43,19 +43,20 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoveShard : function () {
-      
+
       if (arango.getRole() !== "COORDINATOR") {
         return;
       }
-      
+
       let database = "UnitTestsDumpDst";
       let collection = "UnitTestsDumpReplicationFactor1";
       let planShards =
           arango.GET("_admin/cluster/shardDistribution").results[collection].Plan;
 
+      /*eslint no-extend-native: ["error", { "exceptions": ["Array"] }]*/
       Array.prototype.remove = function() {
         var what, a = arguments, L = a.length, ax;
-        while (L && this.length) {
+          while (L && this.length) {
           what = a[--L];
           while ((ax = this.indexOf(what)) !== -1) {
             this.splice(ax, 1);
@@ -67,16 +68,16 @@ function dumpTestSuite () {
       var i = 0;
       var pending = [];
       Object.keys(planShards).forEach(
-        function (shard) {          
+        function (shard) {
           let dbs = ["DBServer0001", "DBServer0002", "DBServer0003"];
           let leader = planShards[shard].leader;
-          let follower = planShards[shard].followers[0]; 
+          let follower = planShards[shard].followers[0];
           dbs.remove(leader);
           dbs.remove(follower);
-          let unused = dbs[0]; 
+          let unused = dbs[0];
           var toServer, fromServer;
           let modulo = i % 4;
-          
+
           switch (modulo) {
           case 0:
             fromServer = leader; toServer = unused; break;
@@ -109,7 +110,7 @@ function dumpTestSuite () {
         done.forEach( function(jobId) { pending.remove(jobId); });
         require("internal").sleep(0.25);
       }
-      
+
       assertTrue(true);
     },
 
