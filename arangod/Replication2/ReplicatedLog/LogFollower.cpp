@@ -80,6 +80,17 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         if (req.prevLogIndex > LogIndex{0}) {
           auto entry = self._inMemoryLog.getEntryByIndex(req.prevLogIndex);
           if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
+
+            // TODO If desired, the protocol can be optimized to reduce the number
+            //      of rejected AppendEntries RPCs. For example, when rejecting
+            //      an AppendEntries request, the follower can include the term
+            //      of the conflicting entry and the first index it stores for
+            //      that term. With this information, the leader can decrement
+            //      nextIndex to bypass all of the conflicting entries in that
+            //      term; one AppendEntries RPC will be required for each term
+            //      with conflicting entries, rather than one RPC per entry.
+            // from raft-pdf page 7-8
+
             return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
                                                       AppendEntriesErrorReason::NO_PREV_LOG_MATCH},
                                   WaitForQueue{});

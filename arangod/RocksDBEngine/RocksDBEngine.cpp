@@ -871,6 +871,22 @@ void RocksDBEngine::start() {
   _settingsManager.reset(new RocksDBSettingsManager(*this));
   _replicationManager.reset(new RocksDBReplicationManager(*this));
 
+
+  struct SchedulerExecutor : RocksDBLogPersistor::Executor {
+    explicit SchedulerExecutor(arangodb::application_features::ApplicationServer& server)
+        : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
+
+    void operator()(fu2::unique_function<void()> func) override {
+      std::ignore = _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
+    }
+
+    Scheduler* _scheduler;
+  };
+
+  _logPersistor = std::make_shared<RocksDBLogPersistor>(
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+      _db, std::make_shared<SchedulerExecutor>(server()));
+
   _settingsManager->retrieveInitialValues();
 
   double const counterSyncSeconds = 2.5;
@@ -2337,8 +2353,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     VPackSlice const slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    auto logCf = RocksDBColumnFamilyManager::get(
-        RocksDBColumnFamilyManager::Family::ReplicatedLogs);
     LOG_DEVEL << "slices: " << slice.toJson();
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a view that is still active
@@ -2348,7 +2362,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto logId = arangodb::replication2::LogId{
           it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
       auto objectId = it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
-      auto log = std::make_shared<RocksDBLog>(logId, logCf, _db, objectId);
+      auto log = std::make_shared<RocksDBLog>(logId, objectId, _logPersistor);
       StorageEngine::registerReplicatedLog(*vocbase, logId, log);
     }
   } catch (std::exception const& ex) {
@@ -2974,10 +2988,7 @@ auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replic
                             RocksDBColumnFamilyManager::Family::Definitions),
                         key.string(), value.string());
   if (s.ok()) {
-    auto log = std::make_shared<RocksDBLog>(logId,
-                                            RocksDBColumnFamilyManager::get(
-                                                RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-                                            _db, objectId);
+    auto log = std::make_shared<RocksDBLog>(logId, objectId, _logPersistor);
     return {log};
   }
 

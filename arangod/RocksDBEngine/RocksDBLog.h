@@ -29,13 +29,49 @@
 
 namespace arangodb {
 
-class RocksDBLog : public replication2::PersistedLog {
+
+struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
+  struct Executor {
+    virtual ~Executor() = default;
+    virtual void operator()(fu2::unique_function<void()>) = 0;
+  };
+
+  RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
+                      std::shared_ptr<Executor> executor);
+
+  void runPersistorWorker() noexcept;
+
+  auto persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,
+               std::unique_ptr<arangodb::replication2::LogIterator> iter)
+  -> futures::Future<Result>;
+
+  std::mutex _persistorMutex;
+  std::atomic<unsigned> _activePersistorThreads = 0;
+  struct PersistRequest {
+    PersistRequest(std::shared_ptr<arangodb::replication2::PersistedLog> log,
+                   std::unique_ptr<arangodb::replication2::LogIterator> iter,
+                   futures::Promise<Result> promise)
+        : log(std::move(log)), iter(std::move(iter)), promise(std::move(promise)) {}
+    std::shared_ptr<arangodb::replication2::PersistedLog> log;
+    std::unique_ptr<arangodb::replication2::LogIterator> iter;
+    futures::Promise<Result> promise;
+  };
+
+  std::vector<PersistRequest> _pendingPersistRequests;
+
+
+  rocksdb::ColumnFamilyHandle* const _cf;
+  rocksdb::DB* const _db;
+  std::shared_ptr<Executor> _executor;
+};
+
+class RocksDBLog : public replication2::PersistedLog, public std::enable_shared_from_this<RocksDBLog> {
  public:
   ~RocksDBLog() override = default;
-  RocksDBLog(replication2::LogId id, rocksdb::ColumnFamilyHandle* cf,
-             rocksdb::DB* db, uint64_t objectId);
+  RocksDBLog(replication2::LogId id, uint64_t objectId, std::shared_ptr<RocksDBLogPersistor> persistor);
 
   auto insert(replication2::LogIterator& iter) -> Result override;
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter) -> futures::Future<Result> override;
   auto insertWithBatch(replication2::LogIterator& iter, rocksdb::WriteBatch &batch) -> Result;
   auto read(replication2::LogIndex start)
       -> std::unique_ptr<replication2::LogIterator> override;
@@ -52,8 +88,7 @@ class RocksDBLog : public replication2::PersistedLog {
 
  protected:
   uint64_t const _objectId;
-  rocksdb::ColumnFamilyHandle* const _cf;
-  rocksdb::DB* const _db;
+  std::shared_ptr<RocksDBLogPersistor> _persistor;
 };
 
 }  // namespace arangodb

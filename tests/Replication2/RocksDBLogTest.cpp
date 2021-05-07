@@ -45,6 +45,14 @@ struct RocksDBLogTest : testing::Test {
       auto res = rocksutils::convertStatus(s);
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
+
+    struct SyncExecutor : RocksDBLogPersistor::Executor {
+      void operator()(fu2::unique_function<void()> f) override {
+        std::move(f).operator()();
+      }
+    };
+
+    _persistor = std::make_shared<RocksDBLogPersistor>(_db->DefaultColumnFamily(), _db, std::make_shared<SyncExecutor>());
   }
 
   static void TearDownTestCase() {
@@ -58,7 +66,7 @@ struct RocksDBLogTest : testing::Test {
       _maxLogId = id;
     }
 
-    return std::make_unique<RocksDBLog>(id, _db->DefaultColumnFamily(), _db, id.id());
+    return std::make_unique<RocksDBLog>(id, id.id(), _persistor);
   }
 
   auto createUniqueLog() const -> std::unique_ptr<RocksDBLog> {
@@ -68,11 +76,13 @@ struct RocksDBLogTest : testing::Test {
   static LogId _maxLogId;
   static std::string _path;
   static rocksdb::DB* _db;
+  static std::shared_ptr<RocksDBLogPersistor> _persistor;
 };
 
 LogId RocksDBLogTest::_maxLogId = LogId{0};
 std::string RocksDBLogTest::_path = {};
 rocksdb::DB* RocksDBLogTest::_db = nullptr;
+std::shared_ptr<RocksDBLogPersistor> RocksDBLogTest::_persistor = nullptr;
 
 template <typename I>
 struct SimpleIterator : LogIterator {

@@ -161,6 +161,11 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
     std::vector<std::optional<PreparedAppendEntryRequest>> requests) {
   for (auto& it : requests) {
     if (it.has_value()) {
+
+      // Capture self(shared_from_this()) instead of this
+      // additionally capture a weak pointer that will be locked
+      // when the request returns. If the locking is successful
+      // we are still in the same term.
       it->_follower->_impl->appendEntries(std::move(it->_request))
           .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
                       lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
@@ -392,9 +397,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   }
 
   auto currentCommitIndex = _commitIndex;
-  auto lastIndex = _inMemoryLog.getLastIndex();
-  if (follower.lastAckedIndex == lastIndex && _commitIndex == follower.lastAckedCommitIndex) {
-    return std::nullopt;  // nothingto replicate
+  auto lastAvailableIndex = _inMemoryLog.getLastIndex();
+  if (follower.lastAckedIndex == lastAvailableIndex && _commitIndex == follower.lastAckedCommitIndex) {
+    return std::nullopt;  // nothing to replicate
   }
 
   auto const lastAcked = _inMemoryLog.getEntryByIndex(follower.lastAckedIndex);
@@ -418,14 +423,15 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
     auto transientEntries = immer::flex_vector_transient<LogEntry>{};
     while (auto entry = it->next()) {
       transientEntries.push_back(*std::move(entry));
+      if (transientEntries.size() >= 1000) {
+        break;
+      }
     }
     req.entries = std::move(transientEntries).persistent();
   }
 
-  // Capture self(shared_from_this()) instead of this
-  // additionally capture a weak pointer that will be locked
-  // when the request returns. If the locking is successful
-  // we are still in the same term.
+  auto lastIndex = !req.entries.empty() ? req.entries.back().logIndex() : lastAvailableIndex;
+
   follower.requestInFlight = true;
   auto preparedRequest = PreparedAppendEntryRequest{};
   preparedRequest._follower = &follower;

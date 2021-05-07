@@ -81,6 +81,7 @@ class LogicalDataSource;
 class LogicalView;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
+struct VocBaseLogManager;
 }  // namespace arangodb
 
 /// @brief document handle separator as character
@@ -173,7 +174,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
-  std::shared_ptr<arangodb::replication2::LogManager> _logManager;
+  std::shared_ptr<arangodb::VocBaseLogManager> _logManager;
   [[nodiscard]] auto getReplicatedLogById(arangodb::replication2::LogId id) const
       -> arangodb::replication2::replicated_log::ReplicatedLog&;
   [[nodiscard]] auto getReplicatedLogLeaderById(arangodb::replication2::LogId id) const

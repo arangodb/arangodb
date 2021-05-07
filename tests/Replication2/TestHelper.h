@@ -28,7 +28,6 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/Persistor.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
@@ -51,6 +50,7 @@ struct MockLog : replication2::PersistedLog {
   ~MockLog() override = default;
 
   auto insert(replication2::LogIterator& iter) -> Result override;
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start) -> std::unique_ptr<replication2::LogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> Result override;
   auto removeBack(replication2::LogIndex start) -> Result override;
@@ -165,17 +165,11 @@ struct TestReplicatedLog : ReplicatedLog {
                     std::size_t writeConcern) -> std::shared_ptr<DelayedLogLeader>;
 };
 
-struct SyncPersistor : Persistor {
-  auto persist(std::shared_ptr<PersistedLog> log, std::unique_ptr<LogIterator> iter)
-      -> futures::Future<Result> override;
-};
-
 struct ReplicatedLogTest : ::testing::Test {
-  ReplicatedLogTest() : _persistor(std::make_shared<SyncPersistor>()) {}
 
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
     auto persisted = makePersistedLog(id);
-    return std::make_unique<LogCore>(persisted, _persistor);
+    return std::make_unique<LogCore>(persisted);
   }
 
   auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLog> {
@@ -194,7 +188,6 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
-  std::shared_ptr<SyncPersistor> _persistor;
 };
 
 
