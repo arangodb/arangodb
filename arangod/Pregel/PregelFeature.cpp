@@ -234,10 +234,6 @@ size_t PregelFeature::availableParallelism() {
 }
 
 void PregelFeature::start() {
-  // don't delete the pointer to the feature on shutdown, as the ApplicationServer
-  // owns it
-  ::instance.reset(this, ::NonDeleter());
-
   if (ServerState::instance()->isAgent()) {
     return;
   }
