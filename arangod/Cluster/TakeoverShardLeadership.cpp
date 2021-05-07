@@ -186,7 +186,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
           ci.getCollectionCurrent(databaseName,
                                   std::to_string(collection.planId().id()));
       if (currentInfo == nullptr) {
-        // Collection has been dropped we cannot continue here.
+        // Collection has been dropped. we cannot continue here.
         return;
       }
       TRI_ASSERT(currentInfo != nullptr);
