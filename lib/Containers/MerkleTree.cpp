@@ -547,16 +547,12 @@ MerkleTree<Hasher, BranchingBits>::cloneWithDepth(std::uint64_t newDepth) const 
   // time, recursively. Typically we'll only be requesting to grow one level
   // deeper at a time anyway, and we should very, very rarely be growing more
   // than a couple levels at a time.
-  std::uint64_t newRangeMax =
-      meta().rangeMin + ((meta().rangeMax - meta().rangeMin) * BranchingFactor);
 
-  TRI_ASSERT(newRangeMax > meta().rangeMin);
-  TRI_ASSERT(newRangeMax > meta().rangeMax);
-
-  std::unique_ptr<MerkleTree<Hasher, BranchingBits>> newTree =
+  auto newTree = 
       std::make_unique<MerkleTree<Hasher, BranchingBits>>(newDepth,
                                                           meta().rangeMin,
-                                                          newRangeMax);
+                                                          meta().rangeMax);
+  
   {
     for (std::uint64_t d = 0; d <= meta().maxDepth; ++d) {
       // copy each cell into the same index at the next level of the deeper tree
@@ -567,12 +563,15 @@ MerkleTree<Hasher, BranchingBits>::cloneWithDepth(std::uint64_t newDepth) const 
         Node& m = newTree->node(offsetNew + i);
         m = n;
       }
-      // now copy the root into the root, special case
-      Node const& n = this->node(0);
-      Node& m = newTree->node(0);
-      m = n;
     }
+      
+    // now copy the root into the root, special case
+    Node const& n = this->node(0);
+    Node& m = newTree->node(0);
+    m = n;
   }
+
+  newTree->leftCombine(2);
 
   if (newDepth == meta().maxDepth + 1) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -936,6 +935,24 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::leftCombine(std::uint64_t factor) noexcept {
+  // not fully thread-safe, lock nodes from outside
+  for (std::uint64_t depth = 1; depth <= meta().maxDepth; ++depth) {
+    // iterate over all nodes and left-combine, (skipping the first, identity)
+    std::uint64_t offset = nodeCountUpToDepth(depth - 1);
+    for (std::uint64_t index = 1; index < nodeCountAtDepth(depth); ++index) {
+      Node& src = this->node(offset + index);
+      Node& dst = this->node(offset + (index / factor));
+
+      TRI_ASSERT(&src != &dst);
+      dst.count += src.count;
+      dst.hash ^= src.hash;
+      src = Node{0, 0};
+    }
+  }
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::grow(std::uint64_t key) {
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
 
@@ -957,19 +974,7 @@ void MerkleTree<Hasher, BranchingBits>::grow(std::uint64_t key) {
     throw std::invalid_argument("Expecting factor to be power of 2");
   }
 
-  for (std::uint64_t depth = 1; depth <= meta().maxDepth; ++depth) {
-    // iterate over all nodes and left-combine, (skipping the first, identity)
-    std::uint64_t offset = nodeCountUpToDepth(depth - 1);
-    for (std::uint64_t index = 1; index < nodeCountAtDepth(depth); ++index) {
-      Node& src = this->node(offset + index);
-      Node& dst = this->node(offset + (index / factor));
-
-      TRI_ASSERT(&src != &dst);
-      dst.count += src.count;
-      dst.hash ^= src.hash;
-      src = Node{0, 0};
-    }
-  }
+  leftCombine(factor);
 
   meta().rangeMax = rangeMin + ((rangeMax - rangeMin) * factor);
 

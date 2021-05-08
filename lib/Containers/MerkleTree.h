@@ -92,7 +92,7 @@ class MerkleTree {
    *
    * @param maxDepth The same depth value used for the calculation
    */
-  static constexpr std::uint64_t nodeCountAtDepth(std::uint64_t maxDepth) {
+  static constexpr std::uint64_t nodeCountAtDepth(std::uint64_t maxDepth) noexcept {
     return static_cast<std::uint64_t>(1) << (BranchingBits * maxDepth);
   }
 
@@ -304,6 +304,7 @@ class MerkleTree {
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
   bool modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert);
+  void leftCombine(std::uint64_t factor) noexcept;
   void grow(std::uint64_t key);
   bool equalAtIndex(MerkleTree<Hasher, BranchingBits> const& other,
                     std::uint64_t index) const noexcept;
