@@ -703,26 +703,25 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
   TRI_ASSERT(_revisionTree != nullptr);
 
   Result res = basics::catchVoidToResult([&]() -> void {
-    decltype(_revisionInsertBuffers)::const_iterator insertIt;
-    decltype(_revisionRemovalBuffers)::const_iterator removeIt;
-    {
-      std::unique_lock<std::mutex> guard(_revisionBufferLock);
-      insertIt = _revisionInsertBuffers.begin();
-      removeIt = _revisionRemovalBuffers.begin();
-    }
+    std::unique_lock<std::mutex> guard(_revisionBufferLock);
 
+    auto insertIt = _revisionInsertBuffers.begin();
+    auto removeIt = _revisionRemovalBuffers.begin();
+
+    auto it = _revisionTruncateBuffer.begin();  // sorted ASC
+    
     {
+      // check for a truncate marker
       rocksdb::SequenceNumber ignoreSeq = 0;  // truncate will increase this sequence
       bool foundTruncate = false;
-      // check for a truncate marker
-      std::unique_lock<std::mutex> guard(_revisionBufferLock);
-      auto it = _revisionTruncateBuffer.begin();  // sorted ASC
+
       while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
         ignoreSeq = *it;
         TRI_ASSERT(ignoreSeq != 0);
         foundTruncate = true;
         it = _revisionTruncateBuffer.erase(it);
       }
+
       if (foundTruncate) {
         TRI_ASSERT(ignoreSeq <= commitSeq);
         while (insertIt != _revisionInsertBuffers.end() && insertIt->first <= ignoreSeq) {
@@ -731,57 +730,83 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= ignoreSeq) {
           removeIt = _revisionRemovalBuffers.erase(removeIt);
         }
-        _revisionTree->clear();  // clear out any revision structure, now empty
+      
+        TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || insertIt == _revisionInsertBuffers.end());
+        TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || removeIt == _revisionRemovalBuffers.end());
+
+        // we can clear the revision tree without holding the mutex here
+        guard.unlock();
+        // clear out any revision structure, now empty
+        _revisionTree->clear();  
+
+        guard.lock();
       }
     }
 
+    // still holding the mutex here
+
     while (true) {
-      std::vector<std::uint64_t> inserts;
-      std::vector<std::uint64_t> removals;
-      // find out if we have buffers to apply
-      {
-        bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
-                           insertIt->first <= commitSeq;
-        bool haveRemovals = removeIt != _revisionRemovalBuffers.end() &&
-                            removeIt->first <= commitSeq;
+      // find out if we still have buffers to apply
+      TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || insertIt == _revisionInsertBuffers.end());
+      TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || removeIt == _revisionRemovalBuffers.end());
 
-        bool applyInserts =
+      bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
+                         insertIt->first <= commitSeq;
+      bool haveRemovals = removeIt != _revisionRemovalBuffers.end() &&
+                          removeIt->first <= commitSeq;
+
+      bool applyInserts =
             haveInserts && (!haveRemovals || removeIt->first >= insertIt->first);
-        bool applyRemovals = haveRemovals && !applyInserts;
-
-        // check for inserts
-        if (applyInserts) {
-          std::unique_lock<std::mutex> guard(_revisionBufferLock);
-          inserts = std::move(insertIt->second);
-          insertIt = _revisionInsertBuffers.erase(insertIt);
-        }
-        // check for removals
-        if (applyRemovals) {
-          std::unique_lock<std::mutex> guard(_revisionBufferLock);
-          removals = std::move(removeIt->second);
-          removeIt = _revisionRemovalBuffers.erase(removeIt);
-        }
-      }
-
+      bool applyRemovals = haveRemovals && !applyInserts;
+      
       // no inserts or removals left to apply, drop out of loop
-      if (inserts.empty() && removals.empty()) {
+      if (!applyInserts && !applyRemovals) {
         break;
       }
+     
+      // another concurrent thread may insert new elements into _revisionInsertBuffers or 
+      // _revisionRemovalBuffers while we are here.
+      // it is safe for us to access the elements pointed to by insertIt and removeIt here 
+      // without holding the lock on these containers though, because of std::multimap's
+      // iterator invalidation rules:
+      // - emplace / insert: No iterators or references are invalidated.
+      // - erase: References and iterators to the erased elements are invalidated. Other references and iterators are not affected.
+      
+      // check for inserts
+      if (applyInserts) {
+        TRI_ASSERT(!applyRemovals);
+      
+        // release the mutex while we modify the tree. this is safe (see above)
+        guard.unlock();
 
-      // apply inserts
-      if (!inserts.empty()) {
-        // TODO: if this throws, we will lose this batch of inserts
-        _revisionTree->insert(inserts);
+        // apply inserts, without holding the lock
+        // if this throws we will not have modified _revisionInsertBuffers
+        _revisionTree->insert(insertIt->second);
+
+        // move iterator forward, we need the mutex for this
+        guard.lock();
+        insertIt = _revisionInsertBuffers.erase(insertIt);
       }
 
-      // apply removals
-      if (!removals.empty()) {
-        // TODO: if this throws, we will lose this batch of removals
-        _revisionTree->remove(removals);
+      // check for removals
+      if (applyRemovals) {
+        TRI_ASSERT(!applyInserts);
+        
+        // release the mutex while we modify the tree. this is safe (see above)
+        guard.unlock();
+
+        // apply removals, without holding the lock
+        // if this throws we will not have modified _revisionRemovalBuffers
+        _revisionTree->remove(removeIt->second);
+
+        // move iterator forward, we need the mutex for this
+        guard.lock();
+        removeIt = _revisionRemovalBuffers.erase(removeIt);
       }
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // TODO: remove this cherk because it is very expensive
     _revisionTree->checkConsistency();
 #endif
   });

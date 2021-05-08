@@ -144,6 +144,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
   rocksdb::SequenceNumber _revisionTreeSerializedSeq;
   std::chrono::steady_clock::time_point _revisionTreeSerializedTime;
   mutable std::mutex _revisionTreeLock;
+
+  // if the types of these containers are changed to some other type, please check the new
+  // type's iterator invalidation rules first and if iterators are invalidated when new 
+  // elements get inserted
   std::multimap<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionInsertBuffers;
   std::multimap<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
