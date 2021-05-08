@@ -730,6 +730,10 @@ function dumpMaskings (options) {
 
 function hotBackup (options) {
   let c = getClusterStrings(options);
+  console.warn(options);
+  if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
+    options.dbServers = 3;
+  }
   if (!require("internal").isEnterprise()) {
     return {
       'hotbackup is only enterprise': {
@@ -742,6 +746,7 @@ function hotBackup (options) {
     dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCheck: 'dump' + c.cluster + '.js',
     dumpModify: 'dump-modify.js',
+    dumpMoveShard: 'dump-move-shard.js',
     dumpRecheck: 'dump-modified.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     // do we need this? dumpCheckGraph: 'check-graph.js',
@@ -775,6 +780,7 @@ function hotBackup (options) {
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const dumpCheck = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheck));
   const dumpModify = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpModify));
+  const dumpMoveShard = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpMoveShard));
   const dumpRecheck  = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpRecheck));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
   if (!helper.runSetupSuite(setupFile) ||
@@ -785,6 +791,8 @@ function hotBackup (options) {
       !helper.createHotBackup() ||
       !helper.isAlive() ||
       !helper.runTests(dumpModify,'UnitTestsDumpDst') ||
+      !helper.isAlive() ||
+      !helper.runTests(dumpMoveShard,'UnitTestsDumpDst') ||
       !helper.isAlive() ||
       !helper.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
       !helper.isAlive() ||
