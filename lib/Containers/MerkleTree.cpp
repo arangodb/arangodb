@@ -52,6 +52,8 @@
 #include "Basics/hashes.h"
 #include "Logger/LogMacros.h"
 
+#define PARANOID_TREE_CHECKS
+
 namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
 static constexpr char CompressedCurrent = '1';
@@ -313,10 +315,8 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
     throw std::invalid_argument("rangeMax must be larger than rangeMin");
   }
  
-  TRI_ASSERT(rangeMin != 54);
-
-  TRI_ASSERT(((rangeMax - rangeMin) / nodeCountAtDepth(maxDepth)) * nodeCountAtDepth(maxDepth) ==
-             (rangeMax - rangeMin));
+  //TRI_ASSERT(((rangeMax - rangeMin) / nodeCountAtDepth(maxDepth)) * nodeCountAtDepth(maxDepth) ==
+  //           (rangeMax - rangeMin));
   
   // no lock necessary here
   _buffer.reset(new uint8_t[allocationSize(maxDepth)]);
@@ -329,7 +329,11 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef PARANOID_TREE_CHECKS
+  // checking an empty tree is overyl paranoid and only wastes
+  // cycles, so we only do it if absolutely necessary
   checkInternalConsistency();
+#endif
 #endif
 }
 
@@ -806,15 +810,17 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(MerkleTree<Hasher, BranchingBits> 
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  checkInternalConsistency();
-
   TRI_ASSERT(meta().maxDepth == other.meta().maxDepth);
   TRI_ASSERT(meta().rangeMin == other.meta().rangeMin);
   TRI_ASSERT(meta().rangeMax == other.meta().rangeMax);
   
+#ifdef PARANOID_TREE_CHECKS
+  checkInternalConsistency();
+
   for (std::uint64_t i = 0; i < last; ++i) {
     TRI_ASSERT(this->node(i) == other.node(i));
   }
+#endif
 #endif
 }
 
@@ -982,7 +988,9 @@ void MerkleTree<Hasher, BranchingBits>::grow(std::uint64_t key) {
   TRI_ASSERT(key < meta().rangeMax);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef PARANOID_TREE_CHECKS
   checkInternalConsistency();
+#endif
 #endif
 }
 
