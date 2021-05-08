@@ -65,18 +65,19 @@ std::uint64_t FnvHashProvider::hash(std::uint64_t input) const {
   return TRI_FnvHashPod(input);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-bool MerkleTree<Hasher, BranchingBits, LockStripes>::Node::operator==(Node const& other) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+bool MerkleTree<Hasher, BranchingBits>::Node::operator==(Node const& other) const noexcept{
   return ((this->count == other.count) && (this->hash == other.hash));
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::nodeCountUpToDepth(
-    std::uint64_t maxDepth) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+constexpr std::uint64_t MerkleTree<Hasher, BranchingBits>::nodeCountUpToDepth(
+    std::uint64_t maxDepth) noexcept {
   return ((static_cast<std::uint64_t>(1) << (BranchingBits * (maxDepth + 1))) - 1) /
          (BranchingFactor - 1);
 }
-class TestNodeCountUpToDepth : public MerkleTree<FnvHashProvider, 3, 64> {
+
+class TestNodeCountUpToDepth : public MerkleTree<FnvHashProvider, 3> {
   static_assert(nodeCountUpToDepth(0) == 1);
   static_assert(nodeCountUpToDepth(1) == 9);
   static_assert(nodeCountUpToDepth(2) == 73);
@@ -85,13 +86,13 @@ class TestNodeCountUpToDepth : public MerkleTree<FnvHashProvider, 3, 64> {
   static_assert(nodeCountUpToDepth(10) == 1227133513);
 };
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::allocationSize(std::uint64_t maxDepth) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+constexpr std::uint64_t MerkleTree<Hasher, BranchingBits>::allocationSize(std::uint64_t maxDepth) noexcept {
   return MetaSize + (NodeSize * nodeCountUpToDepth(maxDepth));
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::log2ceil(std::uint64_t n) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+constexpr std::uint64_t MerkleTree<Hasher, BranchingBits>::log2ceil(std::uint64_t n) noexcept {
   if (n > (std::numeric_limits<std::uint64_t>::max() / 2)) {
     return 8 * sizeof(std::uint64_t) - 1;
   }
@@ -100,7 +101,8 @@ constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::log2ceil
   }
   return i;
 }
-class TestLog2Ceil : public MerkleTree<FnvHashProvider, 3, 64> {
+
+class TestLog2Ceil : public MerkleTree<FnvHashProvider, 3> {
   static_assert(log2ceil(0) == 1);
   static_assert(log2ceil(1) == 1);
   static_assert(log2ceil(2) == 1);
@@ -116,8 +118,8 @@ class TestLog2Ceil : public MerkleTree<FnvHashProvider, 3, 64> {
                 8 * sizeof(std::uint64_t) - 1);
 };
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::minimumFactorFor(
+template <typename Hasher, std::uint64_t const BranchingBits>
+constexpr std::uint64_t MerkleTree<Hasher, BranchingBits>::minimumFactorFor(
     std::uint64_t current, std::uint64_t target) {
   if (target < current) {
     throw std::invalid_argument("Was expecting target >= current.");
@@ -142,7 +144,7 @@ constexpr std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::minimumF
   return correctedFactor;
 }
 
-class TestMinimumFactorFor : public MerkleTree<FnvHashProvider, 3, 64> {
+class TestMinimumFactorFor : public MerkleTree<FnvHashProvider, 3> {
   static_assert(minimumFactorFor(1, 2) == 4);
   static_assert(minimumFactorFor(1, 4) == 8);
   static_assert(minimumFactorFor(1, 12) == 16);
@@ -161,17 +163,17 @@ class TestMinimumFactorFor : public MerkleTree<FnvHashProvider, 3, 64> {
   static_assert(minimumFactorFor(8192, 2147483600) == 262144);
 };
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::defaultRange(std::uint64_t maxDepth) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::uint64_t MerkleTree<Hasher, BranchingBits>::defaultRange(std::uint64_t maxDepth) {
   // start with 64 revisions per leaf; this is arbitrary, but the key is we want
   // to start with a relatively fine-grained tree so we can differentiate well,
   // but we don't want to go so small that we have to resize immediately
   return nodeCountAtDepth(maxDepth) * 64;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>
-MerkleTree<Hasher, BranchingBits, LockStripes>::fromBuffer(std::string_view buffer) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
+MerkleTree<Hasher, BranchingBits>::fromBuffer(std::string_view buffer) {
   bool compressed = false;
   std::uint8_t version = static_cast<uint8_t>(buffer[buffer.size() - 1]);
   if (version == 0x01) {
@@ -200,14 +202,14 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::fromBuffer(std::string_view buff
     return nullptr;
   }
 
-  return std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>(
-      new MerkleTree<Hasher, BranchingBits, LockStripes>(buffer));
+  return std::unique_ptr<MerkleTree<Hasher, BranchingBits>>(
+      new MerkleTree<Hasher, BranchingBits>(buffer));
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>
-MerkleTree<Hasher, BranchingBits, LockStripes>::deserialize(velocypack::Slice slice) {
-  std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>> tree;
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
+MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
+  std::unique_ptr<MerkleTree<Hasher, BranchingBits>> tree;
 
   if (!slice.isObject()) {
     return tree;
@@ -258,7 +260,7 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::deserialize(velocypack::Slice sl
   // allocate the tree
   TRI_ASSERT(rangeMin < rangeMax);
 
-  tree.reset(new MerkleTree<Hasher, BranchingBits, LockStripes>(maxDepth, rangeMin, rangeMax));
+  tree.reset(new MerkleTree<Hasher, BranchingBits>(maxDepth, rangeMin, rangeMax));
 
   std::uint64_t index = 0;
   for (velocypack::Slice nodeSlice : velocypack::ArrayIterator(nodes)) {
@@ -281,9 +283,6 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::deserialize(velocypack::Slice sl
       return tree;
     }
 
-    // the lock here is not necessary, as we are building a new object in memory
-    // that no one else yet has access to
-    std::unique_lock<std::mutex> guard(tree->lock(index));
     Node& node = tree->node(index);
     node.hash = hash;
     node.count = count;
@@ -294,10 +293,10 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::deserialize(velocypack::Slice sl
   return tree;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-MerkleTree<Hasher, BranchingBits, LockStripes>::MerkleTree(std::uint64_t maxDepth,
-                                                           std::uint64_t rangeMin,
-                                                           std::uint64_t rangeMax) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
+                                              std::uint64_t rangeMin,
+                                              std::uint64_t rangeMax) {
   if (maxDepth < 2) {
     throw std::invalid_argument("Must specify a maxDepth >= 2");
   }
@@ -309,6 +308,13 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::MerkleTree(std::uint64_t maxDept
     rangeMax = rangeMin + defaultRange(maxDepth);
     TRI_ASSERT(rangeMin < rangeMax);
   }
+
+  if (rangeMax <= rangeMin) {
+    throw std::invalid_argument("rangeMax must be larger than rangeMin");
+  }
+ 
+  TRI_ASSERT(rangeMin != 54);
+
   TRI_ASSERT(((rangeMax - rangeMin) / nodeCountAtDepth(maxDepth)) * nodeCountAtDepth(maxDepth) ==
              (rangeMax - rangeMin));
   
@@ -321,12 +327,14 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::MerkleTree(std::uint64_t maxDept
   for (std::uint64_t i = 0; i < last; ++i) {
     new (&node(i)) Node{0, 0};
   }
-  
-  checkConsistency();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  checkInternalConsistency();
+#endif
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-MerkleTree<Hasher, BranchingBits, LockStripes>::~MerkleTree() {
+template <typename Hasher, std::uint64_t const BranchingBits>
+MerkleTree<Hasher, BranchingBits>::~MerkleTree() {
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
 
   if (!_buffer) {
@@ -341,9 +349,9 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::~MerkleTree() {
   meta().~Meta();
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-MerkleTree<Hasher, BranchingBits, LockStripes>& MerkleTree<Hasher, BranchingBits, LockStripes>::
-operator=(std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>&& other) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+MerkleTree<Hasher, BranchingBits>& MerkleTree<Hasher, BranchingBits>::
+operator=(std::unique_ptr<MerkleTree<Hasher, BranchingBits>>&& other) {
   if (!other) {
     return *this;
   }
@@ -363,68 +371,34 @@ operator=(std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>&& othe
   return *this;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::count() const {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::uint64_t MerkleTree<Hasher, BranchingBits>::count() const {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
-  std::unique_lock<std::mutex> lock(this->lock(0));
   return node(0).count;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::rootValue() const {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::uint64_t MerkleTree<Hasher, BranchingBits>::rootValue() const {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
-  std::unique_lock<std::mutex> lock(this->lock(0));
   return node(0).hash;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::pair<std::uint64_t, std::uint64_t> MerkleTree<Hasher, BranchingBits, LockStripes>::range() const {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::pair<std::uint64_t, std::uint64_t> MerkleTree<Hasher, BranchingBits>::range() const {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   return {meta().rangeMin, meta().rangeMax};
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::maxDepth() const {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::uint64_t MerkleTree<Hasher, BranchingBits>::maxDepth() const {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   return meta().maxDepth;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::insert(std::uint64_t key) {
-  std::shared_lock<std::shared_mutex> guard(_bufferLock);
-
-  if (key < meta().rangeMin) {
-    throw std::out_of_range("Cannot insert, key " + std::to_string(key) +
-                            " less than range minimum " +
-                            std::to_string(meta().rangeMin) + ".");
-  }
-
-  if (key >= meta().rangeMax) {
-    // unlock so we can get exclusive access to grow the range
-    guard.unlock();
-    grow(key, "insertSingle");
-    guard.lock();
-  }
-
-  modify(key, /*isInsert*/ true);
-}
-
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::insert(std::vector<std::uint64_t> const& keys) {
-  if (keys.empty()) {
-    return;
-  }
-
-  std::vector<std::uint64_t> sortedKeys = keys;
-  std::sort(sortedKeys.begin(), sortedKeys.end());
-
-  std::uint64_t minKey = sortedKeys[0];
-  std::uint64_t maxKey = sortedKeys[sortedKeys.size() - 1];
-
-  // instead of locking for each individual key, just get an exclusive lock
-  // and batch insert
-  std::unique_lock<std::shared_mutex> guard(_bufferLock);
-
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::checkInsertMinMax(std::unique_lock<std::shared_mutex>& guard,
+                                                          std::uint64_t minKey,
+                                                          std::uint64_t maxKey) {
   if (minKey < meta().rangeMin) {
     throw std::out_of_range("Cannot insert, key " + std::to_string(minKey) +
                             " less than range minimum " +
@@ -434,16 +408,50 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::insert(std::vector<std::uin
   if (maxKey >= meta().rangeMax) {
     // unlock so we can get exclusive access to grow the range
     guard.unlock();
-    grow(maxKey, "insertBatch");
+    grow(maxKey);
     guard.lock();
   }
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::insert(std::uint64_t key) {
+  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+
+  // may throw if key < rangeMin, or grow the tree if key >= rangeMax
+  checkInsertMinMax(guard, key, key);
+
+  modify(key, /*isInsert*/ true);
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::insert(std::vector<std::uint64_t> const& keys) {
+  if (keys.size() == 1) {
+    // optimization for a single key
+    return this->insert(keys[0]);
+  }
+  
+  if (ADB_UNLIKELY(keys.empty())) {
+    return;
+  }
+
+  std::vector<std::uint64_t> sortedKeys = keys;
+  std::sort(sortedKeys.begin(), sortedKeys.end());
+
+  std::uint64_t minKey = sortedKeys[0];
+  std::uint64_t maxKey = sortedKeys[sortedKeys.size() - 1];
+
+  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+  
+  // may throw if minKey < rangeMin, or grow the tree if maxKey >= rangeMax
+  checkInsertMinMax(guard, minKey, maxKey);
 
   modify(sortedKeys, /*isInsert*/ true);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::remove(std::uint64_t key) {
-  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::remove(std::uint64_t key) {
+  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+
   if (key < meta().rangeMin || key >= meta().rangeMax) {
     throw std::out_of_range("Cannot remove, key out of current range.");
   }
@@ -451,9 +459,14 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::remove(std::uint64_t key) {
   modify(key, /*isInsert*/ false);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::remove(std::vector<std::uint64_t> const& keys) {
-  if (keys.empty()) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::remove(std::vector<std::uint64_t> const& keys) {
+  if (keys.size() == 1) {
+    // optimization for a single key
+    return remove(keys[0]);
+  }
+
+  if (ADB_UNLIKELY(keys.empty())) {
     return;
   }
 
@@ -472,50 +485,61 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::remove(std::vector<std::uin
   modify(sortedKeys, /*isInsert*/ false);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::clear() {
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::clear() {
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
+
   std::uint64_t const last = nodeCountUpToDepth(meta().maxDepth);
   for (std::uint64_t i = 0; i < last; ++i) {
     new (&node(i)) Node{0, 0};
   }
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>
-MerkleTree<Hasher, BranchingBits, LockStripes>::clone() {
-  // acquire the write-lock here to protect ourselves from concurrent modifications
-  std::unique_lock<std::shared_mutex> guard(_bufferLock);
-  return std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>(
-      new MerkleTree<Hasher, BranchingBits, LockStripes>(*this));
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::checkConsistency() const {
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+
+  checkInternalConsistency();
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>
-MerkleTree<Hasher, BranchingBits, LockStripes>::cloneWithDepth(std::uint64_t newDepth) const {
-  // acquire the write-lock here to protect ourselves from concurrent modifications
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::unique_ptr<MerkleTree<Hasher, BranchingBits>> MerkleTree<Hasher, BranchingBits>::clone() {
+  // acquire the read-lock here to protect ourselves from concurrent modifications
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+
+  return std::unique_ptr<MerkleTree<Hasher, BranchingBits>>(
+      new MerkleTree<Hasher, BranchingBits>(*this));
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
+MerkleTree<Hasher, BranchingBits>::cloneWithDepth(std::uint64_t newDepth) const {
+  // acquire the read-lock here to protect ourselves from concurrent modifications
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   
   TRI_ASSERT(meta().rangeMin < meta().rangeMax);
 
   if (newDepth == meta().maxDepth) {
-    return std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>>(
-        new MerkleTree<Hasher, BranchingBits, LockStripes>(*this));
+    // exact copy
+    return std::unique_ptr<MerkleTree<Hasher, BranchingBits>>(
+        new MerkleTree<Hasher, BranchingBits>(*this));
   }
 
   if (newDepth < meta().maxDepth) {
-    std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>> newTree =
-        std::make_unique<MerkleTree<Hasher, BranchingBits, LockStripes>>(newDepth,
-                                                                         meta().rangeMin,
-                                                                         meta().rangeMax);
+    // shrinking
+    std::unique_ptr<MerkleTree<Hasher, BranchingBits>> newTree =
+        std::make_unique<MerkleTree<Hasher, BranchingBits>>(newDepth,
+                                                            meta().rangeMin,
+                                                            meta().rangeMax);
     for (std::uint64_t index = 0; index < nodeCountUpToDepth(newDepth); ++index) {
-      // TODO: this is missing the node lock
-      Node& n = this->node(index);
+      Node const& n = this->node(index);
       Node& m = newTree->node(index);
       m = n;
     }
-  
-    newTree->checkConsistency();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    newTree->checkInternalConsistency();
+#endif
     return newTree;
   }
 
@@ -529,37 +553,40 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::cloneWithDepth(std::uint64_t new
   TRI_ASSERT(newRangeMax > meta().rangeMin);
   TRI_ASSERT(newRangeMax > meta().rangeMax);
 
-  std::unique_ptr<MerkleTree<Hasher, BranchingBits, LockStripes>> newTree =
-      std::make_unique<MerkleTree<Hasher, BranchingBits, LockStripes>>(newDepth,
-                                                                       meta().rangeMin,
-                                                                       newRangeMax);
+  std::unique_ptr<MerkleTree<Hasher, BranchingBits>> newTree =
+      std::make_unique<MerkleTree<Hasher, BranchingBits>>(newDepth,
+                                                          meta().rangeMin,
+                                                          newRangeMax);
   {
     for (std::uint64_t d = 0; d <= meta().maxDepth; ++d) {
       // copy each cell into the same index at the next level of the deeper tree
       std::uint64_t const offset = (d == 0 ? 0 : nodeCountUpToDepth(d - 1));
       std::uint64_t const offsetNew = nodeCountUpToDepth(d);
       for (std::uint64_t i = 0; i < nodeCountAtDepth(d); ++i) {
-        Node& n = this->node(offset + i);
+        Node const& n = this->node(offset + i);
         Node& m = newTree->node(offsetNew + i);
         m = n;
       }
       // now copy the root into the root, special case
-      Node& n = this->node(0);
+      Node const& n = this->node(0);
       Node& m = newTree->node(0);
       m = n;
     }
   }
 
   if (newDepth == meta().maxDepth + 1) {
-    newTree->checkConsistency();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    newTree->checkInternalConsistency();
+#endif
     return newTree;
   }
+
   return newTree->cloneWithDepth(newDepth);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, BranchingBits, LockStripes>::diff(
-    MerkleTree<Hasher, BranchingBits, LockStripes>& other) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, BranchingBits>::diff(
+    MerkleTree<Hasher, BranchingBits>& other) {
   std::shared_lock<std::shared_mutex> guard1(_bufferLock);
   std::shared_lock<std::shared_mutex> guard2(other._bufferLock);
 
@@ -571,12 +598,12 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
     if (this->meta().rangeMax < other.meta().rangeMax) {
       // grow this to match other range
       guard1.unlock();
-      this->grow(other.meta().rangeMax - 1, "diffOurs");
+      this->grow(other.meta().rangeMax - 1);
       guard1.lock();
     } else {
       // grow other to match this range
       guard2.unlock();
-      other.grow(this->meta().rangeMax - 1, "diffOther");
+      other.grow(this->meta().rangeMax - 1);
       guard2.lock();
     }
     // loop to repeat check to make sure someone else didn't grow while we
@@ -619,10 +646,12 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
   return result;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::string MerkleTree<Hasher, BranchingBits, LockStripes>::toString(bool full) const {
-  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::string MerkleTree<Hasher, BranchingBits>::toString(bool full) const {
   std::string output;
+
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+
   if (full) {
     output.append("Merkle-tree ");
     output.append("- maxDepth: ");
@@ -641,8 +670,7 @@ std::string MerkleTree<Hasher, BranchingBits, LockStripes>::toString(bool full) 
     output.append(": [");
     for (std::uint64_t chunk = 0; chunk < nodeCountAtDepth(depth); ++chunk) {
       std::uint64_t index = this->index(chunk, depth);
-      std::unique_lock<std::mutex> guard(this->lock(index));
-      Node& node = this->node(index);
+      Node const& node = this->node(index);
       output.append("[");
       output.append(std::to_string(node.count));
       output.append(",");
@@ -655,10 +683,11 @@ std::string MerkleTree<Hasher, BranchingBits, LockStripes>::toString(bool full) 
   return output;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::serialize(velocypack::Builder& output,
-                                                               std::uint64_t maxDepth) const {
-  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::serialize(velocypack::Builder& output,
+                                                  std::uint64_t maxDepth) const {
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+
   TRI_ASSERT(output.isEmpty());
   char ridBuffer[arangodb::basics::maxUInt64StringSize];
   std::uint64_t depth = std::min(maxDepth, meta().maxDepth);
@@ -674,18 +703,18 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::serialize(velocypack::Build
   velocypack::ArrayBuilder nodeArrayGuard(&output, StaticStrings::RevisionTreeNodes);
   for (std::uint64_t index = 0; index < nodeCountUpToDepth(depth); ++index) {
     velocypack::ObjectBuilder nodeGuard(&output);
-    std::unique_lock<std::mutex> guard(this->lock(index));
-    Node& node = this->node(index);
+    Node const& node = this->node(index);
     output.add(StaticStrings::RevisionTreeHash,
                basics::HybridLogicalClock::encodeTimeStampToValuePair(node.hash, ridBuffer));
     output.add(StaticStrings::RevisionTreeCount, velocypack::Value(node.count));
   }
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::serializeBinary(std::string& output,
-                                                                     bool compress) const {
-  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
+                                                        bool compress) const {
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+
   TRI_ASSERT(output.empty());
   if (compress) {
     snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
@@ -698,16 +727,13 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::serializeBinary(std::string
   output.push_back(static_cast<char>(::CurrentVersion));
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
+template <typename Hasher, std::uint64_t const BranchingBits>
 std::vector<std::pair<std::uint64_t, std::uint64_t>>
-MerkleTree<Hasher, BranchingBits, LockStripes>::partitionKeys(std::uint64_t count) {
+MerkleTree<Hasher, BranchingBits>::partitionKeys(std::uint64_t count) const {
   std::vector<std::pair<std::uint64_t, std::uint64_t>> result;
+
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
-  std::uint64_t remaining = 0;
-  {
-    std::unique_lock<std::mutex> lock(this->lock(0));
-    remaining = node(0).count;
-  }
+  std::uint64_t remaining = node(0).count;
 
   if (count <= 1 || remaining == 0) {
     // special cases, just return full range
@@ -727,8 +753,7 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::partitionKeys(std::uint64_t coun
       chunk = nodeCountAtDepth(depth) - 1;
     }
     std::uint64_t index = offset + chunk;
-    std::unique_lock<std::mutex> guard(this->lock(index));
-    Node& node = this->node(index);
+    Node const& node = this->node(index);
     rangeCount += node.count;
     if (rangeCount >= targetCount || chunk == nodeCountAtDepth(depth) - 1) {
       auto [_, rangeEnd] = chunkRange(chunk, depth);
@@ -750,66 +775,79 @@ MerkleTree<Hasher, BranchingBits, LockStripes>::partitionKeys(std::uint64_t coun
   return result;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-MerkleTree<Hasher, BranchingBits, LockStripes>::MerkleTree(std::string_view buffer)
+template <typename Hasher, std::uint64_t const BranchingBits>
+MerkleTree<Hasher, BranchingBits>::MerkleTree(std::string_view buffer)
     : _buffer(new uint8_t[buffer.size()]) {
   if (buffer.size() < allocationSize(/*minDepth*/ 2)) {
     throw std::invalid_argument("Invalid (too small) buffer size for tree");
   }
   
-  // no lock necessary here
+  // no lock necessary here, as no other thread can see us yet
   std::memcpy(_buffer.get(), buffer.data(), buffer.size());
 
   if (buffer.size() != allocationSize(meta().maxDepth)) {
     throw std::invalid_argument("Unexpected buffer size for tree");
   }
 
-  checkConsistency();
+  checkInternalConsistency();
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-MerkleTree<Hasher, BranchingBits, LockStripes>::MerkleTree(
-    MerkleTree<Hasher, BranchingBits, LockStripes> const& other)
+template <typename Hasher, std::uint64_t const BranchingBits>
+MerkleTree<Hasher, BranchingBits>::MerkleTree(MerkleTree<Hasher, BranchingBits> const& other)
     : _buffer(new uint8_t[allocationSize(other.meta().maxDepth)]) {
-  
-  // no lock necessary here
+  // this is a protected constructor, and we get here only via clone() or cloneWithDepth().
+  // in this case  other  is already properly locked
+
+  // no lock necessary here for ourselves, as no other thread can see us yet
   new (&meta()) Meta{other.meta().rangeMin, other.meta().rangeMax, other.meta().maxDepth};
 
   std::uint64_t const last = nodeCountUpToDepth(meta().maxDepth);
   for (std::uint64_t i = 0; i < last; ++i) {
-    std::unique_lock<std::mutex> nodeGuard(other.lock(i));
     new (&this->node(i)) Node{other.node(i).hash, other.node(i).count};
   }
 
-  checkConsistency();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  checkInternalConsistency();
+
+  TRI_ASSERT(meta().maxDepth == other.meta().maxDepth);
+  TRI_ASSERT(meta().rangeMin == other.meta().rangeMin);
+  TRI_ASSERT(meta().rangeMax == other.meta().rangeMax);
+  
+  for (std::uint64_t i = 0; i < last; ++i) {
+    TRI_ASSERT(this->node(i) == other.node(i));
+  }
+#endif
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-typename MerkleTree<Hasher, BranchingBits, LockStripes>::Meta&
-MerkleTree<Hasher, BranchingBits, LockStripes>::meta() const {
+template <typename Hasher, std::uint64_t const BranchingBits>
+typename MerkleTree<Hasher, BranchingBits>::Meta&
+MerkleTree<Hasher, BranchingBits>::meta() const noexcept {
   // not thread-safe, lock buffer from outside
   TRI_ASSERT(_buffer);
   return *reinterpret_cast<Meta*>(_buffer.get());
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-typename MerkleTree<Hasher, BranchingBits, LockStripes>::Node&
-MerkleTree<Hasher, BranchingBits, LockStripes>::node(std::uint64_t index) const {
+template <typename Hasher, std::uint64_t const BranchingBits>
+typename MerkleTree<Hasher, BranchingBits>::Node&
+MerkleTree<Hasher, BranchingBits>::node(std::uint64_t index) noexcept {
   // not thread-safe, lock buffer from outside
   TRI_ASSERT(index < nodeCountUpToDepth(meta().maxDepth));
   uint8_t* ptr = _buffer.get() + MetaSize + (NodeSize * index);
   return *reinterpret_cast<Node*>(ptr);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::mutex& MerkleTree<Hasher, BranchingBits, LockStripes>::lock(std::uint64_t index) const {
-  Hasher h;
-  return _nodeLocks[h.hash(index) % LockStripes];
+template <typename Hasher, std::uint64_t const BranchingBits>
+typename MerkleTree<Hasher, BranchingBits>::Node const&
+MerkleTree<Hasher, BranchingBits>::node(std::uint64_t index) const noexcept {
+  // not thread-safe, lock buffer from outside
+  TRI_ASSERT(index < nodeCountUpToDepth(meta().maxDepth));
+  uint8_t const* ptr = _buffer.get() + MetaSize + (NodeSize * index);
+  return *reinterpret_cast<Node const*>(ptr);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::index(std::uint64_t key,
-                                                                    std::uint64_t depth) const {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::uint64_t MerkleTree<Hasher, BranchingBits>::index(std::uint64_t key,
+                                                       std::uint64_t depth) const noexcept {
   // not thread-safe, lock buffer from outside
   TRI_ASSERT(depth <= meta().maxDepth);
   TRI_ASSERT(key >= meta().rangeMin);
@@ -829,34 +867,35 @@ std::uint64_t MerkleTree<Hasher, BranchingBits, LockStripes>::index(std::uint64_
   return chunk + nodeCountUpToDepth(depth - 1);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::modify(std::uint64_t key, bool isInsert) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::modify(std::uint64_t key, bool isInsert) {
   // not thread-safe, shared-lock buffer from outside
   Hasher h;
   std::uint64_t const value = h.hash(key);
   for (std::uint64_t depth = 0; depth <= meta().maxDepth; ++depth) {
-    bool success = modifyLocal(depth, key, value, isInsert, /*doLock*/ true);
-    if (!success) {
+    bool success = modifyLocal(depth, key, value, isInsert);
+    if (ADB_UNLIKELY(!success)) {
       // roll back the changes we already made, using best effort
       for (std::uint64_t d = 0; d < depth; ++d) {
-        [[maybe_unused]] bool rolledBack = modifyLocal(d, key, value, !isInsert, /*doLock*/ true);
+        [[maybe_unused]] bool rolledBack = modifyLocal(d, key, value, !isInsert);
       }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      checkInternalConsistency();
+#endif
       throw std::invalid_argument("Tried to remove key that is not present.");
     }
   }
-  checkConsistency();
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::modify(std::vector<std::uint64_t> const& keys,
-                                                            bool isInsert) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::modify(std::vector<std::uint64_t> const& keys,
+                                               bool isInsert) {
   // not thread-safe, unique-lock buffer from outside
   Hasher h;
-  bool success = true;
-  for (std::uint64_t depth = 0; depth <= meta().maxDepth && success; ++depth) {
+  for (std::uint64_t depth = 0; depth <= meta().maxDepth; ++depth) {
     for (std::uint64_t key : keys) {
-      success = modifyLocal(depth, key, h.hash(key), isInsert, /*doLock*/ false);
-      if (!success) {
+      bool success = modifyLocal(depth, key, h.hash(key), isInsert);
+      if (ADB_UNLIKELY(!success)) {
         // roll back the changes we already made, using best effort
         for (std::uint64_t d = 0; d <= depth; ++d) {
           for (std::uint64_t k : keys) {
@@ -865,33 +904,28 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::modify(std::vector<std::uin
               break;
             }
             [[maybe_unused]] bool rolledBack =
-                modifyLocal(d, k, h.hash(k), !isInsert, /*doLock*/ false);
+                modifyLocal(d, k, h.hash(k), !isInsert);
           }
         }
-        break;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        checkInternalConsistency();
+#endif
+        throw std::invalid_argument("Tried to remove key that is not present.");
       }
     }
   }
-  checkConsistency();
-  if (!success) {
-    throw std::invalid_argument("Tried to remove key that is not present.");
-  }
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-bool MerkleTree<Hasher, BranchingBits, LockStripes>::modifyLocal(
-    std::uint64_t depth, std::uint64_t key, std::uint64_t value, bool isInsert, bool doLock) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+bool MerkleTree<Hasher, BranchingBits>::modifyLocal(
+    std::uint64_t depth, std::uint64_t key, std::uint64_t value, bool isInsert) {
   // only use via modify
   std::uint64_t index = this->index(key, depth);
   Node& node = this->node(index);
-  std::unique_lock<std::mutex> lock(this->lock(index), std::defer_lock);
-  if (doLock) {
-    lock.lock();
-  }
   if (isInsert) {
     ++node.count;
   } else {
-    if (node.count == 0) {
+    if (ADB_UNLIKELY(node.count == 0)) {
       return false;
     }
     --node.count;
@@ -901,13 +935,9 @@ bool MerkleTree<Hasher, BranchingBits, LockStripes>::modifyLocal(
   return true;
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::grow(std::uint64_t key, char const* context) {
-  // context is here for debugging only
-  TRI_ASSERT(context != nullptr);
-
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::grow(std::uint64_t key) {
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
-  // no need to lock nodes as we have an exclusive lock on the buffer
 
   std::uint64_t rangeMin = meta().rangeMin;
   std::uint64_t rangeMax = meta().rangeMax;
@@ -919,24 +949,13 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::grow(std::uint64_t key, cha
     return;
   }
 
-  std::uint64_t factor = 0;
-  try {
-    factor = minimumFactorFor(rangeMax - rangeMin, key - rangeMin);
-  } catch (...) {
-    LOG_TOPIC("15384", WARN, Logger::ENGINES)
-        << "invalid tree grow command. key: " << key 
-        << ", rangeMin: " << rangeMin
-        << ", rangeMax: " << rangeMax
-        << ", maxDepth: " << meta().maxDepth
-        << ", context: " << context;
-    throw;
-  }
+  std::uint64_t factor = minimumFactorFor(rangeMax - rangeMin, key - rangeMin);
+  TRI_ASSERT(factor != 0);
+  TRI_ASSERT(NumberUtils::isPowerOf2(factor));
   
   if (!NumberUtils::isPowerOf2(factor)) {
     throw std::invalid_argument("Expecting factor to be power of 2");
   }
-
-  TRI_ASSERT(factor != 0);
 
   for (std::uint64_t depth = 1; depth <= meta().maxDepth; ++depth) {
     // iterate over all nodes and left-combine, (skipping the first, identity)
@@ -953,32 +972,33 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::grow(std::uint64_t key, cha
   }
 
   meta().rangeMax = rangeMin + ((rangeMax - rangeMin) * factor);
+
   TRI_ASSERT(meta().rangeMin < meta().rangeMax);
   TRI_ASSERT(key < meta().rangeMax);
 
-  checkConsistency();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  checkInternalConsistency();
+#endif
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-bool MerkleTree<Hasher, BranchingBits, LockStripes>::equalAtIndex(
-    MerkleTree<Hasher, BranchingBits, LockStripes> const& other, std::uint64_t index) const {
+template <typename Hasher, std::uint64_t const BranchingBits>
+bool MerkleTree<Hasher, BranchingBits>::equalAtIndex(
+    MerkleTree<Hasher, BranchingBits> const& other, std::uint64_t index) const noexcept {
   // not fully thread-safe, lock nodes from outside
-  std::unique_lock<std::mutex> lock1(this->lock(index));
-  std::unique_lock<std::mutex> lock2(other.lock(index));
   return (this->node(index) == other.node(index));
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-bool MerkleTree<Hasher, BranchingBits, LockStripes>::childrenAreLeaves(std::uint64_t index) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+bool MerkleTree<Hasher, BranchingBits>::childrenAreLeaves(std::uint64_t index) const noexcept {
   // not thread-safe, lock buffer from outside
   std::uint64_t maxDepth = meta().maxDepth;
   return index >= nodeCountUpToDepth(maxDepth - 2) &&
          index < nodeCountUpToDepth(maxDepth - 1);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-std::pair<std::uint64_t, std::uint64_t> MerkleTree<Hasher, BranchingBits, LockStripes>::chunkRange(
-    std::uint64_t chunk, std::uint64_t depth) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::pair<std::uint64_t, std::uint64_t> MerkleTree<Hasher, BranchingBits>::chunkRange(
+    std::uint64_t chunk, std::uint64_t depth) const {
   // not thread-safe, lock buffer from outside
   std::uint64_t rangeMin = meta().rangeMin;
   std::uint64_t rangeMax = meta().rangeMax;
@@ -988,8 +1008,8 @@ std::pair<std::uint64_t, std::uint64_t> MerkleTree<Hasher, BranchingBits, LockSt
                         rangeMin + (chunkSizeAtDepth * (chunk + 1)) - 1);
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
-void MerkleTree<Hasher, BranchingBits, LockStripes>::checkConsistency() const {
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::checkInternalConsistency() const {
   // not thread-safe, lock buffer from outside
   if (!_buffer) {
     return;
@@ -1020,7 +1040,6 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::checkConsistency() const {
     std::uint64_t hash = 0;
 
     for (std::uint64_t i = 0; i < nodeCountAtDepth(d); ++i) {
-      std::unique_lock<std::mutex> lock(this->lock(offset + i));
       Node const& n = this->node(offset + i);
       count += n.count;
       hash ^= n.hash;
@@ -1037,15 +1056,15 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::checkConsistency() const {
   }
 }
 
-template <typename Hasher, std::uint64_t const BranchingBits, std::uint64_t const LockStripes>
+template <typename Hasher, std::uint64_t const BranchingBits>
 std::ostream& operator<<(std::ostream& stream,
-                         MerkleTree<Hasher, BranchingBits, LockStripes> const& tree) {
+                         MerkleTree<Hasher, BranchingBits> const& tree) {
   return stream << tree.toString(true);
 }
 
 /// INSTANTIATIONS
-template class MerkleTree<FnvHashProvider, 3, 64>;
-template std::ostream& operator<<(std::ostream& stream, MerkleTree<FnvHashProvider, 3, 64> const&);
+template class MerkleTree<FnvHashProvider, 3>;
+template std::ostream& operator<<(std::ostream& stream, MerkleTree<FnvHashProvider, 3> const&);
 
 }  // namespace containers
 }  // namespace arangodb

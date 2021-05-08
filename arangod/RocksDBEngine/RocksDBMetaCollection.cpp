@@ -531,6 +531,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
 Result RocksDBMetaCollection::rebuildRevisionTree() {
   return basics::catchToResult([this]() -> Result {
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
+
     auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
     SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
     Result res = trx.begin();
@@ -554,7 +555,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     }
     RevisionReplicationIterator& it =
         *static_cast<RevisionReplicationIterator*>(iter.get());
+    
     auto newTree = allocateEmptyRevisionTree();
+    
     while (it.hasMore()) {
       revisions.emplace_back(it.revision().id());
       if (revisions.size() >= 5000) {  // arbitrary batch size
@@ -575,9 +578,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 }
 
 void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter) {
-  auto newTree = allocateEmptyRevisionTree();
-
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  
+  auto newTree = allocateEmptyRevisionTree();
 
   // okay, we are in recovery and can't open a transaction, so we need to
   // read the raw RocksDB data; on the plus side, we are in recovery, so we
@@ -777,6 +780,10 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         _revisionTree->remove(removals);
       }
     }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _revisionTree->checkConsistency();
+#endif
   });
   rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
   while (commitSeq > applied) {
