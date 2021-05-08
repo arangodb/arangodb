@@ -123,7 +123,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
  private:
   ErrorCode doLock(double timeout, AccessMode::Type mode);
   bool haveBufferedOperations() const;
-  std::size_t revisionTreeDepth() const;
   std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree() const;
   void ensureRevisionTree();
 
@@ -133,6 +132,13 @@ class RocksDBMetaCollection : public PhysicalCollection {
   mutable basics::ReadWriteLock _exclusiveLock;
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;
+
+  /// @brief depth for all revision trees. 
+  /// depth is large from the beginning so that the trees are always
+  /// large enough to handle large collections and do not need resizing.
+  /// as the combined RAM usage for all such trees would be prohibitive,
+  /// we may hold some of the trees in memory only in a compressed variant.
+  static constexpr std::size_t revisionTreeDepth = 6;
 
  private:
   std::atomic<uint64_t> _objectId;  /// rocksdb-specific object id for collection

@@ -315,8 +315,8 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
     throw std::invalid_argument("rangeMax must be larger than rangeMin");
   }
  
-  //TRI_ASSERT(((rangeMax - rangeMin) / nodeCountAtDepth(maxDepth)) * nodeCountAtDepth(maxDepth) ==
-  //           (rangeMax - rangeMin));
+  TRI_ASSERT(((rangeMax - rangeMin) / nodeCountAtDepth(maxDepth)) * nodeCountAtDepth(maxDepth) ==
+             (rangeMax - rangeMin));
   
   // no lock necessary here
   _buffer.reset(new uint8_t[allocationSize(maxDepth)]);
@@ -551,11 +551,16 @@ MerkleTree<Hasher, BranchingBits>::cloneWithDepth(std::uint64_t newDepth) const 
   // time, recursively. Typically we'll only be requesting to grow one level
   // deeper at a time anyway, and we should very, very rarely be growing more
   // than a couple levels at a time.
+  std::uint64_t newRangeMax =
+      meta().rangeMin + ((meta().rangeMax - meta().rangeMin) * BranchingFactor);
+ 
+  TRI_ASSERT(newRangeMax > meta().rangeMin);
+  TRI_ASSERT(newRangeMax > meta().rangeMax);
 
   auto newTree = 
       std::make_unique<MerkleTree<Hasher, BranchingBits>>(newDepth,
                                                           meta().rangeMin,
-                                                          meta().rangeMax);
+                                                          newRangeMax);
   
   {
     for (std::uint64_t d = 0; d <= meta().maxDepth; ++d) {
@@ -574,8 +579,6 @@ MerkleTree<Hasher, BranchingBits>::cloneWithDepth(std::uint64_t newDepth) const 
     Node& m = newTree->node(0);
     m = n;
   }
-
-  newTree->leftCombine(2);
 
   if (newDepth == meta().maxDepth + 1) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

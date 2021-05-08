@@ -353,6 +353,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
+
   if (!_revisionTree && !haveBufferedOperations()) {
     return allocateEmptyRevisionTree();  // collection empty
   }
@@ -988,70 +989,15 @@ bool RocksDBMetaCollection::haveBufferedOperations() const {
   return false;
 }
 
-std::size_t RocksDBMetaCollection::revisionTreeDepth() const {
-  std::size_t const treeCount = _revisionTree ? _revisionTree->count() : 0;
-  std::size_t bufferInserts = 0;
-  std::size_t bufferRemovals = 0;
-  {
-    std::unique_lock<std::mutex> guard(_revisionBufferLock);
-
-    rocksdb::SequenceNumber ignoreSeq = 0;
-    if (!_revisionTruncateBuffer.empty()) {
-      auto it = _revisionTruncateBuffer.rbegin();
-      if (it != _revisionTruncateBuffer.rend()) {
-        ignoreSeq = *it;
-      }
-    }
-
-    for (auto& pair : _revisionInsertBuffers) {
-      if (pair.first <= ignoreSeq) {
-        continue;
-      }
-
-      bufferInserts += pair.second.size();
-    }
-
-    for (auto& pair : _revisionRemovalBuffers) {
-      if (pair.first <= ignoreSeq) {
-        continue;
-      }
-
-      bufferRemovals += pair.second.size();
-    }
-  }
-
-  constexpr std::size_t minDepth = 3;
-  constexpr std::size_t maxDepth = 6;
-  std::size_t const treeDepth = _revisionTree ? _revisionTree->maxDepth() : minDepth;
-
-  if (treeDepth < maxDepth && bufferInserts > bufferRemovals) {
-    std::size_t const count = treeCount + bufferInserts - bufferRemovals;
-    std::size_t targetDepth = treeDepth;
-    while (targetDepth < maxDepth &&
-           count > 8 * containers::RevisionTree::nodeCountAtDepth(targetDepth)) {
-      ++targetDepth;
-    }
-    return targetDepth;
-  }
-
-  return treeDepth;
-}
-
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRevisionTree() const {
   // should have _revisionTreeLock held outside
   return std::make_unique<containers::RevisionTree>(
-      revisionTreeDepth(), _logicalCollection.minRevision().id());
+      revisionTreeDepth, _logicalCollection.minRevision().id());
 }
 
 void RocksDBMetaCollection::ensureRevisionTree() {
-  if (_revisionTree) {
-    std::size_t targetDepth = revisionTreeDepth();
-    if (_revisionTree->maxDepth() < targetDepth) {
-      // grow tree
-      auto newTree = _revisionTree->cloneWithDepth(targetDepth);
-      _revisionTree = std::move(newTree);
-    }
-  } else {
+  // should have _revisionTreeLock held outside
+  if (!_revisionTree) {
     auto& selector =
         _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
     auto& engine = selector.engine<RocksDBEngine>();
@@ -1062,4 +1008,5 @@ void RocksDBMetaCollection::ensureRevisionTree() {
   }
 
   TRI_ASSERT(_revisionTree != nullptr);
+  TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
 }
