@@ -788,7 +788,7 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
           while (p < e && *p == 0x00U) {
             ++p;
             ++run;
-            if (run == 16384) {
+            if (run == 0xffffU) {
               break;
             }
           }
