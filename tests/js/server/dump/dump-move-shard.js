@@ -110,8 +110,6 @@ function dumpTestSuite () {
         done.forEach( function(jobId) { pending.remove(jobId); });
         require("internal").sleep(0.25);
       }
-
-      assertTrue(true);
     },
 
   };
