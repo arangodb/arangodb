@@ -174,6 +174,11 @@ class MerkleTree {
   std::uint64_t maxDepth() const;
 
   /**
+   * @brief Returns the number of bytes allocated for the tree
+   */
+  std::uint64_t byteSize() const;
+
+  /**
    * @brief Insert a value into the tree. May trigger a resize.
    *
    * @param key   The key for the item. If it is less than the minimum specified

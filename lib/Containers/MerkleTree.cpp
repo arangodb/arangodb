@@ -56,8 +56,9 @@
 
 namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
-static constexpr char CompressedCurrent = '1';
+static constexpr char CompressedSnappyCurrent = '1';
 static constexpr char UncompressedCurrent = '2';
+static constexpr char CompressedRLECurrent = '3';
 }  // namespace
 
 namespace arangodb {
@@ -176,20 +177,55 @@ std::uint64_t MerkleTree<Hasher, BranchingBits>::defaultRange(std::uint64_t maxD
 template <typename Hasher, std::uint64_t const BranchingBits>
 std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
 MerkleTree<Hasher, BranchingBits>::fromBuffer(std::string_view buffer) {
-  bool compressed = false;
   std::uint8_t version = static_cast<uint8_t>(buffer[buffer.size() - 1]);
-  if (version == 0x01) {
-    compressed = ::CompressedCurrent == buffer[buffer.size() - 2];
-  } else {
+  if (version != ::CurrentVersion || buffer.size() < MetaSize + 2) {
     throw std::invalid_argument(
         "Buffer does not contain a properly versioned tree.");
   }
-
+  
   std::string scratch;
-  if (compressed) {
+  if (buffer[buffer.size() - 2] == ::CompressedSnappyCurrent) {
+    // compressed data
     snappy::Uncompress(buffer.data(), buffer.size() - 2, &scratch);
     buffer = std::string_view(scratch);
+  } else if (buffer[buffer.size() - 2] == ::CompressedRLECurrent) {
+    char const* p = buffer.data();
+    char const* e = p + buffer.size() - 2;
+
+    scratch.reserve(8192);
+    while (p < e) {
+      uint8_t c = (uint8_t) *p;
+      if (c == 0xffU) {
+        ++p;
+        if (p < e) {
+          c = (uint8_t) *p;
+          if (c == 0xffU) {
+            scratch.push_back(0xffU);
+          } else {
+            uint16_t run = c;
+            if (c == 0xfeU) {
+              ++p;
+              c = (uint8_t) *p;
+              run = c;
+              ++p;
+              c = (uint8_t) *p;
+              run |= (c << 8U);
+            }
+
+            for (uint16_t i = 0; i < run; ++i) {
+              scratch.push_back(0x00U);
+            }
+          }
+        }
+      } else {
+        scratch.push_back(c);
+      }
+      ++p;
+    }  
+
+    buffer = std::string_view(scratch);
   } else {
+    // uncompressed data or empty tree
     buffer = std::string_view(buffer.data(), buffer.size() - 2);
   }
 
@@ -329,6 +365,9 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(this->node(0).count == 0);
+  TRI_ASSERT(this->node(0).hash == 0);
+
 #ifdef PARANOID_TREE_CHECKS
   // checking an empty tree is overyl paranoid and only wastes
   // cycles, so we only do it if absolutely necessary
@@ -397,6 +436,12 @@ template <typename Hasher, std::uint64_t const BranchingBits>
 std::uint64_t MerkleTree<Hasher, BranchingBits>::maxDepth() const {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   return meta().maxDepth;
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::uint64_t MerkleTree<Hasher, BranchingBits>::byteSize() const {
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+  return allocationSize(meta().maxDepth);
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
@@ -518,6 +563,8 @@ std::unique_ptr<MerkleTree<Hasher, BranchingBits>> MerkleTree<Hasher, BranchingB
 template <typename Hasher, std::uint64_t const BranchingBits>
 std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
 MerkleTree<Hasher, BranchingBits>::cloneWithDepth(std::uint64_t newDepth) const {
+  // arangod does not call this method!
+
   // acquire the read-lock here to protect ourselves from concurrent modifications
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   
@@ -722,10 +769,52 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
 
   TRI_ASSERT(output.empty());
+    
   if (compress) {
-    snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
-                     allocationSize(meta().maxDepth), &output);
-    output.push_back(::CompressedCurrent);
+    if (this->node(0).count < 10'000) {
+      uint8_t const* p = _buffer.get();
+      uint8_t const* e = p + allocationSize(meta().maxDepth);
+
+      while (p < e) {
+        if (*p == 0xffU) {
+          output.push_back(0xffU);
+          output.push_back(0xffU);
+          ++p;
+        } else if (*p != 0x00U) {
+          output.push_back(*p);
+          ++p;
+        } else {
+          uint16_t run = 0;
+          while (p < e && *p == 0x00U) {
+            ++p;
+            ++run;
+            if (run == 16384) {
+              break;
+            }
+          }
+          if (run > 0xfdU) {
+            output.push_back(0xffU);
+            output.push_back(0xfeU);
+            output.push_back(run & 0xffU);
+            output.push_back((run & 0xff00U) >> 8U);
+          } else if (run > 2) {
+            output.push_back(0xffU);
+            output.push_back(run);
+          } else {
+            output.push_back(0x00U);
+            if (run == 2) {
+              output.push_back(0x00U);
+            }
+          }
+        }
+      }
+
+      output.push_back(::CompressedRLECurrent);
+    } else {
+      snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
+                       allocationSize(meta().maxDepth), &output);
+      output.push_back(::CompressedSnappyCurrent);
+    }
   } else {
     output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
     output.push_back(::UncompressedCurrent);
@@ -794,8 +883,6 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::string_view buffer)
   if (buffer.size() != allocationSize(meta().maxDepth)) {
     throw std::invalid_argument("Unexpected buffer size for tree");
   }
-
-  checkInternalConsistency();
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
@@ -930,6 +1017,7 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(
   // only use via modify
   std::uint64_t index = this->index(key, depth);
   Node& node = this->node(index);
+  
   if (isInsert) {
     ++node.count;
   } else {
@@ -983,7 +1071,15 @@ void MerkleTree<Hasher, BranchingBits>::grow(std::uint64_t key) {
     throw std::invalid_argument("Expecting factor to be power of 2");
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::uint64_t count = this->node(0).count;
+#endif 
+
   leftCombine(factor);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(count == this->node(0).count);
+#endif 
 
   meta().rangeMax = rangeMin + ((rangeMax - rangeMin) * factor);
 

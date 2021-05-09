@@ -416,11 +416,13 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
   // Step 4. store the revision tree
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
+    output.clear();
+      
+    rocksdb::SequenceNumber seq =
+        rcoll->serializeRevisionTree(output, maxCommitSeq, force);
+    appliedSeq = std::min(appliedSeq, seq);
+
     if (coll.useSyncByRevision()) {
-      output.clear();
-      rocksdb::SequenceNumber seq =
-          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
-      appliedSeq = std::min(appliedSeq, seq);
       if (!output.empty()) {
         rocksutils::uint64ToPersistent(output, seq);
 
@@ -444,10 +446,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
             << "collection with objectId '" << rcoll->objectId() << "'";
       }
     } else {
-      output.clear();
-      rocksdb::SequenceNumber seq =
-          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
-      appliedSeq = std::min(appliedSeq, seq);
       TRI_ASSERT(output.empty());
       key.constructRevisionTreeValue(rcoll->objectId());
       rocksdb::Status s = batch.Delete(cf, key.string());
@@ -468,6 +466,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
         << "collection with objectId '" << rcoll->objectId() << "'";
     rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
     appliedSeq = std::min(appliedSeq, seq);
+        
+    rcoll->hibernateRevisionTree();
   }
 
   return res;
@@ -606,6 +606,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
           std::string_view(value.data(), value.size() - sizeof(uint64_t)));
 
       if (tree) {
+        tree->checkConsistency();
+
         uint64_t seq = rocksutils::uint64FromPersistent(
             value.data() + value.size() - sizeof(uint64_t));
         // we may have skipped writing out the tree because it hadn't changed,

@@ -333,32 +333,40 @@ void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::Revision
                                             uint64_t seq) {
   TRI_ASSERT(_logicalCollection.useSyncByRevision());
   TRI_ASSERT(_logicalCollection.syncByRevision());
-  TRI_ASSERT(tree);
+  TRI_ASSERT(tree != nullptr);
+  TRI_ASSERT(tree->maxDepth() == revisionTreeDepth);
+  
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  _revisionTree = std::move(tree);
+  _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(tree));
   _revisionTreeApplied.store(seq);
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = seq;
 }
 
-std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(transaction::Methods& trx) {
+std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
+    std::function<std::unique_ptr<containers::RevisionTree>(std::unique_ptr<containers::RevisionTree>)> const& callback) {
   if (!_logicalCollection.useSyncByRevision()) {
     return nullptr;
   }
 
-  // first apply any updates that can be safely applied
   RocksDBEngine& engine =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
+
+  // first apply any updates that can be safely applied
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
   if (!_revisionTree && !haveBufferedOperations()) {
-    return allocateEmptyRevisionTree();  // collection empty
+    // we only need to return an empty tree here.
+    // TODO: check if we can get away with returning a very small tree here
+    return allocateEmptyRevisionTree(2); 
   }
 
   applyUpdates(safeSeq);
+  TRI_ASSERT(_revisionTree != nullptr);
+  TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
   auto tree = _revisionTree->clone();
@@ -366,7 +374,11 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
     return nullptr;
   }
 
-  {
+  return callback(std::move(tree));
+}
+
+std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(transaction::Methods& trx) {
+  return revisionTree([this, &trx](std::unique_ptr<containers::RevisionTree> tree) -> std::unique_ptr<containers::RevisionTree> {
     // apply any which are buffered and older than our ongoing transaction start
     rocksdb::SequenceNumber trxSeq = RocksDBTransactionState::toState(&trx)->beginSeq();
     TRI_ASSERT(trxSeq != 0);
@@ -374,46 +386,23 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
     if (res.fail()) {
       return nullptr;
     }
-  }
 
-  {
     // now peek at updates buffered inside transaction and apply those too
     auto operations = RocksDBTransactionState::toState(&trx)->trackedOperations(
         _logicalCollection.id());
+        
     tree->insert(operations.inserts);
     tree->remove(operations.removals);
-  }
 
-  return tree;
+    return tree;
+  });
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(uint64_t batchId) {
-  if (!_logicalCollection.useSyncByRevision()) {
-    return nullptr;
-  }
+  return revisionTree([this, batchId](std::unique_ptr<containers::RevisionTree> tree) -> std::unique_ptr<containers::RevisionTree> {
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
 
-  EngineSelectorFeature& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
-  rocksdb::DB* db = engine.db()->GetRootDB();
-  
-  // first apply any updates that can be safely applied
-  rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
-
-  std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  if (!_revisionTree && !haveBufferedOperations()) {
-    return allocateEmptyRevisionTree();  // collection empty
-  }
-
-  applyUpdates(safeSeq);
-
-  // now clone the tree so we can apply all updates consistent with our ongoing trx
-  auto tree = _revisionTree->clone();
-  if (!tree) {
-    return nullptr;
-  }
-
-  {
     // apply any which are buffered and older than our ongoing transaction start
     RocksDBReplicationManager* manager = engine.replicationManager();
     RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
@@ -427,9 +416,9 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
     if (res.fail()) {
       return nullptr;
     }
-  }
 
-  return tree;
+    return tree;
+  });
 }
 
 bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const {
@@ -503,11 +492,17 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
 rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     std::string& output, rocksdb::SequenceNumber commitSeq, bool force) {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
+
   if (_logicalCollection.useSyncByRevision()) {
     if (!_revisionTree && !haveBufferedOperations()) {  // empty collection
       return commitSeq;
     }
     applyUpdates(commitSeq);  // always apply updates...
+ 
+    // applyUpdates will make sure we will have a valid tree
+    TRI_ASSERT(_revisionTree != nullptr);
+    TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
+
     bool neverDone = _revisionTreeSerializedSeq == _revisionTreeCreationSeq;
     bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
     bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
@@ -517,7 +512,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
       return _revisionTreeSerializedSeq;
     }
     if (force || neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
-      _revisionTree->serializeBinary(output, true);
+      _revisionTree->serializeBinary(output);
       _revisionTreeSerializedSeq = commitSeq;
       _revisionTreeSerializedTime = std::chrono::steady_clock::now();
     }
@@ -545,7 +540,6 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     }
     auto* state = RocksDBTransactionState::toState(&trx);
 
-    std::vector<std::uint64_t> revisions;
     auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
     if (!iter) {
       LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
@@ -557,11 +551,14 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     RevisionReplicationIterator& it =
         *static_cast<RevisionReplicationIterator*>(iter.get());
     
-    auto newTree = allocateEmptyRevisionTree();
+    std::vector<std::uint64_t> revisions;
+    revisions.resize(1024);
+    
+    auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
     
     while (it.hasMore()) {
       revisions.emplace_back(it.revision().id());
-      if (revisions.size() >= 5000) {  // arbitrary batch size
+      if (revisions.size() >= 4096) {  // arbitrary batch size
         newTree->insert(revisions);
         revisions.clear();
       }
@@ -570,7 +567,12 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     if (!revisions.empty()) {
       newTree->insert(revisions);
     }
-    _revisionTree = std::move(newTree);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    newTree->checkConsistency();
+#endif
+
+    _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree));
     _revisionTreeApplied = state->beginSeq();
     _revisionTreeCreationSeq = state->beginSeq();
     _revisionTreeSerializedSeq = state->beginSeq();
@@ -581,7 +583,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter) {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   
-  auto newTree = allocateEmptyRevisionTree();
+  auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
 
   // okay, we are in recovery and can't open a transaction, so we need to
   // read the raw RocksDB data; on the plus side, we are in recovery, so we
@@ -597,16 +599,19 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   ro.iterate_upper_bound = &end;
   ro.fill_cache = false;
 
-  std::vector<std::uint64_t> revisions;
   auto& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   auto* db = engine.db();
+  
+  std::vector<std::uint64_t> revisions;
+  revisions.reserve(1024);
+  
   for (iter->Seek(documentBounds.start());
        iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
     revisions.emplace_back(docId.id());
-    if (revisions.size() >= 5000) {  // arbitrary batch size
+    if (revisions.size() >= 4096) {  // arbitrary batch size
       newTree->insert(revisions);
       revisions.clear();
     }
@@ -615,8 +620,12 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
     newTree->insert(revisions);
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    newTree->checkConsistency();
+#endif
+
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
-  _revisionTree = std::move(newTree);
+  _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree));
   _revisionTreeApplied.store(seq);
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = seq;
@@ -664,6 +673,7 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
     return;
   }
 
+
   TRI_ASSERT(!inserts.empty() || !removals.empty());
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
@@ -690,18 +700,24 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
   return res;
 }
 
-void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
-  if (!_logicalCollection.useSyncByRevision()) {
-    return;
-  }
+void RocksDBMetaCollection::hibernateRevisionTree() {
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
-  if (!_revisionTree && !haveBufferedOperations()) {
-    return;  // collection empty
+  if (_revisionTree && !haveBufferedOperations()) {
+    _revisionTree->hibernate();
   }
+}
+
+void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
+  // should have _revisionTreeLock held outside
+    
+  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+  TRI_ASSERT(_revisionTree || haveBufferedOperations());
 
   // make sure we will have a _revisionTree ready after this
   ensureRevisionTree();
   TRI_ASSERT(_revisionTree != nullptr);
+  TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
 
   Result res = basics::catchVoidToResult([&]() -> void {
     std::unique_lock<std::mutex> guard(_revisionBufferLock);
@@ -738,7 +754,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         // we can clear the revision tree without holding the mutex here
         guard.unlock();
         // clear out any revision structure, now empty
-        _revisionTree->clear();  
+        _revisionTree->clear();
 
         guard.lock();
       }
@@ -759,7 +775,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
       bool applyInserts =
             haveInserts && (!haveRemovals || removeIt->first >= insertIt->first);
       bool applyRemovals = haveRemovals && !applyInserts;
-      
+  
       // no inserts or removals left to apply, drop out of loop
       if (!applyInserts && !applyRemovals) {
         break;
@@ -805,15 +821,21 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         removeIt = _revisionRemovalBuffers.erase(removeIt);
       }
     }
+  });
+
+  if (res.ok()) {
+    rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
+    while (commitSeq > applied) {
+      _revisionTreeApplied.compare_exchange_strong(applied, commitSeq);
+    }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // TODO: remove this cherk because it is very expensive
     _revisionTree->checkConsistency();
 #endif
-  });
-  rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
-  while (commitSeq > applied) {
-    _revisionTreeApplied.compare_exchange_strong(applied, commitSeq);
+  } else {
+    LOG_TOPIC("fdfa7", WARN, Logger::ENGINES)
+        << "unable to apply updates: " << res.errorMessage();
   }
 }
 
@@ -965,9 +987,7 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
 }
 
 bool RocksDBMetaCollection::haveBufferedOperations() const {
-  if (!_logicalCollection.useSyncByRevision()) {
-    return false;
-  }
+  TRI_ASSERT(_logicalCollection.useSyncByRevision());
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
 
@@ -989,24 +1009,143 @@ bool RocksDBMetaCollection::haveBufferedOperations() const {
   return false;
 }
 
-std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRevisionTree() const {
+std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRevisionTree(std::size_t depth) const {
   // should have _revisionTreeLock held outside
-  return std::make_unique<containers::RevisionTree>(
-      revisionTreeDepth, _logicalCollection.minRevision().id());
+  return std::make_unique<containers::RevisionTree>(depth, _logicalCollection.minRevision().id());
 }
 
 void RocksDBMetaCollection::ensureRevisionTree() {
   // should have _revisionTreeLock held outside
-  if (!_revisionTree) {
+  if (_revisionTree == nullptr) {
     auto& selector =
         _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
     auto& engine = selector.engine<RocksDBEngine>();
-    auto newTree = allocateEmptyRevisionTree();
+
+    auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
+    TRI_ASSERT(newTree->maxDepth() == revisionTreeDepth);
+
+    _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree));
     _revisionTreeCreationSeq = engine.db()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
-    _revisionTree = std::move(newTree);
   }
 
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
 }
+
+/// @brief construct from revision tree
+RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(std::unique_ptr<containers::RevisionTree> tree) 
+    : _tree(std::move(tree)),
+      _maxDepth(_tree->maxDepth()),
+      _compressible(true) {
+  TRI_ASSERT(_maxDepth == revisionTreeDepth);
+}
+
+void RocksDBMetaCollection::RevisionTreeAccessor::insert(std::vector<std::uint64_t> const& keys) {
+  ensureTree();
+  _tree->insert(keys);
+}
+
+void RocksDBMetaCollection::RevisionTreeAccessor::remove(std::vector<std::uint64_t> const& keys) {
+  ensureTree();
+  _tree->remove(keys);
+}
+
+void RocksDBMetaCollection::RevisionTreeAccessor::clear() {
+  ensureTree();
+  _tree->clear();
+  _compressible = true;
+}
+    
+std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::RevisionTreeAccessor::clone() const {
+  ensureTree();
+  return _tree->clone();
+}
+
+std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::count() const {
+  ensureTree();
+  return _tree->count();
+}
+
+std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::rootValue() const {
+  ensureTree();
+  return _tree->rootValue();
+}
+
+std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::maxDepth() const {
+  return _maxDepth;
+}
+
+void RocksDBMetaCollection::RevisionTreeAccessor::checkConsistency() const {
+  ensureTree();
+  return _tree->checkConsistency();
+}
+
+void RocksDBMetaCollection::RevisionTreeAccessor::hibernate() {
+  if (_tree == nullptr) {
+    // already compressed, nothing to do
+    TRI_ASSERT(!_compressed.empty());
+    return;
+  }
+
+  std::uint64_t count = _tree->count();
+
+  if (count >= 5'000'000) {
+    // we have so many values in the tree that compressibility
+    // will likely be bad
+    return;
+  }
+  
+  if (count >= 1'000'000 && !_compressible) {
+    // for whatever reason this collection is not well compressible
+    return;
+  }
+  
+  _compressed.clear();
+  _tree->serializeBinary(_compressed, true);
+  TRI_ASSERT(!_compressed.empty());
+  
+  if (_compressed.size() * 2 < _tree->byteSize()) {
+    // we would like to see at least 50% compressibility
+    _tree.reset();
+    _compressible = true;
+  } else {
+    // otherwise we'll keep the uncompressed tree, and will
+    // not try compressing again soon
+    _compressed.clear();
+    _compressed.shrink_to_fit();
+    _compressible = false;
+  }
+}
+
+void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(std::string& output) const {
+  if (_tree != nullptr) {
+    // compress tree into output
+    _tree->serializeBinary(output, true);
+  } else {
+    // append our already compressed state
+    output.append(_compressed);
+  }
+}
+
+// unfortunately we need to declare this method const although it can
+// modify internal (mutable) state
+void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
+  if (_tree == nullptr) {
+    // build tree from compressed state
+    TRI_ASSERT(!_compressed.empty());
+    _tree = containers::RevisionTree::fromBuffer(std::string_view(_compressed));
+
+    if (_tree == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to uncompress tree");
+    }
+    TRI_ASSERT(_tree != nullptr);
+    TRI_ASSERT(_tree->maxDepth() == _maxDepth);
+
+    // clear the compressed state and free the associated memory
+    _compressed.clear();
+    _compressed.shrink_to_fit();
+  }
+  TRI_ASSERT(_tree != nullptr);
+}
+

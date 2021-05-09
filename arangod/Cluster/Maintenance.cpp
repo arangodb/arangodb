@@ -826,6 +826,8 @@ arangodb::Result arangodb::maintenance::executePlan(
     if (!action->isRunEvenIfDuplicate()) {
       feature.addAction(std::move(action), false);
     } else {
+      TRI_ASSERT(action->has(SHARD));
+
       std::string shardName = action->get(SHARD);
       bool ok = feature.lockShard(shardName, action);
       TRI_ASSERT(ok);

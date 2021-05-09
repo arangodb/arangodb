@@ -34,6 +34,8 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <functional>
+
 namespace arangodb {
 
 class RocksDBMetaCollection : public PhysicalCollection {
@@ -53,6 +55,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   uint64_t objectId() const { return _objectId.load(); }
 
   RocksDBMetadata& meta() { return _meta; }
+  RocksDBMetadata const& meta() const { return _meta; }
 
   RevisionId revision(arangodb::transaction::Methods* trx) const override final;
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
@@ -106,7 +109,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
- public:
+  /// @brief sends the collection's revision tree to hibernation
+  void hibernateRevisionTree();
+
   /// return bounds for all documents
   virtual RocksDBKeyBounds bounds() const = 0;
   
@@ -115,16 +120,19 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
-  void applyUpdates(rocksdb::SequenceNumber commitSeq);
-
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;
 
  private:
   ErrorCode doLock(double timeout, AccessMode::Type mode);
   bool haveBufferedOperations() const;
-  std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree() const;
+  std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree(std::size_t depth) const;
+  void applyUpdates(rocksdb::SequenceNumber commitSeq);
   void ensureRevisionTree();
+
+  // helper function to build revision trees
+  std::unique_ptr<containers::RevisionTree> revisionTree(
+    std::function<std::unique_ptr<containers::RevisionTree>(std::unique_ptr<containers::RevisionTree>)> const& callback);
 
  protected:
   RocksDBMetadata _meta;     /// collection metadata
@@ -143,8 +151,53 @@ class RocksDBMetaCollection : public PhysicalCollection {
  private:
   std::atomic<uint64_t> _objectId;  /// rocksdb-specific object id for collection
 
+  /// @brief helper class for accessing revision trees in a compressed or
+  /// uncompressed state. this class alone is not thread-safe. it must be
+  /// used with external synchronization
+  class RevisionTreeAccessor {
+   public:
+    RevisionTreeAccessor(RevisionTreeAccessor const&) = delete;
+    RevisionTreeAccessor& operator=(RevisionTreeAccessor const&) = delete;
+
+    explicit RevisionTreeAccessor(std::unique_ptr<containers::RevisionTree> tree);
+
+    void insert(std::vector<std::uint64_t> const& keys);
+    void remove(std::vector<std::uint64_t> const& keys);
+    void clear();
+    std::unique_ptr<containers::RevisionTree> clone() const;
+    std::uint64_t count() const;
+    std::uint64_t rootValue() const;
+    std::uint64_t maxDepth() const;
+    void checkConsistency() const;
+    void serializeBinary(std::string& output) const;
+
+    // turn the full-blown revision tree into a potentially smaller
+    // compressed representation
+    void hibernate();
+
+   private:
+    /// @brief make sure we have a value in _tree. unfortunately we
+    /// need to declare this const although it can mutate the internal
+    /// state of _tree
+    void ensureTree() const;
+
+    /// @brief compressed representation of tree. we will either have
+    /// this attribute populated or _tree
+    std::string mutable _compressed;
+
+    /// @brief the actual tree. we will either have this populated or 
+    ///_compressed
+    std::unique_ptr<containers::RevisionTree> mutable _tree;
+
+    /// @brief maxDepth of tree. supposed to never change
+    std::uint64_t const _maxDepth;
+
+    /// @brief whether or not we should attempt to compress the tree
+    bool _compressible;
+  };
+
   /// @revision tree management for replication
-  std::unique_ptr<containers::RevisionTree> _revisionTree;
+  std::unique_ptr<RevisionTreeAccessor> _revisionTree;
   std::atomic<rocksdb::SequenceNumber> _revisionTreeApplied;
   rocksdb::SequenceNumber _revisionTreeCreationSeq;
   rocksdb::SequenceNumber _revisionTreeSerializedSeq;
