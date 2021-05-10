@@ -106,7 +106,7 @@ function dumpTestSuite () {
             }
           }
         );
-        done.forEach( function(jobId) { pending.remove(jobId); });
+        pending = pending.filter((p) => done.indexOf(p) !== -1);
         require("internal").sleep(0.25);
       }
     },
