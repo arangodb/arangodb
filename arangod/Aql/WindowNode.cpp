@@ -241,26 +241,50 @@ WindowBounds::Row WindowBounds::calcRow(AqlValue const& input, QueryWarnings& w)
 
 void WindowBounds::toVelocyPack(VPackBuilder& b) const {
   switch (_type) {
-    case Type::Row:
-      b.add("preceding", VPackValue(_numPrecedingRows));
-      b.add("following", VPackValue(_numFollowingRows));
+    case Type::Row: {
+      auto translate = [](int64_t v) {
+        if (v == std::numeric_limits<int64_t>::max()) {
+          return VPackValue("unbounded");
+        }
+        return VPackValue(v);
+      };
+      b.add("preceding", translate(_numPrecedingRows));
+      b.add("following", translate(_numFollowingRows));
       break;
-      
+    }
     case Type::Range:
       if (_rangeType == RangeType::Numeric) {
         b.add("preceding", VPackValue(_precedingNumber));
         b.add("following", VPackValue(_followingNumber));
       } else {
         auto makeDuration = [](basics::ParsedDuration const& duration) {
-          std::string p = "P";
-          p.append(std::to_string(duration.years)).append("Y");
-          p.append(std::to_string(duration.months)).append("M");
-          p.append(std::to_string(duration.days)).append("DT");
-          p.append(std::to_string(duration.hours)).append("H");
-          p.append(std::to_string(duration.minutes)).append("M");
-          p.append(std::to_string(duration.seconds)).append(".");
-          p.append(std::to_string(duration.milliseconds)).append("S");
-          return p;
+          std::string result = "P";
+          auto append = [&result](int v, char suffix) {
+            if (v != 0) {
+              result.append(std::to_string(v)).push_back(suffix);
+            }
+          };
+          append(duration.years, 'Y');
+          append(duration.months, 'M');
+          append(duration.weeks, 'W');
+          append(duration.days, 'D');
+          if (duration.hours != 0 || duration.minutes != 0 || duration.seconds != 0 || duration.milliseconds != 0) {
+            result.push_back('T');
+            append(duration.hours, 'H');
+            append(duration.minutes, 'M');
+            if (duration.milliseconds == 0) {
+              append(duration.seconds, 'S');
+            } else {
+              result.append(std::to_string(duration.seconds)).push_back('.');
+              append(duration.milliseconds, 'S');
+            }
+          }
+          if (result == "P") {
+            // we have an "empty" duration
+            // -> create the shortest ISO string representing such
+            result.append("0D");
+          }
+          return result;
         };
         b.add("preceding", VPackValue(makeDuration(_precedingDuration)));
         b.add("following", VPackValue(makeDuration(_followingDuration)));
