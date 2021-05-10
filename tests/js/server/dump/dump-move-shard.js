@@ -64,8 +64,8 @@ function dumpTestSuite () {
         return this;
       };
 
-      var i = 0;
-      var pending = [];
+      let i = 0;
+      let pending = [];
       Object.keys(planShards).forEach(
         function (shard) {
           let dbs = ["DBServer0001", "DBServer0002", "DBServer0003"];
