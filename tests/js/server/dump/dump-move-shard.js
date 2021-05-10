@@ -72,8 +72,7 @@ function dumpTestSuite () {
           let dbs = ["DBServer0001", "DBServer0002", "DBServer0003"];
           let leader = planShards[shard].leader;
           let follower = planShards[shard].followers[0];
-          dbs.remove(leader);
-          dbs.remove(follower);
+          dbs = dbs.filter((d) => d !== leader && d !== follower);
           let unused = dbs[0];
           var toServer, fromServer;
           let modulo = i % 4;
