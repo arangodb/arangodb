@@ -528,7 +528,10 @@ std::unique_ptr<MerkleTree<Hasher, BranchingBits>> MerkleTree<Hasher, BranchingB
 template <typename Hasher, std::uint64_t const BranchingBits>
 std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
 MerkleTree<Hasher, BranchingBits>::cloneWithDepth(std::uint64_t newDepth) const {
-  // arangod does not call this method!
+  // arangod does not call this method! That is, because it is rather dangerous:
+  // To grow the depth, it has to modify `rangeMax` by multiplying `rangeMax-rangeMin` by
+  // the `branchingFactor`. This can quickly lead to integer overflow! Do not use without
+  // knowing exactly what you are doing!
 
   // acquire the read-lock here to protect ourselves from concurrent modifications
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
