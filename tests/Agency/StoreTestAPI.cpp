@@ -23,6 +23,7 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
 #include "gtest/gtest.h"
 
 #include "Agency/Store.h"
