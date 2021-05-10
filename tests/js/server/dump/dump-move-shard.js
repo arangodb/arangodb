@@ -90,8 +90,8 @@ function dumpTestSuite () {
 
           let body = {fromServer, toServer, database, collection, shard};
           let result = arango.POST("_admin/cluster/moveShard", body);
-          assertTrue(!result.error);
-          assertTrue(result.code === 202);
+          assertFalse(result.error);
+          assertEqual(result.code, 202);
           pending.push(result.id);
           i++;
         });
