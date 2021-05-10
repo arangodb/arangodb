@@ -94,19 +94,23 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       return true;
     });
     EXPECT_EQ(1, cids.size());
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, arangodb::tests::executeQuery(
-                                      vocbase,
-                                      "FOR d IN testView SEARCH 1 == 1 "
-                                      "OPTIONS { waitForSync: true } RETURN d")
-                                      .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
   }
 
   // insert initial document
   {
-      std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        VPackParser::fromJson(
-            "{ \"value\": true }")
-    };
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
+        VPackParser::fromJson("{ \"value\": true }")};
 
     arangodb::OperationOptions options;
     options.returnNew = true;
@@ -126,6 +130,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
 
   // remove-insert loop
   for (std::size_t i = 0; i < 5; ++i) {
+    SCOPED_TRACE(testing::Message("Remove-Insert step ") << i);
     // remove
     {
       arangodb::OperationOptions options;
@@ -142,12 +147,30 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       EXPECT_TRUE(trx.commit().ok());
     }
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    // check collection is empty
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testCollection0 RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
+
+    //check view is empty
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1  "
+          "OPTIONS { waitForSync: true } SORT BM25(d) LIMIT 100 RETURN 1"); // force no-materialization
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
 
     // reinsert with _rev and isRestore == true
     {
@@ -169,12 +192,18 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       EXPECT_TRUE(trx.commit().ok());
     }
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d.value");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      std::cerr << "Returned:" << slice.toString() << std::endl;
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(1, itr.size());
+    }
   }
 }
 
@@ -219,11 +248,17 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       return true;
     });
     EXPECT_EQ(1, cids.size());
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, arangodb::tests::executeQuery(
-                                      vocbase,
-                                      "FOR d IN testView SEARCH 1 == 1 "
-                                      "OPTIONS { waitForSync: true } RETURN d")
-                                      .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
   }
 
   std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -249,6 +284,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
 
   // remove-insert loop
   for (std::size_t i = 0; i < 5; ++i) {
+    SCOPED_TRACE(testing::Message("Remove-Insert step ") << i);
     // remove
     {
       arangodb::OperationOptions options;
@@ -265,12 +301,30 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       EXPECT_TRUE(trx.commit().ok());
     }
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    // check colection is empty
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testCollection0 RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
+
+    //check view is empty
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1  "
+          "OPTIONS { waitForSync: true } SORT BM25(d) LIMIT 100 RETURN 1"); // force no-materialization
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
 
     // insert some extra doc
     {
@@ -327,14 +381,314 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       EXPECT_TRUE(trx.commit().ok());
     }
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(1, itr.size());
+    }
   }
 }
+
+TEST_F(IResearchPrimaryKeyReuse, test_single_transaction_remove_insert) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+  std::vector<arangodb::velocypack::Builder> insertedDocs;
+  arangodb::LogicalView* view;
+  std::shared_ptr<arangodb::LogicalCollection> collection;
+
+  // create collection0
+  {
+    auto createJson = VPackParser::fromJson(
+        "{ \"name\": \"testCollection0\","
+        "  \"usesRevisionsAsDocumentIds\": true }");
+    collection = vocbase.createCollection(createJson->slice());
+    ASSERT_NE(nullptr, collection);
+  }
+
+  // create view
+  {
+    auto createJson = VPackParser::fromJson(
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto logicalView = vocbase.createView(createJson->slice());
+    ASSERT_FALSE(!logicalView);
+
+    view = logicalView.get();
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
+    ASSERT_FALSE(!impl);
+
+    auto updateJson = VPackParser::fromJson(
+        "{ \"links\": {"
+        "\"testCollection0\": { \"analyzers\": [ \"test_analyzer\", "
+        "\"identity\" ], \"includeAllFields\": true, \"trackListPositions\": "
+        "true, \"storeValues\":\"id\" }"
+        "}}");
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
+      cids.emplace(cid);
+      return true;
+    });
+    EXPECT_EQ(1, cids.size());
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
+  }
+
+  // insert initial document
+  {
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
+        VPackParser::fromJson("{ \"value\": true }")};
+
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
+    ASSERT_TRUE(trx.begin().ok());
+
+    for (auto& entry : docs) {
+      arangodb::OperationOptions options;
+      options.returnNew = true;
+      auto res = trx.insert(collection->name(), entry->slice(), options);
+      EXPECT_TRUE(res.ok());
+      insertedDocs.emplace_back(res.slice().get("new"));
+    }
+    ASSERT_TRUE(trx.commit().ok());
+    auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+    EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    arangodb::velocypack::ArrayIterator itr(slice);
+    EXPECT_EQ(1, itr.size());
+  }
+  {
+    // remove-insert transaction
+    {
+       arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                                 *collection,
+                                                 arangodb::AccessMode::Type::WRITE);
+       ASSERT_TRUE(trx.begin().ok());
+      // remove
+      {
+        arangodb::OperationOptions options;
+        for (auto& entry : insertedDocs) {
+          auto res = trx.remove(collection->name(), entry.slice(), options);
+          EXPECT_TRUE(res.ok());
+        }
+      }
+
+      // reinsert with _rev and isRestore == true
+      {
+
+        arangodb::OperationOptions options;
+        options.returnNew = true;
+        options.isRestore = true;
+        {
+          auto res = trx.insert(collection->name(), insertedDocs.front().slice(), options);
+          EXPECT_TRUE(res.ok());
+          EXPECT_EQ(
+              res.slice().get("new").get(arangodb::StaticStrings::RevString).copyString(),
+              insertedDocs.front().slice().get(arangodb::StaticStrings::RevString).copyString());
+        }
+      }
+
+      EXPECT_TRUE(trx.commit().ok());
+    }
+
+    // old document should be removed. New one should stay
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testCollection0 RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(1, itr.size());
+    }
+
+    //check view has one doc
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1  "
+          "OPTIONS { waitForSync: true } SORT BM25(d) LIMIT 100 RETURN 1"); // force no-materialization
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(1, itr.size());
+    }
+  }
+}
+
+TEST_F(IResearchPrimaryKeyReuse, test_single_transaction_remove_insert_remove) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+  std::vector<arangodb::velocypack::Builder> insertedDocs;
+  arangodb::LogicalView* view;
+  std::shared_ptr<arangodb::LogicalCollection> collection;
+
+  // create collection0
+  {
+    auto createJson = VPackParser::fromJson(
+        "{ \"name\": \"testCollection0\","
+        "  \"usesRevisionsAsDocumentIds\": true }");
+    collection = vocbase.createCollection(createJson->slice());
+    ASSERT_NE(nullptr, collection);
+  }
+
+  // create view
+  {
+    auto createJson = VPackParser::fromJson(
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto logicalView = vocbase.createView(createJson->slice());
+    ASSERT_FALSE(!logicalView);
+
+    view = logicalView.get();
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
+    ASSERT_FALSE(!impl);
+
+    auto updateJson = VPackParser::fromJson(
+        "{ \"links\": {"
+        "\"testCollection0\": { \"analyzers\": [ \"test_analyzer\", "
+        "\"identity\" ], \"includeAllFields\": true, \"trackListPositions\": "
+        "true, \"storeValues\":\"id\" }"
+        "}}");
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
+      cids.emplace(cid);
+      return true;
+    });
+    EXPECT_EQ(1, cids.size());
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
+  }
+
+  // insert initial document
+  {
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
+        VPackParser::fromJson("{ \"value\": true }")};
+
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
+    ASSERT_TRUE(trx.begin().ok());
+
+    for (auto& entry : docs) {
+      arangodb::OperationOptions options;
+      options.returnNew = true;
+      auto res = trx.insert(collection->name(), entry->slice(), options);
+      EXPECT_TRUE(res.ok());
+      insertedDocs.emplace_back(res.slice().get("new"));
+    }
+    ASSERT_TRUE(trx.commit().ok());
+    auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+    EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    arangodb::velocypack::ArrayIterator itr(slice);
+    EXPECT_EQ(1, itr.size());
+  }
+  {
+    // remove-insert-remove transaction
+    {
+       arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                                 *collection,
+                                                 arangodb::AccessMode::Type::WRITE);
+      ASSERT_TRUE(trx.begin().ok());
+      // remove
+      {
+        arangodb::OperationOptions options;
+        for (auto& entry : insertedDocs) {
+          auto res = trx.remove(collection->name(), entry.slice(), options);
+          EXPECT_TRUE(res.ok());
+        }
+      }
+
+      // reinsert with _rev and isRestore == true
+      {
+
+        arangodb::OperationOptions options;
+        options.returnNew = true;
+        options.isRestore = true;
+        {
+          auto res = trx.insert(collection->name(), insertedDocs.front().slice(), options);
+          EXPECT_TRUE(res.ok());
+          EXPECT_EQ(
+              res.slice().get("new").get(arangodb::StaticStrings::RevString).copyString(),
+              insertedDocs.front().slice().get(arangodb::StaticStrings::RevString).copyString());
+        }
+      }
+
+      // remove again
+      {
+        arangodb::OperationOptions options;
+        for (auto& entry : insertedDocs) {
+          auto res = trx.remove(collection->name(), entry.slice(), options);
+          EXPECT_TRUE(res.ok());
+        }
+      }
+
+      EXPECT_TRUE(trx.commit().ok());
+    }
+
+    // old document should be removed. New one should be also removed
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testCollection0 RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
+
+    //check view has no docs
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1  "
+          "OPTIONS { waitForSync: true } SORT BM25(d) LIMIT 100 RETURN 1"); // force no-materialization
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
+  }
+}
+
+
 
 TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
@@ -376,11 +730,17 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
       return true;
     });
     EXPECT_EQ(1, cids.size());
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, arangodb::tests::executeQuery(
-                                      vocbase,
-                                      "FOR d IN testView SEARCH 1 == 1 "
-                                      "OPTIONS { waitForSync: true } RETURN d")
-                                      .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
   }
 
   // insert initial document
@@ -403,6 +763,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
 
     // remove-insert loop
     for (std::size_t i = 0; i < 5; ++i) {
+      SCOPED_TRACE(testing::Message("Remove-Insert step ") << i);
       // remove
       {
         arangodb::OperationOptions options;
@@ -428,12 +789,28 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
     }
 
     EXPECT_TRUE(trx.commit().ok());
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testCollection0 RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(1, itr.size());
+    }
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    //check view has one doc
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1  "
+          "OPTIONS { waitForSync: true } SORT BM25(d) LIMIT 100 RETURN 1"); // force no-materialization
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(1, itr.size());
+    }
   }
 }
