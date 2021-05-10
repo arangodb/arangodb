@@ -910,10 +910,9 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
       handle(response.slice());
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      uint64_t exe = _executionNumber;
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
       bool queued =
-          scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message, exe,
+          scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message,
                                                        self = shared_from_this()] {
             TRI_vocbase_t& vocbase = _vocbaseGuard.database();
             VPackBuilder response;
