@@ -843,7 +843,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 #endif
   } else {
     LOG_TOPIC("fdfa7", WARN, Logger::ENGINES)
-        << "unable to apply updates: " << res.errorMessage();
+        << "unable to apply revision tree updates for " 
+        << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
+        << ": " << res.errorMessage();
   }
 }
 
