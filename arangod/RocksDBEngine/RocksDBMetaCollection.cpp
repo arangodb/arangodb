@@ -818,7 +818,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
           LOG_TOPIC("27811", ERR, Logger::ENGINES)
               << "unable to apply revision tree updates for " 
               << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
-              << ": " << res.errorMessage();
+              << ": " << ex.what();
           TRI_ASSERT(false);
           throw;
         }
@@ -864,10 +864,6 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     return;
   }
   
-  // this check is very expensive, so it is commented out here.
-  // only reactivate when there is need for it!
-  // _revisionTree->checkConsistency();
-
   rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
   while (commitSeq > applied) {
     _revisionTreeApplied.compare_exchange_strong(applied, commitSeq);
