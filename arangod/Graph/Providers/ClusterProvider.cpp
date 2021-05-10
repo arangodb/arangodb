@@ -117,7 +117,7 @@ void ClusterProvider::clear() {
   }
 }
 
-auto ClusterProvider::startVertex(VertexType vertex) -> Step {
+auto ClusterProvider::startVertex(VertexType vertex, size_t depth) -> Step {
   LOG_TOPIC("da308", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   return Step(_opts.getCache()->persistString(vertex));

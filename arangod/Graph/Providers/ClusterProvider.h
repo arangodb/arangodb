@@ -143,7 +143,7 @@ class ClusterProvider {
 
   void clear();
 
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;

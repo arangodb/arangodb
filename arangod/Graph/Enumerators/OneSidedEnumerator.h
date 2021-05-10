@@ -88,8 +88,9 @@ class OneSidedEnumerator {
    * call of reset.
    *
    * @param source The source vertex to start the paths
+   * @param depth The depth we're starting the search at
    */
-  void reset(VertexRef source);
+  void reset(VertexRef source, size_t depth = 0);
 
   /**
    * @brief Get the next path, if available written into the result build.

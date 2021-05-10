@@ -98,6 +98,7 @@ struct SingleServerProvider {
     Step(VertexType v);
     Step(VertexType v, EdgeDocumentToken edge, size_t prev);
     Step(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth);
+    Step(VertexType v, size_t depth);
     ~Step();
 
     bool operator<(Step const& other) const noexcept {
@@ -131,7 +132,7 @@ struct SingleServerProvider {
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
 
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,

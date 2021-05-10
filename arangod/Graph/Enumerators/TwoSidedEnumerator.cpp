@@ -67,9 +67,9 @@ template <class QueueType, class PathStoreType, class ProviderType, class PathVa
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::~Ball() = default;
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::reset(VertexRef center) {
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::reset(VertexRef center, size_t depth) {
   clear();
-  auto firstStep = _provider.startVertex(center);
+  auto firstStep = _provider.startVertex(center, depth);
   _shell.emplace(std::move(firstStep));
 }
 
@@ -293,7 +293,7 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  */
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::reset(
-    VertexRef source, VertexRef target) {
+    VertexRef source, VertexRef target, size_t depth) {
   _results.clear();
   _left.reset(source);
   _right.reset(target);

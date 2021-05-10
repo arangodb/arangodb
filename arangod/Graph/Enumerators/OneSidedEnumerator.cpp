@@ -132,9 +132,9 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  * @param source The source vertex to start the paths
  */
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::reset(VertexRef source) {
+void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::reset(VertexRef source, size_t depth) {
   clear();
-  auto firstStep = _provider.startVertex(source);
+  auto firstStep = _provider.startVertex(source, depth);
   _queue.append(std::move(firstStep));
 }
 

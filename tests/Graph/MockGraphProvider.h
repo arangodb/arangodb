@@ -106,6 +106,7 @@ class MockGraphProvider {
 
     Step(VertexType v, bool isProcessable);
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
+    Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable, size_t depth);
     ~Step();
 
@@ -172,7 +173,7 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
   void destroyEngines(){};
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
   auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;

@@ -47,6 +47,9 @@ auto operator<<(std::ostream& out, SingleServerProvider::Step const& step) -> st
 
 SingleServerProvider::Step::Step(VertexType v) : _vertex(v), _edge() {}
 
+SingleServerProvider::Step::Step(VertexType v, size_t depth)
+    : BaseStep(std::numeric_limits<size_t>::max(), depth), _vertex(v), _edge() {}
+
 SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev)
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)) {}
 
@@ -112,13 +115,13 @@ void SingleServerProvider::activateCache(bool enableDocumentCache) {
   //  _cache = new RefactoredTraverserCache(query());
 }
 
-auto SingleServerProvider::startVertex(VertexType vertex) -> Step {
+auto SingleServerProvider::startVertex(VertexType vertex, size_t depth) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Start Vertex:" << vertex;
 
   // Create default initial step
   // Note: Refactor naming, Strings in our cache here are not allowed to be removed.
-  return Step(_cache.persistString(vertex));
+  return Step(_cache.persistString(vertex), depth);
 }
 
 auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)

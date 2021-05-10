@@ -59,6 +59,12 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProc
       _edge(e),
       _isProcessable(isProcessable) {}
 
+MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable, size_t depth)
+    : arangodb::graph::BaseStep<Step>{prev, depth},
+      _vertex(v),
+      _edge({}),
+      _isProcessable(isProcessable) {}
+
 MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
                               bool isProcessable, size_t depth)
     : arangodb::graph::BaseStep<Step>{prev, depth},
@@ -91,7 +97,7 @@ auto MockGraphProvider::decideProcessable() const -> bool {
   }
 }
 
-auto MockGraphProvider::startVertex(VertexType v) -> Step {
+auto MockGraphProvider::startVertex(VertexType v, size_t depth) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Start Vertex:" << v;
   return Step(v, decideProcessable());
