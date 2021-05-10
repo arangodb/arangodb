@@ -78,14 +78,14 @@ function dumpTestSuite () {
           let modulo = i % 4;
 
           switch (modulo) {
-          case 0:
-            fromServer = leader; toServer = unused; break;
-          case 1:
-            fromServer = follower; toServer = unused; break;
-          case 2:
-            fromServer = leader; toServer = follower; break;
-          default:
-            return; break;
+            case 0:
+              fromServer = leader; toServer = unused; break;
+            case 1:
+              fromServer = follower; toServer = unused; break;
+            case 2:
+              fromServer = leader; toServer = follower; break;
+            default:
+              return;
           }
 
           let body = {fromServer, toServer, database, collection, shard};
