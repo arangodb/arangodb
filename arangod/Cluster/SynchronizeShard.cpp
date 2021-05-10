@@ -668,6 +668,20 @@ bool SynchronizeShard::first() {
  
   size_t failuresInRow = feature().replicationErrors(database, shard);
   
+  // from this many number of failures in a row, we will step on the brake
+  constexpr size_t delayThreshold = 4;
+
+  TRI_IF_FAILURE("SynchronizeShard::maxReplicationErrors") {
+    // simulate we have got lots of failures
+    failuresInRow = MaintenanceFeature::maxReplicationErrorsPerShard;
+  }
+  
+  TRI_IF_FAILURE("SynchronizeShard::someReplicationErrors") {
+    // simulate we have got some failures
+    failuresInRow = delayThreshold;
+  }
+
+  
   if (failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) { 
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
@@ -691,7 +705,7 @@ bool SynchronizeShard::first() {
     }
   }
 
-  if (failuresInRow >= 4) {
+  if (failuresInRow >= delayThreshold) {
     // shard synchronization has failed several times in a row.
     // now step on the brake a bit. this blocks our maintenance thread, but currently
     // there seems to be no better way to delay the execution of maintenance tasks.

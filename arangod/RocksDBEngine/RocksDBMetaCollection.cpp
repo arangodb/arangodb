@@ -804,6 +804,10 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         // release the mutex while we modify the tree. this is safe (see above)
         guard.unlock();
 
+        TRI_IF_FAILURE("RevisionTree::applyInserts") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
         // apply inserts, without holding the lock
         // if this throws we will not have modified _revisionInsertBuffers
         try {
@@ -830,6 +834,10 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         
         // release the mutex while we modify the tree. this is safe (see above)
         guard.unlock();
+        
+        TRI_IF_FAILURE("RevisionTree::applyRemoves") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
 
         // apply removals, without holding the lock
         // if this throws we will not have modified _revisionRemovalBuffers
@@ -848,27 +856,28 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     }
   });
 
-  if (res.ok()) {
-    rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
-    while (commitSeq > applied) {
-      _revisionTreeApplied.compare_exchange_strong(applied, commitSeq);
-    }
-
-    // this check is very expensive, so it is commented out here.
-    // only reactivate when there is need for it!
-    // _revisionTree->checkConsistency();
-  } else {
+  if (res.fail()) {
     LOG_TOPIC("fdfa7", ERR, Logger::ENGINES)
         << "unable to apply revision tree updates for " 
         << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
         << ": " << res.errorMessage();
+    return;
+  }
+  
+  // this check is very expensive, so it is commented out here.
+  // only reactivate when there is need for it!
+  // _revisionTree->checkConsistency();
+
+  rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
+  while (commitSeq > applied) {
+    _revisionTreeApplied.compare_exchange_strong(applied, commitSeq);
   }
 }
 
 Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTree& tree,
                                                          rocksdb::SequenceNumber commitSeq) const {
   if (!_logicalCollection.useSyncByRevision()) {
-    return Result();
+    return {};
   }
 
   Result res = basics::catchVoidToResult([&]() -> void {
