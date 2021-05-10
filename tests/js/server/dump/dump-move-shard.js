@@ -97,7 +97,7 @@ function dumpTestSuite () {
         });
 
       while (pending.length > 0) { // wait for moveShard jobs to finish
-        var done = [];
+        let done = [];
         pending.forEach(
           function (jobId) {
             let query = arango.GET("/_admin/cluster/queryAgencyJob?id=" + jobId);
