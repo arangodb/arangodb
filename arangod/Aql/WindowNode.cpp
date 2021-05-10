@@ -56,21 +56,17 @@ WindowBounds::WindowBounds(Type type,
     auto validate = [&](AqlValue& val) -> int64_t {
       if (val.isNumber()) {
         int64_t v = val.toInt64();
-        if (v < 0) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "WINDOW row spec is invalid");
+        if (v >= 0) {
+          return v;
         }
-        return v;
-      }
-      if (val.isString() && (val.slice().isEqualString("unbounded") ||
-                             val.slice().isEqualString("inf"))) {
+      } else if (val.isString() && (val.slice().isEqualString("unbounded") ||
+                 val.slice().isEqualString("inf"))) {
         return std::numeric_limits<int64_t>::max();
-      }
-      if (val.isNone()) {
+      } else if (val.isNone()) {
         return 0;
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "WINDOW row spec is invalid");
+        "WINDOW row spec is invalid; bounds must be positive integers or \"unbounded\"");
     };
     _numPrecedingRows = validate(preceding);
     _numFollowingRows = validate(following);
@@ -78,27 +74,46 @@ WindowBounds::WindowBounds(Type type,
   }
       
   if (Type::Range == type) {
-    if (!(preceding.isString() && following.isString()) &&
-        !(preceding.isNumber() && following.isNumber())) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                                     "WINDOW range spec is invalid");
+    auto checkType = [](AqlValue const& val) {
+      if (!val.isString() && !val.isNumber() && !val.isNone()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "WINDOW range spec is invalid");
+      }
+    };
+    checkType(preceding);
+    checkType(following);
+
+    if ((preceding.isNone() == following.isNone()) &&
+        (preceding.isString() != following.isString())) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "WINDOW range spec is invalid; bounds must be of the same type - "
+                                     "either both are numeric values, or both are ISO 8601 duration strings");
     }
 
-    if (preceding.isString()) {
+    if (preceding.isString() || following.isString()) {
       _rangeType = RangeType::Date;
-      TRI_ASSERT(following.isString());
-      if (!basics::parseIsoDuration(preceding.slice().stringRef(), _precedingDuration)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "WINDOW bound 'preceding' is not a "
-                                       "valid ISO 8601 duration string");
+      if (preceding.isString()) {
+        if (!basics::parseIsoDuration(preceding.slice().stringRef(), _precedingDuration)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "WINDOW range spec is invalid; 'preceding' is not a "
+                                         "valid ISO 8601 duration string");
+        }
+      } else {
+        TRI_ASSERT(preceding.isNone());
       }
-      if (!basics::parseIsoDuration(following.slice().stringRef(), _followingDuration)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "WINDOW bound 'following' is not a "
-                                       "valid ISO 8601 duration string");
+
+      if (following.isString()) {
+        if (!basics::parseIsoDuration(following.slice().stringRef(), _followingDuration)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "WINDOW range spec is invalid; 'following' is not a "
+                                         "valid ISO 8601 duration string");
+        }
+      } else {
+        TRI_ASSERT(following.isNone());
       }
       return;
     }
+
     _rangeType = RangeType::Numeric;
     _precedingNumber = preceding.toDouble();
     _followingNumber = following.toDouble();
