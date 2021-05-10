@@ -710,9 +710,69 @@ TEST_P(DFSFinderTest, triangle_loop) {
   }
 }
 
+TEST_P(DFSFinderTest, triangle_loop_skip) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
+  auto source = vId(30);
+
+  finder.reset(toHashedStringRef(source));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 1);
+    pathEquals(result.slice(), {30, 31});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 2);
+    pathEquals(result.slice(), {30, 31, 32});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    bool skipped = finder.skipPath();
+    EXPECT_TRUE(skipped);
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+
+    pathStructureValid(result.slice(), 3);
+    pathEquals(result.slice(), {30, 31, 32, 33});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath();
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
 /* TODO: Add more tests
  * - path_depth_2_to_3
- * - triangle_loop_skip
  * - many_neighbours_source
  * - many_neighbours_target
  */
