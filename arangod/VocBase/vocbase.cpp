@@ -1909,6 +1909,15 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
   return getReplicatedLogById(id).getFollower();
 }
 
+[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogs() const
+    -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus> {
+  std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus> result;
+  for (auto& [id, log] : _logManager->_logs) {
+    result.emplace(id, log.getParticipant()->getStatus());
+  }
+  return result;
+}
+
 using namespace arangodb::replication2;
 
 

@@ -180,7 +180,9 @@ struct TRI_vocbase_t {
   [[nodiscard]] auto getReplicatedLogLeaderById(arangodb::replication2::LogId id) const
       -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
   [[nodiscard]] auto getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
-  -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
+  [[nodiscard]] auto getReplicatedLogs() const
+      -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
   auto createReplicatedLog(arangodb::replication2::LogId id)
       -> arangodb::ResultT<std::reference_wrapper<arangodb::replication2::replicated_log::ReplicatedLog>>;
   auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;

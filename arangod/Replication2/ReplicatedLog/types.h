@@ -105,6 +105,7 @@ struct LogStatistics {
 struct LeaderStatus {
   struct FollowerStatistics : LogStatistics {
     AppendEntriesErrorReason lastErrorReason;
+    double lastRequestLatencyMS;
     void toVelocyPack(velocypack::Builder& builder) const;
   };
 

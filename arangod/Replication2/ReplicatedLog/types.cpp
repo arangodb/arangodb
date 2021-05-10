@@ -158,6 +158,7 @@ void replicated_log::LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::
   builder.add("spearHead", VPackValue(spearHead.value));
   builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
   builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
+  builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS));
 }
 
 std::string arangodb::replication2::replicated_log::to_string(replicated_log::AppendEntriesErrorReason reason) {

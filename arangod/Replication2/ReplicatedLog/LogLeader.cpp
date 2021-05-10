@@ -169,7 +169,11 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
       it->_follower->_impl->appendEntries(std::move(it->_request))
           .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
                       lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
-                      currentTerm = it->_currentTerm](futures::Try<AppendEntriesResult>&& res) {
+                      currentTerm = it->_currentTerm,
+                      startTime = std::chrono::steady_clock::now()](
+                         futures::Try<AppendEntriesResult>&& res) {
+            auto endTime = std::chrono::steady_clock::now();
+
             // TODO This has to be noexcept
             if (auto self = parentLog.lock()) {
               auto [preparedRequests, resolvedPromises] = std::invoke([&] {
@@ -180,7 +184,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                 }
                 return guarded->handleAppendEntriesResponse(parentLog, follower, lastIndex,
                                                             currentCommitIndex, currentTerm,
-                                                            std::move(res));
+                                                            std::move(res),
+                                                            endTime - startTime);
               });
 
               // TODO execute this in a different context
@@ -303,9 +308,11 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     LeaderStatus status;
     status.local = leaderData.getLocalStatistics();
     status.term = term;
-    for (auto const& f : leaderData._follower) {
-      status.follower[f._impl->getParticipantId()] = {LogStatistics{f.lastAckedIndex, f.lastAckedCommitIndex},
-                                                      f.lastErrorReason};
+    for (FollowerInfo const& f : leaderData._follower) {
+      status.follower[f._impl->getParticipantId()] = {
+          LogStatistics{f.lastAckedIndex, f.lastAckedCommitIndex}, f.lastErrorReason,
+          std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency)
+              .count()};
     }
     return LogStatus{std::move(status)};
   });
@@ -446,13 +453,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
     LogIndex lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
-    futures::Try<AppendEntriesResult>&& res)
+    futures::Try<AppendEntriesResult>&& res, std::chrono::steady_clock::duration latency)
     -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet> {
   if (currentTerm != _self._currentTerm) {
     return {};
   }
   ResolvedPromiseSet toBeResolved;
 
+  follower._lastRequestLatency = latency;
   follower.requestInFlight = false;
   if (res.hasValue()) {
     follower.numErrorsSinceLastAnswer = 0;

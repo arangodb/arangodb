@@ -103,6 +103,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl, LogIndex lastLogIndex)
         : _impl(std::move(impl)), lastAckedIndex(lastLogIndex) {}
 
+    std::chrono::steady_clock::duration _lastRequestLatency;
     std::shared_ptr<AbstractFollower> _impl;
     LogIndex lastAckedIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
@@ -165,7 +166,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     [[nodiscard]] auto handleAppendEntriesResponse(
         std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
         LogIndex lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
-        futures::Try<AppendEntriesResult>&& res)
+        futures::Try<AppendEntriesResult>&& res, std::chrono::steady_clock::duration latency)
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet>;
 
     [[nodiscard]] auto checkCommitIndex(std::weak_ptr<LogLeader> const& parentLog)
