@@ -185,22 +185,29 @@ MerkleTree<Hasher, BranchingBits>::fromBuffer(std::string_view buffer) {
   
   std::string scratch;
   if (buffer[buffer.size() - 2] == ::CompressedSnappyCurrent) {
-    // compressed data
+    // Snappy-compressed data
+    scratch.reserve(allocationSize(6));
+
     snappy::Uncompress(buffer.data(), buffer.size() - 2, &scratch);
     buffer = std::string_view(scratch);
+#if 0
   } else if (buffer[buffer.size() - 2] == ::CompressedRLECurrent) {
+    scratch.resize(allocationSize(6), '\0');
+
+    std::size_t pos = 0;
     char const* p = buffer.data();
     char const* e = p + buffer.size() - 2;
 
-    scratch.reserve(8192);
     while (p < e) {
+      TRI_ASSERT(pos < scratch.size());
+
       uint8_t c = (uint8_t) *p;
       if (c == 0xffU) {
         ++p;
         if (p < e) {
           c = (uint8_t) *p;
           if (c == 0xffU) {
-            scratch.push_back(0xffU);
+            scratch[pos++] = 0xffU;
           } else {
             uint16_t run = c;
             if (c == 0xfeU) {
@@ -212,18 +219,17 @@ MerkleTree<Hasher, BranchingBits>::fromBuffer(std::string_view buffer) {
               run |= (c << 8U);
             }
 
-            for (uint16_t i = 0; i < run; ++i) {
-              scratch.push_back(0x00U);
-            }
+            pos += run;
           }
         }
       } else {
-        scratch.push_back(c);
+        scratch[pos++] = c;
       }
       ++p;
     }  
 
     buffer = std::string_view(scratch);
+#endif
   } else {
     // uncompressed data or empty tree
     buffer = std::string_view(buffer.data(), buffer.size() - 2);
@@ -771,7 +777,10 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
   TRI_ASSERT(output.empty());
     
   if (compress) {
+#if 0
     if (this->node(0).count < 10'000) {
+      output.reserve(512);
+
       uint8_t const* p = _buffer.get();
       uint8_t const* e = p + allocationSize(meta().maxDepth);
 
@@ -811,10 +820,13 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
 
       output.push_back(::CompressedRLECurrent);
     } else {
+#endif
       snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
                        allocationSize(meta().maxDepth), &output);
       output.push_back(::CompressedSnappyCurrent);
+#if 0
     }
+#endif
   } else {
     output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
     output.push_back(::UncompressedCurrent);

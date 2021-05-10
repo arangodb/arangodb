@@ -1100,13 +1100,23 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate() {
     // for whatever reason this collection is not well compressible
     return;
   }
+
+  double start = TRI_microtime();
   
   _compressed.clear();
   _tree->serializeBinary(_compressed, true);
+
   TRI_ASSERT(!_compressed.empty());
-  
+ 
+  LOG_TOPIC("45eae", TRACE, Logger::REPLICATION) 
+      << "hibernating revision tree with " << count << " entries and size " 
+      << _tree->byteSize() << ", hibernated size: " << _compressed.size() << 
+      ", hibernation took: " << (TRI_microtime() - start);;
+
+  // we would like to see at least 50% compressibility
   if (_compressed.size() * 2 < _tree->byteSize()) {
-    // we would like to see at least 50% compressibility
+    // compression ratio ok.
+    // remove tree from memory. now we only have _compressed
     _tree.reset();
     _compressible = true;
   } else {
@@ -1134,13 +1144,19 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
   if (_tree == nullptr) {
     // build tree from compressed state
     TRI_ASSERT(!_compressed.empty());
+
+    double start = TRI_microtime();
+
     _tree = containers::RevisionTree::fromBuffer(std::string_view(_compressed));
 
     if (_tree == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to uncompress tree");
     }
-    TRI_ASSERT(_tree != nullptr);
     TRI_ASSERT(_tree->maxDepth() == _maxDepth);
+    
+    LOG_TOPIC("e9c29", TRACE, Logger::REPLICATION) 
+        << "resurrected revision tree with " << _tree->count() 
+        << " entries. resurrection took: " << (TRI_microtime() - start);
 
     // clear the compressed state and free the associated memory
     _compressed.clear();
