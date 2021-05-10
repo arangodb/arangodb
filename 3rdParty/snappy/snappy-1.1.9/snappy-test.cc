@@ -28,23 +28,74 @@
 //
 // Various stubs for the unit tests for the open-source version of Snappy.
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#ifdef HAVE_WINDOWS_H
-// Needed to be able to use std::max without workarounds in the source code.
-// https://support.microsoft.com/en-us/help/143208/prb-using-stl-in-windows-program-can-cause-min-max-conflicts
-#define NOMINMAX
-#include <windows.h>
-#endif
-
 #include "snappy-test.h"
 
 #include <algorithm>
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <string>
 
-DEFINE_bool(run_microbenchmarks, true,
-            "Run microbenchmarks before doing anything else.");
+namespace file {
+
+OptionsStub::OptionsStub() = default;
+OptionsStub::~OptionsStub() = default;
+
+const OptionsStub &Defaults() {
+  static OptionsStub defaults;
+  return defaults;
+}
+
+StatusStub::StatusStub() = default;
+StatusStub::StatusStub(const StatusStub &) = default;
+StatusStub &StatusStub::operator=(const StatusStub &) = default;
+StatusStub::~StatusStub() = default;
+
+bool StatusStub::ok() { return true; }
+
+StatusStub GetContents(const std::string &filename, std::string *output,
+                       const OptionsStub & /* options */) {
+  std::FILE *fp = std::fopen(filename.c_str(), "rb");
+  if (fp == nullptr) {
+    std::perror(filename.c_str());
+    std::exit(1);
+  }
+
+  output->clear();
+  while (!std::feof(fp)) {
+    char buffer[4096];
+    size_t bytes_read = std::fread(buffer, 1, sizeof(buffer), fp);
+    if (bytes_read == 0 && std::ferror(fp)) {
+      std::perror("fread");
+      std::exit(1);
+    }
+    output->append(buffer, bytes_read);
+  }
+
+  std::fclose(fp);
+  return StatusStub();
+}
+
+StatusStub SetContents(const std::string &file_name, const std::string &content,
+                       const OptionsStub & /* options */) {
+  std::FILE *fp = std::fopen(file_name.c_str(), "wb");
+  if (fp == nullptr) {
+    std::perror(file_name.c_str());
+    std::exit(1);
+  }
+
+  size_t bytes_written = std::fwrite(content.data(), 1, content.size(), fp);
+  if (bytes_written != content.size()) {
+    std::perror("fwrite");
+    std::exit(1);
+  }
+
+  std::fclose(fp);
+  return StatusStub();
+}
+
+}  // namespace file
 
 namespace snappy {
 
@@ -56,210 +107,49 @@ std::string ReadTestDataFile(const std::string& base, size_t size_limit) {
     prefix = std::string(srcdir) + "/";
   }
   file::GetContents(prefix + "testdata/" + base, &contents, file::Defaults()
-      ).CheckSuccess();
+      ).ok();
   if (size_limit > 0) {
     contents = contents.substr(0, size_limit);
   }
   return contents;
 }
 
-std::string ReadTestDataFile(const std::string& base) {
-  return ReadTestDataFile(base, 0);
-}
-
 std::string StrFormat(const char* format, ...) {
-  char buf[4096];
-  va_list ap;
+  char buffer[4096];
+  std::va_list ap;
   va_start(ap, format);
-  vsnprintf(buf, sizeof(buf), format, ap);
+  std::vsnprintf(buffer, sizeof(buffer), format, ap);
   va_end(ap);
-  return buf;
+  return buffer;
 }
 
-bool benchmark_running = false;
-int64 benchmark_real_time_us = 0;
-int64 benchmark_cpu_time_us = 0;
-std::string* benchmark_label = nullptr;
-int64 benchmark_bytes_processed = 0;
+LogMessage::~LogMessage() { std::cerr << std::endl; }
 
-void ResetBenchmarkTiming() {
-  benchmark_real_time_us = 0;
-  benchmark_cpu_time_us = 0;
+LogMessage &LogMessage::operator<<(const std::string &message) {
+  std::cerr << message;
+  return *this;
 }
 
-#ifdef WIN32
-LARGE_INTEGER benchmark_start_real;
-FILETIME benchmark_start_cpu;
-#else  // WIN32
-struct timeval benchmark_start_real;
-struct rusage benchmark_start_cpu;
-#endif  // WIN32
+LogMessage &LogMessage::operator<<(int number) {
+  std::cerr << number;
+  return *this;
+}
 
-void StartBenchmarkTiming() {
-#ifdef WIN32
-  QueryPerformanceCounter(&benchmark_start_real);
-  FILETIME dummy;
-  CHECK(GetProcessTimes(
-      GetCurrentProcess(), &dummy, &dummy, &dummy, &benchmark_start_cpu));
-#else
-  gettimeofday(&benchmark_start_real, NULL);
-  if (getrusage(RUSAGE_SELF, &benchmark_start_cpu) == -1) {
-    perror("getrusage(RUSAGE_SELF)");
-    exit(1);
-  }
+#ifdef _MSC_VER
+// ~LogMessageCrash calls std::abort() and therefore never exits. This is by
+// design, so temporarily disable warning C4722.
+#pragma warning(push)
+#pragma warning(disable : 4722)
 #endif
-  benchmark_running = true;
+
+LogMessageCrash::~LogMessageCrash() {
+  std::cerr << std::endl;
+  std::abort();
 }
 
-void StopBenchmarkTiming() {
-  if (!benchmark_running) {
-    return;
-  }
-
-#ifdef WIN32
-  LARGE_INTEGER benchmark_stop_real;
-  LARGE_INTEGER benchmark_frequency;
-  QueryPerformanceCounter(&benchmark_stop_real);
-  QueryPerformanceFrequency(&benchmark_frequency);
-
-  double elapsed_real = static_cast<double>(
-      benchmark_stop_real.QuadPart - benchmark_start_real.QuadPart) /
-      benchmark_frequency.QuadPart;
-  benchmark_real_time_us += elapsed_real * 1e6 + 0.5;
-
-  FILETIME benchmark_stop_cpu, dummy;
-  CHECK(GetProcessTimes(
-      GetCurrentProcess(), &dummy, &dummy, &dummy, &benchmark_stop_cpu));
-
-  ULARGE_INTEGER start_ulargeint;
-  start_ulargeint.LowPart = benchmark_start_cpu.dwLowDateTime;
-  start_ulargeint.HighPart = benchmark_start_cpu.dwHighDateTime;
-
-  ULARGE_INTEGER stop_ulargeint;
-  stop_ulargeint.LowPart = benchmark_stop_cpu.dwLowDateTime;
-  stop_ulargeint.HighPart = benchmark_stop_cpu.dwHighDateTime;
-
-  benchmark_cpu_time_us +=
-      (stop_ulargeint.QuadPart - start_ulargeint.QuadPart + 5) / 10;
-#else  // WIN32
-  struct timeval benchmark_stop_real;
-  gettimeofday(&benchmark_stop_real, NULL);
-  benchmark_real_time_us +=
-      1000000 * (benchmark_stop_real.tv_sec - benchmark_start_real.tv_sec);
-  benchmark_real_time_us +=
-      (benchmark_stop_real.tv_usec - benchmark_start_real.tv_usec);
-
-  struct rusage benchmark_stop_cpu;
-  if (getrusage(RUSAGE_SELF, &benchmark_stop_cpu) == -1) {
-    perror("getrusage(RUSAGE_SELF)");
-    exit(1);
-  }
-  benchmark_cpu_time_us += 1000000 * (benchmark_stop_cpu.ru_utime.tv_sec -
-                                      benchmark_start_cpu.ru_utime.tv_sec);
-  benchmark_cpu_time_us += (benchmark_stop_cpu.ru_utime.tv_usec -
-                            benchmark_start_cpu.ru_utime.tv_usec);
-#endif  // WIN32
-
-  benchmark_running = false;
-}
-
-void SetBenchmarkLabel(const std::string& str) {
-  if (benchmark_label) {
-    delete benchmark_label;
-  }
-  benchmark_label = new std::string(str);
-}
-
-void SetBenchmarkBytesProcessed(int64 bytes) {
-  benchmark_bytes_processed = bytes;
-}
-
-struct BenchmarkRun {
-  int64 real_time_us;
-  int64 cpu_time_us;
-};
-
-struct BenchmarkCompareCPUTime {
-  bool operator() (const BenchmarkRun& a, const BenchmarkRun& b) const {
-    return a.cpu_time_us < b.cpu_time_us;
-  }
-};
-
-void Benchmark::Run() {
-  for (int test_case_num = start_; test_case_num <= stop_; ++test_case_num) {
-    // Run a few iterations first to find out approximately how fast
-    // the benchmark is.
-    const int kCalibrateIterations = 100;
-    ResetBenchmarkTiming();
-    StartBenchmarkTiming();
-    (*function_)(kCalibrateIterations, test_case_num);
-    StopBenchmarkTiming();
-
-    // Let each test case run for about 200ms, but at least as many
-    // as we used to calibrate.
-    // Run five times and pick the median.
-    const int kNumRuns = 5;
-    const int kMedianPos = kNumRuns / 2;
-    int num_iterations = 0;
-    if (benchmark_real_time_us > 0) {
-      num_iterations = 200000 * kCalibrateIterations / benchmark_real_time_us;
-    }
-    num_iterations = std::max(num_iterations, kCalibrateIterations);
-    BenchmarkRun benchmark_runs[kNumRuns];
-
-    for (int run = 0; run < kNumRuns; ++run) {
-      ResetBenchmarkTiming();
-      StartBenchmarkTiming();
-      (*function_)(num_iterations, test_case_num);
-      StopBenchmarkTiming();
-
-      benchmark_runs[run].real_time_us = benchmark_real_time_us;
-      benchmark_runs[run].cpu_time_us = benchmark_cpu_time_us;
-    }
-
-    std::string heading = StrFormat("%s/%d", name_.c_str(), test_case_num);
-    std::string human_readable_speed;
-
-    std::nth_element(benchmark_runs,
-                     benchmark_runs + kMedianPos,
-                     benchmark_runs + kNumRuns,
-                     BenchmarkCompareCPUTime());
-    int64 real_time_us = benchmark_runs[kMedianPos].real_time_us;
-    int64 cpu_time_us = benchmark_runs[kMedianPos].cpu_time_us;
-    if (cpu_time_us <= 0) {
-      human_readable_speed = "?";
-    } else {
-      int64 bytes_per_second =
-          benchmark_bytes_processed * 1000000 / cpu_time_us;
-      if (bytes_per_second < 1024) {
-        human_readable_speed =
-            StrFormat("%dB/s", static_cast<int>(bytes_per_second));
-      } else if (bytes_per_second < 1024 * 1024) {
-        human_readable_speed = StrFormat(
-            "%.1fkB/s", bytes_per_second / 1024.0f);
-      } else if (bytes_per_second < 1024 * 1024 * 1024) {
-        human_readable_speed = StrFormat(
-            "%.1fMB/s", bytes_per_second / (1024.0f * 1024.0f));
-      } else {
-        human_readable_speed = StrFormat(
-            "%.1fGB/s", bytes_per_second / (1024.0f * 1024.0f * 1024.0f));
-      }
-    }
-
-    fprintf(stderr,
-#ifdef WIN32
-            "%-18s %10I64d %10I64d %10d %s  %s\n",
-#else
-            "%-18s %10lld %10lld %10d %s  %s\n",
+#ifdef _MSC_VER
+#pragma warning(pop)
 #endif
-            heading.c_str(),
-            static_cast<long long>(real_time_us * 1000 / num_iterations),
-            static_cast<long long>(cpu_time_us * 1000 / num_iterations),
-            num_iterations,
-            human_readable_speed.c_str(),
-            benchmark_label->c_str());
-  }
-}
 
 #ifdef HAVE_LIBZ
 
