@@ -271,6 +271,12 @@ CostEstimate SortNode::estimateCost() const {
   return estimate;
 }
 
+void SortNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  for (auto& variable : _elements) {
+    variable.var = Variable::replace(variable.var, replacements);
+  }
+}
+
 SortNode::SorterType SortNode::sorterType() const {
   return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap : SorterType::Standard;
 }

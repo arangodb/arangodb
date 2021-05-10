@@ -97,6 +97,7 @@ struct SingleServerProvider {
 
     Step(VertexType v);
     Step(VertexType v, EdgeDocumentToken edge, size_t prev);
+    Step(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth);
     ~Step();
 
     bool operator<(Step const& other) const noexcept {

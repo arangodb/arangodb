@@ -60,11 +60,13 @@ class PathStoreTracer {
   // returns the index of inserted element
   size_t append(Step step);
 
+  auto get(size_t position) const -> Step;
+
   // @brief returns the current vector size
   size_t size() const;
 
-  template <class ProviderType>
-  auto buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> void;
+  template <class PathResultType>
+  auto buildPath(Step const& vertex, PathResultType& path) const -> void;
 
   template <class ProviderType>
   auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
