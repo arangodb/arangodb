@@ -362,7 +362,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief maximum age of replication error occurrences that are kept per shard.
   /// error occurrences older than this max age will be removed only lazily and
   /// will not be considered when counting the number of errors.
-  static constexpr auto maxReplicationErrorsPerShardAge = std::chrono::minutes(20);
+  static constexpr auto maxReplicationErrorsPerShardAge = std::chrono::hours(24);
   
  protected:
   void initializeMetrics();

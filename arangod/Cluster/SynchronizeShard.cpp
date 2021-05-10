@@ -695,12 +695,7 @@ bool SynchronizeShard::first() {
     // shard synchronization has failed several times in a row.
     // now step on the brake a bit. this blocks our maintenance thread, but currently
     // there seems to be no better way to delay the execution of maintenance tasks.
-    double sleepTime = 2.0;
-    double add = 0.1;
-    for (size_t i = 0; i < failuresInRow; ++i) {
-      sleepTime += add;
-      add += 0.1;
-    }
+    double sleepTime = 2.0 + 0.1 * (failuresInRow * (failuresInRow + 1) / 2);
 
     sleepTime = std::min<double>(sleepTime, 15.0);
     
