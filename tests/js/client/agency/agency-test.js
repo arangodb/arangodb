@@ -891,7 +891,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
                      [{"a":{"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{}},{a:{b:{c:[1,2,3]}},d:false}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1430,17 +1430,17 @@ function agencyTestSuite () {
     testOrder : function () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]}},d:false}]);
       writeAndCheck([[{"/":{"op":"delete"}}]]);
       writeAndCheck([[{"d":false, "a":{"b":{"c":[1,2,3]},"e":12}}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]}},d:false}]);
       writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]}},d:false}]);
       writeAndCheck([[{"d":false, "a":{"e":12,"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],["a/b","d"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]}},d:false}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

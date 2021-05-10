@@ -64,6 +64,27 @@ class StoreTestAPI : public ::testing::Test {
     }
   }
 
+  template<typename TOstream, typename TValueContainer>
+  static TOstream& insert_value_array(TOstream &out, TValueContainer const &src) {
+    out << "[";
+    std::copy(src.begin(), src.end(), std::ostream_iterator<std::string>(out, ", "));
+    out << "]";
+    return out;
+  }
+
+  auto write(std::vector<std::vector<std::string>> const &operations) {
+    std::stringstream ss;
+    ss << "[";
+    if (!operations.empty()) {
+      insert_value_array(ss, operations.front());
+      for (auto oi {operations.begin() + 1}; oi != operations.end(); ++oi) {
+        insert_value_array(ss, *oi);
+      }
+    }
+    ss << "]";
+    return write(ss.str());
+  }
+
   auto transactAndCheck(std::string const &json) {
     auto q {VPackParser::fromJson(json)};
     auto results { _store.applyTransactions(q)};
@@ -91,7 +112,7 @@ class StoreTestAPI : public ::testing::Test {
 
 };
 
-TEST_F(StoreTestAPI, our_first_test) {
+TEST_F(StoreTestAPI, basic_operations_empty_results) {
   auto q = VPackParser::fromJson(R"=(
         [[{"/": {"op":"delete"}}]]
       )=");
@@ -356,135 +377,140 @@ TEST_F(StoreTestAPI, precondition) {
       }
     }
 
-/*
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief test clientIds
   ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, ClientIds) {
-      var res;
-      var cur;
+  TEST_F(StoreTestAPI, client_ids) {
+    auto res = write(R"([[{"a":12}]])");
+    auto cur {1};
 
-      res = accessAgency("write", [[{"a":12}]]).bodyParsed;
-      cur = res.results[0];
+    writeAndCheck(R"([[{"/a":12}]])");
+    std::array<std::string, 15> id{
+      "\"abyss\"", "\"barter\"", "\"collate\"", "\"deflect\"", "\"elliptical\"", "\"facade\"",
+      "\"gaseous\"", "\"homage\"", "\"immerse\"", "\"kindred\"", "\"landslide\"", "\"marquee\"",
+      "\"neutralize\"", "\"optician\"", "\"periphery\""
+    };
+    std::array<std::string, 3> query {
+      R"({"a":12})",
+      R"({"a":13})",
+      R"({"a":13})"
+    };
+    std::array<std::string, 3> pre {
+      R"({})",
+      R"({"a":12})",
+      R"({"a":12})"
+    };
+    cur += 2;
 
-      writeAndCheck(R"([[{"/a":12}]])");
-      var id = [guid(),guid(),guid(),guid(),guid(),guid(),
-                guid(),guid(),guid(),guid(),guid(),guid(),
-                guid(),guid(),guid()];
-      var query = [{"a":12},{"a":13},{"a":13}];
-      var pre = [{},{"a":12},{"a":12}];
-      cur += 2;
+    auto wres = write({{query[0], pre[0], id[0]}});
+    // res = accessAgency("inquire",[id[0]]);
+    // wres.bodyParsed.inquired = true;
+    // assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
-      var wres = accessAgency("write", [[query[0], pre[0], id[0]]]);
-      res = accessAgency("inquire",[id[0]]);
-      wres.bodyParsed.inquired = true;
-      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
+    // wres = accessAgency("write", [[query[1], pre[1], id[0]]]);
+    // res = accessAgency("inquire",[id[0]]);
+    // assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
+    // cur++;
 
-      wres = accessAgency("write", [[query[1], pre[1], id[0]]]);
-      res = accessAgency("inquire",[id[0]]);
-      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
-      cur++;
+    // wres = accessAgency("write",[[query[1], pre[1], id[2]]]);
+    // assertEqual(wres.statusCode,412);
+    // res = accessAgency("inquire",[id[2]]);
+    // assertEqual(res.statusCode,404);
+    // assertEqual(res.bodyParsed, {"results":[0],"inquired":true});
+    // assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
-      wres = accessAgency("write",[[query[1], pre[1], id[2]]]);
-      assertEqual(wres.statusCode,412);
-      res = accessAgency("inquire",[id[2]]);
-      assertEqual(res.statusCode,404);
-      assertEqual(res.bodyParsed, {"results":[0],"inquired":true});
-      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
-
-      wres = accessAgency("write",[[query[0], pre[0], id[3]],
-                                   [query[1], pre[1], id[3]]]);
-      assertEqual(wres.statusCode,200);
-      cur += 2;
-      res = accessAgency("inquire",[id[3]]);
-      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
-      assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
-      assertEqual(res.statusCode,200);
+    // wres = accessAgency("write",[[query[0], pre[0], id[3]],
+    //                              [query[1], pre[1], id[3]]]);
+    // assertEqual(wres.statusCode,200);
+    // cur += 2;
+    // res = accessAgency("inquire",[id[3]]);
+    // assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
+    // assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
+    // assertEqual(res.statusCode,200);
 
 
-      wres = accessAgency("write",[[query[0], pre[0], id[4]],
-                                   [query[1], pre[1], id[4]],
-                                   [query[2], pre[2], id[4]]]);
-      assertEqual(wres.statusCode,412);
-      cur += 2;
-      res = accessAgency("inquire",[id[4]]);
-      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
-      assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
-      assertEqual(res.statusCode,200);
+    // wres = accessAgency("write",[[query[0], pre[0], id[4]],
+    //                              [query[1], pre[1], id[4]],
+    //                              [query[2], pre[2], id[4]]]);
+    // assertEqual(wres.statusCode,412);
+    // cur += 2;
+    // res = accessAgency("inquire",[id[4]]);
+    // assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
+    // assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
+    // assertEqual(res.statusCode,200);
 
-      wres = accessAgency("write",[[query[0], pre[0], id[5]],
-                                   [query[2], pre[2], id[5]],
-                                   [query[1], pre[1], id[5]]]);
-      assertEqual(wres.statusCode,412);
-      cur += 2;
-      res = accessAgency("inquire",[id[5]]);
-      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
-      assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
-      assertEqual(res.statusCode,200);
+    // wres = accessAgency("write",[[query[0], pre[0], id[5]],
+    //                              [query[2], pre[2], id[5]],
+    //                              [query[1], pre[1], id[5]]]);
+    // assertEqual(wres.statusCode,412);
+    // cur += 2;
+    // res = accessAgency("inquire",[id[5]]);
+    // assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
+    // assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
+    // assertEqual(res.statusCode,200);
 
-      wres = accessAgency("write",[[query[2], pre[2], id[6]],
-                                   [query[0], pre[0], id[6]],
-                                   [query[1], pre[1], id[6]]]);
-      assertEqual(wres.statusCode,412);
-      cur += 2;
-      res = accessAgency("inquire",[id[6]]);
-      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
-      assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[2]);
-      assertEqual(res.statusCode,200);
+    // wres = accessAgency("write",[[query[2], pre[2], id[6]],
+    //                              [query[0], pre[0], id[6]],
+    //                              [query[1], pre[1], id[6]]]);
+    // assertEqual(wres.statusCode,412);
+    // cur += 2;
+    // res = accessAgency("inquire",[id[6]]);
+    // assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
+    // assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[2]);
+    // assertEqual(res.statusCode,200);
 
-      wres = accessAgency("write",[[query[2], pre[2], id[7]],
-                                  [query[0], pre[0], id[8]],
-                                  [query[1], pre[1], id[9]]]);
-      assertEqual(wres.statusCode,412);
-      cur += 2;
-      res = accessAgency("inquire",[id[7],id[8],id[9]]);
-      assertEqual(res.statusCode,404);
-      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
+    // wres = accessAgency("write",[[query[2], pre[2], id[7]],
+    //                             [query[0], pre[0], id[8]],
+    //                             [query[1], pre[1], id[9]]]);
+    // assertEqual(wres.statusCode,412);
+    // cur += 2;
+    // res = accessAgency("inquire",[id[7],id[8],id[9]]);
+    // assertEqual(res.statusCode,404);
+    // assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
-    }
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document/transaction assignment
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, Document) {
-      writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
-      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]},"d":false}}]);
-      writeAndCheck(R"([[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"@":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]])");
-      assertEqual(readAndCheck(R"([["/!!@#$%^&*)/address"]])"), R"([{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}])");
-    }
-
+TEST_F(StoreTestAPI, document) {
+  writeAndCheck(R"([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]])");
+  assertEqual(readAndCheck(R"([["a/e"],[ "d","a/b"]])"),
+              R"([{"a":{"e":12}},{"a":{"b":{"c":[1,2,3]}},"d":false}])");
+  writeAndCheck(R"--([[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"@":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]])--");
+  assertEqual(readAndCheck(R"([["/!!@#$%^&*)/address"]])"), R"--([{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}])--");
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-    TEST_F(StoreTestAPI, Arrays) {
-      writeAndCheck(R"([[{"/":[]}]])");
-      assertEqual(readAndCheck(R"([["/"]])"), R"([[]])");
-      writeAndCheck(R"([[{"/":[1,2,3]}]])");
-      assertEqual(readAndCheck(R"([["/"]])"), R"([[1,2,3]])");
-      writeAndCheck(R"([[{"/a":[1,2,3]}]])");
-      assertEqual(readAndCheck(R"([["/"]])"), R"([{"a":[1,2,3]}])");
-      writeAndCheck(R"([[{"1":["C","C++","Java","Python"]}]])");
-      assertEqual(readAndCheck(R"([["/1"]])"), R"([{1:["C","C++","Java","Python"]}])");
-      writeAndCheck(R"([[{"1":["C",2.0,"Java","Python"]}]])");
-      assertEqual(readAndCheck(R"([["/1"]])"), R"([{1:["C",2.0,"Java","Python"]}])");
-      writeAndCheck(R"([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7}]}]])");
-      assertEqual(readAndCheck(R"([["/1"]])"), R"([{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7}]}])");
-      writeAndCheck(R"([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}]])");
-      assertEqual(readAndCheck(R"([["/1"]])"), R"([{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}])");
-      writeAndCheck(R"([[{"2":[[],[],[],[],[[[[[]]]]]]}]])");
-      assertEqual(readAndCheck(R"([["/2"]])"), R"([{"2":[[],[],[],[],[[[[[]]]]]]}])");
-      writeAndCheck(R"([[{"2":[[[[[[]]]]],[],[],[],[[]]]}]])");
-      assertEqual(readAndCheck(R"([["/2"]])"), R"([{"2":[[[[[[]]]]],[],[],[],[[]]]}])");
-      writeAndCheck(R"([[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]])");
-      assertEqual(readAndCheck(R"([["/2"]])"), R"([{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}])");
-    }
-*/
+TEST_F(StoreTestAPI, arrays) {
+  writeAndCheck(R"([[{"/":[]}]])");
+  assertEqual(readAndCheck(R"([["/"]])"), R"([[]])");
+  writeAndCheck(R"([[{"/":[1,2,3]}]])");
+  assertEqual(readAndCheck(R"([["/"]])"), R"([[1,2,3]])");
+  writeAndCheck(R"([[{"/a":[1,2,3]}]])");
+  assertEqual(readAndCheck(R"([["/"]])"), R"([{"a":[1,2,3]}])");
+  writeAndCheck(R"([[{"1":["C","C++","Java","Python"]}]])");
+  assertEqual(readAndCheck(R"([["/1"]])"), R"([{"1":["C","C++","Java","Python"]}])");
+  writeAndCheck(R"([[{"1":["C",2.0,"Java","Python"]}]])");
+  assertEqual(readAndCheck(R"([["/1"]])"), R"([{"1":["C",2.0,"Java","Python"]}])");
+  writeAndCheck(R"([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7}]}]])");
+  assertEqual(readAndCheck(R"([["/1"]])"), R"([{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7}]}])");
+  writeAndCheck(R"([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}]])");
+  assertEqual(readAndCheck(R"([["/1"]])"), R"([{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}])");
+  writeAndCheck(R"([[{"2":[[],[],[],[],[[[[[]]]]]]}]])");
+  assertEqual(readAndCheck(R"([["/2"]])"), R"([{"2":[[],[],[],[],[[[[[]]]]]]}])");
+  writeAndCheck(R"([[{"2":[[[[[[]]]]],[],[],[],[[]]]}]])");
+  assertEqual(readAndCheck(R"([["/2"]])"), R"([{"2":[[[[[[]]]]],[],[],[],[[]]]}])");
+  writeAndCheck(R"([[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]])");
+  assertEqual(readAndCheck(R"([["/2"]])"), R"([{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}])");
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test multiple transaction
@@ -662,7 +688,7 @@ TEST_F(StoreTestAPI, op_pop) {
 /// @brief Test "pop" operator
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StoreTestAPI, OpErase) {
+TEST_F(StoreTestAPI, op_erase) {
 
       writeAndCheck(R"([[{"/version":{"op":"delete"}}]])");
 
@@ -860,90 +886,6 @@ TEST_F(StoreTestAPI, OpErase) {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Test observe / unobserve
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_F(StoreTestAPI, observe) {
-  // var res, before, after, clean;
-  // var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}];
-
-  // // In the beginning
-  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-  // assertEqual(200, res.statusCode);
-  // clean = JSON.parse(res.body);
-
-  // Don't create empty object for observation
-  writeAndCheck(R"([[{"/a":{"op":"observe", "url":"https://google.com"}}]])");
-  assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
-  // res = accessAgency("write",[trx]);
-  // assertEqual(res.statusCode, 200);
-  // res = accessAgency("write",[trx]);
-  // assertEqual(res.statusCode, 412);
-
-  // writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  // var c = agencyConfig().term;
-
-  // // No duplicate entries in
-  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-  // assertEqual(200, res.statusCode);
-  // before = JSON.parse(res.body);
-  // writeAndCheck(R"([[{"/a":{"op":"observe", "url":"https://google.com"}}]])");
-  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-  // assertEqual(200, res.statusCode);
-  // after = JSON.parse(res.body);
-  // if (!_.isEqual(before, after)) {
-  //   if (agencyConfig().term === c) {
-  //     assertEqual(before, after); //peng
-  //   } else {
-  //     require("console").warn("skipping remaining callback tests this time around");
-  //     return; //
-  //   }
-  // }
-
-  // // Normalization
-  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-  // assertEqual(200, res.statusCode);
-  // before = JSON.parse(res.body);
-  // writeAndCheck(R"([[{"//////a////":{"op":"observe", "url":"https://google.com"}}]])");
-  // writeAndCheck(R"([[{"a":{"op":"observe", "url":"https://google.com"}}]])");
-  // writeAndCheck(R"([[{"a/":{"op":"observe", "url":"https://google.com"}}]])");
-  // writeAndCheck(R"([[{"/a/":{"op":"observe", "url":"https://google.com"}}]])");
-  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-  // assertEqual(200, res.statusCode);
-  // after = JSON.parse(res.body);
-  // if (!_.isEqual(before, after)) {
-  //   if (agencyConfig().term === c) {
-  //     assertEqual(before, after); //peng
-  //   } else {
-  //     require("console").warn("skipping remaining callback tests this time around");
-  //     return; //
-  //   }
-  // }
-
-  // // Unobserve
-  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-  // assertEqual(200, res.statusCode);
-  // before = JSON.parse(res.body);
-  // writeAndCheck(R"([[{"//////a":{"op":"unobserve", "url":"https://google.com"}}]])");
-  // res = request({"url":agencyLeader+"/_api/agency/stores", "method":"GET"});
-  // assertEqual(200, res.statusCode);
-  // after = JSON.parse(res.body);
-  // assertEqual(clean, after);
-  // if (!_.isEqual(clean, after)) {
-  //   if (agencyConfig().term === c) {
-  //     assertEqual(clean, after); //peng
-  //   } else {
-  //     require("console").warn("skipping remaining callback tests this time around");
-  //     return; //
-  //   }
-  // }
-
-  // writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  // assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
-
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Test delete / replace / erase should not create new stuff in agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -957,9 +899,8 @@ TEST_F(StoreTestAPI, observe) {
       ASSERT_EQ(consensus::APPLIED, res.front());
       res = write(trx);
       ASSERT_EQ(consensus::PRECONDITION_FAILED, res.front());
-      // assertEqual(res.statusCode, 412);
-      // writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-      // assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
+      writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
+      assertEqual(readAndCheck(R"([["/"]])"), R"( [{}])");
 
       // // Don't create empty object for observation
       // writeAndCheck(R"([[{"a":{"op":"replace", "val":1, "new":2}}]])");
