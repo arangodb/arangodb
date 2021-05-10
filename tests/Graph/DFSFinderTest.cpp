@@ -596,9 +596,55 @@ TEST_P(DFSFinderTest, path_depth_1_to_2_skip) {
   }
 }
 
+TEST_P(DFSFinderTest, path_loop) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
+
+  // Source and target are direct neighbors, there is only one path between them
+  auto source = vId(20);
+
+  finder.reset(toHashedStringRef(source));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+    LOG_DEVEL << "found I:";
+    LOG_DEVEL << result.slice().toJson();
+
+    pathStructureValid(result.slice(), 1);
+    pathEquals(result.slice(), {20, 21});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_TRUE(hasPath);
+    hasPath->toVelocyPack(result);
+    LOG_DEVEL << "found II:";
+    LOG_DEVEL << result.slice().toJson();
+
+    pathStructureValid(result.slice(), 2);
+    pathEquals(result.slice(), {20, 21, 22});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath();
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
 /* TODO: Add more tests
  * - path_depth_2_to_3
- * - path_loop
  * - triangle_loop
  * - triangle_loop_skip
  * - many_neighbours_source
