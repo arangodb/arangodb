@@ -25,8 +25,8 @@
 // @author Kaveh Vahedipour
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
+let internal = require("internal");
+let jsunity = require("jsunity");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -34,7 +34,6 @@ var jsunity = require("jsunity");
 
 function dumpTestSuite () {
   'use strict';
-  var db = internal.db;
 
   return {
 
@@ -65,40 +64,42 @@ function dumpTestSuite () {
         return this;
       };
 
-      var i = 0;
-      var pending = [];
+      let i = 0;
+      let pending = [];
       Object.keys(planShards).forEach(
         function (shard) {
           let dbs = ["DBServer0001", "DBServer0002", "DBServer0003"];
           let leader = planShards[shard].leader;
           let follower = planShards[shard].followers[0];
-          dbs.remove(leader);
-          dbs.remove(follower);
+          dbs = dbs.filter((d) => d !== leader && d !== follower);
           let unused = dbs[0];
-          var toServer, fromServer;
+          let toServer, fromServer;
           let modulo = i % 4;
 
           switch (modulo) {
-          case 0:
-            fromServer = leader; toServer = unused; break;
-          case 1:
-            fromServer = follower; toServer = unused; break;
-          case 2:
-            fromServer = leader; toServer = follower; break;
-          default:
-            return; break;
+            case 0:
+              fromServer = leader; toServer = unused; break;
+            case 1:
+              fromServer = follower; toServer = unused; break;
+            case 2:
+              fromServer = leader; toServer = follower; break;
+            default:
+              return;
           }
 
           let body = {fromServer, toServer, database, collection, shard};
           let result = arango.POST("_admin/cluster/moveShard", body);
-          assertTrue(!result.error);
-          assertTrue(result.code === 202);
+          assertFalse(result.error);
+          assertEqual(result.code, 202);
           pending.push(result.id);
           i++;
         });
 
+      let timeout = new Date();
+      timeout.setSeconds(timeout.getSeconds() + 120);
       while (pending.length > 0) { // wait for moveShard jobs to finish
-        var done = [];
+        assertTrue(timeout - new Date() > 0);
+        let done = [];
         pending.forEach(
           function (jobId) {
             let query = arango.GET("/_admin/cluster/queryAgencyJob?id=" + jobId);
@@ -107,11 +108,9 @@ function dumpTestSuite () {
             }
           }
         );
-        done.forEach( function(jobId) { pending.remove(jobId); });
+        pending = pending.filter((p) => done.indexOf(p) !== -1);
         require("internal").sleep(0.25);
       }
-
-      assertTrue(true);
     },
 
   };
