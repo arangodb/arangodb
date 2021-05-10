@@ -166,12 +166,12 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
       // additionally capture a weak pointer that will be locked
       // when the request returns. If the locking is successful
       // we are still in the same term.
+      auto startTime = std::chrono::steady_clock::now();
       it->_follower->_impl->appendEntries(std::move(it->_request))
           .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
                       lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
                       currentTerm = it->_currentTerm,
-                      startTime = std::chrono::steady_clock::now()](
-                         futures::Try<AppendEntriesResult>&& res) {
+                      startTime](futures::Try<AppendEntriesResult>&& res) {
             auto endTime = std::chrono::steady_clock::now();
 
             // TODO This has to be noexcept

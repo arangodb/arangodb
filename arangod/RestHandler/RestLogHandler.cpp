@@ -186,7 +186,17 @@ RestStatus RestLogHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
 
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+
+      for (auto const& [idx, status] : _vocbase.getReplicatedLogs()) {
+        builder.add(VPackValue(std::to_string(idx.id())));
+        std::visit([&](auto const& status) { status.toVelocyPack(builder); }, status);
+      }
+    }
+
+    generateOk(rest::ResponseCode::OK, builder.slice());
     return RestStatus::DONE;
   }
 

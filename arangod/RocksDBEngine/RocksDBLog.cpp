@@ -182,9 +182,16 @@ void RocksDBLogPersistor::runPersistorWorker() noexcept {
           }
           {
             rocksdb::WriteOptions opts;
+            opts.sync = true;
+            auto start_time = std::chrono::steady_clock::now();
             if (auto s = _db->Write(opts, &wb); !s.ok()) {
               return rocksutils::convertStatus(s);
             }
+            auto end_time = std::chrono::steady_clock::now();
+
+            LOG_DEVEL << "RocksDB write time = "
+                      << std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+                             end_time - start_time);
           }
 
           // resolve all promises in [start, current)
