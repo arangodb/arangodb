@@ -34,3 +34,4 @@ build_script:
 
 test_script:
   - build\%CONFIGURATION%\snappy_unittest
+  - build\%CONFIGURATION%\snappy_benchmark

@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated bundled version of Snappy library to 1.1.9.
+
 * Fixed various issues (mainly data races) reported by ThreadSanitizer.
 
 * Improve "Shards" view in web UI so that the shards of individual collections
