@@ -3056,6 +3056,9 @@ class writer final : public irs::columnstore_writer {
       avg_block_count_ = block_index_.flushed() / blocks_count;
       avg_block_size_ = length_ / blocks_count;
 
+      // we don't care of tail block size
+      prev_block_size_ = block_buf_.size();
+
       // commit and flush remain blocks
       flush_block();
 

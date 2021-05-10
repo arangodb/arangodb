@@ -27,6 +27,7 @@
 #include "Basics/system-functions.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Logger/LogMacros.h"
 
@@ -96,6 +97,7 @@ auto QueueTracer<QueueImpl>::pop() -> typename QueueImpl::Step {
 
 /* SingleServerProvider Section */
 template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::SingleServerProvider::Step>>;
+template class ::arangodb::graph::QueueTracer<arangodb::graph::LifoQueue<arangodb::graph::SingleServerProvider::Step>>;
 
 /* ClusterServerProvider Section */
 template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::ClusterProvider::Step>>;
