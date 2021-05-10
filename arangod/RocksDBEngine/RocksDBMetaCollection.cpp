@@ -561,6 +561,10 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       if (revisions.size() >= 4096) {  // arbitrary batch size
         newTree->insert(revisions);
         revisions.clear();
+      
+        if (_logicalCollection.vocbase().server().isStopping()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+        }
       }
       it.next();
     }
@@ -614,6 +618,10 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
     if (revisions.size() >= 4096) {  // arbitrary batch size
       newTree->insert(revisions);
       revisions.clear();
+        
+      if (_logicalCollection.vocbase().server().isStopping()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
     }
   }
   if (!revisions.empty()) {

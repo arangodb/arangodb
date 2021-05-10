@@ -668,7 +668,7 @@ bool SynchronizeShard::first() {
  
   size_t failuresInRow = feature().replicationErrors(database, shard);
   
-  if (failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) 
+  if (failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) { 
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
@@ -1236,7 +1236,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
       network::RequestOptions options;
       options.database = getDatabase();
-      options.timeout = network::Timeout(600.0);  // this can be slow!!!
+      options.timeout = network::Timeout(900.0);  // this can be slow!!!
       options.skipScheduler = true;  // hack to speed up future.get()
 
       std::string const url = "/_api/collection/" + collection.name() + "/recalculateCount";
@@ -1244,41 +1244,32 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       // send out the request
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
                                          url, std::move(buffer), options);
-    
+        
       // while the request is pending, rebuild the revision tree for our local collection
-    {
-      /*
-      auto ctx = std::make_shared<transaction::StandaloneContext>(collection.vocbase());
-      SingleCollectionTransaction trx(ctx, collection.name(), AccessMode::Type::READ);
+      {
+        LOG_TOPIC("04c25", INFO, Logger::MAINTENANCE) 
+            << "rebuilding revision tree on follower for shard " 
+            << getDatabase() << "/" << getShard();
+    
+        double start = TRI_microtime();
+        Result result = collection.getPhysical()->rebuildRevisionTree();
+        
+        if (result.fail()) {
+          LOG_TOPIC("92233", WARN, Logger::MAINTENANCE) 
+              << "unable to rebuild revision tree on follower for shard " 
+              << getDatabase() << "/" << getShard() << ": " << result.errorMessage();
+          // still go on...
+        }
 
-      [[maybe_unused]] Result res = trx.begin();
-      LOG_DEVEL << "REBUILDING LOCAL REVISION TREE...";
-      LOG_DEVEL << "OLD: " << *collection.getPhysical()->revisionTree(trx);
-      */
-    }
-      Result result = collection.getPhysical()->rebuildRevisionTree();
-      
-      LOG_DEVEL << "REBUILDING LOCAL REVISION TREE RESULT: " << result.errorMessage();
-    {
-      /*
-      auto ctx = std::make_shared<transaction::StandaloneContext>(collection.vocbase());
-      SingleCollectionTransaction trx(ctx, collection.name(), AccessMode::Type::READ);
-
-      [[maybe_unused]] Result res = trx.begin();
-      LOG_DEVEL << "NEW: " << *collection.getPhysical()->revisionTree(trx);
-      */
-    }
-
-      if (result.fail()) {
-        LOG_TOPIC("92233", WARN, Logger::MAINTENANCE) 
-            << "unable to rebuild revision tree on follower for " 
-            << getDatabase() << "/" << getShard() << ": " << result.errorMessage();
-        // still go on...
+        LOG_TOPIC("1c9e7", INFO, Logger::MAINTENANCE) 
+            << "rebuilt revision tree on follower for shard " 
+            << getDatabase() << "/" << getShard() << ": " << result.errorMessage() 
+            << ", took: " << (TRI_microtime() - start) << "s";
       }
 
       network::Response const& r = future.get();
 
-      result = r.combinedResult();
+      Result result = r.combinedResult();
 
       if (result.fail()) {
         auto const errorMessage = StringUtils::concatT(
