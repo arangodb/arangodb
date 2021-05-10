@@ -191,7 +191,7 @@ void RocksDBLogPersistor::runPersistorWorker() noexcept {
 
             LOG_DEVEL << "RocksDB write time = "
                       << std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
-                             end_time - start_time);
+                             end_time - start_time).count();
           }
 
           // resolve all promises in [start, current)
