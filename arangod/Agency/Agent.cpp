@@ -576,12 +576,14 @@ void Agent::sendAppendEntriesRPC() {
       auto startTime = steady_clock::now();
       SteadyTimePoint earliestPackage;
       SteadyTimePoint lastAcked;
+      SteadyTimePoint lastSent;
 
       {
         t = this->term();
         MUTEX_LOCKER(tiLocker, _tiLock);
         TRI_ASSERT(_lastAckedIndex.find(followerId) != _lastAckedIndex.end());
         std::tie(lastAcked, lastConfirmed) = _lastAckedIndex.at(followerId);
+        lastSent = _lastSent[followerId];
       }
 
       // We essentially have to send some log entries from their lastConfirmed+1
@@ -645,10 +647,9 @@ void Agent::sendAppendEntriesRPC() {
       // if lastConfirmed is equal to the last index in our log, in which
       // case there is nothing to replicate.
 
-      duration<double> m = steady_clock::now() - _lastSent[followerId];
+      duration<double> m = steady_clock::now() - lastSent;
 
-      if (m.count() > _config.minPing() &&
-          _lastSent[followerId].time_since_epoch().count() != 0) {
+      if (m.count() > _config.minPing() && lastSent.time_since_epoch().count() != 0) {
         LOG_TOPIC("0ddbd", DEBUG, Logger::AGENCY)
             << "Note: sent out last AppendEntriesRPC "
             << "to follower " << followerId
@@ -761,7 +762,10 @@ void Agent::sendAppendEntriesRPC() {
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
-      _lastSent[followerId] = steady_clock::now();
+      {
+        MUTEX_LOCKER(tiLocker, _tiLock);
+        _lastSent[followerId] = steady_clock::now();
+      }
       // _constituent.notifyHeartbeatSent(followerId);
       // Do not notify constituent, because the AppendEntriesRPC here could
       // take a very long time, so this must not disturb the empty ones

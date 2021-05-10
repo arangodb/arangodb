@@ -9,12 +9,53 @@ devel
 * Fixed bug in error reporting when a database create did not work, which
   lead to a busy loop reporting this error to the agency.
 
+* Updated bundled version of Snappy library to 1.1.9.
+
+* Fixed various issues (mainly data races) reported by ThreadSanitizer.
+
+* Improve "Shards" view in web UI so that the shards of individual collections
+  can be expanded and collapsed without affecting the display of any other
+  shards. Also added a "Toggle all" button the web UI to expand/collapse the
+  shards for all collections.
+
+* Log a proper message if an unexpected state is encountered when taking over
+  shard leadership. In addition, make the change to the internal followerinfo 
+  state atomic so that it cannot be semi-changed.
+
+* Improve exception safety for maintenance thread and shard unlock
+  operations.
+
+* Fixed two bugs in fuerte with HTTP/2 and VST connections.
+  One could lead to ordered timeouts not being honoured. The other could
+  lead to an ordered callback be called multiple times.
+
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own
+  rebootId increment has triggered plan entry to be removed.
+
+* When writing to starting shard leader respond with specific
+  503. Fixes BTS-390.
+
+* Introduce a new internal error code for cases where a call cannot succeed
+  because the server startup phase is still in progress. This error will be
+  mapped to the HTTP status code 503 (service unavailable).
+  One example where this can happen is when trying to authenticate a request,
+  but the _users collection is not yet available in the cluster.
+
 * Fixed issue BTS-354: Assertion related to getCollection. 
 
 * Fixed a use after free bug in the connection pool.
 
 * Fix DEVSUP-749: Fix potential deadlock when executing concurrent view/link
   DDL operations and index DDL operations on the same collection.
+
+* Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied,
+  it may rename some variables in the query. The variable renaming was however
+  not carried out for traversal PRUNE conditions, so the PRUNE conditions 
+  could still refer to obsolete variables, which would make the query fail with
+  errors such as 
+    
+      Query: AQL: missing variable ... for node ... while planning registers
 
 * Fixed bug in error reporting when a database create did not work, which led
   to a busy loop reporting this error to the agency.

@@ -104,6 +104,8 @@ struct ExecutionNodeMock {
 
   auto setVarUsageValid() -> void { _varUsageValid = true; }
 
+  using VariableIdSet = std::set<VariableId>;
+
   auto getOutputVariables() const -> VariableIdSet {
     VariableIdSet res;
     for (auto const& v : _output) {

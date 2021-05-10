@@ -15,7 +15,7 @@ struct elsa<ErrorCode> {
 #include <frozen/unordered_map.h>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 343> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -86,6 +86,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessage
       "disabled"},
     {TRI_ERROR_MALFORMED_JSON,  // 37
       "malformed json"},
+    {TRI_ERROR_STARTING_UP,  // 38
+      "startup ongoing"},
     {TRI_ERROR_HTTP_BAD_PARAMETER,  // 400
       "bad parameter"},
     {TRI_ERROR_HTTP_UNAUTHORIZED,  // 401
