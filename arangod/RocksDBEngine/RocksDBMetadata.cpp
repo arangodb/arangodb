@@ -467,7 +467,11 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
     appliedSeq = std::min(appliedSeq, seq);
         
-    rcoll->hibernateRevisionTree();
+    if (coll.useSyncByRevision()) {
+      // set the tree to sleep (note: hibernation requests may be ignored if there
+      // is not yet a need to hibernate)
+      rcoll->hibernateRevisionTree();
+    }
   }
 
   return res;

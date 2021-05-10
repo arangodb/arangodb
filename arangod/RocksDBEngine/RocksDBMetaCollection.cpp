@@ -360,8 +360,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
 
   if (!_revisionTree && !haveBufferedOperations()) {
     // we only need to return an empty tree here.
-    // TODO: check if we can get away with returning a very small tree here
-    return allocateEmptyRevisionTree(2); 
+    return allocateEmptyRevisionTree(revisionTreeDepth); 
   }
 
   applyUpdates(safeSeq);
@@ -457,9 +456,10 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
 }
 
 rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq) {
+  rocksdb::SequenceNumber seq = maxCommitSeq;
+
   // first update so we don't under-report
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
-  rocksdb::SequenceNumber seq = maxCommitSeq;
 
   // limit to before any pending buffered updates
 
@@ -524,63 +524,77 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   return commitSeq;
 }
 
+ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> RocksDBMetaCollection::revisionTreeFromCollection() {
+  auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
+  SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
+
+  Result res = trx.begin();
+  if (res.fail()) {
+    LOG_TOPIC("d1e53", WARN, arangodb::Logger::ENGINES)
+        << "failed to begin transaction to rebuild revision tree "
+           "for collection '"
+        << _logicalCollection.id().id() << "'";
+    return res;
+  }
+
+  auto* state = RocksDBTransactionState::toState(&trx);
+
+  auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
+  if (!iter) {
+    LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
+        << "failed to retrieve replication iterator to rebuild revision tree "
+           "for collection '"
+        << _logicalCollection.id().id() << "'";
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  RevisionReplicationIterator& it =
+      *static_cast<RevisionReplicationIterator*>(iter.get());
+  
+  std::vector<std::uint64_t> revisions;
+  revisions.resize(1024);
+  
+  auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
+  
+  while (it.hasMore()) {
+    revisions.emplace_back(it.revision().id());
+    if (revisions.size() >= 4096) {  // arbitrary batch size
+      newTree->insert(revisions);
+      revisions.clear();
+    
+      if (_logicalCollection.vocbase().server().isStopping()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+    }
+    it.next();
+  }
+  if (!revisions.empty()) {
+    newTree->insert(revisions);
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  newTree->checkConsistency();
+#endif
+
+  return std::make_pair(std::move(newTree), state->beginSeq());
+}
+
 Result RocksDBMetaCollection::rebuildRevisionTree() {
   return basics::catchToResult([this]() -> Result {
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
-
-    auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-    SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
-    Result res = trx.begin();
-    if (res.fail()) {
-      LOG_TOPIC("d1e53", WARN, arangodb::Logger::ENGINES)
-          << "failed to begin transaction to rebuild revision tree "
-             "for collection '"
-          << _logicalCollection.id().id() << "'";
-      return res;
-    }
-    auto* state = RocksDBTransactionState::toState(&trx);
-
-    auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
-    if (!iter) {
-      LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
-          << "failed to retrieve replication iterator to rebuild revision tree "
-             "for collection '"
-          << _logicalCollection.id().id() << "'";
-      return Result(TRI_ERROR_INTERNAL);
-    }
-    RevisionReplicationIterator& it =
-        *static_cast<RevisionReplicationIterator*>(iter.get());
     
-    std::vector<std::uint64_t> revisions;
-    revisions.resize(1024);
-    
-    auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
-    
-    while (it.hasMore()) {
-      revisions.emplace_back(it.revision().id());
-      if (revisions.size() >= 4096) {  // arbitrary batch size
-        newTree->insert(revisions);
-        revisions.clear();
-      
-        if (_logicalCollection.vocbase().server().isStopping()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-        }
-      }
-      it.next();
-    }
-    if (!revisions.empty()) {
-      newTree->insert(revisions);
+    auto result = revisionTreeFromCollection();
+    if (result.fail()) {
+      return result.result(); 
     }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    newTree->checkConsistency();
-#endif
+    auto&& [newTree, beginSeq] = result.get();
 
     _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree));
-    _revisionTreeApplied = state->beginSeq();
-    _revisionTreeCreationSeq = state->beginSeq();
-    _revisionTreeSerializedSeq = state->beginSeq();
-    return Result();
+    _revisionTreeApplied = beginSeq;
+    _revisionTreeCreationSeq = beginSeq;
+    _revisionTreeSerializedSeq = beginSeq;
+  
+    return {};
   });
 }
 
@@ -639,17 +653,39 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   _revisionTreeSerializedSeq = seq;
 }
 
-void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
+void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder, bool fromCollection) {
   if (!_logicalCollection.useSyncByRevision()) {
     return;
   }
 
-  std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  if (_revisionTree) {
-    VPackObjectBuilder obj(&builder);
-    obj->add(StaticStrings::RevisionTreeCount, VPackValue(_revisionTree->count()));
-    obj->add(StaticStrings::RevisionTreeHash, VPackValue(_revisionTree->rootValue()));
+  uint64_t count = 0;
+  uint64_t hash = 0;
+
+  if (fromCollection) {
+    // rebuild a temporary tree from the collection
+    auto result = revisionTreeFromCollection();
+
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
+
+    auto&& [tree, beginSeq] = result.get();
+
+    count = tree->count();
+    hash = tree->rootValue();
+  } else {
+    // use existing revision tree
+    std::unique_lock<std::mutex> guard(_revisionTreeLock);
+
+    if (_revisionTree != nullptr) {
+      count = _revisionTree->count();
+      hash = _revisionTree->rootValue();
+    }
   }
+  
+  VPackObjectBuilder obj(&builder);
+  obj->add(StaticStrings::RevisionTreeCount, VPackValue(count));
+  obj->add(StaticStrings::RevisionTreeHash, VPackValue(hash));
 }
 
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transactionId) {
@@ -1068,6 +1104,7 @@ void RocksDBMetaCollection::ensureRevisionTree() {
 RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(std::unique_ptr<containers::RevisionTree> tree) 
     : _tree(std::move(tree)),
       _maxDepth(_tree->maxDepth()),
+      _hibernationRequests(0),
       _compressible(true) {
   TRI_ASSERT(_maxDepth == revisionTreeDepth);
 }
@@ -1131,6 +1168,14 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate() {
     // for whatever reason this collection is not well compressible
     return;
   }
+  
+  if (++_hibernationRequests < 10) {
+    // sit out the first few hibernation requests before we
+    // actually work (10 is just an arbitrary value here to avoid
+    // some pathologic hibernation/resurrection cycles, e.g. by
+    // the statistics collections)
+    return;
+  }
 
   double start = TRI_microtime();
   
@@ -1139,7 +1184,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate() {
 
   TRI_ASSERT(!_compressed.empty());
  
-  LOG_TOPIC("45eae", TRACE, Logger::REPLICATION) 
+  LOG_TOPIC("45eae", DEBUG, Logger::REPLICATION) 
       << "hibernating revision tree with " << count << " entries and size " 
       << _tree->byteSize() << ", hibernated size: " << _compressed.size() << 
       ", hibernation took: " << (TRI_microtime() - start);;
@@ -1183,9 +1228,13 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
     if (_tree == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to uncompress tree");
     }
+
+    // reset hibernation counter
+    _hibernationRequests = 0;
+
     TRI_ASSERT(_tree->maxDepth() == _maxDepth);
     
-    LOG_TOPIC("e9c29", TRACE, Logger::REPLICATION) 
+    LOG_TOPIC("e9c29", DEBUG, Logger::REPLICATION) 
         << "resurrected revision tree with " << _tree->count() 
         << " entries. resurrection took: " << (TRI_microtime() - start);
 

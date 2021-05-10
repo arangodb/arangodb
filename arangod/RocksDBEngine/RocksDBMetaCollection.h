@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/ResultT.h"
 #include "Containers/MerkleTree.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetadata.h"
@@ -88,7 +89,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   Result rebuildRevisionTree() override;
   void rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter);
 
-  void revisionTreeSummary(VPackBuilder& builder);
+  void revisionTreeSummary(VPackBuilder& builder, bool fromCollection);
 
   void placeRevisionTreeBlocker(TransactionId transactionId) override;
   void removeRevisionTreeBlocker(TransactionId transactionId) override;
@@ -112,8 +113,11 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief sends the collection's revision tree to hibernation
   void hibernateRevisionTree();
 
-  /// return bounds for all documents
+  /// @brief return bounds for all documents
   virtual RocksDBKeyBounds bounds() const = 0;
+  
+  /// @brief produce a revision tree from the documents in the collection
+  ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> revisionTreeFromCollection();
   
  protected:
   
@@ -191,6 +195,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
     /// @brief maxDepth of tree. supposed to never change
     std::uint64_t const _maxDepth;
+  
+    /// @brief number of hibernation requests received (we may ignore the
+    /// first few ones)
+    std::uint32_t mutable _hibernationRequests;
 
     /// @brief whether or not we should attempt to compress the tree
     bool _compressible;
