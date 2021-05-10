@@ -808,9 +808,13 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         // if this throws we will not have modified _revisionInsertBuffers
         try {
           _revisionTree->insert(insertIt->second);
-        } catch (...) {
+        } catch (std::exception const& ex) {
           // it is pretty bad if this fails, so we want to see it in our tests
           // and not overlook it.
+          LOG_TOPIC("27811", ERR, Logger::ENGINES)
+              << "unable to apply revision tree updates for " 
+              << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
+              << ": " << res.errorMessage();
           TRI_ASSERT(false);
           throw;
         }
