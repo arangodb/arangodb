@@ -95,7 +95,10 @@ function dumpTestSuite () {
           i++;
         });
 
+      let timeout = new Date();
+      timeout.setSeconds(timeout.getSeconds() + 120);
       while (pending.length > 0) { // wait for moveShard jobs to finish
+        assertTrue(timeout - new Date() > 0);
         let done = [];
         pending.forEach(
           function (jobId) {
