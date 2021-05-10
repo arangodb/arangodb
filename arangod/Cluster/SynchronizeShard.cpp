@@ -668,8 +668,7 @@ bool SynchronizeShard::first() {
  
   size_t failuresInRow = feature().replicationErrors(database, shard);
   
-  if (failuresInRow >= 10) {
-    //      MaintenanceFeature::maxReplicationErrorsPerShard) 
+  if (failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) 
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
@@ -693,6 +692,9 @@ bool SynchronizeShard::first() {
   }
 
   if (failuresInRow >= 4) {
+    // shard synchronization has failed several times in a row.
+    // now step on the brake a bit. this blocks our maintenance thread, but currently
+    // there seems to be no better way to delay the execution of maintenance tasks.
     double sleepTime = 2.0;
     double add = 0.1;
     for (size_t i = 0; i < failuresInRow; ++i) {
@@ -702,7 +704,7 @@ bool SynchronizeShard::first() {
 
     sleepTime = std::min<double>(sleepTime, 15.0);
     
-    LOG_TOPIC("40376", WARN, Logger::MAINTENANCE)
+    LOG_TOPIC("40376", INFO, Logger::MAINTENANCE)
         << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
         << "' for central '" << database << "/" << planId << "' encountered "
         << failuresInRow << " failures in a row. delaying next sync by " 
