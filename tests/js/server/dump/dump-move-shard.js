@@ -54,9 +54,20 @@ function dumpTestSuite () {
 
       let i = 0;
       let pending = [];
+
+      let clusterHealth = arango.GET("_admin/cluster/health").Health;
+      let dbServers = [];
+      Object.keys(clusterHealth).forEach(
+        function (entry) {
+          if (entry.startsWith("PRMR")) {
+            dbServers.push(clusterHealth[entry].ShortName);
+          }
+        });
+      assertTrue (dbServers.length >= 3);
+      
       Object.keys(planShards).forEach(
         function (shard) {
-          let dbs = ["DBServer0001", "DBServer0002", "DBServer0003"];
+          let dbs = dbServers;
           let leader = planShards[shard].leader;
           let follower = planShards[shard].followers[0];
           dbs = dbs.filter((d) => d !== leader && d !== follower);
