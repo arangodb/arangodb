@@ -163,7 +163,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
     RevisionTreeAccessor(RevisionTreeAccessor const&) = delete;
     RevisionTreeAccessor& operator=(RevisionTreeAccessor const&) = delete;
 
-    explicit RevisionTreeAccessor(std::unique_ptr<containers::RevisionTree> tree);
+    explicit RevisionTreeAccessor(std::unique_ptr<containers::RevisionTree> tree,
+                                  LogicalCollection const& collection);
 
     void insert(std::vector<std::uint64_t> const& keys);
     void remove(std::vector<std::uint64_t> const& keys);
@@ -192,6 +193,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
     /// @brief the actual tree. we will either have this populated or 
     ///_compressed
     std::unique_ptr<containers::RevisionTree> mutable _tree;
+
+    /// @brief collecion object, used only for context in log messages
+    LogicalCollection const& _logicalCollection;
 
     /// @brief maxDepth of tree. supposed to never change
     std::uint64_t const _maxDepth;

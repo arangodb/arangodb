@@ -62,8 +62,8 @@ class MerkleTree {
                                                    << BranchingBits;
 
   struct Node {
-    std::uint64_t hash;
     std::uint64_t count;
+    std::uint64_t hash;
 
     bool operator==(Node const& other) const noexcept;
   };
@@ -114,6 +114,30 @@ class MerkleTree {
    * @return A newly allocated tree constructed from the input
    */
   static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromBuffer(std::string_view buffer);
+  
+  /**
+   * @brief Construct a tree from a buffer containing an uncompressed tree
+   *
+   * @param buffer      A buffer containing an uncompressed tree
+   * @return A newly allocated tree constructed from the input
+   */
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromUncompressed(std::string_view buffer);
+  
+  /**
+   * @brief Construct a tree from a buffer containing a Snappy-compressed tree
+   *
+   * @param buffer      A buffer containing a Snappy compressed tree
+   * @return A newly allocated tree constructed from the input
+   */
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromSnappyCompressed(std::string_view buffer);
+  
+  /**
+   * @brief Construct a tree from a buffer containing a bottom-most level compressed tree
+   *
+   * @param buffer      A buffer containing a bottom-most level compressed tree
+   * @return A newly allocated tree constructed from the input
+   */
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromBottomMostCompressed(std::string_view buffer);
 
   /**
    * @brief Construct a tree from a portable serialized tree
@@ -299,6 +323,7 @@ class MerkleTree {
   
  protected:
   explicit MerkleTree(std::string_view buffer);
+  explicit MerkleTree(std::unique_ptr<uint8_t[]> buffer);
   explicit MerkleTree(MerkleTree<Hasher, BranchingBits> const& other);
 
   Meta& meta() const noexcept;
@@ -315,6 +340,7 @@ class MerkleTree {
                     std::uint64_t index) const noexcept;
   bool childrenAreLeaves(std::uint64_t index) const noexcept;
   std::pair<std::uint64_t, std::uint64_t> chunkRange(std::uint64_t chunk, std::uint64_t depth) const;
+  void storeBottomMostCompressed(std::string& output) const;
   
  private:
   /**

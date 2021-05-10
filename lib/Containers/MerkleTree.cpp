@@ -44,20 +44,30 @@
 
 #include "MerkleTree.h"
 
+#include "Basics/Endian.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
-#include "Logger/LogMacros.h"
 
-#define PARANOID_TREE_CHECKS
+// can turn this on for more aggressive and expensive consistency checks
+// #define PARANOID_TREE_CHECKS
 
 namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
 static constexpr char CompressedSnappyCurrent = '1';
 static constexpr char UncompressedCurrent = '2';
+static constexpr char CompressedBottomMostCurrent = '3';
+
+template<typename T> T readUInt(char const*& p) noexcept {
+  uint64_t value;
+  memcpy(&value, p, sizeof(T));
+  p += sizeof(T);
+  return arangodb::basics::littleToHost<T>(value);
+};
+
 }  // namespace
 
 namespace arangodb {
@@ -176,25 +186,37 @@ std::uint64_t MerkleTree<Hasher, BranchingBits>::defaultRange(std::uint64_t maxD
 template <typename Hasher, std::uint64_t const BranchingBits>
 std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
 MerkleTree<Hasher, BranchingBits>::fromBuffer(std::string_view buffer) {
-  std::uint8_t version = static_cast<uint8_t>(buffer[buffer.size() - 1]);
-  if (version != ::CurrentVersion || buffer.size() < MetaSize + 2) {
+  if (buffer.size() < sizeof(Meta) + 2) {
     throw std::invalid_argument(
-        "Buffer does not contain a properly versioned tree.");
+        "Input buffer is too small");
+  }
+
+  TRI_ASSERT(buffer.size() > 2);
+  std::uint8_t version = static_cast<uint8_t>(buffer[buffer.size() - 1]);
+
+  if (version != ::CurrentVersion) {
+    throw std::invalid_argument(
+        "Buffer does not contain a properly versioned tree");
   }
   
-  std::string scratch;
-  if (buffer[buffer.size() - 2] == ::CompressedSnappyCurrent) {
+  if (buffer[buffer.size() - 2] == ::CompressedBottomMostCurrent) {
+    // bottom-most level compressed data
+    return fromBottomMostCompressed(std::string_view(buffer.data(), buffer.size() - 2));
+  } else if (buffer[buffer.size() - 2] == ::CompressedSnappyCurrent) {
     // Snappy-compressed data
-    scratch.reserve(allocationSize(6));
+    return fromSnappyCompressed(std::string_view(buffer.data(), buffer.size() - 2));
+  } else if (buffer[buffer.size() - 2] == ::UncompressedCurrent) {
+    // uncompressed data
+    return fromUncompressed(std::string_view(buffer.data(), buffer.size() - 2));
+  } 
+  
+  throw std::invalid_argument("unknown tree serialization type");
+}
 
-    snappy::Uncompress(buffer.data(), buffer.size() - 2, &scratch);
-    buffer = std::string_view(scratch);
-  } else {
-    // uncompressed data or empty tree
-    buffer = std::string_view(buffer.data(), buffer.size() - 2);
-  }
-
-  if (buffer.size() < MetaSize) {
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
+MerkleTree<Hasher, BranchingBits>::fromUncompressed(std::string_view buffer) {
+  if (buffer.size() < sizeof(Meta)) {
     // not enough space to even store the meta info, can't proceed
     return nullptr;
   }
@@ -207,6 +229,98 @@ MerkleTree<Hasher, BranchingBits>::fromBuffer(std::string_view buffer) {
 
   return std::unique_ptr<MerkleTree<Hasher, BranchingBits>>(
       new MerkleTree<Hasher, BranchingBits>(buffer));
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
+MerkleTree<Hasher, BranchingBits>::fromSnappyCompressed(std::string_view buffer) {
+  size_t length;
+  bool canUncompress = snappy::GetUncompressedLength(buffer.data(), buffer.size(), &length);
+  if (!canUncompress || length != allocationSize(6)) {
+    throw std::invalid_argument(
+        "Cannot determine size of Snappy-compressed data.");
+  }
+  
+  auto uncompressed = std::make_unique<uint8_t[]>(length);
+
+  if (!snappy::RawUncompress(buffer.data(), buffer.size(), reinterpret_cast<char*>(uncompressed.get()))) {
+    throw std::invalid_argument(
+        "Cannot uncompress Snappy-compressed data.");
+  }
+  
+  return std::unique_ptr<MerkleTree<Hasher, BranchingBits>>(
+      new MerkleTree<Hasher, BranchingBits>(std::move(uncompressed)));
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
+MerkleTree<Hasher, BranchingBits>::fromBottomMostCompressed(std::string_view buffer) {
+  char const* p = buffer.data();
+  char const* e = p + buffer.size();
+
+  if (p + 3 * sizeof(uint64_t) > e) {
+    throw std::invalid_argument("invalid compressed tree data");
+  }
+
+  std::uint64_t rangeMin = readUInt<uint64_t>(p);
+  std::uint64_t rangeMax = readUInt<uint64_t>(p);
+  std::uint64_t maxDepth = readUInt<uint64_t>(p);
+
+  auto tree = std::make_unique<MerkleTree<Hasher, BranchingBits>>(maxDepth,
+                                                                  rangeMin,
+                                                                  rangeMax);
+  if (tree == nullptr) {
+    throw std::invalid_argument("invalid compressed tree data");
+  }
+
+  std::uint64_t const offset = nodeCountUpToDepth(maxDepth - 1);
+
+  // rebuild bottom-most level
+  while (p + sizeof(uint32_t) + sizeof(uint64_t) + sizeof(uint64_t) <= e) {
+    // enough data to read
+    std::uint32_t pos = readUInt<uint32_t>(p);
+    std::uint64_t count = readUInt<uint64_t>(p);
+    std::uint64_t hash = readUInt<uint64_t>(p);
+
+    Node& node = tree->node(offset + pos);
+    node.count = count;
+    node.hash = hash;
+  }
+
+  if (p != e) {
+    throw std::invalid_argument("invalid compressed tree data with overflow values");
+  }
+  
+  // rebuild all levels above from bottom-most data
+  for (std::size_t d = maxDepth - 1; /*d >= 0*/; --d) {
+    std::uint64_t prevOffset = (d == 0 ? 0 : nodeCountUpToDepth(d - 1));
+    std::uint64_t ourOffset = nodeCountUpToDepth(d);
+    std::uint64_t const ourEnd = nodeCountUpToDepth(d + 1);
+
+    while (ourOffset < ourEnd) {
+      std::uint64_t count = 0;
+      std::uint64_t hash = 0;
+      for (std::size_t index = 0; index < (1 << BranchingBits); ++index) {
+        Node const& src = tree->node(ourOffset++);
+        count += src.count;
+        hash ^= src.hash;
+      }
+      Node& dst = tree->node(prevOffset);
+      dst.count = count;
+      dst.hash = hash;
+
+      ++prevOffset;
+    }
+    if (d == 0) { 
+      break;
+    }
+  }
+
+#ifdef PARANOID_TREE_CHECKS
+  tree->checkInternalConsistency();
+#endif
+
+  return tree;
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
@@ -323,13 +437,12 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
   _buffer.reset(new uint8_t[allocationSize(maxDepth)]);
 
   new (&meta()) Meta{rangeMin, rangeMax, maxDepth};
-
+  
   std::uint64_t const last = nodeCountUpToDepth(maxDepth);
   for (std::uint64_t i = 0; i < last; ++i) {
     new (&node(i)) Node{0, 0};
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(this->node(0).count == 0);
   TRI_ASSERT(this->node(0).hash == 0);
 
@@ -337,7 +450,6 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
   // checking an empty tree is overyl paranoid and only wastes
   // cycles, so we only do it if absolutely necessary
   checkInternalConsistency();
-#endif
 #endif
 }
 
@@ -739,13 +851,21 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
   TRI_ASSERT(output.empty());
     
   if (compress) {
-    snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
-                     allocationSize(meta().maxDepth), &output);
-    output.push_back(::CompressedSnappyCurrent);
+    if (this->node(0).count <= 15'000) {
+      // 15'000 is an arbitrary cutoff value for when to move from
+      // bottom-most level compression to full tree compression with Snappy
+      storeBottomMostCompressed(output);
+      output.push_back(::CompressedBottomMostCurrent);
+    } else {
+      snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
+                       allocationSize(meta().maxDepth), &output);
+      output.push_back(::CompressedSnappyCurrent);
+    }
   } else {
     output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
     output.push_back(::UncompressedCurrent);
   }
+
   output.push_back(static_cast<char>(::CurrentVersion));
 }
 
@@ -812,6 +932,10 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::string_view buffer)
   }
 }
 
+  template <typename Hasher, std::uint64_t const BranchingBits>
+MerkleTree<Hasher, BranchingBits>::MerkleTree(std::unique_ptr<uint8_t[]> buffer)
+    : _buffer(std::move(buffer)) {}
+
 template <typename Hasher, std::uint64_t const BranchingBits>
 MerkleTree<Hasher, BranchingBits>::MerkleTree(MerkleTree<Hasher, BranchingBits> const& other)
     : _buffer(new uint8_t[allocationSize(other.meta().maxDepth)]) {
@@ -823,7 +947,7 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(MerkleTree<Hasher, BranchingBits> 
 
   std::uint64_t const last = nodeCountUpToDepth(meta().maxDepth);
   for (std::uint64_t i = 0; i < last; ++i) {
-    new (&this->node(i)) Node{other.node(i).hash, other.node(i).count};
+    new (&this->node(i)) Node{other.node(i).count, other.node(i).hash};
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1082,6 +1206,8 @@ void MerkleTree<Hasher, BranchingBits>::checkInternalConsistency() const {
       Node const& n = this->node(offset + i);
       count += n.count;
       hash ^= n.hash;
+
+      TRI_ASSERT(n.count != 0 || n.hash == 0);
     }
 
     if (count != previousCount) {
@@ -1093,6 +1219,53 @@ void MerkleTree<Hasher, BranchingBits>::checkInternalConsistency() const {
       throw std::invalid_argument("Inconsistent hash values in tree");
     }
   }
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::storeBottomMostCompressed(std::string& output) const {
+  // make a minimum allocation that will be enough for the meta data and a 
+  // few notes. if we need more space, the string can grow as needed
+  TRI_ASSERT(output.empty());
+  output.reserve(64);
+
+  // rangeMin / rangeMax / maxDepth
+  {
+    uint64_t value = basics::hostToLittle(meta().rangeMin);
+    output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+    
+    value = basics::hostToLittle(meta().rangeMax);
+    output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+    
+    value = basics::hostToLittle(meta().maxDepth);
+    output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+  }
+  
+  std::uint64_t maxDepth = meta().maxDepth;
+  std::uint64_t offset = nodeCountUpToDepth(maxDepth - 1);
+  for (std::uint64_t index = 0; index < nodeCountAtDepth(maxDepth); ++index) {
+    Node const& src = this->node(offset + index);
+    TRI_ASSERT(src.count > 0 || src.hash == 0);
+
+    // serialize only the non-zero buckets
+    if (src.count > 0) {
+      // index
+      {
+        uint32_t value = basics::hostToLittle(static_cast<uint32_t>(index));
+        output.append(reinterpret_cast<const char*>(&value), sizeof(uint32_t));
+      }
+      // count / hash
+      {
+        uint64_t value = basics::hostToLittle(src.count);
+        output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+        
+        value = basics::hostToLittle(src.hash);
+        output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+      }
+    }
+  }
+
+  TRI_ASSERT(output.size() >= 3 * sizeof(uint64_t));
+  TRI_ASSERT((output.size() - 3 * sizeof(uint64_t)) % (sizeof(uint32_t) + 2 * sizeof(uint64_t)) == 0);
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>

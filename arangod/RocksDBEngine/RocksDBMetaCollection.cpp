@@ -337,7 +337,7 @@ void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::Revision
   TRI_ASSERT(tree->maxDepth() == revisionTreeDepth);
   
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(tree));
+  _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(tree), _logicalCollection);
   _revisionTreeApplied.store(seq);
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = seq;
@@ -589,7 +589,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 
     auto&& [newTree, beginSeq] = result.get();
 
-    _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree));
+    _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
     _revisionTreeApplied = beginSeq;
     _revisionTreeCreationSeq = beginSeq;
     _revisionTreeSerializedSeq = beginSeq;
@@ -647,7 +647,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
 #endif
 
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
-  _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree));
+  _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
   _revisionTreeApplied.store(seq);
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = seq;
@@ -1091,7 +1091,7 @@ void RocksDBMetaCollection::ensureRevisionTree() {
     auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
     TRI_ASSERT(newTree->maxDepth() == revisionTreeDepth);
 
-    _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree));
+    _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
     _revisionTreeCreationSeq = engine.db()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
   }
@@ -1101,8 +1101,10 @@ void RocksDBMetaCollection::ensureRevisionTree() {
 }
 
 /// @brief construct from revision tree
-RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(std::unique_ptr<containers::RevisionTree> tree) 
+RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(std::unique_ptr<containers::RevisionTree> tree,
+                                                                  LogicalCollection const& collection) 
     : _tree(std::move(tree)),
+      _logicalCollection(collection),
       _maxDepth(_tree->maxDepth()),
       _hibernationRequests(0),
       _compressible(true) {
@@ -1185,9 +1187,11 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate() {
   TRI_ASSERT(!_compressed.empty());
  
   LOG_TOPIC("45eae", DEBUG, Logger::REPLICATION) 
-      << "hibernating revision tree with " << count << " entries and size " 
-      << _tree->byteSize() << ", hibernated size: " << _compressed.size() << 
-      ", hibernation took: " << (TRI_microtime() - start);;
+      << "hibernating revision tree for "
+      << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name()
+      << " with " << count << " entries and size " 
+      << _tree->byteSize() << ", hibernated size: " << _compressed.size() 
+      << ", hibernation took: " << (TRI_microtime() - start);;
 
   // we would like to see at least 50% compressibility
   if (_compressed.size() * 2 < _tree->byteSize()) {
@@ -1235,8 +1239,10 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
     TRI_ASSERT(_tree->maxDepth() == _maxDepth);
     
     LOG_TOPIC("e9c29", DEBUG, Logger::REPLICATION) 
-        << "resurrected revision tree with " << _tree->count() 
-        << " entries. resurrection took: " << (TRI_microtime() - start);
+        << "resurrected revision tree for " 
+        << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name()
+        << " with " << _tree->count() << " entries. resurrection took: " 
+        << (TRI_microtime() - start);
 
     // clear the compressed state and free the associated memory
     _compressed.clear();
