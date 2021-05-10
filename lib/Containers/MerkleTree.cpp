@@ -58,7 +58,6 @@ namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
 static constexpr char CompressedSnappyCurrent = '1';
 static constexpr char UncompressedCurrent = '2';
-static constexpr char CompressedRLECurrent = '3';
 }  // namespace
 
 namespace arangodb {
@@ -190,46 +189,6 @@ MerkleTree<Hasher, BranchingBits>::fromBuffer(std::string_view buffer) {
 
     snappy::Uncompress(buffer.data(), buffer.size() - 2, &scratch);
     buffer = std::string_view(scratch);
-#if 0
-  } else if (buffer[buffer.size() - 2] == ::CompressedRLECurrent) {
-    scratch.resize(allocationSize(6), '\0');
-
-    std::size_t pos = 0;
-    char const* p = buffer.data();
-    char const* e = p + buffer.size() - 2;
-
-    while (p < e) {
-      TRI_ASSERT(pos < scratch.size());
-
-      uint8_t c = (uint8_t) *p;
-      if (c == 0xffU) {
-        ++p;
-        if (p < e) {
-          c = (uint8_t) *p;
-          if (c == 0xffU) {
-            scratch[pos++] = 0xffU;
-          } else {
-            uint16_t run = c;
-            if (c == 0xfeU) {
-              ++p;
-              c = (uint8_t) *p;
-              run = c;
-              ++p;
-              c = (uint8_t) *p;
-              run |= (c << 8U);
-            }
-
-            pos += run;
-          }
-        }
-      } else {
-        scratch[pos++] = c;
-      }
-      ++p;
-    }  
-
-    buffer = std::string_view(scratch);
-#endif
   } else {
     // uncompressed data or empty tree
     buffer = std::string_view(buffer.data(), buffer.size() - 2);
@@ -777,56 +736,9 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
   TRI_ASSERT(output.empty());
     
   if (compress) {
-#if 0
-    if (this->node(0).count < 10'000) {
-      output.reserve(512);
-
-      uint8_t const* p = _buffer.get();
-      uint8_t const* e = p + allocationSize(meta().maxDepth);
-
-      while (p < e) {
-        if (*p == 0xffU) {
-          output.push_back(0xffU);
-          output.push_back(0xffU);
-          ++p;
-        } else if (*p != 0x00U) {
-          output.push_back(*p);
-          ++p;
-        } else {
-          uint16_t run = 0;
-          while (p < e && *p == 0x00U) {
-            ++p;
-            ++run;
-            if (run == 0xffffU) {
-              break;
-            }
-          }
-          if (run > 0xfdU) {
-            output.push_back(0xffU);
-            output.push_back(0xfeU);
-            output.push_back(run & 0xffU);
-            output.push_back((run & 0xff00U) >> 8U);
-          } else if (run > 2) {
-            output.push_back(0xffU);
-            output.push_back(run);
-          } else {
-            output.push_back(0x00U);
-            if (run == 2) {
-              output.push_back(0x00U);
-            }
-          }
-        }
-      }
-
-      output.push_back(::CompressedRLECurrent);
-    } else {
-#endif
-      snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
-                       allocationSize(meta().maxDepth), &output);
-      output.push_back(::CompressedSnappyCurrent);
-#if 0
-    }
-#endif
+    snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
+                     allocationSize(meta().maxDepth), &output);
+    output.push_back(::CompressedSnappyCurrent);
   } else {
     output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
     output.push_back(::UncompressedCurrent);

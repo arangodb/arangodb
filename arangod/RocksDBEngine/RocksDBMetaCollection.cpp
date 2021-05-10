@@ -585,9 +585,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 }
 
 void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter) {
-  std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  
   auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
+
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
   // okay, we are in recovery and can't open a transaction, so we need to
   // read the raw RocksDB data; on the plus side, we are in recovery, so we
@@ -854,12 +854,11 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
       _revisionTreeApplied.compare_exchange_strong(applied, commitSeq);
     }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // TODO: remove this cherk because it is very expensive
-    _revisionTree->checkConsistency();
-#endif
+    // this check is very expensive, so it is commented out here.
+    // only reactivate when there is need for it!
+    // _revisionTree->checkConsistency();
   } else {
-    LOG_TOPIC("fdfa7", WARN, Logger::ENGINES)
+    LOG_TOPIC("fdfa7", ERR, Logger::ENGINES)
         << "unable to apply revision tree updates for " 
         << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
         << ": " << res.errorMessage();
