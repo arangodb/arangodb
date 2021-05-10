@@ -93,14 +93,6 @@ void RevisionId::toPersistent(std::string& buffer) const {
   rocksutils::uint64ToPersistent(buffer, id());
 }
 
-/// @brief create a revision id with a lower-bound HLC value
-RevisionId RevisionId::lowerBound() { 
-  // "2020-01-01T00:00:00.000Z" => 1577836800000 milliseconds since the epoch
-  RevisionId value{uint64_t(1577836800000) << 20ULL};
-  TRI_ASSERT(value.id() > ::TickLimit);
-  return value;
-}
-
 /// @brief create a revision id using an HLC value
 RevisionId RevisionId::create() { return RevisionId{TRI_HybridLogicalClock()}; }
 

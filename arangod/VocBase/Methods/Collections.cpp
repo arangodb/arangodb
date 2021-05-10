@@ -290,18 +290,14 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
+    bool isSystem = vocbase.IsSystemName(info.name);
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
       bool isSmartChild =
           Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-
-      // quick sanity check that lower bound is less than a new id that we would generate now
-      TRI_ASSERT(RevisionId::lowerBound().id() < RevisionId::create().id());
-
       RevisionId minRev =
-          (isSmartChild) ? RevisionId::none() : RevisionId::create();
-
+          (isSystem || isSmartChild) ? RevisionId::none() : RevisionId::create();
       helper.add(arangodb::StaticStrings::MinRevision,
                  arangodb::velocypack::Value(minRev.toString()));
     }
