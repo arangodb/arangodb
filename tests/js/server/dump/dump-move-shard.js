@@ -74,7 +74,7 @@ function dumpTestSuite () {
           let follower = planShards[shard].followers[0];
           dbs = dbs.filter((d) => d !== leader && d !== follower);
           let unused = dbs[0];
-          var toServer, fromServer;
+          let toServer, fromServer;
           let modulo = i % 4;
 
           switch (modulo) {
