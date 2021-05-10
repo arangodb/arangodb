@@ -806,7 +806,14 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 
         // apply inserts, without holding the lock
         // if this throws we will not have modified _revisionInsertBuffers
-        _revisionTree->insert(insertIt->second);
+        try {
+          _revisionTree->insert(insertIt->second);
+        } catch (...) {
+          // it is pretty bad if this fails, so we want to see it in our tests
+          // and not overlook it.
+          TRI_ASSERT(false);
+          throw;
+        }
 
         // move iterator forward, we need the mutex for this
         guard.lock();
@@ -822,7 +829,13 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 
         // apply removals, without holding the lock
         // if this throws we will not have modified _revisionRemovalBuffers
-        _revisionTree->remove(removeIt->second);
+        try {
+          _revisionTree->remove(removeIt->second);
+        } catch (...) {
+          // this should never fail
+          TRI_ASSERT(false);
+          throw;
+        }
 
         // move iterator forward, we need the mutex for this
         guard.lock();
