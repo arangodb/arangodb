@@ -34,7 +34,6 @@ var jsunity = require("jsunity");
 
 function dumpTestSuite () {
   'use strict';
-  var db = internal.db;
 
   return {
 
