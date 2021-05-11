@@ -681,14 +681,13 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
 
-      std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
-      if (prgl) {
-        pregel::RecoveryManager* mngr = prgl->recoveryManager();
+      if (_server.hasFeature<pregel::PregelFeature>()) {
+        auto& pregel = _server.getFeature<pregel::PregelFeature>();
+        pregel::RecoveryManager* mngr = pregel.recoveryManager();
         if (mngr != nullptr) {
           mngr->updatedFailedServers(failedServers);
         }
       }
-
     } else {
       LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
