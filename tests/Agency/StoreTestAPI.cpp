@@ -95,10 +95,16 @@ class StoreTestAPI : public ::testing::Test {
   }
 
   auto transactAndCheck(std::string const &json) {
+  try{
     auto q {VPackParser::fromJson(json)};
     auto results { _store.applyTransactions(q)};
     return results;
+
   }
+  catch(std::exception &ex) {
+    throw std::runtime_error(std::string(ex.what()) + ", transact failed processing " + json);
+  }
+}
 
   auto writeAndCheck(std::string const &json)
   {
@@ -109,7 +115,6 @@ class StoreTestAPI : public ::testing::Test {
         {
           throw std::runtime_error("This didn't work: " + json);
         }
-      ASSERT_TRUE(applied_all);
     }
     catch (std::exception &ex) {
       throw std::runtime_error(std::string(ex.what()) + " processing " + json);
