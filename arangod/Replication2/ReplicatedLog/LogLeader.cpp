@@ -405,7 +405,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 
   auto currentCommitIndex = _commitIndex;
   auto lastAvailableIndex = _inMemoryLog.getLastIndex();
-  if (follower.lastAckedIndex == lastAvailableIndex && _commitIndex == follower.lastAckedCommitIndex) {
+  if (follower.lastAckedIndex == lastAvailableIndex /*&& _commitIndex == follower.lastAckedCommitIndex*/) {
     return std::nullopt;  // nothing to replicate
   }
 

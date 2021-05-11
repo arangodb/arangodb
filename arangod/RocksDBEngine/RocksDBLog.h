@@ -73,6 +73,7 @@ class RocksDBLog : public replication2::PersistedLog, public std::enable_shared_
   auto insert(replication2::LogIterator& iter) -> Result override;
   auto insertAsync(std::unique_ptr<replication2::LogIterator> iter) -> futures::Future<Result> override;
   auto insertWithBatch(replication2::LogIterator& iter, rocksdb::WriteBatch &batch) -> Result;
+  auto insertSingleWrites(replication2::LogIterator& iter) -> Result;
   auto read(replication2::LogIndex start)
       -> std::unique_ptr<replication2::LogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> Result override;

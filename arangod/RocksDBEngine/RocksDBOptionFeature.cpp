@@ -478,7 +478,8 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       RocksDBColumnFamilyManager::Family::EdgeIndex,
       RocksDBColumnFamilyManager::Family::VPackIndex,
       RocksDBColumnFamilyManager::Family::GeoIndex,
-      RocksDBColumnFamilyManager::Family::FulltextIndex};
+      RocksDBColumnFamilyManager::Family::FulltextIndex,
+      RocksDBColumnFamilyManager::Family::ReplicatedLogs};
 
   auto addMaxWriteBufferNumberCf = [this, &options](RocksDBColumnFamilyManager::Family family) {
     std::string name =

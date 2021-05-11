@@ -36,7 +36,7 @@ std::array<char const*, arangodb::RocksDBColumnFamilyManager::numberOfColumnFami
                                                   "VPackIndex",   "GeoIndex",
                                                   "FulltextIndex", "ReplicatedLogs"};
 std::array<char const*, arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies> RocksDBColumnFamilyManager::_externalNames =
-    {"definitions", "documents", "primary", "edge", "vpack", "geo", "fulltext", "replicatedLogs"};
+    {"definitions", "documents", "primary", "edge", "vpack", "geo", "fulltext", "replicated-logs"};
 
 std::array<rocksdb::ColumnFamilyHandle*, RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,

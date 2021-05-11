@@ -142,6 +142,20 @@ auto RocksDBLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter)
   return _persistor->persist(shared_from_this(), std::move(iter));
 }
 
+auto RocksDBLog::insertSingleWrites(LogIterator& iter) -> Result {
+  while (auto entry = iter.next()) {
+    auto key = RocksDBKey{};
+    key.constructLogEntry(_objectId, entry->logIndex());
+    auto value = RocksDBValue::LogEntry(entry->logTerm(), entry->logPayload());
+    auto s = _persistor->_db->Put(rocksdb::WriteOptions{}, _persistor->_cf, key.string(), value.string());
+    if (!s.ok()) {
+      return rocksutils::convertStatus(s);
+    }
+  }
+
+  return Result();
+}
+
 RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
                                          rocksdb::DB* db, std::shared_ptr<Executor> executor)
     : _cf(cf), _db(db), _executor(std::move(executor)) {}
@@ -182,19 +196,10 @@ void RocksDBLogPersistor::runPersistorWorker() noexcept {
           }
           {
             rocksdb::WriteOptions opts;
-            //opts.sync = true;
-            auto start_time = std::chrono::steady_clock::now();
+            opts.sync = true;
             if (auto s = _db->Write(opts, &wb); !s.ok()) {
               return rocksutils::convertStatus(s);
             }
-            if (auto s = _db->SyncWAL(); !s.ok()) {
-              return rocksutils::convertStatus(s);
-            }
-            auto end_time = std::chrono::steady_clock::now();
-
-            LOG_DEVEL << "RocksDB write time = "
-                      << std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
-                             end_time - start_time).count();
           }
 
           // resolve all promises in [start, current)

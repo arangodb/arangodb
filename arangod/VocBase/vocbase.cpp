@@ -1614,7 +1614,6 @@ struct arangodb::VocBaseLogManager {
 
   auto getReplicatedLogById(arangodb::replication2::LogId id)
       -> arangodb::replication2::replicated_log::ReplicatedLog& {
-    LOG_DEVEL << "getReplicatedLogById(" << id << ")";
     if (auto iter = _logs.find(id); iter != _logs.end()) {
       return iter->second;
     }

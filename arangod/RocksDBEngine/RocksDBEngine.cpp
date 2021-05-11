@@ -2645,6 +2645,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   builder.close();
 
   if (_throttleListener) {
