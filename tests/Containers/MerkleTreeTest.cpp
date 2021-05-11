@@ -574,3 +574,130 @@ TEST(MerkleTreeTest, test_deepen) {
   ASSERT_TRUE(::diffAsExpected(*t4, *t5, expected));
   ASSERT_TRUE(::diffAsExpected(*t5, *t4, expected));
 }
+
+TEST(MerkleTreeTest, test_tree_based_on_2020_hlcs) {
+  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
+  uint64_t rangeMax = uint64_t(1654481800413577216ULL);
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  
+  auto [left, right] = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+
+  // this insert must be rejected
+  try {
+    tree.insert(rangeMin - 1);
+    ASSERT_FALSE(true);
+  } catch (std::out_of_range const&) {}
+  
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+
+  for (std::uint64_t i = rangeMin; i < rangeMin + 10000; ++i) {
+    tree.insert(i);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(10000, tree.count());
+  ASSERT_EQ(13533672744353677152ULL, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+  
+  for (std::uint64_t i = rangeMin; i < rangeMin + 10000; ++i) {
+    tree.remove(i);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+
+  // increase the pace
+  constexpr std::uint64_t n = 10'000'000;
+  constexpr std::uint64_t batchSize = 10'000;
+
+  std::vector<std::uint64_t> revisions;
+  revisions.reserve(batchSize);
+  for (std::uint64_t i = rangeMin; i < rangeMin + n; i += batchSize) {
+    revisions.clear();
+    for (std::uint64_t j = 0; j < batchSize; ++j) {
+      revisions.push_back(i + j);
+    }
+    tree.insert(revisions);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(10'000'000, tree.count());
+  ASSERT_EQ(14528932675464142080ULL, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+  
+  for (std::uint64_t i = rangeMin; i < rangeMin + n; i += batchSize) {
+    revisions.clear();
+    for (std::uint64_t j = 0; j < batchSize; ++j) {
+      revisions.push_back(i + j);
+    }
+    tree.remove(revisions);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+}
+
+TEST(MerkleTreeTest, test_large_steps) {
+  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
+  uint64_t rangeMax = uint64_t(1654481800413577216ULL);
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  
+  auto [left, right] = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+
+  constexpr std::uint64_t n = 100'000'000'000;
+  constexpr std::uint64_t step = 10'000;
+
+  for (std::uint64_t i = rangeMin; i < rangeMin + n; i += step) {
+    tree.insert(i);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  EXPECT_EQ(10'000'000, tree.count());
+  EXPECT_EQ(10681126656127731097ULL, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  rangeMax = 1654481937835753472ULL;
+  EXPECT_EQ(rangeMin, left);
+  EXPECT_EQ(rangeMax, right);
+  
+  for (std::uint64_t i = rangeMin; i < rangeMin + n; i += step) {
+    tree.remove(i);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+}

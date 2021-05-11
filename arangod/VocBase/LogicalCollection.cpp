@@ -170,6 +170,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _usesRevisionsAsDocumentIds(
           Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
+      // for info on how to determine the minRevisionId please refer to methods::Collections::create(),
+      // where there is a lengthier explanation.
       _minRevision(isSmartChild() 
                    ? RevisionId::none()
                    : (system()
