@@ -98,7 +98,7 @@ auto future<T, Tag>::and_then_direct(F&& f) && noexcept -> future<R, Tag> {
       auto fut = future<R, Tag>{std::in_place,
                                 std::invoke(std::forward<F>(f), this->cast_move())};
       cleanup_local_state();
-      return std::move(fut);
+      return fut;
     }
   }
   return detail::insert_continuation_step<Tag, T, F, R>(_base.release(),
