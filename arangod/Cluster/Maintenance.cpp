@@ -250,7 +250,8 @@ static void handlePlanShard(
 
   bool shouldBeLeading = serverId == leaderId;
 
-  handleReplicationConfiguration(dbname, colname, shname, serverId, leaderId, shouldBeLeading, makeDirty, callNotify, actions);
+  // TODO Implement this later correctly
+  // handleReplicationConfiguration(dbname, colname, shname, serverId, leaderId, shouldBeLeading, makeDirty, callNotify, actions);
 
   commonShrds.emplace(shname);
 
