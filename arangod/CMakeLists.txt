@@ -805,7 +805,7 @@ include(RocksDBEngine/CMakeLists.txt)
 
 add_library(arango_restart_action STATIC
   RestServer/RestartAction.cpp
-  )
+)
 
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
