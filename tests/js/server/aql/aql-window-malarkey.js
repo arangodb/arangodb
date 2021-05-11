@@ -214,6 +214,24 @@ function WindowTestSuite() {
         "WINDOW range spec is invalid; 'preceding' is not a valid ISO 8601 duration string",
         errors.ERROR_BAD_PARAMETER.code);
     },
+    
+    testFilterNotMovedBeyondWindow: function () {
+      let query = `
+      FOR t IN ${collection}
+        SORT t.time
+        WINDOW { preceding: 2, following: 2} AGGREGATE observations2 = SUM(t.val)
+        FILTER t.val > 2
+        SORT t.val
+        WINDOW { preceding: 2, following: 2} AGGREGATE observations = SUM(t.val)
+        FILTER t.val > 5 AND t.val < 20
+        RETURN { time: t.time, val: t.val, observations, observations2 }
+      `;
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      assertEqual(nodes[6].type, "WindowNode");
+      assertEqual(nodes[7].type, "FilterNode");
+      assertEqual(nodes[10].type, "WindowNode");
+      assertEqual(nodes[11].type, "FilterNode");
+    },
   }
 }
 
