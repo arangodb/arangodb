@@ -161,6 +161,7 @@ function runArangodRecovery (params) {
   }
     
   process.env["crash-log"] = crashLog;
+  process.env["isAsan"] = params.options.isAsan;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
