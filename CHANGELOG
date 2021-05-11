@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Return error 1948 when a negative edge was detected during a weighted traversal
+  or was used as default weight.
+
 * Fixed BTS-403: Hot restores must also clear relevant `Current` keys. The
   overriding of the `Plan` entries needs to be reflected in `Current` to avoid
   conflicts in maintenance jobs.
