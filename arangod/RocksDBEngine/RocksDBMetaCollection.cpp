@@ -508,6 +508,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
                                 std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
                                 .count();
+    TRI_IF_FAILURE("RocksDBMetaCollection::forceSerialization") {
+      coinFlip = true;
+    }
+
     TRI_IF_FAILURE("RocksDBMetaCollection::serializeRevisionTree") {
       return _revisionTreeSerializedSeq;
     }
@@ -578,22 +582,36 @@ ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNu
   return std::make_pair(std::move(newTree), state->beginSeq());
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+void RocksDBMetaCollection::corruptRevisionTree(uint64_t count, uint64_t hash) {
+  if (!_logicalCollection.useSyncByRevision()) {
+    return;
+  }
+
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  if (_revisionTree != nullptr) {
+    _revisionTree->corrupt(count, hash);
+  }
+}
+#endif
+
 Result RocksDBMetaCollection::rebuildRevisionTree() {
   return basics::catchToResult([this]() -> Result {
-    std::unique_lock<std::mutex> guard(_revisionTreeLock);
-    
-    auto result = revisionTreeFromCollection();
-    if (result.fail()) {
-      return result.result(); 
+    if (_logicalCollection.useSyncByRevision()) {
+      std::unique_lock<std::mutex> guard(_revisionTreeLock);
+      
+      auto result = revisionTreeFromCollection();
+      if (result.fail()) {
+        return result.result(); 
+      }
+
+      auto&& [newTree, beginSeq] = result.get();
+
+      _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
+      _revisionTreeApplied = beginSeq;
+      _revisionTreeCreationSeq = beginSeq;
+      _revisionTreeSerializedSeq = beginSeq;
     }
-
-    auto&& [newTree, beginSeq] = result.get();
-
-    _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
-    _revisionTreeApplied = beginSeq;
-    _revisionTreeCreationSeq = beginSeq;
-    _revisionTreeSerializedSeq = beginSeq;
-  
     return {};
   });
 }
@@ -693,19 +711,28 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder, bool from
 }
 
 void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
-  uint64_t inserts = 0;
-  uint64_t removes = 0;
-  uint64_t truncates = 0;
-
-  if (_logicalCollection.useSyncByRevision()) {
-    std::unique_lock<std::mutex> guard(_revisionBufferLock);
-
-    inserts = _revisionInsertBuffers.size();
-    removes = _revisionRemovalBuffers.size();
-    truncates = _revisionTruncateBuffer.size();
-  }
   
   VPackObjectBuilder obj(&builder);
+  
+  if (!_logicalCollection.useSyncByRevision()) {
+    // empty object
+    return;
+  }
+
+  {
+    std::unique_lock<std::mutex> guard(_revisionTreeLock);
+    if (_revisionTree == nullptr) {
+      // no revision tree yet
+      return;
+    }
+  }
+  
+  std::unique_lock<std::mutex> guard(_revisionBufferLock);
+
+  uint64_t inserts = _revisionInsertBuffers.size();
+  uint64_t removes = _revisionRemovalBuffers.size();
+  uint64_t truncates = _revisionTruncateBuffer.size();
+  
   obj->add("inserts", VPackValue(inserts));
   obj->add("removes", VPackValue(removes));
   obj->add("truncates", VPackValue(truncates));
@@ -881,7 +908,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
           // it is pretty bad if this fails, so we want to see it in our tests
           // and not overlook it.
           LOG_TOPIC("27811", ERR, Logger::ENGINES)
-              << "unable to apply revision tree updates for " 
+              << "unable to apply revision tree inserts for " 
               << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
               << ": " << ex.what();
           TRI_ASSERT(false);
@@ -908,8 +935,12 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         // if this throws we will not have modified _revisionRemovalBuffers
         try {
           _revisionTree->remove(removeIt->second);
-        } catch (...) {
-          // this should never fail
+        } catch (std::exception const& ex) {
+          // this should never fail, anyway log...
+          LOG_TOPIC("a5ba8", ERR, Logger::ENGINES)
+              << "unable to apply revision tree removals for " 
+              << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
+              << ": " << ex.what();
           TRI_ASSERT(false);
           throw;
         }
@@ -1195,6 +1226,13 @@ void RocksDBMetaCollection::RevisionTreeAccessor::checkConsistency() const {
   ensureTree();
   return _tree->checkConsistency();
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+void RocksDBMetaCollection::RevisionTreeAccessor::corrupt(uint64_t count, uint64_t hash) {
+  ensureTree();
+  _tree->corrupt(count, hash);
+}
+#endif
 
 void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   if (_tree == nullptr) {

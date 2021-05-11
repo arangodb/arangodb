@@ -52,6 +52,10 @@
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#include "Random/RandomGenerator.h"
+#endif
+
 // can turn this on for more aggressive and expensive consistency checks
 // #define PARANOID_TREE_CHECKS
 
@@ -627,6 +631,32 @@ void MerkleTree<Hasher, BranchingBits>::checkConsistency() const {
 
   checkInternalConsistency();
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+// intentionally corrupts the tree. used for testing only
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::corrupt(std::uint64_t count, std::uint64_t hash) {
+  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+
+  Node& node = this->node(0);
+  node.count = count;
+  node.hash = hash;
+
+  // we also need to corrupt the lowest level, simply because in case the bottom-most
+  // level format is used, we will lose all corruption on upper levels
+
+  for (std::uint64_t d = 1; d < meta().maxDepth; ++d) {
+    std::uint64_t offset = nodeCountUpToDepth(d); 
+    for (std::uint64_t i = 0; i < 4; ++i) {
+      std::uint64_t pos = arangodb::RandomGenerator::interval(0, nodeCountAtDepth(d)); 
+
+      Node& node = this->node(offset + pos);
+      node.count = arangodb::RandomGenerator::interval(0, UINT32_MAX);
+      node.hash = arangodb::RandomGenerator::interval(0, UINT32_MAX);
+    }
+  }
+}
+#endif
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 std::unique_ptr<MerkleTree<Hasher, BranchingBits>> MerkleTree<Hasher, BranchingBits>::clone() {

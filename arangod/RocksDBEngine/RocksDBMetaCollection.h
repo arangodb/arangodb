@@ -119,6 +119,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
   
   /// @brief produce a revision tree from the documents in the collection
   ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> revisionTreeFromCollection();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
+#endif
   
  protected:
   
@@ -184,6 +188,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
     // turn the full-blown revision tree into a potentially smaller
     // compressed representation
     void hibernate(bool force);
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    void corrupt(std::uint64_t count, std::uint64_t hash);
+#endif
 
    private:
     /// @brief make sure we have a value in _tree. unfortunately we

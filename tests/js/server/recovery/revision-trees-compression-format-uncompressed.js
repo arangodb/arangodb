@@ -79,9 +79,15 @@ function runSetup () {
 
   let haveUpdates;
   while (true) {
+    haveUpdates = false;
     [colName1, colName2, colName3, colName4].forEach((cn) => {
       let updates = db[cn]._revisionTreePendingUpdates();
-      haveUpdates  = updates.inserts > 0;
+      if (!updates.hasOwnProperty('inserts')) {
+        // no revision tree yet
+        haveUpdates = true;
+        return;
+      }
+      haveUpdates |= updates.inserts > 0;
       haveUpdates |= updates.removes > 0;
       haveUpdates |= updates.truncates > 0;
     });
@@ -126,7 +132,7 @@ function recoverySuite () {
   
       [colName1, colName2, colName3, colName4].forEach((cn) => {
         let summary = db[cn]._revisionTreeSummary();
-        assertEqual(4793554, summary.byteSize);
+        assertEqual(4793554, summary.byteSize, summary);
       });
     },
 
