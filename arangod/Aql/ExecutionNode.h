@@ -91,7 +91,6 @@ class ExecutionNode;
 class ExecutionPlan;
 class RegisterInfos;
 class Expression;
-class RedundantCalculationsReplacer;
 template<typename T> struct RegisterPlanWalkerT;
 using RegisterPlanWalker = RegisterPlanWalkerT<ExecutionNode>;
 template<typename T> struct RegisterPlanT;
@@ -117,8 +116,6 @@ struct SortElement {
 };
 
 typedef std::vector<SortElement> SortElementVector;
-
-using VariableIdSet = std::set<VariableId>;
 
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {
@@ -341,6 +338,10 @@ class ExecutionNode {
   
   // clone register plan of dependency, needed when inserting nodes after planning
   void cloneRegisterPlan(ExecutionNode* dependency);
+
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  virtual void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements);
 
   /// @brief check equality of ExecutionNodes
   virtual bool isEqualTo(ExecutionNode const& other) const;
@@ -652,7 +653,6 @@ class EnumerateCollectionNode : public ExecutionNode,
 class EnumerateListNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -678,6 +678,8 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief the cost of an enumerate list node
   CostEstimate estimateCost() const override final;
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -753,7 +755,6 @@ class LimitNode : public ExecutionNode {
 class CalculationNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -787,6 +788,8 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -880,7 +883,6 @@ class SubqueryNode : public ExecutionNode {
 /// @brief class FilterNode
 class FilterNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
  public:
@@ -906,6 +908,8 @@ class FilterNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -939,7 +943,6 @@ struct SortInformation {
 /// @brief class ReturnNode
 class ReturnNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
  public:
@@ -968,6 +971,8 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;

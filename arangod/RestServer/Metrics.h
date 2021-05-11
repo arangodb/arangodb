@@ -415,26 +415,34 @@ template<typename Scale> class Histogram : public Metric {
   Histogram(Scale&& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
-      _lowr(std::numeric_limits<value_type>::max()),
-      _highr(std::numeric_limits<value_type>::min()),
       _n(_scale.n() - 1),
       _sum(0) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
-      _lowr(std::numeric_limits<value_type>::max()),
-      _highr(std::numeric_limits<value_type>::min()),
-      _n(_scale.n() - 1) {}
+      _n(_scale.n() - 1),
+      _sum(0) {}
 
   ~Histogram() = default;
 
-  void records(value_type const& val) {
-    if (val < _lowr) {
-      _lowr = val;
-    } else if (val > _highr) {
-      _highr = val;
+  void track_extremes(value_type const& val) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // the value extremes are not actually required and therefore only tracked in
+    // maintainer mode so they can be used when debugging.
+    auto expected = _lowr.load(std::memory_order_relaxed);
+    while (val < expected) {
+      if (_lowr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+        return;
+      }
     }
+    expected = _highr.load(std::memory_order_relaxed);
+    while (val > expected) {
+      if (_highr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+        return;
+      }
+    }
+#endif
   }
 
   virtual std::string type() const override { return "histogram"; }
@@ -459,14 +467,17 @@ template<typename Scale> class Histogram : public Metric {
     } else {
       _c[pos(t)] += n;
     }
-    value_type tmp = _sum.load(std::memory_order_relaxed);
-    do {
-    } while (!_sum.compare_exchange_weak(tmp,
-                                       tmp + static_cast<value_type>(n) * t,
-                                       std::memory_order_relaxed,
-                                       std::memory_order_relaxed));
-
-    records(t);
+    if constexpr(std::is_integral_v<value_type>) {
+      _sum.fetch_add(static_cast<value_type>(n) * t);
+    } else {
+      value_type tmp = _sum.load(std::memory_order_relaxed);
+      do {
+      } while (!_sum.compare_exchange_weak(tmp,
+                                        tmp + static_cast<value_type>(n) * t,
+                                        std::memory_order_relaxed,
+                                        std::memory_order_relaxed));
+    }
+    track_extremes(t);
   }
 
   value_type low() const { return _scale.low(); }
@@ -532,16 +543,22 @@ template<typename Scale> class Histogram : public Metric {
   }
 
   std::ostream& print(std::ostream& o) const {
-    o << name() << " scale: " <<  _scale << " extremes: [" << _lowr << ", " << _highr << "]";
+    o << name() << " scale: " <<  _scale;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    o << " extremes: [" << _lowr << ", " << _highr << "]";
+#endif
     return o;
   }
 
  private:
   Metrics::hist_type _c;
-  Scale _scale;
-  value_type _lowr, _highr;
-  size_t _n;
+  Scale const _scale;
+  size_t const _n;
   std::atomic<value_type> _sum;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::atomic<value_type> _lowr{std::numeric_limits<value_type>::max()};
+  std::atomic<value_type> _highr{std::numeric_limits<value_type>::min()};
+#endif
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);

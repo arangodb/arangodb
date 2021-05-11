@@ -167,8 +167,7 @@ void UpgradeFeature::prepare() {
 
 void UpgradeFeature::start() {
   auto& init = server().getFeature<InitDatabaseFeature>();
-  auth::UserManager* um = server().getFeature<AuthenticationFeature>().userManager();
-
+    
   // upgrade the database
   if (_upgradeCheck) {
     if (!ServerState::instance()->isCoordinator()) {
@@ -176,41 +175,61 @@ void UpgradeFeature::start() {
       upgradeLocalDatabase();
     }
 
-    if (!init.restoreAdmin() && !init.defaultPassword().empty() && um != nullptr) {
-      um->updateUser("root", [&](auth::User& user) {
-        user.updatePassword(init.defaultPassword());
-        return TRI_ERROR_NO_ERROR;
-      });
-    }
-  }
+    auth::UserManager* um = server().getFeature<AuthenticationFeature>().userManager();
 
-  // change admin user
-  if (init.restoreAdmin() && ServerState::instance()->isSingleServerOrCoordinator()) {
-    Result res = um->removeAllUsers();
-    if (res.fail()) {
-      LOG_TOPIC("70922", ERR, arangodb::Logger::FIXME)
-          << "failed to clear users: " << res.errorMessage();
-      *_result = EXIT_FAILURE;
-      return;
+    if (um != nullptr) {
+      if (!ServerState::instance()->isCoordinator() &&
+          !init.restoreAdmin() && 
+          !init.defaultPassword().empty()) {
+        // this method sets the root password in case on non-coordinators.
+        // on coordinators, we cannot execute it here, because the _users
+        // collection is not yet present.
+        // for coordinators, the default password will be installed by the
+        // BootstrapFeature later.
+        Result res = catchToResult([&]() {
+          return um->updateUser("root", [&](auth::User& user) {
+            user.updatePassword(init.defaultPassword());
+            return TRI_ERROR_NO_ERROR;
+          });
+        });
+        if (res.fail()) {
+          LOG_TOPIC("ce6bf", ERR, arangodb::Logger::FIXME)
+              << "failed to set default password: " << res.errorMessage();
+          *_result = EXIT_FAILURE;
+        }
+      }
     }
 
-    VPackSlice extras = VPackSlice::noneSlice();
-    res = um->storeUser(true, "root", init.defaultPassword(), true, extras);
-    if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
-      res = um->storeUser(false, "root", init.defaultPassword(), true, extras);
+    // change admin user
+    if (init.restoreAdmin() && 
+        ServerState::instance()->isSingleServerOrCoordinator()) {
+      Result res = um->removeAllUsers();
+      if (res.fail()) {
+        LOG_TOPIC("70922", ERR, arangodb::Logger::FIXME)
+            << "failed to clear users: " << res.errorMessage();
+        *_result = EXIT_FAILURE;
+        return;
+      }
+
+      VPackSlice extras = VPackSlice::noneSlice();
+      res = um->storeUser(true, "root", init.defaultPassword(), true, extras);
+      if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
+        res = um->storeUser(false, "root", init.defaultPassword(), true, extras);
+      }
+
+      if (res.fail()) {
+        LOG_TOPIC("e9637", ERR, arangodb::Logger::FIXME)
+            << "failed to create root user: " << res.errorMessage();
+        *_result = EXIT_FAILURE;
+        return;
+      }
+      auto oldLevel = arangodb::Logger::FIXME.level();
+      arangodb::Logger::FIXME.setLogLevel(arangodb::LogLevel::INFO);
+      LOG_TOPIC("95cab", INFO, arangodb::Logger::FIXME) << "Password changed.";
+      arangodb::Logger::FIXME.setLogLevel(oldLevel);
+      *_result = EXIT_SUCCESS;
     }
 
-    if (res.fail()) {
-      LOG_TOPIC("e9637", ERR, arangodb::Logger::FIXME)
-          << "failed to create root user: " << res.errorMessage();
-      *_result = EXIT_FAILURE;
-      return;
-    }
-    auto oldLevel = arangodb::Logger::FIXME.level();
-    arangodb::Logger::FIXME.setLogLevel(arangodb::LogLevel::INFO);
-    LOG_TOPIC("95cab", INFO, arangodb::Logger::FIXME) << "Password changed.";
-    arangodb::Logger::FIXME.setLogLevel(oldLevel);
-    *_result = EXIT_SUCCESS;
   }
 
   // and force shutdown

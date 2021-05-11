@@ -40,14 +40,12 @@ class Slice;
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
-class RedundantCalculationsReplacer;
 struct Aggregator;
 
 /// @brief class CollectNode
 class CollectNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   CollectNode(ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
@@ -177,6 +175,8 @@ class CollectNode : public ExecutionNode {
 
   /// @brief get all aggregate variables (out, in)
   std::vector<AggregateVarInfo>& aggregateVariables();
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;

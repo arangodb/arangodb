@@ -42,18 +42,13 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription const& d)
-    : ActionBase(feature, d) {
+    : ActionBase(feature, d),
+      ShardDefinition(d.get(DATABASE), d.get(SHARD)) {
   std::stringstream error;
 
-  if (!d.has(SHARD)) {
-    error << "shard must be specified. ";
+  if (!ShardDefinition::isValid()) {
+    error << "database and shard must be specified. ";
   }
-  TRI_ASSERT(d.has(SHARD));
-
-  if (!d.has(DATABASE)) {
-    error << "database must be specified. ";
-  }
-  TRI_ASSERT(d.has(DATABASE));
 
   if (!error.str().empty()) {
     LOG_TOPIC("c7e42", ERR, Logger::MAINTENANCE) << "DropCollection: " << error.str();
@@ -65,8 +60,8 @@ DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription co
 DropCollection::~DropCollection() = default;
 
 bool DropCollection::first() {
-  auto const& database = _description.get(DATABASE);
-  auto const& shard = _description.get(SHARD);
+  auto const& database = getDatabase();
+  auto const& shard = getShard();
 
   LOG_TOPIC("a2961", DEBUG, Logger::MAINTENANCE)
       << "DropCollection: dropping local shard '" << database << "/" << shard;
@@ -127,7 +122,7 @@ bool DropCollection::first() {
 
 void DropCollection::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    _feature.unlockShard(_description.get(SHARD));
+    _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
 }

@@ -1238,7 +1238,7 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb snappy-static)
+add_dependencies(rocksdb snappy)
 
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc_build)

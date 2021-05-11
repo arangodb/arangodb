@@ -42,11 +42,11 @@ if (LINUX)
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --disable-shared --enable-static --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --disable-zlibdebuginfo --disable-minidebuginfo --disable-cxx-exceptions
     BUILD_COMMAND
-      $(MAKE) 
+      ${MAKE} 
     BUILD_IN_SOURCE
       1
     INSTALL_COMMAND
-      $(MAKE) install prefix=${CMAKE_CURRENT_BINARY_DIR} DESTDIR=${CMAKE_CURRENT_BINARY_DIR}
+      ${MAKE} install prefix=${CMAKE_CURRENT_BINARY_DIR} DESTDIR=${CMAKE_CURRENT_BINARY_DIR}
     STEP_TARGETS
       ${LIBUNWIND_LIB} libunwind
   )
