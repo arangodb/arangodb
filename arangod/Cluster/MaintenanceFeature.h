@@ -303,6 +303,23 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   arangodb::Result removeDBError(std::string const& database);
 
+
+  /// @brief remove all replication errors for a particular database
+  void removeReplicationError(std::string const& database);
+  
+  /// @brief remove all replication errors for a particular shard.
+  /// this will be called after a successful SynchronizeShard job for the shard
+  void removeReplicationError(std::string const& database, std::string const& shard);
+
+  /// @brief store a replication error for a particular shard.
+  /// this will be called after a failed SynchronizeShard job for the shard
+  void storeReplicationError(std::string const& database, std::string const& shard);
+
+  /// @brief return the number of replication errors for a particular shard.
+  /// note: we will return only those errors which happened not longer than
+  /// maxReplicationErrorsPerShardAge  ago
+  size_t replicationErrors(std::string const& database, std::string const& shard) const;
+
   /**
    * @brief copy all error maps (shards, indexes and databases) for Maintenance
    *
@@ -337,7 +354,15 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief get n random db names
   std::unordered_set<std::string> pickRandomDirty(size_t n);
 
-
+  /// @brief maximum number of replication error occurrences that are kept per 
+  /// shard.
+  static constexpr size_t maxReplicationErrorsPerShard = 20;
+    
+  /// @brief maximum age of replication error occurrences that are kept per shard.
+  /// error occurrences older than this max age will be removed only lazily and
+  /// will not be considered when counting the number of errors.
+  static constexpr auto maxReplicationErrorsPerShardAge = std::chrono::hours(24);
+  
  protected:
   void initializeMetrics();
 
@@ -450,12 +475,19 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   mutable arangodb::Mutex _dbeLock;
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
-
+  
   /// @brief lock for shard version map
   mutable arangodb::Mutex _versionLock;
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
+  
+  /// @brief lock for replication error bucket
+  mutable arangodb::Mutex _replLock;
+  /// @brief shard replication errors { database => { shard => [ timestamps ] } }
+  /// we store up to  maxReplicationErrorsPerShard  errors per shard.
+  /// all errors for a shard will be cleared after a successful SynchronizeShard job
+  std::unordered_map<std::string, std::unordered_map<std::string, std::vector<std::chrono::steady_clock::time_point>>> _replErrors;
 
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
 

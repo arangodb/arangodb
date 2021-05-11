@@ -9,6 +9,13 @@ devel
 * Fixed bug in error reporting when a database create did not work, which
   lead to a busy loop reporting this error to the agency.
 
+* Improve error reporting for Merkle tree operations and improve memory usage
+  for unused trees by hibernating them. In addition, add some backoff to shard
+  synchronization in case there are repeated sync failures for the same shard.
+
+* Fixes pregel lifetime management. Previously shutting down the server while a
+  pregel job was still running could result in a segfault or a shutdown hanger.
+  
 * Updated bundled version of Snappy library to 1.1.9.
 
 * Fixed various issues (mainly data races) reported by ThreadSanitizer.
@@ -17,6 +24,10 @@ devel
   can be expanded and collapsed without affecting the display of any other
   shards. Also added a "Toggle all" button the web UI to expand/collapse the
   shards for all collections.
+
+* Fixed BTS-403: Hot restores must also clear relevant `Current` keys. The
+  overriding of the `Plan` entries needs to be reflected in `Current` to avoid
+  conflicts in maintenance jobs.
 
 * Log a proper message if an unexpected state is encountered when taking over
   shard leadership. In addition, make the change to the internal followerinfo 

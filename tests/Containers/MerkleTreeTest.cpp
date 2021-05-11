@@ -48,8 +48,8 @@ std::vector<std::uint64_t> permutation(std::uint64_t n) {
 }
 
 bool diffAsExpected(
-    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64>& t1,
-    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64>& t2,
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>& t1,
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>& t2,
     std::vector<std::pair<std::uint64_t, std::uint64_t>>& expected) {
   std::vector<std::pair<std::uint64_t, std::uint64_t>> d1 = t1.diff(t2);
   std::vector<std::pair<std::uint64_t, std::uint64_t>> d2 = t2.diff(t1);
@@ -74,7 +74,7 @@ bool diffAsExpected(
 }
 
 bool partitionAsExpected(
-    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64>& tree,
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>& tree,
     std::uint64_t count, std::vector<std::pair<std::uint64_t, std::uint64_t>> expected) {
   std::vector<std::pair<std::uint64_t, std::uint64_t>> partitions =
       tree.partitionKeys(count);
@@ -93,7 +93,7 @@ bool partitionAsExpected(
 }  // namespace
 
 class TestNodeCountAtDepth
-    : public arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> {
+    : public arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> {
   static_assert(nodeCountAtDepth(0) == 1);
   static_assert(nodeCountAtDepth(1) == 8);
   static_assert(nodeCountAtDepth(2) == 64);
@@ -103,11 +103,11 @@ class TestNodeCountAtDepth
 };
 
 class InternalMerkleTreeTest
-    : public ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64>,
+    : public ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>,
       public ::testing::Test {
  public:
   InternalMerkleTreeTest()
-      : MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64>(2, 0, 64) {}
+      : MerkleTree<::arangodb::containers::FnvHashProvider, 3>(2, 0, 64) {}
 };
 
 TEST_F(InternalMerkleTreeTest, test_childrenAreLeaves) {
@@ -395,20 +395,20 @@ TEST_F(InternalMerkleTreeTest, test_partition) {
        {55, 56}, {57, 58}, {59, 60}, {61, 62}}));
 
   // now let's make the distribution more uneven and see how things go
-  this->grow(511, "test");
+  this->grow(511);
 
   ASSERT_TRUE(::partitionAsExpected(*this, 3, {{0, 23}, {24, 47}, {48, 511}}));
   ASSERT_TRUE(::partitionAsExpected(*this, 4, {{0, 15}, {16, 31}, {32, 47}, {48, 511}}));
 
   // lump it all in one cell
-  this->grow(4095, "test");
+  this->grow(4095);
 
   ASSERT_TRUE(::partitionAsExpected(*this, 4, {{0, 63}}));
 }
 
 TEST(MerkleTreeTest, test_diff_equal) {
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t1(2, 0, 64);
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t2(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(2, 0, 64);
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;  // empty
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -429,8 +429,8 @@ TEST(MerkleTreeTest, test_diff_equal) {
 }
 
 TEST(MerkleTreeTest, test_diff_one_empty) {
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t1(2, 0, 64);
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t2(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(2, 0, 64);
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -468,8 +468,8 @@ TEST(MerkleTreeTest, test_diff_one_empty) {
 }
 
 TEST(MerkleTreeTest, test_diff_misc) {
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t1(2, 0, 64);
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t2(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(2, 0, 64);
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -497,7 +497,7 @@ TEST(MerkleTreeTest, test_diff_misc) {
 }
 
 TEST(MerkleTreeTest, test_serializeBinary) {
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
 
   for (std::uint64_t i = 0; i < 32; ++i) {
     t1.insert(2 * i);
@@ -505,15 +505,15 @@ TEST(MerkleTreeTest, test_serializeBinary) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64>> t2 =
-      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64>::fromBuffer(t1s);
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
   ASSERT_NE(t2, nullptr);
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
 
 TEST(MerkleTreeTest, test_serializePortable) {
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
 
   for (std::uint64_t i = 0; i < 32; ++i) {
     t1.insert(2 * i);
@@ -521,8 +521,8 @@ TEST(MerkleTreeTest, test_serializePortable) {
 
   ::arangodb::velocypack::Builder t1s;
   t1.serialize(t1s);
-  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64>> t2 =
-      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64>::deserialize(
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::deserialize(
           t1s.slice());
   ASSERT_NE(t2, nullptr);
   ASSERT_TRUE(t1.diff(*t2).empty());
@@ -530,8 +530,8 @@ TEST(MerkleTreeTest, test_serializePortable) {
 }
 
 TEST(MerkleTreeTest, test_deepen) {
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t1(2, 0, 64);
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3, 64> t2(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(2, 0, 64);
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;  // empty
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -573,4 +573,131 @@ TEST(MerkleTreeTest, test_deepen) {
   ASSERT_TRUE(::diffAsExpected(*t5, *t3, expected));
   ASSERT_TRUE(::diffAsExpected(*t4, *t5, expected));
   ASSERT_TRUE(::diffAsExpected(*t5, *t4, expected));
+}
+
+TEST(MerkleTreeTest, test_tree_based_on_2020_hlcs) {
+  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
+  uint64_t rangeMax = uint64_t(1654481800413577216ULL);
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  
+  auto [left, right] = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+
+  // this insert must be rejected
+  try {
+    tree.insert(rangeMin - 1);
+    ASSERT_FALSE(true);
+  } catch (std::out_of_range const&) {}
+  
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+
+  for (std::uint64_t i = rangeMin; i < rangeMin + 10000; ++i) {
+    tree.insert(i);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(10000, tree.count());
+  ASSERT_EQ(13533672744353677152ULL, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+  
+  for (std::uint64_t i = rangeMin; i < rangeMin + 10000; ++i) {
+    tree.remove(i);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+
+  // increase the pace
+  constexpr std::uint64_t n = 10'000'000;
+  constexpr std::uint64_t batchSize = 10'000;
+
+  std::vector<std::uint64_t> revisions;
+  revisions.reserve(batchSize);
+  for (std::uint64_t i = rangeMin; i < rangeMin + n; i += batchSize) {
+    revisions.clear();
+    for (std::uint64_t j = 0; j < batchSize; ++j) {
+      revisions.push_back(i + j);
+    }
+    tree.insert(revisions);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(10'000'000, tree.count());
+  ASSERT_EQ(14528932675464142080ULL, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+  
+  for (std::uint64_t i = rangeMin; i < rangeMin + n; i += batchSize) {
+    revisions.clear();
+    for (std::uint64_t j = 0; j < batchSize; ++j) {
+      revisions.push_back(i + j);
+    }
+    tree.remove(revisions);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+}
+
+TEST(MerkleTreeTest, test_large_steps) {
+  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
+  uint64_t rangeMax = uint64_t(1654481800413577216ULL);
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  
+  auto [left, right] = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+
+  constexpr std::uint64_t n = 100'000'000'000;
+  constexpr std::uint64_t step = 10'000;
+
+  for (std::uint64_t i = rangeMin; i < rangeMin + n; i += step) {
+    tree.insert(i);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  EXPECT_EQ(10'000'000, tree.count());
+  EXPECT_EQ(10681126656127731097ULL, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  rangeMax = 1654481937835753472ULL;
+  EXPECT_EQ(rangeMin, left);
+  EXPECT_EQ(rangeMax, right);
+  
+  for (std::uint64_t i = rangeMin; i < rangeMin + n; i += step) {
+    tree.remove(i);
+  }
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  std::tie(left, right) = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
 }

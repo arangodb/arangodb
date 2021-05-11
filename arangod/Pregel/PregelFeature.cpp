@@ -70,8 +70,6 @@ struct NonDeleter {
   void operator()(arangodb::pregel::PregelFeature*) {}
 };
 
-std::shared_ptr<arangodb::pregel::PregelFeature> instance;
-
 }  // namespace
 
 using namespace arangodb;
@@ -83,13 +81,9 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     std::vector<std::string> const& edgeCollections, 
     std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
     VPackSlice const& params) {
-
-  // make sure no one removes the PregelFeature while in use
-  std::shared_ptr<PregelFeature> instance = ::instance;
-
-  if (!instance) {
-    return std::make_pair(Result{TRI_ERROR_INTERNAL,
-                                 "pregel system not ready"}, 0);
+  if (isStopping()) {
+    return std::make_pair(Result{TRI_ERROR_SHUTTING_DOWN,
+                                 "pregel system not available"}, 0);
   }
 
   ServerState* ss = ServerState::instance();
@@ -208,13 +202,13 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     }
   }
 
-  uint64_t en = instance->createExecutionNumber();
+  uint64_t en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(en, vocbase, vertexCollections,
                                                edgeColls, edgeCollectionRestrictions,
-                                               algorithm, params);
-  instance->addConductor(std::move(c), en);
-  TRI_ASSERT(instance->conductor(en));
-  instance->conductor(en)->start();
+                                               algorithm, params, *this);
+  addConductor(std::move(c), en);
+  TRI_ASSERT(conductor(en));
+  conductor(en)->start();
 
   return std::make_pair(Result{}, en);
 }
@@ -227,19 +221,12 @@ PregelFeature::PregelFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
-  
-  // don't delete the pointer to the feature on shutdown, as the ApplicationServer
-  // owns it
-  ::instance.reset(this, ::NonDeleter());
 }
 
 PregelFeature::~PregelFeature() {
-  _recoveryManagerPtr.store(nullptr);
-  _recoveryManager.reset();
-  cleanupAll();
+  TRI_ASSERT(_conductors.empty());
+  TRI_ASSERT(_workers.empty());
 }
-
-std::shared_ptr<PregelFeature> PregelFeature::instance() { return ::instance; }
 
 size_t PregelFeature::availableParallelism() {
   const size_t procNum = NumberOfCores::getValue();
@@ -259,18 +246,49 @@ void PregelFeature::start() {
 }
 
 void PregelFeature::beginShutdown() {
-  cleanupAll();
+  TRI_ASSERT(isStopping());
+  
+  MUTEX_LOCKER(guard, _mutex);
+  // cancel all conductors and workers
+  for (auto& it : _conductors) {
+    it.second.second->cancel();
+  }
+  for (auto it : _workers) {
+    it.second.second->cancelGlobalStep(VPackSlice());
+  }
 }
 
 void PregelFeature::stop() {}
 
 void PregelFeature::unprepare() {
-  ::instance.reset();
+  MUTEX_LOCKER(guard, _mutex);
+  decltype(_conductors) cs = std::move(_conductors);
+  decltype(_workers) ws = std::move(_workers);
+  guard.unlock();
+
+  // all pending tasks should have been finished by now, and all references
+  // to conductors and workers been dropped!
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  for (auto& it : cs) {
+    TRI_ASSERT(it.second.second.use_count() == 1);
+  }
+  
+  for (auto it : _workers) {
+    TRI_ASSERT(it.second.second.use_count() == 1);
+  }
+#endif
+}
+
+bool PregelFeature::isStopping() const noexcept {
+  return server().isStopping();
 }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c, uint64_t executionNumber) {
+  if (isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  
   std::string user = ExecContext::current().user();
-
   MUTEX_LOCKER(guard, _mutex);
   _conductors.try_emplace(executionNumber,
                       std::move(user), std::move(c));
@@ -283,8 +301,11 @@ std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
 }
 
 void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w, uint64_t executionNumber) {
+  if (isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  
   std::string user = ExecContext::current().user();
-
   MUTEX_LOCKER(guard, _mutex);
   _workers.try_emplace(executionNumber,
                    std::move(user), std::move(w));
@@ -302,17 +323,10 @@ void PregelFeature::cleanupConductor(uint64_t executionNumber) {
 }
 
 void PregelFeature::cleanupWorker(uint64_t executionNumber) {
-  // make sure no one removes the PregelFeature while in use
-  std::shared_ptr<PregelFeature> instance = ::instance;
-
-  if (!instance) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber, instance] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
     MUTEX_LOCKER(guard, _mutex);
     _workers.erase(executionNumber);
   });
@@ -322,31 +336,12 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   }
 }
 
-void PregelFeature::cleanupAll() {
-  MUTEX_LOCKER(guard, _mutex);
-  decltype(_conductors) cs = std::move(_conductors);
-  decltype(_workers) ws = std::move(_workers);
-  guard.unlock();
-
-  // cleanup all workers & conductors without holding the lock    
-  cs.clear();
-  for (auto it : ws) {
-    it.second.second->cancelGlobalStep(VPackSlice());
-  }
-}
-
-/* static */ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
-                                                        std::string const& path,
-                                                        VPackSlice const& body,
-                                                        VPackBuilder& outBuilder) {
-  if (vocbase.server().isStopping()) {
+void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
+                                           std::string const& path,
+                                           VPackSlice const& body,
+                                           VPackBuilder& outBuilder) {
+  if (isStopping()) {
     return;  // shutdown ongoing
-  }
-
-  // make sure no one removes the PregelFeature while in use
-  std::shared_ptr<PregelFeature> instance = ::instance;
-  if (!instance) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
@@ -359,7 +354,7 @@ void PregelFeature::cleanupAll() {
   } else if (sExecutionNum.isString()) {
     exeNum = basics::StringUtils::uint64(sExecutionNum.copyString());
   }
-  std::shared_ptr<Conductor> co = instance->conductor(exeNum);
+  std::shared_ptr<Conductor> co = conductor(exeNum);
   if (!co) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CURSOR_NOT_FOUND, "Conductor not found, invalid execution number: " + std::to_string(exeNum));
@@ -376,18 +371,12 @@ void PregelFeature::cleanupAll() {
   }
 }
 
-/*static*/ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
-                                                   std::string const& path,
-                                                   VPackSlice const& body,
-                                                   VPackBuilder& outBuilder) {
-  if (vocbase.server().isStopping() && path != Utils::finalizeExecutionPath) {
+void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
+                                        std::string const& path,
+                                        VPackSlice const& body,
+                                        VPackBuilder& outBuilder) {
+  if (isStopping() && path != Utils::finalizeExecutionPath) {
     return;  // shutdown ongoing
-  }
-
-  // make sure no one removes the PregelFeature while in use
-  std::shared_ptr<PregelFeature> instance = ::instance;
-  if (!instance) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
@@ -398,7 +387,7 @@ void PregelFeature::cleanupAll() {
   }
 
   uint64_t exeNum = sExecutionNum.getUInt();
-  std::shared_ptr<IWorker> w = instance->worker(exeNum);
+  std::shared_ptr<IWorker> w = worker(exeNum);
 
   // create a new worker instance if necessary
   if (path == Utils::startExecutionPath) {
@@ -408,17 +397,16 @@ void PregelFeature::cleanupAll() {
           "Worker with this execution number already exists.");
     }
 
-    instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
-    instance->worker(exeNum)->setupWorker();  // will call conductor
+    addWorker(AlgoRegistry::createWorker(vocbase, body, *this), exeNum);
+    worker(exeNum)->setupWorker();  // will call conductor
 
     return;
   } else if (path == Utils::startRecoveryPath) {
     if (!w) {
-      instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
+      addWorker(AlgoRegistry::createWorker(vocbase, body, *this), exeNum);
     }
 
-    instance->worker(exeNum)->startRecovery(body);
-
+    worker(exeNum)->startRecovery(body);
     return;
   } else if (!w) {
     // any other call should have a working worker instance
@@ -438,8 +426,8 @@ void PregelFeature::cleanupAll() {
   } else if (path == Utils::cancelGSSPath) {
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [exeNum, instance]() {
-      instance->cleanupWorker(exeNum);
+    w->finalizeExecution(body, [this, exeNum]() {
+      cleanupWorker(exeNum);
     });
   } else if (path == Utils::continueRecoveryPath) {
     w->compensateStep(body);
