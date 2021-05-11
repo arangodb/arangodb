@@ -660,6 +660,7 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder, bool from
 
   uint64_t count = 0;
   uint64_t hash = 0;
+  uint64_t byteSize = 0;
 
   if (fromCollection) {
     // rebuild a temporary tree from the collection
@@ -673,6 +674,7 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder, bool from
 
     count = tree->count();
     hash = tree->rootValue();
+    byteSize = tree->byteSize();
   } else {
     // use existing revision tree
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -680,12 +682,33 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder, bool from
     if (_revisionTree != nullptr) {
       count = _revisionTree->count();
       hash = _revisionTree->rootValue();
+      byteSize = _revisionTree->compressedSize();
     }
   }
   
   VPackObjectBuilder obj(&builder);
   obj->add(StaticStrings::RevisionTreeCount, VPackValue(count));
   obj->add(StaticStrings::RevisionTreeHash, VPackValue(hash));
+  obj->add("byteSize", VPackValue(byteSize));
+}
+
+void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
+  uint64_t inserts = 0;
+  uint64_t removes = 0;
+  uint64_t truncates = 0;
+
+  if (_logicalCollection.useSyncByRevision()) {
+    std::unique_lock<std::mutex> guard(_revisionBufferLock);
+
+    inserts = _revisionInsertBuffers.size();
+    removes = _revisionRemovalBuffers.size();
+    truncates = _revisionTruncateBuffer.size();
+  }
+  
+  VPackObjectBuilder obj(&builder);
+  obj->add("inserts", VPackValue(inserts));
+  obj->add("removes", VPackValue(removes));
+  obj->add("truncates", VPackValue(truncates));
 }
 
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transactionId) {
@@ -748,7 +771,7 @@ void RocksDBMetaCollection::hibernateRevisionTree() {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
   if (_revisionTree && !haveBufferedOperations()) {
-    _revisionTree->hibernate();
+    _revisionTree->hibernate(/*force*/ false);
   }
 }
 
@@ -757,6 +780,12 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     
   TRI_ASSERT(_logicalCollection.useSyncByRevision());
   TRI_ASSERT(_revisionTree || haveBufferedOperations());
+
+  TRI_IF_FAILURE("applyUpdates::forceHibernation1") {
+    if (_revisionTree != nullptr) {
+      _revisionTree->hibernate(/*force*/ true);
+    }
+  }
 
   // make sure we will have a _revisionTree ready after this
   ensureRevisionTree();
@@ -897,12 +926,18 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         << "unable to apply revision tree updates for " 
         << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
         << ": " << res.errorMessage();
-    return;
+    THROW_ARANGO_EXCEPTION(res);
   }
   
   rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
   while (commitSeq > applied) {
     _revisionTreeApplied.compare_exchange_strong(applied, commitSeq);
+  }
+  
+  TRI_IF_FAILURE("applyUpdates::forceHibernation2") {
+    if (_revisionTree != nullptr) {
+      _revisionTree->hibernate(/*force*/ true);
+    }
   }
 }
 
@@ -1132,6 +1167,16 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::RevisionTreeAcc
   return _tree->clone();
 }
 
+std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::compressedSize() const {
+  if (_tree == nullptr) {
+    TRI_ASSERT(!_compressed.empty());
+    return _compressed.size();
+  }
+  std::string output;
+  _tree->serializeBinary(output, true);
+  return output.size();
+}
+
 std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::count() const {
   ensureTree();
   return _tree->count();
@@ -1151,7 +1196,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::checkConsistency() const {
   return _tree->checkConsistency();
 }
 
-void RocksDBMetaCollection::RevisionTreeAccessor::hibernate() {
+void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   if (_tree == nullptr) {
     // already compressed, nothing to do
     TRI_ASSERT(!_compressed.empty());
@@ -1160,23 +1205,25 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate() {
 
   std::uint64_t count = _tree->count();
 
-  if (count >= 5'000'000) {
-    // we have so many values in the tree that compressibility
-    // will likely be bad
-    return;
-  }
-  
-  if (count >= 1'000'000 && !_compressible) {
-    // for whatever reason this collection is not well compressible
-    return;
-  }
-  
-  if (++_hibernationRequests < 10) {
-    // sit out the first few hibernation requests before we
-    // actually work (10 is just an arbitrary value here to avoid
-    // some pathologic hibernation/resurrection cycles, e.g. by
-    // the statistics collections)
-    return;
+  if (!force) {
+    if (count >= 5'000'000) {
+      // we have so many values in the tree that compressibility
+      // will likely be bad
+      return;
+    }
+    
+    if (count >= 1'000'000 && !_compressible) {
+      // for whatever reason this collection is not well compressible
+      return;
+    }
+    
+    if (++_hibernationRequests < 10) {
+      // sit out the first few hibernation requests before we
+      // actually work (10 is just an arbitrary value here to avoid
+      // some pathologic hibernation/resurrection cycles, e.g. by
+      // the statistics collections)
+      return;
+    }
   }
 
   double start = TRI_microtime();
