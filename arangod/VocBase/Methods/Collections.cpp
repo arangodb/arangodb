@@ -297,7 +297,12 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       bool isSmartChild =
           Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
       RevisionId minRev =
-          (isSystem || isSmartChild) ? RevisionId::none() : RevisionId::create();
+          (isSmartChild 
+           ? RevisionId::none()
+           : (isSystem
+              ? RevisionId::lowerBound()
+              : RevisionId::create()));
+
       helper.add(arangodb::StaticStrings::MinRevision,
                  arangodb::velocypack::Value(minRev.toString()));
     }

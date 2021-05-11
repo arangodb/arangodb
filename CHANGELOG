@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improve error reporting for Merkle tree operations and improve memory usage
+  for unused trees by hibernating them. In addition, add some backoff to shard
+  synchronization in case there are repeated sync failures for the same shard.
+
 * Updated bundled version of Snappy library to 1.1.9.
 
 * Fixed various issues (mainly data races) reported by ThreadSanitizer.
