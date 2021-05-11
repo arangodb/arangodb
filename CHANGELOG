@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improve error reporting for Merkle tree operations and improve memory usage
+  for unused trees by hibernating them. In addition, add some backoff to shard
+  synchronization in case there are repeated sync failures for the same shard.
+
 * Fixes pregel lifetime management. Previously shutting down the server while a
   pregel job was still running could result in a segfault or a shutdown hanger.
   

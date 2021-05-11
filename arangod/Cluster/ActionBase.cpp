@@ -112,6 +112,7 @@ ActionDescription const& ActionBase::describe() const { return _description; }
 MaintenanceFeature& ActionBase::feature() const { return _feature; }
 
 VPackSlice const ActionBase::properties() const {
+  TRI_ASSERT(_description.properties() != nullptr);
   return _description.properties()->slice();
 }
 

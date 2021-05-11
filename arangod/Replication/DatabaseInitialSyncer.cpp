@@ -1418,8 +1418,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
   // diff with local tree
   //std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();
-  std::unique_ptr<containers::RevisionTree> treeLocal =
-      physical->revisionTree(*trx);
+  auto treeLocal = physical->revisionTree(*trx);
   if (!treeLocal) {
     // local collection does not support syncing by revision, fall back to keys
     guard.fire();

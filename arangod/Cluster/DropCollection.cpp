@@ -80,6 +80,11 @@ bool DropCollection::first() {
         LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
           << "Dropping local collection " + shard;
         result(Collections::drop(*coll, false, 2.5));
+
+        // it is safe here to clear our replication failure statistics even
+        // if the collection could not be dropped. the drop attempt alone
+        // should be reason enough to zero our stats
+        _feature.removeReplicationError(vocbase.name(), shard);
       } else {
         std::stringstream error;
 
