@@ -276,49 +276,60 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
   stat.SET_READ_END();
   stat.ADD_RECEIVED_BYTES(buffer.size());
 
-  // handle request types
-  if (mt == fu::MessageType::Authentication) {  // auth
-    handleVstAuthRequest(VPackSlice(buffer.data()), messageId);
-  } else if (mt == fu::MessageType::Request) {  // request
+  try {
+    // handle request types
+    if (mt == fu::MessageType::Authentication) {  // auth
+      handleVstAuthRequest(VPackSlice(buffer.data()), messageId);
+    } else if (mt == fu::MessageType::Request) {  // request
+      // the handler will take ownership of this pointer
+      auto req =
+          std::make_unique<VstRequest>(this->_connectionInfo, std::move(buffer),
+                                       /*payloadOffset*/ headerLength, messageId);
+      req->setAuthenticated(_authToken.authenticated());
+      req->setUser(_authToken.username());
+      req->setAuthenticationMethod(_authMethod);
+      if (_authToken.authenticated() && this->_auth->userManager() != nullptr) {
+        // if we don't call checkAuthentication we need to refresh
+        this->_auth->userManager()->refreshUser(this->_authToken.username());
+      }
+      stat.SET_REQUEST_TYPE(req->requestType());
 
-    // the handler will take ownership of this pointer
-    auto req = std::make_unique<VstRequest>(this->_connectionInfo, std::move(buffer),
-                                            /*payloadOffset*/ headerLength, messageId);
-    req->setAuthenticated(_authToken.authenticated());
-    req->setUser(_authToken.username());
-    req->setAuthenticationMethod(_authMethod);
-    if (_authToken.authenticated() && this->_auth->userManager() != nullptr) {
-      // if we don't call checkAuthentication we need to refresh
-      this->_auth->userManager()->refreshUser(this->_authToken.username());
+      // Separate superuser traffic:
+      // Note that currently, velocystream traffic will never come from
+      // a forwarding, since we always forward with HTTP.
+      if (_authMethod != AuthenticationMethod::NONE &&
+          _authToken.authenticated() && this->_authToken.username().empty()) {
+        stat.SET_SUPERUSER();
+      }
+
+      LOG_TOPIC("92fd6", INFO, Logger::REQUESTS)
+          << "\"vst-request-begin\",\"" << (void*)this << "\",\""
+          << this->_connectionInfo.clientAddress << "\",\""
+          << VstRequest::translateMethod(req->requestType()) << "\",\""
+          << url(req.get()) << "\"";
+
+      // TODO use different token if authentication header is present
+      CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
+      if (cont == CommTask::Flow::Continue) {
+        auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);
+        this->executeRequest(std::move(req), std::move(resp));
+      }       // abort is handled in prepareExecution  
+    } else {  // not supported on server
+      LOG_TOPIC("b5073", ERR, Logger::REQUESTS)
+          << "\"vst-request-header\",\"" << (void*)this << "/" << messageId << "\""
+          << " is unsupported";
+      this->sendSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                              messageId, VPackBuffer<uint8_t>());
     }
-    stat.SET_REQUEST_TYPE(req->requestType());
-
-    // Separate superuser traffic:
-    // Note that currently, velocystream traffic will never come from
-    // a forwarding, since we always forward with HTTP.
-    if (_authMethod != AuthenticationMethod::NONE &&
-        _authToken.authenticated() &&
-        this->_authToken.username().empty()) {
-      stat.SET_SUPERUSER();
-    }
-
-    LOG_TOPIC("92fd6", INFO, Logger::REQUESTS)
-        << "\"vst-request-begin\",\"" << (void*)this << "\",\""
-        << this->_connectionInfo.clientAddress << "\",\""
-        << VstRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
-
-    // TODO use different token if authentication header is present
-    CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
-    if (cont == CommTask::Flow::Continue) {
-      auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);
-      this->executeRequest(std::move(req), std::move(resp));
-    }       // abort is handled in prepareExecution
-  } else {  // not supported on server
-    LOG_TOPIC("b5073", ERR, Logger::REQUESTS)
-        << "\"vst-request-header\",\"" << (void*)this << "/" << messageId << "\""
-        << " is unsupported";
-    this->sendSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
-                             messageId, VPackBuffer<uint8_t>());
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC("caf73", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
+      << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), rest::ContentType::VPACK,
+                            messageId, ex.code(), ex.message());
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("aea49", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
+    this->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::VPACK,
+                            messageId, ErrorCode(TRI_ERROR_FAILED), ex.what());
   }
 }
 
