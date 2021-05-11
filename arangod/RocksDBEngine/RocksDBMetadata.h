@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H 1
+#pragma once
 
 #include <mutex>
 #include <map>
@@ -187,4 +186,3 @@ struct RocksDBMetadata final {
 };
 }  // namespace arangodb
 
-#endif

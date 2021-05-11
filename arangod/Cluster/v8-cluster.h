@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_V8_CLUSTER_H
-#define ARANGOD_CLUSTER_V8_CLUSTER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -34,4 +33,3 @@
 
 void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
-#endif

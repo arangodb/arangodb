@@ -21,8 +21,7 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SSL_INTERFACE_H
-#define ARANGODB_REST_SSL_INTERFACE_H 1
+#pragma once
 
 #include <cstdlib>
 #include <string>
@@ -196,4 +195,3 @@ int sslRand(int32_t*);
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

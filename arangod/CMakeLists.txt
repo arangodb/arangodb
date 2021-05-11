@@ -189,13 +189,16 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Cache/RefactoredTraverserCache.cpp
   Graph/Cache/RefactoredClusterTraverserCache.cpp
+  Graph/Enumerators/OneSidedEnumerator.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
   Graph/Helpers/TraceEntry.cpp
   Graph/Queues/QueueTracer.cpp
   Graph/PathManagement/PathResult.cpp
+  Graph/PathManagement/SingleProviderPathResult.cpp
   Graph/PathManagement/PathStore.cpp
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
+  Graph/Options/OneSidedEnumeratorOptions.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp
   Graph/Providers/ClusterProvider.cpp
   Graph/Providers/SingleServerProvider.cpp
@@ -878,7 +881,7 @@ add_library(arango_rocksdb STATIC
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
 
-add_dependencies(arango_rocksdb snappy-static)
+add_dependencies(arango_rocksdb snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})

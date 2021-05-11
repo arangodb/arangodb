@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINERS_SMALL_VECTOR_H
-#define ARANGODB_CONTAINERS_SMALL_VECTOR_H 1
+#pragma once
 
 #include <vector>
 
@@ -37,4 +36,3 @@ using SmallVector = std::vector<T, detail::short_alloc<T, BufSize, ElementAlignm
 }  // namespace containers
 }  // namespace arangodb
 
-#endif

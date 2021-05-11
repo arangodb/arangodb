@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_VALUE_GROUP_H
-#define ARANGOD_AQL_AQL_VALUE_GROUP_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Basics/Common.h"
@@ -69,4 +68,3 @@ struct AqlValueGroupEqual {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

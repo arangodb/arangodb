@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_UTILS_CLIENT_TASK_QUEUE_H
-#define ARANGOSH_UTILS_CLIENT_TASK_QUEUE_H 1
+#pragma once
 
 #include <memory>
 #include <queue>
@@ -409,4 +408,3 @@ inline void ClientTaskQueue<JobData>::Worker::run() {
 
 }  // namespace arangodb
 
-#endif

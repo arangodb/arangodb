@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_WARNINGS_H
-#define ARANGOD_AQL_QUERY_WARNINGS_H 1
+#pragma once
 
 #include <Basics/ErrorCode.h>
 #include <mutex>
@@ -77,4 +76,3 @@ public:
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_METRICS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_METRICS_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 #include "RestServer/MetricsFeature.h"
@@ -45,4 +44,3 @@ class RestMetricsHandler : public arangodb::RestBaseHandler {
 
 }  // namespace arangodb
 
-#endif

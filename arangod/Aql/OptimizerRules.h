@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_OPTIMIZER_RULES_H
-#define ARANGOD_AQL_OPTIMIZER_RULES_H 1
+#pragma once
 
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -332,4 +331,3 @@ auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, Subqu
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

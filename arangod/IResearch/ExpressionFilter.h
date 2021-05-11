@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER
-#define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER 1
+#pragma once
 
 #include "Aql/Expression.h"
 #include "IResearch/IResearchExpressionContext.h"
@@ -133,4 +132,3 @@ class ByExpression final : public irs::filter {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER

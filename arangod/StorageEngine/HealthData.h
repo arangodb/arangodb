@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_HEALTH_DATA_H
-#define ARANGOD_STORAGE_ENGINE_HEALTH_DATA_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -49,4 +48,3 @@ struct HealthData {
 
 }
 
-#endif

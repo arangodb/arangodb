@@ -21,8 +21,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CALCULATION_NODE_VAR_FINDER_H
-#define ARANGOD_AQL_CALCULATION_NODE_VAR_FINDER_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -65,4 +64,3 @@ class CalculationNodeVarExistenceFinder final
 }  // namespace aql
 }  // namespace arangodb
 
-#endif // ARANGOD_AQL_CALCULATION_NODE_VAR_FINDER_H

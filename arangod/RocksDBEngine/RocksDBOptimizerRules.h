@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H
-#define ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H 1
+#pragma once
 
 #include <memory>
 
@@ -52,4 +51,3 @@ struct RocksDBOptimizerRules {
 
 }  // namespace arangodb
 
-#endif

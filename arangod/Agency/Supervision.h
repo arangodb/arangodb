@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_SUPERVISION_H
-#define ARANGOD_CONSENSUS_SUPERVISION_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
@@ -329,4 +328,3 @@ query_t removeTransactionBuilder(std::vector<std::string> const&);
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

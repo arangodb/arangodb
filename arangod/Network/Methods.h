@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_METHODS_H
-#define ARANGOD_NETWORK_METHODS_H 1
+#pragma once
 
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -163,4 +162,3 @@ using Sender =
 }  // namespace network
 }  // namespace arangodb
 
-#endif

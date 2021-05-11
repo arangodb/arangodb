@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MUTEX_EXECUTOR_H
-#define ARANGOD_AQL_MUTEX_EXECUTOR_H
+#pragma once
 
 #include "Aql/BlocksWithClients.h"
 #include "Aql/DistributeClientBlock.h"
@@ -109,4 +108,3 @@ class ExecutionBlockImpl<MutexExecutor>
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

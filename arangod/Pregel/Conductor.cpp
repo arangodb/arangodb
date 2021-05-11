@@ -64,8 +64,10 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::vector<CollectionID> const& vertexCollections,
                      std::vector<CollectionID> const& edgeCollections,
                      std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
-                     std::string const& algoName, VPackSlice const& config)
-    : _vocbaseGuard(vocbase),
+                     std::string const& algoName, VPackSlice const& config,
+                     PregelFeature& feature)
+    : _feature(feature),
+      _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(AlgoRegistry::createAlgorithm(vocbase.server(), algoName, config)),
       _vertexCollections(vertexCollections),
@@ -149,6 +151,10 @@ void Conductor::start() {
 // only called by the conductor, is protected by the
 // mutex locked in finishedGlobalStep
 bool Conductor::_startGlobalStep() {
+  if (_feature.isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
   _callbackMutex.assertLockedByCurrentThread();
   // send prepare GSS notice
   VPackBuilder b;
@@ -372,7 +378,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this()] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -492,13 +498,12 @@ void Conductor::startRecovery() {
   // let's wait for a final state in the cluster
   bool queued = false;
   std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::CLUSTER_AQL, std::chrono::seconds(2), [this](bool cancelled) {
+      RequestLane::CLUSTER_AQL, std::chrono::seconds(2), [this, self = shared_from_this()](bool cancelled) {
         if (cancelled || _state != ExecutionState::RECOVERING) {
           return;  // seems like we are canceled
         }
         std::vector<ServerID> goodServers;
-        auto res =
-            PregelFeature::instance()->recoveryManager()->filterGoodServers(_dbServers, goodServers);
+        auto res = _feature.recoveryManager()->filterGoodServers(_dbServers, goodServers);
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("3d08b", ERR, Logger::PREGEL)
               << "Recovery proceedings failed";
@@ -689,11 +694,10 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
-      std::shared_ptr<PregelFeature> feature = PregelFeature::instance();
-      if (!feature) {
+      if (_feature.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
-      std::shared_ptr<IWorker> worker = feature->worker(_executionNumber);
+      std::shared_ptr<IWorker> worker = _feature.worker(_executionNumber);
 
       if (worker) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -701,11 +705,11 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
             "a worker with this execution number already exists.");
       }
 
-      auto created = AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice());
+      auto created = AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice(), _feature);
 
       TRI_ASSERT(created.get() != nullptr);
-      feature->addWorker(std::move(created), _executionNumber);
-      worker = feature->worker(_executionNumber);
+      _feature.addWorker(std::move(created), _executionNumber);
+      worker = _feature.worker(_executionNumber);
       TRI_ASSERT(worker);
       worker->setupWorker();
 
@@ -753,12 +757,8 @@ ErrorCode Conductor::_finalizeWorkers() {
     _masterContext->postApplication();
   }
 
-  std::shared_ptr<PregelFeature> feature = PregelFeature::instance();
-  if (!feature) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
   // stop monitoring shards
-  RecoveryManager* mngr = feature->recoveryManager();
+  RecoveryManager* mngr = _feature.recoveryManager();
   if (mngr) {
     mngr->stopMonitoring(this);
   }
@@ -827,11 +827,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
     if (scheduler) {
       uint64_t exe = _executionNumber;
-      bool queued = scheduler->queue(RequestLane::CLUSTER_AQL, [exe] {
-        auto pf = PregelFeature::instance();
-        if (pf) {
-          pf->cleanupConductor(exe);
-        }
+      bool queued = scheduler->queue(RequestLane::CLUSTER_AQL, [this, exe, self = shared_from_this()] {
+        _feature.cleanupConductor(exe);
       });
       if (!queued) {
         LOG_TOPIC("038da", ERR, Logger::PREGEL)
@@ -911,26 +908,18 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
   if (ServerState::instance()->isRunningInCluster() == false) {
     if (handle) {
       VPackBuilder response;
-
-      PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
-                                         message.slice(), response);
+      _feature.handleWorkerRequest(_vocbaseGuard.database(), path, message.slice(), response);
       handle(response.slice());
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      uint64_t exe = _executionNumber;
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [path, message, exe] {
-        auto pf = PregelFeature::instance();
-        if (!pf) {
-          return;
-        }
-        auto conductor = pf->conductor(exe);
-        if (conductor) {
-          TRI_vocbase_t& vocbase = conductor->_vocbaseGuard.database();
-          VPackBuilder response;
-          PregelFeature::handleWorkerRequest(vocbase, path, message.slice(), response);
-        }
-      });
+      bool queued =
+          scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message,
+                                                       self = shared_from_this()] {
+            TRI_vocbase_t& vocbase = _vocbaseGuard.database();
+            VPackBuilder response;
+            _feature.handleWorkerRequest(vocbase, path, message.slice(), response);
+          });
       if (!queued) {
         return TRI_ERROR_QUEUE_FULL;
       }

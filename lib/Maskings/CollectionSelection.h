@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_COLLECTION_SELECTION_H
-#define ARANGODB_MASKINGS_COLLECTION_SELECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -32,4 +31,3 @@ enum class CollectionSelection { FULL, MASKED, EXCLUDE, STRUCTURE };
 }  // namespace maskings
 }  // namespace arangodb
 
-#endif

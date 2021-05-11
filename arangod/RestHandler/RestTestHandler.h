@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_TEST_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_TEST_HANDLER_H 1
+#pragma once
 
 #include <chrono>
 
@@ -47,4 +46,3 @@ class RestTestHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

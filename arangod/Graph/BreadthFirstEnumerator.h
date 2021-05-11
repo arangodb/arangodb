@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_BREADTHFIRSTENUMERATOR_H
-#define ARANGODB_GRAPH_BREADTHFIRSTENUMERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/PathEnumerator.h"
@@ -164,4 +163,3 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

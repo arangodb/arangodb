@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H 1
+#pragma once
 
 #include "IResearchViewSort.h"
 #include "index/comparer.hpp"
@@ -65,4 +64,3 @@ class VPackComparer final : public irs::comparer {
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H

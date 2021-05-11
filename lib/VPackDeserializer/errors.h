@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_ERRORS_H
-#define VELOCYPACK_ERRORS_H
+
+#pragma once
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
 #include <utility>
@@ -197,4 +197,3 @@ struct error {
 // TODO: ?
 using deserialize_error = arangodb::velocypack::deserializer::error;
 
-#endif  // VELOCYPACK_ERRORS_H

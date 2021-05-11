@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_OPTIMIZER_RULE_H
-#define ARANGOD_AQL_AQL_OPTIMIZER_RULE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -390,4 +389,3 @@ struct OptimizerRule {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

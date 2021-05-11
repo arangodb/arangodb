@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "./MockGraph.h"
+#include "Aql/TraversalStats.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
@@ -63,7 +64,7 @@ class MockGraphProvider {
    public:
     class Vertex {
      public:
-      explicit Vertex(VertexType v) : _vertex(v){};
+      explicit Vertex(VertexType v) : _vertex(v) {};
 
       VertexType getID() const { return _vertex; }
 
@@ -102,6 +103,7 @@ class MockGraphProvider {
 
     Step(VertexType v, bool isProcessable);
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
+    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable, size_t depth);
     ~Step();
 
     bool operator<(Step const& other) const noexcept {

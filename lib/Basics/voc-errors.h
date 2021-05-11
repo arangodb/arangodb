@@ -1,6 +1,5 @@
 
-#ifndef ARANGODB_BASICS_VOC_ERRORS_H
-#define ARANGODB_BASICS_VOC_ERRORS_H 1
+#pragma once
 
 #include "Basics/ErrorCode.h"
 
@@ -186,10 +185,16 @@ constexpr auto TRI_ERROR_DISABLED                                               
 /// Will be raised when a JSON string could not be parsed.
 constexpr auto TRI_ERROR_MALFORMED_JSON                                          = ErrorCode{37};
 
-/// 38: ERROR_PROMISE_ABANDONED
+/// 38: ERROR_STARTING_UP
+/// "startup ongoing"
+/// Will be raised when a call cannot succeed because the server startup phase
+/// is still in progress.
+constexpr auto TRI_ERROR_STARTING_UP                                             = ErrorCode{38};
+
+/// 40: ERROR_PROMISE_ABANDONED
 /// "promise abandoned"
 /// Will be raised when a promise was abandoned.
-constexpr auto TRI_ERROR_PROMISE_ABANDONED                                       = ErrorCode{38};
+constexpr auto TRI_ERROR_PROMISE_ABANDONED                                       = ErrorCode{40};
 
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
@@ -1846,4 +1851,3 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN             
 /// During the execution of an AIR program an error occurred
 constexpr auto TRI_ERROR_AIR_EXECUTION_ERROR                                     = ErrorCode{8001};
 
-#endif

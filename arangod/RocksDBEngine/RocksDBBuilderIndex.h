@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_BUILDER_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_BUILDER_INDEX_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBIndex.h"
 
@@ -121,4 +120,3 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

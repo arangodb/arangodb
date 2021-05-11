@@ -137,7 +137,7 @@ void LanguageCheckFeature::start() {
   auto defaultLang = feature.getDefaultLanguage();
   auto language = feature.getCollatorLanguage();
   auto previous = ::getOrSetPreviousLanguage(server(), language);
-
+  
   if (defaultLang.empty() && !previous.empty()) {
     // override the empty current setting with the previous one
     feature.resetDefaultLanguage(previous);
@@ -145,11 +145,18 @@ void LanguageCheckFeature::start() {
   }
 
   if (language != previous) {
-    // current not empty and not the same as previous, get out!
-    LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
-        << "specified language '" << language
-        << "' does not match previously used language '" << previous << "'";
-    FATAL_ERROR_EXIT();
+    if (feature.forceLanguageCheck()) {
+      // current not empty and not the same as previous, get out!
+      LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
+          << "specified language '" << language
+          << "' does not match previously used language '" << previous << "'";
+      FATAL_ERROR_EXIT();
+    } else {
+      LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)
+          << "specified language '" << language
+          << "' does not match previously used language '" << previous 
+          << "'. starting anyway due to --default-language-check=false setting";
+    }
   }
 }
 

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_IO_CONTEXT_H
-#define ARANGOD_GENERAL_SERVER_IO_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
@@ -87,4 +86,3 @@ class IoContext {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_IN_AND_OUT_ROW_EXPRESSION_CONTEXT_H
-#define ARANGOD_AQL_IN_AND_OUT_ROW_EXPRESSION_CONTEXT_H 1
+#pragma once
 
 #include "QueryExpressionContext.h"
 
@@ -92,4 +91,3 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
 };
 }  // namespace aql
 }  // namespace arangodb
-#endif

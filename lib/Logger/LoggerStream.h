@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_STREAM_H
-#define ARANGODB_LOGGER_LOGGER_STREAM_H 1
+#pragma once
 
 #include <cstddef>
 #include <sstream>
@@ -101,4 +100,3 @@ class LoggerStream : public LoggerStreamBase {
 
 }  // namespace arangodb
 
-#endif

@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_PLAN_EXECUTOR_H
-#define VELOCYPACK_PLAN_EXECUTOR_H
+
+#pragma once
 
 namespace arangodb {
 namespace velocypack {
@@ -47,4 +47,3 @@ struct plan_result_tuple {
 }  // namespace deserializer::executor
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_PLAN_EXECUTOR_H

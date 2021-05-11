@@ -29,26 +29,16 @@
 let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
+const primaryEndpoint = arango.getEndpoint();
 
-function debugCanUseFailAt() {
-  let res = arango.GET('/_admin/debug/failat');
-  return res === true;
-}
-
-/// @brief set failure point
-function debugSetFailAt(failAt) {
-  let res = arango.PUT('/_admin/debug/failat/' + encodeURIComponent(failAt), {});
-  if (res !== true) {
-    throw "Error setting failure point";
-  }
-}
-
-function debugClearFailAt(endpoint) {
-  let res = arango.DELETE('/_admin/debug/failat');
-  if (res !== true) {
-    throw "Error removing failure points";
-  }
-}
+let { getEndpointById,
+      getEndpointsByType,
+      getServersByType,
+      debugCanUseFailAt,
+      debugSetFailAt,
+      debugClearFailAt,
+      reconnectRetry
+    } = require('@arangodb/test-helper');
 
 function quickKeysSuite() {
   'use strict';
@@ -64,12 +54,12 @@ function quickKeysSuite() {
   };
 
   let runTestForCount = function(n, quick, adjustQuickLimit) {
-    debugSetFailAt("disableRevisionsAsDocumentIds");
+    debugSetFailAt(primaryEndpoint, "disableRevisionsAsDocumentIds");
     createCollection(n);
     
     let quickLimit = 1000000;
     if (adjustQuickLimit) {
-      debugSetFailAt("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100");
+      debugSetFailAt(primaryEndpoint, "RocksDBRestReplicationHandler::quickKeysNumDocsLimit100");
       quickLimit = 100;
     }
 
@@ -95,12 +85,12 @@ function quickKeysSuite() {
   return {
 
     setUp: function () {
-      debugClearFailAt();
+      debugClearFailAt(primaryEndpoint);
       db._drop(cn);
     },
 
     tearDown: function () {
-      debugClearFailAt();
+      debugClearFailAt(primaryEndpoint);
       db._drop(cn);
     },
     
@@ -154,7 +144,7 @@ function quickKeysSuite() {
   };
 }
 
-if (debugCanUseFailAt()) {
+if (debugCanUseFailAt(primaryEndpoint)) {
   // only execute if failure tests are available
   jsunity.run(quickKeysSuite);
 }

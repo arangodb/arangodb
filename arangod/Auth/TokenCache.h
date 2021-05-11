@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AUTHENTICATION_TOKEN_CACHE_H
-#define ARANGOD_AUTHENTICATION_TOKEN_CACHE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/LruCache.h"
@@ -142,4 +141,3 @@ class TokenCache {
 }  // namespace auth
 }  // namespace arangodb
 
-#endif

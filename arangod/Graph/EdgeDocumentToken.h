@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_EDGEDOCUMENTTOKEN_H
-#define ARANGOD_GRAPH_EDGEDOCUMENTTOKEN_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
@@ -207,4 +206,3 @@ struct equal_to<arangodb::graph::EdgeDocumentToken> {
   }
 };
 }  // namespace std
-#endif

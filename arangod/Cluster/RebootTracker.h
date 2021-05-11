@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_REBOOTTRACKER_H
-#define ARANGOD_CLUSTER_REBOOTTRACKER_H
+#pragma once
 
 #include "Basics/Mutex.h"
 #include "Cluster/CallbackGuard.h"
@@ -128,4 +127,3 @@ class RebootTracker {
 }  // namespace cluster
 }  // namespace arangodb
 
-#endif  // ARANGOD_CLUSTER_REBOOTTRACKER_H

@@ -1,6 +1,5 @@
 
-#ifndef ARANGODB_BASICS_ERROR_REGISTRY_H
-#define ARANGODB_BASICS_ERROR_REGISTRY_H
+#pragma once
 
 #include "Basics/voc-errors.h"
 
@@ -16,7 +15,7 @@ struct elsa<ErrorCode> {
 #include <frozen/unordered_map.h>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 344> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -87,7 +86,9 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessage
       "disabled"},
     {TRI_ERROR_MALFORMED_JSON,  // 37
       "malformed json"},
-    {TRI_ERROR_PROMISE_ABANDONED,  // 38
+    {TRI_ERROR_STARTING_UP,  // 38
+      "startup ongoing"},
+    {TRI_ERROR_PROMISE_ABANDONED,  // 40
       "promise abandoned"},
     {TRI_ERROR_HTTP_BAD_PARAMETER,  // 400
       "bad parameter"},
@@ -705,5 +706,3 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 342> ErrorMessage
       "error during AIR execution"},
 };
 }
-
-#endif  // ARANGODB_BASICS_ERROR_REGISTRY_H

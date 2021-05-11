@@ -192,6 +192,7 @@ add_library(arango STATIC
   Rest/HttpResponse.cpp
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
+  SimpleHttpClient/ConnectionCache.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp
@@ -221,7 +222,7 @@ set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen
 
 target_include_directories(arango PRIVATE ${FROZEN_INCLUDE_DIR})
 
-add_dependencies(arango snappy-static)
+add_dependencies(arango snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 include_directories(${SNAPPY_INCLUDE_DIR})

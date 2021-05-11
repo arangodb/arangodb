@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_H
-#define ARANGOD_AQL_QUERY_H 1
+#pragma once
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/BindParameters.h"
@@ -333,7 +332,7 @@ class Query : public QueryContext {
   bool _registeredInV8Context;
   
   /// @brief was this query killed
-  bool _queryKilled;
+  std::atomic<bool> _queryKilled;
   
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
@@ -354,4 +353,3 @@ class Query : public QueryContext {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__UTILS_H
-#define ARANGODB_V8_V8__UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
@@ -187,4 +186,3 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args);
 
-#endif

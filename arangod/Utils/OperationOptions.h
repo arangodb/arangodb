@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_OPERATION_OPTIONS_H
-#define ARANGOD_UTILS_OPERATION_OPTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Utils/ExecContext.h"
@@ -151,4 +150,3 @@ static_assert(std::is_nothrow_move_constructible_v<OperationOptions>);
 
 }  // namespace arangodb
 
-#endif

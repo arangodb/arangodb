@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_QUEUE_TRACER_H
-#define ARANGOD_GRAPH_QUEUE_TRACER_H 1
+#pragma once
 
 #include "Graph/Helpers/TraceEntry.h"
 #include "Basics/ResourceUsage.h"
@@ -61,4 +60,3 @@ class QueueTracer {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

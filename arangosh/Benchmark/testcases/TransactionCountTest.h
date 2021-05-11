@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_COUNT_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_TRANSACTION_COUNT_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 
@@ -78,4 +77,3 @@ struct TransactionCountTest : public Benchmark<TransactionCountTest> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

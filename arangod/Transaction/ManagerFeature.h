@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TRANSACTION_MANAGER_FEATURE_H
-#define ARANGODB_TRANSACTION_MANAGER_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
@@ -85,4 +84,3 @@ class ManagerFeature final : public application_features::ApplicationFeature {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

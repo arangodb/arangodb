@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_RECOVERY_H
-#define ARANGODB_PREGEL_RECOVERY_H 1
+#pragma once
 
 #include <map>
 #include <set>
@@ -87,4 +86,3 @@ class CheckpointingManager {
 };*/
 }  // namespace pregel
 }  // namespace arangodb
-#endif

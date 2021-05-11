@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_METHODS_H
-#define ARANGOD_TRANSACTION_METHODS_H 1
+#pragma once
 
 #include "Aql/IndexHint.h"
 #include "Basics/Common.h"
@@ -510,4 +509,3 @@ class Methods {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

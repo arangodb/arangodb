@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SIMPLE_MODIFIER_H
-#define ARANGOD_AQL_SIMPLE_MODIFIER_H
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ModificationExecutorAccumulator.h"
@@ -157,4 +156,3 @@ using UpdateReplaceModifier = SimpleModifier<UpdateReplaceModifierCompletion>;
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

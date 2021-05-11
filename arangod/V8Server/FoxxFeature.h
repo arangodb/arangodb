@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_FOXX_FEATURE_H
-#define APPLICATION_FEATURES_FOXX_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -54,4 +53,3 @@ class FoxxFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

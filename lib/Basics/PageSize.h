@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PAGE_SIZE_H
-#define ARANGODB_BASICS_PAGE_SIZE_H 1
+#pragma once
 
 namespace arangodb {
 namespace PageSize {
@@ -33,4 +32,3 @@ int getValue();
 }
 }  // namespace arangodb
 
-#endif

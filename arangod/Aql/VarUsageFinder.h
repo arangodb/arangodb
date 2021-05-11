@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_VAR_USAGE_FINDER_H
-#define ARANGOD_AQL_VAR_USAGE_FINDER_H 1
+#pragma once
 
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
@@ -94,4 +93,3 @@ struct VarUsageFinderT final : public WalkerWorker<T, WalkerUniqueness::NonUniqu
 
 }  // namespace arangodb::aql
 
-#endif

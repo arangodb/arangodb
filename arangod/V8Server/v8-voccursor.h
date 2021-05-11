@@ -21,12 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_VOCCURSOR_H
-#define ARANGOD_V8_SERVER_V8_VOCCURSOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "v8-vocbase.h"
 
 extern void TRI_InitV8cursor(v8::Handle<v8::Context>, TRI_v8_global_t*);
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_GRAPH_H
-#define ARANGOD_GRAPH_GRAPH_H
+#pragma once
 
 #include <velocypack/Buffer.h>
 #include <chrono>
@@ -324,4 +323,3 @@ void setUnion(std::set<T>& set, C const& container) {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif  // ARANGOD_GRAPH_GRAPH_H

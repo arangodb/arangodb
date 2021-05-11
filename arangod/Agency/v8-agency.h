@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_V8_AGENCY_H
-#define ARANGOD_CLUSTER_V8_AGENCY_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -34,4 +33,3 @@
 
 void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
-#endif

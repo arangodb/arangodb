@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SCHEDULER_H
-#define ARANGOD_SCHEDULER_SCHEDULER_H 1
+#pragma once
 
 #include <atomic>
 #include <chrono>
@@ -277,4 +276,3 @@ class Scheduler {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRX_METHODS_H
-#define ARANGOD_CLUSTER_CLUSTER_TRX_METHODS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Futures/Future.h"
@@ -72,4 +71,3 @@ bool isElCheapo(TransactionState const& state);
 }  // namespace ClusterTrxMethods
 }  // namespace arangodb
 
-#endif

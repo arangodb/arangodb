@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef DESERIALIZER_HINTS_H
-#define DESERIALIZER_HINTS_H
+
+#pragma once
 #include <type_traits>
 
 #include "gadgets.h"
@@ -104,4 +104,3 @@ struct hint_list_state<H, hint_list<Hs...>> {
 }  // namespace velocypack
 }  // namespace arangodb
 
-#endif  // DESERIALIZER_HINTS_H

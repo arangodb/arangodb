@@ -43,8 +43,6 @@ const arango = require('@arangodb').arango;
 const aql = arangodb.aql;
 const db = internal.db;
 
-require("@arangodb/test-helper").waitForFoxxInitialized();
-
 describe('Foxx service', () => {
 
   const mount = '/queue_test_mount';

@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINERS_MERKLE_TREE_H
-#define ARANGODB_CONTAINERS_MERKLE_TREE_H 1
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -297,7 +296,7 @@ class MerkleTree {
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
   bool modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert, bool doLock);
-  void grow(std::uint64_t key);
+  void grow(std::uint64_t key, char const* context);
   bool equalAtIndex(MerkleTree<Hasher, BranchingBits, LockStripes> const& other,
                     std::uint64_t index) const;
   bool childrenAreLeaves(std::uint64_t index);
@@ -318,4 +317,3 @@ using RevisionTree = MerkleTree<FnvHashProvider, 3, 64>;
 }  // namespace containers
 }  // namespace arangodb
 
-#endif

@@ -20,9 +20,7 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifndef ARANGOD_FUTURES_UTILITIES_H
-#define ARANGOD_FUTURES_UTILITIES_H 1
+#pragma once
 #if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
@@ -79,5 +77,3 @@ struct collector : private mellon::collector<T, arangodb_tag> {
 };
 
 }  // namespace arangodb::futures
-
-#endif

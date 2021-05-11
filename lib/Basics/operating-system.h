@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_OPERATING__SYSTEM_H
-#define ARANGODB_BASICS_OPERATING__SYSTEM_H 1
+#pragma once
 
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
@@ -766,4 +765,3 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 #endif
 
-#endif

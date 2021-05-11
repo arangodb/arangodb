@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER
-#define ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER 1
+#pragma once
 
 #include "Cluster/Action.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -86,4 +85,3 @@ class MaintenanceRestHandler : public RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

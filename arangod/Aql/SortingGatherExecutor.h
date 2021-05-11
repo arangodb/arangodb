@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORTING_GATHER_EXECUTOR_H
-#define ARANGOD_AQL_SORTING_GATHER_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
@@ -218,4 +217,3 @@ class SortingGatherExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

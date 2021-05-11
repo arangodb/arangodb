@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_STATISTICS_FEATURE_H
-#define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
+#pragma once
 
 #include <array>
 #include <initializer_list>
@@ -131,4 +130,3 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
 
 }  // namespace arangodb
 
-#endif

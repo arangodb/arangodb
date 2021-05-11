@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECT_OPTIONS_H
-#define ARANGOD_AQL_COLLECT_OPTIONS_H 1
+#pragma once
 
 #include <string>
 
@@ -81,4 +80,3 @@ struct AggregateVarInfo final {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

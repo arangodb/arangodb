@@ -412,7 +412,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // block all or nothing, so if we have used the block once, we cannot use it again
       // however we cannot remove the _lastRange as it may contain additional information.
       _hasUsedDataRangeBlock = true;
-      return createOutputRow(SharedAqlItemBlockPtr(_lastRange.getBlock()), std::move(call));
+      return createOutputRow(_lastRange.getBlock(), std::move(call));
     }
 
     return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
@@ -714,8 +714,7 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
     TRI_ASSERT(input.numberDependencies() == _dependencies.size());
     return _executor.produceRows(input, output);
   } else {
-    auto [state, stats, call] = _executor.produceRows(input, output);
-    return {state, stats, call};
+    return _executor.produceRows(input, output);
   }
 }
 
@@ -1036,7 +1035,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
 
       if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix, MultiAqlItemBlockInputRange>) {
-        // The executor will have used all Rows.
+        // The executor will have used all rows.
         // However we need to drop them from the input
         // here.
         inputRange.skipAllRemainingDataRows();
@@ -1053,7 +1052,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, dummy);
 
       if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix, MultiAqlItemBlockInputRange>) {
-        // The executor will have used all Rows.
+        // The executor will have used all rows.
         // However we need to drop them from the input
         // here.
         inputRange.skipAllRemainingDataRows();

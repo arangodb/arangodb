@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H
-#define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/StringRef.h>
@@ -114,4 +113,3 @@ class ClusterIndex : public Index {
 };
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_AGGREGATOR_HANDLER_H
-#define ARANGODB_PREGEL_AGGREGATOR_HANDLER_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -72,4 +71,3 @@ class AggregatorHandler {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

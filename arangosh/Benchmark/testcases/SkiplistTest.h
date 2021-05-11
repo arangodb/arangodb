@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_SKIPLIST_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_SKIPLIST_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 
@@ -111,4 +110,3 @@ struct SkiplistTest : public Benchmark<SkiplistTest> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

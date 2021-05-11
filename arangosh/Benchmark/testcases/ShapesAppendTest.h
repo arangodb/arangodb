@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_SHAPES_APPEND_TEST_H
-#define ARANGODB_BENCHMARK_TESTCASES_SHAPES_APPEND_TEST_H
+#pragma once
 
 #include "Benchmark.h"
 
@@ -109,4 +108,3 @@ struct ShapesAppendTest : public Benchmark<ShapesAppendTest> {
 };
 
 }  // namespace arangodb::arangobench
-#endif

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H
-#define ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Graph/Traverser.h"
@@ -98,4 +97,3 @@ class ClusterTraverser final : public Traverser {
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_CURSOR_H
-#define ARANGOD_UTILS_CURSOR_H 1
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Basics/Common.h"
@@ -138,8 +137,7 @@ class Cursor {
   double _expires;
   bool const _hasCount;
   bool _isDeleted;
-  bool _isUsed;
+  std::atomic<bool> _isUsed;
 };
 }  // namespace arangodb
 
-#endif

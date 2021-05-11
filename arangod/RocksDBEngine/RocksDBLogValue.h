@@ -22,8 +22,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_LOG_VALUE_H
-#define ARANGO_ROCKSDB_ROCKSDB_LOG_VALUE_H 1
+#pragma once
 
 #include <rocksdb/slice.h>
 
@@ -140,4 +139,3 @@ class RocksDBLogValue {
 
 }  // namespace arangodb
 
-#endif

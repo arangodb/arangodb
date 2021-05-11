@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_VERSION_TRACKER_H
-#define ARANGOD_UTILS_VERSION_TRACKER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -48,4 +47,3 @@ class VersionTracker {
 };
 }  // namespace arangodb
 
-#endif

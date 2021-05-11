@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_GLOBAL_CONTEXT_H
-#define ARANGOD_TRANSACTION_GLOBAL_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Transaction/Context.h"
@@ -119,4 +118,3 @@ struct AQLStandaloneContext final : public SmartContext {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

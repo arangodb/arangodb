@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_TTL_HANDLER_H
-#define ARANGOD_REST_HANDLER_TTL_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -42,4 +41,3 @@ class RestTtlHandler : public arangodb::RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_H
-#define ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
@@ -398,4 +397,3 @@ class StorageEngine : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

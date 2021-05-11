@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_SINGLE_SERVER_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_SINGLE_SERVER_H 1
+#pragma once
 
 #include "IResearchView.h"
 
@@ -52,4 +51,3 @@ class IResearchViewSingleServer final {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGODB_IRESEARCH__IRESEARCH_VIEW_SINGLE_SERVER_H

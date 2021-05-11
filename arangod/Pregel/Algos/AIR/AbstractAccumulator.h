@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H
-#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H 1
+#pragma once
 #include <Greenspun/EvalResult.h>
 #include <iostream>
 #include <numeric>
@@ -184,4 +183,3 @@ bool isValidAccumulatorOptions(AccumulatorOptions const& options);
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

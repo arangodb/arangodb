@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef CLUSTER_RESTAGENCYCALLACKSHANDLER_H
-#define CLUSTER_RESTAGENCYCALLACKSHANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -57,4 +56,3 @@ class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

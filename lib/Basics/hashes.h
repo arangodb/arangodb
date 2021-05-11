@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_HASHES_H
-#define ARANGODB_BASICS_HASHES_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -77,4 +76,3 @@ uint32_t TRI_Crc32HashPointer(void const*, size_t);
 /// the polynomial used is 0x1EDC6F41.
 uint32_t TRI_Crc32HashString(char const*);
 
-#endif

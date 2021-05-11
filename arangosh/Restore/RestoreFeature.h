@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_RESTORE_RESTORE_FEATURE_H
-#define ARANGODB_RESTORE_RESTORE_FEATURE_H 1
+#pragma once
 
 #include <atomic>
 #include <map>
@@ -258,4 +257,3 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H
-#define ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H 1
+#pragma once
 
 #include <velocypack/StringRef.h>
 
@@ -158,4 +157,3 @@ class ClusterCollection final : public PhysicalCollection {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HOTBACKUP_COMMON_H
-#define ARANGOD_HOTBACKUP_COMMON_H 1
+#pragma once
 
 #include "Basics/ResultT.h"
 
@@ -143,4 +142,3 @@ private:
 
 }
 
-#endif

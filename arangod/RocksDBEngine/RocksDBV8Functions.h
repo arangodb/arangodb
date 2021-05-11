@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_V8_FUNCTIONS_H
-#define ARANGOD_ROCKSDB_ROCKSDB_V8_FUNCTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -34,4 +33,3 @@ struct RocksDBV8Functions {
 
 }  // namespace arangodb
 
-#endif

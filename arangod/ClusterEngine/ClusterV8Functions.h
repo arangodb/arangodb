@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_V8_FUNCTIONS_H
-#define ARANGOD_CLUSTER_CLUSTER_V8_FUNCTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -34,4 +33,3 @@ struct ClusterV8Functions {
 
 }  // namespace arangodb
 
-#endif

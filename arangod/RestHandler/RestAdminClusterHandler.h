@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ADMIN_CLUSTER_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ADMIN_CLUSTER_HANDLER_H 1
+#pragma once
 
 #include "Futures/Future.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -138,4 +137,3 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

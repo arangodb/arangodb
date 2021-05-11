@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_COLLECTION_H
-#define ARANGOD_V8_SERVER_V8_COLLECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -72,4 +71,3 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
 arangodb::LogicalCollection* UnwrapCollection(v8::Isolate* isolate,
                                               v8::Local<v8::Object> const& holder);
 
-#endif

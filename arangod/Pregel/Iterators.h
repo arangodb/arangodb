@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ITERATOR_H
-#define ARANGODB_PREGEL_ITERATOR_H 1
+#pragma once
 
 #include "Pregel/TypedBuffer.h"
 
@@ -162,4 +161,3 @@ class RangeIterator {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

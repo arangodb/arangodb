@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_EXECCONTEXT_H
-#define ARANGOD_UTILS_EXECCONTEXT_H 1
+#pragma once
 
 #include "Auth/Common.h"
 #include "Rest/RequestContext.h"
@@ -184,4 +183,3 @@ private:
 
 }  // namespace arangodb
 
-#endif

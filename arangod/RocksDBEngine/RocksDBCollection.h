@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
+#pragma once
 
 #include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
@@ -210,7 +209,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  bool _cacheEnabled;
+  std::atomic<bool> _cacheEnabled;
   /// @brief number of index creations in progress
   std::atomic<int> _numIndexCreations;
   arangodb::TransactionStatistics& _statistics;
@@ -230,4 +229,3 @@ inline RocksDBCollection* toRocksDBCollection(LogicalCollection& logical) {
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SHARDING_INFO_H
-#define ARANGOD_CLUSTER_SHARDING_INFO_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -30,6 +29,7 @@
 #include <velocypack/Slice.h>
 #include <unordered_map>
 #include <unordered_set>
+#include <atomic>
 
 namespace arangodb {
 class LogicalCollection;
@@ -113,12 +113,17 @@ class ShardingInfo {
   // @brief number of shards
   size_t _numberOfShards;
 
+  // _replicationFactor and _writeConcern are set in setWriteConcernAndReplicationFactor,
+  // but there are places that might read these values before they are set (e.g.,
+  // LogicalCollection::appendVelocyPack), and since these can be executed by a different
+  // thread _replicationFactor and _writeConcern must both be atomic to avoid data races.
+  
   // @brief replication factor (1 = no replication, 0 = smart edge collection)
-  size_t _replicationFactor;
+  std::atomic<size_t> _replicationFactor;
 
   // @brief write concern (_writeConcern <= _replicationFactor)
   // Writes will be disallowed if we know we cannot fulfill minReplicationFactor.
-  size_t _writeConcern;
+  std::atomic<size_t> _writeConcern;
 
   // @brief name of other collection this collection's shards should be
   // distributed like
@@ -138,4 +143,3 @@ class ShardingInfo {
 };
 }  // namespace arangodb
 
-#endif

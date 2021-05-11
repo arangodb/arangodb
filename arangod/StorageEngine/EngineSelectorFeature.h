@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_STORAGE_ENGINE_ENGINE_SELECTOR_FEATURE_H
-#define ARANGODB_STORAGE_ENGINE_ENGINE_SELECTOR_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -73,4 +72,3 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
 
 }  // namespace arangodb
 
-#endif

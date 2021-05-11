@@ -22,8 +22,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_AGENCY_COMM_H
-#define ARANGOD_CLUSTER_AGENCY_COMM_H 1
+#pragma once
 
 #include <memory>
 #include <optional>
@@ -376,57 +375,6 @@ class AgencyTransaction {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          AgencyGeneralTransaction
-// -----------------------------------------------------------------------------
-
-/*struct AgencyGeneralTransaction : public AgencyTransaction {
-
-  typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
-
-  explicit AgencyGeneralTransaction(AgencyOperation const& op,
-                                    AgencyPrecondition const& pre) :
-    clientId(to_string(boost::uuids::random_generator()())) {
-    transactions.emplace_back(
-    TransactionType(std::vector<AgencyOperation>(1, op),
-                    std::vector<AgencyPrecondition>(1, pre)));
-  }
-
-  explicit AgencyGeneralTransaction(
-    std::vector<std::pair<AgencyOperation,AgencyPrecondition>> const& trxs) :
-    clientId(to_string(boost::uuids::random_generator()())) {
-    for (const auto& trx : trxs) {
-      transactions.emplace_back(
-        TransactionType(std::vector<AgencyOperation>(1,trx.first),
-                        std::vector<AgencyPrecondition>(1,trx.second)));
-
-    }
-  }
-
-  AgencyGeneralTransaction() = default;
-
-  std::vector<TransactionType> transactions;
-
-  void toVelocyPack(
-    arangodb::velocypack::Builder& builder) const override final;
-
-  void push_back(AgencyOperation const& op);
-  void push_back(std::pair<AgencyOperation, AgencyPrecondition> const&);
-
-  inline virtual std::string const& path() const override final {
-    return AgencyTransaction::TypeUrl[2];
-  }
-
-  inline virtual std::string getClientId() const override final {
-    return clientId;
-  }
-
-  virtual bool validate(AgencyCommResult const& result) const override final;
-  char const* typeName() const override { return "AgencyGeneralTransaction"; }
-  std::string clientId;
-
-};*/
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                            AgencyWriteTransaction
 // -----------------------------------------------------------------------------
 
@@ -666,4 +614,3 @@ namespace std {
 ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
 }
 
-#endif

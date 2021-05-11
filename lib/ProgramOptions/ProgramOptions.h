@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H
-#define ARANGODB_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -301,4 +300,3 @@ class ProgramOptions {
 }  // namespace options
 }  // namespace arangodb
 
-#endif

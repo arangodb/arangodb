@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H
-#define ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H 1
+#pragma once
 
 namespace arangodb {
 namespace graph {
@@ -43,4 +42,3 @@ struct ShortestPathType {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

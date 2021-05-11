@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_FUTURE_H
-#define ARANGOD_FUTURES_FUTURE_H 1
+#pragma once
 
 #if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic push
@@ -140,7 +139,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
 
   static constexpr auto finally_prealloc_size = 32;
   static constexpr auto small_value_size = 64;
-  static constexpr bool disable_temporaries = false;
+  static constexpr bool disable_temporaries = true;
 
   template<typename T, template<typename> typename Fut>
   struct user_defined_additions;
@@ -202,5 +201,3 @@ auto makePromise() -> std::pair<Future<T>, Promise<T>> {
 #if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic pop
 #endif
-
-#endif  // ARANGOD_FUTURES_FUTURE_H

@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_METADATA_H
-#define ARANGODB_CACHE_METADATA_H
+#pragma once
 
 #include "Basics/ReadWriteSpinLock.h"
 
@@ -147,4 +146,3 @@ struct Metadata {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

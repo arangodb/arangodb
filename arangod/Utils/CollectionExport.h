@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_COLLECTION_EXPORT_H
-#define ARANGOD_COLLECTION_EXPORT_H 1
+#pragma once
 
 #include <unordered_set>
 
@@ -67,4 +66,3 @@ struct CollectionExport {
 };
 }  // namespace arangodb
 
-#endif

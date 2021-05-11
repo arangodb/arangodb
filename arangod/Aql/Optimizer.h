@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_OPTIMIZER_H
-#define ARANGOD_AQL_OPTIMIZER_H 1
+#pragma once
 
 #include "Aql/ExecutionPlan.h"
 #include "Basics/Common.h"
@@ -199,4 +198,3 @@ class Optimizer {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif
