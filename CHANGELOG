@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixes pregel lifetime management. Previously shutting down the server while a
+  pregel job was still running could result in a segfault or a shutdown hanger.
+  
 * Improve performance of batch CRUD operations (insert, update, replace, remove)
   if some of the documents in the batch run into write-write conflicts.
   Rolling back partial operations in case of a failure is very expensive because
