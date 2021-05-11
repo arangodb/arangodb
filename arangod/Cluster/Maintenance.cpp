@@ -206,7 +206,7 @@ static std::string CreateLeaderString(std::string const& leaderId, bool shouldBe
   return leaderId;
 }
 
-static void handleReplicationConfiguration(
+[[maybe_unused]] static void handleReplicationConfiguration(
     const std::string& dbname, const std::string& colname, const std::string& shname,
     const std::string& serverId, const std::string& leaderId,
     bool shouldBeLeading, std::unordered_set<DatabaseID>& makeDirty,
