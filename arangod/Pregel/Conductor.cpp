@@ -743,7 +743,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
               }
             }
           })
-          .await(mellon::yes_i_know_that_this_call_will_block);
+          .await();
 
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
@@ -965,7 +965,7 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
                         }
                       }
                     })
-                    .await(mellon::yes_i_know_that_this_call_will_block);
+                    .await();
 
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }

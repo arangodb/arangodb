@@ -36,6 +36,9 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
         });
   }
 
+  /**
+   * @brief void-variant of @c{then}
+   */
   template <typename F, typename U = T, std::enable_if_t<std::is_void_v<U>, int> = 0,
             std::enable_if_t<std::is_invocable_v<F>, int> = 0, typename R = std::invoke_result_t<F>>
   auto then(F&& f) && noexcept {
@@ -106,7 +109,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
    * @tparam E
    * @tparam F
    * @param f
-   * @return A new init_future containing a value if the exception was caught.
+   * @return A new future containing a value if the exception was caught.
    */
   template <typename E, typename F, typename U = T,
             std::enable_if_t<std::is_invocable_r_v<U, F, E const&>, int> = 0>
@@ -124,12 +127,12 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
    */
   template <typename U = T, std::enable_if_t<!std::is_void_v<U>, int> = 0>
   T await_unwrap() && {
-    return std::move(self()).await(yes_i_know_that_this_call_will_block).unwrap();
+    return std::move(self()).await().unwrap();
   }
 
   template <typename U = T, std::enable_if_t<std::is_void_v<U>, int> = 0>
   void await_unwrap() && {
-    std::move(self()).await(yes_i_know_that_this_call_will_block).rethrow_error();
+    std::move(self()).await().rethrow_error();
   }
 
   /**
@@ -168,8 +171,8 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
 
   /**
    * Rethrows any exception as a nested exception combined with `E(Args...)`.
-   * `E` is only constructed if an exception was found. The arguments are copied
-   * into the chain.
+   * `E` is only constructed if an exception was found. The arguments are
+   * forwarded into the chain.
    * @tparam E
    * @tparam Args
    * @param args
@@ -198,7 +201,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
   /**
    * Rethrows an exception of type `W` as a nested exception combined with
    * `E(Args...)`. `E` is only constructed if an exception was found. The
-   * arguments are copied into the chain.
+   * arguments are forwarded into the chain.
    * @tparam E
    * @tparam Args
    * @param args
@@ -324,8 +327,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<std::tuple<Ts...>, Fut, T
   using tuple_type = std::tuple<Ts...>;
 
   /**
-   * Applies `std::get<Idx> to the result. All other values
-   * are discarded.
+   * Applies `std::get<Idx> to the result. All other values are discarded.
    * @tparam Idx
    * @return
    */
@@ -338,7 +340,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<std::tuple<Ts...>, Fut, T
   }
 
   /**
-   * Transposes a init_future and a tuple. Returns a tuple of mellon awaiting
+   * Transposes a future and a tuple. Returns a tuple of futures awaiting
    * the individual members.
    * @return tuple of mellon
    */

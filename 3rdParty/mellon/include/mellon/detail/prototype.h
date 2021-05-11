@@ -40,7 +40,7 @@ struct FUTURES_EMPTY_BASE future_prototype {
    *
    * @return Returns the result value of type T.
    */
-  T await(yes_i_know_that_this_call_will_block_t) && {
+  T await() && {
     struct data {
       detail::box<T> box;
       bool is_waiting = false, has_value = false;
@@ -147,6 +147,11 @@ struct FUTURES_EMPTY_BASE future_prototype {
     }
   }
 
+  /**
+   * Invokes @c{g} with the result value of this future (A). Then uses the value
+   * of the returned future (B) to resolve a promise (C). Returns a future for (C).
+   * @tparam G nothrow invocable with T, returns a future-like object.
+   */
   template <typename G, std::enable_if_t<std::is_nothrow_invocable_v<G, T&&>, int> = 0,
             typename ReturnValue = std::invoke_result_t<G, T&&>,
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>
@@ -162,6 +167,12 @@ struct FUTURES_EMPTY_BASE future_prototype {
     return std::move(f);
   }
 
+  /**
+ * Invokes @c{g} with the result value of this future (A). Then uses the value
+ * of the returned future (B) to resolve a promise (C). Returns a future for (C).
+ * Instead of simply calling @c{g} this function captures its output in a expected.
+ * @tparam G nothrow invocable with T, returns a future-like object.
+ */
   template <typename G, std::enable_if_t<std::is_invocable_v<G, T&&>, int> = 0,
             typename ReturnValue = std::invoke_result_t<G, T&&>,
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>

@@ -5,7 +5,7 @@ struct AwaitTests : testing::Test {};
 
 TEST(AwaitTests, await_fulfilled_future) {
   auto f = future<int>{std::in_place, 12};
-  EXPECT_EQ(12, std::move(f).await(mellon::yes_i_know_that_this_call_will_block));
+  EXPECT_EQ(12, std::move(f).await());
 }
 
 TEST(AwaitTests, await_promise_future) {
@@ -16,7 +16,7 @@ TEST(AwaitTests, await_promise_future) {
     std::move(p).fulfill(12);
   });
 
-  EXPECT_EQ(12, std::move(f).await(mellon::yes_i_know_that_this_call_will_block));
+  EXPECT_EQ(12, std::move(f).await());
   t.join();
 }
 

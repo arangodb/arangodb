@@ -4,7 +4,7 @@ project(futures)
 set(CMAKE_CXX_STANDARD 17)
 
 
-add_library(mellon src/futures.cpp include/mellon/utilities.h include/mellon/completion-queue.h include/mellon/traits.h include/mellon/state-machine.h include/mellon/detail/box.h include/mellon/detail/invalid-pointer-flags.h include/mellon/detail/gadgets.h include/mellon/collector.h)
+add_library(mellon src/futures.cpp include/mellon/utilities.h include/mellon/completion-queue.h include/mellon/traits.h include/mellon/state-machine.h include/mellon/detail/box.h include/mellon/detail/invalid-pointer-flags.h include/mellon/detail/gadgets.h include/mellon/collector.h include/mellon/locks.h)
 target_include_directories(mellon PUBLIC include)
 
 option(MELLON_LIBUNWIND_LIB "unwind library to use" unwind)

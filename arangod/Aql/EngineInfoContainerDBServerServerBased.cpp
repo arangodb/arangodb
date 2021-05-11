@@ -470,7 +470,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       // Wait for all requests to complete.
       // So we know that all Transactions are aborted.
       // We do NOT care for the actual result.
-      std::ignore = futures::collectAll(requests).await(mellon::yes_i_know_that_this_call_will_block);
+      std::ignore = futures::collectAll(requests).await();
       snippetIds.clear();
     }
 

@@ -16,7 +16,7 @@ add_executable(mellon-test
   collector-test.cpp
   future-test.cpp
   fuzzer-test.cpp
-)
+        locks.cpp iterative-resolution.cpp destructor-order.cpp)
 target_compile_options(mellon-test PRIVATE "-fsanitize=address")
 target_link_libraries(mellon-test PRIVATE asan)
 target_link_libraries(mellon-test PRIVATE gtest)

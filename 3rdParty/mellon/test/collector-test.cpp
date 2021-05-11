@@ -79,7 +79,7 @@ TEST_F(CollectorTest, simple_usage) {
     auto fut = std::move(c).into_future();
     std::move(p1).fulfill(1);
 
-    std::vector<int> r = std::move(fut).await(mellon::yes_i_know_that_this_call_will_block);
+    std::vector<int> r = std::move(fut).await();
 
     {
       auto it = r.begin();
@@ -117,7 +117,7 @@ TEST_F(CollectorTest, guard_usage) {
   auto fut = std::move(c).into_future();
   std::move(p1).fulfill(1);
 
-  std::vector<int> r = std::move(fut).await(mellon::yes_i_know_that_this_call_will_block);
+  std::vector<int> r = std::move(fut).await();
 
   {
     auto it = r.begin();

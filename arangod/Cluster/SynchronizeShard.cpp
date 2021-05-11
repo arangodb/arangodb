@@ -1280,7 +1280,7 @@ void SynchronizeShard::setState(ActionState state) {
           .getFeature<ClusterFeature>()
           .clusterInfo()
           .waitForCurrentVersion(v)
-          .await(mellon::yes_i_know_that_this_call_will_block);
+          .await();
     }
     _feature.incShardVersion(getShard());
   }

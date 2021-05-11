@@ -16,7 +16,8 @@ extern invalid_pointer_type invalid_pointer_promise_fulfilled;
   reinterpret_cast<::mellon::detail::continuation<T>*>(&detail::invalid_pointer_promise_abandoned)
 #define FUTURES_INVALID_POINTER_PROMISE_FULFILLED(T) \
   reinterpret_cast<::mellon::detail::continuation<T>*>(&detail::invalid_pointer_promise_fulfilled)
-
+#define FUTURES_INVALID_POINTER_FUTURE_ABANDONED_VOID \
+  reinterpret_cast<::mellon::detail::void_continuation*>(&detail::invalid_pointer_future_abandoned)
 }  // namespace mellon::detail
 
 #endif  // FUTURES_INVALID_POINTER_FLAGS_H

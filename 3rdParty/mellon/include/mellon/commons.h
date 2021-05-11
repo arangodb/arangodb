@@ -54,8 +54,6 @@ struct promise_type_based_extension {};
 template <typename T, template <typename> typename F, typename Tag>
 struct future_type_based_extensions;
 
-struct yes_i_know_that_this_call_will_block_t {};
-inline constexpr yes_i_know_that_this_call_will_block_t yes_i_know_that_this_call_will_block;
 
 }  // namespace mellon
 

@@ -201,7 +201,7 @@ void ClusterTraverser::destroyEngines() {
     auto res = network::sendRequestRetry(pool, "server:" + it.first, fuerte::RestVerb::Delete,
                                     "/_internal/traverser/" +
                                         arangodb::basics::StringUtils::itoa(it.second),
-                                    body, options).await(mellon::yes_i_know_that_this_call_will_block);
+                                    body, options).await();
 
 
     if (!res.has_value() || res.unwrap().fail()) {
