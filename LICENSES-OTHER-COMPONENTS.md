@@ -1271,6 +1271,15 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
+#### content-type
+
+Name: content-type
+Version: 1.0.4
+Project Home: https://github.com/jshttp/content-type
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/content-type/LICENSE
+License Name: MIT License
+License Id: MIT
+
 #### cross-spawn
 
 Name: cross-spawn
@@ -2150,15 +2159,6 @@ Name: marked
 Version: 0.6.2
 Project Home: https://github.com/markedjs/marked
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/marked/LICENSE.md
-License Name: MIT License
-License Id: MIT
-
-#### media-typer
-
-Name: media-typer
-Version: 0.3.0
-Project Home: https://github.com/jshttp/media-typer
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/media-typer/LICENSE
 License Name: MIT License
 License Id: MIT
 
@@ -3133,4 +3133,3 @@ Project Home: https://github.com/yargs/yargs
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/mocha/node_modules/yargs/LICENSE
 License Name: MIT License
 License Id: MIT
-
