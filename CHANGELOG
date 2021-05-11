@@ -4,6 +4,37 @@ v3.8.0 (XXXX-XX-XX)
 * Fixes pregel lifetime management. Previously shutting down the server while a
   pregel job was still running could result in a segfault or a shutdown hanger.
   
+* Improve error reporting for Merkle tree operations and improve memory usage
+  for unused trees by hibernating them. In addition, add some backoff to shard
+  synchronization in case there are repeated sync failures for the same shard.
+
+* Fixed BTS-403: Hot restores must also clear relevant `Current` keys. The
+  overriding of the `Plan` entries needs to be reflected in `Current` to avoid
+  conflicts in maintenance jobs.
+
+* Log a proper message if an unexpected state is encountered when taking over
+  shard leadership. In addition, make the change to the internal followerinfo
+  state atomic so that it cannot be semi-changed.
+
+* Fixed two bugs in fuerte with HTTP/2 and VST connections.
+  One could lead to ordered timeouts not being honoured. The other could lead to
+  an ordered callback be called multiple times.
+
+* Improve "Shards" view in web UI so that the shards of individual collections
+  can be expanded and collapsed without affecting the display of any other
+  shards. Also added a "Toggle all" button the web UI to expand/collapse the
+  shards for all collections.
+
+* Improve exception safety for maintenance thread and shard unlock operations.
+
+* Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied, it
+  may rename some variables in the query. The variable renaming was however not
+  carried out for traversal PRUNE conditions, so the PRUNE conditions could
+  still refer to obsolete variables, which would make the query fail with errors
+  such as
+
+    Query: AQL: missing variable ... for node ... while planning registers
+
 * Improve performance of batch CRUD operations (insert, update, replace, remove)
   if some of the documents in the batch run into write-write conflicts.
   Rolling back partial operations in case of a failure is very expensive because
@@ -24,7 +55,7 @@ v3.8.0 (XXXX-XX-XX)
   collection, when agency precondition fails. This can happen, when own rebootId
   increment has triggered plan entry to be removed.
 
-* Fixed issue BTS-354: Assertion related to getCollection. 
+* Fixed issue BTS-354: Assertion related to getCollection.
 
 * Fix DEVSUP-749: Fix potential deadlock when executing concurrent view/link DDL
   operations and index DDL operations on the same collection.

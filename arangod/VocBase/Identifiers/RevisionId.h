@@ -82,6 +82,9 @@ class RevisionId : public arangodb::basics::Identifier {
     return RevisionId{std::numeric_limits<std::uint64_t>::max()};
   }
 
+  /// @brief create a revision id with a lower-bound HLC value
+  static RevisionId lowerBound();
+
   /// @brief create a revision id using an HLC value
   static RevisionId create();
 

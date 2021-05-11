@@ -46,7 +46,8 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -55,16 +56,10 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
-
-  if (!desc.has(SHARD)) {
-    error << "shard must be specified. ";
+  
+  if (!ShardDefinition::isValid()) {
+    error << "database and shard must be specified. ";
   }
-  TRI_ASSERT(desc.has(SHARD));
-
-  if (!desc.has(DATABASE)) {
-    error << "database must be specified. ";
-  }
-  TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(FOLLOWERS_TO_DROP)) {
     error << "followersToDrop must be specified. ";
@@ -82,9 +77,9 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
 UpdateCollection::~UpdateCollection() = default;
 
 bool UpdateCollection::first() {
-  auto const& database = _description.get(DATABASE);
+  auto const& database = getDatabase();
   auto const& collection = _description.get(COLLECTION);
-  auto const& shard = _description.get(SHARD);
+  auto const& shard = getShard();
   auto const& followersToDrop = _description.get(FOLLOWERS_TO_DROP);
   auto const& props = properties();
   Result res;
@@ -158,7 +153,7 @@ bool UpdateCollection::first() {
 }
 void UpdateCollection::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    _feature.unlockShard(_description.get(SHARD));
+    _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
 }

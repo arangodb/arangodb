@@ -918,7 +918,12 @@ void RocksDBEngine::stop() {
     _backgroundThread->beginShutdown();
 
     if (_settingsManager) {
-      _settingsManager->sync(true);
+      try {
+        _settingsManager->sync(true);
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("0582f", WARN, Logger::ENGINES)
+          << "caught exception while shutting down RocksDB engine: " << ex.what();
+      }
     }
 
     // wait until background thread stops
