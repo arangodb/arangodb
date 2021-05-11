@@ -6,9 +6,16 @@
 /*eslint-disable no-console*/
 
 
-var fs       = require('fs');
+// stdlib
+var fs    = require('fs');
+
+
+// 3rd-party
 var argparse = require('argparse');
-var yaml     = require('..');
+
+
+// internal
+var yaml = require('..');
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -16,43 +23,42 @@ var yaml     = require('..');
 
 var cli = new argparse.ArgumentParser({
   prog:     'js-yaml',
-  add_help:  true
+  version:  require('../package.json').version,
+  addHelp:  true
 });
 
-cli.add_argument('-v', '--version', {
-  action: 'version',
-  version: require('../package.json').version
-});
 
-cli.add_argument('-c', '--compact', {
+cli.addArgument([ '-c', '--compact' ], {
   help:   'Display errors in compact mode',
-  action: 'store_true'
+  action: 'storeTrue'
 });
+
 
 // deprecated (not needed after we removed output colors)
 // option suppressed, but not completely removed for compatibility
-cli.add_argument('-j', '--to-json', {
-  help:   argparse.SUPPRESS,
+cli.addArgument([ '-j', '--to-json' ], {
+  help:   argparse.Const.SUPPRESS,
   dest:   'json',
-  action: 'store_true'
+  action: 'storeTrue'
 });
 
-cli.add_argument('-t', '--trace', {
+
+cli.addArgument([ '-t', '--trace' ], {
   help:   'Show stack trace on error',
-  action: 'store_true'
+  action: 'storeTrue'
 });
 
-cli.add_argument('file', {
+cli.addArgument([ 'file' ], {
   help:   'File to read, utf-8 encoded without BOM',
   nargs:  '?',
-  default: '-'
+  defaultValue: '-'
 });
 
 
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var options = cli.parse_args();
+var options = cli.parseArgs();
 
 
 ////////////////////////////////////////////////////////////////////////////////

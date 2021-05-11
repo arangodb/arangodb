@@ -1,5 +1,5 @@
 var test = require('tape');
-var hasSymbols = require('has-symbols')();
+var hasSymbols = require('has-symbols/shams')();
 var utilInspect = require('../util.inspect');
 var repeat = require('string.prototype.repeat');
 
@@ -43,8 +43,22 @@ test('symbols', { skip: !hasSymbols }, function (t) {
         value: 4
     });
 
-    t.equal(inspect(obj), '{ a: 1, [Symbol(test)]: 2, [Symbol(Symbol.iterator)]: 3 }', 'object with symbols');
-    t.equal(inspect([obj, []]), '[ { a: 1, [Symbol(test)]: 2, [Symbol(Symbol.iterator)]: 3 }, [] ]', 'object with symbols');
+    if (typeof Symbol.iterator === 'symbol') {
+        t.equal(inspect(obj), '{ a: 1, [Symbol(test)]: 2, [Symbol(Symbol.iterator)]: 3 }', 'object with symbols');
+        t.equal(inspect([obj, []]), '[ { a: 1, [Symbol(test)]: 2, [Symbol(Symbol.iterator)]: 3 }, [] ]', 'object with symbols in array');
+    } else {
+        // symbol sham key ordering is unreliable
+        t.match(
+            inspect(obj),
+            /^(?:{ a: 1, \[Symbol\(test\)\]: 2, \[Symbol\(Symbol.iterator\)\]: 3 }|{ a: 1, \[Symbol\(Symbol.iterator\)\]: 3, \[Symbol\(test\)\]: 2 })$/,
+            'object with symbols (nondeterministic symbol sham key ordering)'
+        );
+        t.match(
+            inspect([obj, []]),
+            /^\[ (?:{ a: 1, \[Symbol\(test\)\]: 2, \[Symbol\(Symbol.iterator\)\]: 3 }|{ a: 1, \[Symbol\(Symbol.iterator\)\]: 3, \[Symbol\(test\)\]: 2 }), \[\] \]$/,
+            'object with symbols in array (nondeterministic symbol sham key ordering)'
+        );
+    }
 });
 
 test('maxStringLength', function (t) {

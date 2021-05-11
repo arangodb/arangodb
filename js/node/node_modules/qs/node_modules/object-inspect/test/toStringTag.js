@@ -1,11 +1,11 @@
 'use strict';
 
 var test = require('tape');
-var hasSymbols = require('has-symbols')();
+var hasSymbols = require('has-symbols/shams')();
 
-var inspect = require('..');
+var inspect = require('../');
 
-test('Symbol.toStringTag', { skip: !hasSymbols || typeof Symbol.toStringTag !== 'symbol' }, function (t) {
+test('Symbol.toStringTag', { skip: !hasSymbols || typeof Symbol.toStringTag === 'undefined' }, function (t) {
     t.plan(4);
 
     var obj = { a: 1 };

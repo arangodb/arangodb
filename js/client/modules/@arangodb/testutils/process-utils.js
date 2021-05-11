@@ -1639,7 +1639,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         }
         if ((internal.time() - shutdownTime) > localTimeout) {
           dumpAgency(instanceInfo, options);
-          print(Date() + ' forcefully terminating ' + yaml.dump(arangod) +
+          print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod) +
                 ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashedLocal = true;
           shutdownSuccess = false;
@@ -1700,7 +1700,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       let errorEntries = readImportantLogLines(arangod.rootDir);
       if (Object.keys(errorEntries).length > 0) {
         print(Date() + ' Found messages in the server logs: \n' +
-          yaml.dump(errorEntries));
+          yaml.safeDump(errorEntries));
       }
     });
   }

@@ -1,8 +1,15 @@
-# object-inspect
+# object-inspect <sup>[![Version Badge][2]][1]</sup>
 
 string representations of objects in node and the browser
 
-[![build status](https://secure.travis-ci.com/inspect-js/object-inspect.png)](https://travis-ci.com/inspect-js/object-inspect)
+[![github actions][actions-image]][actions-url]
+[![coverage][codecov-image]][codecov-url]
+[![dependency status][5]][6]
+[![dev dependency status][7]][8]
+[![License][license-image]][license-url]
+[![Downloads][downloads-image]][downloads-url]
+
+[![npm badge][11]][1]
 
 # example
 
@@ -60,3 +67,19 @@ npm install object-inspect
 # license
 
 MIT
+
+[1]: https://npmjs.org/package/object-inspect
+[2]: https://versionbadg.es/inspect-js/object-inspect.svg
+[5]: https://david-dm.org/inspect-js/object-inspect.svg
+[6]: https://david-dm.org/inspect-js/object-inspect
+[7]: https://david-dm.org/inspect-js/object-inspect/dev-status.svg
+[8]: https://david-dm.org/inspect-js/object-inspect#info=devDependencies
+[11]: https://nodei.co/npm/object-inspect.png?downloads=true&stars=true
+[license-image]: https://img.shields.io/npm/l/object-inspect.svg
+[license-url]: LICENSE
+[downloads-image]: https://img.shields.io/npm/dm/object-inspect.svg
+[downloads-url]: https://npm-stat.com/charts.html?package=object-inspect
+[codecov-image]: https://codecov.io/gh/inspect-js/object-inspect/branch/main/graphs/badge.svg
+[codecov-url]: https://app.codecov.io/gh/inspect-js/object-inspect/
+[actions-image]: https://img.shields.io/endpoint?url=https://github-actions-badge-u3jn4tfpocch.runkit.sh/inspect-js/object-inspect
+[actions-url]: https://github.com/inspect-js/object-inspect/actions

@@ -128,7 +128,7 @@ function config (options) {
 
     if (options.verbose) {
       print('Args for [' + test + ']:');
-      print(yaml.dump(args));
+      print(yaml.safeDump(args));
       print('Result: ' + results.absolute[test].status);
     }
   }
@@ -164,7 +164,7 @@ function config (options) {
 
     if (options.verbose) {
       print('Args for (relative) [' + test + ']:');
-      print(yaml.dump(args));
+      print(yaml.safeDump(args));
       print('Result: ' + results.relative[test].status);
     }
   }

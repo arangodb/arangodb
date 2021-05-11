@@ -773,7 +773,7 @@ function runThere (options, instanceInfo, file) {
       } else {
         return {
           status: false,
-          message: yaml.dump(reply)
+          message: yaml.safeDump(reply)
         };
       }
     }
@@ -967,7 +967,7 @@ const parseRspecJson = function (testCase, res, totalDuration) {
   res.total++;
 
   if (!status) {
-    const msg = yaml.dump(testCase)
+    const msg = yaml.safeDump(testCase)
           .replace(/.*rspec\/core.*\n/gm, '')
           .replace(/.*rspec\\core.*\n/gm, '')
           .replace(/.*lib\/ruby.*\n/, '')
@@ -1081,7 +1081,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     const jsonResult = JSON.parse(fs.read(jsonFN));
 
     if (options.extremeVerbosity) {
-      print(yaml.dump(jsonResult));
+      print(yaml.safeDump(jsonResult));
     }
     for (let j = 0; j < jsonResult.examples.length; ++j) {
       result.failed += parseRspecJson(

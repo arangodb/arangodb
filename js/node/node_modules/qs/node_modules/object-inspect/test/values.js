@@ -2,7 +2,7 @@
 
 var inspect = require('../');
 var test = require('tape');
-var hasSymbols = require('has-symbols')();
+var hasSymbols = require('has-symbols/shams')();
 
 test('values', function (t) {
     t.plan(1);
@@ -68,12 +68,15 @@ test('seen seen seen', function (t) {
     );
 });
 
-test('symbols', { skip: typeof Symbol !== 'function' }, function (t) {
+test('symbols', { skip: !hasSymbols }, function (t) {
     var sym = Symbol('foo');
     t.equal(inspect(sym), 'Symbol(foo)', 'Symbol("foo") should be "Symbol(foo)"');
-    t.equal(inspect(Object(sym)), 'Object(Symbol(foo))', 'Object(Symbol("foo")) should be "Object(Symbol(foo))"');
+    if (typeof sym === 'symbol') {
+        // Symbol shams are incapable of differentiating boxed from unboxed symbols
+        t.equal(inspect(Object(sym)), 'Object(Symbol(foo))', 'Object(Symbol("foo")) should be "Object(Symbol(foo))"');
+    }
 
-    t.test('toStringTag', { skip: !hasSymbols || typeof Symbol.toStringTag !== 'symbol' }, function (st) {
+    t.test('toStringTag', { skip: !hasSymbols || typeof Symbol.toStringTag === 'undefined' }, function (st) {
         st.plan(1);
 
         var faker = {};

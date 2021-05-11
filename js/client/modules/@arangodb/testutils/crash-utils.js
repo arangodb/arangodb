@@ -337,7 +337,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
         storeArangodPath + ' for later analysis.\n' +
         */
         'Process facts :\n' +
-        yaml.dump(instanceInfo) +
+        yaml.safeDump(instanceInfo) +
       'marking build as crashy.';
   pu.serverFailMessages = pu.serverFailMessages + '\n' + message;
 

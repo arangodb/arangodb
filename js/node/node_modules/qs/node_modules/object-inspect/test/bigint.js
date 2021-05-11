@@ -2,7 +2,7 @@
 
 var inspect = require('../');
 var test = require('tape');
-var hasSymbols = require('has-symbols')();
+var hasSymbols = require('has-symbols/shams')();
 
 test('bigint', { skip: typeof BigInt === 'undefined' }, function (t) {
     t.test('primitives', function (st) {
@@ -30,7 +30,7 @@ test('bigint', { skip: typeof BigInt === 'undefined' }, function (t) {
         st.equal(inspect(Function('return 256n')()), '256n');
     });
 
-    t.test('toStringTag', { skip: !hasSymbols || typeof Symbol.toStringTag !== 'symbol' }, function (st) {
+    t.test('toStringTag', { skip: !hasSymbols || typeof Symbol.toStringTag === 'undefined' }, function (st) {
         st.plan(1);
 
         var faker = {};

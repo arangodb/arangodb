@@ -249,7 +249,7 @@ function authenticationParameters (options) {
           message: 'we expected ' +
             authTestExpectRC[test][i] +
             ' and we got ' + reply.code +
-            ' Full Status: ' + yaml.dump(reply)
+            ' Full Status: ' + yaml.safeDump(reply)
         };
         cleanup = false;
       }

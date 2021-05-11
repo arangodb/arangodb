@@ -35,7 +35,7 @@ function main (argv) {
 
   if (analyzers.length === 0) {
     print(RED + "No analyzer specified. Please specify one or more of: \n" +
-          yaml.dump(Object.keys(rp.analyze)) + "\n" + RESET);
+          yaml.safeDump(Object.keys(rp.analyze)) + "\n" + RESET);
     process.exit(1);
   }
   
