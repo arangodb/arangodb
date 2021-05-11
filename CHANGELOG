@@ -1,5 +1,6 @@
 devel
 -----
+* Support JSON schema objects for documenting Foxx endpoints.
 
 * Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
   2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
