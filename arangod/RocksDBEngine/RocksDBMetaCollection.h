@@ -90,6 +90,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter);
 
   void revisionTreeSummary(VPackBuilder& builder, bool fromCollection);
+  void revisionTreePendingUpdates(VPackBuilder& builder);
 
   void placeRevisionTreeBlocker(TransactionId transactionId) override;
   void removeRevisionTreeBlocker(TransactionId transactionId) override;
@@ -173,12 +174,16 @@ class RocksDBMetaCollection : public PhysicalCollection {
     std::uint64_t count() const;
     std::uint64_t rootValue() const;
     std::uint64_t maxDepth() const;
+
+    // potentially expensive! only call when necessary
+    std::uint64_t compressedSize() const;
+    
     void checkConsistency() const;
     void serializeBinary(std::string& output) const;
 
     // turn the full-blown revision tree into a potentially smaller
     // compressed representation
-    void hibernate();
+    void hibernate(bool force);
 
    private:
     /// @brief make sure we have a value in _tree. unfortunately we

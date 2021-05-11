@@ -220,6 +220,27 @@ static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_TRY_CATCH_END
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+static void JS_CollectionRevisionTreePendingUpdates(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  auto* physical = toRocksDBCollection(*collection);
+  VPackBuilder builder;
+  physical->revisionTreePendingUpdates(builder);
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
 void RocksDBV8Functions::registerResources() {
   ISOLATE;
   v8::HandleScope scope(isolate);
@@ -241,6 +262,11 @@ void RocksDBV8Functions::registerResources() {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_revisionTreeSummary"),
                        JS_CollectionRevisionTreeSummary);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "_revisionTreePendingUpdates"),
+                       JS_CollectionRevisionTreePendingUpdates);
+#endif
 
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(isolate,

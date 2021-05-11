@@ -849,21 +849,45 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
 
   TRI_ASSERT(output.empty());
-    
+
+  char format = ::UncompressedCurrent;
   if (compress) {
+    // 15'000 is an arbitrary cutoff value for when to move from
+    // bottom-most level compression to full tree compression with Snappy
     if (this->node(0).count <= 15'000) {
-      // 15'000 is an arbitrary cutoff value for when to move from
-      // bottom-most level compression to full tree compression with Snappy
+      format = ::CompressedBottomMostCurrent;
+    } else {
+      format = ::CompressedSnappyCurrent;
+    }
+  }
+
+  TRI_IF_FAILURE("MerkleTree::serializeUncompressed") {
+    format = ::UncompressedCurrent;
+  }
+  TRI_IF_FAILURE("MerkleTree::serializeBottomMost") {
+    format = ::CompressedBottomMostCurrent;
+  }
+  TRI_IF_FAILURE("MerkleTree::serializeSnappy") {
+    format = ::CompressedSnappyCurrent;
+  }
+   
+  switch (format) {
+    case ::CompressedBottomMostCurrent: {
       storeBottomMostCompressed(output);
       output.push_back(::CompressedBottomMostCurrent);
-    } else {
+      break;
+    }
+    case ::CompressedSnappyCurrent: {
       snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
                        allocationSize(meta().maxDepth), &output);
       output.push_back(::CompressedSnappyCurrent);
+      break;
     }
-  } else {
-    output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
-    output.push_back(::UncompressedCurrent);
+    case ::UncompressedCurrent: {
+      output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
+      output.push_back(::UncompressedCurrent);
+      break;
+    }
   }
 
   output.push_back(static_cast<char>(::CurrentVersion));
