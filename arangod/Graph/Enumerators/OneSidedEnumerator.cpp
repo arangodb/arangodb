@@ -85,7 +85,7 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
+    auto&& preparedEnds = std::move(futureEnds).await_unwrap();
 
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.hasProcessableElement());
@@ -221,7 +221,7 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     if (!looseEnds.empty()) {
       // Will throw all network errors here
       futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
-      futureEnds.get();
+      std::ignore = std::move(futureEnds).await_unwrap();
       // Notes for the future:
       // Vertices are now fetched. Think about other less-blocking and
       // batch-wise fetching (e.g. re-fetch at some later point).
