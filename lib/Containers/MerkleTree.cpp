@@ -62,7 +62,7 @@ static constexpr char UncompressedCurrent = '2';
 static constexpr char CompressedBottomMostCurrent = '3';
 
 template<typename T> T readUInt(char const*& p) noexcept {
-  uint64_t value;
+  T value;
   memcpy(&value, p, sizeof(T));
   p += sizeof(T);
   return arangodb::basics::littleToHost<T>(value);
