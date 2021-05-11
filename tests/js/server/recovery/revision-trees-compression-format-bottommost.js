@@ -79,9 +79,15 @@ function runSetup () {
 
   let haveUpdates;
   while (true) {
+    haveUpdates = false;
     [colName1, colName2, colName3, colName4].forEach((cn) => {
       let updates = db[cn]._revisionTreePendingUpdates();
-      haveUpdates  = updates.inserts > 0;
+      if (!updates.hasOwnProperty('inserts')) {
+        // no revision tree yet
+        haveUpdates = true;
+        return;
+      }
+      haveUpdates |= updates.inserts > 0;
       haveUpdates |= updates.removes > 0;
       haveUpdates |= updates.truncates > 0;
     });
@@ -123,11 +129,18 @@ function recoverySuite () {
       const c4 = db._collection(colName4);
       assertEqual(c4._revisionTreeSummary().count, c4.count());
       assertEqual(c4._revisionTreeSummary().count, 1);
-  
-      assertTrue(db[colName1]._revisionTreeSummary().byteSize < 1000);
-      assertTrue(db[colName2]._revisionTreeSummary().byteSize < 1000);
-      assertTrue(db[colName3]._revisionTreeSummary().byteSize < 50000);
-      assertTrue(db[colName4]._revisionTreeSummary().byteSize < 100);
+      
+      let summary = db[colName1]._revisionTreeSummary();
+      assertTrue(summary.byteSize < 5000, summary);
+      
+      summary = db[colName2]._revisionTreeSummary();
+      assertTrue(summary.byteSize < 5000, summary);
+      
+      summary = db[colName3]._revisionTreeSummary();
+      assertTrue(summary.byteSize < 200000, summary);
+      
+      summary = db[colName4]._revisionTreeSummary();
+      assertTrue(summary.byteSize < 100, summary);
     },
 
   };

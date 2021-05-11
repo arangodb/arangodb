@@ -32,14 +32,13 @@ const jsunity = require('jsunity');
 
 const colName1 = 'UnitTestsRecovery1';
 const colName2 = 'UnitTestsRecovery2';
-const colName3 = 'UnitTestsRecovery3';
-const colName4 = 'UnitTestsRecovery4';
 
 function runSetup () {
   'use strict';
-  internal.debugSetFailAt("MerkleTree::serializeSnappy");
-  internal.debugSetFailAt("applyUpdates::forceHibernation2");
-
+  jsunity.jsUnity.attachAssertions();
+  
+  internal.debugSetFailAt("MerkleTree::serializeUncompressed");
+  
   let c = db._create(colName1);
 
   for (let i = 0; i < 1000; ++i) {
@@ -47,40 +46,12 @@ function runSetup () {
   }
 
   c = db._create(colName2);
-
-  for (let i = 0; i < 1000; ++i) {
-    c.insert({ _key: "test_" + i });
-  }
-  for (let i = 0; i < 500; ++i) {
-    c.remove({ _key: "test_" + i });
-  }
-
-  c = db._create(colName3);
-
-  let docs = [];
-  for (let i = 0; i < 100000; ++i) {
-    docs.push({ _key: "test" + i });
-    if (docs.length === 5000) {
-      c.insert(docs);
-      docs = [];
-    }
-  }
-  
-  c = db._create(colName4);
-  for (let i = 0; i < 100000; ++i) {
-    docs.push({ _key: "test" + i });
-    if (docs.length === 5000) {
-      c.insert(docs);
-      docs = [];
-    }
-  }
-
-  c.truncate();
+  c.insert({ _key: "piff" });
 
   let haveUpdates;
   while (true) {
     haveUpdates = false;
-    [colName1, colName2, colName3, colName4].forEach((cn) => {
+    [colName1, colName2].forEach((cn) => {
       let updates = db[cn]._revisionTreePendingUpdates();
       if (!updates.hasOwnProperty('inserts')) {
         // no revision tree yet
@@ -96,7 +67,44 @@ function runSetup () {
     }
     internal.wait(0.25);
   }
-    
+
+  // intentionally corrupt the trees
+  db[colName1]._revisionTreeCorrupt(23, 42);
+  db[colName2]._revisionTreeCorrupt(42, 69);
+
+  assertEqual(23, db[colName1]._revisionTreeSummary().count);
+  assertEqual(42, db[colName2]._revisionTreeSummary().count);
+  
+  internal.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
+  internal.debugSetFailAt("applyUpdates::forceHibernation1");
+  internal.debugSetFailAt("applyUpdates::forceHibernation2");
+
+  // and force a write
+  db[colName1].insert({});
+  db[colName2].insert({});
+  
+  while (true) {
+    haveUpdates = false;
+    [colName1, colName2].forEach((cn) => {
+      let updates = db[cn]._revisionTreePendingUpdates();
+      if (!updates.hasOwnProperty('inserts')) {
+        // no revision tree yet
+        haveUpdates = true;
+        return;
+      }
+      haveUpdates |= updates.inserts > 0;
+      haveUpdates |= updates.removes > 0;
+      haveUpdates |= updates.truncates > 0;
+    });
+    if (!haveUpdates) {
+      break;
+    }
+    internal.wait(0.25);
+  }
+  
+  assertEqual(24, db[colName1]._revisionTreeSummary().count);
+  assertEqual(43, db[colName2]._revisionTreeSummary().count);
+
   c.insert({ _key: 'crashme' }, true);
 
   internal.debugTerminate('crashing server');
@@ -111,31 +119,14 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeHibernation: function() {
-      internal.debugSetFailAt("MerkleTree::serializeSnappy");
-
+    testRevisionTreeCorruption: function() {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
-      assertEqual(c1._revisionTreeSummary().count, 1000);
+      assertEqual(c1._revisionTreeSummary().count, 1001);
 
       const c2 = db._collection(colName2);
       assertEqual(c2._revisionTreeSummary().count, c2.count());
-      assertEqual(c2._revisionTreeSummary().count, 500);
-      
-      const c3 = db._collection(colName3);
-      assertEqual(c3._revisionTreeSummary().count, c3.count());
-      assertEqual(c3._revisionTreeSummary().count, 100000);
-
-      const c4 = db._collection(colName4);
-      assertEqual(c4._revisionTreeSummary().count, c4.count());
-      assertEqual(c4._revisionTreeSummary().count, 1);
-      
-      [colName1, colName2, colName3, colName4].forEach((cn) => {
-        let summary = db[cn]._revisionTreeSummary();
-        // yes, the compression is that bad!
-        assertTrue(summary.byteSize > 200000, summary);
-        assertTrue(summary.byteSize < 300000, summary);
-      });
+      assertEqual(c2._revisionTreeSummary().count, 3);
     },
 
   };
