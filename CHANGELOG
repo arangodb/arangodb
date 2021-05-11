@@ -1,6 +1,10 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-403: Hot restores must also clear relevant `Current` keys. The
+  overriding of the `Plan` entries needs to be reflected in `Current` to avoid
+  conflicts in maintenance jobs.
+
 * Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied, it
   may rename some variables in the query. The variable renaming was however not
   carried out for traversal PRUNE conditions, so the PRUNE conditions could
