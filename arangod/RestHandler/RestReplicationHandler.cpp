@@ -1384,8 +1384,9 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
-  bool const generateNewRevisionIds =
-      !_request->parsedValue(StaticStrings::PreserveRevisionIds, false);
+  // always regenerate revision ids on restore, so that we cannot run into
+  // any trouble with non-conforming revision-id ranges
+  constexpr bool generateNewRevisionIds = true;
 
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
