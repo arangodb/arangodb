@@ -73,9 +73,13 @@ void RocksDBBackgroundThread::run() {
         }
 
         double end = TRI_microtime();
-        if ((end - start) > 0.75) {
+        if (end - start > 5.0) {
           LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
               << "slow background settings sync: " << Logger::FIXED(end - start, 6)
+              << " s";
+        } else {
+          LOG_TOPIC("dd9ea", DEBUG, Logger::ENGINES)
+              << "slow background settings sync took: " << Logger::FIXED(end - start, 6)
               << " s";
         }
       }

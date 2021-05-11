@@ -1,6 +1,10 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Improve error reporting for Merkle tree operations and improve memory usage
+  for unused trees by hibernating them. In addition, add some backoff to shard
+  synchronization in case there are repeated sync failures for the same shard.
+
 * Fixed BTS-403: Hot restores must also clear relevant `Current` keys. The
   overriding of the `Plan` entries needs to be reflected in `Current` to avoid
   conflicts in maintenance jobs.
