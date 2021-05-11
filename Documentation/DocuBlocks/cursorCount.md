@@ -7,18 +7,12 @@ The *count* operator counts the number of document in the result set and
 returns that number. The *count* operator ignores any limits and returns
 the total number of documents found.
 
-**Note**: Not all simple queries support counting. In this case *null* is
-returned.
-
 `cursor.count(true)`
 
 If the result set was limited by the *limit* operator or documents were
 skiped using the *skip* operator, the *count* operator with argument
 *true* will use the number of elements in the final result set - after
 applying *limit* and *skip*.
-
-**Note**: Not all simple queries support counting. In this case *null* is
-returned.
 
 @EXAMPLES
 
@@ -47,5 +41,3 @@ Counting any limit or skip:
   db.five.all().limit(2).count(true);
 ~ db._drop("five")
 @END_EXAMPLE_ARANGOSH_OUTPUT
-
-
