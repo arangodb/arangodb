@@ -920,7 +920,9 @@ void RocksDBEngine::stop() {
     if (_settingsManager) {
       try {
         _settingsManager->sync(true);
-      } catch (...) {
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("0582f", WARN, Logger::ENGINES)
+          << "caught exception while shutting down RocksDB engine: " << ex.what();
       }
     }
 
