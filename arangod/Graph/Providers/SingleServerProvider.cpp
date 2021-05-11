@@ -156,7 +156,8 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
         return other;
       }
     })());
-    LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
+    // TODO: Adjust log output
+    LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
         << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
     callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
   });

@@ -96,7 +96,8 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
   ValidationResult res = _validator.validatePath(step);
 
-  LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
+  // TODO: Adjust log output
+  LOG_TOPIC("78155", TRACE, Logger::GRAPHS)
       << std::boolalpha << "<Traverser> Validated Vertex: " << step.getVertex().getID()
       << " filtered " << res.isFiltered() << " pruned " << res.isPruned()
       << " depth " << _options.getMinDepth() << " <= " << step.getDepth()
