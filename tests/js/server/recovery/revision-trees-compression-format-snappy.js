@@ -134,7 +134,7 @@ function recoverySuite () {
         let summary = db[cn]._revisionTreeSummary();
         // yes, the compression is that bad!
         assertTrue(summary.byteSize > 200000, summary);
-        assertTrue(summary.byteSize < 300000, summary);
+        assertTrue(summary.byteSize < 500000, summary);
       });
     },
 
