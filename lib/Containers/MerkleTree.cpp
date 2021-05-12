@@ -648,7 +648,7 @@ void MerkleTree<Hasher, BranchingBits>::corrupt(std::uint64_t count, std::uint64
   for (std::uint64_t d = 1; d < meta().maxDepth; ++d) {
     std::uint64_t offset = nodeCountUpToDepth(d); 
     for (std::uint64_t i = 0; i < 4; ++i) {
-      std::uint64_t pos = arangodb::RandomGenerator::interval(0, nodeCountAtDepth(d)); 
+      std::uint32_t pos = arangodb::RandomGenerator::interval(0, static_cast<uint32_t>(nodeCountAtDepth(d))); 
 
       Node& node = this->node(offset + pos);
       node.count = arangodb::RandomGenerator::interval(0, UINT32_MAX);
