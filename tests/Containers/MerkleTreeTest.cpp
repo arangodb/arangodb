@@ -701,3 +701,42 @@ TEST(MerkleTreeTest, test_large_steps) {
   ASSERT_EQ(rangeMin, left);
   ASSERT_EQ(rangeMax, right);
 }
+
+TEST(MerkleTreeTest, test_check_consistency) {
+  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
+  uint64_t rangeMax = uint64_t(1654481800413577216ULL);
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  
+  // must not throw
+  tree.checkConsistency();
+  
+  auto [left, right] = tree.range();
+  ASSERT_EQ(rangeMin, left);
+  ASSERT_EQ(rangeMax, right);
+
+  constexpr std::uint64_t n = 100'000'000'000;
+  constexpr std::uint64_t step = 10'000;
+
+  for (std::uint64_t i = rangeMin; i < rangeMin + n; i += step) {
+    tree.insert(i);
+  }
+
+  // must not throw
+  tree.checkConsistency();
+ 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  tree.corrupt(42, 23);
+
+  // must throw
+  try {
+    tree.checkConsistency();
+    ASSERT_TRUE(false);
+  } catch (std::invalid_argument const&) {
+  }
+#endif
+}
