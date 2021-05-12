@@ -52,6 +52,10 @@
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#include "Random/RandomGenerator.h"
+#endif
+
 // can turn this on for more aggressive and expensive consistency checks
 // #define PARANOID_TREE_CHECKS
 
@@ -377,7 +381,7 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   // allocate the tree
   TRI_ASSERT(rangeMin < rangeMax);
 
-  tree.reset(new MerkleTree<Hasher, BranchingBits>(maxDepth, rangeMin, rangeMax));
+  tree = std::make_unique<MerkleTree<Hasher, BranchingBits>>(maxDepth, rangeMin, rangeMax);
 
   std::uint64_t index = 0;
   for (velocypack::Slice nodeSlice : velocypack::ArrayIterator(nodes)) {
@@ -434,7 +438,7 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
              (rangeMax - rangeMin));
   
   // no lock necessary here
-  _buffer.reset(new uint8_t[allocationSize(maxDepth)]);
+  _buffer = std::make_unique<uint8_t[]>(allocationSize(maxDepth));
 
   new (&meta()) Meta{rangeMin, rangeMax, maxDepth};
   
@@ -455,8 +459,6 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 MerkleTree<Hasher, BranchingBits>::~MerkleTree() {
-  std::unique_lock<std::shared_mutex> guard(_bufferLock);
-
   if (!_buffer) {
     return;
   }
@@ -627,6 +629,32 @@ void MerkleTree<Hasher, BranchingBits>::checkConsistency() const {
 
   checkInternalConsistency();
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+// intentionally corrupts the tree. used for testing only
+template <typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::corrupt(std::uint64_t count, std::uint64_t hash) {
+  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+
+  Node& node = this->node(0);
+  node.count = count;
+  node.hash = hash;
+
+  // we also need to corrupt the lowest level, simply because in case the bottom-most
+  // level format is used, we will lose all corruption on upper levels
+
+  for (std::uint64_t d = 1; d < meta().maxDepth; ++d) {
+    std::uint64_t offset = nodeCountUpToDepth(d); 
+    for (std::uint64_t i = 0; i < 4; ++i) {
+      std::uint32_t pos = arangodb::RandomGenerator::interval(0, static_cast<uint32_t>(nodeCountAtDepth(d))); 
+
+      Node& node = this->node(offset + pos);
+      node.count = arangodb::RandomGenerator::interval(0, UINT32_MAX);
+      node.hash = arangodb::RandomGenerator::interval(0, UINT32_MAX);
+    }
+  }
+}
+#endif
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 std::unique_ptr<MerkleTree<Hasher, BranchingBits>> MerkleTree<Hasher, BranchingBits>::clone() {
@@ -849,21 +877,45 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
 
   TRI_ASSERT(output.empty());
-    
+
+  char format = ::UncompressedCurrent;
   if (compress) {
+    // 15'000 is an arbitrary cutoff value for when to move from
+    // bottom-most level compression to full tree compression with Snappy
     if (this->node(0).count <= 15'000) {
-      // 15'000 is an arbitrary cutoff value for when to move from
-      // bottom-most level compression to full tree compression with Snappy
+      format = ::CompressedBottomMostCurrent;
+    } else {
+      format = ::CompressedSnappyCurrent;
+    }
+  }
+
+  TRI_IF_FAILURE("MerkleTree::serializeUncompressed") {
+    format = ::UncompressedCurrent;
+  }
+  TRI_IF_FAILURE("MerkleTree::serializeBottomMost") {
+    format = ::CompressedBottomMostCurrent;
+  }
+  TRI_IF_FAILURE("MerkleTree::serializeSnappy") {
+    format = ::CompressedSnappyCurrent;
+  }
+   
+  switch (format) {
+    case ::CompressedBottomMostCurrent: {
       storeBottomMostCompressed(output);
       output.push_back(::CompressedBottomMostCurrent);
-    } else {
+      break;
+    }
+    case ::CompressedSnappyCurrent: {
       snappy::Compress(reinterpret_cast<char*>(_buffer.get()),
                        allocationSize(meta().maxDepth), &output);
       output.push_back(::CompressedSnappyCurrent);
+      break;
     }
-  } else {
-    output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
-    output.push_back(::UncompressedCurrent);
+    case ::UncompressedCurrent: {
+      output.append(reinterpret_cast<char*>(_buffer.get()), allocationSize(meta().maxDepth));
+      output.push_back(::UncompressedCurrent);
+      break;
+    }
   }
 
   output.push_back(static_cast<char>(::CurrentVersion));
