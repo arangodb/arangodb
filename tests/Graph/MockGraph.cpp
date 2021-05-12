@@ -266,7 +266,7 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
     TRI_ASSERT(resBody.hasKey("traverserEngines"));
     auto engines = resBody.get("traverserEngines");
     TRI_ASSERT(engines.isArray());
-    TRI_ASSERT(engines.length() == 1)
+    TRI_ASSERT(engines.length() == 1);
     auto eidSlice = engines.at(0);
     TRI_ASSERT(eidSlice.isNumber());
     engineId = eidSlice.getNumericValue<uint64_t>();

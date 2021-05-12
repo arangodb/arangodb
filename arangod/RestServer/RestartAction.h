@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,13 +17,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Worker.cpp"
+#ifndef ARANGOD_RESTSERVER_RESTARTACTION_H
+#define ARANGOD_RESTSERVER_RESTARTACTION_H
 
-// template types to create
-template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
-template class arangodb::pregel::Worker<uint64_t, uint8_t, uint64_t>;
-template class arangodb::pregel::Worker<float, float, float>;
-template class arangodb::pregel::Worker<double, float, double>;
+#include <functional>
+
+namespace arangodb {
+/// @brief Used to perform one last action upon shutdown.
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+extern std::function<int()>* restartAction;
+}  // namespace arangodb
+
+#endif  // ARANGOD_RESTSERVER_RESTARTACTION_H
