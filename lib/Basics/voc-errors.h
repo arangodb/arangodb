@@ -187,8 +187,8 @@ constexpr auto TRI_ERROR_MALFORMED_JSON                                         
 
 /// 38: ERROR_STARTING_UP
 /// "startup ongoing"
-/// Will be raised when a call cannot succeed because the server startup phase is
-/// still in progress.
+/// Will be raised when a call cannot succeed because the server startup phase
+/// is still in progress.
 constexpr auto TRI_ERROR_STARTING_UP                                             = ErrorCode{38};
 
 /// 400: ERROR_HTTP_BAD_PARAMETER
