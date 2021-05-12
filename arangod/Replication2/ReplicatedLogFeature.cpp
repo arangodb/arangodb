@@ -35,14 +35,26 @@ struct AppendEntriesRttScale {
   static log_scale_t<std::uint64_t> scale() { return {2, 1, 120000, 16}; }
 };
 
+DECLARE_GAUGE(arangodb_replication2_replicated_log_number, std::uint64_t,
+              "Number of replicated logs on this arangodb instance");
+
 DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_rtt_ms,
                   AppendEntriesRttScale, "RTT for AppendEntries requests [ms]");
 
 ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
     : ApplicationFeature(server, "ReplicatedLog"),
+      _replicated_log_number(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_replication2_replicated_log_number{})),
       _replicated_log_append_entries_rtt_ms(
           server.getFeature<arangodb::MetricsFeature>().add(
               arangodb_replication2_replicated_log_append_entries_rtt_ms{})) {
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
+}
+auto ReplicatedLogFeature::metricReplicatedLogNumber() -> Gauge<uint64_t>& {
+  return _replicated_log_number;
+}
+auto ReplicatedLogFeature::metricReplicatedLogAppendEntriesRtt()
+    -> Histogram<log_scale_t<std::uint64_t>>& {
+  return _replicated_log_append_entries_rtt_ms;
 }

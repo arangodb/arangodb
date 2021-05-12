@@ -199,6 +199,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
+
   static auto instantiateFollowers(std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                                    std::shared_ptr<LocalFollower> const& localFollower,
                                    LogIndex lastIndex) -> std::vector<FollowerInfo>;

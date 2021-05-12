@@ -70,6 +70,7 @@
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedLogFeature.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -1938,6 +1939,7 @@ auto TRI_vocbase_t::createReplicatedLog(LogId id)
     auto&& log =
         std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(logCore));
     auto it = manager->_logs.emplace_hint(iter, id, std::move(log));
+    server().getFeature<ReplicatedLogFeature>().metricReplicatedLogNumber().fetch_add(1);
     return std::ref(it->second);
   } else {
     return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);

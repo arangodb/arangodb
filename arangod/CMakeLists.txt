@@ -554,7 +554,6 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/LogLeader.cpp
   Replication2/ReplicatedLog/LogManager.cpp
   Replication2/ReplicatedLog/LogParticipantI.cpp
-  Replication2/ReplicatedLog/Metrics.cpp
   Replication2/ReplicatedLog/ReplicatedLog.cpp
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedLogFeature.cpp

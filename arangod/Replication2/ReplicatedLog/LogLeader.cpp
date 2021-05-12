@@ -173,6 +173,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                       currentTerm = it->_currentTerm,
                       startTime](futures::Try<AppendEntriesResult>&& res) {
             auto endTime = std::chrono::steady_clock::now();
+            // TODO report (endTime - startTime) to
+            //      server().getFeature<ReplicatedLogFeature>().metricReplicatedLogAppendEntriesRtt(),
+            //      probably implicitly so tests can be done as well
 
             // TODO This has to be noexcept
             if (auto self = parentLog.lock()) {

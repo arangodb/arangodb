@@ -28,7 +28,9 @@
 
 template <typename T>
 class Histogram;
-template<typename T>
+template <typename T>
+class Gauge;
+template <typename T>
 struct log_scale_t;
 
 namespace arangodb {
@@ -37,7 +39,11 @@ class ReplicatedLogFeature : public application_features::ApplicationFeature {
   explicit ReplicatedLogFeature(application_features::ApplicationServer& server);
   ~ReplicatedLogFeature() = default;
 
+  auto metricReplicatedLogNumber() -> Gauge<uint64_t>&;
+  auto metricReplicatedLogAppendEntriesRtt() -> Histogram<log_scale_t<std::uint64_t>>&;
+
  private:
+  Gauge<uint64_t>& _replicated_log_number;
   Histogram<log_scale_t<std::uint64_t>>& _replicated_log_append_entries_rtt_ms;
 };
 
