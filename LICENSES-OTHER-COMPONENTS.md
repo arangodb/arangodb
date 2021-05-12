@@ -2153,15 +2153,6 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
-#### marked
-
-Name: marked
-Version: 0.6.2
-Project Home: https://github.com/markedjs/marked
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/marked/LICENSE.md
-License Name: MIT License
-License Id: MIT
-
 #### mem
 
 Name: mem
@@ -2969,15 +2960,6 @@ Name: type-is
 Version: 1.6.16
 Project Home: https://github.com/jshttp/type-is
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/type-is/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### underscore
-
-Name: underscore
-Version: 1.9.1
-Project Home: https://github.com/jashkenas/underscore
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/underscore/LICENSE
 License Name: MIT License
 License Id: MIT
 
