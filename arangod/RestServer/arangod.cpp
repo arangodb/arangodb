@@ -37,7 +37,6 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/TimeZoneFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
@@ -46,6 +45,7 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "ApplicationFeatures/TimeZoneFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
@@ -81,6 +81,7 @@
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/ReplicationMetricsFeature.h"
+#include "Replication2/ReplicatedLogFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
@@ -224,6 +225,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<QueryRegistryFeature>();
     server.addFeature<RandomFeature>();
     server.addFeature<ReplicationFeature>();
+    server.addFeature<ReplicatedLogFeature>();
     server.addFeature<ReplicationMetricsFeature>();
     server.addFeature<ReplicationTimeoutFeature>();
     server.addFeature<SchedulerFeature>();
