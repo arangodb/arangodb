@@ -111,7 +111,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeHibernation: function() {
+    testRevisionTreeCompression: function() {
       internal.debugSetFailAt("MerkleTree::serializeUncompressed");
 
       const c1 = db._collection(colName1);

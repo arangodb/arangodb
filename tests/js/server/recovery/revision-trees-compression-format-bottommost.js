@@ -111,7 +111,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeHibernation: function() {
+    testRevisionTreeCompression: function() {
       internal.debugSetFailAt("MerkleTree::serializeBottomMost");
 
       const c1 = db._collection(colName1);
@@ -129,18 +129,21 @@ function recoverySuite () {
       const c4 = db._collection(colName4);
       assertEqual(c4._revisionTreeSummary().count, c4.count());
       assertEqual(c4._revisionTreeSummary().count, 1);
-      
+     
+      // it depends a bit on luck how compressible the trees actually are.
+      // the reason is that _rev values and thus rangeMax in the trees are
+      // dynamic.
       let summary = db[colName1]._revisionTreeSummary();
-      assertTrue(summary.byteSize < 5000, summary);
+      assertTrue(summary.byteSize < 15000, summary);
       
       summary = db[colName2]._revisionTreeSummary();
-      assertTrue(summary.byteSize < 5000, summary);
+      assertTrue(summary.byteSize < 15000, summary);
       
       summary = db[colName3]._revisionTreeSummary();
-      assertTrue(summary.byteSize < 200000, summary);
+      assertTrue(summary.byteSize < 700000, summary);
       
       summary = db[colName4]._revisionTreeSummary();
-      assertTrue(summary.byteSize < 100, summary);
+      assertTrue(summary.byteSize < 500, summary);
     },
 
   };
