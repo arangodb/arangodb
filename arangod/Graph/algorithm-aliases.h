@@ -73,24 +73,25 @@ using TracedBFSEnumeratorWOPT =
                        PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
 
 // DFS Traversal Enumerator implementation
-template <class Provider>
+template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using DFSEnumerator =
     OneSidedEnumerator<LifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>, Provider,
-                       PathValidator<PathStore<typename Provider::Step>, VertexUniquenessLevel::PATH>>;
+                       PathValidator<PathStore<typename Provider::Step>, vertexUniqueness>>;
 
 // DFS Traversal Enumerator implementation using Tracing
-template <class Provider>
+template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using TracedDFSEnumerator =
     OneSidedEnumerator<QueueTracer<LifoQueue<typename Provider::Step>>,
                        PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>,
-                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
+                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, vertexUniqueness>>;
 
 // DFS Traversal Enumerator implementation using Tracing
-template <class Provider>
+// TODO: REMOVE ME LATER!
+template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using TracedDFSEnumeratorWOPT =
     OneSidedEnumerator<QueueTracer<LifoQueue<typename Provider::Step>>,
                        PathStoreTracer<PathStore<typename Provider::Step>>, Provider,
-                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
+                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, vertexUniqueness>>;
 
 }  // namespace graph
 }  // namespace arangodb

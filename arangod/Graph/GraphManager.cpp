@@ -534,7 +534,7 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
       return res;
     } else {
       // not found the collection, need to create it later
-      if (graph->isHybrid() && graph->needsToBeSatellite(edgeColl)) { // check for satellites
+      if (graph->needsToBeSatellite(edgeColl)) {  // check for satellites
         satelliteEdgeCollectionsToCreate.emplace(edgeColl);
       } else {
         edgeCollectionsToCreate.emplace(edgeColl);
@@ -555,7 +555,9 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
       return res;
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
-        if (graph->isHybrid() && graph->satelliteCollections().find(vertexColl) != graph->satelliteCollections().end()) {
+        if (!graph->satelliteCollections().empty() &&
+            graph->satelliteCollections().find(vertexColl) !=
+                graph->satelliteCollections().end()) {
           satelliteDocumentCollectionsToCreate.emplace(vertexColl);
         } else {
           documentCollectionsToCreate.emplace(vertexColl);
@@ -622,7 +624,7 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
 
   // new builder
   VPackBuilder satOptionsBuilder;
-  if (graph->isHybrid()) {
+  if (!satelliteDocumentCollectionsToCreate.empty() || !satelliteEdgeCollectionsToCreate.empty()) {
     satOptionsBuilder.openObject();
     graph->createSatelliteCollectionOptions(satOptionsBuilder, waitForSync);
     satOptionsBuilder.close();

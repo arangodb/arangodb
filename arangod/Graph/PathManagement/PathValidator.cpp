@@ -116,12 +116,24 @@ namespace arangodb {
 namespace graph {
 
 /* SingleServerProvider Section */
+template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::NONE>;
+template class PathValidator<PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::NONE>;
+
 template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::PATH>;
 template class PathValidator<PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>;
 
+template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::GLOBAL>;
+template class PathValidator<PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::GLOBAL>;
+
 /* ClusterProvider Section */
+template class PathValidator<PathStore<ClusterProvider::Step>, VertexUniquenessLevel::NONE>;
+template class PathValidator<PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::NONE>;
+
 template class PathValidator<PathStore<ClusterProvider::Step>, VertexUniquenessLevel::PATH>;
 template class PathValidator<PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH>;
+
+template class PathValidator<PathStore<ClusterProvider::Step>, VertexUniquenessLevel::GLOBAL>;
+template class PathValidator<PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::GLOBAL>;
 
 }  // namespace graph
 }  // namespace arangodb

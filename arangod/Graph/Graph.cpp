@@ -773,11 +773,6 @@ bool Graph::isDisjoint() const {
   return false;
 }
 
-bool Graph::isHybrid() const {
-  TRI_ASSERT(_satelliteColls.empty());
-  return false;
-}
-
 bool Graph::isSatellite() const { return _isSatellite; }
 
 void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
