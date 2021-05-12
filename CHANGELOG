@@ -4715,7 +4715,9 @@ devel
 * Fixed an agency bug found in Windows tests.
 
 * Updated JavaScript dependencies, including breaking changes to non-public
-  modules.
+  modules. Note that this removes underscore, which was previously listed as a
+  public module in ArangoDB 2. We recommend always bundling your own copy of
+  third-party modules, even ones listed as public.
 
   - accepts: 1.3.5 -> 1.3.7
   - ansi_up: 4.0.3 -> 5.0.1
