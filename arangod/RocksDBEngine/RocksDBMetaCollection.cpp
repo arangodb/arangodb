@@ -728,7 +728,6 @@ void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
   }
   
   uint64_t inserts, removes, truncates;
- 
   {
     std::unique_lock<std::mutex> guard(_revisionBufferLock);
 

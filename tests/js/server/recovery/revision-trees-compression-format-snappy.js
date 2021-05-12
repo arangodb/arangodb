@@ -111,7 +111,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeHibernation: function() {
+    testRevisionTreeCompression: function() {
       internal.debugSetFailAt("MerkleTree::serializeSnappy");
 
       const c1 = db._collection(colName1);
@@ -133,8 +133,10 @@ function recoverySuite () {
       [colName1, colName2, colName3, colName4].forEach((cn) => {
         let summary = db[cn]._revisionTreeSummary();
         // yes, the compression is that bad!
-        assertTrue(summary.byteSize > 200000, summary);
-        assertTrue(summary.byteSize < 500000, summary);
+        // how good/bad the compression is depends a bit on luck, as the _rev
+        // values in the tree are dynamic and also the tree's rangeMax.
+        assertTrue(summary.byteSize > 150000, summary);
+        assertTrue(summary.byteSize < 1000000, summary);
       });
     },
 
