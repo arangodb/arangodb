@@ -780,7 +780,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
 
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
-    auto const& nf = _config.vocbase()->server().getFeature<arangodb::NetworkFeature>();
+    auto const& nf = _config.vocbase()->server().template getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
 
     network::RequestOptions reqOpts;
