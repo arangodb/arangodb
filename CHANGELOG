@@ -1,6 +1,12 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix various issues related to the new WINDOW operation (see BTS-402)
+  - Improved explain output for ISO 8601 duration strings and fixed missing
+    week component.
+  - Improved validation of input data and error messages.
+  - Prevent FILTERs from being moved beyond a WINDOW.
+  
 * Improve error reporting for Merkle tree operations and improve memory usage
   for unused trees by hibernating them. In addition, add some backoff to shard
   synchronization in case there are repeated sync failures for the same shard.
