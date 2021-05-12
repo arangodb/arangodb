@@ -46,32 +46,32 @@ class StoreTestAPI : public ::testing::Test {
   arangodb::tests::mocks::MockCoordinator _server;
   arangodb::consensus::Store _store;
 
-  auto read(std::string const &json) 
+  std::shared_ptr<VPackBuilder> read(std::string const& json) 
   {
     try {
-      auto q {VPackParser::fromJson(json)};
+      consensus::query_t q {VPackParser::fromJson(json)};
       auto result {std::make_shared<VPackBuilder>()};
       _store.read(q, result);
       return result;
     }
-    catch(std::exception &ex) {
+    catch(std::exception& ex) {
       throw std::runtime_error(std::string(ex.what()) + " while trying to read " + json);
     }
   }
 
-  auto write(std::string const &json)
+  auto write(std::string const& json)
   {
     try {
       auto q {VPackParser::fromJson(json)};
       return _store.applyTransactions(q);
     }
-    catch(std::exception &err) {
+    catch(std::exception& err) {
       throw std::runtime_error(std::string(err.what()) + " while parsing " + json );
     }
   }
 
   template<typename TOstream, typename TValueContainer>
-  static TOstream& insert_value_array(TOstream &out, TValueContainer const &src) {
+  static TOstream& insert_value_array(TOstream& out, TValueContainer const& src) {
     out << "[";
     if (!src.empty()) {
       std::copy(src.begin(), src.end()-1, std::ostream_iterator<std::string>(out, ", "));
@@ -81,12 +81,13 @@ class StoreTestAPI : public ::testing::Test {
     return out;
   }
 
-  auto write(std::vector<std::vector<std::string>> const &operations) {
+  std::vector<consensus::apply_ret_t> write(std::vector<std::vector<std::string>> const& operations) {
     std::stringstream ss;
     ss << "[";
     if (!operations.empty()) {
       insert_value_array(ss, operations.front());
       for (auto oi {operations.begin() + 1}; oi != operations.end(); ++oi) {
+        ss << ", ";
         insert_value_array(ss, *oi);
       }
     }
@@ -94,41 +95,41 @@ class StoreTestAPI : public ::testing::Test {
     return write(ss.str());
   }
 
-  auto transactAndCheck(std::string const &json) {
+std::vector<consensus::apply_ret_t> transactAndCheck(std::string const& json) {
   try{
     auto q {VPackParser::fromJson(json)};
     auto results { _store.applyTransactions(q)};
     return results;
 
   }
-  catch(std::exception &ex) {
+  catch(std::exception& ex) {
     throw std::runtime_error(std::string(ex.what()) + ", transact failed processing " + json);
   }
 }
 
-  auto writeAndCheck(std::string const &json)
+  void writeAndCheck(std::string const& json)
   {
     try {
       auto r {write(json)};
-      auto applied_all = std::all_of(r.begin(), r.end(), [](auto const &result){ return result == consensus::apply_ret_t::APPLIED; });
+      auto applied_all = std::all_of(r.begin(), r.end(), [](auto const& result){ return result == consensus::apply_ret_t::APPLIED; });
       if (!applied_all)
         {
           throw std::runtime_error("This didn't work: " + json);
         }
     }
-    catch (std::exception &ex) {
+    catch (std::exception& ex) {
       throw std::runtime_error(std::string(ex.what()) + " processing " + json);
     }
   }
 
-  void assertEqual(std::shared_ptr<velocypack::Builder> result, std::string const &expected_result) const {
+  void assertEqual(std::shared_ptr<velocypack::Builder> result, std::string const& expected_result) const {
     try {
       auto expected {VPackParser::fromJson(expected_result)};
       if (!velocypack::NormalizedCompare::equals(result->slice(), expected->slice())) {
         throw std::runtime_error(result->toJson() + " should have been equal to " + expected->toJson());
       }
     }
-    catch(std::exception &ex) {
+    catch(std::exception& ex) {
       throw std::runtime_error(std::string(ex.what()) + " comparing to " + expected_result);
     }
   }
@@ -188,12 +189,16 @@ TEST_F(StoreTestAPI, single_non_top_level) {
 }
 
 template<typename TSource>
-std::string to_json_object(TSource const &src, std::function<std::string(typename TSource::const_reference)> extractName, std::function<std::string(typename TSource::const_reference)> extractValue)
+std::string to_json_object(TSource const& src, std::function<std::string(typename TSource::const_reference)> extractName, std::function<std::string(typename TSource::const_reference)> extractValue)
 {
   bool is_first{true};
   return "{" + 
-        std::accumulate(src.begin(), src.end(), std::string(), [&is_first, extractName, extractValue](std::string partial, auto const &element){
-          if (is_first) is_first = false; else partial += ",";
+        std::accumulate(src.begin(), src.end(), std::string(), [&is_first, extractName, extractValue](std::string partial, auto const& element){
+          if (is_first) {
+            is_first = false;
+          } else {
+            partial += ",";
+          }
           partial += "\"" + extractName(element) + "\": " + extractValue(element);
           return partial;
         })
@@ -201,11 +206,11 @@ std::string to_json_object(TSource const &src, std::function<std::string(typenam
 }
 
 template<typename TSource>
-std::string to_json_object(TSource const &src)
+std::string to_json_object(TSource const& src)
 {
   return to_json_object(src, 
-    [](auto const &element){ return element.first;}, 
-    [](auto const &element){ return element.second;});
+    [](auto const& element){ return element.first;}, 
+    [](auto const& element){ return element.second;});
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,6 +222,7 @@ TEST_F(StoreTestAPI, precondition) {
   writeAndCheck(R"([[{"/a":13},{"/a":12}]])");
   assertEqual(read(R"([["/a"]])"), R"([{"a":13}])");
   auto res = write(R"([[{"/a":14},{"/a":12}]])"); // fail precond {"a":12}
+  ASSERT_EQ(res.size(), 1);
   ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
   writeAndCheck(R"([[{"a":{"op":"delete"}}]])");
   
@@ -335,8 +341,8 @@ TEST_F(StoreTestAPI, precondition) {
   for (int permutation_count{}; permutation_count < 5; ++permutation_count) {
     std::shuffle(localKeys.begin(), localKeys.end(), g);
     std::string const permuted = to_json_object(localKeys, 
-      [](std::string const &k){ return k; },
-      [&baz](std::string const &k){ return baz[k]; });
+      [](std::string const& k){ return k; },
+      [&baz](std::string const& k){ return baz[k]; });
     writeAndCheck(
       "[[" + localObj + R"(, {"foo":)" + foo_value + R"(,"baz":{"old":)" + permuted + R"(},"qux":)" + qux + "}]]");
     writeAndCheck(
@@ -358,7 +364,7 @@ TEST_F(StoreTestAPI, precondition) {
     std::map<std::string,std::string> localObk {
       {"b","1"}, {"c","1.0"}, {"d", "100000000001"}, {"e", "-1"}};
     localKeys.resize(0);
-    for (auto const &l: localObj) {
+    for (auto const& l: localObj) {
       localKeys.push_back(l.first);
     }
     std::string const localObj_text {to_json_object(localObj)};
@@ -370,11 +376,11 @@ TEST_F(StoreTestAPI, precondition) {
     for (int m = 0; m < 7; ++m) {
       std::shuffle(localKeys.begin(), localKeys.end(), g);
       auto per1 = to_json_object(localKeys, 
-        [](std::string const &key){ return key; },
-        [&localObj](std::string const &key){ return localObj.at(key); });
+        [](std::string const& key){ return key; },
+        [&localObj](std::string const& key){ return localObj.at(key); });
       auto per2 = to_json_object(localKeys, 
-        [](std::string const &key){ return key; },
-        [&localObk](std::string const &key){ return localObk.at(key); });
+        [](std::string const& key){ return key; },
+        [&localObk](std::string const& key){ return localObk.at(key); });
       writeAndCheck(R"([[ { "a" : [)" + localObj_text + "," + localObk_text + R"(] }, {"a" : [)" + per1 + "," + per2 + R"(] }]])");
       res =   write(R"([[ { "a" : [)" + localObj_text + "," + localObk_text + R"(] }, {"a" : [)" + per2 + "," + per1 + R"(] }]])");
       ASSERT_EQ(consensus::apply_ret_t::PRECONDITION_FAILED, res.front());
@@ -618,7 +624,7 @@ TEST_F(StoreTestAPI, op_pop) {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Test "pop" operator
+/// @brief Test "erase" operator
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(StoreTestAPI, op_erase) {
@@ -673,7 +679,7 @@ TEST_F(StoreTestAPI, op_erase) {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Test "pop" operator
+/// @brief Test "replace" operator
 ////////////////////////////////////////////////////////////////////////////////
 
     TEST_F(StoreTestAPI, op_replace) {
