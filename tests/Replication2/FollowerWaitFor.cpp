@@ -42,6 +42,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries){
 
   auto future = follower->waitFor(LogIndex{1});
   EXPECT_FALSE(future.isReady());
+  MessageId nextMessageId{0};
 
   {
     AppendEntriesRequest request;
@@ -50,6 +51,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries){
     request.prevLogIndex = LogIndex{0};
     request.prevLogTerm = LogTerm{0};
     request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -70,6 +72,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries){
     request.prevLogIndex = LogIndex{1};
     request.prevLogTerm = LogTerm{1};
     request.leaderCommit = LogIndex{1};
+    request.messageId = ++nextMessageId;
     request.entries = {};
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());

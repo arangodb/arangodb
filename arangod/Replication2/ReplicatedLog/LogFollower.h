@@ -75,6 +75,7 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
     std::unique_ptr<LogCore> _logCore;
     std::multimap<LogIndex, WaitForPromise> _waitForQueue{};
     LogIndex _commitIndex{0};
+    MessageId _lastRecvMessageId{0};
   };
   ParticipantId const _participantId;
   ParticipantId const _leaderId;

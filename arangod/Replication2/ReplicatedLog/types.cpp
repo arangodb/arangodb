@@ -59,6 +59,7 @@ void replicated_log::AppendEntriesResult::toVelocyPack(velocypack::Builder& buil
     builder.add("term", VPackValue(logTerm.value));
     builder.add("errorCode", VPackValue(errorCode));
     builder.add("reason", VPackValue(int(reason)));
+    builder.add("messageId", VPackValue(messageId.value));
   }
 }
 
@@ -67,20 +68,21 @@ auto replicated_log::AppendEntriesResult::fromVelocyPack(velocypack::Slice slice
   auto logTerm = LogTerm{slice.get("term").extract<size_t>()};
   auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
   auto reason = AppendEntriesErrorReason{slice.get("reason").extract<int>()};
+  auto messageId = MessageId{slice.get("messageId").extract<uint64_t>()};
 
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
              reason != replicated_log::AppendEntriesErrorReason::NONE);
-  return AppendEntriesResult{logTerm, errorCode, reason};
+  return AppendEntriesResult{logTerm, errorCode, reason, messageId};
 }
 
 replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
-                                                         AppendEntriesErrorReason reason)
-    : logTerm(logTerm), errorCode(errorCode), reason(reason) {
+                                                         AppendEntriesErrorReason reason, MessageId id)
+    : logTerm(logTerm), errorCode(errorCode), reason(reason), messageId(id) {
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
              reason != replicated_log::AppendEntriesErrorReason::NONE);
 }
-replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm)
-    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NONE) {}
+replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, MessageId id)
+    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NONE, id) {}
 
 void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
   {
@@ -90,6 +92,7 @@ void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& bui
     builder.add("prevLogTerm", VPackValue(prevLogTerm.value));
     builder.add("prevLogIndex", VPackValue(prevLogIndex.value));
     builder.add("leaderCommit", VPackValue(leaderCommit.value));
+    builder.add("messageId", VPackValue(messageId.value));
     builder.add("entries", VPackValue(VPackValueType::Array));
     for (auto const& it : entries) {
       it.toVelocyPack(builder);
@@ -105,6 +108,7 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
   auto prevLogTerm = LogTerm{slice.get("prevLogTerm").getNumericValue<size_t>()};
   auto prevLogIndex = LogIndex{slice.get("prevLogIndex").getNumericValue<size_t>()};
   auto leaderCommit = LogIndex{slice.get("leaderCommit").getNumericValue<size_t>()};
+  auto messageId = MessageId{slice.get("messageId").getNumericValue<uint64_t>()};
   auto entries = std::invoke([&] {
     auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
     auto transientEntries = immer::flex_vector_transient<LogEntry>{};
@@ -113,8 +117,9 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
     return std::move(transientEntries).persistent();
   });
 
-  return AppendEntriesRequest{leaderTerm,   leaderId,     prevLogTerm,
-                              prevLogIndex, leaderCommit, std::move(entries)};
+  return AppendEntriesRequest{leaderTerm,        leaderId,     prevLogTerm,
+                              prevLogIndex,      leaderCommit, messageId,
+                              std::move(entries)};
 }
 
 void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
@@ -173,6 +178,13 @@ std::string arangodb::replication2::replicated_log::to_string(replicated_log::Ap
       return "current term is different from leader term";
     case replicated_log::AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
       return "previous log index did not match";
+    case AppendEntriesErrorReason::MESSAGE_OUTDATED:
+      return "message was outdated";
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+auto arangodb::replication2::replicated_log::MessageId::operator<=(MessageId other) const
+    -> bool {
+  return value <= other.value;
 }

@@ -58,13 +58,20 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       [&](GuardedFollowerData& self) -> std::pair<AppendEntriesResult, WaitForQueue> {
         if (self._logCore == nullptr) {
           return std::make_pair(AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::LOST_LOG_CORE),
+                                                    AppendEntriesErrorReason::LOST_LOG_CORE, req.messageId),
                                 WaitForQueue{});
         }
 
+        if (self._lastRecvMessageId >= req.messageId) {
+          return std::make_pair(AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                                                    AppendEntriesErrorReason::MESSAGE_OUTDATED, req.messageId),
+                                WaitForQueue{});
+        }
+        self._lastRecvMessageId = req.messageId;
+
         if (req.leaderId != _leaderId) {
           return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::INVALID_LEADER_ID},
+                                                    AppendEntriesErrorReason::INVALID_LEADER_ID, req.messageId},
                                 WaitForQueue{});
         }
 
@@ -72,7 +79,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         //      before increasing our term
         if (req.leaderTerm != _currentTerm) {
           return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::WRONG_TERM},
+                                                    AppendEntriesErrorReason::WRONG_TERM, req.messageId},
                                 WaitForQueue{});
         }
         // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
@@ -92,7 +99,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
             // from raft-pdf page 7-8
 
             return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                      AppendEntriesErrorReason::NO_PREV_LOG_MATCH},
+                                                      AppendEntriesErrorReason::NO_PREV_LOG_MATCH, req.messageId},
                                   WaitForQueue{});
           }
         }
@@ -127,7 +134,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
           }
         }
 
-        return std::make_pair(AppendEntriesResult{_currentTerm}, std::move(toBeResolved));
+        return std::make_pair(AppendEntriesResult{_currentTerm, req.messageId}, std::move(toBeResolved));
       });
 
   for (auto& promise : toBeResolved) {

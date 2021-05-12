@@ -57,10 +57,24 @@ class Slice;
 
 namespace arangodb::replication2::replicated_log {
 
+struct MessageId : implement_compare<MessageId> {
+  constexpr MessageId() noexcept : value{0} {}
+  constexpr explicit MessageId(std::uint64_t value) noexcept : value{value} {}
+  std::uint64_t value;
+  [[nodiscard]] auto operator<=(MessageId) const -> bool;
+
+  friend auto operator++(MessageId& id) -> MessageId& {
+    ++id.value;
+    return id;
+  }
+};
+
+
 enum class AppendEntriesErrorReason {
   NONE,
   INVALID_LEADER_ID,
   LOST_LOG_CORE,
+  MESSAGE_OUTDATED,
   WRONG_TERM,
   NO_PREV_LOG_MATCH
 };
@@ -69,13 +83,14 @@ struct AppendEntriesResult {
   LogTerm const logTerm = LogTerm{};
   ErrorCode const errorCode = TRI_ERROR_NO_ERROR;
   AppendEntriesErrorReason const reason = AppendEntriesErrorReason::NONE;
+  MessageId messageId;
 
   [[nodiscard]] auto isSuccess() const noexcept -> bool {
     return errorCode == TRI_ERROR_NO_ERROR;
   }
 
-  explicit AppendEntriesResult(LogTerm);
-  AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode, AppendEntriesErrorReason reason);
+  explicit AppendEntriesResult(LogTerm, MessageId);
+  AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode, AppendEntriesErrorReason reason, MessageId);
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 };
@@ -89,6 +104,7 @@ struct AppendEntriesRequest {
   LogTerm prevLogTerm;
   LogIndex prevLogIndex;
   LogIndex leaderCommit;
+  MessageId messageId;
   immer::flex_vector<LogEntry> entries{};
 
   void toVelocyPack(velocypack::Builder& builder) const;

@@ -415,6 +415,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   req.leaderCommit = _commitIndex;
   req.leaderTerm = _self._currentTerm;
   req.leaderId = _self._participantId;
+  req.messageId = ++follower.lastSendMessageId;
 
   if (lastAcked) {
     req.prevLogIndex = lastAcked->logIndex();
@@ -437,7 +438,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
     req.entries = std::move(transientEntries).persistent();
   }
 
-  auto lastIndex = !req.entries.empty() ? req.entries.back().logIndex() : lastAvailableIndex;
+  auto isEmptyAppendEntries = req.entries.empty();
+  auto lastIndex = isEmptyAppendEntries ? lastAvailableIndex : req.entries.back().logIndex();
 
   follower.requestInFlight = true;
   auto preparedRequest = PreparedAppendEntryRequest{};
@@ -458,27 +460,34 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   if (currentTerm != _self._currentTerm) {
     return {};
   }
+
   ResolvedPromiseSet toBeResolved;
 
   follower._lastRequestLatency = latency;
   follower.requestInFlight = false;
   if (res.hasValue()) {
-    follower.numErrorsSinceLastAnswer = 0;
     auto& response = res.get();
-    follower.lastErrorReason = response.reason;
-    if (response.isSuccess()) {
-      follower.lastAckedIndex = lastIndex;
-      follower.lastAckedCommitIndex = currentCommitIndex;
-      toBeResolved = checkCommitIndex(parentLog);
-    } else {
-      // TODO Optimally, we'd like this condition (lastAckedIndex > 0) to be
-      //      assertable here. For that to work, we need to make sure that no
-      //      other failures than "I don't have that log entry" can lead to this
-      //      branch.
-      TRI_ASSERT(response.reason != AppendEntriesErrorReason::NONE);
-      if (follower.lastAckedIndex > LogIndex{0}) {
-        follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
+    if (follower.lastSendMessageId == response.messageId) {
+      follower.numErrorsSinceLastAnswer = 0;
+      follower.lastErrorReason = response.reason;
+      if (response.isSuccess()) {
+        follower.lastAckedIndex = lastIndex;
+        follower.lastAckedCommitIndex = currentCommitIndex;
+        toBeResolved = checkCommitIndex(parentLog);
+      } else {
+        // TODO Optimally, we'd like this condition (lastAckedIndex > 0) to be
+        //      assertable here. For that to work, we need to make sure that no
+        //      other failures than "I don't have that log entry" can lead to
+        //      this branch.
+        TRI_ASSERT(response.reason != AppendEntriesErrorReason::NONE);
+        if (follower.lastAckedIndex > LogIndex{0}) {
+          follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
+        }
       }
+    } else {
+      LOG_TOPIC("056a8", DEBUG, Logger::REPLICATION2)
+          << "received outdated response from follower "
+          << follower._impl->getParticipantId() << ".";
     }
   } else if (res.hasException()) {
     auto const exp = follower.numErrorsSinceLastAnswer;
@@ -608,18 +617,19 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
 
   if (logCore == nullptr) {
     return AppendEntriesResult{request.leaderTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                               AppendEntriesErrorReason::LOST_LOG_CORE};
+                               AppendEntriesErrorReason::LOST_LOG_CORE, request.messageId};
   }
 
   // TODO The LogCore should know its last log index, and we should assert here
   //      that the AppendEntriesRequest matches it.
   auto iter = std::make_unique<ReplicatedLogIterator>(request.entries);
-  return logCore->insertAsync(std::move(iter)).thenValue([term = request.leaderTerm](Result const& res){
-    if (!res.ok()) {
-      abort();  // TODO abort
-    }
-    return AppendEntriesResult{term};
-  });
+  return logCore->insertAsync(std::move(iter))
+      .thenValue([term = request.leaderTerm, messageId = request.messageId](Result const& res) {
+        if (!res.ok()) {
+          abort();  // TODO abort
+        }
+        return AppendEntriesResult{term, messageId};
+      });
 }
 
 auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<LogCore> {

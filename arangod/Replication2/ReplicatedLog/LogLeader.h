@@ -107,6 +107,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     std::shared_ptr<AbstractFollower> _impl;
     LogIndex lastAckedIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
+    MessageId lastSendMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
     bool requestInFlight = false;

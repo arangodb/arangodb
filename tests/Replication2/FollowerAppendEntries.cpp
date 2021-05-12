@@ -36,6 +36,8 @@ struct FollowerAppendEntriesTest : ReplicatedLogTest {
     auto log = std::make_shared<ReplicatedLog>(std::move(core));
     return log->becomeFollower(std::move(id), term, std::move(leaderId));
   }
+
+  MessageId nextMessageId{0};
 };
 
 TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
@@ -48,6 +50,7 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
     request.prevLogIndex = LogIndex{0};
     request.prevLogTerm = LogTerm{0};
     request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
 
     auto f = follower->appendEntries(std::move(request));
@@ -67,6 +70,7 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
     request.prevLogIndex = LogIndex{1};
     request.prevLogTerm = LogTerm{1};
     request.leaderCommit = LogIndex{1};
+    request.messageId = ++nextMessageId;
     request.entries = {};
 
     auto f = follower->appendEntries(std::move(request));
@@ -90,6 +94,7 @@ TEST_F(FollowerAppendEntriesTest, wrong_term) {
     request.prevLogIndex = LogIndex{0};
     request.prevLogTerm = LogTerm{0};
     request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
 
     auto f = follower->appendEntries(std::move(request));
@@ -113,6 +118,7 @@ TEST_F(FollowerAppendEntriesTest, missing_prev_log_index) {
     request.prevLogIndex = LogIndex{1};
     request.prevLogTerm = LogTerm{1};
     request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"some payload"})};
 
     auto f = follower->appendEntries(std::move(request));
@@ -137,6 +143,7 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
     request.prevLogIndex = LogIndex{0};
     request.prevLogTerm = LogTerm{0};
     request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
 
     auto f = follower->appendEntries(std::move(request));
@@ -155,6 +162,7 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
     request.prevLogIndex = LogIndex{1};
     request.prevLogTerm = LogTerm{3};
     request.leaderCommit = LogIndex{1};
+    request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{5}, LogIndex{2}, LogPayload{"some payload"})};
 
     auto f = follower->appendEntries(std::move(request));
@@ -178,6 +186,7 @@ TEST_F(FollowerAppendEntriesTest, wrong_leader_name) {
     request.prevLogIndex = LogIndex{0};
     request.prevLogTerm = LogTerm{0};
     request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
 
     auto f = follower->appendEntries(std::move(request));
@@ -203,6 +212,7 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
     request.prevLogIndex = LogIndex{0};
     request.prevLogTerm = LogTerm{0};
     request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
 
     auto f = follower->appendEntries(std::move(request));
@@ -221,6 +231,7 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
     request.prevLogIndex = LogIndex{1};
     request.prevLogTerm = LogTerm{1};
     request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{5}, LogIndex{2}, LogPayload{"some payload"})};
 
     auto f = follower->appendEntries(std::move(request));
@@ -230,6 +241,49 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason::LOST_LOG_CORE);
+    }
+  }
+}
+
+TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
+  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+
+  {
+    // First add a valid entry
+    AppendEntriesRequest request;
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{5};
+    request.prevLogIndex = LogIndex{0};
+    request.prevLogTerm = LogTerm{0};
+    request.leaderCommit = LogIndex{0};
+    request.messageId = MessageId{5};
+    request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
+
+    auto f = follower->appendEntries(std::move(request));
+    ASSERT_TRUE(f.isReady());
+    {
+      auto result = f.get();
+      ASSERT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
+    }
+  }
+
+  {
+    AppendEntriesRequest request;
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{5};
+    request.prevLogIndex = LogIndex{1};
+    request.prevLogTerm = LogTerm{1};
+    request.leaderCommit = LogIndex{0};
+    request.messageId = MessageId{4};
+    request.entries = {LogEntry(LogTerm{5}, LogIndex{2}, LogPayload{"some payload"})};
+
+    auto f = follower->appendEntries(std::move(request));
+    ASSERT_TRUE(f.isReady());
+    {
+      auto result = f.get();
+      EXPECT_EQ(result.logTerm, LogTerm{5});
+      EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason::MESSAGE_OUTDATED);
     }
   }
 }
