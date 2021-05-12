@@ -118,6 +118,17 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   }
 }
 
+std::shared_ptr<Conductor> Conductor::create(
+    uint64_t executionNumber, TRI_vocbase_t& vocbase,
+    std::vector<CollectionID> const& vertexCollections,
+    std::vector<CollectionID> const& edgeCollections,
+    std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+    std::string const& algoName, VPackSlice const& userConfig, PregelFeature& feature) {
+  return std::shared_ptr<Conductor>(
+      new Conductor(executionNumber, vocbase, vertexCollections, edgeCollections,
+                    edgeCollectionRestrictions, algoName, userConfig, feature));
+}
+
 Conductor::~Conductor() {
   if (_state != ExecutionState::CANCELED && _state != ExecutionState::DEFAULT) {
     try {

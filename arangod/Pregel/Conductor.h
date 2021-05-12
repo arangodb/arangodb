@@ -129,12 +129,12 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
  public:
-  Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
-            std::vector<CollectionID> const& vertexCollections,
-            std::vector<CollectionID> const& edgeCollections,
-            std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
-            std::string const& algoName, VPackSlice const& userConfig,
-            PregelFeature& feature);
+  static std::shared_ptr<Conductor> create(
+      uint64_t executionNumber, TRI_vocbase_t& vocbase,
+      std::vector<CollectionID> const& vertexCollections,
+      std::vector<CollectionID> const& edgeCollections,
+      std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+      std::string const& algoName, VPackSlice const& userConfig, PregelFeature& feature);
 
   ~Conductor();
 
@@ -149,6 +149,13 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   }
 
  private:
+  Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
+            std::vector<CollectionID> const& vertexCollections,
+            std::vector<CollectionID> const& edgeCollections,
+            std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+            std::string const& algoName, VPackSlice const& userConfig,
+            PregelFeature& feature);
+            
   void cancelNoLock();
 };
 }  // namespace pregel

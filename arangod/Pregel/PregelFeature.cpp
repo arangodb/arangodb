@@ -203,9 +203,9 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   }
 
   uint64_t en = createExecutionNumber();
-  auto c = std::make_shared<pregel::Conductor>(en, vocbase, vertexCollections,
-                                               edgeColls, edgeCollectionRestrictions,
-                                               algorithm, params, *this);
+  auto c = pregel::Conductor::create(en, vocbase, vertexCollections,
+                                     edgeColls, edgeCollectionRestrictions,
+                                     algorithm, params, *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
