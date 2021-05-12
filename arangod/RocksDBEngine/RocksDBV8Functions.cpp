@@ -235,7 +235,7 @@ static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value>
 
   bool fromCollection = false;
   if (args.Length() > 0) {
-    TRI_ObjectToBoolean(isolate, args[0]);
+    fromCollection = TRI_ObjectToBoolean(isolate, args[0]);
   }
 
   auto* physical = toRocksDBCollection(*collection);

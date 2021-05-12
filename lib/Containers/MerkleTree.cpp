@@ -381,7 +381,7 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   // allocate the tree
   TRI_ASSERT(rangeMin < rangeMax);
 
-  tree.reset(new MerkleTree<Hasher, BranchingBits>(maxDepth, rangeMin, rangeMax));
+  tree = std::make_unique<MerkleTree<Hasher, BranchingBits>>(maxDepth, rangeMin, rangeMax);
 
   std::uint64_t index = 0;
   for (velocypack::Slice nodeSlice : velocypack::ArrayIterator(nodes)) {
@@ -438,7 +438,7 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
              (rangeMax - rangeMin));
   
   // no lock necessary here
-  _buffer.reset(new uint8_t[allocationSize(maxDepth)]);
+  _buffer = std::make_unique<uint8_t[]>(allocationSize(maxDepth));
 
   new (&meta()) Meta{rangeMin, rangeMax, maxDepth};
   
@@ -459,8 +459,6 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 MerkleTree<Hasher, BranchingBits>::~MerkleTree() {
-  std::unique_lock<std::shared_mutex> guard(_bufferLock);
-
   if (!_buffer) {
     return;
   }

@@ -1143,7 +1143,6 @@ bool RocksDBMetaCollection::haveBufferedOperations() const {
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRevisionTree(std::size_t depth) const {
-  // should have _revisionTreeLock held outside
   return std::make_unique<containers::RevisionTree>(depth, _logicalCollection.minRevision().id());
 }
 
