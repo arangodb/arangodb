@@ -49,14 +49,14 @@ function checkQueryError(query, message, errorCode) {
 }
 
 function checkQueryExplainOutput(query, part) {
-  output = explainer.explain(query, {colors: false}, false);
+  const output = explainer.explain(query, {colors: false}, false);
   assertTrue(output.includes(part),
     "query explain output did not contain expected part \"" + part + "\". Output:\n" + output);
 }
 
 function WindowTestSuite() {
 
-  const collection = "WindowTestCollection"
+  const collection = "WindowTestCollection";
   return {
     setUpAll: function () {
       db._create(collection, { numberOfShards: 4 });
@@ -232,7 +232,7 @@ function WindowTestSuite() {
       assertEqual(nodes[10].type, "WindowNode");
       assertEqual(nodes[11].type, "FilterNode");
     },
-  }
+  };
 }
 
 function WindowMalarkeyTestSuite() {
