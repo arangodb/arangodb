@@ -1,6 +1,9 @@
 devel
 -----
 
+* Return error 1948 when a negative edge was detected during a weighted traversal
+  or was used as default weight.
+
 * Improve error reporting for Merkle tree operations and improve memory usage
   for unused trees by hibernating them. In addition, add some backoff to shard
   synchronization in case there are repeated sync failures for the same shard.
