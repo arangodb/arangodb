@@ -84,12 +84,13 @@ void RestActionHandler::executeAction() {
     if (suffixes.empty() ||
         (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
       // request to just /
-      _response->setResponseCode(GeneralServerFeature::permanentRootRedirect()
+      auto& gs = server().getFeature<GeneralServerFeature>();
+      _response->setResponseCode(gs->permanentRootRedirect()
 				 ? rest::ResponseCode::MOVED_PERMANENTLY
 				 : rest::ResponseCode::MOVED_TEMPORARILY);
       _response->setHeaderNC(StaticStrings::Location,
                              "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
-			     GeneralServerFeature::redirectRootTo());
+			     gs->redirectRootTo());
       return;
     }
   }

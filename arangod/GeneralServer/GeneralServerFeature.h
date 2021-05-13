@@ -49,6 +49,8 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   bool allowMethodOverride() const;
   std::vector<std::string> const& accessControlAllowOrigins() const;
   Result reloadTLS();
+  bool permanentRootRedirect() const;
+  std::string redirectRootTo() const;
 
   rest::RestHandlerFactory& handlerFactory();
   rest::AsyncJobManager& jobManager();
@@ -57,24 +59,6 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
 
   void buildServers();
   void defineHandlers();
-
-  static bool permanentRootRedirect() {
-    if (GENERAL_SERVER == nullptr) {
-      return false;
-    }
-
-    return GENERAL_SERVER->_permanentRootRedirect;
-  }
-
-  static std::string redirectRootTo() {
-    static std::vector<std::string> redirect = "/_admin/aardvark/index.html";
-
-    if (GENERAL_SERVER == nullptr) {
-      return redirect;
-    }
-
-    return GENERAL_SERVER->_redirectRootTo;
-  }
 
  private:
   double _keepAliveTimeout = 300.0;

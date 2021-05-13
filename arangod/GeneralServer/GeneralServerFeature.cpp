@@ -309,6 +309,14 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
   return res;
 }
 
+bool GeneralServerFeature::permantRootRedirect() const {
+  return _permanentRootRedirect;
+}
+
+std::string const& GeneralServerFeature::permantRootRedirect() const {
+  return _redirectRootTo;
+}
+
 rest::RestHandlerFactory& GeneralServerFeature::handlerFactory() {
   return *_handlerFactory;
 }
