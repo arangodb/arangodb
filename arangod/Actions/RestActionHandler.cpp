@@ -84,10 +84,12 @@ void RestActionHandler::executeAction() {
     if (suffixes.empty() ||
         (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
       // request to just /
-      _response->setResponseCode(rest::ResponseCode::MOVED_PERMANENTLY);
+      _response->setResponseCode(GeneralServerFeature::permanentRootRedirect()
+				 ? rest::ResponseCode::MOVED_PERMANENTLY
+				 : rest::ResponseCode::MOVED_TEMPORARILY);
       _response->setHeaderNC(StaticStrings::Location,
                              "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
-                                 "/_admin/aardvark/index.html");
+			     GeneralServerFeature::redirectRootTo());
       return;
     }
   }
