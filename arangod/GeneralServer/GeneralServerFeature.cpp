@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
@@ -309,11 +309,11 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
   return res;
 }
 
-bool GeneralServerFeature::permantRootRedirect() const {
+bool GeneralServerFeature::permanentRootRedirect() const {
   return _permanentRootRedirect;
 }
 
-std::string const& GeneralServerFeature::permantRootRedirect() const {
+std::string GeneralServerFeature::redirectRootTo() const {
   return _redirectRootTo;
 }
 

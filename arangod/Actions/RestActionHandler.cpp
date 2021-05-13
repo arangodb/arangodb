@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Statistics/RequestStatistics.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -85,12 +86,12 @@ void RestActionHandler::executeAction() {
         (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
       // request to just /
       auto& gs = server().getFeature<GeneralServerFeature>();
-      _response->setResponseCode(gs->permanentRootRedirect()
+      _response->setResponseCode(gs.permanentRootRedirect()
 				 ? rest::ResponseCode::MOVED_PERMANENTLY
-				 : rest::ResponseCode::MOVED_TEMPORARILY);
+				 : rest::ResponseCode::FOUND);
       _response->setHeaderNC(StaticStrings::Location,
                              "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
-			     gs->redirectRootTo());
+			     gs.redirectRootTo());
       return;
     }
   }
