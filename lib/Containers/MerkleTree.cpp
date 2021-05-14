@@ -96,9 +96,7 @@ constexpr std::uint64_t MerkleTree<Hasher, BranchingBits>::nodeCountUpToDepth(
 template <typename Hasher, std::uint64_t const BranchingBits>
 constexpr std::uint64_t MerkleTree<Hasher, BranchingBits>::nodeCountAboveDepth(
     std::uint64_t depth) noexcept {
-  return depth == 0 ?
-         0 :
-         ((static_cast<std::uint64_t>(1) << (BranchingBits * (depth + 1))) - 1) /
+  return ((static_cast<std::uint64_t>(1) << (BranchingBits * depth)) - 1) /
            (BranchingFactor - 1);
 }
 
