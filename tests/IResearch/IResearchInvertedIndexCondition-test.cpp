@@ -167,7 +167,6 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_equality) {
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
-  expected.coveredAttributes = 1;
   estimateFilterCondition(queryString, fields, expected);
 }
 
@@ -177,7 +176,22 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_many_fields) {
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
-  expected.coveredAttributes = 3;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_fcalls) {
+
+  std::string queryString = "FOR d IN test FILTER d.a == 'value' OR d.b == 'value2' AND d.c == UPPER('value3') RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_fcalls_on_ref) {
+  std::string queryString = "FOR d IN test FILTER d.a == 'value' OR d.b == 'value2' AND UPPER(d.c) == UPPER('value3') RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
 
@@ -198,7 +212,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_no_fields_one_missing) {
   estimateFilterCondition(queryString, fields, expected);
 }
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_expression) {
+TEST_F(IResearchInvertedIndexConditionTest, test_with_nonderm_expression) {
 
   std::string queryString = "FOR d IN test FILTER d.a == NOOPT('value') RETURN d ";
   std::vector<std::string> fields = {"a"};
