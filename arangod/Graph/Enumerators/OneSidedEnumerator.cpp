@@ -133,7 +133,8 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  * @param source The source vertex to start the paths
  */
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::reset(VertexRef source, size_t depth) {
+void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::reset(
+    VertexRef source, size_t depth) {
   clear();
   auto firstStep = _provider.startVertex(source, depth);
   _queue.append(std::move(firstStep));
@@ -154,21 +155,17 @@ void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  */
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::getNextPath()
-    -> std::optional<ResultPathType> {
+    -> std::unique_ptr<PathResultInterface> {
   while (!isDone()) {
     searchMoreResults();
 
     while (!_results.empty()) {
       auto step = std::move(_results.back());
       _results.pop_back();
-
-      auto resultPath = ResultPathType{std::move(step), _provider, _interior};
-      TRI_ASSERT(!resultPath.isEmpty());
-
-      return resultPath;
+      return std::make_unique<ResultPathType>(std::move(step), _provider, _interior);
     }
   }
-  return std::nullopt;
+  return nullptr;
 }
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>

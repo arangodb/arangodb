@@ -24,52 +24,48 @@
 
 #pragma once
 
-#include <velocypack/HashedStringRef.h>
-#include "Containers/HashSet.h"
-
-// TODO Temporary include
-#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
-
+#include <memory>
 #include <numeric>
 
 namespace arangodb {
 
 namespace velocypack {
+class HashedStringRef;
 class Builder;
 }  // namespace velocypack
 
+namespace aql {
+class TraversalStats;
+}
+
 namespace graph {
 
-template <class ProviderType, class PathStoreType, class Step>
-class SingleProviderPathResult : public PathResultInterface {
-  using VertexRef = arangodb::velocypack::HashedStringRef;
-
+// TODO Temporary, just Make everything compile
+class PathResultInterface {
  public:
-  SingleProviderPathResult(Step step, ProviderType& provider, PathStoreType& store);
-  auto clear() -> void;
-  auto appendVertex(typename Step::Vertex v) -> void;
-  auto prependVertex(typename Step::Vertex v) -> void;
-  auto appendEdge(typename Step::Edge e) -> void;
-  auto prependEdge(typename Step::Edge e) -> void;
+  PathResultInterface() {}
+  virtual ~PathResultInterface() {}
 
-  auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
-
-  /**
-   * @brief Appends this path as a SchreierVector entry into the given builder
-   */
-  auto toSchreierEntry(arangodb::velocypack::Builder& builder) -> void override;
-
-  auto isEmpty() const -> bool;
-
- private:
-  Step _step;
-
-  std::vector<typename Step::Vertex> _vertices;
-  std::vector<typename Step::Edge> _edges;
-
-  // Provider for the path
-  ProviderType& _provider;
-  PathStoreType& _store;
+  virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
+  virtual auto toSchreierEntry(arangodb::velocypack::Builder& builder) -> void = 0;
 };
+
+class TraversalEnumerator {
+ public:
+  using VertexRef = arangodb::velocypack::HashedStringRef;
+  TraversalEnumerator(){};
+  virtual ~TraversalEnumerator() {}
+
+  virtual void clear() = 0;
+  [[nodiscard]] virtual bool isDone() const = 0;
+
+  virtual void reset(VertexRef source, size_t depth = 0) = 0;
+  virtual auto getNextPath() -> std::unique_ptr<PathResultInterface> = 0;
+  virtual bool skipPath() = 0;
+  virtual auto destroyEngines() -> void = 0;
+
+  virtual auto stealStats() -> aql::TraversalStats = 0;
+};
+
 }  // namespace graph
 }  // namespace arangodb
