@@ -1,6 +1,15 @@
 devel
 -----
 
+* Added 2 options to allow HTTP redirection customization for root ("/") call of
+  HTTP API:
+
+  `--http.permanently-redirect-root`: if true (default), use a permanent
+  redirection (use HTTP 301 code), if false fall back to temporary redirection
+  (use HTTP 302 code);
+  `--http.redirect-root-to`: redirect of root URL to a specified path (redirects
+  to "/_admin/aardvark/index.html" if not set (default)).
+
 * Improve error reporting for Merkle tree operations and improve memory usage
   for unused trees by hibernating them. In addition, add some backoff to shard
   synchronization in case there are repeated sync failures for the same shard.
