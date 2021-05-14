@@ -652,7 +652,7 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
       result.push_back(std::make_pair(min, max));
       return;
     }
-    if (result.back().second == min) {
+    if (result.back().second + 1 == min) {
       // Extend range: //
       result.back().second = max;
       return;
@@ -668,7 +668,7 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
   for ( ; pos < tree2->meta().rangeMin; pos += keysPerBucket) {
     Node& node1 = tree1->node(offsetBottom + index1);
     if (node1.count != 0) {
-      addRange(pos, pos + keysPerBucket);
+      addRange(pos, pos + keysPerBucket - 1);
     }
     ++index1;
   }
@@ -679,7 +679,7 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
     Node& node1 = tree1->node(offsetBottom + index1);
     Node& node2 = tree2->node(offsetBottom + index2);
     if (node1.hash != node2.hash || node1.count != node2.count) {
-      addRange(pos, pos + keysPerBucket);
+      addRange(pos, pos + keysPerBucket - 1);
     }
     ++index1;
     ++index2;
@@ -688,7 +688,7 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
   for ( ; pos < tree2->meta().rangeMax; pos += keysPerBucket) {
     Node& node2 = tree2->node(offsetBottom + index2);
     if (node2.count != 0) {
-      addRange(pos, pos + keysPerBucket);
+      addRange(pos, pos + keysPerBucket - 1);
     }
     ++index2;
   }
