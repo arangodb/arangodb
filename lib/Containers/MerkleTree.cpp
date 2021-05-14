@@ -1016,7 +1016,7 @@ void MerkleTree<Hasher, BranchingBits>::leftCombine2(bool withShift) noexcept {
 
   // First to maxDepth:
   auto const maxDepth = meta().maxDepth;
-  std::uint64_t offset = nodeCountUpToDepth(maxDepth);
+  std::uint64_t offset = nodeCountAboveDepth(maxDepth);
   auto const n = nodeCountAtDepth(maxDepth);
   if (withShift) {
     // 0 -> 0
@@ -1120,7 +1120,7 @@ void MerkleTree<Hasher, BranchingBits>::rightCombine2(bool withShift) noexcept {
 
   // First to maxDepth:
   auto const maxDepth = meta().maxDepth;
-  std::uint64_t offset = nodeCountUpToDepth(maxDepth);
+  std::uint64_t offset = nodeCountAboveDepth(maxDepth);
   auto const n = nodeCountAtDepth(maxDepth);
   if (withShift) {
     // empty     -> 0
