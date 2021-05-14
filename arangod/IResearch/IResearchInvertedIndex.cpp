@@ -1,4 +1,3 @@
-#include "IResearchInvertedIndex.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -21,6 +20,10 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchFilterFactory.h"
 
 
 namespace arangodb {
@@ -51,7 +54,18 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
-  return FilterCosts();
+
+  TRI_ASSERT(node);
+  TRI_ASSERT(reference);
+  QueryContext const queryCtx = {nullptr, nullptr, nullptr, // FIXME: Kludge, We will fail to create byExpression filters
+                                 nullptr, nullptr, reference};
+  auto rv = FilterFactory::filter(nullptr, queryCtx, *node);
+  auto filterCosts = FilterCosts::defaultCosts(itemsInIndex);
+  if (rv.ok()) {
+    filterCosts.supportsCondition = true;
+    filterCosts.coveredAttributes = 1; // FIXME: calculate used attributes
+  }
+  return filterCosts;
 }
 
 aql::AstNode* IResearchInvertedIndex::specializeCondition(aql::AstNode* node,

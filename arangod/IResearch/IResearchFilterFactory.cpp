@@ -932,6 +932,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx, aql::AstNode const& node) {
   if (!filter) {
+    // FIXME: for inverted index expression should be forbidden as using the expression will be full scan with pessimization
     return {};
   }
 

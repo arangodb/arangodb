@@ -52,6 +52,28 @@ class IResearchInvertedIndex : public Index {
     return false;
   }
 
+  char const* typeName() const override {
+    return oldtypeName();
+  }
+
+  bool canBeDropped() const override {
+    return true;
+  }
+
+  bool isSorted() const override {
+    return false; // FIXME: sometimes we can be sorted
+  }
+
+  bool hasSelectivityEstimate() const override {
+    return false;
+  }
+
+  size_t memory() const override {
+    // FIXME return in memory size
+    //return stats().indexSize;
+    return 0;
+  }
+
   void load() override {}
   void unload() override {}
 
