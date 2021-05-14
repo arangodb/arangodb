@@ -1133,14 +1133,17 @@ void MerkleTree<Hasher, BranchingBits>::rightCombine2(bool withShift) noexcept {
     // ...
     // n-3, n-2  -> n - 2
     // n-1       -> n - 1
-    for (std::int64_t i = n - 1; i >= 0; --i) {
-      Node& src = this->node(offset + (uint64_t) i);
-      Node& dst = this->node(offset + (n + (std::uint64_t) i - 1) / 2);
+    for (std::uint64_t i = n - 1; /* i >= 0 */ ; --i) {
+      Node& src = this->node(offset + i);
+      Node& dst = this->node(offset + (n + i - 1) / 2);
 
       TRI_ASSERT(&src != &dst);
       dst.count += src.count;
       dst.hash ^= src.hash;
       src = Node{0, 0};
+      if (i == 0) {
+        break;
+      }
     }
   } else {
     // empty     -> 0
@@ -1151,14 +1154,17 @@ void MerkleTree<Hasher, BranchingBits>::rightCombine2(bool withShift) noexcept {
     // 4, 5      -> n/2 + 2
     // ...
     // n-2, n-1  -> n - 1
-    for (std::int64_t i = n - 2; i >= 0; --i) {
+    for (std::uint64_t i = n - 2; /* i >= 0 */; --i) {
       Node& src = this->node(offset + (std::uint64_t) i);
-      Node& dst = this->node(offset + (n + (std::uint64_t) + n) / 2);
+      Node& dst = this->node(offset + (n + i) / 2);
 
       TRI_ASSERT(&src != &dst);
       dst.count += src.count;
       dst.hash ^= src.hash;
       src = Node{0, 0};
+      if (i == 0) {
+        break;
+      }
     }
   }
   completeFromDeepest();
