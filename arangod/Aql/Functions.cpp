@@ -8357,16 +8357,17 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   }
 
   uint64_t execNr = arg1.toInt64();
-  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
-  if (!feature) {
+  auto& server = expressionContext->trx().vocbase().server();
+  if (!server.hasFeature<pregel::PregelFeature>()) {
     registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
     return AqlValue(AqlValueHintEmptyArray());
   }
+  pregel::PregelFeature& feature = server.getFeature<pregel::PregelFeature>();
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   if (ServerState::instance()->isCoordinator()) {
-    std::shared_ptr<pregel::Conductor> c = feature->conductor(execNr);
+    std::shared_ptr<pregel::Conductor> c = feature.conductor(execNr);
     if (!c) {
       registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
@@ -8374,7 +8375,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
     c->collectAQLResults(builder, withId);
 
   } else {
-    std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
+    std::shared_ptr<pregel::IWorker> worker = feature.worker(execNr);
     if (!worker) {
       registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());

@@ -865,11 +865,9 @@ void MaintenanceFeature::removeReplicationError(std::string const& database, std
   MUTEX_LOCKER(guard, _replLock);
   
   auto it = _replErrors.find(database);
-  if (it == _replErrors.end()) {
-    return;
+  if (it != _replErrors.end()) {
+    (*it).second.erase(shard);
   }
-
-  (*it).second.erase(shard);
 }
 
 /// @brief store a replication error for the shard in the database.
