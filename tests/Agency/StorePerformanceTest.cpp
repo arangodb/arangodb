@@ -33,9 +33,16 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <cstdlib>
+#include <algorithm>
+
 namespace arangodb {
 namespace tests {
 namespace store_performance_test {
+
+auto const scattered_times{2};
+auto const hammer_times {5};
+
 
 class StorePerformanceTest : public ::testing::Test {
  public:
@@ -167,7 +174,7 @@ class StorePerformanceTest : public ::testing::Test {
 
 TEST_F(StorePerformanceTest, single_deep_key_writes) {
   std::map<std::string, std::string> obj{};
-  for (int i{}; i < 100000; ++i) {
+  for (int i{}; i < hammer_times; ++i) {
     obj["a/b/c/d/e/f/g/h"] = std::to_string(i);
     write(std::vector<std::vector<std::string>>{{to_json_object(obj)}});
   }
@@ -177,7 +184,7 @@ TEST_F(StorePerformanceTest, single_deep_key_writes_and_reads) {
   std::map<std::string, std::string> obj{};
   auto const key {"a/b/c/d/e/f/g/h"};
   auto const json_read_key {std::string("[[\"") + key + "\"]]"};
-  for (int i{}; i < 100000; ++i) {
+  for (int i{}; i < hammer_times; ++i) {
     obj[key] = std::to_string(i);
     write(std::vector<std::vector<std::string>>{{to_json_object(obj)}});
     auto result {read(json_read_key)};
@@ -189,10 +196,197 @@ TEST_F(StorePerformanceTest, single_deep_key_reads) {
   auto const key {"a/b/c/d/e/f/g/h"};
   write(std::vector<std::vector<std::string>>{{to_json_object(obj)}});
   auto const json_read_key {std::string("[[\"") + key + "\"]]"};
-  for (int i{}; i < 100000; ++i) {
+  for (int i{}; i < hammer_times; ++i) {
     obj[key] = std::to_string(i);
     auto result {read(json_read_key)};
   }
+}
+
+// write lots of different keys in different places
+//  Random-access performance
+
+static std::string rand_path(const size_t len = 10u) {
+  static auto const alphabet {"abcdefghijklmnopqrstuvwxyz0123456789"};
+  std::string result;
+  std::generate_n(std::back_inserter(result), 1 + std::rand() % (len-1), [](){
+    return alphabet[std::rand() % (sizeof(alphabet)-1)];
+  });
+  return result;
+}
+
+#include <iostream>
+
+TEST_F(StorePerformanceTest, scattered_keys_w) {
+  for (int i{}; i < scattered_times; ++i) {
+    auto const key {rand_path()};
+    auto const json_object {"{\"" + key + "\": " + std::to_string(rand()) + "}"};
+    auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
+    ASSERT_EQ(result.front(), consensus::apply_ret_t::APPLIED);
+  }
+}
+
+TEST_F(StorePerformanceTest, scattered_keys_wr) {
+  std::vector<std::string> keys;
+  std::generate_n(std::back_inserter(keys), scattered_times, [](){ return rand_path(); });
+  for (auto const& key: keys) {
+    writeAndCheck("[[{\"" + key + "\":1}]]");
+  }
+  for (int i{}; i < scattered_times; ++i) {
+    auto const& key {keys[std::rand() % keys.size()]};
+    auto result {read("[[\"" + key + "\"]]")};
+    ASSERT_EQ(result->toJson(), "[{\"" + key + "\":1}]");
+  }
+}
+
+TEST_F(StorePerformanceTest, scattered_keys_wwr) {
+  std::vector<std::string> keys;
+  std::generate_n(std::back_inserter(keys), scattered_times, [](){ return rand_path(); });
+  for (auto const& key: keys) {
+    auto const json_object {"{\"" + key + "\": 1}"};
+    auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
+    ASSERT_EQ(result.front(), consensus::apply_ret_t::APPLIED);
+  }
+  for (auto const& key: keys) {
+    auto const json_object {"[[{\"" + key + "\": {\"op\": \"increment\"}}]]"};
+    auto result {write(json_object)};
+    if (result.front() != consensus::apply_ret_t::APPLIED) {
+      throw std::runtime_error(json_object + " could not be applied: " + std::to_string(result.front()));
+    }
+  }
+  for (int i{}; i < scattered_times; ++i) {
+    auto const& key {keys[std::rand() % keys.size()]};
+    auto result {read("[[\"" + key + "\"]]")};
+    ASSERT_EQ(result->toJson(), "[{\"" + key + "\":2}]");
+  }
+}
+
+// do a lot of small transactions
+// Performance in situations that should smartly use caches and primary memory.
+TEST_F(StorePerformanceTest, small_tx_r) {
+  writeAndCheck("[[{\"a\": 1}]]");
+  writeAndCheck("[[{\"b/b/c\": 2}]]");
+  writeAndCheck("[[{\"d\": 3}]]");
+  for (int i{}; i < hammer_times; ++i) {
+    auto const result {read("[[\"a\"], [\"b/b/c\"], [\"d\"]]")};
+    ASSERT_EQ(result->toJson(), "[{\"a\":1},{\"b\":{\"b\":{\"c\":2}}},{\"d\":3}]");
+  }
+}
+
+TEST_F(StorePerformanceTest, small_tx_w) {
+  for (int i{}; i < hammer_times; ++i) {
+    writeAndCheck("[[{\"a\": " + std::to_string(i) +"}]]");
+    writeAndCheck("[[{\"a/b/c\": " + std::to_string(i) +"}]]");
+    writeAndCheck("[[{\"d\": " + std::to_string(i) +"}]]");
+  }
+}
+
+TEST_F(StorePerformanceTest, small_tx_rw) {
+  for (int i{}; i < hammer_times; ++i) {
+    writeAndCheck("[[{\"a\": " + std::to_string(i) +"}]]");
+    writeAndCheck("[[{\"b/b/c\": " + std::to_string(i) +"}]]");
+    writeAndCheck("[[{\"d\": " + std::to_string(i) +"}]]");
+  }
+  for (int i{}; i < hammer_times; ++i) {
+    auto const result {read("[[\"a\"], [\"a/b/c\"], [\"d\"]]")};
+    ASSERT_EQ(result->toJson(), result->toJson());
+  }
+}
+
+// do fewer, but larger transactions
+// Situations where primary memory and caches normally punish performance.
+
+TEST_F(StorePerformanceTest, bigger_tx_r) {
+  {
+    std::stringstream ss;
+    ss << "[[{\"k0\": 0}]";
+    for (int i{1}; i < hammer_times; ++i) {
+      ss << ",[{\"k" << i << "\": " << i << "}]";
+    }
+    ss << "]";
+    writeAndCheck(ss.str());
+  }
+  std::stringstream ss;
+  ss << "[[";
+  ss << "\"k0\"";
+  for (int i{1}; i < hammer_times; ++i) {
+    ss << ",\"k" << i << "\"";
+  }
+  ss << "]]";
+
+  auto const key_list {ss.str()};
+
+  for (int i{}; i < hammer_times; ++i) {
+    auto const result {read(key_list)};
+    ASSERT_EQ(result->size(), result->size());
+  }
+}
+
+TEST_F(StorePerformanceTest, bigger_tx_w) {
+  std::stringstream ss;
+  ss << "[[{\"k0\": 0}]";
+  for (int i{1}; i < hammer_times; ++i) {
+    ss << ",[{\"k" << i << "\": " << i << "}]";
+  }
+  ss << "]";
+  auto const write_string {ss.str()};
+  for (int i{}; i < hammer_times; ++i) {
+    write(write_string);
+  }
+}
+
+// test array operations specifically
+
+TEST_F(StorePerformanceTest, array_push) {
+  writeAndCheck(R"([[{"/a/b/c":[]}]])");
+  for (int i{}; i < hammer_times; ++i) {
+    writeAndCheck(R"([[{"/a/b/c":{"op":"push","new":)" + std::to_string(i) + "}}]])");
+  }
+}
+
+TEST_F(StorePerformanceTest, array_pop) {
+  std::stringstream ss;
+  ss << R"([[{"/a/b/c":[0)";
+  for (int i{1}; i < hammer_times; ++i) {
+    ss << "," << i;
+  }
+  ss << "]}]])";
+  writeAndCheck(ss.str());
+  for (int i{}; i < hammer_times; ++i) {
+    writeAndCheck(R"([[{"/a/b/c":{"op":"pop"}}]])");
+  }
+}
+
+// test object operations specifically
+
+// test operations which need to change a lot in the tree
+// add in ascending order
+TEST_F(StorePerformanceTest, tree_add_ascending) {
+  FAIL();
+}
+
+// add in descending order
+TEST_F(StorePerformanceTest, tree_add_descending) {
+  FAIL();
+}
+
+// add scattered
+TEST_F(StorePerformanceTest, tree_add_scattered) {
+  FAIL();
+}
+
+// add ascending, remove root, then re-add
+TEST_F(StorePerformanceTest, tree_add_remove_readd) {
+  FAIL();
+}
+
+// test for contention:
+// multiple threads manipulate values
+TEST_F(StorePerformanceTest, multiple_threads_all_separate_keys) {
+  FAIL();
+}
+
+TEST_F(StorePerformanceTest, multiple_threads_high_concurrence) {
+  FAIL();
 }
 
 }  // namespace store_performance_test
