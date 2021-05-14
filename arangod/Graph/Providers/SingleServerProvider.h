@@ -68,7 +68,7 @@ struct SingleServerProvider {
       explicit Vertex(VertexType v) : _vertex(v) {}
 
       VertexType const& getID() const;
-      
+
       bool operator<(Vertex const& other) const noexcept {
         return _vertex < other._vertex;
       }
@@ -124,7 +124,7 @@ struct SingleServerProvider {
   };
 
  public:
-  SingleServerProvider(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+  SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                        arangodb::ResourceMonitor& resourceMonitor);
   SingleServerProvider(SingleServerProvider const&) = delete;
   SingleServerProvider(SingleServerProvider&&) = default;
@@ -164,7 +164,7 @@ struct SingleServerProvider {
   BaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
-  
+
   arangodb::aql::TraversalStats _stats;
 };
 }  // namespace graph

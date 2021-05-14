@@ -56,18 +56,39 @@ class HashedStringRef;
 
 namespace tests {
 namespace graph {
+
+class MockGraphProviderOptions {
+ public:
+  enum class LooseEndBehaviour { NEVER, ALWAYS };
+  MockGraphProviderOptions(MockGraph const& data, LooseEndBehaviour looseEnds,
+                           bool reverse = false)
+      : _data(data), _looseEnds(looseEnds), _reverse(reverse) {}
+  ~MockGraphProviderOptions() = default;
+
+  LooseEndBehaviour looseEnds() const { return _looseEnds; }
+  MockGraph const& data() const { return _data; }
+  bool reverse() const { return _reverse; }
+
+ private:
+  MockGraph const& _data;
+  LooseEndBehaviour _looseEnds;
+  bool _reverse;
+  ;
+};
+
 class MockGraphProvider {
   using VertexType = arangodb::velocypack::HashedStringRef;
   using EdgeType = MockGraph::EdgeDef;
 
  public:
-  enum class LooseEndBehaviour { NEVER, ALWAYS };
+  using Options = MockGraphProviderOptions;
+  using LooseEndBehaviour = typename MockGraphProviderOptions::LooseEndBehaviour;
 
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
     class Vertex {
      public:
-      explicit Vertex(VertexType v) : _vertex(v) {};
+      explicit Vertex(VertexType v) : _vertex(v){};
 
       VertexType getID() const { return _vertex; }
 
@@ -163,8 +184,9 @@ class MockGraphProvider {
   };
 
   MockGraphProvider() = delete;
-  MockGraphProvider(MockGraph const& data, arangodb::aql::QueryContext& queryContext,
-                    LooseEndBehaviour looseEnds, bool reverse = false);
+  MockGraphProvider(arangodb::aql::QueryContext& queryContext, Options opts,
+                    arangodb::ResourceMonitor& resourceMonitor);
+
   MockGraphProvider(MockGraphProvider const&) = delete;  // TODO: check "Rule of 5"
   MockGraphProvider(MockGraphProvider&&) = default;
   ~MockGraphProvider();

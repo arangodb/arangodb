@@ -52,46 +52,51 @@ using TracedKPathEnumerator =
                        PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>,
                        PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
 
+template <class ProviderType, VertexUniquenessLevel vertexUniqueness, bool useTracing>
+struct BFSConfiguration {
+  using Provider =
+      typename std::conditional<useTracing, ProviderTracer<ProviderType>, ProviderType>::type;
+  using Step = typename Provider::Step;
+  using Queue =
+      typename std::conditional<useTracing, QueueTracer<FifoQueue<Step>>, FifoQueue<Step>>::type;
+  using Store =
+      typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>, PathStore<Step>>::type;
+  using Validator = PathValidator<Store, vertexUniqueness>;
+};
+
+template <class ProviderType, VertexUniquenessLevel vertexUniqueness, bool useTracing>
+struct DFSConfiguration {
+  using Provider =
+      typename std::conditional<useTracing, ProviderTracer<ProviderType>, ProviderType>::type;
+  using Step = typename Provider::Step;
+  using Queue =
+      typename std::conditional<useTracing, QueueTracer<LifoQueue<Step>>, FifoQueue<Step>>::type;
+  using Store =
+      typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>, PathStore<Step>>::type;
+  using Validator = PathValidator<Store, vertexUniqueness>;
+};
+
 // BFS Traversal Enumerator implementation
-template <class Provider>
+template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using BFSEnumerator =
-    OneSidedEnumerator<FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>, Provider,
-                       PathValidator<PathStore<typename Provider::Step>, VertexUniquenessLevel::PATH>>;
+    OneSidedEnumerator<BFSConfiguration<Provider, vertexUniqueness, false>>;
 
 // BFS Traversal Enumerator implementation using Tracing
-template <class Provider>
+template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using TracedBFSEnumerator =
-    OneSidedEnumerator<QueueTracer<FifoQueue<typename Provider::Step>>,
-                       PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>,
-                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
+    OneSidedEnumerator<BFSConfiguration<Provider, vertexUniqueness, true>>;
 
 // BFS Traversal Enumerator implementation using Tracing (without provider tracing)
-template <class Provider>
-using TracedBFSEnumeratorWOPT =
-    OneSidedEnumerator<QueueTracer<FifoQueue<typename Provider::Step>>,
-                       PathStoreTracer<PathStore<typename Provider::Step>>, Provider,
-                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
 
 // DFS Traversal Enumerator implementation
 template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using DFSEnumerator =
-    OneSidedEnumerator<LifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>, Provider,
-                       PathValidator<PathStore<typename Provider::Step>, vertexUniqueness>>;
+    OneSidedEnumerator<DFSConfiguration<Provider, vertexUniqueness, false>>;
 
 // DFS Traversal Enumerator implementation using Tracing
 template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using TracedDFSEnumerator =
-    OneSidedEnumerator<QueueTracer<LifoQueue<typename Provider::Step>>,
-                       PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>,
-                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, vertexUniqueness>>;
-
-// DFS Traversal Enumerator implementation using Tracing
-// TODO: REMOVE ME LATER!
-template <class Provider, VertexUniquenessLevel vertexUniqueness>
-using TracedDFSEnumeratorWOPT =
-    OneSidedEnumerator<QueueTracer<LifoQueue<typename Provider::Step>>,
-                       PathStoreTracer<PathStore<typename Provider::Step>>, Provider,
-                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, vertexUniqueness>>;
+    OneSidedEnumerator<DFSConfiguration<Provider, vertexUniqueness, true>>;
 
 }  // namespace graph
 }  // namespace arangodb

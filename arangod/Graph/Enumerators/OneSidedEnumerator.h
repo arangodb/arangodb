@@ -50,21 +50,23 @@ namespace graph {
 
 struct OneSidedEnumeratorOptions;
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidatorType>
+template <class Configuration>
 class OneSidedEnumerator : public TraversalEnumerator {
  public:
-  using Step = typename ProviderType::Step;  // public due to tracer access
-  using ResultPathType = SingleProviderPathResult<ProviderType, PathStoreType, Step>;
+  using Step = typename Configuration::Step;  // public due to tracer access
+  using Provider = typename Configuration::Provider;
+  using Store = typename Configuration::Store;
+
+  using ResultPathType = SingleProviderPathResult<Provider, Store, Step>;
 
  private:
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
-  using Shell = std::multiset<Step>;
   using ResultList = std::vector<Step>;
   using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
 
  public:
-  OneSidedEnumerator(ProviderType&& forwardProvider, OneSidedEnumeratorOptions&& options,
+  OneSidedEnumerator(Provider&& provider, OneSidedEnumeratorOptions&& options,
                      arangodb::ResourceMonitor& resourceMonitor);
   OneSidedEnumerator(OneSidedEnumerator const& other) = delete;
   OneSidedEnumerator(OneSidedEnumerator&& other) noexcept = default;
@@ -145,12 +147,12 @@ class OneSidedEnumerator : public TraversalEnumerator {
   bool _resultsFetched{false};
 
   // The next elements to process
-  QueueType _queue;
-  ProviderType _provider;
-  PathValidatorType _validator;
+  typename Configuration::Queue _queue;
+  typename Configuration::Provider _provider;
+  typename Configuration::Validator _validator;
 
   // This stores all paths processed
-  PathStoreType _interior;
+  typename Configuration::Store _interior;
 };
 }  // namespace graph
 }  // namespace arangodb

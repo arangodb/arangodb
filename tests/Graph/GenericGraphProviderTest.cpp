@@ -86,8 +86,9 @@ class GraphProviderTest : public ::testing::Test {
       // We now have collections "v" and "e"
       query = singleServer->getQuery("RETURN 1", {"v", "e"});
 
-      return MockGraphProvider(graph, *query.get(),
-                               MockGraphProvider::LooseEndBehaviour::NEVER);
+      return MockGraphProvider(*query.get(),
+                               MockGraphProviderOptions{graph, MockGraphProvider::LooseEndBehaviour::NEVER},
+                               resourceMonitor);
     }
     if constexpr (std::is_same_v<ProviderType, SingleServerProvider>) {
       s = std::make_unique<GraphTestSetup>();

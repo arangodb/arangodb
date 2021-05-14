@@ -58,8 +58,7 @@ namespace graph {
 
 class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
   // using DFSFinder = DFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
-  using DFSFinder =
-      TracedDFSEnumeratorWOPT<MockGraphProvider, VertexUniquenessLevel::PATH>;
+  using DFSFinder = TracedDFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
 
  protected:
   bool activateLogging{false};
@@ -164,8 +163,10 @@ class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEn
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> DFSFinder {
     arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth};
-    return DFSFinder{MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), false),
-                     std::move(options), resourceMonitor};
+    return DFSFinder({*_query.get(),
+                      MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
+                      resourceMonitor},
+                     std::move(options), resourceMonitor);
   }
 
   auto vId(size_t nr) -> std::string {

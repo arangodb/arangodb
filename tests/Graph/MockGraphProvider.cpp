@@ -74,11 +74,11 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
 
 MockGraphProvider::Step::~Step() {}
 
-MockGraphProvider::MockGraphProvider(MockGraph const& data,
-                                     arangodb::aql::QueryContext& queryContext,
-                                     LooseEndBehaviour looseEnds, bool reverse)
-    : _trx(queryContext.newTrxContext()), _reverse(reverse), _looseEnds(looseEnds), _stats{} {
-  for (auto const& it : data.edges()) {
+MockGraphProvider::MockGraphProvider(arangodb::aql::QueryContext& queryContext,
+                                     MockGraphProviderOptions opts,
+                                     arangodb::ResourceMonitor&)
+    : _trx(queryContext.newTrxContext()), _reverse(opts.reverse()), _looseEnds(opts.looseEnds()), _stats{} {
+  for (auto const& it : opts.data().edges()) {
     _fromIndex[it._from].push_back(it);
     _toIndex[it._to].push_back(it);
   }
