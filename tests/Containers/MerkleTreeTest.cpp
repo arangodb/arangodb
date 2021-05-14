@@ -492,19 +492,6 @@ TEST(MerkleTreeTest, test_tree_based_on_2020_hlcs) {
   ASSERT_EQ(rangeMin, left);
   ASSERT_EQ(rangeMax, right);
 
-  // this insert must be rejected
-  try {
-    tree.insert(rangeMin - 1);
-    ASSERT_FALSE(true);
-  } catch (std::out_of_range const&) {}
-  
-  ASSERT_EQ(0, tree.count());
-  ASSERT_EQ(0, tree.rootValue());
-  
-  std::tie(left, right) = tree.range();
-  ASSERT_EQ(rangeMin, left);
-  ASSERT_EQ(rangeMax, right);
-
   for (std::uint64_t i = rangeMin; i < rangeMin + 10000; ++i) {
     tree.insert(i);
   }
