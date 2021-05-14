@@ -1881,34 +1881,42 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
             (responses[i].get().response->statusCode() == fuerte::StatusAccepted ||
              responses[i].get().response->statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
-          auto const& followerInfo = collection->followers();
-          res = followerInfo->remove((*followers)[i]);
-          if (res.ok()) {
-            _state->removeKnownServer((*followers)[i]);
-            LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
+          if (!vocbase().server().isStopping()) {
+            auto const& followerInfo = collection->followers();
+            res = followerInfo->remove((*followers)[i]);
+            if (res.ok()) {
+              _state->removeKnownServer((*followers)[i]);
+              LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
                 << "truncateLocal: dropped follower " << (*followers)[i]
                 << " for shard " << collectionName;
-          } else {
-            LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
+            } else {
+              LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collectionName << ": " << res.errorMessage();
-            // Note: it is safe here to exit the loop early. We are losing the leadership here.
-            // No matter what happens next, the Current entry in the agency is rewritten and
-            // thus replication is restarted from the new leader. There is no need to keep
-            // trying to drop followers at this point.
+              // Note: it is safe here to exit the loop early. We are losing the leadership here.
+              // No matter what happens next, the Current entry in the agency is rewritten and
+              // thus replication is restarted from the new leader. There is no need to keep
+              // trying to drop followers at this point.
 
-            if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-              // In this case, we know that we are not or no longer
-              // the leader for this shard. Therefore we need to
-              // send a code which let's the coordinator retry.
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-            } else {
-              // In this case, some other error occurred and we
-              // most likely are still the proper leader, so
-              // the error needs to be reported and the local
-              // transaction must be rolled back.
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+                // In this case, we know that we are not or no longer
+                // the leader for this shard. Therefore we need to
+                // send a code which let's the coordinator retry.
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+              } else {
+                // In this case, some other error occurred and we
+                // most likely are still the proper leader, so
+                // the error needs to be reported and the local
+                // transaction must be rolled back.
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              }
             }
+          } else {
+            LOG_TOPIC("cb953", DEBUG, Logger::REPLICATION)
+              << "truncateLocal: shutting down and not replicating " << (*followers)[i]
+              << " for shard " << collection->vocbase().name() << "/" << collection->name()
+              << ": " << res.errorMessage();
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
           }
         }
       }
@@ -2451,48 +2459,57 @@ Future<Result> Methods::replicateOperations(
       }
 
       if (!replicationWorked) {
-        ServerID const& deadFollower = (*followerList)[i];
-        LOG_TOPIC("20f31", INFO, Logger::REPLICATION)
+        if (!vocbase().server().isStopping()) {
+          ServerID const& deadFollower = (*followerList)[i];
+          LOG_TOPIC("20f31", INFO, Logger::REPLICATION)
             << "synchronous replication: dropping follower "
             << deadFollower << " for shard " << collection->name()
             << ", status code: " << static_cast<int>(resp.statusCode())
             << ", message: " << network::fuerteToArangoErrorMessage(resp);
 
-        Result res = collection->followers()->remove(deadFollower);
-        if (res.ok()) {
-          _state->removeKnownServer(deadFollower);
-          LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
+          Result res = collection->followers()->remove(deadFollower);
+          if (res.ok()) {
+            _state->removeKnownServer(deadFollower);
+            LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
               << "synchronous replication: dropped follower "
               << deadFollower << " for shard " << collection->name()
               << " in database " << collection->vocbase().name();
-          LOG_TOPIC("a4c06", WARN, Logger::DEVEL)
+            LOG_TOPIC("a4c06", WARN, Logger::DEVEL)
               << "synchronous replication: dropped follower "
               << deadFollower << " for shard " << collection->name()
               << " in database " << collection->vocbase().name()
               << ": " << resp.combinedResult().errorMessage();
-        } else {
-          LOG_TOPIC("db473", ERR, Logger::REPLICATION)
+          } else {
+            LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
               << deadFollower << " for shard " << collection->name()
               << " in database " << collection->vocbase().name()
               << ": " << res.errorMessage();
-          // Note: it is safe here to exit the loop early. We are losing the leadership here.
-          // No matter what happens next, the Current entry in the agency is rewritten and
-          // thus replication is restarted from the new leader. There is no need to keep
-          // trying to drop followers at this point.
+            // Note: it is safe here to exit the loop early. We are losing the leadership here.
+            // No matter what happens next, the Current entry in the agency is rewritten and
+            // thus replication is restarted from the new leader. There is no need to keep
+            // trying to drop followers at this point.
 
-          if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-            // In this case, we know that we are not or no longer
-            // the leader for this shard. Therefore we need to
-            // send a code which let's the coordinator retry.
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-          } else {
-            // In this case, some other error occurred and we
-            // most likely are still the proper leader, so
-            // the error needs to be reported and the local
-            // transaction must be rolled back.
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+            if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+              // In this case, we know that we are not or no longer
+              // the leader for this shard. Therefore we need to
+              // send a code which let's the coordinator retry.
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+            } else {
+              // In this case, some other error occurred and we
+              // most likely are still the proper leader, so
+              // the error needs to be reported and the local
+              // transaction must be rolled back.
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+            }
           }
+        } else {
+          LOG_TOPIC("8921e", DEBUG, Logger::REPLICATION)
+            << "synchronous replication of " << opName << " operation: "
+            << "follower " << follower << " for shard "
+            << collection->vocbase().name() << "/" << collection->name()
+            << " stopped as we're shutting down";
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
         }
       }
     }
