@@ -1,9 +1,13 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixes BTS-416. During shutdown, a Shard leader wrongly reported that
+  it could not drop a shard follower instead of correctly indicating
+  the shutdown as reason.   
+
 * Fixes pregel lifetime management. Previously shutting down the server while a
   pregel job was still running could result in a segfault or a shutdown hanger.
-  
+
 * Improve error reporting for Merkle tree operations and improve memory usage
   for unused trees by hibernating them. In addition, add some backoff to shard
   synchronization in case there are repeated sync failures for the same shard.

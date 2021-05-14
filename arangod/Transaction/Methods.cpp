@@ -2449,18 +2449,28 @@ Future<Result> Methods::replicateOperations(
           resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         } else {
-          auto r = resp.combinedResult();
-          bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
-          didRefuse = didRefuse || followerRefused;
 
-          if (followerRefused) {
-            vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+          if (!vocbase().server().isStopping) {
+            auto r = resp.combinedResult();
+            bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+            didRefuse = didRefuse || followerRefused;
 
-            LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
+            if (followerRefused) {
+              vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+
+              LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
                 << "synchronous replication of " << opName << " operation: "
                 << "follower " << follower << " for shard "
                 << collection->vocbase().name() << "/" << collection->name()
                 << " refused the operation: " << r.errorMessage();
+            }
+          } else {
+            LOG_TOPIC("8921e", DEBUG, Logger::REPLICATION)
+              << "synchronous replication of " << opName << " operation: "
+              << "follower " << follower << " for shard "
+              << collection->vocbase().name() << "/" << collection->name()
+              << " stopped as we're shutting down: " << r.errorMessage();
+            return Result(TRI_ERROR_SHUTTING_DOWN)
           }
         }
       }
