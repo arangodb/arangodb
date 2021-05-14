@@ -40,8 +40,8 @@ namespace arangodb {
 namespace tests {
 namespace store_performance_test {
 
-auto const scattered_times{2};
-auto const hammer_times {5};
+auto const scattered_times{50};
+auto const hammer_times {200};
 
 
 class StorePerformanceTest : public ::testing::Test {
@@ -240,7 +240,7 @@ TEST_F(StorePerformanceTest, scattered_keys_wr) {
 
 TEST_F(StorePerformanceTest, scattered_keys_wwr) {
   std::vector<std::string> keys;
-  std::generate_n(std::back_inserter(keys), scattered_times, [](){ return rand_path(); });
+  std::generate_n(std::back_inserter(keys), scattered_times, [](){ return rand_path(20); });
   for (auto const& key: keys) {
     auto const json_object {"{\"" + key + "\": 1}"};
     auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
@@ -393,11 +393,29 @@ TEST_F(StorePerformanceTest, tree_add_remove_readd) {
 // test for contention:
 // multiple threads manipulate values
 TEST_F(StorePerformanceTest, multiple_threads_all_separate_keys) {
-  FAIL();
+  std::vector<std::thread> threads;
+  std::generate_n(std::back_inserter(threads), hammer_times, [this](){return std::thread([this](){
+    auto const key {rand_path()};
+    auto const json_object {"{\"" + key + "\": " + std::to_string(rand()) + "}"};
+    auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
+    ASSERT_EQ(result.front(), consensus::apply_ret_t::APPLIED);
+  });});
+  for (auto& thread: threads) {
+    thread.join();
+  }
 }
 
 TEST_F(StorePerformanceTest, multiple_threads_high_concurrence) {
-  FAIL();
+  std::vector<std::thread> threads;
+  std::generate_n(std::back_inserter(threads), hammer_times, [this](){return std::thread([this](){
+    std::string const key {"k" + std::to_string(rand() %3)};
+    auto const json_object {"{\"" + key + "\": " + std::to_string(rand()) + "}"};
+    auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
+    ASSERT_EQ(result.front(), consensus::apply_ret_t::APPLIED);
+  });});
+  for (auto& thread: threads) {
+    thread.join();
+  }
 }
 
 }  // namespace store_performance_test
