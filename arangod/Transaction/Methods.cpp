@@ -2456,7 +2456,7 @@ Future<Result> Methods::replicateOperations(
           replicationWorked = !found;
         } else {
 
-          if (!vocbase().server().isStopping) {
+          if (!vocbase().server().isStopping()) {
             auto r = resp.combinedResult();
             bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
             didRefuse = didRefuse || followerRefused;
