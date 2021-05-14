@@ -1912,7 +1912,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
               }
             }
           } else {
-            LOG_TOPIC("cb953", DEBUG, Logger::REPLICATION)
+            LOG_TOPIC("cb953", INFO, Logger::REPLICATION)
               << "truncateLocal: shutting down and not replicating " << (*followers)[i]
               << " for shard " << collection->vocbase().name() << "/" << collection->name()
               << ": " << res.errorMessage();
@@ -2504,7 +2504,7 @@ Future<Result> Methods::replicateOperations(
             }
           }
         } else {
-          LOG_TOPIC("8921e", DEBUG, Logger::REPLICATION)
+          LOG_TOPIC("8921e", INFO, Logger::REPLICATION)
             << "synchronous replication of " << opName << " operation: "
             << "follower " << follower << " for shard "
             << collection->vocbase().name() << "/" << collection->name()
