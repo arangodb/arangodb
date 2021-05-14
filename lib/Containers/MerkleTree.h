@@ -54,6 +54,51 @@ template <typename Hasher,
           std::uint64_t const BranchingBits = 3  // 8 children per internal node,
           >
 class MerkleTree {
+  // A MerkleTree has three parameters which define its semantics:
+  //  - rangeMin: lower bound (inclusive) for _rev values it can take
+  //  - rangeMax: upper bound (exclusive) for _rev values it can take
+  //  - maxDepth: depth of the tree (root plus so many levels below)
+  // We call rangeMin-rangeMax the "width" of the tree.
+  //
+  // We do no longer grow trees in depth, since this would mean a complete
+  // rehash or a large growth of width, which can lead to integer overflow,
+  // which we must avoid.
+  //
+  // However, we do grow the width of a tree as needed. Originally, we
+  // only grew to the right and rangeMin was constant over the lifetime
+  // of the tree. This turned out to be not good enough, since we cannot
+  // estimate the smallest _rev value a collection will ever receive
+  // (for example, in DC2DC we might need to replicate old data into a
+  // newly created collection). Therefore, we can now also grow the width
+  // to the left by decreasing rangeMin.
+  //
+  // Unfortunately, we can only compare two different MerkleTrees, if
+  // the difference of their rangeMin values is a multiple of the number
+  // of _rev values in a leaf node, which is 
+  //   (rangeMax-rangeMin)/(BranchingFactor^maxDepth),
+  // since BranchingFactor^maxDepth is the number of leaves. Therefore
+  // we must ensure that trees of replicas of shards which we must be
+  // able to compare, remain compatible. Therefore, we pick a magic
+  // constant M as the initial value of rangeMin, which is the same for
+  // all replicas of a shard, and then maintain the following invariants
+  // at all times, for all changes to rangeMin and rangeMax we ever do:
+  //
+  // 1. rangeMax-rangeMin is a power of two and is a multiple of
+  //    the number of leaves in the tree, which is BranchingFactor^maxDepth
+  //    That is, we can only ever grow the width by factors of 2.
+  // 2. M - rangeMin is divisible by 
+  //      (rangeMax-rangeMin)/(BranchingFactor^maxDepth)
+  //
+  // Condition 1. ensures that each leaf is responsible for the same
+  // number of _rev values and that we can always grow rangeMax-rangeMin
+  // by a factor of 2 without having to rehash everything.
+  // Condition 2. ensures that two trees which have started with the same
+  // magic M and have the same width are comparable, since the difference 
+  // of their rangeMin values will always be divisible by the number
+  // given in Condition 2.
+  //
+  // See methods growLeft and growRight for an explanation how we keep
+  // these invariants in place on growth.
  protected:
   static constexpr std::uint64_t CacheLineSize =
       64;  // TODO replace with std::hardware_constructive_interference_size
@@ -76,15 +121,15 @@ class MerkleTree {
     std::uint64_t rangeMin;
     std::uint64_t rangeMax;
     std::uint64_t maxDepth;
+    std::uint64_t initialRangeMin;
   };
-  static_assert(sizeof(Meta) == 24, "Meta size assumptions invalid.");
+  static_assert(sizeof(Meta) == 32, "Meta size assumptions invalid.");
   static constexpr std::uint64_t MetaSize =
       (CacheLineSize * ((sizeof(Meta) + (CacheLineSize - 1)) / CacheLineSize));
 
   static constexpr std::uint64_t nodeCountUpToDepth(std::uint64_t maxDepth) noexcept;
+  static constexpr std::uint64_t nodeCountAboveDepth(std::uint64_t depth) noexcept;
   static constexpr std::uint64_t allocationSize(std::uint64_t maxDepth) noexcept;
-  static constexpr std::uint64_t log2ceil(std::uint64_t n) noexcept;
-  static constexpr std::uint64_t minimumFactorFor(std::uint64_t current, std::uint64_t target);
 
  public:
   /**
@@ -153,19 +198,20 @@ class MerkleTree {
    * @param maxDepth The depth of the tree. This determines how much memory The
    *                 tree will consume, and how fine-grained the hash is.
    *                 Constructor will throw if a value less than 2 is specified.
-   * @param rangeMin The minimum key that can be stored in the tree over its
-   *                 lifetime. An attempt to insert a smaller key will result
-   *                 in an exception.
-   * @param rangeMax Must be an offset from rangeMin of a multiple of the number
-   *                 of leaf nodes. If 0, it will be  chosen using the
+   * @param rangeMin The minimum key that can be stored in the tree.
+   *                 An attempt to insert a smaller key will result
+   *                 in a growLeft. See above (magic constant M) for a
+   *                 sensible choice of initial rangeMin.
+   * @param rangeMax Must be an offset from rangeMin of a multiple of the
+   *                 number of leaf nodes. If 0, it will be  chosen using the
    *                 defaultRange method. This is just an initial value to
    *                 prevent immediate resizing; if a key larger than rangeMax
    *                 is inserted into the tree, it will be dynamically resized
    *                 so that a larger rangeMax is chosen, and adjacent nodes
-   *                 merged as necessary.
+   *                 merged as necessary (growRight).
    * @throws std::invalid_argument  If maxDepth is less than 2
    */
-  MerkleTree(std::uint64_t maxDepth, std::uint64_t rangeMin, std::uint64_t rangeMax = 0);
+  MerkleTree(std::uint64_t maxDepth, std::uint64_t rangeMin, std::uint64_t rangeMax = 0, std::uint64_t initialRangeMin = 0);
 
   ~MerkleTree();
 
@@ -255,20 +301,8 @@ class MerkleTree {
   std::unique_ptr<MerkleTree<Hasher, BranchingBits>> clone();
 
   /**
-   * @brief Clone the tree with the given depth
-   *
-   * Will return a new copy of the tree, with the specified depth. If the new
-   * depth is the same as the old, this is equivalent to clone(). If the new
-   * depth is less than the old depth, this simply truncates the tree. If the
-   * new depth is greater than the old depth, then the rangeMax will also be
-   * increased.
-   *
-   * @param newDepth  Max depth to use for new tree
-   */
-  std::unique_ptr<MerkleTree<Hasher, BranchingBits>> cloneWithDepth(std::uint64_t newDepth) const;
-
-  /**
-   * @brief Find the ranges of keys over which two trees differ.
+   * @brief Find the ranges of keys over which two trees differ. Currently,
+   * only trees of the same depth can be diffed.
    *
    * @param other The other tree to compare
    * @return  Vector of (inclusive) ranges of keys over which trees differ
@@ -303,18 +337,6 @@ class MerkleTree {
   void serializeBinary(std::string& output, bool compress) const;
 
   /**
-   * @brief Provides a partition of the keyspace
-   *
-   * Makes best effort attempt to ensure the partitions are as even as possible.
-   * That is, to the granularity allowed, it will try to ensure that the number
-   * of keys in each partition is roughly the same.
-   *
-   * @param count The number of partitions to return
-   * @return Vector of (inclusive) ranges that partiion the keyspace
-   */
-  std::vector<std::pair<std::uint64_t, std::uint64_t>> partitionKeys(std::uint64_t count) const;
-  
-  /**
    * @brief Checks the consistency of the tree
    *
    * If any inconsistency is found, this function will throw
@@ -339,8 +361,13 @@ class MerkleTree {
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
   bool modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert);
+  void completeFromDeepest() noexcept;
   void leftCombine(std::uint64_t factor) noexcept;
-  void grow(std::uint64_t key);
+  void rightCombine(std::uint64_t factor) noexcept;
+  void leftCombine2(bool withShift) noexcept;
+  void rightCombine2(bool withShift) noexcept;
+  void growLeft(std::uint64_t key);
+  void growRight(std::uint64_t key);
   bool equalAtIndex(MerkleTree<Hasher, BranchingBits> const& other,
                     std::uint64_t index) const noexcept;
   bool childrenAreLeaves(std::uint64_t index) const noexcept;
@@ -351,8 +378,8 @@ class MerkleTree {
   /**
    * @brief Checks the min and max keys for an insert
    *
-   * If minKey < rangeMin, this will throw an exception.
-   * If maxKey >= rangeMax, this will grow the tree
+   * If minKey < rangeMin, this will grow the tree to the left
+   * If maxKey >= rangeMax, this will grow the tree to the right
    *
    * @param guard Lock guard (already locked)
    * @param minKey Minimum key to insert
