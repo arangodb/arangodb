@@ -57,8 +57,9 @@ namespace tests {
 namespace graph {
 
 class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
-  // using DFSFinder = DFSEnumerator<MockGraphProvider>;
-  using DFSFinder = TracedDFSEnumeratorWOPT<MockGraphProvider>;
+  // using DFSFinder = DFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
+  using DFSFinder =
+      TracedDFSEnumeratorWOPT<MockGraphProvider, VertexUniquenessLevel::PATH>;
 
  protected:
   bool activateLogging{false};
@@ -326,7 +327,6 @@ TEST_P(DFSFinderTest, path_depth_1) {
     auto hasPath = finder.getNextPath();
     EXPECT_TRUE(hasPath);
     hasPath->toVelocyPack(result);
-
 
     pathStructureValid(result.slice(), 1);
     pathEquals(result.slice(), {1, 2});
