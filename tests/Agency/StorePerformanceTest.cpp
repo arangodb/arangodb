@@ -339,7 +339,7 @@ TEST_F(StorePerformanceTest, bigger_tx_w) {
 TEST_F(StorePerformanceTest, array_push) {
   writeAndCheck(R"([[{"/a/b/c":[]}]])");
   for (int i{}; i < hammer_times; ++i) {
-    writeAndCheck(R"([[{"/a/b/c":{"op":"push","new":)" + std::to_string(i) + "}}]])");
+    writeAndCheck(R"([[{"/a/b/c":{"op":"push","new":)" + std::to_string(i) + "}}]]");
   }
 }
 
@@ -349,7 +349,7 @@ TEST_F(StorePerformanceTest, array_pop) {
   for (int i{1}; i < hammer_times; ++i) {
     ss << "," << i;
   }
-  ss << "]}]])";
+  ss << "]}]]";
   writeAndCheck(ss.str());
   for (int i{}; i < hammer_times; ++i) {
     writeAndCheck(R"([[{"/a/b/c":{"op":"pop"}}]])");
@@ -361,22 +361,33 @@ TEST_F(StorePerformanceTest, array_pop) {
 // test operations which need to change a lot in the tree
 // add in ascending order
 TEST_F(StorePerformanceTest, tree_add_ascending) {
-  FAIL();
+  auto const width {log10(hammer_times)};
+  for (int i{}; i < hammer_times; ++i) {
+    auto k {std::to_string(i)};
+    k = std::string(width - k.size(), '0') + k;
+    write("[[{\"k"+k+"\": 42}]]");
+  }
 }
 
 // add in descending order
 TEST_F(StorePerformanceTest, tree_add_descending) {
-  FAIL();
-}
-
-// add scattered
-TEST_F(StorePerformanceTest, tree_add_scattered) {
-  FAIL();
+  auto const width {log10(hammer_times)};
+  for (int i{hammer_times}; i > 0; --i) {
+    auto k {std::to_string(i)};
+    k = std::string(width - k.size(), '0') + k;
+    write("[[{\"k"+k+"\": 42}]]");
+  }
 }
 
 // add ascending, remove root, then re-add
 TEST_F(StorePerformanceTest, tree_add_remove_readd) {
-  FAIL();
+  auto const width {log10(hammer_times)};
+  for (int i{}; i < hammer_times; ++i) {
+    auto k {std::to_string(i)};
+    k = std::string(width - k.size(), '0') + k;
+    write("[[{\"/t/k"+k+"\": 42}]]");
+  }
+  write("[[{\"/t\": 0}]]");
 }
 
 // test for contention:
