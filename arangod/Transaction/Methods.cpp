@@ -2518,7 +2518,7 @@ Future<Result> Methods::replicateOperations(
             << "follower " << follower << " for shard "
             << collection->vocbase().name() << "/" << collection->name()
             << " stopped as we're shutting down";
-          return Result(TRI_ERROR_SHUTTING_DOWN);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
         }
       }
     }
