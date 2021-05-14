@@ -1660,7 +1660,8 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto res = pregel::PregelFeature::startExecution(vocbase, algorithm, paramVertices,
+  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
+  auto res = pregel.startExecution(vocbase, algorithm, paramVertices,
                                                    paramEdges, paramEdgeCollectionRestrictions,
                                                    paramBuilder.slice());
   if (res.first.fail()) {
@@ -1684,13 +1685,14 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
   }
 
-  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
-  if (feature == nullptr) {
+  auto& vocbase = GetContextVocBase(isolate);
+  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
+  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
 
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
-  auto c = feature->conductor(executionNum);
+  auto c = pregel.conductor(executionNum);
   if (!c) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
                                    "Execution number is invalid");
@@ -1712,13 +1714,14 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelCancel(<executionNum>)");
   }
 
-  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
-  if (feature == nullptr) {
+  auto& vocbase = GetContextVocBase(isolate);
+  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
+  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
 
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
-  auto c = feature->conductor(executionNum);
+  auto c = pregel.conductor(executionNum);
   if (!c) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
                                    "Execution number is invalid");
@@ -1745,14 +1748,15 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
     withId = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
-  std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
-  if (feature == nullptr) {
+  auto& vocbase = GetContextVocBase(isolate);
+  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
+  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
 
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
-    auto c = feature->conductor(executionNum);
+    auto c = pregel.conductor(executionNum);
     if (!c) {
       TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
     }
