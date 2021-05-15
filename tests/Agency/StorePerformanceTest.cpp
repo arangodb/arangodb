@@ -35,6 +35,11 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <chrono>
+#include <vector>
+#include <string>
+#include <string_view>
+#include <functional>
 
 namespace arangodb {
 namespace tests {
@@ -43,6 +48,76 @@ namespace store_performance_test {
 auto const scattered_times{50};
 auto const hammer_times {200};
 
+struct OperationMeasurement 
+{
+  using Clock = std::chrono::high_resolution_clock;
+  using Duration = Clock::duration;
+  using DurationIterator = std::vector<Duration>::iterator;
+  using StatExtractor = std::function<Duration(DurationIterator,DurationIterator)>;
+  using Observation = Clock::time_point;
+  using Observations = std::vector<Observation>;
+  
+  OperationMeasurement(size_t expected_count = 0u) {
+    observations_.reserve(expected_count + 2);
+    ++*this;
+  }
+
+  ~OperationMeasurement() {
+    stop();
+  }
+
+  void stop() {
+    if (!stopped_) {
+      ++*this;
+      stopped_ = true;
+    }
+  }
+
+  OperationMeasurement(OperationMeasurement const&) = delete;
+  OperationMeasurement(OperationMeasurement&) = delete;
+  OperationMeasurement(OperationMeasurement&&) = delete;
+
+  OperationMeasurement& operator++() {
+    observations_.push_back(Clock::now());
+    return *this;
+  }
+
+  void report() 
+  {
+    static std::array<std::pair<std::string_view, StatExtractor>, 4> duration_stats = {{
+      {"max", [](DurationIterator begin, DurationIterator end) { return *std::max_element(begin,end); }},
+      {"min", [](DurationIterator begin, DurationIterator end) { return *std::min_element(begin,end); }},
+      {"avg", [](DurationIterator begin, DurationIterator end) { 
+        if (begin == end) { return Duration::zero(); }
+        return std::accumulate(begin, end, OperationMeasurement::Clock::duration::zero()) / std::distance(begin, end);
+      }},
+      {"med", [](DurationIterator begin, DurationIterator end) { 
+        if (begin == end) { return OperationMeasurement::Clock::duration::zero(); }
+        std::vector<Duration> copy {begin, end};
+        std::sort(copy.begin(), copy.end());
+        return copy[copy.size() / 2];
+      }},
+    }};
+
+    stop();
+    std::vector<OperationMeasurement::Clock::duration> durations;
+    auto begin{observations_.begin()};
+    auto from {*begin};
+    std::transform(++begin, observations_.end(), std::back_inserter(durations), [&from](auto const point){ 
+      auto d {point - from};
+      from = point;
+      return d;
+    });
+
+    for (auto const& stat: duration_stats) {
+      std::cout << stat.first << ": " << stat.second(durations.begin(), durations.end()).count() << "ns" << std::endl;
+    }
+  }
+
+private:
+  Observations observations_;
+  bool stopped_{};
+};
 
 class StorePerformanceTest : public ::testing::Test {
  public:
@@ -173,11 +248,17 @@ class StorePerformanceTest : public ::testing::Test {
 //  Performance relative to depth.
 
 TEST_F(StorePerformanceTest, single_deep_key_writes) {
-  std::map<std::string, std::string> obj{};
-  for (int i{}; i < hammer_times; ++i) {
-    obj["a/b/c/d/e/f/g/h"] = std::to_string(i);
-    write(std::vector<std::vector<std::string>>{{to_json_object(obj)}});
+  std::vector<consensus::query_t> write_queries;
+  std::generate_n(std::back_inserter(write_queries), hammer_times, [](){
+    static int i{};
+    return VPackParser::fromJson("[[{\"a/b/c/d/e/f/g/h\":" + std::to_string(i++) + "}]]");
+  });
+  OperationMeasurement op{hammer_times};
+  for (auto const& q: write_queries) {
+    _store.applyTransactions(q);
+    ++op;
   }
+  op.report();
 }
 
 TEST_F(StorePerformanceTest, single_deep_key_writes_and_reads) {
