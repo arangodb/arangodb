@@ -37,17 +37,7 @@ DECLARE_GAUGE(arangodb_replication2_replicated_log_number, std::uint64_t,
 DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_rtt_ms,
                   AppendEntriesRttScale, "RTT for AppendEntries requests [ms]");
 
-auto ReplicatedLogMetrics::metricReplicatedLogNumber() -> Gauge<uint64_t>& {
-  return _replicated_log_number;
-}
-
-auto ReplicatedLogMetrics::metricReplicatedLogAppendEntriesRtt()
-    -> Histogram<log_scale_t<std::uint64_t>>& {
-  return _replicated_log_append_entries_rtt_ms;
-}
-
 ReplicatedLogMetrics::ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature)
-    : _replicated_log_number(
-          metricsFeature.add(arangodb_replication2_replicated_log_number{})),
-      _replicated_log_append_entries_rtt_ms(metricsFeature.add(
+    : replicatedLogNumber(metricsFeature.add(arangodb_replication2_replicated_log_number{})),
+      replicatedLogAppendEntriesRttMs(metricsFeature.add(
           arangodb_replication2_replicated_log_append_entries_rtt_ms{})) {}

@@ -40,12 +40,8 @@ namespace arangodb::replication2::replicated_log {
 struct ReplicatedLogMetrics {
   explicit ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature);
 
-  auto metricReplicatedLogNumber() -> Gauge<uint64_t>&;
-  auto metricReplicatedLogAppendEntriesRtt() -> Histogram<log_scale_t<std::uint64_t>>&;
-
- private:
-  Gauge<uint64_t>& _replicated_log_number;
-  Histogram<log_scale_t<std::uint64_t>>& _replicated_log_append_entries_rtt_ms;
+  Gauge<uint64_t>& replicatedLogNumber;
+  Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttMs;
 };
 
 }  // namespace arangodb::replication2::replicated_log
