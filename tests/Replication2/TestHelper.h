@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "ReplicatedLogMetricsMock.h"
+
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
@@ -184,10 +186,11 @@ struct ReplicatedLogTest : ::testing::Test {
 
   auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
     auto core = makeLogCore(id);
-    return std::make_shared<TestReplicatedLog>(std::move(core));
+    return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock);
   }
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
+  ReplicatedLogMetricsMock _logMetricsMock{{}};
 };
 
 

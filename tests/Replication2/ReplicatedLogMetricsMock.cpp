@@ -20,20 +20,21 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicatedLogMetrics.h"
+#include "ReplicatedLogMetricsMock.h"
 
-#include "Replication2/ReplicatedLogMetricsDeclarations.h"
-#include "RestServer/Metrics.h"
-#include "RestServer/MetricsFeature.h"
+using namespace arangodb;
 
-using namespace arangodb::replication2::replicated_log;
+template <typename T>
+auto buildMetric() {
+  return std::dynamic_pointer_cast<typename T::metric_t>(T{}.build());
+}
 
-ReplicatedLogMetrics::ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature)
-    : replicatedLogNumber(metricsFeature.add(arangodb_replication2_replicated_log_number{})),
-      replicatedLogAppendEntriesRttMs(metricsFeature.add(
-          arangodb_replication2_replicated_log_append_entries_rtt_ms{})) {}
+ReplicatedLogMetricsMock::ReplicatedLogMetricsMock(ReplicatedLogMetricsMockContainer&& metricsContainer)
+    : ReplicatedLogMetrics(*metricsContainer.replicatedLogNumber,
+                           *metricsContainer.replicatedLogAppendEntriesRttMs),
+      metricsContainer(std::move(metricsContainer)) {}
 
-ReplicatedLogMetrics::ReplicatedLogMetrics(Gauge<uint64_t>& replicatedLogNumber,
-                                           Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttMs)
-    : replicatedLogNumber(replicatedLogNumber),
-      replicatedLogAppendEntriesRttMs(replicatedLogAppendEntriesRttMs) {}
+ReplicatedLogMetricsMockContainer::ReplicatedLogMetricsMockContainer()
+    : replicatedLogNumber(buildMetric<arangodb_replication2_replicated_log_number>()),
+      replicatedLogAppendEntriesRttMs(
+          buildMetric<arangodb_replication2_replicated_log_append_entries_rtt_ms>()) {}

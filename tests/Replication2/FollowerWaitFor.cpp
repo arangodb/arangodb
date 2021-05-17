@@ -32,7 +32,7 @@ using namespace arangodb::replication2::replicated_log;
 struct FollowerWaitForTest : ReplicatedLogTest {
   auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<LogFollower> {
     auto core = makeLogCore(LogId{3});
-    auto log = std::make_shared<ReplicatedLog>(std::move(core));
+    auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock);
     return log->becomeFollower(std::move(id), term, std::move(leaderId));
   }
 };

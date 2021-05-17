@@ -20,20 +20,21 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicatedLogMetrics.h"
+#pragma once
 
-#include "Replication2/ReplicatedLogMetricsDeclarations.h"
-#include "RestServer/Metrics.h"
-#include "RestServer/MetricsFeature.h"
+#include <Replication2/ReplicatedLogMetrics.h>
+#include <Replication2/ReplicatedLogMetricsDeclarations.h>
 
-using namespace arangodb::replication2::replicated_log;
+struct ReplicatedLogMetricsMockContainer {
+  ReplicatedLogMetricsMockContainer();
 
-ReplicatedLogMetrics::ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature)
-    : replicatedLogNumber(metricsFeature.add(arangodb_replication2_replicated_log_number{})),
-      replicatedLogAppendEntriesRttMs(metricsFeature.add(
-          arangodb_replication2_replicated_log_append_entries_rtt_ms{})) {}
+  std::shared_ptr<Gauge<uint64_t>> replicatedLogNumber;
+  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> replicatedLogAppendEntriesRttMs;
+};
 
-ReplicatedLogMetrics::ReplicatedLogMetrics(Gauge<uint64_t>& replicatedLogNumber,
-                                           Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttMs)
-    : replicatedLogNumber(replicatedLogNumber),
-      replicatedLogAppendEntriesRttMs(replicatedLogAppendEntriesRttMs) {}
+struct ReplicatedLogMetricsMock
+    : arangodb::replication2::replicated_log::ReplicatedLogMetrics {
+  explicit ReplicatedLogMetricsMock(ReplicatedLogMetricsMockContainer&&);
+
+  ReplicatedLogMetricsMockContainer metricsContainer;
+};

@@ -24,6 +24,7 @@
 
 #include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
+#include "Replication2/ReplicatedLogMetrics.h"
 
 #include <iosfwd>
 #include <memory>
@@ -62,8 +63,7 @@ namespace arangodb::replication2::replicated_log {
  * atomically.
  */
 struct alignas(64) ReplicatedLog {
-  explicit ReplicatedLog(std::shared_ptr<LogParticipantI> participant);
-  explicit ReplicatedLog(std::unique_ptr<LogCore> core);
+  explicit ReplicatedLog(std::unique_ptr<LogCore> core, ReplicatedLogMetrics& metrics);
 
   ReplicatedLog() = delete;
   ReplicatedLog(ReplicatedLog const&) = delete;
@@ -85,7 +85,7 @@ struct alignas(64) ReplicatedLog {
   auto drop() -> std::unique_ptr<LogCore>;
 
   // TODO allow non-void return values
-  //template <typename F, std::enable_if_t<std::is_invocable_v<F, std::shared_ptr<LogLeader>>> = 0>
+  // template <typename F, std::enable_if_t<std::is_invocable_v<F, std::shared_ptr<LogLeader>>> = 0>
   template <typename F>
   void executeIfLeader(F&& f) {
     auto leaderPtr = std::dynamic_pointer_cast<LogLeader>(getParticipant());
@@ -96,12 +96,15 @@ struct alignas(64) ReplicatedLog {
 
   // TODO delete this again, it's a workaround
   bool isUnconfigured() const {
-    auto leaderPtr = std::dynamic_pointer_cast<LogUnconfiguredParticipant>(getParticipant());
+    auto leaderPtr =
+        std::dynamic_pointer_cast<LogUnconfiguredParticipant>(getParticipant());
     return leaderPtr != nullptr;
   }
+
  private:
   mutable std::mutex _mutex;
   std::shared_ptr<LogParticipantI> _participant;
+  ReplicatedLogMetrics& _metrics;
 };
 
 }  // namespace arangodb::replication2::replicated_log
