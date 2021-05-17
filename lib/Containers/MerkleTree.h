@@ -329,6 +329,18 @@ class MerkleTree {
                  std::uint64_t maxDepth = std::numeric_limits<std::uint64_t>::max()) const;
 
   /**
+   * @brief Provides a partition of the keyspace
+   *
+   * Makes best effort attempt to ensure the partitions are as even as possible.
+   * That is, to the granularity allowed, it will try to ensure that the number
+   * of keys in each partition is roughly the same.
+   *
+   * @param count The number of partitions to return
+   * @return Vector of (inclusive) ranges that partiion the keyspace
+   */
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> partitionKeys(std::uint64_t count) const;
+  
+  /**
    * @brief Serialize the tree for transport or storage in binary format
    *
    * @param output    String for output
