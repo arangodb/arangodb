@@ -39,7 +39,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
   auto follower = std::make_shared<DelayedFollowerLog>(followerId, std::move(coreB),
                                                        LogTerm{1}, leaderId);
-  auto leader = LogLeader::construct(leaderId, std::move(coreA), LogTerm{1},
+  auto leader = LogLeader::construct(LogContext(Logger::REPLICATION2), leaderId, std::move(coreA), LogTerm{1},
                            std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
 
   {
@@ -178,7 +178,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto follower = std::make_shared<DelayedFollowerLog>(followerId, std::move(coreB),
                                                        LogTerm{3}, leaderId);
   auto leader =
-      LogLeader::construct(leaderId, std::move(coreA), LogTerm{3},
+      LogLeader::construct(defaultLogger(), leaderId, std::move(coreA), LogTerm{3},
                            std::vector<std::shared_ptr<AbstractFollower>>{follower}, 1);
 
   {
@@ -257,7 +257,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
                                                          LogTerm{1}, leaderId);
   // create leader with write concern 2
   auto leader =
-      LogLeader::construct(leaderId, std::move(coreA), LogTerm{1},
+      LogLeader::construct(defaultLogger(), leaderId, std::move(coreA), LogTerm{1},
                            std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2},
                            3);
 

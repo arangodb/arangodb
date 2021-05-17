@@ -122,44 +122,6 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
   }
 }
 
-TEST_F(LeaderAppendEntriesTest, outdated_response) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeFollower>("follower");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
-
-  {
-    auto idx = leader->insert(LogPayload{"first entry"});
-    ASSERT_EQ(idx, LogIndex{1});
-  }
-
-  leader->runAsyncStep();
-  ASSERT_TRUE(follower->hasPendingRequests());
-  {
-    auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
-    EXPECT_EQ(req.entries.size(), 1);
-    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
-    EXPECT_EQ(req.prevLogTerm, LogTerm{0});
-    EXPECT_EQ(req.prevLogIndex, LogIndex{0});
-    EXPECT_EQ(req.leaderTerm, LogTerm{4});
-    EXPECT_EQ(req.leaderCommit, LogIndex{0});
-  }
-
-  {
-    auto result = AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
-                                      AppendEntriesErrorReason::NONE,
-                                      MessageId{0}};
-    follower->resolveRequest(std::move(result));
-  }
-
-  {
-    auto stats = std::get<LeaderStatus>(leader->getStatus());
-    EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
-  }
-  // expect retry
-  ASSERT_TRUE(follower->hasPendingRequests());
-}
-
 TEST_F(LeaderAppendEntriesTest, response_exception) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");

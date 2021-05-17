@@ -26,6 +26,8 @@
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLogMetrics.h"
 
+#include "Replication2/LogContext.h"
+
 #include <iosfwd>
 #include <memory>
 #include <mutex>
@@ -102,6 +104,7 @@ struct alignas(64) ReplicatedLog {
   }
 
  private:
+  LogContext const _logContext = LogContext(Logger::REPLICATION2);
   mutable std::mutex _mutex;
   std::shared_ptr<LogParticipantI> _participant;
   ReplicatedLogMetrics& _metrics;

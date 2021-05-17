@@ -67,6 +67,10 @@ struct MessageId : implement_compare<MessageId> {
     ++id.value;
     return id;
   }
+
+  friend auto operator<<(std::ostream& os, MessageId id) -> std::ostream& {
+    return os << id.value;
+  }
 };
 
 

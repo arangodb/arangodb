@@ -189,6 +189,10 @@ struct ReplicatedLogTest : ::testing::Test {
     return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock);
   }
 
+  auto defaultLogger() {
+    return LogContext(Logger::REPLICATION2);
+  }
+
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
   ReplicatedLogMetricsMock _logMetricsMock{{}};
 };

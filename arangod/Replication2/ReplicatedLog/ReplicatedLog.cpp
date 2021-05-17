@@ -55,7 +55,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     // TODO Resign: will resolve some promises because leader resigned
     //      those promises will call ReplicatedLog::getLeader() -> DEADLOCK
     auto logCore = std::move(*_participant).resign();
-    leader = LogLeader::construct(std::move(id), std::move(logCore), term,
+    leader = LogLeader::construct(_logContext, std::move(id), std::move(logCore), term,
                                   follower, writeConcern);
     _participant = std::static_pointer_cast<LogParticipantI>(leader);
   }

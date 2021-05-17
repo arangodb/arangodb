@@ -2332,11 +2332,11 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       view->open();
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: " << ex.what();
     throw;
   } catch (...) {
-    LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("593fd", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: unknown exception";
     throw;
   }

@@ -46,7 +46,8 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries) {
     coreA = std::make_unique<LogCore>(leaderLog);
   }
 
-  auto leader = LogLeader::construct("leader", std::move(coreA), LogTerm{3}, {}, 1);
+  auto leader = LogLeader::construct(defaultLogger(), "leader",
+                                     std::move(coreA), LogTerm{3}, {}, 1);
   leader->runAsyncStep();
   {
     auto fut = leader->waitForIterator(LogIndex{2});
@@ -85,7 +86,8 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
     coreA = std::make_unique<LogCore>(leaderLog);
   }
 
-  auto leader = LogLeader::construct("leader", std::move(coreA), LogTerm{3}, {}, 1);
+  auto leader = LogLeader::construct(defaultLogger(), "leader",
+                                     std::move(coreA), LogTerm{3}, {}, 1);
   leader->runAsyncStep();
 
   auto fut = leader->waitForIterator(LogIndex{4});
@@ -131,7 +133,8 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
   auto coreB = makeLogCore(LogId{2});
   auto follower = std::make_shared<DelayedFollowerLog>("follower", std::move(coreB),
                                                        LogTerm{3}, "leader");
-  auto leader = LogLeader::construct("leader", std::move(coreA), LogTerm{3}, {follower}, 2);
+  auto leader = LogLeader::construct(defaultLogger(), "leader", std::move(coreA),
+                                     LogTerm{3}, {follower}, 2);
   leader->runAsyncStep();
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();

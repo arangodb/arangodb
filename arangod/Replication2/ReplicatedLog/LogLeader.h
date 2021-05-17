@@ -27,6 +27,8 @@
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/types.h"
 
+#include "Replication2/LogContext.h"
+
 #include <Basics/Guarded.h>
 
 #include <cstddef>
@@ -68,7 +70,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
  public:
   ~LogLeader() override;
 
-  static auto construct(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+  static auto construct(const LogContext& logContext, ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
                         std::vector<std::shared_ptr<AbstractFollower>> const& followers,
                         std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
 
@@ -92,7 +94,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
  protected:
   // Use the named constructor construct() to create a leader!
-  LogLeader(ParticipantId id, LogTerm term, std::size_t writeConcern, InMemoryLog inMemoryLog);
+  LogLeader(LogContext logContext, ParticipantId id, LogTerm term,
+            std::size_t writeConcern, InMemoryLog inMemoryLog);
 
  private:
   struct GuardedLeaderData;
@@ -100,8 +103,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   using ConstGuard = MutexGuard<GuardedLeaderData const, std::unique_lock<std::mutex>>;
 
   struct alignas(64) FollowerInfo {
-    explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl, LogIndex lastLogIndex)
-        : _impl(std::move(impl)), lastAckedIndex(lastLogIndex) {}
+    explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl, LogIndex lastLogIndex, LogContext logContext);
 
     std::chrono::steady_clock::duration _lastRequestLatency;
     std::shared_ptr<AbstractFollower> _impl;
@@ -110,11 +112,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     MessageId lastSendMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
+    LogContext const logContext;
     bool requestInFlight = false;
   };
 
   struct LocalFollower final : AbstractFollower {
-    LocalFollower(LogLeader& self, std::unique_ptr<LogCore> logCore);
+    LocalFollower(LogLeader& self, LogContext logContext, std::unique_ptr<LogCore> logCore);
     ~LocalFollower() override = default;
 
     LocalFollower(LocalFollower const&) = delete;
@@ -130,6 +133,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
    private:
     LogLeader& _self;
+    LogContext const _logContext;
     Guarded<std::unique_ptr<LogCore>> _guardedLogCore;
   };
 
@@ -167,7 +171,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     [[nodiscard]] auto handleAppendEntriesResponse(
         std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
         LogIndex lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
-        futures::Try<AppendEntriesResult>&& res, std::chrono::steady_clock::duration latency)
+        futures::Try<AppendEntriesResult>&& res, std::chrono::steady_clock::duration latency,
+        MessageId messageId)
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet>;
 
     [[nodiscard]] auto checkCommitIndex(std::weak_ptr<LogLeader> const& parentLog)
@@ -190,6 +195,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     bool _didResign{false};
   };
 
+  LogContext const _logContext;
   ParticipantId const _participantId;
   LogTerm const _currentTerm;
   std::size_t const _writeConcern;
@@ -199,8 +205,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
-
-  static auto instantiateFollowers(std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+  static auto instantiateFollowers(LogContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                                    std::shared_ptr<LocalFollower> const& localFollower,
                                    LogIndex lastIndex) -> std::vector<FollowerInfo>;
 
