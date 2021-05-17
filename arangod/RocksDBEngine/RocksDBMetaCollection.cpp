@@ -1146,7 +1146,24 @@ bool RocksDBMetaCollection::haveBufferedOperations() const {
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRevisionTree(std::size_t depth) const {
-  return std::make_unique<containers::RevisionTree>(depth, _logicalCollection.minRevision().id());
+  // determine the minimum revision id for the collection.
+  // for smart edge collection children collections, the _rev values are determined
+  // via the agency's uniqid() function. they can be anything, so we need to assume
+  // 0 as the lower bound.
+  // for other collections, it is mostly safe safe to assume that there will be no 
+  // data inserted with non-recent revisions. So a minRevision id that is relatively
+  // recent (HLC value from January 2020) will mostly work for these cases. There are
+  // some exceptions (e.g. some system colections are never dropped by the replication
+  // on the follower but only truncated, which may lead to collections on the follower 
+  // being "older" than on the leader, plus because of DC2DC, which may insert 
+  // arbitrary data into a collection). For these special cases no current minRevision
+  // value would do, but we would like to avoid using a value very much in the past.
+  // thus we still go with a HLC from January 2020 and in addition allow the 
+  // minRevision to decrease in the revision trees.
+  RevisionId minRevision = _logicalCollection.isSmartChild() 
+                            ? RevisionId::none()
+                            : RevisionId::lowerBound();
+  return std::make_unique<containers::RevisionTree>(depth, minRevision.id());
 }
 
 void RocksDBMetaCollection::ensureRevisionTree() {

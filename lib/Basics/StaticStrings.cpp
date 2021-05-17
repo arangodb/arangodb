@@ -244,7 +244,6 @@ std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
-std::string const StaticStrings::MinRevision("minRevision");
 std::string const StaticStrings::ObjectId("objectId");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::Satellite("satellite");

@@ -226,7 +226,6 @@ class StaticStrings {
   static std::string const IsSmart;
   static std::string const IsSmartChild;
   static std::string const MinReplicationFactor;
-  static std::string const MinRevision;
   static std::string const NumberOfShards;
   static std::string const ObjectId;
   static std::string const ReplicationFactor;
