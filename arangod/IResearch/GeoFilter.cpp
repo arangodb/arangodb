@@ -158,7 +158,7 @@ class GeoIterator : public irs::doc_iterator {
 
  private:
   bool accept() {
-    TRI_ASSERT(_columnIt->value() < _doc->value)
+    TRI_ASSERT(_columnIt->value() < _doc->value);
 
     if (_doc->value != _columnIt->seek(_doc->value) ||
         _storedValue->value.empty()) {

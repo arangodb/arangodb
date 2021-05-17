@@ -150,22 +150,21 @@ function BaseTestConfig () {
     
     testInsertRemoveInsertRemove: function () {
       let c = db._create(cn);
-      let rev1 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+      let rev1 = c.insert({ _key: "a" })._rev;
       c.remove("a");
-      let rev2 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+      let rev2 = c.insert({ _rev: rev1, _key: "a" }, { isRestore: true })._rev;
       c.remove("a");
 
-      assertEqual("_b5TF-Oy---", rev1);
-      assertEqual("_b5TF-Oy---", rev2);
+      assertEqual(rev1, rev2);
 
       connectToFollower();
       db._flushCache();
       c = db._create(cn);
       
-      assertEqual("_b5TF-Oy---", c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev);
-      assertEqual("_b5TF-Oy---", c.document("a")._rev);
-      assertEqual("_b5TF-Oz---", c.insert({ _rev: "_b5TF-Oz---", _key: "b" }, { isRestore: true })._rev);
-      assertEqual("_b5TF-Oz---", c.document("b")._rev);
+      rev1 = c.insert({ _rev: rev1, _key: "a" }, { isRestore: true })._rev;
+      assertEqual(rev1, c.document("a")._rev);
+      rev2 = c.insert({ _key: "b" })._rev;
+      assertEqual(rev2, c.document("b")._rev);
 
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
@@ -181,24 +180,23 @@ function BaseTestConfig () {
     
     testInsertRemoveInsertRemoveInsert: function () {
       let c = db._create(cn);
-      let rev1 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+      let rev1 = c.insert({ _key: "a" })._rev;
       c.remove("a");
-      let rev2 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+      let rev2 = c.insert({ _rev: rev1, _key: "a" }, { isRestore: true })._rev;
       c.remove("a");
-      let rev3 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+      let rev3 = c.insert({ _rev: rev1, _key: "a" }, { isRestore: true })._rev;
 
-      assertEqual("_b5TF-Oy---", rev1);
-      assertEqual("_b5TF-Oy---", rev2);
-      assertEqual("_b5TF-Oy---", rev3);
+      assertEqual(rev1, rev2);
+      assertEqual(rev1, rev3);
 
       connectToFollower();
       db._flushCache();
       c = db._create(cn);
       
-      assertEqual("_b5TF-Oy---", c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev);
-      assertEqual("_b5TF-Oy---", c.document("a")._rev);
-      assertEqual("_b5TF-Oz---", c.insert({ _rev: "_b5TF-Oz---", _key: "b" }, { isRestore: true })._rev);
-      assertEqual("_b5TF-Oz---", c.document("b")._rev);
+      assertEqual(rev1, c.insert({ _rev: rev1, _key: "a" }, { isRestore: true })._rev);
+      assertEqual(rev1, c.document("a")._rev);
+      rev2 = c.insert({ _key: "b" })._rev;
+      assertEqual(rev2, c.document("b")._rev);
 
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
@@ -218,21 +216,17 @@ function BaseTestConfig () {
       let c = db._create(cn);
       c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
 
-      let rev1 = c.insert({ _rev: "_b5TF-Oy---", _key: "a", value: 1 }, { isRestore: true })._rev;
-      let rev2 = c.insert({ _rev: "_b5TGvDC---", _key: "b", value: 2 }, { isRestore: true })._rev;
-      let rev3 = c.insert({ _rev: "_b5TGwvm---", _key: "c", value: 3 }, { isRestore: true })._rev;
+      let rev1 = c.insert({ _key: "a", value: 1 })._rev;
+      let rev2 = c.insert({ _key: "b", value: 2 })._rev;
+      let rev3 = c.insert({ _key: "c", value: 3 })._rev;
       
-      assertEqual("_b5TF-Oy---", rev1);
-      assertEqual("_b5TGvDC---", rev2);
-      assertEqual("_b5TGwvm---", rev3);
-
       connectToFollower();
       db._flushCache();
       c = db._create(cn);
       c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
       
-      assertEqual("_b5TF-Oy---", c.insert({ _rev: "_b5TF-Oy---", _key: "b", value: 3 }, { isRestore: true })._rev);
-      assertEqual("_b5TGwvm---", c.insert({ _rev: "_b5TGwvm---", _key: "c", value: 2 }, { isRestore: true })._rev);
+      assertEqual(rev1, c.insert({ _rev: rev1, _key: "b", value: 3 }, { isRestore: true })._rev);
+      assertEqual(rev3, c.insert({ _rev: rev3, _key: "c", value: 2 }, { isRestore: true })._rev);
 
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,

@@ -77,9 +77,11 @@ class Identifier {
 // Identifier should not be bigger than the BaseType
 static_assert(sizeof(Identifier) == sizeof(Identifier::BaseType),
               "invalid size of Identifier");
-}  // namespace arangodb::basics
 
 std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i);
+
+}  // namespace arangodb::basics
+
 
 #define DECLARE_HASH_FOR_IDENTIFIER(T)                        \
   namespace std {                                             \
