@@ -1752,7 +1752,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
           print('================= Coordinator log file start =================');
           print(coordinatorLogFile);
           print('--------------------------------------------------------------');
-          print(fs.readFileSync(coordinatorLogFile));
+          print(fs.readFileSync(coordinatorLogFile, 'utf8'));
           print('================= Coordinator log file end ===================');
         }
       } else {
