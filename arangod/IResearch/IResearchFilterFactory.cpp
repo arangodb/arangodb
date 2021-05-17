@@ -1697,7 +1697,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
       }
       FilterContext const subFilterCtx{
           filterCtx.analyzer,
-          irs::no_boost()  // reset boost
+          irs::no_boost(),  // reset boost
+          filterCtx.allowByExpression
       };
 
       std::string fieldName;
@@ -1782,7 +1783,8 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
 
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
-      irs::no_boost()  // reset boost
+      irs::no_boost(),  // reset boost
+      filterCtx.allowByExpression
   };
 
   arangodb::iresearch::NormalizedCmpNode normalized;
@@ -1807,7 +1809,11 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     if (!arangodb::iresearch::normalizeCmpNode(toNormalize, *ctx.ref, normalized)) {
       if (!filter) {
         // can't evaluate non constant filter before the execution
-        return {};
+        if(filterCtx.allowByExpression) {
+          return {};
+        } else {
+          return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is forbidden"};
+        }
       }
 
       // use std::shared_ptr since AstNode is not copyable/moveable
@@ -1921,7 +1927,8 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
       FilterContext const subFilterCtx{
           filterCtx.analyzer,
-          irs::no_boost()  // reset boost
+          irs::no_boost(),  // reset boost
+          filterCtx.allowByExpression
       };
 
       for (size_t i = 0; i < n; ++i) {
@@ -1981,7 +1988,8 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
 
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
-      irs::no_boost()  // reset boost
+      irs::no_boost(),  // reset boost
+      filterCtx.allowByExpression
   };
 
   return ::filter(filter, ctx, subFilterCtx, *member);

@@ -231,7 +231,75 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_array_as_var_comparison) {
   std::string queryString = "LET arr = [1,2, 3] FOR d IN test FILTER arr ALL IN d.a  RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
-   expected.supportsCondition = true;
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_in_array) {
+  std::string queryString = "LET arr = [1,2,3] FOR d IN test FILTER d.a IN arr RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_in_nondeterm_array) {
+  std::string queryString = "LET arr = [1,2,NOOPT(3)] FOR d IN test FILTER d.a IN arr RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_in_nondeterm_array_ref) {
+  std::string queryString = "FOR d IN test FILTER d.a IN [1,2, d.c] RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_range) {
+  std::string queryString = "FOR d IN test FILTER d.a IN 1..10 RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_nondet_range) {
+  std::string queryString = "LET lim = NOOPT(10) FOR d IN test FILTER d.a IN 1..lim RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_range_as_var) {
+  std::string queryString = "LET r = 1..10 FOR d IN test FILTER d.a IN r RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_nondet_range_as_var) {
+  std::string queryString = "LET r = 1..NOOPT(10) FOR d IN test FILTER d.a IN r RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_negation) {
+  std::string queryString = "FOR d IN test FILTER NOT(d.a == 'c') RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+
+TEST_F(IResearchInvertedIndexConditionTest, test_nondet_negation) {
+  std::string queryString = "FOR d IN test FILTER NOT(d.a == d.b) RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
 
@@ -294,7 +362,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_non_determ_fcall)
   estimateFilterCondition(queryString, fields, expected);
 }
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_range) {
+TEST_F(IResearchInvertedIndexConditionTest, test_with_range_func) {
   std::string queryString = "LET a  = 10  FOR d IN test FILTER IN_RANGE(d.a, a, 20, true, true) RETURN d ";
   ExpressionContextMock ctx;
   auto obj = VPackParser::fromJson("10");
@@ -306,7 +374,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_range) {
 }
 
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_range_bind) {
+TEST_F(IResearchInvertedIndexConditionTest, test_with_range_func_bind) {
   auto obj = VPackParser::fromJson("10");
   ExpressionContextMock ctx;
   ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
