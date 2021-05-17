@@ -1946,7 +1946,8 @@ auto TRI_vocbase_t::createReplicatedLog(LogId id)
         std::make_unique<replicated_log::LogCore>(std::move(persistedLog.get()));
     auto it =
         manager->_logs.try_emplace(iter, id, std::move(logCore),
-                                   server().getFeature<ReplicatedLogFeature>().metrics());
+                                   server().getFeature<ReplicatedLogFeature>().metrics(),
+                                   LogContext(Logger::REPLICATION2));
     server().getFeature<ReplicatedLogFeature>().metrics().replicatedLogNumber.fetch_add(1);
     return std::ref(it->second);
   } else {
@@ -2016,7 +2017,8 @@ void TRI_vocbase_t::registerReplicatedLog(arangodb::replication2::LogId logId,
       std::move(persistedLog));
   auto [iter, inserted] =
       _logManager->_logs.try_emplace(logId, std::move(core),
-                                     server().getFeature<ReplicatedLogFeature>().metrics());
+                                     server().getFeature<ReplicatedLogFeature>().metrics(),
+                                     LogContext(Logger::REPLICATION2));
   server().getFeature<ReplicatedLogFeature>().metrics().replicatedLogNumber.fetch_add(1);
   TRI_ASSERT(inserted);
 }

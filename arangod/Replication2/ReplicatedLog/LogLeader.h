@@ -107,7 +107,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   struct alignas(64) FollowerInfo {
     explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl, LogIndex lastLogIndex, LogContext logContext);
 
-    std::chrono::steady_clock::duration _lastRequestLatency;
+    std::chrono::steady_clock::duration _lastRequestLatency{};
     std::shared_ptr<AbstractFollower> _impl;
     LogIndex lastAckedIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};

@@ -38,7 +38,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto followerId = ParticipantId{"follower"};
 
   auto follower =
-      std::make_shared<DelayedFollowerLog>(_logMetricsMock, followerId,
+      std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId,
                                            std::move(coreB), LogTerm{1}, leaderId);
   auto leader =
       LogLeader::construct(LogContext(Logger::REPLICATION2), _logMetricsMock,
@@ -178,7 +178,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
 
   auto coreB = makeLogCore(LogId{2});
   auto follower =
-      std::make_shared<DelayedFollowerLog>(_logMetricsMock, followerId,
+      std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId,
                                            std::move(coreB), LogTerm{3}, leaderId);
   auto leader =
       LogLeader::construct(defaultLogger(), _logMetricsMock, leaderId,
@@ -253,10 +253,10 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   auto followerId_2 = ParticipantId{"follower1"};
 
   auto follower_1 =
-      std::make_shared<DelayedFollowerLog>(_logMetricsMock, followerId_1,
+      std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId_1,
                                            std::move(coreB), LogTerm{1}, leaderId);
   auto follower_2 =
-      std::make_shared<DelayedFollowerLog>(_logMetricsMock, followerId_2,
+      std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId_2,
                                            std::move(coreC), LogTerm{1}, leaderId);
   // create leader with write concern 2
   auto leader = LogLeader::construct(

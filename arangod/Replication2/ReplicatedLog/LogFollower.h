@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/LogContext.h"
 
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
@@ -44,7 +45,7 @@ namespace arangodb::replication2::replicated_log {
 class LogFollower : public LogParticipantI, public AbstractFollower {
  public:
   ~LogFollower() override = default;
-  LogFollower(ReplicatedLogMetrics& logMetrics, ParticipantId id,
+  LogFollower(LogContext, ReplicatedLogMetrics& logMetrics, ParticipantId id,
               std::unique_ptr<LogCore> logCore, LogTerm term,
               ParticipantId leaderId, InMemoryLog inMemoryLog);
 
@@ -84,6 +85,7 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
   ParticipantId const _leaderId;
   LogTerm const _currentTerm;
   Guarded<GuardedFollowerData> _guardedFollowerData;
+  LogContext const _logContext;
 
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;

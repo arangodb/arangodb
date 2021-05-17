@@ -44,6 +44,8 @@
 #include <thread>
 #include <type_traits>
 
+#include "LogContextKeys.h"
+
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
@@ -168,8 +170,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
       // additionally capture a weak pointer that will be locked
       // when the request returns. If the locking is successful
       // we are still in the same term.
-      auto startTime = std::chrono::steady_clock::now();
       auto messageId = it->_request.messageId;
+      LOG_CTX("1b0ec", TRACE, it->_follower->logContext) << "sending append entries, messageId = " << messageId;
+      auto startTime = std::chrono::steady_clock::now();
       it->_follower->_impl->appendEntries(std::move(it->_request))
           .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
                       lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
@@ -179,9 +182,10 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
             // TODO report (endTime - startTime) to
             //      server().getFeature<ReplicatedLogFeature>().metricReplicatedLogAppendEntriesRtt(),
             //      probably implicitly so tests can be done as well
-
             // TODO This has to be noexcept
             if (auto self = parentLog.lock()) {
+              LOG_CTX("8ff44", TRACE, follower.logContext)
+                  << "received append entries response, messageId = " << messageId;
               auto [preparedRequests, resolvedPromises] = std::invoke([&] {
                 auto guarded = self->acquireMutex();
                 if (guarded->_didResign) {
@@ -199,15 +203,16 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
               }
 
               executeAppendEntriesRequests(std::move(preparedRequests));
+            } else {
+              LOG_TOPIC("de300", DEBUG, Logger::REPLICATION2)
+                  << "parent log already gone, messageId = " << messageId;
             }
           });
     }
   }
 }
 
-inline constexpr char logContextKeyTerm[] = "term";
-inline constexpr char logContextKeyLeaderId[] = "leader-id";
-inline constexpr char logContextKeyLogComponent[] = "log-component";
+
 
 auto replicated_log::LogLeader::construct(
     LogContext const& logContext, ReplicatedLogMetrics& logMetrics,
@@ -292,6 +297,8 @@ auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
               << "Leader " << participantId << " already resigned!";
           TRI_ASSERT(false);
         }
+
+        LOG_CTX("8696f", INFO, _logContext) << "resign";
         leaderData._didResign = true;
         auto queue = std::move(leaderData._waitForQueue);
         leaderData._waitForQueue.clear();
@@ -678,11 +685,6 @@ auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
   return _self.getParticipantId();
 }
 
-inline constexpr char logContextKeyMessageId[] = "message-id";
-inline constexpr char logContextKeyPrevLogIdx[] = "prev-log-idx";
-inline constexpr char logContextKeyPrevLogTerm[] = "prev-log-term";
-inline constexpr char logContextKeyLeaderCommit[] = "leader-commit";
-
 auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesRequest const request)
     -> futures::Future<AppendEntriesResult> {
   auto logCoreGuard = _guardedLogCore.getLockedGuard();
@@ -736,11 +738,11 @@ auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<Lo
   });
 }
 
-inline constexpr char logContextKeyFollowerId[] = "follower-id";
-
 replicated_log::LogLeader::FollowerInfo::FollowerInfo(std::shared_ptr<AbstractFollower> impl,
                                                       LogIndex lastLogIndex,
                                                       LogContext logContext)
     : _impl(std::move(impl)),
       lastAckedIndex(lastLogIndex),
-      logContext(logContext.with<logContextKeyFollowerId>(_impl->getParticipantId())) {}
+      logContext(
+          logContext.with<logContextKeyLogComponent>("follower-info")
+              .with<logContextKeyFollowerId>(_impl->getParticipantId())) {}

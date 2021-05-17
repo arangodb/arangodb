@@ -65,7 +65,7 @@ namespace arangodb::replication2::replicated_log {
  * atomically.
  */
 struct alignas(64) ReplicatedLog {
-  explicit ReplicatedLog(std::unique_ptr<LogCore> core, ReplicatedLogMetrics& metrics);
+  explicit ReplicatedLog(std::unique_ptr<LogCore> core, ReplicatedLogMetrics& metrics, LogContext logContext);
 
   ReplicatedLog() = delete;
   ReplicatedLog(ReplicatedLog const&) = delete;

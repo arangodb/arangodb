@@ -23,10 +23,12 @@
 #include "ReplicatedLog.h"
 
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
@@ -43,8 +45,10 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core,
-                                             ReplicatedLogMetrics& metrics)
-    : _participant(std::make_shared<replicated_log::LogUnconfiguredParticipant>(
+                                             ReplicatedLogMetrics& metrics,
+                                             LogContext logContext)
+    : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
+      _participant(std::make_shared<replicated_log::LogUnconfiguredParticipant>(
           std::move(core))),
       _metrics(metrics) {}
 
@@ -55,6 +59,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
   auto leader = std::shared_ptr<LogLeader>{};
   {
     std::unique_lock guard(_mutex);
+    LOG_CTX("23d7b", DEBUG, _logContext) << "becoming leader in term " << term;
     // TODO Resign: will resolve some promises because leader resigned
     //      those promises will call ReplicatedLog::getLeader() -> DEADLOCK
     auto logCore = std::move(*_participant).resign();
@@ -71,7 +76,9 @@ auto replicated_log::ReplicatedLog::becomeLeader(
 auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm term,
                                                    ParticipantId leaderId)
     -> std::shared_ptr<LogFollower> {
+  std::unique_lock guard(_mutex);
   auto logCore = std::move(*_participant).resign();
+  LOG_CTX("23d7b", DEBUG, _logContext) << "becoming follower in term " << term << " with leader " << leaderId;
   // TODO this is a cheap trick for now. Later we should be aware of the fact
   //      that the log might not start at 1.
   auto iter = logCore->read(LogIndex{0});
@@ -79,7 +86,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
   while (auto entry = iter->next()) {
     log._log = log._log.push_back(std::move(entry).value());
   }
-  auto follower = std::make_shared<LogFollower>(_metrics, id, std::move(logCore),
+  auto follower = std::make_shared<LogFollower>(_logContext, _metrics, id, std::move(logCore),
                                                 term, std::move(leaderId), log);
   _participant = std::static_pointer_cast<LogParticipantI>(follower);
   return follower;

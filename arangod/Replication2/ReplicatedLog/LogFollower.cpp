@@ -24,6 +24,8 @@
 
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 
+#include "LogContextKeys.h"
+
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
 #include <Basics/debugging.h>
@@ -57,27 +59,40 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   auto [result, toBeResolved] = _guardedFollowerData.doUnderLock(
       [&](GuardedFollowerData& self) -> std::pair<AppendEntriesResult, WaitForQueue> {
         if (self._logCore == nullptr) {
+          LOG_CTX("d290d", DEBUG, _logContext)
+              << "reject append entries - log core gone";
           return std::make_pair(AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::LOST_LOG_CORE, req.messageId),
+                                                    AppendEntriesErrorReason::LOST_LOG_CORE,
+                                                    req.messageId),
                                 WaitForQueue{});
         }
 
         if (self._lastRecvMessageId >= req.messageId) {
+          LOG_CTX("d291d", DEBUG, _logContext)
+              << "reject append entries - message id out dated: " << req.messageId;
           return std::make_pair(AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::MESSAGE_OUTDATED, req.messageId),
+                                                    AppendEntriesErrorReason::MESSAGE_OUTDATED,
+                                                    req.messageId),
                                 WaitForQueue{});
         }
         self._lastRecvMessageId = req.messageId;
 
         if (req.leaderId != _leaderId) {
+          LOG_CTX("a2009", DEBUG, _logContext)
+              << "reject append entries - wrong leader, given = " << req.leaderId
+              << " current = " << _leaderId;
           return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::INVALID_LEADER_ID, req.messageId},
+                                                    AppendEntriesErrorReason::INVALID_LEADER_ID,
+                                                    req.messageId},
                                 WaitForQueue{});
         }
 
         // TODO does >= suffice here? Maybe we want to do an atomic operation
         //      before increasing our term
         if (req.leaderTerm != _currentTerm) {
+          LOG_CTX("dd7a3", DEBUG, _logContext)
+              << "reject append entries - wrong term, given = " << req.leaderTerm
+              << ", current = " << _currentTerm;
           return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
                                                     AppendEntriesErrorReason::WRONG_TERM, req.messageId},
                                 WaitForQueue{});
@@ -97,7 +112,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
             //      term; one AppendEntries RPC will be required for each term
             //      with conflicting entries, rather than one RPC per entry.
             // from raft-pdf page 7-8
-
+            LOG_CTX("1e86a", TRACE, _logContext) << "reject append entries - prev log index/term not matching";
             return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
                                                       AppendEntriesErrorReason::NO_PREV_LOG_MATCH, req.messageId},
                                   WaitForQueue{});
@@ -106,6 +121,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 
         auto res = self._logCore->removeBack(req.prevLogIndex + 1);
         if (!res.ok()) {
+          LOG_CTX("f17b8", ERR, _logContext) << "failed to remove log entries after " << req.prevLogIndex;
           abort();  // TODO abort?
         }
 
@@ -115,6 +131,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         // TODO can we make this async?
         res = self._logCore->insert(iter);
         if (!res.ok()) {
+          LOG_CTX("216d8", ERR, _logContext) << "failed to insert log entries";
           abort();  // TODO abort?
         }
 
@@ -123,13 +140,18 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         transientLog.append(req.entries.transient());
         self._inMemoryLog._log = std::move(transientLog).persistent();
 
+        LOG_CTX("dd72d", TRACE, _logContext) << "appended " << req.entries.size() << " log entries after "
+            << req.prevLogIndex << ", leader commit index = " << req.leaderCommit;
+
         WaitForQueue toBeResolved;
         if (self._commitIndex < req.leaderCommit && !self._inMemoryLog._log.empty()) {
           self._commitIndex =
               std::min(req.leaderCommit, self._inMemoryLog._log.back().logIndex());
+          LOG_CTX("1641d", TRACE, _logContext) << "increment commit index: " << self._commitIndex;
 
           auto const end = self._waitForQueue.upper_bound(self._commitIndex);
           for (auto it = self._waitForQueue.begin(); it != end;) {
+            LOG_CTX("d32f1", TRACE, _logContext) << "resolve promise for index " << it->first;
             toBeResolved.insert(self._waitForQueue.extract(it++));
           }
         }
@@ -190,11 +212,14 @@ auto replicated_log::LogFollower::getParticipantId() const noexcept -> Participa
 }
 
 auto replicated_log::LogFollower::resign() && -> std::unique_ptr<LogCore> {
-  return _guardedFollowerData.doUnderLock(
-      [](auto& followerData) { return std::move(followerData._logCore); });
+  return _guardedFollowerData.doUnderLock([this](auto& followerData) {
+    LOG_CTX("838fe", DEBUG, _logContext) << "follower resign";
+    return std::move(followerData._logCore);
+  });
 }
 
-replicated_log::LogFollower::LogFollower(ReplicatedLogMetrics& logMetrics,
+replicated_log::LogFollower::LogFollower(LogContext logContext,
+                                         ReplicatedLogMetrics& logMetrics,
                                          ParticipantId id, std::unique_ptr<LogCore> logCore,
                                          LogTerm term, ParticipantId leaderId,
                                          replicated_log::InMemoryLog inMemoryLog)
@@ -202,7 +227,10 @@ replicated_log::LogFollower::LogFollower(ReplicatedLogMetrics& logMetrics,
       _participantId(std::move(id)),
       _leaderId(std::move(leaderId)),
       _currentTerm(term),
-      _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {}
+      _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)),
+      _logContext(logContext.with<logContextKeyLogComponent>("follower")
+                      .with<logContextKeyLeaderId>(_leaderId)
+                      .with<logContextKeyTerm>(term)) {}
 
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::LogParticipantI::WaitForFuture {

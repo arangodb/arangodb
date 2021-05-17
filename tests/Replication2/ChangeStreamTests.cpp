@@ -130,11 +130,12 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
   }
 
   auto coreB = makeLogCore(LogId{2});
-  auto follower = std::make_shared<DelayedFollowerLog>(_logMetricsMock,
+  auto follower = std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock,
                                                        "follower", std::move(coreB),
                                                        LogTerm{3}, "leader");
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {follower}, 2);
+
   leader->runAsyncStep();
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
