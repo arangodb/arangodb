@@ -57,7 +57,7 @@
 #endif
 
 // can turn this on for more aggressive and expensive consistency checks
-// #define PARANOID_TREE_CHECKS
+#define PARANOID_TREE_CHECKS
 
 namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
