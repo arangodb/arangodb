@@ -1,9 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* Fixes BTS-416. During shutdown, a Shard leader wrongly reported that
-  it could not drop a shard follower instead of correctly indicating
-  the shutdown as reason.
+* Fixes BTS-416. During shutdown, a Shard leader wrongly reported that it could
+  not drop a shard follower instead of correctly indicating the shutdown as the
+  reason.
 
 * Fixes pregel lifetime management. Previously shutting down the server while a
   pregel job was still running could result in a segfault or a shutdown hanger.
