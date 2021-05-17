@@ -173,11 +173,10 @@ class Result final {
   std::unique_ptr<arangodb::result::Error> _error = nullptr;
 };
 
-}  // namespace arangodb
-
 /**
  * @brief  Print to output stream
  * @return Said output stream
  */
 auto operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostream&;
 
+}  // namespace arangodb
