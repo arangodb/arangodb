@@ -1732,6 +1732,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
 
 
   let count = 0;
+  let coordinatorTickles = 0;
   while (true) {
     ++count;
 
@@ -1745,6 +1746,15 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       let url = arangod.url;
       if (arangod.role === "coordinator") {
         url += '/_admin/aardvark/index.html';
+        coordinatorTickles++;
+        if (coordinatorTickles == 10) {
+          let coordinatorLogFile = arangod.args['log.file'];
+          print('================= Coordinator log file start =================');
+          print(coordinatorLogFile);
+          print('--------------------------------------------------------------');
+          print(fs.readFileSync(coordinatorLogFile));
+          print('================= Coordinator log file end ===================');
+        }
       } else {
         url += '/_api/version';
       }
