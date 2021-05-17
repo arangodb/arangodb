@@ -179,7 +179,8 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption("--http.redirect-root-to",
                     "redirect of root URL",
-                    new StringParameter(&_redirectRootTo));
+                    new StringParameter(&_redirectRootTo))
+                    .setIntroducedIn(30712);
 
   options->addOption("--http.permanently-redirect-root",
                     "if true, use a permanent redirect. If false, use a temporary",
