@@ -79,6 +79,7 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
     LogIndex _commitIndex{0};
     MessageId _lastRecvMessageId{0};
   };
+  [[maybe_unused]] ReplicatedLogMetrics& _logMetrics;
   ParticipantId const _participantId;
   ParticipantId const _leaderId;
   LogTerm const _currentTerm;

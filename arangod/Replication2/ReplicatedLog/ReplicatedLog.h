@@ -107,7 +107,7 @@ struct alignas(64) ReplicatedLog {
   LogContext const _logContext = LogContext(Logger::REPLICATION2);
   mutable std::mutex _mutex;
   std::shared_ptr<LogParticipantI> _participant;
-  [[maybe_unused]] ReplicatedLogMetrics& _metrics;
+  ReplicatedLogMetrics& _metrics;
 };
 
 }  // namespace arangodb::replication2::replicated_log

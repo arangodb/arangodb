@@ -96,8 +96,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
  protected:
   // Use the named constructor construct() to create a leader!
-  LogLeader(LogContext logContext, ParticipantId id, LogTerm term,
-            std::size_t writeConcern, InMemoryLog inMemoryLog);
+  LogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics, ParticipantId id,
+            LogTerm term, std::size_t writeConcern, InMemoryLog inMemoryLog);
 
  private:
   struct GuardedLeaderData;
@@ -198,6 +198,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   };
 
   LogContext const _logContext;
+  [[maybe_unused]] ReplicatedLogMetrics& _logMetrics;
   ParticipantId const _participantId;
   LogTerm const _currentTerm;
   std::size_t const _writeConcern;

@@ -85,10 +85,11 @@ class ReplicatedLogIterator : public LogIterator {
 };
 }  // namespace
 
-replicated_log::LogLeader::LogLeader(LogContext logContext, ParticipantId id,
-                                     LogTerm const term, std::size_t const writeConcern,
-                                     InMemoryLog inMemoryLog)
+replicated_log::LogLeader::LogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics,
+                                     ParticipantId id, LogTerm const term,
+                                     std::size_t const writeConcern, InMemoryLog inMemoryLog)
     : _logContext(std::move(logContext)),
+      _logMetrics(logMetrics),
       _participantId(std::move(id)),
       _currentTerm(term),
       _writeConcern(writeConcern),
@@ -209,7 +210,7 @@ inline constexpr char logContextKeyLeaderId[] = "leader-id";
 inline constexpr char logContextKeyLogComponent[] = "log-component";
 
 auto replicated_log::LogLeader::construct(
-    LogContext const& logContext, [[maybe_unused]] ReplicatedLogMetrics& logMetrics,
+    LogContext const& logContext, ReplicatedLogMetrics& logMetrics,
     ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
@@ -230,9 +231,11 @@ auto replicated_log::LogLeader::construct(
   // is actually protected.
   struct MakeSharedLogLeader : LogLeader {
    public:
-    MakeSharedLogLeader(LogContext logContext, ParticipantId const& id,
-                        LogTerm const& term, size_t writeConcern, InMemoryLog inMemoryLog)
-        : LogLeader(std::move(logContext), id, term, writeConcern, std::move(inMemoryLog)) {}
+    MakeSharedLogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics,
+                        ParticipantId const& id, LogTerm const& term,
+                        size_t writeConcern, InMemoryLog inMemoryLog)
+        : LogLeader(std::move(logContext), logMetrics, id, term, writeConcern,
+                    std::move(inMemoryLog)) {}
   };
 
   // TODO this is a cheap trick for now. Later we should be aware of the fact
@@ -249,7 +252,7 @@ auto replicated_log::LogLeader::construct(
 
   auto leader =
       std::make_shared<MakeSharedLogLeader>(commonLogContext.with<logContextKeyLogComponent>("leader"),
-                                            id, term, writeConcern, log);
+                                            logMetrics, id, term, writeConcern, log);
   auto localFollower = std::make_shared<LocalFollower>(
       *leader, commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore));
