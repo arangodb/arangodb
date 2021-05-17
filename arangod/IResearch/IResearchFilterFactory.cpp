@@ -456,9 +456,10 @@ Result extractAnalyzerFromArg(
 struct FilterContext {
   FilterContext(
       arangodb::iresearch::FieldMeta::Analyzer const& analyzer,
-      irs::boost_t boost) noexcept
+      irs::boost_t boost, bool byExpr = true) noexcept
     : analyzer(analyzer),
-      boost(boost) {
+      boost(boost),
+      allowByExpression(byExpr) {
     TRI_ASSERT(analyzer._pool);
   }
 
@@ -468,6 +469,7 @@ struct FilterContext {
   // need shared_ptr since pool could be deleted from the feature
   arangodb::iresearch::FieldMeta::Analyzer const& analyzer;
   irs::boost_t boost;
+  bool allowByExpression;
 };  // FilterContext
 
 typedef std::function<
@@ -480,7 +482,8 @@ typedef std::function<
 Result filter(irs::boolean_filter* filter,
               QueryContext const& queryctx,
               FilterContext const& filterCtx,
-              aql::AstNode const& node);
+              aql::AstNode const& node,
+              bool noByExpressionFilter = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends value tokens to a phrase filter
@@ -895,8 +898,6 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                     FilterContext const& filterCtx,
                     std::shared_ptr<aql::AstNode>&& node) {
 
-  return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
-
   if (!filter) {
     return {};
   }
@@ -904,8 +905,12 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   // non-deterministic condition or self-referenced variable
   if (!node->isDeterministic() || arangodb::iresearch::findReference(*node, *ctx.ref)) {
     // not supported by IResearch, but could be handled by ArangoDB
-    appendExpression(*filter, std::move(node), ctx, filterCtx);
-    return {};
+    if (filterCtx.allowByExpression) {
+      appendExpression(*filter, std::move(node), ctx, filterCtx);
+      return {};
+    } else {
+      return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is forbidden"};
+    }
   }
 
   bool result;
@@ -935,8 +940,6 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx, aql::AstNode const& node) {
   
-  return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
-
   if (!filter) {
     // FIXME: for inverted index expression should be forbidden as using the expression will be full scan with pessimization
     return {};
@@ -945,8 +948,12 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   // non-deterministic condition or self-referenced variable
   if (!node.isDeterministic() || arangodb::iresearch::findReference(node, *ctx.ref)) {
     // not supported by IResearch, but could be handled by ArangoDB
-    appendExpression(*filter, node, ctx, filterCtx);
-    return {};
+    if(filterCtx.allowByExpression) {
+      appendExpression(*filter, node, ctx, filterCtx);
+      return {};
+    } else {
+      return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is forbidden"};
+    }
   }
 
   bool result;
@@ -1607,7 +1614,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
     }
     FilterContext const subFilterCtx{
       filterCtx.analyzer,
-      irs::no_boost() };  // reset boost
+      irs::no_boost(), // reset boost
+      filterCtx.allowByExpression};
     // Expand array interval as several binaryInterval nodes ('array' feature is ensured by pre-filter)
     arangodb::iresearch::NormalizedCmpNode normalized;
     aql::AstNode toNormalize(arrayExpansionNodeType);
@@ -1625,7 +1633,11 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
       if (!arangodb::iresearch::normalizeCmpNode(toNormalize, *ctx.ref, normalized)) {
         if (!filter) {
           // can't evaluate non constant filter before the execution
-          return {};
+          if (filterCtx.allowByExpression) {
+            return {};
+          } else {
+            return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is forbidden"};
+          }
         }
         // use std::shared_ptr since AstNode is not copyable/moveable
         auto exprNode = std::make_shared<aql::AstNode>(arrayExpansionNodeType);
@@ -1660,7 +1672,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
 
   if (!filter) {
     // can't evaluate non constant filter before the execution
-    return {};
+    return {}; // FIXME!!!!!!! we could miss no-determ node here\!
   }
 
   ScopedAqlValue value(*valueNode);
@@ -2051,7 +2063,8 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
 
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
-      irs::no_boost()  // reset boost
+      irs::no_boost(),  // reset boost
+      filterCtx.allowByExpression
   };
 
   for (size_t i = 0; i < n; ++i) {
@@ -4054,7 +4067,7 @@ namespace iresearch {
     irs::boolean_filter* filter,
     QueryContext const& ctx,
     aql::AstNode const& node,
-    bool noExpressionFilter /*= false*/) {
+    bool allowByExpressionFilter /*= true*/) {
   if (node.willUseV8()) {
     return {
       TRI_ERROR_NOT_IMPLEMENTED,
@@ -4065,7 +4078,7 @@ namespace iresearch {
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();
-  FilterContext const filterCtx(analyzer, irs::no_boost());
+  FilterContext const filterCtx(analyzer, irs::no_boost(), allowByExpressionFilter);
 
   const auto res = ::filter(filter, ctx, filterCtx, node);
 

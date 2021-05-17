@@ -54,13 +54,21 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
-
   TRI_ASSERT(node);
   TRI_ASSERT(reference);
-  QueryContext const queryCtx = {nullptr, nullptr, nullptr, // FIXME: Kludge, We will fail to create byExpression filters
-                                 nullptr, nullptr, reference};
-  auto rv = FilterFactory::filter(nullptr, queryCtx, *node);
   auto filterCosts = FilterCosts::defaultCosts(itemsInIndex);
+  
+  // non-deterministic condition will mean full-scan. So we should
+  // not use index here. 
+  // FIXME: maybe in future we will be able to optimize just deterministic part?
+  if (!node->isDeterministic()) {
+    return  filterCosts;
+  }
+
+  QueryContext const queryCtx = {nullptr, nullptr, nullptr, // We don`t want byExpression filters
+                                 nullptr, nullptr, reference};
+  auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false);
+  
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = 0; // FIXME: we may use stored values!

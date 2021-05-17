@@ -92,17 +92,18 @@ class IResearchInvertedIndexConditionTest
   void estimateFilterCondition(
       std::string const& queryString, std::vector<std::string> const& fields,
       arangodb::Index::FilterCosts const& expectedCosts,
+      arangodb::aql::ExpressionContext* exprCtx = nullptr,
+      std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
       std::string const& refName = "d") {
     SCOPED_TRACE(testing::Message("estimateFilterCondition failed for query:<")
       << queryString << "> Expected support:" << expectedCosts.supportsCondition << " Expected num covered:" << expectedCosts.coveredAttributes);
-    arangodb::aql::ExpressionContext* exprCtx = nullptr;
     arangodb::IndexId id(1);
     arangodb::iresearch::IResearchInvertedIndex Index(id, collection(), getPropertiesSlice(id, fields).slice());
 
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
     arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                               nullptr);
+                               bindVars);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -143,11 +144,10 @@ class IResearchInvertedIndexConditionTest
       arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                           {}, {}, {}, arangodb::transaction::Options());
     
-      // FIXME: uncomment or remove  - after we will be sure if we need to calculate expressions here
-      //auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
-      //if (mockCtx) {
-      //  mockCtx->setTrx(&trx);
-      //}
+      auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+      if (mockCtx) {
+        mockCtx->setTrx(&trx);
+      }
 
       arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
       auto costs = Index.supportsFilterCondition({}, filterNode, ref, 0);
@@ -204,6 +204,37 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_fcalls_on_ref) {
   estimateFilterCondition(queryString, fields, expected);
 }
 
+TEST_F(IResearchInvertedIndexConditionTest, test_with_array_comparison) {
+  std::string queryString = "FOR d IN test FILTER [1,2,3] ALL IN d.a  RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_array_comparison_ref) {
+  std::string queryString = "FOR d IN test FILTER ['A', 'B', 'C', UPPER(d.a)] ANY IN d.a  RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_array_as_nodeterm_var_comparison) {
+  std::string queryString = "LET arr = [1,2, NOOPT(3)] FOR d IN test FILTER arr ALL IN d.a  RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_array_as_var_comparison) {
+  std::string queryString = "LET arr = [1,2, 3] FOR d IN test FILTER arr ALL IN d.a  RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+   expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
 TEST_F(IResearchInvertedIndexConditionTest, test_with_no_fields) {
 
   std::string queryString = "FOR d IN test FILTER d.a == 'value' RETURN d ";
@@ -226,4 +257,93 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_nondeterm_expression) {
   std::string queryString = "FOR d IN test FILTER d.a == NOOPT('value') RETURN d ";
   std::vector<std::string> fields = {"a"};
   estimateFilterCondition(queryString, fields, arangodb::Index::FilterCosts::defaultCosts(0));
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_same_atr) {
+
+  std::string queryString = "FOR a IN test FOR d IN test FILTER d.a == a.a RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_not_same_atr) {
+
+  std::string queryString = "FOR a IN test FOR d IN test FILTER d.a == a.b RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_fcall) {
+
+  std::string queryString = "FOR a IN test FOR d IN test FILTER d.a == UPPER(a.b) RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_non_determ_fcall) {
+
+  std::string queryString = "FOR a IN test2 FOR d IN test FILTER d.a == NOOPT(a.b) RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_range) {
+  std::string queryString = "LET a  = 10  FOR d IN test FILTER IN_RANGE(d.a, a, 20, true, true) RETURN d ";
+  ExpressionContextMock ctx;
+  auto obj = VPackParser::fromJson("10");
+  ctx.vars.emplace("a", arangodb::aql::AqlValue(obj->slice()));
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected, &ctx);
+}
+
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_range_bind) {
+  auto obj = VPackParser::fromJson("10");
+  ExpressionContextMock ctx;
+  ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
+  auto obj2 = VPackParser::fromJson("20");
+  ctx.vars.emplace("a", arangodb::aql::AqlValue(obj2->slice()));
+  std::string queryString = "LET a  = 20 LET x = 10  FOR d IN test FILTER IN_RANGE(d.a, x, a, true, true) RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected, &ctx);
+}
+
+ // FIXME:  to make this pass we need to provide ast/plan to supportsFilterCondition in order to calculate bindVars
+TEST_F(IResearchInvertedIndexConditionTest, test_with_levenshtein_with_bind) {
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->add("x", VPackValue("sometext"));
+  bindVars->close();
+
+  ExpressionContextMock ctx;
+  auto obj2 = VPackParser::fromJson("2");
+  ctx.vars.emplace("a", arangodb::aql::AqlValue(obj2->slice()));
+  std::string queryString = "LET a  = 2 FOR d IN test FILTER LEVENSHTEIN_MATCH(d.a, @x, a, true, 5) RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected, &ctx, bindVars);
+}
+
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_levenshtein) {
+  ExpressionContextMock ctx;
+  auto obj2 = VPackParser::fromJson("2");
+  ctx.vars.emplace("a", arangodb::aql::AqlValue(obj2->slice()));
+  std::string queryString = "LET a  = 2 FOR d IN test FILTER LEVENSHTEIN_MATCH(d.a, 'sometext', a, true, 5) RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected, &ctx);
 }
