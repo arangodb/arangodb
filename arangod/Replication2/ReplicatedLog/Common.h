@@ -26,6 +26,7 @@
 #include <Basics/Identifier.h>
 #include <Basics/ResultT.h>
 
+#include <ostream>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -72,6 +73,10 @@ struct LogIndex : implement_compare<LogIndex> {
   [[nodiscard]] auto operator<=(LogIndex) const -> bool;
 
   auto operator+(std::uint64_t delta) const -> LogIndex;
+
+  friend auto operator<<(std::ostream& os, LogIndex const& idx) -> std::ostream& {
+    return os << idx.value;
+  }
 };
 
 struct LogTerm : implement_compare<LogTerm> {
@@ -79,6 +84,10 @@ struct LogTerm : implement_compare<LogTerm> {
   constexpr explicit LogTerm(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
   [[nodiscard]] auto operator<=(LogTerm) const -> bool;
+
+  friend auto operator<<(std::ostream& os, LogTerm const& term) -> std::ostream& {
+    return os << term.value;
+  }
 };
 
 struct LogPayload {

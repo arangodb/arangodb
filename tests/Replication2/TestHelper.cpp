@@ -33,15 +33,6 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-namespace std {
-auto operator<<(std::ostream& ostream, LogIndex logIndex) -> std::ostream& {
-  return ostream << "LogIndex{" << logIndex.value << "}";
-}
-auto operator<<(std::ostream& ostream, LogEntry const& logEntry) -> std::ostream& {
-  return ostream << "LogEntry{" << logEntry.logTerm().value << ", " << logEntry.logIndex() << ", " << logEntry.logPayload().dummy << "}";
-}
-}
-
 auto MockLog::insert(LogIterator& iter) -> arangodb::Result {
   auto lastIndex = LogIndex{0};
   auto lastTerm = LogTerm{0};

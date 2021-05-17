@@ -559,7 +559,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLogFeature.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-  )
+        Replication2/LogContext.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp
