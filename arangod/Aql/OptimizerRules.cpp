@@ -1992,8 +1992,8 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, std::unique_ptr<ExecutionP
       auto current = stack.back();
       stack.pop_back();
 
-      if (current->getType() == EN::LIMIT) {
-        // cannot push a filter beyond a LIMIT node
+      if (current->getType() == EN::LIMIT || current->getType() == EN::WINDOW) {
+        // cannot push a filter beyond a LIMIT or WINDOW node
         break;
       }
 
@@ -3086,6 +3086,7 @@ struct SortToIndexNode final
 
       case EN::SINGLETON:
       case EN::COLLECT:
+      case EN::WINDOW:
       case EN::INSERT:
       case EN::REMOVE:
       case EN::REPLACE:

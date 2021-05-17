@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fix various issues related to the new WINDOW operation (see BTS-402)
+  - Improved explain output for ISO 8601 duration strings and fixed missing week
+    component.
+  - Improved validation of input data and error messages.
+  - Prevent FILTERs from being moved beyond a WINDOW.
+
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
 
