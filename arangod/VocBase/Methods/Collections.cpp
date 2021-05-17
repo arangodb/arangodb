@@ -290,7 +290,6 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
-    bool isSystem = vocbase.IsSystemName(info.name);
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
@@ -311,13 +310,12 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       // a recent revision id. so for system collections, we simply use a 2020 HLC value,
       // which should be good enough for all cases given that 3.8 is released in 2021.
       // for all other collections (non-smart edge children, non-system collections) we
-      // can simply use a recent HLC value as min revision id.
+      // for now also use a HLC value from the past, because a DC2DC can be connected
+      // to an existing 3.8 collection at any point.
       RevisionId minRev =
           (isSmartChild 
            ? RevisionId::none()
-           : (isSystem
-              ? RevisionId::lowerBound()
-              : RevisionId::create()));
+           : RevisionId::lowerBound());
 
       helper.add(arangodb::StaticStrings::MinRevision,
                  arangodb::velocypack::Value(minRev.toString()));

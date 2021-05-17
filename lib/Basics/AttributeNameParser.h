@@ -133,6 +133,9 @@ void TRI_AttributeNamesToString(std::vector<AttributeName> const& input,
 
 bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
 
+std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
+std::ostream& operator<<(std::ostream&, std::vector<arangodb::basics::AttributeName> const&);
+
 }  // namespace basics
 }  // namespace arangodb
 
@@ -166,7 +169,4 @@ struct equal_to<std::vector<arangodb::basics::AttributeName>> {
 };
 
 } // namespace std
-
-std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
-std::ostream& operator<<(std::ostream&, std::vector<arangodb::basics::AttributeName> const&);
 

@@ -174,9 +174,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       // where there is a lengthier explanation.
       _minRevision(isSmartChild() 
                    ? RevisionId::none()
-                   : (system()
-                      ? RevisionId::lowerBound()
-                      : RevisionId::fromSlice(info.get(StaticStrings::MinRevision)))),
+                   : RevisionId::lowerBound()),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
