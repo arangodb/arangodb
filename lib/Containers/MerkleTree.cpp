@@ -357,11 +357,9 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
   if (rangeMax <= rangeMin) {
     throw std::invalid_argument("rangeMax must be larger than rangeMin");
   }
- 
   if (!NumberUtils::isPowerOf2(rangeMax - rangeMin)) {
     throw std::invalid_argument("Expecting difference between min and max to be power of 2");
   }
-
   if ((initialRangeMin - rangeMin) % 
       ((rangeMax - rangeMin) / nodeCountAtDepth(maxDepth)) != 0) {
     throw std::invalid_argument("Expecting difference between initial min and min to be divisible by (max-min)/nodeCountAt(maxDepth)");
@@ -618,13 +616,15 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
     }
     if (width < widthOther) {
       // grow this times 2:
+      std::uint64_t rangeMax = this->meta().rangeMax;
       guard1.unlock();
-      this->growRight(this->meta().rangeMax);
+      this->growRight(rangeMax);
       guard1.lock();
     } else {
       // grow other times 2:
+      std::uint64_t rangeMax = other.meta().rangeMax;
       guard2.unlock();
-      other.growRight(other.meta().rangeMax);
+      other.growRight(rangeMax);
       guard2.lock();
     }
     // loop to repeat, this also helps to make sure someone else didn't
@@ -638,11 +638,14 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
   auto tree1 = this;
   auto tree2 = &other;
   if (tree2->meta().rangeMin < tree1->meta().rangeMin) {
+    // swap trees so that tree1 always has an equal or lower rangeMin than tree2.
     auto dummy = tree1;
     tree1 = tree2;
     tree2 = dummy;
   }
   // Now the rangeMin of tree1 is <= the rangeMin of tree2.
+  
+  TRI_ASSERT(tree1->meta().rangeMin <= tree2->meta().rangeMin);
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> result;
   std::uint64_t offsetBottom = nodeCountAboveDepth(maxDepth);
@@ -667,7 +670,7 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
   std::uint64_t index1 = 0;
   std::uint64_t pos =  tree1->meta().rangeMin;
   for ( ; pos < tree2->meta().rangeMin; pos += keysPerBucket) {
-    Node& node1 = tree1->node(offsetBottom + index1);
+    Node const& node1 = tree1->node(offsetBottom + index1);
     if (node1.count != 0) {
       addRange(pos, pos + keysPerBucket - 1);
     }
@@ -677,8 +680,8 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
   std::uint64_t index2 = 0;
   TRI_ASSERT(pos == tree2->meta().rangeMin);
   for ( ; pos < tree1->meta().rangeMax; pos += keysPerBucket) {
-    Node& node1 = tree1->node(offsetBottom + index1);
-    Node& node2 = tree2->node(offsetBottom + index2);
+    Node const& node1 = tree1->node(offsetBottom + index1);
+    Node const& node2 = tree2->node(offsetBottom + index2);
     if (node1.hash != node2.hash || node1.count != node2.count) {
       addRange(pos, pos + keysPerBucket - 1);
     }
@@ -687,7 +690,7 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
   }
   // And finally the rest of tree2:
   for ( ; pos < tree2->meta().rangeMax; pos += keysPerBucket) {
-    Node& node2 = tree2->node(offsetBottom + index2);
+    Node const& node2 = tree2->node(offsetBottom + index2);
     if (node2.count != 0) {
       addRange(pos, pos + keysPerBucket - 1);
     }
@@ -1147,6 +1150,9 @@ void MerkleTree<Hasher, BranchingBits>::growRight(std::uint64_t key) {
       rangeMax -= keysPerBucket;
       rangeMin -= keysPerBucket;
     }
+ 
+    TRI_ASSERT(rangeMax > rangeMin);
+    TRI_ASSERT(NumberUtils::isPowerOf2(rangeMax - rangeMin));
     meta().rangeMax = rangeMax;
     meta().rangeMin = rangeMin;
 
@@ -1260,6 +1266,8 @@ void MerkleTree<Hasher, BranchingBits>::growLeft(std::uint64_t key) {
       rangeMax += keysPerBucket;
       rangeMin += keysPerBucket;
     }
+    TRI_ASSERT(rangeMax > rangeMin);
+    TRI_ASSERT(NumberUtils::isPowerOf2(rangeMax - rangeMin));
     meta().rangeMax = rangeMax;
     meta().rangeMin = rangeMin;
 
