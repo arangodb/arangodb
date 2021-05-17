@@ -34,7 +34,7 @@ const optionsDefaults = {
   'coreDirectory': '/var/tmp',
   'dbServers': 2,
   'duration': 10,
-  'extraArgs': { 'extraArgs:log.level': 'info', 'extraArgs:log.force-direct': true },
+  'extraArgs': { 'log.level': 'info', 'log.force-direct': true },
   'extremeVerbosity': true, /// TODO false,
   'force': true,
   'getSockStat': false,
