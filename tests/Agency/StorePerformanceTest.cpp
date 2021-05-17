@@ -45,8 +45,7 @@ namespace arangodb {
 namespace tests {
 namespace store_performance_test {
 
-auto const scattered_times{50};
-auto const hammer_times {200};
+const std::array<size_t, 4> repetition_times {100, 1500, 5000, 20000};
 
 struct OperationMeasurement 
 {
@@ -87,6 +86,7 @@ struct OperationMeasurement
 
   void report() 
   {
+    stop();
     static std::array<std::pair<std::string_view, StatExtractor>, 4> duration_stats = {{
       {"max", [](DurationIterator begin, DurationIterator end) { return *std::max_element(begin,end); }},
       {"min", [](DurationIterator begin, DurationIterator end) { return *std::min_element(begin,end); }},
@@ -102,7 +102,6 @@ struct OperationMeasurement
       }},
     }};
 
-    stop();
     std::vector<OperationMeasurement::Clock::duration> durations;
     auto begin{observations_.begin()};
     auto from {*begin};
@@ -276,11 +275,11 @@ class StorePerformanceTest : public ::testing::Test {
 
 TEST_F(StorePerformanceTest, single_deep_key_writes) {
   std::vector<consensus::query_t> write_queries;
-  std::generate_n(std::back_inserter(write_queries), hammer_times, [](){
-    static int i{};
+  std::generate_n(std::back_inserter(write_queries), repetition_times[3], [](){
+    static size_t i{};
     return VPackParser::fromJson("[[{\"a/b/c/d/e/f/g/h\":" + std::to_string(i++) + "}]]");
   });
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[3]};
   for (auto const& q: write_queries) {
     _store.applyTransactions(q);
     ++op;
@@ -290,12 +289,12 @@ TEST_F(StorePerformanceTest, single_deep_key_writes) {
 
 TEST_F(StorePerformanceTest, single_deep_key_writes_and_reads) {
   std::vector<consensus::query_t> write_queries;
-  std::generate_n(std::back_inserter(write_queries), hammer_times, [](){
-    static int i{};
+  std::generate_n(std::back_inserter(write_queries), repetition_times[3], [](){
+    static size_t i{};
     return VPackParser::fromJson("[[{\"a/b/c/d/e/f/g/h\":" + std::to_string(i++) + "}]]");
   });
   auto const read_query {VPackParser::fromJson("[[\"a/b/c/d/e/f/g/h\"]]")};
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[3]};
   for (auto const& q: write_queries) {
     _store.applyTransactions(q);
     read(read_query);
@@ -307,8 +306,8 @@ TEST_F(StorePerformanceTest, single_deep_key_writes_and_reads) {
 TEST_F(StorePerformanceTest, single_deep_key_reads) {
   write(R"([[{"a/b/c/d/e/f/g/h": 42}]])");
   auto const read_query {VPackParser::fromJson("[[\"a/b/c/d/e/f/g/h\"]]")};
-  OperationMeasurement op{hammer_times};
-  for (int i{}; i < hammer_times; ++i) {
+  OperationMeasurement op{repetition_times[3]};
+  for (size_t i{}; i < repetition_times[3]; ++i) {
     auto result {read(read_query)};
     ++op;
   }
@@ -331,12 +330,12 @@ static std::string rand_path(const size_t len = 10u) {
 
 TEST_F(StorePerformanceTest, scattered_keys_w) {
   std::vector<consensus::query_t> write_queries;
-  std::generate_n(std::back_inserter(write_queries), hammer_times, [](){
+  std::generate_n(std::back_inserter(write_queries), repetition_times[3], [](){
     auto const key {rand_path()};
     auto const json_object {"[[{\"" + key + "\": " + std::to_string(rand()) + "}]]"};
     return VPackParser::fromJson(json_object);
   });
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[3]};
   for (auto& q: write_queries) {
     auto result {write(q)};
     ASSERT_EQ(result.front(), consensus::apply_ret_t::APPLIED);
@@ -347,15 +346,15 @@ TEST_F(StorePerformanceTest, scattered_keys_w) {
 
 TEST_F(StorePerformanceTest, scattered_keys_wr) {
   std::vector<std::string> keys;
-  std::generate_n(std::back_inserter(keys), scattered_times, [](){ return rand_path(); });
+  std::generate_n(std::back_inserter(keys), repetition_times[0], [](){ return rand_path(); });
   for (auto const& key: keys) {
     writeAndCheck("[[{\"" + key + "\":1}]]");
   }
   std::vector<consensus::query_t> read_queries;
-  std::generate_n(std::back_inserter(read_queries), scattered_times, [&keys](){ 
+  std::generate_n(std::back_inserter(read_queries), repetition_times[0], [&keys](){ 
     return VPackParser::fromJson("[[\"" + keys[std::rand() % keys.size()] + "\"]]");
   });
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[3]};
   for (auto const& rq: read_queries) {
     auto result {read(rq)};
     ++op;
@@ -365,7 +364,7 @@ TEST_F(StorePerformanceTest, scattered_keys_wr) {
 
 TEST_F(StorePerformanceTest, scattered_keys_wwr) {
   std::vector<std::string> keys;
-  std::generate_n(std::back_inserter(keys), scattered_times, [](){ return rand_path(20); });
+  std::generate_n(std::back_inserter(keys), repetition_times[0], [](){ return rand_path(20); });
   for (auto const& key: keys) {
     auto const json_object {"{\"" + key + "\": 1}"};
     auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
@@ -379,10 +378,10 @@ TEST_F(StorePerformanceTest, scattered_keys_wwr) {
     }
   }
   std::vector<consensus::query_t> read_queries;
-  std::generate_n(std::back_inserter(read_queries), scattered_times, [&keys](){ 
+  std::generate_n(std::back_inserter(read_queries), repetition_times[0], [&keys](){ 
     return VPackParser::fromJson("[[\"" + keys[std::rand() % keys.size()] + "\"]]");
   });
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[3]};
   for (auto const& rq: read_queries) {
     auto result {read(rq)};
     ++op;
@@ -397,8 +396,8 @@ TEST_F(StorePerformanceTest, small_tx_r) {
   writeAndCheck("[[{\"b/b/c\": 2}]]");
   writeAndCheck("[[{\"d\": 3}]]");
   auto rq {VPackParser::fromJson("[[\"a\"], [\"b/b/c\"], [\"d\"]]")};
-  OperationMeasurement op{hammer_times};
-  for (int i{}; i < hammer_times; ++i) {
+  OperationMeasurement op{repetition_times[3]};
+  for (size_t i{}; i < repetition_times[3]; ++i) {
     auto const result {read(rq)};
     ++op;
   }
@@ -407,14 +406,14 @@ TEST_F(StorePerformanceTest, small_tx_r) {
 
 TEST_F(StorePerformanceTest, small_tx_w) {
   std::vector<consensus::query_t> write_queries;
-  for (int i{}; i < hammer_times; ++i) {
+  for (size_t i{}; i < repetition_times[3]; ++i) {
     auto const n {std::to_string(i)};
     write_queries.push_back(VPackParser::fromJson( "[[{\"a\": " + 
       n +"}],[{\"a/b/c\": " + 
       n +"}],[{\"d\": " + 
       n +"}]]"));
   }
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[3]};
   for (auto const& wq: write_queries){
     writeAndCheck(wq);
     ++op;
@@ -423,14 +422,14 @@ TEST_F(StorePerformanceTest, small_tx_w) {
 }
 
 TEST_F(StorePerformanceTest, small_tx_rw) {
-  for (int i{}; i < hammer_times; ++i) {
+  for (size_t i{}; i < repetition_times[3]; ++i) {
     writeAndCheck("[[{\"a\": " + std::to_string(i) +"}]]");
     writeAndCheck("[[{\"b/b/c\": " + std::to_string(i) +"}]]");
     writeAndCheck("[[{\"d\": " + std::to_string(i) +"}]]");
   }
   auto const rq { VPackParser::fromJson("[[\"a\"], [\"a/b/c\"], [\"d\"]]") };
-  OperationMeasurement op{hammer_times};
-  for (int i{}; i < hammer_times; ++i) {
+  OperationMeasurement op{repetition_times[3]};
+  for (size_t i{}; i < repetition_times[3]; ++i) {
     auto const result {read(rq)};
     ++op;
   }
@@ -444,7 +443,7 @@ TEST_F(StorePerformanceTest, bigger_tx_r) {
   {
     std::stringstream ss;
     ss << "[[{\"k0\": 0}]";
-    for (int i{1}; i < hammer_times; ++i) {
+    for (size_t i{1}; i < repetition_times[0]; ++i) {
       ss << ",[{\"k" << i << "\": " << i << "}]";
     }
     ss << "]";
@@ -453,14 +452,14 @@ TEST_F(StorePerformanceTest, bigger_tx_r) {
   std::stringstream ss;
   ss << "[[";
   ss << "\"k0\"";
-  for (int i{1}; i < hammer_times; ++i) {
+  for (size_t i{1}; i < repetition_times[0]; ++i) {
     ss << ",\"k" << i << "\"";
   }
   ss << "]]";
   auto const key_list {VPackParser::fromJson(ss.str())};
 
-  OperationMeasurement op{hammer_times};
-  for (int i{}; i < hammer_times; ++i) {
+  OperationMeasurement op{repetition_times[0]};
+  for (size_t i{}; i < repetition_times[0]; ++i) {
     auto const result {read(key_list)};
     // ASSERT_EQ(result->size(), result->size());
     ++op;
@@ -471,13 +470,13 @@ TEST_F(StorePerformanceTest, bigger_tx_r) {
 TEST_F(StorePerformanceTest, bigger_tx_w) {
   std::stringstream ss;
   ss << "[[{\"k0\": 0}]";
-  for (int i{1}; i < hammer_times; ++i) {
+  for (size_t i{1}; i < repetition_times[0]; ++i) {
     ss << ",[{\"k" << i << "\": " << i << "}]";
   }
   ss << "]";
   auto const write_string {VPackParser::fromJson(ss.str())};
-  OperationMeasurement op{hammer_times};
-  for (int i{}; i < hammer_times; ++i) {
+  OperationMeasurement op{repetition_times[0]};
+  for (size_t i{}; i < repetition_times[0]; ++i) {
     write(write_string);
     ++op;
   }
@@ -489,11 +488,11 @@ TEST_F(StorePerformanceTest, bigger_tx_w) {
 TEST_F(StorePerformanceTest, array_push) {
   writeAndCheck(R"([[{"/a/b/c":[]}]])");
   std::vector<consensus::query_t> write_queries;
-  int i {};
-  std::generate_n(std::back_inserter(write_queries), hammer_times, [&i](){
+  size_t i {};
+  std::generate_n(std::back_inserter(write_queries), repetition_times[1], [&i](){
     return VPackParser::fromJson(R"([[{"/a/b/c":{"op":"push","new":)" + std::to_string(i++) + "}}]]");
   });
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[1]};
   for (auto const& wq: write_queries) {
     writeAndCheck(wq);
     ++op;
@@ -504,14 +503,14 @@ TEST_F(StorePerformanceTest, array_push) {
 TEST_F(StorePerformanceTest, array_pop) {
   std::stringstream ss;
   ss << R"([[{"/a/b/c":[0)";
-  for (int i{1}; i < hammer_times; ++i) {
+  for (size_t i{1}; i < repetition_times[1]; ++i) {
     ss << "," << i;
   }
   ss << "]}]]";
   writeAndCheck(ss.str());
   auto const rq {VPackParser::fromJson(R"([[{"/a/b/c":{"op":"pop"}}]])")};
-  OperationMeasurement op{hammer_times};
-  for (int i{}; i < hammer_times; ++i) {
+  OperationMeasurement op{repetition_times[1]};
+  for (size_t i{}; i < repetition_times[1]; ++i) {
     writeAndCheck(rq);
     ++op;
   }
@@ -524,13 +523,13 @@ TEST_F(StorePerformanceTest, array_pop) {
 // add in ascending order
 TEST_F(StorePerformanceTest, tree_add_ascending) {
   std::vector<consensus::query_t> write_queries;
-  auto const width {log10(hammer_times)};
-  for (int i{}; i < hammer_times; ++i) {
+  auto const width {log10(repetition_times[3])};
+  for (size_t i{}; i < repetition_times[3]; ++i) {
     auto k {std::to_string(i)};
     k = std::string(width - k.size(), '0') + k;
     write_queries.push_back(VPackParser::fromJson("[[{\"k"+k+"\": 42}]]"));
   }
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[3]};
   for (auto const& wq: write_queries) {
     write(wq);
     ++op;
@@ -541,13 +540,13 @@ TEST_F(StorePerformanceTest, tree_add_ascending) {
 // add in descending order
 TEST_F(StorePerformanceTest, tree_add_descending) {
   std::vector<consensus::query_t> write_queries;
-  auto const width {log10(hammer_times)};
-  for (int i{hammer_times}; i > 0; --i) {
+  auto const width {log10(repetition_times[3])};
+  for (auto i{repetition_times[3]}; i > 0; --i) {
     auto k {std::to_string(i)};
     k = std::string(width - k.size(), '0') + k;
     write_queries.push_back(VPackParser::fromJson("[[{\"k"+k+"\": 42}]]"));
   }
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[3]};
   for (auto const& wq: write_queries) {
     write(wq);
     ++op;
@@ -560,13 +559,13 @@ TEST_F(StorePerformanceTest, tree_add_descending) {
 // add ascending, remove root, then re-add
 TEST_F(StorePerformanceTest, tree_add_remove_readd) {
   std::vector<consensus::query_t> write_queries;
-  auto const width {log10(hammer_times)};
-  for (int i{}; i < hammer_times; ++i) {
+  auto const width {log10(repetition_times[3])};
+  for (size_t i{}; i < repetition_times[3]; ++i) {
     auto k {std::to_string(i)};
     k = std::string(width - k.size(), '0') + k;
     write_queries.push_back(VPackParser::fromJson("[[{\"k"+k+"\": 42}]]"));
   }
-  OperationMeasurement op{hammer_times};
+  OperationMeasurement op{repetition_times[3]};
   for (auto const& wq: write_queries) {
     write(wq);
     ++op;
@@ -583,8 +582,8 @@ TEST_F(StorePerformanceTest, tree_add_remove_readd) {
 // multiple threads manipulate values
 TEST_F(StorePerformanceTest, multiple_threads_all_separate_keys) {
   std::vector<std::thread> threads;
-  OperationMeasurement op{hammer_times};
-  std::generate_n(std::back_inserter(threads), hammer_times, [this](){return std::thread([this](){
+  OperationMeasurement op{repetition_times[3]};
+  std::generate_n(std::back_inserter(threads), repetition_times[3], [this](){return std::thread([this](){
     auto const key {rand_path()};
     auto const json_object {"{\"" + key + "\": " + std::to_string(rand()) + "}"};
     auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
@@ -599,8 +598,8 @@ TEST_F(StorePerformanceTest, multiple_threads_all_separate_keys) {
 
 TEST_F(StorePerformanceTest, multiple_threads_high_concurrence) {
   std::vector<std::thread> threads;
-  OperationMeasurement op{hammer_times};
-  std::generate_n(std::back_inserter(threads), hammer_times, [this](){return std::thread([this](){
+  OperationMeasurement op{repetition_times[3]};
+  std::generate_n(std::back_inserter(threads), repetition_times[3], [this](){return std::thread([this](){
     std::string const key {"k" + std::to_string(rand() %3)};
     auto const json_object {"{\"" + key + "\": " + std::to_string(rand()) + "}"};
     auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
