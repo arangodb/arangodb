@@ -682,41 +682,61 @@ TEST(MerkleTreeTest, test_check_consistency) {
 #endif
 }
 
-TEST(MerkleTreeTest, test_grow_left_simple) {
-  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
+class MerkleTreeGrowLeftTests
+    : public ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>,
+      public ::testing::Test {
+ public:
+  MerkleTreeGrowLeftTests()
+      : MerkleTree<::arangodb::containers::FnvHashProvider, 3>(
+          6, uint64_t(1577836800000ULL) << 20ULL) {}
+};
+
+TEST_F(MerkleTreeGrowLeftTests, test_grow_left_simple) {
+  uint64_t rangeMin = range().first;
   uint64_t initWidth = 1ULL << 24;
   uint64_t bucketWidth = 1ULL << 6;
-  uint64_t rangeMax = rangeMin + initWidth;
+  uint64_t rangeMax = range().second;
+  ASSERT_EQ(rangeMin + initWidth, rangeMax);
 
   arangodb::containers::FnvHashProvider hasher;
 
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
+  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(0, count());
+  ASSERT_EQ(0, rootValue());
   
-  ASSERT_EQ(6, tree.maxDepth());
-  ASSERT_EQ(0, tree.count());
-  ASSERT_EQ(0, tree.rootValue());
-  
-  tree.insert(rangeMin);
-  tree.insert(rangeMin + bucketWidth);
-  tree.insert(rangeMin + 47 * bucketWidth);
+  insert(rangeMin);
+  insert(rangeMin + bucketWidth);
+  insert(rangeMin + 47 * bucketWidth);
 
-  ASSERT_EQ(6, tree.maxDepth());
-  ASSERT_EQ(3, tree.count());
+  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(3, count());
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
-            hasher.hash(rangeMin + 47 * bucketWidth), tree.rootValue());
+            hasher.hash(rangeMin + 47 * bucketWidth), rootValue());
 
   // Now grow to the left:
-  tree.insert(rangeMin - 1);
+  insert(rangeMin - 1);
 
   // Must not throw:
-  tree.checkConsistency();
+  checkConsistency();
 
-  ASSERT_EQ(6, tree.maxDepth());
-  ASSERT_EQ(4, tree.count());
+  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(4, count());
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
             hasher.hash(rangeMin + 47 * bucketWidth) ^
-            hasher.hash(rangeMin - 1), tree.rootValue());
-  ASSERT_EQ(rangeMin - initWidth, tree.range().first);
-  ASSERT_EQ(rangeMax, tree.range().second);
+            hasher.hash(rangeMin - 1), rootValue());
+  ASSERT_EQ(rangeMin - initWidth, range().first);
+  ASSERT_EQ(rangeMax, range().second);
+
+  // Now check the bottommost buckets:
+  Node& n = node(index(rangeMin, maxDepth()));
+  ASSERT_EQ(2, n.count);
+  ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth),
+            n.hash);
+  Node& n2 = node(index(rangeMin - 1, maxDepth()));
+  ASSERT_EQ(1, n2.count);
+  ASSERT_EQ(hasher.hash(rangeMin - 1), n2.hash);
+  Node& n3 = node(index(rangeMin + 47 * bucketWidth, maxDepth()));
+  ASSERT_EQ(1, n3.count);
+  ASSERT_EQ(hasher.hash(rangeMin + 47 * bucketWidth), n3.hash);
 }
 
