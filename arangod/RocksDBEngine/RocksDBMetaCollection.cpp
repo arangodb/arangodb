@@ -727,11 +727,14 @@ void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
     }
   }
   
-  std::unique_lock<std::mutex> guard(_revisionBufferLock);
+  uint64_t inserts, removes, truncates;
+  {
+    std::unique_lock<std::mutex> guard(_revisionBufferLock);
 
-  uint64_t inserts = _revisionInsertBuffers.size();
-  uint64_t removes = _revisionRemovalBuffers.size();
-  uint64_t truncates = _revisionTruncateBuffer.size();
+    inserts = _revisionInsertBuffers.size();
+    removes = _revisionRemovalBuffers.size();
+    truncates = _revisionTruncateBuffer.size();
+  }
   
   obj->add("inserts", VPackValue(inserts));
   obj->add("removes", VPackValue(removes));
