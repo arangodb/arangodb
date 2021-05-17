@@ -1046,7 +1046,7 @@ void MerkleTree<Hasher, BranchingBits>::completeFromDeepest() noexcept {
       std::uint64_t count = 0;
       std::uint64_t hash = 0;
       for (std::uint64_t j = 0; j < BranchingFactor; ++j) {
-        Node& src = this->node(offDown++);
+        Node const& src = this->node(offDown++);
         count += src.count;
         hash ^= src.hash;
       }
@@ -1102,6 +1102,8 @@ void MerkleTree<Hasher, BranchingBits>::leftCombine(bool withShift) noexcept {
       Node& src = this->node(offset + i);
       Node& dst = this->node(offset + (i / 2));
 
+      TRI_ASSERT(i % 2 != 0 || (dst.count == 0 && dst.hash == 0));
+     
       TRI_ASSERT(&src != &dst);
       dst.count += src.count;
       dst.hash ^= src.hash;
@@ -1120,21 +1122,25 @@ void MerkleTree<Hasher, BranchingBits>::growRight(std::uint64_t key) {
   std::uint64_t rangeMax = meta().rangeMax;
   std::uint64_t initialRangeMin = meta().initialRangeMin;
 
+  TRI_ASSERT(rangeMax > rangeMin);
+  TRI_ASSERT(rangeMin <= initialRangeMin);
+
   while (key >= rangeMax) {
     // someone else resized already while we were waiting for the lock
     // Furthermore, we can only grow by a factor of 2, so we might have
     // to grow multiple times
 
-    std::uint64_t const width = rangeMax - rangeMin;
-    std::uint64_t const keysPerBucket = width / nodeCountAtDepth(maxDepth);
-
     TRI_ASSERT(rangeMin < rangeMax);
+    std::uint64_t const width = rangeMax - rangeMin;
+    TRI_ASSERT(NumberUtils::isPowerOf2(width));
+
+    std::uint64_t const keysPerBucket = width / nodeCountAtDepth(maxDepth);
 
     // First find out if we need to shift or not, this is for the
     // invariant 2:
     bool needToShift
       = (initialRangeMin - rangeMin) % (2 * keysPerBucket) != 0;
-
+    
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     std::uint64_t count = this->node(0).count;
 #endif 

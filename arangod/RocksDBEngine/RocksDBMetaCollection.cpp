@@ -358,20 +358,26 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
+  LOG_DEVEL << "REVISIONTREE. TREE: " << (_revisionTree != nullptr) << ", HAVEBUFFERED: " << haveBufferedOperations();
   if (!_revisionTree && !haveBufferedOperations()) {
     // we only need to return an empty tree here.
     return allocateEmptyRevisionTree(revisionTreeDepth); 
   }
+ 
+  if (_revisionTree != nullptr) {
+  LOG_DEVEL << "INITIAL TREE HAS: " << _revisionTree->count() << " DOCS";
+  }
 
   applyUpdates(safeSeq);
+  
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
+  LOG_DEVEL << "TREE AFTER UPDATE HAS: " << _revisionTree->count() << " DOCS";
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
   auto tree = _revisionTree->clone();
-  if (!tree) {
-    return nullptr;
-  }
+  TRI_ASSERT(tree != nullptr);
+  LOG_DEVEL << "CLONED TREE HAS: " << tree->count() << " DOCS";
 
   return callback(std::move(tree));
 }
@@ -381,6 +387,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
     // apply any which are buffered and older than our ongoing transaction start
     rocksdb::SequenceNumber trxSeq = RocksDBTransactionState::toState(&trx)->beginSeq();
     TRI_ASSERT(trxSeq != 0);
+  LOG_DEVEL << "REVISIONTREE TRX";
     Result res = applyUpdatesForTransaction(*tree, trxSeq);
     if (res.fail()) {
       return nullptr;
@@ -392,6 +399,8 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
         
     tree->insert(operations.inserts);
     tree->remove(operations.removals);
+  
+    LOG_DEVEL << "REVISIONTREE TRX AFTER ALL UPDATES HAS: " << tree->count() << " DOCS";
 
     return tree;
   });
@@ -411,10 +420,13 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
     auto guard = scopeGuard([manager, ctx]() -> void { manager->release(ctx); });
     rocksdb::SequenceNumber trxSeq = ctx->snapshotTick();
     TRI_ASSERT(trxSeq != 0);
+  LOG_DEVEL << "REVISIONTREE BATCH";
     Result res = applyUpdatesForTransaction(*tree, trxSeq);
     if (res.fail()) {
       return nullptr;
     }
+    
+    LOG_DEVEL << "REVISIONTREE BATCH AFTER ALL UPDATES HAS: " << tree->count() << " DOCS";
 
     return tree;
   });
@@ -977,24 +989,20 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 
 Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTree& tree,
                                                          rocksdb::SequenceNumber commitSeq) const {
-  if (!_logicalCollection.useSyncByRevision()) {
-    return {};
-  }
+  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+  
+  LOG_DEVEL << "APPLYUPDATESFORTRX";
 
-  Result res = basics::catchVoidToResult([&]() -> void {
-    decltype(_revisionInsertBuffers)::const_iterator insertIt;
-    decltype(_revisionRemovalBuffers)::const_iterator removeIt;
-    {
-      std::unique_lock<std::mutex> guard(_revisionBufferLock);
-      insertIt = _revisionInsertBuffers.begin();
-      removeIt = _revisionRemovalBuffers.begin();
-    }
+  return basics::catchVoidToResult([&]() -> void {
+    std::unique_lock<std::mutex> guard(_revisionBufferLock);
+    
+    auto insertIt = _revisionInsertBuffers.begin();
+    auto removeIt = _revisionRemovalBuffers.begin();
 
     {
       rocksdb::SequenceNumber ignoreSeq = 0;  // truncate will increase this sequence
       bool foundTruncate = false;
       // check for a truncate marker
-      std::unique_lock<std::mutex> guard(_revisionBufferLock);
       auto it = _revisionTruncateBuffer.begin();  // sorted ASC
       while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
         ignoreSeq = *it;
@@ -1010,6 +1018,7 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
         while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= ignoreSeq) {
           ++removeIt;
         }
+
         tree.clear();  // clear estimates
       }
     }
@@ -1030,13 +1039,11 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
 
         // check for inserts
         if (applyInserts) {
-          std::unique_lock<std::mutex> guard(_revisionBufferLock);
           inserts = &insertIt->second;
           ++insertIt;
         }
         // check for removals
         if (applyRemovals) {
-          std::unique_lock<std::mutex> guard(_revisionBufferLock);
           removals = &removeIt->second;
           ++removeIt;
         }
@@ -1056,9 +1063,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
       if (removals) {
         tree.remove(*removals);
       }
-    }  // </while(true)>
+    } 
   });
-  return res;
 }
 
 /// @brief lock a collection, with a timeout

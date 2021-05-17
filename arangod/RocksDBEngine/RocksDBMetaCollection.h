@@ -129,10 +129,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
+ private:
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;
 
- private:
   ErrorCode doLock(double timeout, AccessMode::Type mode);
   bool haveBufferedOperations() const;
   std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree(std::size_t depth) const;
