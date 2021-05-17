@@ -231,10 +231,7 @@ MerkleTree<Hasher, BranchingBits>::fromBottomMostCompressed(std::string_view buf
   }
   
   tree->completeFromDeepest();
-
-#ifdef PARANOID_TREE_CHECKS
   tree->checkInternalConsistency();
-#endif
 
   return tree;
 }
@@ -615,7 +612,7 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<Hasher, Branchin
 
   while (true) {  // left by break
     std::uint64_t width = this->meta().rangeMax - this->meta().rangeMin;
-    std::uint64_t widthOther = this->meta().rangeMax - other.meta().rangeMin;
+    std::uint64_t widthOther = other.meta().rangeMax - other.meta().rangeMin;
     if (width == widthOther) {
       break;
     }
@@ -1255,6 +1252,8 @@ void MerkleTree<Hasher, BranchingBits>::growLeft(std::uint64_t key) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(count == this->node(0).count);
 #endif 
+
+    TRI_ASSERT(rangeMin >= width);
 
     rangeMin -= width;
     if (needToShift) {
