@@ -28,8 +28,8 @@ const db = require("@arangodb").db;
 const explainer = require("@arangodb/aql/explainer");
 const internal = require("internal");
 const errors = internal.errors;
-
-const isCoordinator = require('@arangodb/cluster').isCoordinator();
+const cluster = require('@arangodb/cluster');
+const isCoordinator = cluster.isCoordinator();
 const isEnterprise = require("internal").isEnterprise();
 
 function checkQueryError(query, message, errorCode) {
@@ -227,10 +227,17 @@ function WindowTestSuite() {
         RETURN { time: t.time, val: t.val, observations, observations2 }
       `;
       const nodes = AQL_EXPLAIN(query).plan.nodes;
-      assertEqual(nodes[6].type, "WindowNode");
-      assertEqual(nodes[7].type, "FilterNode");
-      assertEqual(nodes[10].type, "WindowNode");
-      assertEqual(nodes[11].type, "FilterNode");
+      if (cluster.isCluster()) {
+        assertEqual(nodes[8].type, "WindowNode");
+        assertEqual(nodes[9].type, "FilterNode");
+        assertEqual(nodes[12].type, "WindowNode");
+        assertEqual(nodes[13].type, "FilterNode");
+      } else {
+        assertEqual(nodes[6].type, "WindowNode");
+        assertEqual(nodes[7].type, "FilterNode");
+        assertEqual(nodes[10].type, "WindowNode");
+        assertEqual(nodes[11].type, "FilterNode");
+      }
     },
   };
 }
