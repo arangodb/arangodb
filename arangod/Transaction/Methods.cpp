@@ -2507,7 +2507,7 @@ Future<Result> Methods::replicateOperations(
 
           LOG_TOPIC("8921e", INFO, Logger::REPLICATION)
             << "synchronous replication: drop follower "
-            << deadFollower << " for shard " << collection->name()
+            << " for shard " << collection->name()
             << " in database " << collection->vocbase().name()
             << " stopped as we're shutting down";
           THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);

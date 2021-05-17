@@ -5,6 +5,8 @@ v3.7.12 (XXXX-XX-XX)
   it could not drop a shard follower instead of correctly indicating
   the shutdown as reason.
 
+* Fixed issue BTS-354: Assertion related to getCollection.
+
 * Fixed BTS-403: Hot restores must also clear relevant `Current` keys. The
   overriding of the `Plan` entries needs to be reflected in `Current` to avoid
   conflicts in maintenance jobs.
