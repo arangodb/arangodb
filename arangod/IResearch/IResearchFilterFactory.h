@@ -53,7 +53,7 @@ struct FilterFactory {
   ///        if 'filter' != nullptr then also append the iresearch filter there
   ////////////////////////////////////////////////////////////////////////////////
   static arangodb::Result filter(irs::boolean_filter* filter, QueryContext const& ctx,
-                     arangodb::aql::AstNode const& node);
+                     arangodb::aql::AstNode const& node, bool noExpressionFilter = false);
 };  // FilterFactory
 
 

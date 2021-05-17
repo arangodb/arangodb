@@ -894,6 +894,9 @@ Result byRange(irs::boolean_filter* filter,
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                     FilterContext const& filterCtx,
                     std::shared_ptr<aql::AstNode>&& node) {
+
+  return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
+
   if (!filter) {
     return {};
   }
@@ -931,6 +934,9 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx, aql::AstNode const& node) {
+  
+  return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
+
   if (!filter) {
     // FIXME: for inverted index expression should be forbidden as using the expression will be full scan with pessimization
     return {};
@@ -3978,7 +3984,7 @@ Result fromFilter(irs::boolean_filter* filter, QueryContext const& ctx,
 }
 
 Result filter(irs::boolean_filter* filter, QueryContext const& queryCtx,
-              FilterContext const& filterCtx, aql::AstNode const& node) {
+              FilterContext const& filterCtx, aql::AstNode const& node, bool noExpressionFilter) {
   switch (node.type) {
     case aql::NODE_TYPE_FILTER:  // FILTER
       return fromFilter(filter, queryCtx, filterCtx, node);
@@ -4047,7 +4053,8 @@ namespace iresearch {
 /*static*/ Result FilterFactory::filter(
     irs::boolean_filter* filter,
     QueryContext const& ctx,
-    aql::AstNode const& node) {
+    aql::AstNode const& node,
+    bool noExpressionFilter /*= false*/) {
   if (node.willUseV8()) {
     return {
       TRI_ERROR_NOT_IMPLEMENTED,

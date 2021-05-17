@@ -170,6 +170,15 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_equality) {
   estimateFilterCondition(queryString, fields, expected);
 }
 
+TEST_F(IResearchInvertedIndexConditionTest, test_with_simple_expression) {
+
+  std::string queryString = "FOR d IN test FILTER d.a == 'value' AND (1==1) RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
 TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_many_fields) {
 
   std::string queryString = "FOR d IN test FILTER d.a == 'value' OR d.b == 'value2' AND d.c == 'value3' RETURN d ";
@@ -212,7 +221,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_no_fields_one_missing) {
   estimateFilterCondition(queryString, fields, expected);
 }
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_nonderm_expression) {
+TEST_F(IResearchInvertedIndexConditionTest, test_with_nondeterm_expression) {
 
   std::string queryString = "FOR d IN test FILTER d.a == NOOPT('value') RETURN d ";
   std::vector<std::string> fields = {"a"};

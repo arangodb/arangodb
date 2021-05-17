@@ -63,7 +63,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   auto filterCosts = FilterCosts::defaultCosts(itemsInIndex);
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
-    filterCosts.coveredAttributes = 0; // FIXME: we may use stored values
+    filterCosts.coveredAttributes = 0; // FIXME: we may use stored values!
   }
   return filterCosts;
 }
