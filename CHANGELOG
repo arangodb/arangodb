@@ -1,6 +1,8 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue BTS-354: Assertion related to getCollection. 
+
 * Fixed BTS-403: Hot restores must also clear relevant `Current` keys. The
   overriding of the `Plan` entries needs to be reflected in `Current` to avoid
   conflicts in maintenance jobs.
