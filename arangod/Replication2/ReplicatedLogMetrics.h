@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright $YEAR-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,24 +22,30 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-
 #include <cstdint>
 
-namespace arangodb::replication2::replicated_log {
-struct ReplicatedLogMetrics;
-}
+template <typename T>
+class Histogram;
+template <typename T>
+class Gauge;
+template <typename T>
+struct log_scale_t;
 
 namespace arangodb {
-class ReplicatedLogFeature : public application_features::ApplicationFeature {
- public:
-  explicit ReplicatedLogFeature(application_features::ApplicationServer& server);
-  ~ReplicatedLogFeature() override = default;
+class MetricsFeature;
+}
 
-  auto metrics() -> replication2::replicated_log::ReplicatedLogMetrics&;
+namespace arangodb::replication2::replicated_log {
+
+struct ReplicatedLogMetrics {
+  explicit ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature);
+
+  auto metricReplicatedLogNumber() -> Gauge<uint64_t>&;
+  auto metricReplicatedLogAppendEntriesRtt() -> Histogram<log_scale_t<std::uint64_t>>&;
 
  private:
-  std::unique_ptr<replication2::replicated_log::ReplicatedLogMetrics> _replicatedLogMetrics;
+  Gauge<uint64_t>& _replicated_log_number;
+  Histogram<log_scale_t<std::uint64_t>>& _replicated_log_append_entries_rtt_ms;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::replication2::replicated_log
