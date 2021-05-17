@@ -46,7 +46,7 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries) {
     coreA = std::make_unique<LogCore>(leaderLog);
   }
 
-  auto leader = LogLeader::construct(defaultLogger(), "leader",
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {}, 1);
   leader->runAsyncStep();
   {
@@ -70,7 +70,6 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries) {
   }
 }
 
-
 TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
   auto const entries = {
       replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
@@ -86,7 +85,7 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
     coreA = std::make_unique<LogCore>(leaderLog);
   }
 
-  auto leader = LogLeader::construct(defaultLogger(), "leader",
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {}, 1);
   leader->runAsyncStep();
 
@@ -131,10 +130,11 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
   }
 
   auto coreB = makeLogCore(LogId{2});
-  auto follower = std::make_shared<DelayedFollowerLog>("follower", std::move(coreB),
+  auto follower = std::make_shared<DelayedFollowerLog>(_logMetricsMock,
+                                                       "follower", std::move(coreB),
                                                        LogTerm{3}, "leader");
-  auto leader = LogLeader::construct(defaultLogger(), "leader", std::move(coreA),
-                                     LogTerm{3}, {follower}, 2);
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+                                     std::move(coreA), LogTerm{3}, {follower}, 2);
   leader->runAsyncStep();
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
@@ -168,4 +168,3 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
     ASSERT_FALSE(entry.has_value());
   }
 }
-

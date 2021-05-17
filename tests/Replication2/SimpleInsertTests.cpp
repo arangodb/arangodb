@@ -37,9 +37,12 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto leaderId = ParticipantId{"leader"};
   auto followerId = ParticipantId{"follower"};
 
-  auto follower = std::make_shared<DelayedFollowerLog>(followerId, std::move(coreB),
-                                                       LogTerm{1}, leaderId);
-  auto leader = LogLeader::construct(LogContext(Logger::REPLICATION2), leaderId, std::move(coreA), LogTerm{1},
+  auto follower =
+      std::make_shared<DelayedFollowerLog>(_logMetricsMock, followerId,
+                                           std::move(coreB), LogTerm{1}, leaderId);
+  auto leader =
+      LogLeader::construct(LogContext(Logger::REPLICATION2), _logMetricsMock,
+                           leaderId, std::move(coreA), LogTerm{1},
                            std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
 
   {
@@ -173,12 +176,13 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto leaderId = ParticipantId{"leader"};
   auto followerId = ParticipantId{"follower"};
 
-
   auto coreB = makeLogCore(LogId{2});
-  auto follower = std::make_shared<DelayedFollowerLog>(followerId, std::move(coreB),
-                                                       LogTerm{3}, leaderId);
+  auto follower =
+      std::make_shared<DelayedFollowerLog>(_logMetricsMock, followerId,
+                                           std::move(coreB), LogTerm{3}, leaderId);
   auto leader =
-      LogLeader::construct(defaultLogger(), leaderId, std::move(coreA), LogTerm{3},
+      LogLeader::construct(defaultLogger(), _logMetricsMock, leaderId,
+                           std::move(coreA), LogTerm{3},
                            std::vector<std::shared_ptr<AbstractFollower>>{follower}, 1);
 
   {
@@ -237,12 +241,9 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
       EXPECT_EQ(follower_entry.value(), test);
     }
   }
-
 }
 
-
 TEST_F(ReplicatedLogTest, multiple_follower) {
-
   auto coreA = makeLogCore(LogId{1});
   auto coreB = makeLogCore(LogId{2});
   auto coreC = makeLogCore(LogId{3});
@@ -251,15 +252,16 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   auto followerId_1 = ParticipantId{"follower1"};
   auto followerId_2 = ParticipantId{"follower1"};
 
-  auto follower_1 = std::make_shared<DelayedFollowerLog>(followerId_1, std::move(coreB),
-                                                         LogTerm{1}, leaderId);
-  auto follower_2 = std::make_shared<DelayedFollowerLog>(followerId_2, std::move(coreC),
-                                                         LogTerm{1}, leaderId);
+  auto follower_1 =
+      std::make_shared<DelayedFollowerLog>(_logMetricsMock, followerId_1,
+                                           std::move(coreB), LogTerm{1}, leaderId);
+  auto follower_2 =
+      std::make_shared<DelayedFollowerLog>(_logMetricsMock, followerId_2,
+                                           std::move(coreC), LogTerm{1}, leaderId);
   // create leader with write concern 2
-  auto leader =
-      LogLeader::construct(defaultLogger(), leaderId, std::move(coreA), LogTerm{1},
-                           std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2},
-                           3);
+  auto leader = LogLeader::construct(
+      defaultLogger(), _logMetricsMock, leaderId, std::move(coreA), LogTerm{1},
+      std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2}, 3);
 
   auto index = leader->insert(LogPayload{"first entry"});
   auto future = leader->waitFor(index);
