@@ -216,9 +216,7 @@ Supervision::Supervision(application_features::ApplicationServer& server)
           arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() {
-  if (!isStopping()) {
-    shutdown();
-  }
+  shutdown();
 }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";

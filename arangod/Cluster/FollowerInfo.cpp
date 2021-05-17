@@ -300,33 +300,63 @@ bool FollowerInfo::contains(ServerID const& sid) const {
 
 void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyncFollowers,
                                       std::shared_ptr<std::vector<ServerID>> realInsyncFollowers) {
+  auto emptyFollowers = std::make_shared<std::vector<ServerID>>();
+  auto emptyFailoverCandidates = std::make_shared<std::vector<ServerID>>();
+
   // This function copies over the information taken from the last CURRENT into a local vector.
   // Where we remove the old leader and ourself from the list of followers
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(writeLocker, _dataLock);
-  // Reset local structures, if we take over leadership we do not know anything!
-  _followers = realInsyncFollowers ? realInsyncFollowers : std::make_shared<std::vector<ServerID>>();
-  _failoverCandidates = std::make_shared<std::vector<ServerID>>();
-  // We disallow writes until the first write.
-  _canWrite = false;
-  // Take over leadership
-  _theLeader = "";
-  _theLeaderTouched = true;
-  TRI_ASSERT(_failoverCandidates->empty());
+  
+  // all modifications to the internal state are guaranteed to be 
+  // atomic
   if (previousInsyncFollowers.size() > 1) {
     auto ourselves = arangodb::ServerState::instance()->getId();
     auto failoverCandidates =
         std::make_shared<std::vector<ServerID>>(previousInsyncFollowers);
     auto myEntry =
         std::find(failoverCandidates->begin(), failoverCandidates->end(), ourselves);
-    // We are a valid failover follower
-    TRI_ASSERT(myEntry != failoverCandidates->end());
-    // The first server is a different leader! (For some reason the job can be
-    // triggered twice) TRI_ASSERT(myEntry != failoverCandidates->begin());
-    failoverCandidates->erase(myEntry);
+    if (myEntry == failoverCandidates->end()) {
+      LOG_TOPIC("c9422", ERR, Logger::CLUSTER)
+          << "invalid failover candidates for FollowerInfo of shard " 
+          << _docColl->vocbase().name() << "/" << _docColl->name() 
+          << ". our id: " << ourselves << ", failover candidates: "
+          << *failoverCandidates << ", previous in-sync followers: "
+          << previousInsyncFollowers << ", real in-sync followers: " 
+          << (realInsyncFollowers != nullptr ? *realInsyncFollowers : *emptyFollowers)
+          << ", theLeader: " << _theLeader << ", theLeaderTouched; "
+          << std::boolalpha << _theLeaderTouched;
+   
+      TRI_ASSERT(false);
+    } else {
+      // We are a valid failover follower
+      
+      // The first server is a different leader! (For some reason the job can be
+      // triggered twice) TRI_ASSERT(myEntry != failoverCandidates->begin());
+      failoverCandidates->erase(myEntry);
+    }
+
     // Put us in front, put old leader somewhere, we do not really care
-    _failoverCandidates = failoverCandidates;
+    _failoverCandidates = std::move(failoverCandidates);
+  } else {
+    _failoverCandidates = std::move(emptyFailoverCandidates);
   }
+
+  // all the following modifications will be noexcept, so if we get here
+  // this method will not leave anything in a semi-modified state
+  
+  // Reset local structures, if we take over leadership we do not know anything!
+  if (realInsyncFollowers) {
+    _followers = std::move(realInsyncFollowers); 
+  } else {
+    _followers = std::move(emptyFollowers);
+  }
+  
+  // We disallow writes until the first write.
+  _canWrite = false;
+  // Take over leadership
+  _theLeader.clear();
+  _theLeaderTouched = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

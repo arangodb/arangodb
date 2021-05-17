@@ -422,6 +422,15 @@ ExecutionNode* WindowNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void WindowNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _rangeVariable = Variable::replace(_rangeVariable, replacements);
+  for (auto& variable : _aggregateVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void WindowNode::getVariablesUsedHere(VarSet& vars) const {
   if (_rangeVariable) {

@@ -331,6 +331,10 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   builder.close();
 }
 
+void DistributeNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _variable = Variable::replace(_variable, replacements);
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void DistributeNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_variable);
@@ -538,6 +542,16 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(Collection const& collec
            (collection.numberOfShards() <= 1 && !collection.isSatellite()))
               ? Parallelism::Serial
               : Parallelism::Undefined);
+}
+
+void GatherNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  for (auto& variable : _elements) {
+    auto v = Variable::replace(variable.var, replacements);
+    if (v != variable.var) {
+      variable.var = v;
+    }
+    variable.attributePath.clear();
+  }
 }
 
 void GatherNode::getVariablesUsedHere(VarSet& vars) const {

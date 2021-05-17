@@ -1083,10 +1083,15 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      if (!followerInfo->allowedToWrite()) {
-        // We cannot fulfill minimum replication Factor.
-        // Reject write.
+
+      switch (followerInfo->allowedToWrite()) {
+      case FollowerInfo::WriteState::FORBIDDEN:
+        // We cannot fulfill minimum replication Factor. Reject write.
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      case FollowerInfo::WriteState::STARTUP:
+        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+      default:
+        break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1383,10 +1388,15 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      if (!followerInfo->allowedToWrite()) {
-        // We cannot fulfill minimum replication Factor.
-        // Reject write.
+
+      switch (followerInfo->allowedToWrite()) {
+      case FollowerInfo::WriteState::FORBIDDEN:
+        // We cannot fulfill minimum replication Factor. Reject write.
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      case FollowerInfo::WriteState::STARTUP:
+        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+      default:
+        break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1605,10 +1615,15 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      if (!followerInfo->allowedToWrite()) {
-        // We cannot fulfill minimum replication Factor.
-        // Reject write.
+
+      switch (followerInfo->allowedToWrite()) {
+      case FollowerInfo::WriteState::FORBIDDEN:
+        // We cannot fulfill minimum replication Factor. Reject write.
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      case FollowerInfo::WriteState::STARTUP:
+        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+      default:
+        break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1838,10 +1853,15 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options));
       }
-      if (!followerInfo->allowedToWrite()) {
-        // We cannot fulfill minimum replication Factor.
-        // Reject write.
-        return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options));
+
+      switch (followerInfo->allowedToWrite()) {
+      case FollowerInfo::WriteState::FORBIDDEN:
+        // We cannot fulfill minimum replication Factor. Reject write.
+        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      case FollowerInfo::WriteState::STARTUP:
+        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+      default:
+        break;
       }
 
       // fetch followers

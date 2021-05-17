@@ -54,25 +54,20 @@ constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
 CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
-
-  if (!desc.has(DATABASE)) {
-    error << "database must be specified. ";
-  }
-  TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(COLLECTION)) {
     error << "cluster-wide collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
 
-  if (!desc.has(SHARD)) {
-    error << "shard must be specified. ";
+  if (!ShardDefinition::isValid()) {
+    error << "database and shard must be specified. ";
   }
-  TRI_ASSERT(desc.has(SHARD));
 
   if (!desc.has(THE_LEADER)) {
     error << "shard leader must be specified. ";
@@ -108,9 +103,9 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
 CreateCollection::~CreateCollection() = default;
 
 bool CreateCollection::first() {
-  auto const& database = _description.get(DATABASE);
+  auto const& database = getDatabase();
   auto const& collection = _description.get(COLLECTION);
-  auto const& shard = _description.get(SHARD);
+  auto const& shard = getShard();
   auto const& leader = _description.get(THE_LEADER);
   auto const& followerEncoded = _description.get(FOLLOWER_ID);
 
@@ -262,10 +257,12 @@ bool CreateCollection::first() {
 
 void CreateCollection::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    TRI_ASSERT(_description.has(SHARD));
-    _feature.unlockShard(_description.get(SHARD));
+    // calling unlockShard here is safe, because nothing before it
+    // can go throw. if some code is added before the unlock that
+    // can throw, it must be made sure that the unlock is always called
+    _feature.unlockShard(getShard());
     if (!_doNotIncrement) {
-      _feature.incShardVersion(_description.get(SHARD));
+      _feature.incShardVersion(getShard());
     }
   }
   ActionBase::setState(state);

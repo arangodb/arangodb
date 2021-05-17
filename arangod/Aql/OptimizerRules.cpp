@@ -2051,255 +2051,20 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, std::unique_ptr<ExecutionP
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-class arangodb::aql::RedundantCalculationsReplacer final
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+struct VariableReplacer final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  explicit RedundantCalculationsReplacer(
-      Ast* ast, std::unordered_map<VariableId, Variable const*> const& replacements)
-      : _ast(ast), _replacements(replacements) {}
-
-  template <typename T>
-  void replaceStartTargetVariables(ExecutionNode* en) {
-    auto node = std::invoke(
-        [en](auto) {
-          if constexpr (std::is_base_of_v<GraphNode, T>) {
-            return dynamic_cast<T*>(en);
-          } else {
-            return static_cast<T*>(en);
-          }
-        },
-        0);
-    if (node->_inStartVariable != nullptr) {
-      node->_inStartVariable = Variable::replace(node->_inStartVariable, _replacements);
-    }
-    if (node->_inTargetVariable != nullptr) {
-      node->_inTargetVariable = Variable::replace(node->_inTargetVariable, _replacements);
-    }
-  }
-
-  template <typename T>
-  void replaceInVariable(ExecutionNode* en) {
-    auto node = ExecutionNode::castTo<T*>(en);
-    node->_inVariable = Variable::replace(node->_inVariable, _replacements);
-  }
-
-  void replaceInCalculation(ExecutionNode* en) {
-    auto node = ExecutionNode::castTo<CalculationNode*>(en);
-    VarSet variables;
-    node->expression()->variables(variables);
-
-    // check if the calculation uses any of the variables that we want to
-    // replace
-    for (auto const& it : variables) {
-      if (_replacements.find(it->id) != _replacements.end()) {
-        // calculation uses a to-be-replaced variable
-        node->expression()->replaceVariables(_replacements);
-        return;
-      }
-    }
-  }
-
-  void replaceInView(ExecutionNode* en) {
-    auto view = ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(en);
-    AstNode const& search = view->filterCondition();
-    if (filterConditionIsEmpty(&search)) {
-      // nothing to do
-      return;
-    }
-
-    VarSet variables;
-    Ast::getReferencedVariables(&search, variables);
-    // check if the search condition uses any of the variables that we want to
-    // replace
-    AstNode* cloned = nullptr;
-    for (auto const& it : variables) {
-      if (_replacements.find(it->id) != _replacements.end()) {
-        if (cloned == nullptr) {
-          // only clone the original search condition once
-          cloned = _ast->clone(&search);
-        }
-        // calculation uses a to-be-replaced variable
-        _ast->replaceVariables(cloned, _replacements);
-      }
-    }
-
-    if (cloned != nullptr) {
-      // exchange the filter condition
-      view->filterCondition(cloned);
-    }
-  }
+  explicit VariableReplacer(
+      std::unordered_map<VariableId, Variable const*> const& replacements)
+      : replacements(replacements) {}
 
   bool before(ExecutionNode* en) override final {
-    switch (en->getType()) {
-      case EN::ENUMERATE_LIST: {
-        replaceInVariable<EnumerateListNode>(en);
-        break;
-      }
-
-      case EN::ENUMERATE_IRESEARCH_VIEW: {
-        replaceInView(en);
-        break;
-      }
-
-      case EN::RETURN: {
-        replaceInVariable<ReturnNode>(en);
-        break;
-      }
-
-      case EN::CALCULATION: {
-        replaceInCalculation(en);
-        break;
-      }
-
-      case EN::FILTER: {
-        replaceInVariable<FilterNode>(en);
-        break;
-      }
-
-      case EN::TRAVERSAL: {
-        replaceInVariable<TraversalNode>(en);
-        break;
-      }
-
-      case EN::K_SHORTEST_PATHS: {
-        replaceStartTargetVariables<KShortestPathsNode>(en);
-        break;
-      }
-
-      case EN::SHORTEST_PATH: {
-        replaceStartTargetVariables<ShortestPathNode>(en);
-        break;
-      }
-
-      case EN::COLLECT: {
-        auto node = ExecutionNode::castTo<CollectNode*>(en);
-        for (auto& variable : node->_groupVariables) {
-          variable.inVar = Variable::replace(variable.inVar, _replacements);
-        }
-        for (auto& variable : node->_keepVariables) {
-          auto old = variable;
-          variable = Variable::replace(old, _replacements);
-        }
-        for (auto& variable : node->_aggregateVariables) {
-          variable.inVar = Variable::replace(variable.inVar, _replacements);
-        }
-        if (node->_expressionVariable != nullptr) {
-          node->_expressionVariable =
-              Variable::replace(node->_expressionVariable, _replacements);
-        }
-        for (auto const& it : _replacements) {
-          node->_variableMap.try_emplace(it.second->id, it.second->name);
-        }
-        // node->_keepVariables does not need to be updated at the moment as the
-        // "remove-redundant-calculations" rule will stop when it finds a
-        // COLLECT with an INTO, and the "inline-subqueries" rule will abort
-        // there as well
-        break;
-      }
-
-      case EN::SORT: {
-        auto node = ExecutionNode::castTo<SortNode*>(en);
-        for (auto& variable : node->_elements) {
-          variable.var = Variable::replace(variable.var, _replacements);
-        }
-        break;
-      }
-
-      case EN::GATHER: {
-        auto node = ExecutionNode::castTo<GatherNode*>(en);
-        for (auto& variable : node->_elements) {
-          auto v = Variable::replace(variable.var, _replacements);
-          if (v != variable.var) {
-            variable.var = v;
-          }
-          variable.attributePath.clear();
-        }
-        break;
-      }
-
-      case EN::DISTRIBUTE: {
-        auto node = ExecutionNode::castTo<DistributeNode*>(en);
-        node->_variable = Variable::replace(node->_variable, _replacements);
-        break;
-      }
-
-      case EN::REMOVE: {
-        replaceInVariable<RemoveNode>(en);
-        break;
-      }
-
-      case EN::INSERT: {
-        replaceInVariable<InsertNode>(en);
-        break;
-      }
-
-      case EN::UPSERT: {
-        auto node = ExecutionNode::castTo<UpsertNode*>(en);
-
-        if (node->_inDocVariable != nullptr) {
-          node->_inDocVariable = Variable::replace(node->_inDocVariable, _replacements);
-        }
-        if (node->_insertVariable != nullptr) {
-          node->_insertVariable = Variable::replace(node->_insertVariable, _replacements);
-        }
-        if (node->_updateVariable != nullptr) {
-          node->_updateVariable = Variable::replace(node->_updateVariable, _replacements);
-        }
-        break;
-      }
-
-      case EN::UPDATE: {
-        auto node = ExecutionNode::castTo<UpdateNode*>(en);
-
-        if (node->_inDocVariable != nullptr) {
-          node->_inDocVariable = Variable::replace(node->_inDocVariable, _replacements);
-        }
-        if (node->_inKeyVariable != nullptr) {
-          node->_inKeyVariable = Variable::replace(node->_inKeyVariable, _replacements);
-        }
-        break;
-      }
-
-      case EN::REPLACE: {
-        auto node = ExecutionNode::castTo<ReplaceNode*>(en);
-
-        if (node->_inDocVariable != nullptr) {
-          node->_inDocVariable = Variable::replace(node->_inDocVariable, _replacements);
-        }
-        if (node->_inKeyVariable != nullptr) {
-          node->_inKeyVariable = Variable::replace(node->_inKeyVariable, _replacements);
-        }
-        break;
-      }
-
-      case EN::WINDOW: {
-        auto node = ExecutionNode::castTo<WindowNode*>(en);
-        node->_rangeVariable = Variable::replace(node->_rangeVariable, _replacements);
-        for (auto& variable : node->_aggregateVariables) {
-          variable.inVar = Variable::replace(variable.inVar, _replacements);
-        }
-        break;
-      }
-
-#if 0
-      // TODO: figure out if this does any harm
-      case EN::REMOTESINGLE: {
-        replaceInVariable<SingleRemoteOperationNode>(en);
-        break;
-      }
-#endif
-      default: {
-        // ignore all other types of nodes
-      }
-    }
-
+    en->replaceVariables(replacements);
     // always continue
     return false;
   }
 
  private:
-  Ast* _ast;
-  std::unordered_map<VariableId, Variable const*> const& _replacements;
+  std::unordered_map<VariableId, Variable const*> const& replacements;
 };
 
 /// @brief simplify conditions in CalculationNodes
@@ -2739,7 +2504,7 @@ void arangodb::aql::removeRedundantCalculationsRule(Optimizer* opt,
 
   if (!replacements.empty()) {
     // finally replace the variables
-    RedundantCalculationsReplacer finder(plan->getAst(), replacements);
+    VariableReplacer finder(replacements);
     plan->root()->walk(finder);
   }
 
@@ -2833,7 +2598,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
           replacements.try_emplace(outVariable->id,
                                    static_cast<Variable const*>(rootNode->getData()));
 
-          RedundantCalculationsReplacer finder(plan->getAst(), replacements);
+          VariableReplacer finder(replacements);
           plan->root()->walk(finder);
           toUnlink.emplace(n);
           continue;
@@ -5898,7 +5663,7 @@ void arangodb::aql::removeDataModificationOutVariablesRule(Optimizer* opt,
                                       setter->getType() == EN::INDEX)) {
               std::unordered_map<VariableId, Variable const*> replacements;
               replacements.try_emplace(old->id, inVariable);
-              RedundantCalculationsReplacer finder(plan->getAst(), replacements);
+              VariableReplacer finder(replacements);
               plan->root()->walk(finder);
               modified = true;
             }
@@ -5914,7 +5679,7 @@ void arangodb::aql::removeDataModificationOutVariablesRule(Optimizer* opt,
                                     setter->getType() == EN::INDEX)) {
             std::unordered_map<VariableId, Variable const*> replacements;
             replacements.try_emplace(old->id, inVariable);
-            RedundantCalculationsReplacer finder(plan->getAst(), replacements);
+            VariableReplacer finder(replacements);
             plan->root()->walk(finder);
             modified = true;
           }
@@ -6436,7 +6201,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
           // finally replace the variables
           std::unordered_map<VariableId, Variable const*> replacements;
           replacements.try_emplace(listNode->outVariable()->id, returnNode->inVariable());
-          RedundantCalculationsReplacer finder(plan->getAst(), replacements);
+          VariableReplacer finder(replacements);
           plan->root()->walk(finder);
 
           plan->clearVarUsageComputed();

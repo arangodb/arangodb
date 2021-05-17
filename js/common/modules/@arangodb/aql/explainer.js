@@ -2419,7 +2419,7 @@ function inspectDump(filename, outfile) {
     let details = data.collections[collection];
     if (details.examples) {
       details.examples.forEach(function (example) {
-        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ", {isRestore: true});");
+        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ");");
       });
     }
     let missing = details.count;

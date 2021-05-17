@@ -354,6 +354,38 @@ void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPath
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
 }
+  
+void ShortestPathNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inStartVariable != nullptr) {
+   _inStartVariable = Variable::replace(_inStartVariable, replacements);
+  }
+
+  if (_inTargetVariable != nullptr) {
+    _inTargetVariable = Variable::replace(_inTargetVariable, replacements);
+  }
+}
+
+/// @brief getVariablesSetHere
+std::vector<Variable const*> ShortestPathNode::getVariablesSetHere() const {
+  std::vector<Variable const*> vars;
+  if (isVertexOutVariableUsedLater()) {
+    vars.emplace_back(vertexOutVariable());
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    vars.emplace_back(edgeOutVariable());
+  }
+  return vars;
+}
+
+/// @brief getVariablesUsedHere, modifying the set in-place
+void ShortestPathNode::getVariablesUsedHere(VarSet& vars) const {
+  if (_inStartVariable != nullptr) {
+    vars.emplace(_inStartVariable);
+  }
+  if (_inTargetVariable != nullptr) {
+    vars.emplace(_inTargetVariable);
+  }
+}
 
 void ShortestPathNode::prepareOptions() {
   if (_optionsBuilt) {

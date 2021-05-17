@@ -112,6 +112,7 @@ ActionDescription const& ActionBase::describe() const { return _description; }
 MaintenanceFeature& ActionBase::feature() const { return _feature; }
 
 VPackSlice const ActionBase::properties() const {
+  TRI_ASSERT(_description.properties() != nullptr);
   return _description.properties()->slice();
 }
 
@@ -172,6 +173,12 @@ void ActionBase::endStats() {
   _actionDone = secs_since_epoch();
 
 }  // ActionBase::endStats
+
+ShardDefinition::ShardDefinition(std::string const& database, std::string const& shard)
+    : _database(database), _shard(shard) {
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+}
 
 Result arangodb::actionError(ErrorCode errorCode, std::string const& errorMessage) {
   LOG_TOPIC("c889d", ERR, Logger::MAINTENANCE) << errorMessage;
@@ -257,7 +264,7 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
  */
 arangodb::Result ActionBase::progress(double& progress) {
   progress = 0.5;
-  return arangodb::Result(TRI_ERROR_NO_ERROR);
+  return {};
 }
 
 auto ActionBase::get(std::string const& key) const -> std::string const& {

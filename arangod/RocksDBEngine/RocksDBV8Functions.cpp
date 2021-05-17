@@ -206,9 +206,14 @@ static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value>
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  bool fromCollection = false;
+  if (args.Length() > 0) {
+    TRI_ObjectToBoolean(isolate, args[0]);
+  }
+
   auto* physical = toRocksDBCollection(*collection);
   VPackBuilder builder;
-  physical->revisionTreeSummary(builder);
+  physical->revisionTreeSummary(builder, fromCollection);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);

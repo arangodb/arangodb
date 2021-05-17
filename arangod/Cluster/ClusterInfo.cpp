@@ -3124,6 +3124,10 @@ Result ClusterInfo::createCollectionsCoordinator(
           << "createCollectionCoordinator, isBuilding removed, waiting for new "
              "Plan...";
 
+      TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
+        res.set(rest::ResponseCode::PRECONDITION_FAILED, "Failed to mark collection ready");
+      }
+
       if (res.successful()) {
         // Note that this is not strictly necessary, just to avoid an
         // unneccessary request when we're sure that we don't need it anymore.
@@ -3134,6 +3138,13 @@ Result ClusterInfo::createCollectionsCoordinator(
             return r;
           }
         }
+      } else {
+        LOG_TOPIC("98675", WARN, Logger::CLUSTER)
+          << "Failed createCollectionsCoordinator for " << infos.size()
+          << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
+          << " first collection name: " << infos[0].name << " result: " << res;
+        return Result(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                      "A cluster backend which was required for the operation could not be reached");
       }
 
       // Report if this operation worked, if it failed collections will be
@@ -5617,23 +5628,24 @@ arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
 
 arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   // Apply only Collections and DBServers
-  AgencyWriteTransaction planTransaction(std::vector<AgencyOperation>{
-      {"Plan/Collections", AgencyValueOperationType::SET,
-        plan.get({"arango", "Plan", "Collections"})},
-      {"Plan/Databases", AgencyValueOperationType::SET,
-        plan.get({"arango", "Plan", "Databases"})},
-      {"Plan/Views", AgencyValueOperationType::SET,
-        plan.get({"arango", "Plan", "Views"})},
+  AgencyWriteTransaction transaction(std::vector<AgencyOperation>{
+      {"Current/Collections", AgencyValueOperationType::SET, VPackSlice::emptyObjectSlice()},
+      {"Plan/Collections", AgencyValueOperationType::SET, plan.get({"arango", "Plan", "Collections"})},
+      {"Current/Databases", AgencyValueOperationType::SET, VPackSlice::emptyObjectSlice()},
+      {"Plan/Databases", AgencyValueOperationType::SET, plan.get({"arango", "Plan", "Databases"})},
+      {"Current/Views", AgencyValueOperationType::SET, VPackSlice::emptyObjectSlice()},
+      {"Plan/Views", AgencyValueOperationType::SET, plan.get({"arango", "Plan", "Views"})},
+      {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}});
 
   VPackSlice latestIdSlice = plan.get({"arango", "Sync", "LatestID"});
   if (!latestIdSlice.isNone()) {
-    planTransaction.operations.push_back(
+    transaction.operations.push_back(
       {"Sync/LatestID", AgencyValueOperationType::SET, latestIdSlice});
   }
-  AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
+  AgencyCommResult r = _agency.sendTransactionWithFailover(transaction);
   if (!r.successful()) {
     arangodb::Result result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
