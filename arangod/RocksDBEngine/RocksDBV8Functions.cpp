@@ -196,6 +196,33 @@ static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_END
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+static void JS_CollectionRevisionTreeCorrupt(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "_revisionTreeCorrupt(<count>, <hash>");
+  }
+
+  uint64_t count = TRI_ObjectToUInt64(isolate, args[0], true);
+  uint64_t hash = TRI_ObjectToUInt64(isolate, args[1], true);
+
+  auto* physical = toRocksDBCollection(*collection);
+  physical->corruptRevisionTree(count, hash);
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
 static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -208,7 +235,7 @@ static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value>
 
   bool fromCollection = false;
   if (args.Length() > 0) {
-    TRI_ObjectToBoolean(isolate, args[0]);
+    fromCollection = TRI_ObjectToBoolean(isolate, args[0]);
   }
 
   auto* physical = toRocksDBCollection(*collection);
@@ -219,6 +246,27 @@ static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+static void JS_CollectionRevisionTreePendingUpdates(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  auto* physical = toRocksDBCollection(*collection);
+  VPackBuilder builder;
+  physical->revisionTreePendingUpdates(builder);
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+#endif
 
 void RocksDBV8Functions::registerResources() {
   ISOLATE;
@@ -241,6 +289,15 @@ void RocksDBV8Functions::registerResources() {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_revisionTreeSummary"),
                        JS_CollectionRevisionTreeSummary);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "_revisionTreePendingUpdates"),
+                       JS_CollectionRevisionTreePendingUpdates);
+  // intentionally corrupting revision tree
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "_revisionTreeCorrupt"),
+                       JS_CollectionRevisionTreeCorrupt);
+#endif
 
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(isolate,

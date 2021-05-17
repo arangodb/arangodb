@@ -319,6 +319,11 @@ class MerkleTree {
    * If any inconsistency is found, this function will throw
    */
   void checkConsistency() const;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // intentionally corrupts the tree. used for testing only
+  void corrupt(std::uint64_t count, std::uint64_t hash);
+#endif
   
  protected:
   explicit MerkleTree(std::string_view buffer);
