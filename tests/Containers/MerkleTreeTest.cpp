@@ -681,3 +681,42 @@ TEST(MerkleTreeTest, test_check_consistency) {
   }
 #endif
 }
+
+TEST(MerkleTreeTest, test_grow_left_simple) {
+  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
+  uint64_t initWidth = 1ULL << 24;
+  uint64_t bucketWidth = 1ULL << 6;
+  uint64_t rangeMax = rangeMin + initWidth;
+
+  arangodb::containers::FnvHashProvider hasher;
+
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
+  
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(0, tree.count());
+  ASSERT_EQ(0, tree.rootValue());
+  
+  tree.insert(rangeMin);
+  tree.insert(rangeMin + bucketWidth);
+  tree.insert(rangeMin + 47 * bucketWidth);
+
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(3, tree.count());
+  ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
+            hasher.hash(rangeMin + 47 * bucketWidth), tree.rootValue());
+
+  // Now grow to the left:
+  tree.insert(rangeMin - 1);
+
+  // Must not throw:
+  tree.checkConsistency();
+
+  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(4, tree.count());
+  ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
+            hasher.hash(rangeMin + 47 * bucketWidth) ^
+            hasher.hash(rangeMin - 1), tree.rootValue());
+  ASSERT_EQ(rangeMin - initWidth, tree.range().first);
+  ASSERT_EQ(rangeMax, tree.range().second);
+}
+

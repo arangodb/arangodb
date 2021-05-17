@@ -209,6 +209,8 @@ class MerkleTree {
    *                 is inserted into the tree, it will be dynamically resized
    *                 so that a larger rangeMax is chosen, and adjacent nodes
    *                 merged as necessary (growRight).
+   * @param initialRangeMin The initial value of rangeMin when the tree was
+   *                 first created and was still empty.
    * @throws std::invalid_argument  If maxDepth is less than 2
    */
   MerkleTree(std::uint64_t maxDepth, std::uint64_t rangeMin, std::uint64_t rangeMax = 0, std::uint64_t initialRangeMin = 0);

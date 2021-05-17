@@ -346,6 +346,10 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
   }
  
   TRI_ASSERT(rangeMax == 0 || rangeMax > rangeMin);
+  if (initialRangeMin == 0) {
+    initialRangeMin = rangeMin;
+  }
+  TRI_ASSERT(rangeMin <= initialRangeMin);
 
   if (rangeMax == 0) {
     // default value for rangeMax is 0
