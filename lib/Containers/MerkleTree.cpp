@@ -1185,7 +1185,7 @@ void MerkleTree<Hasher, BranchingBits>::rightCombine2(bool withShift) noexcept {
     // ...
     // n-3, n-2  -> n - 2
     // n-1       -> n - 1
-    for (std::uint64_t i = n - 1; /* i >= 0 */ ; --i) {
+    for (std::uint64_t i = n - 3; /* i >= 0 */ ; --i) {
       Node& src = this->node(offset + i);
       Node& dst = this->node(offset + (n + i - 1) / 2);
 
