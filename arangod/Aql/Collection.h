@@ -155,7 +155,7 @@ struct Collection {
   
  private:
   /// @brief throw if the underlying collection has not been set
-  void checkCollection() const;
+  void ensureCollection() const;
 
  private:
   // _collection will only be populated here in the constructor, and not later.
