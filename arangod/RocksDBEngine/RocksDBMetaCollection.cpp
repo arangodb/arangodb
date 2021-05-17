@@ -555,7 +555,7 @@ ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNu
       *static_cast<RevisionReplicationIterator*>(iter.get());
   
   std::vector<std::uint64_t> revisions;
-  revisions.resize(1024);
+  revisions.reserve(1024);
   
   auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
   
