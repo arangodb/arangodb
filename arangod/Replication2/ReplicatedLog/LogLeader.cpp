@@ -399,6 +399,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   WaitForQueue toBeResolved;
   auto const end = _waitForQueue.upper_bound(_commitIndex);
   for (auto it = _waitForQueue.begin(); it != end;) {
+    LOG_CTX("37d9c", TRACE, _self._logContext) << "resolving promise for index " << it->first;
     toBeResolved.insert(_waitForQueue.extract(it++));
   }
   return ResolvedPromiseSet{std::move(toBeResolved), quorum};
@@ -494,6 +495,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     std::chrono::steady_clock::duration latency, MessageId messageId)
     -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet> {
   if (currentTerm != _self._currentTerm) {
+    LOG_CTX("7ab2e", WARN, follower.logContext)
+        << "received append entries response with wrong term: " << currentTerm;
     return {};
   }
 
@@ -502,6 +505,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   follower._lastRequestLatency = latency;
 
   if (follower.lastSendMessageId == messageId) {
+    LOG_CTX("35a32", TRACE, follower.logContext)
+        << "received message " << messageId << " - no other requests in flight";
     // there is no request in flight currently
     follower.requestInFlight = false;
   }
@@ -509,6 +514,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     auto& response = res.get();
     TRI_ASSERT(messageId == response.messageId);
     if (follower.lastSendMessageId == response.messageId) {
+      LOG_CTX("35134", TRACE, follower.logContext)
+          << "received append entries response, messageId = " << response.messageId
+          << ", errorCode = " << to_string(response.errorCode)
+          << ", reason  = " << to_string(response.reason);
+
       follower.numErrorsSinceLastAnswer = 0;
       follower.lastErrorReason = response.reason;
       if (response.isSuccess()) {
