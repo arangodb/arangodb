@@ -51,9 +51,11 @@ ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
 }
+
 auto ReplicatedLogFeature::metricReplicatedLogNumber() -> Gauge<uint64_t>& {
   return _replicated_log_number;
 }
+
 auto ReplicatedLogFeature::metricReplicatedLogAppendEntriesRtt()
     -> Histogram<log_scale_t<std::uint64_t>>& {
   return _replicated_log_append_entries_rtt_ms;

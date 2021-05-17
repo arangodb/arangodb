@@ -37,7 +37,7 @@ namespace arangodb {
 class ReplicatedLogFeature : public application_features::ApplicationFeature {
  public:
   explicit ReplicatedLogFeature(application_features::ApplicationServer& server);
-  ~ReplicatedLogFeature() = default;
+  ~ReplicatedLogFeature() override = default;
 
   auto metricReplicatedLogNumber() -> Gauge<uint64_t>&;
   auto metricReplicatedLogAppendEntriesRtt() -> Histogram<log_scale_t<std::uint64_t>>&;

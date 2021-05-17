@@ -1958,6 +1958,7 @@ auto TRI_vocbase_t::dropReplicatedLog(arangodb::replication2::LogId id) -> arang
     }
     // Now we can drop the persisted log
     manager->_logs.erase(iter);
+    server().getFeature<ReplicatedLogFeature>().metricReplicatedLogNumber().fetch_sub(1);
   } else {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
@@ -2002,17 +2003,16 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
 }
 
 void TRI_vocbase_t::registerReplicatedLog(arangodb::replication2::LogId logId,
-                                          std::shared_ptr<arangodb::replication2::PersistedLog> peristedLog) {
-  auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
-  auto core =
-      std::make_unique<arangodb::replication2::replicated_log::LogCore>(peristedLog);
-  auto [iter, inserted] = manager->_logs.try_emplace(logId, std::move(core));
+                                          std::shared_ptr<arangodb::replication2::PersistedLog> persistedLog) {
+  auto core = std::make_unique<arangodb::replication2::replicated_log::LogCore>(std::move(persistedLog));
+  auto [iter, inserted] = _logManager->_logs.try_emplace(logId, std::move(core));
+  server().getFeature<ReplicatedLogFeature>().metricReplicatedLogNumber().fetch_add(1);
   TRI_ASSERT(inserted);
 }
 
 void TRI_vocbase_t::unregisterReplicatedLog(arangodb::replication2::LogId id) {
-  auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
-  manager->_logs.erase(id);
+  _logManager->_logs.erase(id);
+  server().getFeature<ReplicatedLogFeature>().metricReplicatedLogNumber().fetch_sub(1);
 }
 
 // -----------------------------------------------------------------------------
