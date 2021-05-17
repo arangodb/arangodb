@@ -197,7 +197,7 @@ MerkleTree<Hasher, BranchingBits>::fromBottomMostCompressed(std::string_view buf
   char const* p = buffer.data();
   char const* e = p + buffer.size();
 
-  if (p + sizeof(Meta) >= e) {
+  if (p + sizeof(Meta) > e) {
     throw std::invalid_argument("invalid compressed tree data");
   }
 
