@@ -483,7 +483,7 @@ describe('Rule optimize-traversals', () => {
       expect(result.length).to.equal(4);
     });
 
-    it.only('should optimize when filtered on v', () => {
+    it('should optimize when filtered on v', () => {
       let query = `
         FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
         FILTER v.label == '4'
@@ -505,7 +505,7 @@ describe('Rule optimize-traversals', () => {
       expect(result[0].items).to.equal(1);
     });
 
-    it.only('should optimize when filtered on e', () => {
+    it('should optimize when filtered on e', () => {
       let query = `
         FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
         FILTER e.label == 'schubi'
