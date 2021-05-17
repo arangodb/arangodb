@@ -209,8 +209,9 @@ inline constexpr char logContextKeyLeaderId[] = "leader-id";
 inline constexpr char logContextKeyLogComponent[] = "log-component";
 
 auto replicated_log::LogLeader::construct(
-    LogContext const& logContext, ParticipantId id, std::unique_ptr<LogCore> logCore,
-    LogTerm term, std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+    LogContext const& logContext, [[maybe_unused]] ReplicatedLogMetrics& logMetrics,
+    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};

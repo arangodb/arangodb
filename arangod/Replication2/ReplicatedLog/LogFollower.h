@@ -31,6 +31,7 @@
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
 
+#include <Replication2/ReplicatedLogMetrics.h>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -43,7 +44,8 @@ namespace arangodb::replication2::replicated_log {
 class LogFollower : public LogParticipantI, public AbstractFollower {
  public:
   ~LogFollower() override = default;
-  LogFollower(ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+  LogFollower(ReplicatedLogMetrics& logMetrics, ParticipantId id,
+              std::unique_ptr<LogCore> logCore, LogTerm term,
               ParticipantId leaderId, InMemoryLog inMemoryLog);
 
   // follower only

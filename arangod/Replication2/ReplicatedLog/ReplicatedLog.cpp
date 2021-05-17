@@ -42,8 +42,11 @@ struct AbstractFollower;
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core, ReplicatedLogMetrics& metrics)
-    : _participant(std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(core))), _metrics(metrics) {}
+replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core,
+                                             ReplicatedLogMetrics& metrics)
+    : _participant(std::make_shared<replicated_log::LogUnconfiguredParticipant>(
+          std::move(core))),
+      _metrics(metrics) {}
 
 auto replicated_log::ReplicatedLog::becomeLeader(
     ParticipantId id, LogTerm term,
@@ -55,8 +58,8 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     // TODO Resign: will resolve some promises because leader resigned
     //      those promises will call ReplicatedLog::getLeader() -> DEADLOCK
     auto logCore = std::move(*_participant).resign();
-    leader = LogLeader::construct(_logContext, std::move(id), std::move(logCore), term,
-                                  follower, writeConcern);
+    leader = LogLeader::construct(_logContext, _metrics, std::move(id),
+                                  std::move(logCore), term, follower, writeConcern);
     _participant = std::static_pointer_cast<LogParticipantI>(leader);
   }
 
@@ -76,8 +79,8 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
   while (auto entry = iter->next()) {
     log._log = log._log.push_back(std::move(entry).value());
   }
-  auto follower = std::make_shared<LogFollower>(id, std::move(logCore), term,
-                                                std::move(leaderId), log);
+  auto follower = std::make_shared<LogFollower>(_metrics, id, std::move(logCore),
+                                                term, std::move(leaderId), log);
   _participant = std::static_pointer_cast<LogParticipantI>(follower);
   return follower;
 }

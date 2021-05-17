@@ -59,6 +59,7 @@ class Try;
 
 namespace arangodb::replication2::replicated_log {
 struct LogCore;
+struct ReplicatedLogMetrics;
 }
 
 namespace arangodb::replication2::replicated_log {
@@ -70,7 +71,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
  public:
   ~LogLeader() override;
 
-  static auto construct(const LogContext& logContext, ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+  static auto construct(LogContext const& logContext, ReplicatedLogMetrics& logMetrics,
+                        ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
                         std::vector<std::shared_ptr<AbstractFollower>> const& followers,
                         std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
 

@@ -194,7 +194,8 @@ auto replicated_log::LogFollower::resign() && -> std::unique_ptr<LogCore> {
       [](auto& followerData) { return std::move(followerData._logCore); });
 }
 
-replicated_log::LogFollower::LogFollower(ParticipantId id, std::unique_ptr<LogCore> logCore,
+replicated_log::LogFollower::LogFollower([[maybe_unused]] ReplicatedLogMetrics& logMetrics,
+                                         ParticipantId id, std::unique_ptr<LogCore> logCore,
                                          LogTerm term, ParticipantId leaderId,
                                          replicated_log::InMemoryLog inMemoryLog)
     : _participantId(std::move(id)),
