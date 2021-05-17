@@ -503,10 +503,29 @@ describe('Rule optimize-traversals', () => {
       expect(result.length).to.equal(1);
       // The traversal shall only output a single Path.
       expect(result[0].items).to.equal(1);
-      require("internal").print(result);
-
     });
 
+    it.only('should optimize when filtered on e', () => {
+      let query = `
+        FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
+        FILTER e.label == 'schubi'
+        RETURN p
+      `;
+      const bindVars = {
+        start: 'circles/A',
+        graph: graphName
+      };
+
+      let plan = AQL_EXPLAIN(query, bindVars, paramEnabled);
+      // expect(plan.plan.rules.indexOf(ruleName)).to.equal(-1, query);
+
+      const profile = db._query(query, bindVars, {profile: 2}).getExtra();
+      const result = getCompactStatsNodes(profile).filter(n => n.type == TraversalBlock)
+      // We only have one TraversalBlock
+      expect(result.length).to.equal(1);
+      // The traversal shall only output a single Path.
+      expect(result[0].items).to.equal(1);
+    });
   });
 
   describe('various filter optimizations', () => {
