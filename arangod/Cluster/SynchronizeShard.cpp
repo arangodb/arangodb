@@ -697,6 +697,8 @@ bool SynchronizeShard::first() {
 
       // remove all recorded failures, so in next run we can start with a clean state
       _feature.removeReplicationError(getDatabase(), getShard());
+    
+      ++feature().server().getFeature<ClusterFeature>().followersTotalRebuildCounter();
 
       // drop shard (💥)
       methods::Collections::drop(*collection, false, 3.0); 
@@ -1206,7 +1208,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     // on the leader while we are recalculating the counts
     readLockGuard.fire();
     
-    collection.vocbase().server().getFeature<ClusterFeature>().followersWrongChecksumCounter()++;
+    ++collection.vocbase().server().getFeature<ClusterFeature>().followersWrongChecksumCounter();
 
     // recalculate collection count on follower
     LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
