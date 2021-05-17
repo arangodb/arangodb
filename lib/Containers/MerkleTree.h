@@ -376,8 +376,8 @@ class MerkleTree {
   bool modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert);
   void completeFromDeepest() noexcept;
-  void leftCombine2(bool withShift) noexcept;
-  void rightCombine2(bool withShift) noexcept;
+  void leftCombine(bool withShift) noexcept;
+  void rightCombine(bool withShift) noexcept;
   void growLeft(std::uint64_t key);
   void growRight(std::uint64_t key);
   bool equalAtIndex(MerkleTree<Hasher, BranchingBits> const& other,

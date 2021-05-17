@@ -1030,7 +1030,7 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(
 }
 
 // The following method recomputes the tree from its bottommost level.
-// This is needed after the new leftCombine2 and rightCombine2 methods.
+// This is needed after the new leftCombine and rightCombine methods.
 template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::completeFromDeepest() noexcept {
   // not thread-safe, lock nodes from outside
@@ -1060,7 +1060,7 @@ void MerkleTree<Hasher, BranchingBits>::completeFromDeepest() noexcept {
 // The following method combines buckets for a growth operation to the
 // right. It only does a factor of 2 and potentially a shift by one.
 template <typename Hasher, std::uint64_t const BranchingBits>
-void MerkleTree<Hasher, BranchingBits>::leftCombine2(bool withShift) noexcept {
+void MerkleTree<Hasher, BranchingBits>::leftCombine(bool withShift) noexcept {
   // not thread-safe, lock nodes from outside
 
   // First to maxDepth:
@@ -1136,7 +1136,7 @@ void MerkleTree<Hasher, BranchingBits>::growRight(std::uint64_t key) {
     std::uint64_t count = this->node(0).count;
 #endif 
 
-    leftCombine2(needToShift);
+    leftCombine(needToShift);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(count == this->node(0).count);
@@ -1164,7 +1164,7 @@ void MerkleTree<Hasher, BranchingBits>::growRight(std::uint64_t key) {
 // The following method combines buckets for a growth operation to the
 // left. It only does a factor of 2 and potentially a shift by one.
 template <typename Hasher, std::uint64_t const BranchingBits>
-void MerkleTree<Hasher, BranchingBits>::rightCombine2(bool withShift) noexcept {
+void MerkleTree<Hasher, BranchingBits>::rightCombine(bool withShift) noexcept {
   // not thread-safe, lock nodes from outside
 
   // First to maxDepth:
@@ -1247,7 +1247,7 @@ void MerkleTree<Hasher, BranchingBits>::growLeft(std::uint64_t key) {
     std::uint64_t count = this->node(0).count;
 #endif 
 
-    rightCombine2(needToShift);
+    rightCombine(needToShift);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(count == this->node(0).count);
