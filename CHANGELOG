@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixes BTS-416. During shutdown, a Shard leader wrongly reported that
+* Fixes BTS-416. During shutdown, a shard leader wrongly reported that
   it could not drop a shard follower instead of correctly indicating
   the shutdown as reason.
 
