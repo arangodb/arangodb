@@ -176,7 +176,9 @@ Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& ap
       _clientInfo{applierConfig._clientInfoString} {
 
   _connectionLease = applierConfig._server.getFeature<ReplicationFeature>().connectionCache().acquire(
-      _endpointString, applierConfig._requestTimeout, applierConfig._connectTimeout, 
+      _endpointString, 
+      applierConfig._connectTimeout, 
+      applierConfig._requestTimeout, 
       static_cast<size_t>(applierConfig._maxConnectRetries),
       static_cast<uint64_t>(applierConfig._sslProtocol));
 
