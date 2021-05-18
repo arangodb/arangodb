@@ -109,6 +109,7 @@ struct AppendEntriesRequest {
   LogIndex prevLogIndex;
   LogIndex leaderCommit;
   MessageId messageId;
+  bool waitForSync;
   immer::flex_vector<LogEntry> entries{};
 
   void toVelocyPack(velocypack::Builder& builder) const;

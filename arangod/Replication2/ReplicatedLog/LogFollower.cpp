@@ -129,7 +129,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
             ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
                 req.entries.begin(), req.entries.end());
         // TODO can we make this async?
-        res = self._logCore->insert(iter);
+        res = self._logCore->insert(iter, req.waitForSync);
         if (!res.ok()) {
           LOG_CTX("216d8", ERR, _logContext) << "failed to insert log entries";
           abort();  // TODO abort?

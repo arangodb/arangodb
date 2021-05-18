@@ -93,6 +93,7 @@ void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& bui
     builder.add("prevLogIndex", VPackValue(prevLogIndex.value));
     builder.add("leaderCommit", VPackValue(leaderCommit.value));
     builder.add("messageId", VPackValue(messageId.value));
+    builder.add("waitForSync", VPackValue(waitForSync));
     builder.add("entries", VPackValue(VPackValueType::Array));
     for (auto const& it : entries) {
       it.toVelocyPack(builder);
@@ -109,6 +110,7 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
   auto prevLogIndex = LogIndex{slice.get("prevLogIndex").getNumericValue<size_t>()};
   auto leaderCommit = LogIndex{slice.get("leaderCommit").getNumericValue<size_t>()};
   auto messageId = MessageId{slice.get("messageId").getNumericValue<uint64_t>()};
+  auto waitForSync = slice.get("waitForSync").extract<bool>();
   auto entries = std::invoke([&] {
     auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
     auto transientEntries = immer::flex_vector_transient<LogEntry>{};
@@ -119,7 +121,7 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
 
   return AppendEntriesRequest{leaderTerm,        leaderId,     prevLogTerm,
                               prevLogIndex,      leaderCommit, messageId,
-                              std::move(entries)};
+                              waitForSync, std::move(entries)};
 }
 
 void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {

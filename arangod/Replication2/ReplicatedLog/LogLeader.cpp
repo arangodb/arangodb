@@ -455,6 +455,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   req.leaderCommit = _commitIndex;
   req.leaderTerm = _self._currentTerm;
   req.leaderId = _self._participantId;
+  req.waitForSync = true; // TODO select this based on the log entries
   req.messageId = ++follower.lastSendMessageId;
 
   if (lastAcked) {
@@ -712,7 +713,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
   // TODO The LogCore should know its last log index, and we should assert here
   //      that the AppendEntriesRequest matches it.
   auto iter = std::make_unique<ReplicatedLogIterator>(request.entries);
-  return logCore->insertAsync(std::move(iter))
+  return logCore->insertAsync(std::move(iter), request.waitForSync)
       .thenValue([term = request.leaderTerm, messageId = request.messageId,
                   logContext = std::move(messageLogContext)](Result const& res) {
         if (!res.ok()) {

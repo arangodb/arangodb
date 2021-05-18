@@ -49,9 +49,10 @@ auto replicated_log::LogCore::removeBack(LogIndex first) -> Result {
   return _persistedLog->removeBack(first);
 }
 
-auto replicated_log::LogCore::insert(LogIterator& iter) -> Result {
+auto replicated_log::LogCore::insert(LogIterator& iter, bool waitForSync) -> Result {
   std::unique_lock guard(_operationMutex);
   PersistedLog::WriteOptions opts;
+  opts.waitForSync = waitForSync;
   return _persistedLog->insert(iter, opts);
 }
 
@@ -62,11 +63,12 @@ auto replicated_log::LogCore::read(LogIndex first) -> std::unique_ptr<LogIterato
   return _persistedLog->read(first);
 }
 
-auto replicated_log::LogCore::insertAsync(std::unique_ptr<LogIterator> iter)
+auto replicated_log::LogCore::insertAsync(std::unique_ptr<LogIterator> iter, bool waitForSync)
     -> futures::Future<Result> {
   std::unique_lock guard(_operationMutex);
   // This will hold the mutex
   PersistedLog::WriteOptions opts;
+  opts.waitForSync = waitForSync;
   return _persistedLog->insertAsync(std::move(iter), opts)
       .thenValue([guard = std::move(guard)](Result&& res) mutable {
         guard.unlock();
