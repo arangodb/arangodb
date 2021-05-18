@@ -51,9 +51,11 @@ struct MockLog : replication2::PersistedLog {
 
   ~MockLog() override = default;
 
-  auto insert(replication2::LogIterator& iter) -> Result override;
-  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter) -> futures::Future<Result> override;
-  auto read(replication2::LogIndex start) -> std::unique_ptr<replication2::LogIterator> override;
+  auto insert(replication2::LogIterator& iter, WriteOptions const&) -> Result override;
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
+                   WriteOptions const&) -> futures::Future<Result> override;
+  auto read(replication2::LogIndex start)
+      -> std::unique_ptr<replication2::LogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> Result override;
   auto removeBack(replication2::LogIndex start) -> Result override;
   auto drop() -> Result override;
@@ -138,7 +140,7 @@ struct DelayedFollowerLog : AbstractFollower {
 };
 
 struct DelayedLogLeader : LogParticipantI {
-  DelayedLogLeader(std::shared_ptr<LogLeader>  leader);
+  explicit DelayedLogLeader(std::shared_ptr<LogLeader> leader);
   auto getStatus() const -> LogStatus override;
   auto resign() && -> std::unique_ptr<LogCore> override;
 

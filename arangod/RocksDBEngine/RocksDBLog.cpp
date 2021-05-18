@@ -35,16 +35,16 @@ RocksDBLog::RocksDBLog(replication2::LogId id, uint64_t objectId,
                        std::shared_ptr<RocksDBLogPersistor> persistor)
     : PersistedLog(id), _objectId(objectId), _persistor(std::move(persistor)) {}
 
-auto RocksDBLog::insert(LogIterator& iter) -> Result {
+auto RocksDBLog::insert(LogIterator& iter, WriteOptions const& options) -> Result {
   rocksdb::WriteBatch wb;
   auto res = insertWithBatch(iter, wb);
   if (!res.ok()) {
     return res;
   }
 
-  rocksdb::WriteOptions opts;
-  opts.sync = true;
-  if (auto s = _persistor->_db->Write(opts, &wb); !s.ok()) {
+  rocksdb::WriteOptions wo;
+  wo.sync = options.waitForSync;
+  if (auto s = _persistor->_db->Write(wo, &wb); !s.ok()) {
     return rocksutils::convertStatus(s);
   }
 
@@ -137,9 +137,12 @@ auto RocksDBLog::insertWithBatch(replication2::LogIterator& iter,
 
   return Result();
 }
-auto RocksDBLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter)
-    -> futures::Future<Result> {
-  return _persistor->persist(shared_from_this(), std::move(iter));
+
+auto RocksDBLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter,
+                             WriteOptions const& opts) -> futures::Future<Result> {
+  RocksDBLogPersistor::WriteOptions wo;
+  wo.waitForSync = opts.waitForSync;
+  return _persistor->persist(shared_from_this(), std::move(iter), wo);
 }
 
 auto RocksDBLog::insertSingleWrites(LogIterator& iter) -> Result {
@@ -160,20 +163,20 @@ RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
                                          rocksdb::DB* db, std::shared_ptr<Executor> executor)
     : _cf(cf), _db(db), _executor(std::move(executor)) {}
 
-void RocksDBLogPersistor::runPersistorWorker() noexcept {
+void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
   // TODO check this code for exception safety
   // This function is noexcept so in case a exception bubbles up we
   // rather crash instead of losing one thread.
   while (true) {
     std::vector<PersistRequest> pendingRequests;
     {
-      std::unique_lock guard(_persistorMutex);
-      if (_pendingPersistRequests.empty()) {
+      std::unique_lock guard(lane._persistorMutex);
+      if (lane._pendingPersistRequests.empty()) {
         // no more work to do
         _activePersistorThreads -= 1;
         return;
       }
-      std::swap(pendingRequests, _pendingPersistRequests);
+      std::swap(pendingRequests, lane._pendingPersistRequests);
     }
 
     auto current = pendingRequests.begin();
@@ -229,21 +232,27 @@ void RocksDBLogPersistor::runPersistorWorker() noexcept {
 }
 
 auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,
-                                  std::unique_ptr<arangodb::replication2::LogIterator> iter)
+                                  std::unique_ptr<arangodb::replication2::LogIterator> iter,
+                                  WriteOptions const& options)
     -> futures::Future<Result> {
   auto p = futures::Promise<Result>{};
   auto f = p.getFuture();
 
-  {
-    std::unique_lock guard(_persistorMutex);
-    _pendingPersistRequests.emplace_back(log, std::move(iter), std::move(p));
+  Lane& lane = _lanes[options.waitForSync ? 0 : 1];
 
-    if (_activePersistorThreads == 0 || (_pendingPersistRequests.size() > 100 && _activePersistorThreads < 2)) {
+  {
+    std::unique_lock guard(lane._persistorMutex);
+    lane._pendingPersistRequests.emplace_back(std::move(log), std::move(iter), std::move(p));
+    // TODO this code limits the total amount of threads working in the persistor
+    //      maybe we want to limit it for each lane as well?
+
+    // TODO add options for max number of persistor threads for replicated logs
+    if (_activePersistorThreads == 0 || (lane._pendingPersistRequests.size() > 100 && _activePersistorThreads < 2)) {
       // start a new worker thread
       _activePersistorThreads += 1;
       guard.unlock();
-      _executor->operator()([this, self = shared_from_this()] {
-        this->runPersistorWorker();
+      _executor->operator()([this, self = shared_from_this(), &lane] {
+        this->runPersistorWorker(lane);
       });
     }
   }

@@ -33,7 +33,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-auto MockLog::insert(LogIterator& iter) -> arangodb::Result {
+auto MockLog::insert(LogIterator& iter, WriteOptions const&) -> arangodb::Result {
   auto lastIndex = LogIndex{0};
   auto lastTerm = LogTerm{0};
 
@@ -106,9 +106,9 @@ void MockLog::setEntry(replication2::LogEntry entry) {
   _storage.emplace(entry.logIndex(), std::move(entry));
 }
 
-auto MockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter)
+auto MockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts)
     -> futures::Future<Result> {
-  return insert(*iter);
+  return insert(*iter, opts);
 }
 
 auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)

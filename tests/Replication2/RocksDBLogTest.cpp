@@ -61,7 +61,7 @@ struct RocksDBLogTest : testing::Test {
     TRI_RemoveDirectory(_path.c_str());
   }
 
-  auto createLog(LogId id) const -> std::unique_ptr<RocksDBLog> {
+  auto createLog(LogId id) -> std::unique_ptr<RocksDBLog> {
     if (id > _maxLogId) {
       _maxLogId = id;
     }
@@ -69,7 +69,7 @@ struct RocksDBLogTest : testing::Test {
     return std::make_unique<RocksDBLog>(id, id.id(), _persistor);
   }
 
-  auto createUniqueLog() const -> std::unique_ptr<RocksDBLog> {
+  auto createUniqueLog() -> std::unique_ptr<RocksDBLog> {
     return createLog(LogId{_maxLogId.id() + 1});
   }
 
@@ -123,7 +123,7 @@ TEST_F(RocksDBLogTest, insert_iterate) {
     };
     auto iter = make_iterator(entries);
 
-    auto res = log->insert(*iter);
+    auto res = log->insert(*iter, {});
     ASSERT_TRUE(res.ok());
   }
 
@@ -173,7 +173,7 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
     };
     auto iter = make_iterator(entries);
 
-    auto res = log->insert(*iter);
+    auto res = log->insert(*iter, {});
     ASSERT_TRUE(res.ok());
   }
 
@@ -211,7 +211,7 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
     };
     auto iter = make_iterator(entries);
 
-    auto res = log->insert(*iter);
+    auto res = log->insert(*iter, {});
     ASSERT_TRUE(res.ok());
   }
 
