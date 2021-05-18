@@ -201,8 +201,11 @@ bool CreateCollection::first() {
                                  networkFeature.pool(), followerId, vocbase.name(), *logId);
                            });
 
-            log.becomeLeader(ServerState::instance()->getId(), LogTerm{1},
-                             replicationFollowers, col->writeConcern());
+            LogLeader::TermData termData;
+            termData.id = ServerState::instance()->getId();
+            termData.writeConcern = col->writeConcern();
+            termData.term = LogTerm{1};
+            log.becomeLeader(termData, replicationFollowers);
           } else {
             log.becomeFollower(ServerState::instance()->getId(), LogTerm{1}, leader);
           }

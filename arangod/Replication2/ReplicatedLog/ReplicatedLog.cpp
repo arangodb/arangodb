@@ -53,18 +53,19 @@ replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core,
       _metrics(metrics) {}
 
 auto replicated_log::ReplicatedLog::becomeLeader(
-    ParticipantId id, LogTerm term,
-    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-    std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+    LogLeader::TermData const& termData,
+    std::vector<std::shared_ptr<AbstractFollower>> const& follower)
+    -> std::shared_ptr<LogLeader> {
   auto leader = std::shared_ptr<LogLeader>{};
   {
     std::unique_lock guard(_mutex);
-    LOG_CTX("23d7b", DEBUG, _logContext) << "becoming leader in term " << term;
+    LOG_CTX("23d7b", DEBUG, _logContext)
+        << "becoming leader in term " << termData.term;
     // TODO Resign: will resolve some promises because leader resigned
     //      those promises will call ReplicatedLog::getLeader() -> DEADLOCK
     auto logCore = std::move(*_participant).resign();
-    leader = LogLeader::construct(_logContext, _metrics, std::move(id),
-                                  std::move(logCore), term, follower, writeConcern);
+    leader = LogLeader::construct(termData, std::move(logCore), follower,
+                                  _logContext, _metrics);
     _participant = std::static_pointer_cast<LogParticipantI>(leader);
   }
 
@@ -86,7 +87,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
   while (auto entry = iter->next()) {
     log._log = log._log.push_back(std::move(entry).value());
   }
-  auto follower = std::make_shared<LogFollower>(_logContext, _metrics, id, std::move(logCore),
+  auto follower = std::make_shared<LogFollower>(_logContext, _metrics, std::move(id), std::move(logCore),
                                                 term, std::move(leaderId), log);
   _participant = std::static_pointer_cast<LogParticipantI>(follower);
   return follower;

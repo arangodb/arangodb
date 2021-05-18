@@ -88,13 +88,10 @@ class ReplicatedLogIterator : public LogIterator {
 }  // namespace
 
 replicated_log::LogLeader::LogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics,
-                                     ParticipantId id, LogTerm const term,
-                                     std::size_t const writeConcern, InMemoryLog inMemoryLog)
+                                     TermData termData, InMemoryLog inMemoryLog)
     : _logContext(std::move(logContext)),
       _logMetrics(logMetrics),
-      _participantId(std::move(id)),
-      _currentTerm(term),
-      _writeConcern(writeConcern),
+      _termData(std::move(termData)),
       _guardedLeaderData(*this, std::move(inMemoryLog)) {}
 
 replicated_log::LogLeader::~LogLeader() { tryHardToClearQueue(); }
@@ -212,13 +209,11 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
   }
 }
 
-
-
 auto replicated_log::LogLeader::construct(
-    LogContext const& logContext, ReplicatedLogMetrics& logMetrics,
-    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    TermData const& termData, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+    LogContext const& logContext, ReplicatedLogMetrics& logMetrics)
+    -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
     std::transform(followers.begin(), followers.end(), std::back_inserter(followerIds),
@@ -226,8 +221,8 @@ auto replicated_log::LogLeader::construct(
                      return follower->getParticipantId();
                    });
     auto message = basics::StringUtils::concatT(
-        "LogCore missing when constructing LogLeader, leader id: ", id,
-        "term: ", term.value, "writeConcern: ", writeConcern,
+        "LogCore missing when constructing LogLeader, leader id: ", termData.id,
+        "term: ", termData.term.value, "writeConcern: ", termData.writeConcern,
         "followers: ", basics::StringUtils::join(followerIds, ", "));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
   }
@@ -237,9 +232,8 @@ auto replicated_log::LogLeader::construct(
   struct MakeSharedLogLeader : LogLeader {
    public:
     MakeSharedLogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics,
-                        ParticipantId const& id, LogTerm const& term,
-                        size_t writeConcern, InMemoryLog inMemoryLog)
-        : LogLeader(std::move(logContext), logMetrics, id, term, writeConcern,
+                        TermData termData, InMemoryLog inMemoryLog)
+        : LogLeader(std::move(logContext), logMetrics, std::move(termData),
                     std::move(inMemoryLog)) {}
   };
 
@@ -252,12 +246,12 @@ auto replicated_log::LogLeader::construct(
   }
   auto const lastIndex = log.getLastIndex();
 
-  auto commonLogContext =
-      logContext.with<logContextKeyTerm>(term).with<logContextKeyLeaderId>(id);
+  auto commonLogContext = logContext.with<logContextKeyTerm>(termData.term)
+                              .with<logContextKeyLeaderId>(termData.id);
 
   auto leader =
       std::make_shared<MakeSharedLogLeader>(commonLogContext.with<logContextKeyLogComponent>("leader"),
-                                            logMetrics, id, term, writeConcern, log);
+                                            logMetrics, termData, log);
   auto localFollower = std::make_shared<LocalFollower>(
       *leader, commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore));
@@ -273,7 +267,7 @@ auto replicated_log::LogLeader::construct(
     leaderDataGuard->_commitIndex = leaderDataGuard->_inMemoryLog.getLastIndex();
   }
 
-  TRI_ASSERT(leaderDataGuard->_follower.size() >= writeConcern);
+  TRI_ASSERT(leaderDataGuard->_follower.size() >= termData.writeConcern);
 
   return leader;
 }
@@ -291,7 +285,7 @@ auto replicated_log::LogLeader::resign() && -> std::unique_ptr<LogCore> {
   //      requests?
   auto [core, promises] = _guardedLeaderData.doUnderLock(
       [this, &localFollower = *_localFollower,
-       &participantId = _participantId](GuardedLeaderData& leaderData) {
+       &participantId = _termData.id](GuardedLeaderData& leaderData) {
         if (leaderData._didResign) {
           LOG_CTX("5d3b8", ERR, _logContext)
               << "Leader " << participantId << " already resigned!";
@@ -328,7 +322,7 @@ auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
 }
 
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
-  return _guardedLeaderData.doUnderLock([term = _currentTerm](auto& leaderData) {
+  return _guardedLeaderData.doUnderLock([term = _termData.term](auto& leaderData) {
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
@@ -356,7 +350,7 @@ auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
     }
     auto const index = leaderData._inMemoryLog.getNextIndex();
     leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(
-        LogEntry{self->_currentTerm, index, std::move(payload)});
+        LogEntry{self->_termData.term, index, std::move(payload)});
     return index;
   });
 }
@@ -383,7 +377,7 @@ auto replicated_log::LogLeader::waitFor(LogIndex index)
 }
 
 auto replicated_log::LogLeader::getParticipantId() const noexcept -> ParticipantId const& {
-  return _participantId;
+  return _termData.id;
 }
 
 auto replicated_log::LogLeader::runAsyncStep() -> void {
@@ -453,9 +447,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 
   AppendEntriesRequest req;
   req.leaderCommit = _commitIndex;
-  req.leaderTerm = _self._currentTerm;
-  req.leaderId = _self._participantId;
-  req.waitForSync = true; // TODO select this based on the log entries
+  req.leaderTerm = _self._termData.term;
+  req.leaderId = _self._termData.id;
+  req.waitForSync = _self._termData.waitForSync; // TODO select this based on the log entries
   req.messageId = ++follower.lastSendMessageId;
 
   if (lastAcked) {
@@ -492,7 +486,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   follower.requestInFlight = true;
   auto preparedRequest = PreparedAppendEntryRequest{};
   preparedRequest._follower = &follower;
-  preparedRequest._currentTerm = _self._currentTerm;
+  preparedRequest._currentTerm = _self._termData.term;
   preparedRequest._currentCommitIndex = currentCommitIndex;
   preparedRequest._lastIndex = lastIndex;
   preparedRequest._parentLog = parentLog;
@@ -506,7 +500,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     futures::Try<AppendEntriesResult>&& res,
     std::chrono::steady_clock::duration latency, MessageId messageId)
     -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet> {
-  if (currentTerm != _self._currentTerm) {
+  if (currentTerm != _self._termData.term) {
     LOG_CTX("7ab2e", WARN, follower.logContext)
         << "received append entries response with wrong term: " << currentTerm;
     return {};
@@ -598,7 +592,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex fromI
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
     std::weak_ptr<LogLeader> const& parentLog) -> ResolvedPromiseSet {
-  auto const quorum_size = _self._writeConcern;
+  auto const quorum_size = _self._termData.writeConcern;
 
   // TODO make this so that we can place any predicate here
   std::vector<std::pair<LogIndex, ParticipantId>> indexes;
@@ -636,7 +630,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
                    [](auto& p) { return p.second; });
 
     auto const quorum_data =
-        std::make_shared<QuorumData>(commitIndex, _self._currentTerm, std::move(quorum));
+        std::make_shared<QuorumData>(commitIndex, _self._termData.term, std::move(quorum));
     return updateCommitIndexLeader(parentLog, commitIndex, quorum_data);
   }
   return {};
@@ -672,6 +666,19 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
       return leaderData.getLogIterator(LogIndex{index.value - 1});
     });
   });
+}
+
+auto replicated_log::LogLeader::construct(
+    const LogContext& logContext, replicated_log::ReplicatedLogMetrics& logMetrics,
+    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    const std::vector<std::shared_ptr<AbstractFollower>>& followers,
+    std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+  TermData termData;
+  termData.term = term;
+  termData.id = std::move(id);
+  termData.writeConcern = writeConcern;
+  termData.waitForSync = false;
+  return LogLeader::construct(termData, std::move(logCore), followers, logContext, logMetrics);
 }
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(replicated_log::LogLeader& self,
@@ -729,12 +736,12 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
 
 auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<LogCore> {
   LOG_CTX("2062b", TRACE, _logContext)
-      << "local follower received resign, term = " << _self._currentTerm;
+      << "local follower received resign, term = " << _self._termData.term;
   return _guardedLogCore.doUnderLock([&](auto& guardedLogCore) {
     auto logCore = std::move(guardedLogCore);
     LOG_CTX_IF("0f9b8", DEBUG, _logContext, logCore == nullptr)
         << "local follower asked to resign but log core already gone, term = "
-        << _self._currentTerm;
+        << _self._termData.term;
     return logCore;
   });
 }

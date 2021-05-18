@@ -71,10 +71,22 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
  public:
   ~LogLeader() override;
 
+  struct TermData {
+    LogTerm term;
+    ParticipantId id;
+    bool waitForSync;
+    std::size_t writeConcern;
+  };
+
   static auto construct(LogContext const& logContext, ReplicatedLogMetrics& logMetrics,
                         ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
                         std::vector<std::shared_ptr<AbstractFollower>> const& followers,
                         std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
+
+  static auto construct(TermData const& termData, std::unique_ptr<LogCore> logCore,
+                        std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+                        LogContext const& logContext, ReplicatedLogMetrics& logMetrics)
+      -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload) -> LogIndex;
 
@@ -96,8 +108,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
  protected:
   // Use the named constructor construct() to create a leader!
-  LogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics, ParticipantId id,
-            LogTerm term, std::size_t writeConcern, InMemoryLog inMemoryLog);
+  LogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics,
+            TermData termData, InMemoryLog inMemoryLog);
 
  private:
   struct GuardedLeaderData;
@@ -199,9 +211,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   LogContext const _logContext;
   [[maybe_unused]] ReplicatedLogMetrics& _logMetrics;
-  ParticipantId const _participantId;
-  LogTerm const _currentTerm;
-  std::size_t const _writeConcern;
+  TermData const _termData;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;
   // make this thread safe in the most simple way possible, wrap everything in

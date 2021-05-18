@@ -117,11 +117,24 @@ auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, Pa
   return std::make_shared<DelayedFollowerLog>(ptr);
 }
 
-auto TestReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
-                    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-                    std::size_t writeConcern) -> std::shared_ptr<DelayedLogLeader> {
-  auto ptr = ReplicatedLog::becomeLeader(id, term, follower, writeConcern);
+auto TestReplicatedLog::becomeLeader(LogLeader::TermData const& termData,
+                                     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
+    -> std::shared_ptr<DelayedLogLeader> {
+  auto ptr = ReplicatedLog::becomeLeader(termData, follower);
   return std::make_shared<DelayedLogLeader>(ptr);
+}
+
+auto TestReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
+                                     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+                                     std::size_t writeConcern)
+    -> std::shared_ptr<DelayedLogLeader> {
+  LogLeader::TermData termData;
+  termData.term = term;
+  termData.id = id;
+  termData.writeConcern = writeConcern;
+  termData.waitForSync = false;
+
+  return becomeLeader(termData, follower);
 }
 
 DelayedLogLeader::DelayedLogLeader(std::shared_ptr<LogLeader>  leader)

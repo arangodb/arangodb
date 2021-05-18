@@ -167,3 +167,59 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
     EXPECT_EQ(req.leaderCommit, LogIndex{0});
   }
 }
+
+TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set) {
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto follower = std::make_shared<FakeFollower>("follower");
+
+  auto termData = LogLeader::TermData{};
+  termData.waitForSync = true;
+  termData.id = "leader";
+  termData.term = LogTerm{4};
+  termData.writeConcern = 2;
+  auto leader = leaderLog->becomeLeader(termData, {follower});
+
+  {
+    auto idx = leader->insert(LogPayload{"first entry"});
+    ASSERT_EQ(idx, LogIndex{1});
+  }
+
+  leader->runAsyncStep();
+  ASSERT_TRUE(follower->hasPendingRequests());
+  {
+    auto req = follower->currentRequest();
+    EXPECT_EQ(req.messageId, MessageId{1});
+    EXPECT_EQ(req.entries.size(), 1);
+    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.prevLogTerm, LogTerm{0});
+    EXPECT_EQ(req.prevLogIndex, LogIndex{0});
+    EXPECT_EQ(req.leaderTerm, LogTerm{4});
+    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_TRUE(req.waitForSync);
+  }
+}
+
+TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto follower = std::make_shared<FakeFollower>("follower");
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
+
+  {
+    auto idx = leader->insert(LogPayload{"first entry"});
+    ASSERT_EQ(idx, LogIndex{1});
+  }
+
+  leader->runAsyncStep();
+  ASSERT_TRUE(follower->hasPendingRequests());
+  {
+    auto req = follower->currentRequest();
+    EXPECT_EQ(req.messageId, MessageId{1});
+    EXPECT_EQ(req.entries.size(), 1);
+    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.prevLogTerm, LogTerm{0});
+    EXPECT_EQ(req.prevLogIndex, LogIndex{0});
+    EXPECT_EQ(req.leaderTerm, LogTerm{4});
+    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_FALSE(req.waitForSync);
+  }
+}

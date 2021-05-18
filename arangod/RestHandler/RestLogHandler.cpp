@@ -144,6 +144,7 @@ RestStatus RestLogHandler::handlePostRequest() {
 
     auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
     auto writeConcern = body.get("writeConcern").getNumericValue<std::size_t>();
+    auto waitForSync = body.get("waitForSync").isTrue();
 
     std::vector<std::shared_ptr<replicated_log::AbstractFollower>> follower;
     for (auto const& part : VPackArrayIterator(body.get("follower"))) {
@@ -151,7 +152,12 @@ RestStatus RestLogHandler::handlePostRequest() {
       follower.emplace_back(std::make_shared<replicated_log::FakeLogFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
     }
 
-    log.becomeLeader(ServerState::instance()->getId(), term, follower, writeConcern);
+    replicated_log::LogLeader::TermData termData;
+    termData.id = ServerState::instance()->getId();
+    termData.term = term;
+    termData.writeConcern = writeConcern;
+    termData.waitForSync = waitForSync;
+    log.becomeLeader(termData, follower);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
   } else if (verb == "becomeFollower") {
     auto& log = _vocbase.getReplicatedLogById(logId);

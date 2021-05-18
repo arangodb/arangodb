@@ -169,6 +169,9 @@ struct TestReplicatedLog : ReplicatedLog {
   auto becomeLeader(ParticipantId const& id, LogTerm term,
                     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                     std::size_t writeConcern) -> std::shared_ptr<DelayedLogLeader>;
+  auto becomeLeader(LogLeader::TermData const& termData,
+                    std::vector<std::shared_ptr<AbstractFollower>> const& follower)
+      -> std::shared_ptr<DelayedLogLeader>;
 };
 
 struct ReplicatedLogTest : ::testing::Test {

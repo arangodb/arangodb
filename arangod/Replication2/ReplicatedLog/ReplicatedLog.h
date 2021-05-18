@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLogMetrics.h"
 
+#include "LogLeader.h"
 #include "Replication2/LogContext.h"
 
 #include <iosfwd>
@@ -73,9 +74,9 @@ struct alignas(64) ReplicatedLog {
   auto operator=(ReplicatedLog const&) -> ReplicatedLog& = delete;
   auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
 
-  auto becomeLeader(ParticipantId id, LogTerm term,
-                    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-                    std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
+  auto becomeLeader(LogLeader::TermData const& termData,
+                    std::vector<std::shared_ptr<AbstractFollower>> const& follower)
+      -> std::shared_ptr<LogLeader>;
   auto becomeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId)
       -> std::shared_ptr<LogFollower>;
 
