@@ -305,7 +305,13 @@ TEST_F(IResearchInvertedIndexConditionTest, test_boost) {
   std::string queryString = "FOR d IN test FILTER BOOST(d.a == 10, 10) RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
-  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_nondet_boost) {
+  std::string queryString = "FOR d IN test FILTER BOOST(d.a == d.b, 10) RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
 
@@ -322,13 +328,11 @@ TEST_F(IResearchInvertedIndexConditionTest, test_analyzer) {
   std::string queryString = "FOR d IN test FILTER ANALYZER(d.a == '10', 'text_en') RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
-  expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected, &ctx);
 }
 
-
-TEST_F(IResearchInvertedIndexConditionTest, test_nondet_boost) {
-  std::string queryString = "FOR d IN test FILTER BOOST(d.a == d.b, 10) RETURN d ";
+TEST_F(IResearchInvertedIndexConditionTest, test_exists) {
+  std::string queryString = "FOR d IN test FILTER EXISTS(d.a, 'string') RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);

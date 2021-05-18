@@ -456,10 +456,10 @@ Result extractAnalyzerFromArg(
 struct FilterContext {
   FilterContext(
       arangodb::iresearch::FieldMeta::Analyzer const& analyzer,
-      irs::boost_t boost, bool allowByExpr) noexcept
+      irs::boost_t boost, bool search) noexcept
     : analyzer(analyzer),
       boost(boost),
-      allowByExpression(allowByExpr) {
+      isSearchFilter(search) {
     TRI_ASSERT(analyzer._pool);
   }
 
@@ -469,7 +469,7 @@ struct FilterContext {
   // need shared_ptr since pool could be deleted from the feature
   arangodb::iresearch::FieldMeta::Analyzer const& analyzer;
   irs::boost_t boost;
-  bool allowByExpression;
+  bool isSearchFilter; // filter is building for SEARCH clause
 };  // FilterContext
 
 typedef std::function<
@@ -905,11 +905,11 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   // non-deterministic condition or self-referenced variable
   if (!node->isDeterministic() || arangodb::iresearch::findReference(*node, *ctx.ref)) {
     // not supported by IResearch, but could be handled by ArangoDB
-    if (filterCtx.allowByExpression) {
+    if (filterCtx.isSearchFilter) {
       appendExpression(*filter, std::move(node), ctx, filterCtx);
       return {};
     } else {
-      return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is forbidden"};
+      return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is supported for SEARCH only"};
     }
   }
 
@@ -948,11 +948,11 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   // non-deterministic condition or self-referenced variable
   if (!node.isDeterministic() || arangodb::iresearch::findReference(node, *ctx.ref)) {
     // not supported by IResearch, but could be handled by ArangoDB
-    if(filterCtx.allowByExpression) {
+    if(filterCtx.isSearchFilter) {
       appendExpression(*filter, node, ctx, filterCtx);
       return {};
     } else {
-      return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is forbidden"};
+      return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is supported for SEARCH only"};
     }
   }
 
@@ -1615,7 +1615,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
     FilterContext const subFilterCtx{
       filterCtx.analyzer,
       irs::no_boost(), // reset boost
-      filterCtx.allowByExpression};
+      filterCtx.isSearchFilter};
     // Expand array interval as several binaryInterval nodes ('array' feature is ensured by pre-filter)
     arangodb::iresearch::NormalizedCmpNode normalized;
     aql::AstNode toNormalize(arrayExpansionNodeType);
@@ -1633,10 +1633,10 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
       if (!arangodb::iresearch::normalizeCmpNode(toNormalize, *ctx.ref, normalized)) {
         if (!filter) {
           // can't evaluate non constant filter before the execution
-          if (filterCtx.allowByExpression) {
+          if (filterCtx.isSearchFilter) {
             return {};
           } else {
-            return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is forbidden"};
+            return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is supported for SEARCH only"};
           }
         }
         // use std::shared_ptr since AstNode is not copyable/moveable
@@ -1698,7 +1698,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
       FilterContext const subFilterCtx{
           filterCtx.analyzer,
           irs::no_boost(),  // reset boost
-          filterCtx.allowByExpression
+          filterCtx.isSearchFilter
       };
 
       std::string fieldName;
@@ -1784,7 +1784,7 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
       irs::no_boost(),  // reset boost
-      filterCtx.allowByExpression
+      filterCtx.isSearchFilter
   };
 
   arangodb::iresearch::NormalizedCmpNode normalized;
@@ -1809,10 +1809,10 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     if (!arangodb::iresearch::normalizeCmpNode(toNormalize, *ctx.ref, normalized)) {
       if (!filter) {
         // can't evaluate non constant filter before the execution
-        if(filterCtx.allowByExpression) {
+        if(filterCtx.isSearchFilter) {
           return {};
         } else {
-          return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is forbidden"};
+          return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is supported for SEARCH only"};
         }
       }
 
@@ -1928,7 +1928,7 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
       FilterContext const subFilterCtx{
           filterCtx.analyzer,
           irs::no_boost(),  // reset boost
-          filterCtx.allowByExpression
+          filterCtx.isSearchFilter
       };
 
       for (size_t i = 0; i < n; ++i) {
@@ -1989,7 +1989,7 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
       irs::no_boost(),  // reset boost
-      filterCtx.allowByExpression
+      filterCtx.isSearchFilter
   };
 
   return ::filter(filter, ctx, subFilterCtx, *member);
@@ -2072,7 +2072,7 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
       irs::no_boost(),  // reset boost
-      filterCtx.allowByExpression
+      filterCtx.isSearchFilter
   };
 
   for (size_t i = 0; i < n; ++i) {
@@ -2096,6 +2096,10 @@ Result fromFuncAnalyzer(
     FilterContext const& filterCtx,
     aql::AstNode const& args) {
   TRI_ASSERT(funcName);
+
+  if(!filterCtx.isSearchFilter) {
+    return {TRI_ERROR_NOT_IMPLEMENTED, "ANALYZER is supported for SEARCH only"};
+  }
 
   auto const argc = args.numMembers();
 
@@ -2154,7 +2158,7 @@ Result fromFuncAnalyzer(
 
   }
 
-  FilterContext const subFilterContext(analyzerValue, filterCtx.boost, filterCtx.allowByExpression); // override analyzer
+  FilterContext const subFilterContext(analyzerValue, filterCtx.boost, filterCtx.isSearchFilter); // override analyzer
 
   rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
 
@@ -2176,6 +2180,10 @@ Result fromFuncBoost(
     FilterContext const& filterCtx,
     aql::AstNode const& args) {
   TRI_ASSERT(funcName);
+
+  if (!filterCtx.isSearchFilter) {
+     return {TRI_ERROR_NOT_IMPLEMENTED, "BOOST is supported for SEARCH only"};
+  }
 
   auto const argc = args.numMembers();
 
@@ -2203,7 +2211,7 @@ Result fromFuncBoost(
 
   FilterContext const subFilterContext{filterCtx.analyzer,
                                        filterCtx.boost * static_cast<float_t>(boostValue),
-                                       filterCtx.allowByExpression};
+                                       filterCtx.isSearchFilter};
 
   rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
 
@@ -2227,6 +2235,11 @@ Result fromFuncExists(
 
   if (!args.isDeterministic()) {
     return error::nondeterministicArgs(funcName);
+  }
+
+  
+  if(!filterCtx.isSearchFilter) {
+    return {TRI_ERROR_NOT_IMPLEMENTED, "EXISTS is supported for SEARCH only"};
   }
 
   auto const argc = args.numMembers();
@@ -2400,7 +2413,7 @@ Result fromFuncMinMatch(
   FilterContext const subFilterCtx{
     filterCtx.analyzer,
     irs::no_boost(), // reset boost
-    filterCtx.allowByExpression
+    filterCtx.isSearchFilter
   };
 
   for (size_t i = 0; i < lastArg; ++i) {
