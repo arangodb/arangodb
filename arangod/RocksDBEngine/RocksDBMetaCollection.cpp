@@ -773,10 +773,34 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
   if (!inserts.empty()) {
-    _revisionInsertBuffers.emplace(seq, std::move(inserts));
+    // will default-construct an empty entry if it does not yet exist
+    auto& elem = _revisionInsertBuffers[seq];
+    if (elem.empty()) {
+      elem = std::move(inserts);
+    } else {
+      // should only happen in recovery, if at all
+      TRI_ASSERT(_logicalCollection.vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine()
+                     .inRecovery());
+      elem.insert(elem.end(), inserts.begin(), inserts.end());
+    }
   }
   if (!removals.empty()) {
-    _revisionRemovalBuffers.emplace(seq, std::move(removals));
+    // will default-construct an empty entry if it does not yet exist
+    auto& elem = _revisionRemovalBuffers[seq];
+    if (elem.empty()) {
+      elem = std::move(removals);
+    } else {
+      // should only happen in recovery, if at all
+      TRI_ASSERT(_logicalCollection.vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine()
+                     .inRecovery());
+      elem.insert(elem.end(), removals.begin(), removals.end());
+    }
   }
 }
 
@@ -819,8 +843,16 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
   ensureRevisionTree();
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
-
+  
   Result res = basics::catchVoidToResult([&]() -> void {
+    // bump sequence number upwards
+    auto bumpSequence = [this](rocksdb::SequenceNumber seq) noexcept {
+      rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
+      while (seq > applied) {
+        _revisionTreeApplied.compare_exchange_strong(applied, seq);
+      }
+    };
+
     std::unique_lock<std::mutex> guard(_revisionBufferLock);
 
     auto insertIt = _revisionInsertBuffers.begin();
@@ -858,6 +890,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         _revisionTree->clear();
 
         guard.lock();
+
+        // we have applied all changes up to here
+        bumpSequence(ignoreSeq);
       }
     }
 
@@ -879,13 +914,15 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
   
       // no inserts or removals left to apply, drop out of loop
       if (!applyInserts && !applyRemovals) {
-        break;
+        // we have applied all changes up to including commitSeq
+        bumpSequence(commitSeq);
+        return;
       }
      
       // another concurrent thread may insert new elements into _revisionInsertBuffers or 
       // _revisionRemovalBuffers while we are here.
       // it is safe for us to access the elements pointed to by insertIt and removeIt here 
-      // without holding the lock on these containers though, because of std::multimap's
+      // without holding the lock on these containers though, because of std::map's
       // iterator invalidation rules:
       // - emplace / insert: No iterators or references are invalidated.
       // - erase: References and iterators to the erased elements are invalidated. Other references and iterators are not affected.
@@ -906,18 +943,24 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         try {
           _revisionTree->insert(insertIt->second);
         } catch (std::exception const& ex) {
-          // it is pretty bad if this fails, so we want to see it in our tests
-          // and not overlook it.
           LOG_TOPIC("27811", ERR, Logger::ENGINES)
               << "unable to apply revision tree inserts for " 
               << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
               << ": " << ex.what();
+          // it is pretty bad if this fails, so we want to see it in our tests
+          // and not overlook it.
           TRI_ASSERT(false);
+
+          // if an exception escapes from here, the insert will not have happened.
+          // it is safe to retry it next time.
           throw;
         }
 
         // move iterator forward, we need the mutex for this
         guard.lock();
+
+        // if the insert succeeded, we remove it from the list of operations, 
+        // so it won't be reapplied even if subsequent operations fail.
         insertIt = _revisionInsertBuffers.erase(insertIt);
       }
 
@@ -942,12 +985,19 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
               << "unable to apply revision tree removals for " 
               << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
               << ": " << ex.what();
+          // it is pretty bad if this fails, so we want to see it in our tests
+          // and not overlook it.
           TRI_ASSERT(false);
+          
+          // if an exception escapes from here, the same remove will be retried next time.
           throw;
         }
 
         // move iterator forward, we need the mutex for this
         guard.lock();
+        
+        // if the remove succeeded, we remove it from the list of operations, 
+        // so it won't be reapplied even if subsequent operations fail.
         removeIt = _revisionRemovalBuffers.erase(removeIt);
       }
     }
@@ -959,11 +1009,6 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
         << ": " << res.errorMessage();
     THROW_ARANGO_EXCEPTION(res);
-  }
-  
-  rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
-  while (commitSeq > applied) {
-    _revisionTreeApplied.compare_exchange_strong(applied, commitSeq);
   }
   
   TRI_IF_FAILURE("applyUpdates::forceHibernation2") {

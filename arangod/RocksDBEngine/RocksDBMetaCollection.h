@@ -232,8 +232,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   // if the types of these containers are changed to some other type, please check the new
   // type's iterator invalidation rules first and if iterators are invalidated when new 
   // elements get inserted
-  std::multimap<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionInsertBuffers;
-  std::multimap<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionRemovalBuffers;
+  std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionInsertBuffers;
+  std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
   mutable std::mutex _revisionBufferLock;
 };
