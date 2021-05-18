@@ -1544,7 +1544,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
             (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
           clearAttributeAccess(result);
 
-          if (lhs->isAttributeAccessForVariable(result, isFromTraverser)) {
+          if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+              result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
             if (temp == me.attributeName) {
@@ -1568,7 +1569,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           clearAttributeAccess(result);
 
-          if (rhs->isAttributeAccessForVariable(result, isFromTraverser)) {
+          if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+              result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
             if (temp == me.attributeName) {
@@ -1581,9 +1583,15 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
                 }
               }
               // non-constant condition
-              else if (me.operatorType == operand->type &&
-                       normalize(me.valueNode) == normalize(lhs)) {
-                return true;
+              else {
+                auto opType = operand->type;
+                if (arangodb::aql::Ast::IsReversibleOperator(opType)) {
+                  opType = arangodb::aql::Ast::ReverseOperator(opType);
+                }
+                if (me.operatorType == opType &&
+                    normalize(me.valueNode) == normalize(lhs)) {
+                  return true;
+                }
               }
             }
           }

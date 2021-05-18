@@ -480,19 +480,25 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
               });
 
     ::arangodb::containers::HashSet<int> operatorsFound;
-    for (auto& it : nodes) {
+    for (auto const& it : nodes) {
       if (it->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
         // ignore all != operators here
         continue;
       }
 
+      arangodb::aql::AstNodeType type = it->type;
+      if (arangodb::aql::Ast::IsReversibleOperator(type) &&
+          it->getMember(1)->isAttributeAccessForVariable(reference, false)) {
+        type = arangodb::aql::Ast::ReverseOperator(type); 
+      }
+
       // do not let duplicate or related operators pass
-      if (isDuplicateOperator(it, operatorsFound)) {
+      if (isDuplicateOperator(type, operatorsFound)) {
         continue;
       }
 
       TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
-      operatorsFound.emplace(static_cast<int>(it->type));
+      operatorsFound.emplace(static_cast<int>(type));
       children.emplace_back(it);
     }
   }
@@ -511,9 +517,8 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
 }
 
 bool SortedIndexAttributeMatcher::isDuplicateOperator(
-    arangodb::aql::AstNode const* node,
+    arangodb::aql::AstNodeType type,
     ::arangodb::containers::HashSet<int> const& operatorsFound) {
-  auto type = node->type;
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator
     return true;

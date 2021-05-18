@@ -1,6 +1,10 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
+* Fixes BTS-417. In some cases an index did not consider both bounds (lower and
+  upper) for a close range scan if both bounds are expressed using the same
+  operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
+
 * Fixes BTS-416. During shutdown, a Shard leader wrongly reported that it could
   not drop a shard follower instead of correctly indicating the shutdown as the
   reason.
