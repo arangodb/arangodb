@@ -1173,3 +1173,61 @@ TEST(MerkleTreeTest, test_to_string) {
   s = t1.toString(true);
   ASSERT_LE(1500, s.size());
 }
+
+TEST(MerkleTreeTest, test_diff_one_side_empty_random_data_shifted) {
+  constexpr uint64_t M = (1ULL << 32) + 17;     // some large constant
+  constexpr uint64_t W = 1ULL << 20;  // initial width, 4 values in each bucket
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, M, M + W, M + 16);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(6, M + 16, M + W + 16, M + 16);   // four buckets further right
+
+  // Now produce a large list of random keys, in the covered range and beyond on both sides.
+  // We then shuffle the vector and insert into both trees in a different order.
+  // This will eventually grow the trees in various ways, but in the end, it should always
+  // find no differences whatsoever.
+
+  auto rd {std::random_device{}()};
+  auto mt {std::mt19937_64(rd)};
+  std::uniform_int_distribution<uint64_t> uni{M - (1ULL << 12), M + (1ULL << 28)};
+  std::vector<uint64_t> data;
+  for (size_t i = 0; i < 100000; ++i) {
+    data.push_back(uni(mt));
+  }
+  std::vector<uint64_t> sorted{data};
+  std::sort(sorted.begin(), sorted.end());
+
+  for (auto x : data) {
+    t1.insert(x);
+  }
+
+  auto t1c = t1.clone();
+  auto t2c = t2.clone();
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> d1 = t1.diff(t2);
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> d2 = t2c->diff(*t1c);
+
+  // Now do a check of the result, first, the two should be the same:
+  ASSERT_EQ(d1.size(), d2.size());
+  for (size_t i = 0; i < d1.size(); ++i) {
+    ASSERT_EQ(d1[i].first, d2[i].first);
+    ASSERT_EQ(d1[i].second, d2[i].second);
+  }
+
+  // Now check that each of the intervals contains at least one entry
+  // in the sorted data list:
+  size_t pos = 0;
+  size_t posi = 0;  // position in intervals
+  while (pos < sorted.size() && posi < d1.size()) {
+    // Next key in the sorted list must be in next interval:
+    ASSERT_LE(d1[posi].first, sorted[pos]);
+    ASSERT_LE(sorted[pos], d1[posi].second);
+    // Now skip all points in the sorted list in that interval:
+    while (pos < sorted.size() &&
+           d1[posi].first <= sorted[pos] && sorted[pos] <= d1[posi].second) {
+      ++pos;
+    }
+    // Now skip this interval:
+    ++posi;
+  }
+  ASSERT_EQ(pos, sorted.size());  // All points should be consumed
+  ASSERT_EQ(posi, d1.size());     // All intervals should be consumed
+}
+
