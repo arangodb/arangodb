@@ -564,6 +564,105 @@ function BaseTestConfig () {
         assertEqual("sorted", collectNode.collectOptions.method);
       });
     },
+    
+    testSingleFilterUpperAndLowerBound: function() {
+      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
+      [
+        `
+          FOR doc IN ${cn}
+            LET lowerBound = 1
+            LET upperBound = 100
+            FILTER doc.uid >= lowerBound AND doc.uid <= upperBound
+            RETURN doc
+        `,
+        `
+          FOR doc IN ${cn}
+            LET lowerBound = 1
+            LET upperBound = 100
+            FILTER lowerBound <= doc.uid AND upperBound >= doc.uid
+            RETURN doc
+        `,
+        `
+          FOR src IN [{uid: 123}, {uid: 124}]
+            LET upperBound = src.uid + 100
+            FOR dst IN ${cn}
+              FILTER dst.uid >= src.uid AND dst.uid <= upperBound
+              RETURN { src, dst }
+        `
+      ].forEach((q) => {
+        const nodes = AQL_EXPLAIN(q, {},
+          { optimizer: { rules: ["-interchange-adjacent-enumerations", "-move-filters-into-enumerate"] }}).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        const indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
+        assertEqual(1, indexNode.condition.subNodes.length);
+        assertEqual("n-ary and", indexNode.condition.subNodes[0].type);
+        // index covers both conditions
+        assertEqual(2, indexNode.condition.subNodes[0].subNodes.length);
+        // since the index covers all conditions, the filter should be completely removed
+        assertEqual(0, nodes.filter((n) => n.type === 'FilterNode').length);
+      });
+    },
+    
+    testSingleFilterUpperAndLowerBoundWithRedunantCondition: function() {
+      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
+      // generate the cross product of the given arrays
+      const product = (...a) => a.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
+      // generate a list of all permutations of the given array
+      const perm = a => a.length
+        ? a.reduce((r, v, i) => [...r, ...perm([...a.slice(0, i), ...a.slice(i + 1)]).map(x => [v, ...x])], [])
+        : [[]]
+        
+      // lowerBound = 10
+      // upperBound = 100
+      const lowerBound = ["doc.uid >= lowerBound", "lowerBound <= doc.uid"];
+      const upperBound = ["doc.uid <= upperBound", "upperBound >= doc.uid"];
+      const bounds = product(lowerBound, upperBound);
+      [
+        // TODO - the commented cases currently do not work correctly.
+        // The optimizer picks the wrong (weaker) bound and keeps an additional filter for
+        // the stronger bound. The problem is Condition::optimize which does not properly
+        // handle these scenarios, but this needs to be fixed in a separate PR.
+        [["doc.uid > 5", "5 < doc.uid"], ">=", 10, "<=", 100],
+        [["doc.uid >= 5", "5 <= doc.uid"], ">=", 10, "<=", 100],
+        [["doc.uid > 42", "42 < doc.uid"], ">", 42, "<=", 100],
+        //[["doc.uid >= 42", "42 <= doc.uid"], ">=", 42, "<=", 100],
+        [["doc.uid < 42", "42 > doc.uid"], ">=", 10, "<", 42],
+        //[["doc.uid <= 42", "42 >= doc.uid"], ">=", 10, "<=", 42],
+        //[["doc.uid < 1234", "1234 > doc.uid"], ">=", 10, "<=", 100],
+        //[["doc.uid <= 1234", "1234 >= doc.uid"], ">=", 10, "<=", 100],
+        [["doc.uid != 5"], ">=", 10, "<=", 100],
+        [["doc.uid != 1234"], ">=", 10, "<=", 100],
+        [product(["doc.uid > 20", "20 < doc.uid"],  ["doc.uid < 90", "90 > doc.uid"]), ">", 20, "<", 90],
+        //[product(["doc.uid >= 20", "20 <= doc.uid"],  ["doc.uid <= 90", "90 >= doc.uid"]), ">=", 20, "<=", 90],
+      ].forEach(([filters, lbOp, lb, ubOp, ub]) => {
+        product(bounds, filters)
+          .map(list => perm(list.flat()))
+          .flat(1)
+          .forEach(filter => {
+            const q = `
+                FOR doc IN ${cn}
+                  LET lowerBound = 10
+                  LET upperBound = 100
+                  FILTER ${filter.join(" AND ")}
+                  RETURN doc
+              `;
+            const nodes = AQL_EXPLAIN(q, {}, { optimizer: { rules: ["-move-filters-into-enumerate"] }}).plan.nodes;
+            assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+            const indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
+            assertEqual(1, indexNode.condition.subNodes.length);
+            assertEqual("n-ary and", indexNode.condition.subNodes[0].type);
+            // index covers both conditions, so both conditions should be present in the index node
+            assertEqual(2, indexNode.condition.subNodes[0].subNodes.length);
+            const conds = indexNode.condition.subNodes[0].subNodes;
+            assertEqual("compare " + lbOp, conds[0].type);
+            assertEqual(lb, conds[0].subNodes[1].value);
+            assertEqual("compare " + ubOp, conds[1].type);
+            assertEqual(ub, conds[1].subNodes[1].value);
+            // since the index covers all conditions, the filter should be completely removed
+            assertEqual(0, nodes.filter((n) => n.type === 'FilterNode').length);
+          });
+      });
+    },
   };
 }
 

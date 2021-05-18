@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixes BTS-417. In some cases an index did not consider both bounds (lower and
+  upper) for a close range scan if both bounds are expressed using the same
+  operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
+  
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
 
