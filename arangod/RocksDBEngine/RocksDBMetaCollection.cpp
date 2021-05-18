@@ -353,32 +353,24 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
 
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  
   // first apply any updates that can be safely applied
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
-  std::unique_lock<std::mutex> guard(_revisionTreeLock);
-
-  LOG_DEVEL << "REVISIONTREE. TREE: " << (_revisionTree != nullptr) << ", HAVEBUFFERED: " << haveBufferedOperations();
   if (!_revisionTree && !haveBufferedOperations()) {
     // we only need to return an empty tree here.
     return allocateEmptyRevisionTree(revisionTreeDepth); 
   }
  
-  if (_revisionTree != nullptr) {
-  LOG_DEVEL << "INITIAL TREE HAS: " << _revisionTree->count() << " DOCS";
-  }
-
   applyUpdates(safeSeq);
-  
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
-  LOG_DEVEL << "TREE AFTER UPDATE HAS: " << _revisionTree->count() << " DOCS";
-
+  
   // now clone the tree so we can apply all updates consistent with our ongoing trx
   auto tree = _revisionTree->clone();
   TRI_ASSERT(tree != nullptr);
-  LOG_DEVEL << "CLONED TREE HAS: " << tree->count() << " DOCS";
-
+  
   return callback(std::move(tree));
 }
 
@@ -387,7 +379,6 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
     // apply any which are buffered and older than our ongoing transaction start
     rocksdb::SequenceNumber trxSeq = RocksDBTransactionState::toState(&trx)->beginSeq();
     TRI_ASSERT(trxSeq != 0);
-  LOG_DEVEL << "REVISIONTREE TRX";
     Result res = applyUpdatesForTransaction(*tree, trxSeq);
     if (res.fail()) {
       return nullptr;
@@ -400,8 +391,6 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
     tree->insert(operations.inserts);
     tree->remove(operations.removals);
   
-    LOG_DEVEL << "REVISIONTREE TRX AFTER ALL UPDATES HAS: " << tree->count() << " DOCS";
-
     return tree;
   });
 }
@@ -420,14 +409,11 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
     auto guard = scopeGuard([manager, ctx]() -> void { manager->release(ctx); });
     rocksdb::SequenceNumber trxSeq = ctx->snapshotTick();
     TRI_ASSERT(trxSeq != 0);
-  LOG_DEVEL << "REVISIONTREE BATCH";
     Result res = applyUpdatesForTransaction(*tree, trxSeq);
     if (res.fail()) {
       return nullptr;
     }
     
-    LOG_DEVEL << "REVISIONTREE BATCH AFTER ALL UPDATES HAS: " << tree->count() << " DOCS";
-
     return tree;
   });
 }
@@ -828,6 +814,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
       _revisionTree->hibernate(/*force*/ true);
     }
   }
+    
+//  auto minSeq = _revisionTreeApplied.load(std::memory_order_relaxed);
 
   // make sure we will have a _revisionTree ready after this
   ensureRevisionTree();
@@ -839,9 +827,14 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 
     auto insertIt = _revisionInsertBuffers.begin();
     auto removeIt = _revisionRemovalBuffers.begin();
-
     auto it = _revisionTruncateBuffer.begin();  // sorted ASC
-    
+/*
+    if (minSeq > 0) {
+      insertIt = _revisionInsertBuffers.lower_bound(minSeq + 1);
+      removeIt = _revisionRemovalBuffers.lower_bound(minSeq + 1);
+      it = _revisionTruncateBuffer.lower_bound(minSeq + 1);
+    }
+  */  
     {
       // check for a truncate marker
       rocksdb::SequenceNumber ignoreSeq = 0;  // truncate will increase this sequence
@@ -879,8 +872,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 
     while (true) {
       // find out if we still have buffers to apply
-      TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || insertIt == _revisionInsertBuffers.end());
-      TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || removeIt == _revisionRemovalBuffers.end());
+//      TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || insertIt == _revisionInsertBuffers.end());
+//      TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || removeIt == _revisionRemovalBuffers.end());
 
       bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
                          insertIt->first <= commitSeq;
@@ -991,19 +984,25 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
                                                          rocksdb::SequenceNumber commitSeq) const {
   TRI_ASSERT(_logicalCollection.useSyncByRevision());
   
-  LOG_DEVEL << "APPLYUPDATESFORTRX";
-
   return basics::catchVoidToResult([&]() -> void {
     std::unique_lock<std::mutex> guard(_revisionBufferLock);
     
+    auto minSeq = _revisionTreeApplied.load(std::memory_order_relaxed);
+    
     auto insertIt = _revisionInsertBuffers.begin();
     auto removeIt = _revisionRemovalBuffers.begin();
+    auto it = _revisionTruncateBuffer.begin();  // sorted ASC
+    
+    if (minSeq > 0) {
+      insertIt = _revisionInsertBuffers.lower_bound(minSeq + 1);
+      removeIt = _revisionRemovalBuffers.lower_bound(minSeq + 1);
+      it = _revisionTruncateBuffer.lower_bound(minSeq + 1);
+    }
 
     {
       rocksdb::SequenceNumber ignoreSeq = 0;  // truncate will increase this sequence
       bool foundTruncate = false;
       // check for a truncate marker
-      auto it = _revisionTruncateBuffer.begin();  // sorted ASC
       while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
         ignoreSeq = *it;
         TRI_ASSERT(ignoreSeq != 0);
