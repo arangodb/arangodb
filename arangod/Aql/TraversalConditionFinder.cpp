@@ -689,13 +689,33 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           }
           case OptimizationCase::VERTEX: {
             // We have the Vertex variable in the statement
-            // NOTE: We need to filter out Edge FILTER condition here
-            // The PATH cannot be used in this condition (case above)
+            AstNode* conditionToOptimize = andNode->getMember(i - 1);
+            // Create a clone before we modify the Condition
+            AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
+            bool isSupported = true;
+            Ast::traverseReadOnly(
+                conditionToOptimize,
+                [&vertexVar, &isSupported](AstNode const* node) -> bool {
+                  if (!IsSupportedNode(vertexVar, node)) {
+                    isSupported = false;
+                    return false;
+                  }
+                  return true;
+                },
+                [](AstNode const*) {});
+            if (isSupported) {
+              Ast::replaceVariables(conditionToOptimize,
+                                    {{vertexVar->id, node->getTemporaryVariable()}});
+              // Retain original condition, as covered by this Node
+              coveredCondition->andCombine(cloned);
+
+              conditionToOptimize->dump(0);
+              cloned->dump(2);
+            }
             break;
           }
           case OptimizationCase::EDGE: {
             // We have the Edge variable in the statement
-            // The PATH cannot be used in this condition (case above)
             break;
           }
         };
