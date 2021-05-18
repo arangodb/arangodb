@@ -603,7 +603,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TEMPORARILY_UNLOCK_NODE(andNode);
       VarSet varsUsedByCondition;
 
-      auto pathOptimization = std::make_unique<Condition>(_plan->getAst());
+      auto coveredCondition = std::make_unique<Condition>(_plan->getAst());
 
       // Method to identify which optimization case we need to take.
       // We can only optimize if we have a single Variable (vertex / edge / path) per condition.
@@ -647,6 +647,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           case OptimizationCase::NON_OPTIMIZABLE:
             // we found a variable created after the
             // traversal. Cannot optimize this condition
+            andNode->removeMemberUnchecked(i - 1);
             break;
           case OptimizationCase::PATH: {
             AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
@@ -663,17 +664,18 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
                 andNode->clearMembers();
                 break;
               }
+              andNode->removeMemberUnchecked(i - 1);
             } else {
               TRI_ASSERT(!conditionIsImpossible);
 
               // remember the original filter conditions if we can remove them later
               if (indexedAccessDepth == -1) {
-                pathOptimization->andCombine(cloned);
+                coveredCondition->andCombine(cloned);
               } else if ((uint64_t)indexedAccessDepth <= options->maxDepth) {
                 // if we had an  index access then indexedAccessDepth
                 // is in [0..maxDepth], if the depth is not a concrete value
                 // then indexedAccessDepth would be INT64_MAX
-                pathOptimization->andCombine(cloned);
+                coveredCondition->andCombine(cloned);
 
                 if ((int64_t)options->minDepth < indexedAccessDepth &&
                     !isTrueOnNull(cloned, pathVar)) {
@@ -713,9 +715,9 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         }
         break;
       }
-      if (!pathOptimization->isEmpty()) {
-        pathOptimization->normalize();
-        node->setCondition(std::move(pathOptimization));
+      if (!coveredCondition->isEmpty()) {
+        coveredCondition->normalize();
+        node->setCondition(std::move(coveredCondition));
         // We restart here with an empty condition.
         // All Filters that have been collected thus far
         // depend on sth issued by this traverser or later
