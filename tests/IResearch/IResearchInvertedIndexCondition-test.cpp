@@ -96,7 +96,7 @@ class IResearchInvertedIndexConditionTest
       std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
       std::string const& refName = "d") {
     SCOPED_TRACE(testing::Message("estimateFilterCondition failed for query:<")
-      << queryString << "> Expected support:" << expectedCosts.supportsCondition << " Expected num covered:" << expectedCosts.coveredAttributes);
+      << queryString << "> Expected support:" << expectedCosts.supportsCondition);
     arangodb::IndexId id(1);
     arangodb::iresearch::IResearchInvertedIndex Index(id, collection(), getPropertiesSlice(id, fields).slice());
 
@@ -149,9 +149,8 @@ class IResearchInvertedIndexConditionTest
         mockCtx->setTrx(&trx);
       }
 
-      arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, mockCtx, nullptr, ref};
       auto costs = Index.supportsFilterCondition({}, filterNode, ref, 0);
-      ASSERT_EQ(expectedCosts.coveredAttributes, costs.coveredAttributes);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
 
@@ -295,9 +294,41 @@ TEST_F(IResearchInvertedIndexConditionTest, test_negation) {
   estimateFilterCondition(queryString, fields, expected);
 }
 
-
 TEST_F(IResearchInvertedIndexConditionTest, test_nondet_negation) {
   std::string queryString = "FOR d IN test FILTER NOT(d.a == d.b) RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_boost) {
+  std::string queryString = "FOR d IN test FILTER BOOST(d.a == 10, 10) RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_nondet_analyzer) {
+  ExpressionContextMock ctx; // need this for trx for analyzer pool
+  std::string queryString = "FOR d IN test FILTER ANALYZER(d.a == d.b, 'text_en') RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected, &ctx);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_analyzer) {
+  ExpressionContextMock ctx; // need this for trx for analyzer pool
+  std::string queryString = "FOR d IN test FILTER ANALYZER(d.a == '10', 'text_en') RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected, &ctx);
+}
+
+
+TEST_F(IResearchInvertedIndexConditionTest, test_nondet_boost) {
+  std::string queryString = "FOR d IN test FILTER BOOST(d.a == d.b, 10) RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);

@@ -456,10 +456,10 @@ Result extractAnalyzerFromArg(
 struct FilterContext {
   FilterContext(
       arangodb::iresearch::FieldMeta::Analyzer const& analyzer,
-      irs::boost_t boost, bool byExpr = true) noexcept
+      irs::boost_t boost, bool allowByExpr) noexcept
     : analyzer(analyzer),
       boost(boost),
-      allowByExpression(byExpr) {
+      allowByExpression(allowByExpr) {
     TRI_ASSERT(analyzer._pool);
   }
 
@@ -2154,7 +2154,7 @@ Result fromFuncAnalyzer(
 
   }
 
-  FilterContext const subFilterContext(analyzerValue, filterCtx.boost); // override analyzer
+  FilterContext const subFilterContext(analyzerValue, filterCtx.boost, filterCtx.allowByExpression); // override analyzer
 
   rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
 
@@ -2202,7 +2202,8 @@ Result fromFuncBoost(
   }
 
   FilterContext const subFilterContext{filterCtx.analyzer,
-                                       filterCtx.boost * static_cast<float_t>(boostValue)};
+                                       filterCtx.boost * static_cast<float_t>(boostValue),
+                                       filterCtx.allowByExpression};
 
   rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
 
@@ -2398,7 +2399,8 @@ Result fromFuncMinMatch(
 
   FilterContext const subFilterCtx{
     filterCtx.analyzer,
-    irs::no_boost() // reset boost
+    irs::no_boost(), // reset boost
+    filterCtx.allowByExpression
   };
 
   for (size_t i = 0; i < lastArg; ++i) {
