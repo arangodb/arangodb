@@ -896,19 +896,23 @@ Result byRange(irs::boolean_filter* filter,
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                     FilterContext const& filterCtx,
                     std::shared_ptr<aql::AstNode>&& node) {
-  if (!filter) {
-    return {};
-  }
+
 
   // non-deterministic condition or self-referenced variable
   if (!node->isDeterministic() || arangodb::iresearch::findReference(*node, *ctx.ref)) {
     // not supported by IResearch, but could be handled by ArangoDB
     if (filterCtx.isSearchFilter) {
-      appendExpression(*filter, std::move(node), ctx, filterCtx);
-      return {};
+      if (filter) {
+        appendExpression(*filter, std::move(node), ctx, filterCtx);
+        return {};
+      }
     } else {
       return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is supported for SEARCH only"};
     }
+  }
+
+  if (!filter) {
+    return {};
   }
 
   bool result;
@@ -937,20 +941,22 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx, aql::AstNode const& node) {
-  if (!filter) {
-    // FIXME: for inverted index expression should be forbidden as using the expression will be full scan with pessimization
-    return {};
-  }
 
   // non-deterministic condition or self-referenced variable
   if (!node.isDeterministic() || arangodb::iresearch::findReference(node, *ctx.ref)) {
     // not supported by IResearch, but could be handled by ArangoDB
     if (filterCtx.isSearchFilter) {
-      appendExpression(*filter, node, ctx, filterCtx);
-      return {};
+      if (filter) {
+        appendExpression(*filter, node, ctx, filterCtx);
+        return {};
+      }
     } else {
       return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is supported for SEARCH only"};
     }
+  }
+
+  if (!filter) {
+    return {};
   }
 
   bool result;
