@@ -1123,9 +1123,9 @@ void ClusterInfo::loadPlan() {
     auto const& databaseName = database.first;
     auto analyzerSlice = database.second->slice()[0];
 
-    std::initializer_list<std::string_view> analyzersPath {
+    std::initializer_list<std::string_view> const analyzersPath {
       AgencyCommHelper::path(), "Plan", "Analyzers", databaseName};
-    if(!analyzerSlice.hasKey(analyzersPath)) { // DB Gone
+    if (!analyzerSlice.hasKey(analyzersPath)) { // DB Gone
       newDbAnalyzersRevision.erase(databaseName);
       continue;
     }
