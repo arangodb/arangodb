@@ -78,7 +78,7 @@ class IResearchInvertedIndex : public Index {
   void unload() override {}
 
   Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                          arangodb::aql::Variable const* reference, 
+                                          arangodb::aql::Variable const* reference,
                                           size_t itemsInIndex) const override;
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,

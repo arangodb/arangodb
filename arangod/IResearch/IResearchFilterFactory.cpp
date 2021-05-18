@@ -403,9 +403,8 @@ Result getAnalyzerByName(
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),	
+  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
                                  ctx.trx->state()->analyzersRevision());
-
   if (!analyzer) {
     return {
       TRI_ERROR_BAD_PARAMETER,
@@ -897,7 +896,6 @@ Result byRange(irs::boolean_filter* filter,
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                     FilterContext const& filterCtx,
                     std::shared_ptr<aql::AstNode>&& node) {
-
   if (!filter) {
     return {};
   }
@@ -939,7 +937,6 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx, aql::AstNode const& node) {
-  
   if (!filter) {
     // FIXME: for inverted index expression should be forbidden as using the expression will be full scan with pessimization
     return {};
@@ -948,7 +945,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   // non-deterministic condition or self-referenced variable
   if (!node.isDeterministic() || arangodb::iresearch::findReference(node, *ctx.ref)) {
     // not supported by IResearch, but could be handled by ArangoDB
-    if(filterCtx.isSearchFilter) {
+    if (filterCtx.isSearchFilter) {
       appendExpression(*filter, node, ctx, filterCtx);
       return {};
     } else {
@@ -1809,7 +1806,7 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     if (!arangodb::iresearch::normalizeCmpNode(toNormalize, *ctx.ref, normalized)) {
       if (!filter) {
         // can't evaluate non constant filter before the execution
-        if(filterCtx.isSearchFilter) {
+        if (filterCtx.isSearchFilter) {
           return {};
         } else {
           return {TRI_ERROR_NOT_IMPLEMENTED, "ByExpression filter is supported for SEARCH only"};
@@ -2097,7 +2094,7 @@ Result fromFuncAnalyzer(
     aql::AstNode const& args) {
   TRI_ASSERT(funcName);
 
-  if(!filterCtx.isSearchFilter) {
+  if (!filterCtx.isSearchFilter) {
     return {TRI_ERROR_NOT_IMPLEMENTED, "ANALYZER is supported for SEARCH only"};
   }
 
@@ -2155,7 +2152,6 @@ Result fromFuncAnalyzer(
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase().name(), false);  // args
-
   }
 
   FilterContext const subFilterContext(analyzerValue, filterCtx.boost, filterCtx.isSearchFilter); // override analyzer
@@ -2237,8 +2233,7 @@ Result fromFuncExists(
     return error::nondeterministicArgs(funcName);
   }
 
-  
-  if(!filterCtx.isSearchFilter) {
+  if (!filterCtx.isSearchFilter) {
     return {TRI_ERROR_NOT_IMPLEMENTED, "EXISTS is supported for SEARCH only"};
   }
 

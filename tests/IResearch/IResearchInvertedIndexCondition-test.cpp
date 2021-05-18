@@ -55,10 +55,9 @@ class IResearchInvertedIndexConditionTest
  protected:
   IResearchInvertedIndexConditionTest() {
     arangodb::tests::init();
-   
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);
-    
+
     arangodb::OperationOptions options(arangodb::ExecContext::current());
     arangodb::methods::Collections::createSystem(*_vocbase, options,
                                                  arangodb::tests::AnalyzerCollectionName,
@@ -70,14 +69,14 @@ class IResearchInvertedIndexConditionTest
       VPackObjectBuilder obj(&vpack);
       vpack.add(arangodb::StaticStrings::IndexId, VPackValue(iid.id()));
       vpack.add(arangodb::StaticStrings::IndexType, VPackValue("search"));
-      
+
       //FIXME: maybe this should be set by index internally ?
       vpack.add(arangodb::StaticStrings::IndexUnique, VPackValue(false));
       vpack.add(arangodb::StaticStrings::IndexSparse, VPackValue(true));
 
       {
         VPackArrayBuilder arrayFields(&vpack, arangodb::StaticStrings::IndexFields);
-        for(auto const& f : fields) {
+        for (auto const& f : fields) {
           vpack.add(VPackValue(f));
         }
       }
@@ -143,7 +142,6 @@ class IResearchInvertedIndexConditionTest
     {
       arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                           {}, {}, {}, arangodb::transaction::Options());
-    
       auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
       if (mockCtx) {
         mockCtx->setTrx(&trx);
@@ -153,15 +151,13 @@ class IResearchInvertedIndexConditionTest
       auto costs = Index.supportsFilterCondition({}, filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
-
   }
 
   arangodb::LogicalCollection& collection() {return *_collection;}
   TRI_vocbase_t& vocbase() { return *_vocbase; }
- };  // IResearchFilterSetup
+};  // IResearchFilterSetup
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_equality) {
-
   std::string queryString = "FOR d IN test FILTER d.a == 'value' RETURN d ";
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -170,7 +166,6 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_equality) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_simple_expression) {
-
   std::string queryString = "FOR d IN test FILTER d.a == 'value' AND (1==1) RETURN d ";
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -179,7 +174,6 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_simple_expression) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_many_fields) {
-
   std::string queryString = "FOR d IN test FILTER d.a == 'value' OR d.b == 'value2' AND d.c == 'value3' RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -188,7 +182,6 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_many_fields) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_fcalls) {
-
   std::string queryString = "FOR d IN test FILTER d.a == 'value' OR d.b == 'value2' AND d.c == UPPER('value3') RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -339,7 +332,6 @@ TEST_F(IResearchInvertedIndexConditionTest, test_exists) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_no_fields) {
-
   std::string queryString = "FOR d IN test FILTER d.a == 'value' RETURN d ";
   std::vector<std::string> fields = {"b"}; // field a is not indexed :(
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -348,7 +340,6 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_no_fields) {
 
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_no_fields_one_missing) {
-
   std::string queryString = "FOR d IN test FILTER d.a == 'value' OR d.b == 'c' RETURN d ";
   std::vector<std::string> fields = {"b"}; // field a is not indexed :(
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -356,14 +347,12 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_no_fields_one_missing) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_nondeterm_expression) {
-
   std::string queryString = "FOR d IN test FILTER d.a == NOOPT('value') RETURN d ";
   std::vector<std::string> fields = {"a"};
   estimateFilterCondition(queryString, fields, arangodb::Index::FilterCosts::defaultCosts(0));
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_same_atr) {
-
   std::string queryString = "FOR a IN test FOR d IN test FILTER d.a == a.a RETURN d ";
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -372,7 +361,6 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_same_atr) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_not_same_atr) {
-
   std::string queryString = "FOR a IN test FOR d IN test FILTER d.a == a.b RETURN d ";
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -381,7 +369,6 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_not_same_atr) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_fcall) {
-
   std::string queryString = "FOR a IN test FOR d IN test FILTER d.a == UPPER(a.b) RETURN d ";
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -390,7 +377,6 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_fcall) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_subquery_non_determ_fcall) {
-
   std::string queryString = "FOR a IN test2 FOR d IN test FILTER d.a == NOOPT(a.b) RETURN d ";
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
@@ -422,7 +408,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_range_func_bind) {
   estimateFilterCondition(queryString, fields, expected, &ctx);
 }
 
- // FIXME:  to make this pass we need to provide ast/plan to supportsFilterCondition in order to calculate bindVars
+// FIXME:  to make this pass we need to provide ast/plan to supportsFilterCondition in order to calculate bindVars
 TEST_F(IResearchInvertedIndexConditionTest, test_with_levenshtein_with_bind) {
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();

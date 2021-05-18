@@ -57,9 +57,9 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   TRI_ASSERT(node);
   TRI_ASSERT(reference);
   auto filterCosts = FilterCosts::defaultCosts(itemsInIndex);
-  
+
   // non-deterministic condition will mean full-scan. So we should
-  // not use index here. 
+  // not use index here.
   // FIXME: maybe in future we will be able to optimize just deterministic part?
   if (!node->isDeterministic()) {
     return  filterCosts;
@@ -68,7 +68,6 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   QueryContext const queryCtx = {nullptr, nullptr, nullptr, // We don`t want byExpression filters
                                  nullptr, nullptr, reference};
   auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false);
-  
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = 0; // FIXME: we may use stored values!
