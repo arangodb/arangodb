@@ -650,8 +650,10 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice toRemove = searchBuilder.slice();
   transaction::V8Context transactionContext (col->vocbase(), true);
   SingleCollectionTransaction trx(
-    std::shared_ptr<transaction::V8Context>(&transactionContext), collectionName,
-    AccessMode::Type::WRITE);
+    std::shared_ptr<transaction::V8Context>(
+      std::shared_ptr<transaction::Context>(),
+      &transactionContext),
+    collectionName, AccessMode::Type::WRITE);
 
   if (!args[0]->IsArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -823,7 +825,9 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   VPackSlice search = searchBuilder.slice();
   transaction::V8Context transactionContext(col->vocbase(), true);
   SingleCollectionTransaction trx(
-    std::shared_ptr<transaction::V8Context>(&transactionContext),
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &transactionContext),
     collectionName, AccessMode::Type::READ);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -1545,7 +1549,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   SingleCollectionTransaction trx(
     std::shared_ptr<transaction::Context>(
       std::shared_ptr<transaction::Context>(),
-       &transactionContext),
+      &transactionContext),
     collectionName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
