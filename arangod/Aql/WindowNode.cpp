@@ -291,7 +291,8 @@ void WindowBounds::toVelocyPack(VPackBuilder& b) const {
               append(duration.seconds, 'S');
             } else {
               result.append(std::to_string(duration.seconds)).push_back('.');
-              append(duration.milliseconds, 'S');
+              auto ms = std::to_string(duration.milliseconds);
+              result.append(3 - ms.size(), '0').append(ms).push_back('S');
             }
           }
           if (result == "P") {

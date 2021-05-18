@@ -202,7 +202,7 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
 }
 
 
-/// @brief validate the aggregate variables expressions
+/// @brief validate the WINDOW specification
 bool validateWindowSpec(Parser* parser, AstNode const* spec,
                         int line, int column) {
   bool preceding = false;

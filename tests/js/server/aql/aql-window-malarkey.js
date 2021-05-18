@@ -159,9 +159,9 @@ function WindowTestSuite() {
       
       query = `
       FOR doc IN ${collection}
-        WINDOW doc.value WITH {preceding: "P1Y2DT3H4.5S", following: "P1M2WT3M"} AGGREGATE av = AVG(doc.value)
+        WINDOW doc.value WITH {preceding: "P1Y2DT3H4.05S", following: "P1M2WT3M"} AGGREGATE av = AVG(doc.value)
         RETURN av`;
-      checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: \"P1Y2DT3H4.500S\", following: \"P1M2WT3M\" }");
+      checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: \"P1Y2DT3H4.050S\", following: \"P1M2WT3M\" }");
       
       query = `
       FOR doc IN ${collection}
