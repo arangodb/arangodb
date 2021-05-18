@@ -385,7 +385,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
     }
 
     // now peek at updates buffered inside transaction and apply those too
-    auto operations = RocksDBTransactionState::toState(&trx)->trackedOperations(
+    auto const& operations = RocksDBTransactionState::toState(&trx)->trackedOperations(
         _logicalCollection.id());
         
     tree->insert(operations.inserts);
