@@ -720,6 +720,10 @@ bool SynchronizeShard::first() {
         << "' for central '" << database << "/" << planId << "' encountered "
         << failuresInRow << " failures in a row. delaying next sync by " 
         << sleepTime << " s";
+  
+    TRI_IF_FAILURE("SynchronizeShard::noSleepOnSyncError") {
+      sleepTime = 0.0;
+    }
 
     while (sleepTime > 0.0) {
       if (feature().server().isStopping()) {
@@ -1197,6 +1201,10 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   res = addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId, clientId,
                          syncerId, _clientInfoString, 60.0);
 
+  TRI_IF_FAILURE("SychronizeShard::wrongChecksum") {
+    res.reset(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
+  }
+
   // if we get a checksum mismatch, it means that we got different counts of
   // documents on the leader and the follower, which can happen if collection
   // counts are off for whatever reason. 
@@ -1256,6 +1264,8 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
                                          url, std::move(buffer), options);
         
+      /*
+      // TODO: make this work!
       // while the request is pending, rebuild the revision tree for our local collection
       {
         LOG_TOPIC("04c25", INFO, Logger::MAINTENANCE) 
@@ -1277,6 +1287,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
             << getDatabase() << "/" << getShard() << ": " << result.errorMessage() 
             << ", took: " << (TRI_microtime() - start) << "s";
       }
+      */
 
       network::Response const& r = future.get();
 
