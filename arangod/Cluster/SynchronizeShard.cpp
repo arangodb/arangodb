@@ -192,8 +192,11 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
 static arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
                                         uint64_t& c) {
   std::string collectionName(collection.name());
-  auto ctx = std::make_shared<transaction::StandaloneContext>(collection.vocbase());
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
+  transaction::StandaloneContext ctx(collection.vocbase());
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(), &ctx),
+    collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
   if (res.fail()) {

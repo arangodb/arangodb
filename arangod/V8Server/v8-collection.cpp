@@ -357,7 +357,7 @@ static void ExistsVocbaseVPack(bool useCollection,
     vocbase = &GetContextVocBase(isolate);
   }
 
-  auto transactionContext = std::make_shared<transaction::V8Context>(*vocbase, true);
+  transaction::V8Context transactionContext (*vocbase, true);
   VPackBuilder builder;
   std::shared_ptr<arangodb::LogicalCollection> collection(
       col, [](arangodb::LogicalCollection*) -> void {});
@@ -367,7 +367,7 @@ static void ExistsVocbaseVPack(bool useCollection,
   {
     VPackObjectBuilder guard(&builder);
 
-    res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext->resolver()), collection,
+    res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()), collection,
                                         collectionName, builder, true, args[0]);
   }
 
@@ -380,7 +380,11 @@ static void ExistsVocbaseVPack(bool useCollection,
   VPackSlice search = builder.slice();
   TRI_ASSERT(search.isObject());
 
-  SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::READ);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &transactionContext),
+    collectionName, AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
@@ -408,7 +412,7 @@ static void ExistsVocbaseVPack(bool useCollection,
   }
 
   v8::Handle<v8::Value> result =
-      TRI_VPackToV8(isolate, opResult.slice(), transactionContext->getVPackOptions());
+      TRI_VPackToV8(isolate, opResult.slice(), transactionContext.getVPackOptions());
 
   TRI_V8_RETURN(result);
 }
@@ -466,9 +470,12 @@ static void DocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   }
 
   VPackSlice search = searchBuilder.slice();
-  auto transactionContext =
-      std::make_shared<transaction::V8Context>(col->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::READ);
+  transaction::V8Context transactionContext(col->vocbase(), true);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &transactionContext),
+    collectionName, AccessMode::Type::READ);
 
   if (!args[0]->IsArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -492,7 +499,7 @@ static void DocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   }
 
   v8::Handle<v8::Value> result =
-      TRI_VPackToV8(isolate, opResult.slice(), transactionContext->getVPackOptions());
+      TRI_VPackToV8(isolate, opResult.slice(), transactionContext.getVPackOptions());
 
   TRI_V8_RETURN(result);
 }
@@ -516,7 +523,7 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
+  transaction::V8Context transactionContext(vocbase, true);
   VPackBuilder builder;
   std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
@@ -524,7 +531,7 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     VPackObjectBuilder guard(&builder);
     auto res =
-        ParseDocumentOrDocumentHandle(isolate, &(transactionContext->resolver()), collection,
+        ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()), collection,
                                       collectionName, builder, true, args[0]);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -541,7 +548,11 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   OperationOptions options;
   options.ignoreRevs = false;
 
-  SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::READ);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &transactionContext),
+    collectionName, AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -563,7 +574,7 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Value> result =
-      TRI_VPackToV8(isolate, opResult.slice(), transactionContext->getVPackOptions());
+      TRI_VPackToV8(isolate, opResult.slice(), transactionContext.getVPackOptions());
 
   TRI_V8_RETURN(result);
 }
@@ -637,10 +648,10 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackSlice toRemove = searchBuilder.slice();
-  auto transactionContext =
-      std::make_shared<transaction::V8Context>(col->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  AccessMode::Type::WRITE);
+  transaction::V8Context transactionContext (col->vocbase(), true);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::V8Context>(&transactionContext), collectionName,
+    AccessMode::Type::WRITE);
 
   if (!args[0]->IsArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -665,7 +676,7 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Value> finalResult =
-      TRI_VPackToV8(isolate, result.slice(), transactionContext->getVPackOptions());
+      TRI_VPackToV8(isolate, result.slice(), transactionContext.getVPackOptions());
 
   TRI_V8_RETURN(finalResult);
 }
@@ -706,14 +717,14 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
+  transaction::V8Context transactionContext(vocbase, true);
   VPackBuilder builder;
   std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
 
   {
     VPackObjectBuilder guard(&builder);
-    auto res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext->resolver()),
+    auto res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()),
                                              collection, collectionName, builder,
                                              !options.ignoreRevs, args[0]);
 
@@ -728,8 +739,11 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice toRemove = builder.slice();
   TRI_ASSERT(toRemove.isObject());
 
-  SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &transactionContext),
+    collectionName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -756,7 +770,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Value> finalResult =
-      TRI_VPackToV8(isolate, result.slice(), transactionContext->getVPackOptions());
+      TRI_VPackToV8(isolate, result.slice(), transactionContext.getVPackOptions());
 
   TRI_V8_RETURN(finalResult);
 }
@@ -807,9 +821,10 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   }
 
   VPackSlice search = searchBuilder.slice();
-  auto transactionContext =
-      std::make_shared<transaction::V8Context>(col->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::READ);
+  transaction::V8Context transactionContext(col->vocbase(), true);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::V8Context>(&transactionContext),
+    collectionName, AccessMode::Type::READ);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -865,7 +880,7 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   }
 
   v8::Handle<v8::Value> result =
-      TRI_VPackToV8(isolate, builder->slice(), transactionContext->getVPackOptions());
+      TRI_VPackToV8(isolate, builder->slice(), transactionContext.getVPackOptions());
 
   TRI_V8_RETURN(result);
 
@@ -1406,12 +1421,14 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice const update = updateBuilder.slice();
-  auto transactionContext =
-      std::make_shared<transaction::V8Context>(col->vocbase(), true);
+  transaction::V8Context transactionContext(col->vocbase(), true);
 
   // Now start the transaction:
-  SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &transactionContext),
+    collectionName, AccessMode::Type::WRITE);
 
   if (!args[0]->IsArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -1438,7 +1455,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice resultSlice = opResult.slice();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice, transactionContext->getVPackOptions()));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice, transactionContext.getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1505,7 +1522,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
   auto& vocbase = GetContextVocBase(isolate);
-  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
+  transaction::V8Context transactionContext(vocbase, true);
   VPackBuilder updateBuilder;
 
   {
@@ -1516,7 +1533,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
       TRI_V8_THROW_EXCEPTION(res);
     }
 
-    res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext->resolver()),
+    res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()),
                                         collection, collectionName, updateBuilder,
                                         !options.ignoreRevs, args[0]);
 
@@ -1525,8 +1542,11 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     }
   }
 
-  SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+       &transactionContext),
+    collectionName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -1556,7 +1576,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice resultSlice = opResult.slice();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice, transactionContext->getVPackOptions()));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice, transactionContext.getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1991,9 +2011,12 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   }
 
   // load collection
-  auto transactionContext =
-      std::make_shared<transaction::V8Context>(collection->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, *collection, AccessMode::Type::WRITE);
+  transaction::V8Context transactionContext(collection->vocbase(), true);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &transactionContext),
+    *collection, AccessMode::Type::WRITE);
 
   if (!payloadIsArray && !options.isOverwriteModeUpdateReplace()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -2021,7 +2044,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   VPackSlice resultSlice = result.slice();
 
   auto v8Result =
-      TRI_VPackToV8(isolate, resultSlice, transactionContext->getVPackOptions());
+      TRI_VPackToV8(isolate, resultSlice, transactionContext.getVPackOptions());
 
   TRI_V8_RETURN(v8Result);
 }
