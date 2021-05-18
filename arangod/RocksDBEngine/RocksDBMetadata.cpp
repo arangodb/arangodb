@@ -610,6 +610,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
           std::string_view(value.data(), value.size() - sizeof(uint64_t)));
 
       if (tree) {
+        // may throw
         tree->checkConsistency();
 
         uint64_t seq = rocksutils::uint64FromPersistent(
@@ -653,7 +654,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   it->Seek(bounds.start());
   if (it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0) {
     LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
-        << "no revision tree found for collection " << coll.name() 
+        << "no or invalid revision tree found for collection " << coll.name() 
         << ", rebuilding from collection data";
     rcoll->rebuildRevisionTree(it);
   } else {

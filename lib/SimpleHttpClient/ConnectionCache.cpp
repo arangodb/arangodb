@@ -35,35 +35,46 @@ namespace arangodb {
 namespace httpclient {
   
 ConnectionLease::ConnectionLease() 
-    : _cache(nullptr) {}
+    : _cache(nullptr), 
+      _preventRecycling(false) {}
 
 ConnectionLease::ConnectionLease(ConnectionCache* cache, 
                                  std::unique_ptr<GeneralClientConnection> connection)
     : _cache(cache),
-      _connection(std::move(connection)) {}
+      _connection(std::move(connection)),
+      _preventRecycling(false) {}
 
 ConnectionLease::~ConnectionLease() {
-  if (_cache != nullptr && _connection != nullptr) {
+  if (_cache != nullptr && _connection != nullptr && !_preventRecycling) {
     _cache->release(std::move(_connection));
   }
 }
   
 ConnectionLease::ConnectionLease(ConnectionLease&& other) noexcept
     : _cache(other._cache),
-      _connection(std::move(other._connection)) {}
+      _connection(std::move(other._connection)),
+      _preventRecycling(other._preventRecycling) {}
   
 ConnectionLease& ConnectionLease::operator=(ConnectionLease&& other) noexcept {
   if (this != &other) {
     _cache = other._cache;
     _connection = std::move(other._connection);
+    _preventRecycling = other._preventRecycling;
   }
   return *this;
 }
   
+void ConnectionLease::preventRecycling() noexcept {
+  // this will prevent the connection from being inserted back into the connection cache
+  _preventRecycling = true;
+}
+
 ConnectionCache::ConnectionCache(arangodb::application_features::ApplicationServer& server,
                                  Options const& options)
     : _server(server),
-      _options(options) {}
+      _options(options),
+      _connectionsCreated(0), 
+      _connectionsRecycled(0) {}
 
 ConnectionCache::~ConnectionCache() = default;
 
@@ -82,6 +93,7 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
       << "trying to find connection for endpoint " << endpoint << " in connections cache";
   
   std::unique_ptr<GeneralClientConnection> connection;
+  uint64_t metric;
 
   {
     MUTEX_LOCKER(locker, _lock);
@@ -109,19 +121,22 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
           (*it) = std::move(connectionsForEndpoint.back());
         }
         connectionsForEndpoint.pop_back();
-
-        connection->repurpose(connectTimeout, requestTimeout, connectRetries);
-
-        LOG_TOPIC("b8955", TRACE, Logger::REPLICATION) 
-            << "found connection for endpoint " << endpoint << " in connections cache";
         break;
       }
     }
-  }
 
+    if (connection == nullptr) {
+      metric = ++_connectionsCreated;
+    } else {
+      metric = ++_connectionsRecycled;
+    }
+  }
+    
+  // continue without the mutex
+  
   if (connection == nullptr) {
     LOG_TOPIC("fd913", TRACE, Logger::REPLICATION) 
-        << "did not find connection for endpoint " << endpoint << " in connections cache. creating new connection...";
+        << "did not find connection for endpoint " << endpoint << " in connections cache. creating new connection... created connections: " << metric;
     std::unique_ptr<Endpoint> ep(arangodb::Endpoint::clientFactory(endpoint));
 
     if (ep == nullptr) {
@@ -133,6 +148,11 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
         _server, ep, requestTimeout, connectTimeout, connectRetries, sslProtocol));
 
     TRI_ASSERT(connection != nullptr);
+  } else {
+    connection->repurpose(connectTimeout, requestTimeout, connectRetries);
+
+    LOG_TOPIC("b8955", TRACE, Logger::REPLICATION) 
+        << "found connection for endpoint " << endpoint << " in connections cache. recycled connections: " << metric;
   }
 
   return {this, std::move(connection)};
