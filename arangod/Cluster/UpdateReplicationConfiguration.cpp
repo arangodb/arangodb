@@ -32,7 +32,7 @@
 
 #include <Logger/LogMacros.h>
 #include <Network/NetworkFeature.h>
-#include <Replication2/ReplicatedLog/FakeLogFollower.h>
+#include <Replication2/ReplicatedLog/NetworkAttachedFollower.h>
 
 using namespace arangodb;
 using namespace arangodb::maintenance;

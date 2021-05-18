@@ -23,6 +23,7 @@
 #include "LogFollower.h"
 
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/messages.h"
 
 #include "LogContextKeys.h"
 

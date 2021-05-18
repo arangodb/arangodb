@@ -24,26 +24,10 @@
 
 #include "Replication2/ReplicatedLog/Common.h"
 
-#include <Basics/ErrorCode.h>
-#include <Basics/voc-errors.h>
-
 #include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
-
-#if (_MSC_VER >= 1)
-// suppress warnings:
-#pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
-#pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
-#pragma warning(disable : 4334)
-#endif
-#include <immer/flex_vector.hpp>
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 namespace arangodb::futures {
 template <typename T>
@@ -57,22 +41,8 @@ class Slice;
 
 namespace arangodb::replication2::replicated_log {
 
-struct MessageId : implement_compare<MessageId> {
-  constexpr MessageId() noexcept : value{0} {}
-  constexpr explicit MessageId(std::uint64_t value) noexcept : value{value} {}
-  std::uint64_t value;
-  [[nodiscard]] auto operator<=(MessageId) const -> bool;
-
-  friend auto operator++(MessageId& id) -> MessageId& {
-    ++id.value;
-    return id;
-  }
-
-  friend auto operator<<(std::ostream& os, MessageId id) -> std::ostream& {
-    return os << id.value;
-  }
-};
-
+struct AppendEntriesRequest;
+struct AppendEntriesResult;
 
 enum class AppendEntriesErrorReason {
   NONE,
@@ -83,38 +53,6 @@ enum class AppendEntriesErrorReason {
   NO_PREV_LOG_MATCH
 };
 
-struct AppendEntriesResult {
-  LogTerm const logTerm = LogTerm{};
-  ErrorCode const errorCode = TRI_ERROR_NO_ERROR;
-  AppendEntriesErrorReason const reason = AppendEntriesErrorReason::NONE;
-  MessageId messageId;
-
-  [[nodiscard]] auto isSuccess() const noexcept -> bool {
-    return errorCode == TRI_ERROR_NO_ERROR;
-  }
-
-  explicit AppendEntriesResult(LogTerm, MessageId);
-  AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode, AppendEntriesErrorReason reason, MessageId);
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
-};
-
-std::string to_string(AppendEntriesErrorReason reason);
-
-struct AppendEntriesRequest {
-  LogTerm leaderTerm;
-  ParticipantId leaderId;
-  // TODO assert index == 0 <=> term == 0
-  LogTerm prevLogTerm;
-  LogIndex prevLogIndex;
-  LogIndex leaderCommit;
-  MessageId messageId;
-  bool waitForSync;
-  immer::flex_vector<LogEntry> entries{};
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
-};
 
 struct LogStatistics {
   LogIndex spearHead{};

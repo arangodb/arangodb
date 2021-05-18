@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/messages.h"
 
 #include "Replication2/LogContext.h"
 
@@ -89,6 +90,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
       -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload) -> LogIndex;
+  auto insert(LogPayload, bool waitForSync) -> LogIndex;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 

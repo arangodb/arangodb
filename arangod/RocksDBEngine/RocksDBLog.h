@@ -67,6 +67,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
     Lane() = default;
     std::mutex _persistorMutex;
     std::vector<PersistRequest> _pendingPersistRequests;
+    bool _waitForSync = false;
   };
 
 

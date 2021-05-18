@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FakeLogFollower.h"
+#include "NetworkAttachedFollower.h"
 
 #include <Futures/Future.h>
 #include <Network/ConnectionPool.h>
@@ -29,21 +29,21 @@
 #include <utility>
 
 #include "Replication2/ReplicatedLog/Common.h"
-#include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/messages.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-FakeLogFollower::FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
+NetworkAttachedFollower::NetworkAttachedFollower(network::ConnectionPool* pool, ParticipantId id,
                                  std::string database, LogId logId)
     : pool(pool), id(std::move(id)), database(std::move(database)), logId(logId) {}
 
-auto FakeLogFollower::getParticipantId() const noexcept -> ParticipantId const& {
+auto NetworkAttachedFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
 }
 
-auto FakeLogFollower::appendEntries(AppendEntriesRequest request)
+auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   VPackBufferUInt8 buffer;
   {

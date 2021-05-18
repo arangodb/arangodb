@@ -32,9 +32,8 @@ class ConnectionPool;
 
 namespace arangodb::replication2::replicated_log {
 
-// TODO Rename
-struct FakeLogFollower : arangodb::replication2::replicated_log::AbstractFollower {
-  explicit FakeLogFollower(network::ConnectionPool* pool, ParticipantId id,
+struct NetworkAttachedFollower : arangodb::replication2::replicated_log::AbstractFollower {
+  explicit NetworkAttachedFollower(network::ConnectionPool* pool, ParticipantId id,
                            std::string database, LogId logId);
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
   auto appendEntries(AppendEntriesRequest request)

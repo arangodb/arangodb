@@ -46,6 +46,8 @@
 #pragma warning(pop)
 #endif
 
+#include "Replication2/ReplicatedLog/messages.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 

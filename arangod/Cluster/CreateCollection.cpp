@@ -39,7 +39,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
-#include <Replication2/ReplicatedLog/FakeLogFollower.h>
+#include <Replication2/ReplicatedLog/NetworkAttachedFollower.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -197,7 +197,7 @@ bool CreateCollection::first() {
             std::transform(follower.begin(), follower.end(),
                            std::back_inserter(replicationFollowers),
                            [&](auto const& followerId) {
-                             return std::make_shared<FakeLogFollower>(
+                             return std::make_shared<NetworkAttachedFollower>(
                                  networkFeature.pool(), followerId, vocbase.name(), *logId);
                            });
 

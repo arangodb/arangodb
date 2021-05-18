@@ -42,10 +42,16 @@ auto RocksDBLog::insert(LogIterator& iter, WriteOptions const& options) -> Resul
     return res;
   }
 
-  rocksdb::WriteOptions wo;
-  wo.sync = options.waitForSync;
-  if (auto s = _persistor->_db->Write(wo, &wb); !s.ok()) {
+  if (auto s = _persistor->_db->Write({}, &wb); !s.ok()) {
     return rocksutils::convertStatus(s);
+  }
+
+  if (options.waitForSync) {
+    // At this point we have to make sure that every previous log entry is synced
+    // as well. Otherwise we might get holes in the log.
+    if (auto s = _persistor->_db->SyncWAL(); !s.ok()) {
+      return rocksutils::convertStatus(s);
+    }
   }
 
   return {};
@@ -161,7 +167,10 @@ auto RocksDBLog::insertSingleWrites(LogIterator& iter) -> Result {
 
 RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
                                          rocksdb::DB* db, std::shared_ptr<Executor> executor)
-    : _cf(cf), _db(db), _executor(std::move(executor)) {}
+    : _cf(cf), _db(db), _executor(std::move(executor)) {
+  // enable wait for sync on lane 0
+  _lanes[0]._waitForSync = true;
+}
 
 void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
   // TODO check this code for exception safety
@@ -198,10 +207,16 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
             ++current;
           }
           {
-            rocksdb::WriteOptions opts;
-            opts.sync = true;
-            if (auto s = _db->Write(opts, &wb); !s.ok()) {
+            if (auto s = _db->Write({}, &wb); !s.ok()) {
               return rocksutils::convertStatus(s);
+            }
+
+            if (lane._waitForSync) {
+              if (auto s = _db->SyncWAL(); !s.ok()) {
+                // At this point we have to make sure that every previous log entry is synced
+                // as well. Otherwise we might get holes in the log.
+                return rocksutils::convertStatus(s);
+              }
             }
           }
 
