@@ -1005,3 +1005,34 @@ TEST(MerkleTreeTest, test_diff_with_shift_1) {
   t2.clear();
 }
 
+TEST(MerkleTreeTest, test_diff_empty_random_data_shifted) {
+  constexpr uint64_t M = (1ULL << 32) + 17;     // some large constant
+  constexpr uint64_t W = 1ULL << 20;  // initial width, 4 values in each bucket
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, M, M + W, M + 16);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(6, M + 16, M + W + 16, M + 16);   // four buckets further right
+
+  // Now produce a large list of random keys, in the covered range and beyond on both sides.
+  // We then shuffle the vector and insert into both trees in a different order.
+  // This will eventually grow the trees in various ways, but in the end, it should always
+  // find no differences whatsoever.
+
+  auto rd {std::random_device{}()};
+  auto mt {std::mt19937_64(rd)};
+  std::uniform_int_distribution<uint64_t> uni{M - (1ULL << 12), M + (1ULL << 28)};
+  std::vector<uint64_t> original;
+  for (size_t i = 0; i < 100000; ++i) {
+    original.push_back(uni(mt));
+  }
+  std::vector<uint64_t> shuffled{original};
+  std::shuffle(shuffled.begin(), shuffled.end(), mt);
+
+  for (auto x : original) {
+    t1.insert(x);
+  }
+  for (auto x : shuffled) {
+    t2.insert(x);
+  }
+
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
+  ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+}
