@@ -492,70 +492,28 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
                                                char const* AFN, bool isSubtract) {
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
-
-  std::match_results<char const*> durationParts;
-  if (!basics::regexIsoDuration(duration, durationParts)) {
+  
+  arangodb::basics::ParsedDuration parsedDuration;
+  if (!arangodb::basics::parseIsoDuration(duration, parsedDuration)) {
     aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
-  char const* begin;
-
-  begin = duration.data() + durationParts.position(2);
-  int number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(2));
   if (isSubtract) {
-    ymd -= years{number};
+    ymd -= years{parsedDuration.years};
+    ymd -= months{parsedDuration.months};
   } else {
-    ymd += years{number};
-  }
-
-  begin = duration.data() + durationParts.position(4);
-  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(4));
-  if (isSubtract) {
-    ymd -= months{number};
-  } else {
-    ymd += months{number};
+    ymd += years{parsedDuration.years};
+    ymd += months{parsedDuration.months};
   }
 
   milliseconds ms{0};
-  begin = duration.data() + durationParts.position(6);
-  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(6));
-  ms += weeks{number};
-
-  begin = duration.data() + durationParts.position(8);
-  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(8));
-  ms += days{number};
-
-  begin = duration.data() + durationParts.position(11);
-  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(11));
-  ms += hours{number};
-
-  begin = duration.data() + durationParts.position(13);
-  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(13));
-  ms += minutes{number};
-
-  begin = duration.data() + durationParts.position(15);
-  number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(15));
-  ms += seconds{number};
-
-  // The Milli seconds can be shortened:
-  // .1 => 100ms
-  // so we append 00 but only take the first 3 digits
-  std::size_t matchLength = durationParts.length(17);
-  number = 0;
-  if (matchLength > 0) {
-    if (matchLength > 3) {
-      matchLength = 3;
-    }
-    begin = duration.data() + durationParts.position(17);
-    number = NumberUtils::atoi_unchecked<int>(begin, begin + matchLength);
-    if (matchLength == 2) {
-      number *= 10;
-    } else if (matchLength == 1) {
-      number *= 100;
-    }
-  }
-  ms += milliseconds{number};
+  ms += weeks{parsedDuration.weeks};
+  ms += days{parsedDuration.days};
+  ms += hours{parsedDuration.hours};
+  ms += minutes{parsedDuration.minutes};
+  ms += seconds{parsedDuration.seconds};
+  ms += milliseconds{parsedDuration.milliseconds};
 
   tp_sys_clock_ms resTime;
   if (isSubtract) {
