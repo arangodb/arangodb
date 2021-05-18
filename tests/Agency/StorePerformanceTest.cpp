@@ -52,7 +52,8 @@ struct OperationMeasurement
   using Clock = std::chrono::high_resolution_clock;
   using Duration = Clock::duration;
   using DurationIterator = std::vector<Duration>::iterator;
-  using StatExtractor = std::function<Duration(DurationIterator,DurationIterator)>;
+  using InformValue = std::function<void(Duration)>;
+  using StatExtractor = std::function<void(DurationIterator,DurationIterator,InformValue)>;
   using Observation = Clock::time_point;
   using Observations = std::vector<Observation>;
   
@@ -87,18 +88,28 @@ struct OperationMeasurement
   void report() 
   {
     stop();
-    static std::array<std::pair<std::string_view, StatExtractor>, 4> duration_stats = {{
-      {"max", [](DurationIterator begin, DurationIterator end) { return *std::max_element(begin,end); }},
-      {"min", [](DurationIterator begin, DurationIterator end) { return *std::min_element(begin,end); }},
-      {"avg", [](DurationIterator begin, DurationIterator end) { 
-        if (begin == end) { return Duration::zero(); }
-        return std::accumulate(begin, end, OperationMeasurement::Clock::duration::zero()) / std::distance(begin, end);
+    static std::array<std::pair<std::string_view, StatExtractor>, 5> duration_stats = {{
+      {"max", [](DurationIterator begin, DurationIterator end, InformValue inform) { inform (*std::max_element(begin,end)); }},
+      {"min", [](DurationIterator begin, DurationIterator end, InformValue inform) { inform (*std::min_element(begin,end)); }},
+      {"avg", [](DurationIterator begin, DurationIterator end, InformValue inform) { 
+        if (begin != end) { 
+          inform (std::accumulate(begin, end, OperationMeasurement::Clock::duration::zero()) / std::distance(begin, end));
+        }
       }},
-      {"med", [](DurationIterator begin, DurationIterator end) { 
-        if (begin == end) { return OperationMeasurement::Clock::duration::zero(); }
-        std::vector<Duration> copy {begin, end};
-        std::sort(copy.begin(), copy.end());
-        return copy[copy.size() / 2];
+      {"med", [](DurationIterator begin, DurationIterator end, InformValue inform) { 
+        if (begin != end) { 
+          std::vector<Duration> copy {begin, end};
+          std::sort(copy.begin(), copy.end());
+          inform (copy[copy.size() / 2]);
+        }
+      }},
+      {"max10", [](DurationIterator begin, DurationIterator end, InformValue inform) { 
+        if (begin != end) { 
+          std::vector<Duration> copy {begin, end};
+          std::sort(copy.begin(), copy.end(), [](Duration const& a, Duration const& b){ return b < a; });
+          copy.resize(std::min(10ul, copy.size()));
+          std::for_each(copy.begin(), copy.end(), inform);
+        }
       }},
     }};
 
@@ -111,8 +122,11 @@ struct OperationMeasurement
       return d;
     });
 
+    auto inform {[](Duration d){ std::cout << std::setw(10) << d.count() << "ns ";}};
     for (auto const& stat: duration_stats) {
-      std::cout << stat.first << ": " << stat.second(durations.begin(), durations.end()).count() << "ns" << std::endl;
+      std::cout << std::setw(5) << stat.first << ": ";
+      stat.second(durations.begin(), durations.end(), inform);
+      std::cout << std::endl;
     }
   }
 
@@ -346,15 +360,15 @@ TEST_F(StorePerformanceTest, scattered_keys_w) {
 
 TEST_F(StorePerformanceTest, scattered_keys_wr) {
   std::vector<std::string> keys;
-  std::generate_n(std::back_inserter(keys), repetition_times[0], [](){ return rand_path(); });
+  std::generate_n(std::back_inserter(keys), repetition_times[1], [](){ return rand_path(); });
   for (auto const& key: keys) {
     writeAndCheck("[[{\"" + key + "\":1}]]");
   }
   std::vector<consensus::query_t> read_queries;
-  std::generate_n(std::back_inserter(read_queries), repetition_times[0], [&keys](){ 
+  std::generate_n(std::back_inserter(read_queries), repetition_times[1], [&keys](){ 
     return VPackParser::fromJson("[[\"" + keys[std::rand() % keys.size()] + "\"]]");
   });
-  OperationMeasurement op{repetition_times[3]};
+  OperationMeasurement op{repetition_times[1]};
   for (auto const& rq: read_queries) {
     auto result {read(rq)};
     ++op;
@@ -364,7 +378,7 @@ TEST_F(StorePerformanceTest, scattered_keys_wr) {
 
 TEST_F(StorePerformanceTest, scattered_keys_wwr) {
   std::vector<std::string> keys;
-  std::generate_n(std::back_inserter(keys), repetition_times[0], [](){ return rand_path(20); });
+  std::generate_n(std::back_inserter(keys), repetition_times[1], [](){ return rand_path(20); });
   for (auto const& key: keys) {
     auto const json_object {"{\"" + key + "\": 1}"};
     auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
@@ -378,10 +392,10 @@ TEST_F(StorePerformanceTest, scattered_keys_wwr) {
     }
   }
   std::vector<consensus::query_t> read_queries;
-  std::generate_n(std::back_inserter(read_queries), repetition_times[0], [&keys](){ 
+  std::generate_n(std::back_inserter(read_queries), repetition_times[1], [&keys](){ 
     return VPackParser::fromJson("[[\"" + keys[std::rand() % keys.size()] + "\"]]");
   });
-  OperationMeasurement op{repetition_times[3]};
+  OperationMeasurement op{repetition_times[1]};
   for (auto const& rq: read_queries) {
     auto result {read(rq)};
     ++op;
