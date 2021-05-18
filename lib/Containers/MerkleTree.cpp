@@ -360,6 +360,9 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
   if (!NumberUtils::isPowerOf2(rangeMax - rangeMin)) {
     throw std::invalid_argument("Expecting difference between min and max to be power of 2");
   }
+  if (rangeMax - rangeMin < nodeCountAtDepth(maxDepth)) {
+    throw std::invalid_argument("Need at least one revision in each bucket in deepest layer");
+  }
   TRI_ASSERT(nodeCountAtDepth(maxDepth) > 0);
   TRI_ASSERT(rangeMax - rangeMin != 0);
 
