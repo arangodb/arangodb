@@ -62,6 +62,8 @@ struct OperationMeasurement
     ++*this;
   }
 
+  OperationMeasurement(Observations&& source): observations_{source} {}
+
   ~OperationMeasurement() {
     stop();
   }
@@ -85,7 +87,7 @@ struct OperationMeasurement
     return *this;
   }
 
-  void report() 
+  void report(bool sequential = true) 
   {
     stop();
     static std::array<std::pair<std::string_view, StatExtractor>, 5> duration_stats = {{
@@ -116,9 +118,11 @@ struct OperationMeasurement
     std::vector<OperationMeasurement::Clock::duration> durations;
     auto begin{observations_.begin()};
     auto from {*begin};
-    std::transform(++begin, observations_.end(), std::back_inserter(durations), [&from](auto const point){ 
+    std::transform(++begin, observations_.end(), std::back_inserter(durations), [sequential, &from](auto const point){ 
       auto d {point - from};
-      from = point;
+      if (sequential) {
+        from = point;
+      }
       return d;
     });
 
@@ -280,6 +284,40 @@ class StorePerformanceTest : public ::testing::Test {
     return to_json_object(
         src, [](auto const& element) { return element.first; },
         [](auto const& element) { return element.second; });
+  }
+
+  void threaded_writes(std::function<std::string()> value_generator) {
+    auto const count {repetition_times[0]};
+    std::vector<std::thread> threads;
+    OperationMeasurement::Observations points{1 + count};
+    std::mutex m_ready, m_start;
+    std::condition_variable cv_ready, cv_start;
+    std::atomic_uint worker_count{0};
+    std::generate_n(std::back_inserter(threads), count, [this, &m_start, &cv_start, &cv_ready, &worker_count, &points, value_generator](){ 
+      return std::thread([this, &m_start, &cv_start, &cv_ready, &worker_count, &points, value_generator]() {
+        uint const thread_index {worker_count++};
+        auto const write_query {VPackParser::fromJson(value_generator())};
+        std::unique_lock<std::mutex> lk{m_start};
+        cv_ready.notify_one();
+        cv_start.wait(lk);
+        for (size_t i{}; i < repetition_times[1]; ++i) {
+          write(write_query);
+        }
+        points.at(1 + thread_index) = OperationMeasurement::Clock::now();
+      });});
+    std::unique_lock<std::mutex> lk{m_ready};
+    cv_ready.wait(lk, [&worker_count, count](){ 
+      return worker_count.load() == count;
+    });
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    points[0] = OperationMeasurement::Clock::now();
+    cv_start.notify_all();
+    for (auto& thread: threads) {
+      thread.join();
+    }
+    OperationMeasurement{std::move(points)}.report(false);
+
   }
 };
 
@@ -595,35 +633,17 @@ TEST_F(StorePerformanceTest, tree_add_remove_readd) {
 // test for contention:
 // multiple threads manipulate values
 TEST_F(StorePerformanceTest, multiple_threads_all_separate_keys) {
-  std::vector<std::thread> threads;
-  OperationMeasurement op{repetition_times[3]};
-  std::generate_n(std::back_inserter(threads), repetition_times[3], [this](){return std::thread([this](){
-    auto const key {rand_path()};
-    auto const json_object {"{\"" + key + "\": " + std::to_string(rand()) + "}"};
-    auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
-    ASSERT_EQ(result.front(), consensus::apply_ret_t::APPLIED);
-  });});
-  for (auto& thread: threads) {
-    thread.join();
-    ++op;
-  }
-  op.report();
+  threaded_writes([](){
+      std::string const key {rand_path()};
+      return "[[{\"" + key + "\": " + std::to_string(rand()) + "}]]";
+    });
 }
 
 TEST_F(StorePerformanceTest, multiple_threads_high_concurrence) {
-  std::vector<std::thread> threads;
-  OperationMeasurement op{repetition_times[3]};
-  std::generate_n(std::back_inserter(threads), repetition_times[3], [this](){return std::thread([this](){
-    std::string const key {"k" + std::to_string(rand() %3)};
-    auto const json_object {"{\"" + key + "\": " + std::to_string(rand()) + "}"};
-    auto result {write(std::vector<std::vector<std::string>>{{json_object}})};
-    ASSERT_EQ(result.front(), consensus::apply_ret_t::APPLIED);
-  });});
-  for (auto& thread: threads) {
-    thread.join();
-    ++op;
-  }
-  op.report();
+  threaded_writes([](){
+      std::string const key {std::string("k") + std::to_string(rand() % 3)};
+      return "[[{\"" + key + "\": " + std::to_string(rand()) + "}]]";
+    });
 }
 
 }  // namespace store_performance_test
