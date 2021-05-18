@@ -814,8 +814,6 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
       _revisionTree->hibernate(/*force*/ true);
     }
   }
-    
-//  auto minSeq = _revisionTreeApplied.load(std::memory_order_relaxed);
 
   // make sure we will have a _revisionTree ready after this
   ensureRevisionTree();
@@ -827,14 +825,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 
     auto insertIt = _revisionInsertBuffers.begin();
     auto removeIt = _revisionRemovalBuffers.begin();
+
     auto it = _revisionTruncateBuffer.begin();  // sorted ASC
-/*
-    if (minSeq > 0) {
-      insertIt = _revisionInsertBuffers.lower_bound(minSeq + 1);
-      removeIt = _revisionRemovalBuffers.lower_bound(minSeq + 1);
-      it = _revisionTruncateBuffer.lower_bound(minSeq + 1);
-    }
-  */  
+    
     {
       // check for a truncate marker
       rocksdb::SequenceNumber ignoreSeq = 0;  // truncate will increase this sequence
@@ -872,8 +865,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 
     while (true) {
       // find out if we still have buffers to apply
-//      TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || insertIt == _revisionInsertBuffers.end());
-//      TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || removeIt == _revisionRemovalBuffers.end());
+      TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || insertIt == _revisionInsertBuffers.end());
+      TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || removeIt == _revisionRemovalBuffers.end());
 
       bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
                          insertIt->first <= commitSeq;
@@ -987,22 +980,14 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
   return basics::catchVoidToResult([&]() -> void {
     std::unique_lock<std::mutex> guard(_revisionBufferLock);
     
-    auto minSeq = _revisionTreeApplied.load(std::memory_order_relaxed);
-    
     auto insertIt = _revisionInsertBuffers.begin();
     auto removeIt = _revisionRemovalBuffers.begin();
-    auto it = _revisionTruncateBuffer.begin();  // sorted ASC
-    
-    if (minSeq > 0) {
-      insertIt = _revisionInsertBuffers.lower_bound(minSeq + 1);
-      removeIt = _revisionRemovalBuffers.lower_bound(minSeq + 1);
-      it = _revisionTruncateBuffer.lower_bound(minSeq + 1);
-    }
 
     {
       rocksdb::SequenceNumber ignoreSeq = 0;  // truncate will increase this sequence
       bool foundTruncate = false;
       // check for a truncate marker
+      auto it = _revisionTruncateBuffer.begin();  // sorted ASC
       while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
         ignoreSeq = *it;
         TRI_ASSERT(ignoreSeq != 0);
