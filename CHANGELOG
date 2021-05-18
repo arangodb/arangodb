@@ -1,6 +1,16 @@
 devel
 -----
 
+* When writing to starting shard leader respond with specific
+  503. Fixes BTS-390.
+
+* Reduced the agency store public members, for simpler support long-term.
+
+* Fixed bug in error reporting when a database create did not work, which
+  lead to a busy loop reporting this error to the agency.
+
+* Added a number of tests for the Agency Store public members.
+
 * Improve error reporting for Merkle tree operations and improve memory usage
   for unused trees by hibernating them. In addition, add some backoff to shard
   synchronization in case there are repeated sync failures for the same shard.
