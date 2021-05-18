@@ -1036,3 +1036,41 @@ TEST(MerkleTreeTest, test_diff_empty_random_data_shifted) {
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 }
+
+TEST(MerkleTreeTest, test_clone_compare_clean) {
+  constexpr uint64_t M = 1234567;     // some large constant
+  constexpr uint64_t W = 1ULL << 20;  // width, 4 values in each bucket
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, M, M + W, M + 16);
+
+  // Prepare a tree:
+  auto rd {std::random_device{}()};
+  auto mt {std::mt19937_64(rd)};
+  std::uniform_int_distribution<uint64_t> uni{M, M + (1ULL << 20)};
+  std::vector<uint64_t> data;
+  for (size_t i = 0; i < 1000; ++i) {
+    data.push_back(uni(mt));
+  }
+  for (auto x : data) {
+    t1.insert(x);
+  }
+  
+  // Now clone tree:
+  auto t2 = t1.clone();
+
+  // And compare the two:
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
+  ASSERT_TRUE(::diffAsExpected(t1, *t2, expected));
+
+  // And compare bitwise:
+  std::string s1;
+  t1.serializeBinary(s1, false);
+  std::string s2;
+  t2->serializeBinary(s2, false);
+  ASSERT_EQ(s1, s2);
+
+  s1.clear();
+  t1.serializeBinary(s1, true);
+  s2.clear();
+  t2->serializeBinary(s2, true);
+  ASSERT_EQ(s1, s2);
+}
