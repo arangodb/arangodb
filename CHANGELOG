@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixes BTS-416. During shutdown, a shard leader wrongly reported that
+  it could not drop a shard follower instead of correctly indicating
+  the shutdown as reason.
+
 * Fix various issues related to the new WINDOW operation (see BTS-402)
   - Improved explain output for ISO 8601 duration strings and fixed missing week
     component.
@@ -27,7 +31,7 @@ devel
 
 * Fixes pregel lifetime management. Previously shutting down the server while a
   pregel job was still running could result in a segfault or a shutdown hanger.
-  
+
 * Updated bundled version of Snappy library to 1.1.9.
 
 * Fixed various issues (mainly data races) reported by ThreadSanitizer.
