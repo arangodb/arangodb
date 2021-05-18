@@ -1,6 +1,15 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Rename two metrics with previously Prometheus-incompatible names:
+  - `arangodb_aql_global_query_memory_limit_reached` was renamed to
+    `arangodb_aql_global_query_memory_limit_reached_total`
+  - `arangodb_aql_local_query_memory_limit_reached` was renamed to
+    `arangodb_aql_local_query_memory_limit_reached_total`
+
+  These metrics were introduced in 3.8 so there is no migration for these 
+  metrics.
+
 * Fix various issues related to the new WINDOW operation (see BTS-402)
   - Improved explain output for ISO 8601 duration strings and fixed missing week
     component.
