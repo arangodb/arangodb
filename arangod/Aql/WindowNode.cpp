@@ -292,6 +292,8 @@ void WindowBounds::toVelocyPack(VPackBuilder& b) const {
             } else {
               result.append(std::to_string(duration.seconds)).push_back('.');
               auto ms = std::to_string(duration.milliseconds);
+              // parseIsoDuration already limits the number of decimals in milliseconds
+              TRI_ASSERT(ms.size() <= 3);
               result.append(3 - ms.size(), '0').append(ms).push_back('S');
             }
           }
