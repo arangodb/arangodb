@@ -1026,7 +1026,7 @@ void ClusterInfo::loadPlan() {
     }
     auto const& databaseName = database.first;
     _newPlannedViews.erase(databaseName);   // clear views for this database
-    std::initializer_list<std::string_view> viewsPath {
+    std::initializer_list<std::string_view> const viewsPath {
       AgencyCommHelper::path(), "Plan", "Views", databaseName};
     auto viewsSlice = database.second->slice()[0];
     if (!viewsSlice.hasKey(viewsPath)) {
