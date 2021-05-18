@@ -670,18 +670,7 @@ bool SynchronizeShard::first() {
   
   // from this many number of failures in a row, we will step on the brake
   constexpr size_t delayThreshold = 4;
-
-  TRI_IF_FAILURE("SynchronizeShard::maxReplicationErrors") {
-    // simulate we have got lots of failures
-    failuresInRow = MaintenanceFeature::maxReplicationErrorsPerShard;
-  }
-  
-  TRI_IF_FAILURE("SynchronizeShard::someReplicationErrors") {
-    // simulate we have got some failures
-    failuresInRow = delayThreshold;
-  }
-
-  
+    
   if (failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) { 
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
@@ -694,6 +683,10 @@ bool SynchronizeShard::first() {
           << "' for central '" << database << "/" << planId << "' encountered "
           << failuresInRow << " failures in a row. now dropping follower shard for "
           << "a full rebuild";
+
+      // remove these failure points for testing
+      TRI_RemoveFailurePointDebugging("SynchronizeShard::wrongChecksum");
+      TRI_RemoveFailurePointDebugging("disableCountAdjustment");
 
       // remove all recorded failures, so in next run we can start with a clean state
       _feature.removeReplicationError(getDatabase(), getShard());
@@ -1201,7 +1194,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   res = addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId, clientId,
                          syncerId, _clientInfoString, 60.0);
 
-  TRI_IF_FAILURE("SychronizeShard::wrongChecksum") {
+  TRI_IF_FAILURE("SynchronizeShard::wrongChecksum") {
     res.reset(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
   }
 
