@@ -261,6 +261,9 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   }
   
   int64_t adjustment = count - snapNumberOfDocuments;
+  TRI_IF_FAILURE("disableCountAdjustment") {
+    adjustment = 0;
+  }
   if (adjustment != 0) {
     LOG_TOPIC("ad613", WARN, Logger::REPLICATION)
       << "inconsistent collection count detected for "
