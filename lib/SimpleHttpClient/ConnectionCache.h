@@ -55,8 +55,12 @@ struct ConnectionLease {
   ConnectionLease(ConnectionLease&& other) noexcept;
   ConnectionLease& operator=(ConnectionLease&& other) noexcept;
 
+  /// @brief prevent the connection from being inserted back into the connection cache
+  void preventRecycling() noexcept;
+
   ConnectionCache* _cache;
   std::unique_ptr<GeneralClientConnection> _connection;
+  bool _preventRecycling;
 };
 
 class ConnectionCache {
@@ -97,6 +101,9 @@ class ConnectionCache {
   mutable arangodb::Mutex _lock;
   
   std::unordered_map<std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> _connections;
+
+  uint64_t _connectionsCreated;
+  uint64_t _connectionsRecycled;
 };
 
 }  // namespace httpclient

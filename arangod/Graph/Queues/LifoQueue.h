@@ -44,15 +44,18 @@ class LifoQueue {
   ~LifoQueue() { this->clear(); }
 
   void clear() {
-    if (_queue.size() > 0) {
+    if (!_queue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
       _queue.clear();
     }
   }
 
   void append(Step step) {
-    _resourceMonitor.increaseMemoryUsage(sizeof(Step));
+    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
+    // if push_front() throws, no harm is done, and the memory usage increase
+    // will be rolled back
     _queue.push_front(std::move(step));
+    guard.steal(); // now we are responsible for tracking the memory
   }
 
   bool hasProcessableElement() const {
@@ -84,8 +87,8 @@ class LifoQueue {
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
-    _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS) << "<LifoQueue> Pop: " << first.toString();
+    _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
     return first;
   }
