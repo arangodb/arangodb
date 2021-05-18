@@ -542,7 +542,7 @@ void AgencyCommHelper::initialize(std::string const& prefix) {
 
 void AgencyCommHelper::shutdown() {}
 
-const std::string& AgencyCommHelper::path() noexcept { return PREFIX; }
+std::string const& AgencyCommHelper::path() noexcept { return PREFIX; }
 
 std::string AgencyCommHelper::path(std::string const& p1) {
   return PREFIX + "/" + basics::StringUtils::trim(p1, "/");
