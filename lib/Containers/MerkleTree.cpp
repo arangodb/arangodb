@@ -175,7 +175,7 @@ std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
 MerkleTree<Hasher, BranchingBits>::fromSnappyCompressed(std::string_view buffer) {
   size_t length;
   bool canUncompress = snappy::GetUncompressedLength(buffer.data(), buffer.size(), &length);
-  if (!canUncompress || length != allocationSize(6)) {
+  if (!canUncompress || length < allocationSize(2)) {
     throw std::invalid_argument(
         "Cannot determine size of Snappy-compressed data.");
   }
@@ -360,6 +360,9 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t maxDepth,
   if (!NumberUtils::isPowerOf2(rangeMax - rangeMin)) {
     throw std::invalid_argument("Expecting difference between min and max to be power of 2");
   }
+  TRI_ASSERT(nodeCountAtDepth(maxDepth) > 0);
+  TRI_ASSERT(rangeMax - rangeMin != 0);
+
   if ((initialRangeMin - rangeMin) % 
       ((rangeMax - rangeMin) / nodeCountAtDepth(maxDepth)) != 0) {
     throw std::invalid_argument("Expecting difference between initial min and min to be divisible by (max-min)/nodeCountAt(maxDepth)");

@@ -27,6 +27,8 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
 #include "Basics/hashes.h"
 #include "Containers/MerkleTree.h"
 #include "Logger/LogMacros.h"
@@ -496,7 +498,12 @@ TEST(MerkleTreeTest, test_diff_misc) {
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 }
 
-TEST(MerkleTreeTest, test_serializeBinary) {
+TEST(MerkleTreeTest, test_serializeBinarySnappySmall) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeSnappy");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeSnappy");
+  });
+  
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
 
   for (std::uint64_t i = 0; i < 32; ++i) {
@@ -505,6 +512,113 @@ TEST(MerkleTreeTest, test_serializeBinary) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
+  ASSERT_LE(t1s.size(), 2'000);
+
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
+  ASSERT_NE(t2, nullptr);
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}
+/*
+TEST(MerkleTreeTest, test_serializeBinarySnappyLarge) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeSnappy");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeSnappy");
+  });
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 64);
+
+  std::vector<std::uint64_t> keys;
+  for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
+    keys.emplace_back(i);
+    if (keys.size() == 5000) {
+      t1.insert(keys);
+      keys.clear();
+    }
+  }
+  ASSERT_EQ(10'000'000, t1.count());
+
+  std::string t1s;
+  t1.serializeBinary(t1s, true);
+  ASSERT_LE(t1s.size(), 5'000'000);
+
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
+  ASSERT_NE(t2, nullptr);
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}
+*/
+
+TEST(MerkleTreeTest, test_serializeBinaryBottomMostSmall) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeBottomMost");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeBottomMost");
+  });
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
+
+  for (std::uint64_t i = 0; i < 32; ++i) {
+    t1.insert(2 * i);
+  }
+
+  std::string t1s;
+  t1.serializeBinary(t1s, true);
+  ASSERT_LE(t1s.size(), 2'000);
+
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
+  ASSERT_NE(t2, nullptr);
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}
+/*
+TEST(MerkleTreeTest, test_serializeBinaryBottomMostLarge) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeBottomMost");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeBottomMost");
+  });
+
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 64);
+  
+  std::vector<std::uint64_t> keys;
+  for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
+    keys.emplace_back(i);
+    if (keys.size() == 5000) {
+      t1.insert(keys);
+      keys.clear();
+    }
+  }
+  ASSERT_EQ(10'000'000, t1.count());
+
+  std::string t1s;
+  t1.serializeBinary(t1s, true);
+  ASSERT_LE(t1s.size(), 4'900'000);
+
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
+  ASSERT_NE(t2, nullptr);
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}
+*/
+TEST(MerkleTreeTest, test_serializeBinaryUncompressedSmall) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeUncompressed");
+  });
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
+
+  for (std::uint64_t i = 0; i < 32; ++i) {
+    t1.insert(2 * i);
+  }
+
+  std::string t1s;
+  t1.serializeBinary(t1s, false);
+  ASSERT_LE(t1s.size(), 2'000);
+
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
   ASSERT_NE(t2, nullptr);
@@ -512,7 +626,43 @@ TEST(MerkleTreeTest, test_serializeBinary) {
   ASSERT_TRUE(t2->diff(t1).empty());
 }
 
-TEST(MerkleTreeTest, test_serializePortable) {
+/*
+TEST(MerkleTreeTest, test_serializeBinaryUncompressedLarge) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeUncompressed");
+  });
+
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 64);
+  
+  std::vector<std::uint64_t> keys;
+  for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
+    keys.emplace_back(i);
+    if (keys.size() == 5000) {
+      t1.insert(keys);
+      keys.clear();
+    }
+  }
+  ASSERT_EQ(10'000'000, t1.count());
+
+  std::string t1s;
+  t1.serializeBinary(t1s, false);
+  ASSERT_LE(t1s.size(), 4'900'000);
+
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
+  ASSERT_NE(t2, nullptr);
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}
+*/
+
+TEST(MerkleTreeTest, test_serializePortableSmall) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeUncompressed");
+  });
+
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
 
   for (std::uint64_t i = 0; i < 32; ++i) {
@@ -521,6 +671,7 @@ TEST(MerkleTreeTest, test_serializePortable) {
 
   ::arangodb::velocypack::Builder t1s;
   t1.serialize(t1s);
+
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::deserialize(
           t1s.slice());
@@ -528,6 +679,37 @@ TEST(MerkleTreeTest, test_serializePortable) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
+
+/*
+TEST(MerkleTreeTest, test_serializePortableLarge) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeUncompressed");
+  });
+
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 64);
+
+  std::vector<std::uint64_t> keys;
+  for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
+    keys.emplace_back(i);
+    if (keys.size() == 5000) {
+      t1.insert(keys);
+      keys.clear();
+    }
+  }
+  ASSERT_EQ(10'000'000, t1.count());
+
+  ::arangodb::velocypack::Builder t1s;
+  t1.serialize(t1s);
+
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::deserialize(
+          t1s.slice());
+  ASSERT_NE(t2, nullptr);
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}
+*/
 
 TEST(MerkleTreeTest, test_tree_based_on_2020_hlcs) {
   uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
