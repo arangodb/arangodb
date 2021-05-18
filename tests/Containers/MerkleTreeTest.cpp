@@ -1073,4 +1073,21 @@ TEST(MerkleTreeTest, test_clone_compare_clean) {
   s2.clear();
   t2->serializeBinary(s2, true);
   ASSERT_EQ(s1, s2);
+
+  // Now use operator=
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t3(6, M, M + W, M + 16);
+
+  t3 = std::move(t2);
+  // And compare bitwise:
+  s1.clear();
+  t1.serializeBinary(s1, false);
+  s2.clear();
+  t3.serializeBinary(s2, false);
+  ASSERT_EQ(s1, s2);
+
+  s1.clear();
+  t1.serializeBinary(s1, true);
+  s2.clear();
+  t3.serializeBinary(s2, true);
+  ASSERT_EQ(s1, s2);
 }
