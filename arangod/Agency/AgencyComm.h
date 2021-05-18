@@ -189,7 +189,7 @@ class AgencyCommHelper {
   static void initialize(std::string const& prefix);
   static void shutdown();
 
-  static const std::string& path() noexcept;
+  static std::string const& path() noexcept;
   static std::string path(std::string const&);
   static std::string path(std::string const&, std::string const&);
   static std::vector<std::string> slicePath(std::string const&);
@@ -613,4 +613,3 @@ class AgencyComm {
 namespace std {
 ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
 }
-
