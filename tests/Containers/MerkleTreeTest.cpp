@@ -936,3 +936,72 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_with_shift) {
   ASSERT_EQ(hasher.hash(rangeMax), n4.hash);
 }
 
+TEST(MerkleTreeTest, test_diff_with_shift_1) {
+  constexpr uint64_t M = 1234567;     // some large constant
+  constexpr uint64_t W = 1ULL << 20;  // width, 4 values in each bucket
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, M, M + W, M + 16);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(6, M + 16, M + W + 16, M + 16);   // four buckets further right
+
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
+  ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+
+  // Now insert something into t1 left of tree 2 as well as in the overlap:
+  t1.insert(M);      // first bucket in t1
+  expected.emplace_back(std::pair(M, M+3));
+  t1.insert(M + 8);  // third bucket in t1
+  expected.emplace_back(std::pair(M+8, M+11));
+  t1.insert(M + 16); // firth bucket in t1, first bucket in t2
+  expected.emplace_back(std::pair(M+16, M+19));
+  ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+  t1.clear();
+  expected.clear();
+
+  // Now insert something into t1 left of tree 2 as well as in the overlap, but expect one contiguous interval:
+  t1.insert(M);      // first bucket in t1
+  t1.insert(M + 4);  // second bucket in t1
+  t1.insert(M + 8);  // third bucket in t1
+  t1.insert(M + 12); // fourth bucket in t1
+  t1.insert(M + 16); // firth bucket in t1, first bucket in t2
+  expected.emplace_back(std::pair(M, M+19));
+  ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+  t1.clear();
+  expected.clear();
+
+  // Now insert something into t2 to the right of tree 1 as well as in the overlap:
+  t2.insert(M + W - 8);      // second last bucket in t1, 6th last in t2
+  expected.emplace_back(std::pair(M + W - 8, M + W - 5));
+  t2.insert(M + W);          // not in t1, fourth last bucket in t2
+  expected.emplace_back(std::pair(M + W, M + W + 3));
+  t2.insert(M + W + 8);      // not in t1, second last bucket in t2
+  expected.emplace_back(std::pair(M + W + 8, M + W + 11));
+  t2.clear();
+  expected.clear();
+  
+  // Now insert something into t2 to the right of tree 1 as well as in the overlap, but expect one contiguous interval:
+  t2.insert(M + W - 8);      // second last bucket in t1, 6th last in t2
+  t2.insert(M + W - 4);      // last bucket in t1, 5th last in t2
+  t2.insert(M + W);          // not in t1, fourth last bucket in t2
+  t2.insert(M + W + 4);      // not in t1, third last bucket in t2
+  t2.insert(M + W + 8);      // not in t1, second last bucket in t2
+  expected.emplace_back(std::pair(M + W - 8, M + W + 11));
+  t2.clear();
+  expected.clear();
+
+  // And finally some changes in t1 and some in t2:
+  t1.insert(M);
+  expected.emplace_back(std::pair(M, M + 3));
+  t1.insert(M + 16);
+  t2.insert(M + 16);
+  // Nothing in this bucket, since both have the same!
+  t1.insert(M + 21);
+  t2.insert(M + 22);
+  expected.emplace_back(std::pair(M + 20, M + 23));
+  t1.insert(M + W - 8);
+  t2.insert(M + W - 5);
+  expected.emplace_back(std::pair(M + W - 8, M + W - 5));
+  t2.insert(M + W);
+  t2.insert(M + W + 5);
+  expected.emplace_back(std::pair(M + W, M + W + 7));
+  t2.clear();
+}
+

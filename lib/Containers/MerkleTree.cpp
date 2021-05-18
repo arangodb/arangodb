@@ -725,8 +725,8 @@ std::string MerkleTree<Hasher, BranchingBits>::toString(bool full) const {
     output.append(std::to_string(depth));
     output.append(": [");
     for (std::uint64_t chunk = 0; chunk < nodeCountAtDepth(depth); ++chunk) {
-      std::uint64_t index = this->index(chunk, depth);
-      Node const& node = this->node(index);
+      std::uint64_t offset = nodeCountAboveDepth(depth);
+      Node const& node = this->node(offset + chunk);
       output.append("[");
       output.append(std::to_string(node.count));
       output.append(",");
