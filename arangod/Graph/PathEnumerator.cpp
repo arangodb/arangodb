@@ -194,7 +194,27 @@ bool DepthFirstEnumerator::next() {
       _pruneNext = true;
     }
     if (_opts->minDepth == 0) {
-      return true;
+      if (_opts->usesPostFilter()) {
+        auto evaluator = _opts->getPostFilterEvaluator();
+        TRI_ASSERT(evaluator != nullptr);
+
+        aql::AqlValue vertex, edge;
+        aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+        if (evaluator->needsVertex()) {
+          vertex = lastVertexToAqlValue();
+          evaluator->injectVertex(vertex.slice());
+        }
+        if (evaluator->needsEdge()) {
+          edge = lastEdgeToAqlValue();
+          evaluator->injectEdge(edge.slice());
+        }
+        TRI_ASSERT(!evaluator->needsPath());
+        if (evaluator->evaluate()) {
+          return true;
+        }
+      } else {
+        return true;
+      }
     }
   }
   if (_enumeratedPath.numVertices() == 0) {
@@ -304,7 +324,6 @@ bool DepthFirstEnumerator::next() {
             }
             TRI_ASSERT(!evaluator->needsPath());
             if (!evaluator->evaluate()) {
-              LOG_DEVEL << "PostFILTERED!";
               break;
             }
           }
