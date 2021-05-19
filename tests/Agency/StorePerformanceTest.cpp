@@ -127,7 +127,7 @@ struct OperationMeasurement
           ++block_position;
           if (block_position > block_size) {
             d = point - absolute_start;
-            block_position = 0;
+            block_position = 1;
           }
         }
         from = point;
@@ -306,10 +306,10 @@ class StorePerformanceTest : public ::testing::Test {
       return std::thread([this, &m_start, &cv_start, &cv_ready, &worker_count, &points, value_generator, operations_count]() {
         uint const thread_index {worker_count++};
         auto const write_query {VPackParser::fromJson(value_generator())};
+        auto observation_point {points.data() + 1 + thread_index * operations_count};
         std::unique_lock<std::mutex> lk{m_start};
         cv_ready.notify_one();
         cv_start.wait(lk);
-        auto observation_point {points.data() + 1 + thread_index * operations_count};
         for (size_t i{}; i < operations_count; ++i) {
           write(write_query);
           *observation_point = OperationMeasurement::Clock::now();
