@@ -14,13 +14,15 @@ v3.8.0 (XXXX-XX-XX)
   upper) for a close range scan if both bounds are expressed using the same
   operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
 
-* When writing to starting shard leader respond with specific
-  503. Fixes BTS-390.
+* Fix various issues related to the new WINDOW operation (see BTS-402)
+  - Improved explain output for ISO 8601 duration strings and fixed missing week
+    component.
+  - Improved validation of input data and error messages.
+  - Prevent FILTERs from being moved beyond a WINDOW.
 
-* Reduced the agency store public members, for simpler support long-term.
-
-* Fixed bug in error reporting when a database create did not work, which
-  lead to a busy loop reporting this error to the agency.
+* Fixes BTS-416. During shutdown, a Shard leader wrongly reported that it could
+  not drop a shard follower instead of correctly indicating the shutdown as the
+  reason.
 
 * Fixes pregel lifetime management. Previously shutting down the server while a
   pregel job was still running could result in a segfault or a shutdown hanger.
