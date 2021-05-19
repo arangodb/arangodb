@@ -25,7 +25,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserCache.h"
@@ -146,6 +145,27 @@ void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex)
   _enumeratedPath.clear();
   _enumeratedPath.pushVertex(startVertex);
 }
+
+bool PathEnumerator::usePostFilter(aql::PruneExpressionEvaluator* evaluator) {
+  TRI_ASSERT(evaluator != nullptr);
+
+  aql::AqlValue vertex, edge;
+  aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+  if (evaluator->needsVertex()) {
+    vertex = lastVertexToAqlValue();
+    evaluator->injectVertex(vertex.slice());
+  }
+  if (evaluator->needsEdge()) {
+    edge = lastEdgeToAqlValue();
+    evaluator->injectEdge(edge.slice());
+  }
+  TRI_ASSERT(!evaluator->needsPath());
+  if (!evaluator->evaluate()) {
+    // do not return the path in that case
+    return false;
+  }
+  return true;
+};
 
 bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
                               arangodb::velocypack::Slice edge,

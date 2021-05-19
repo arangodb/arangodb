@@ -81,8 +81,16 @@ bool BreadthFirstEnumerator::next() {
     }
     // We have faked the 0 position in schreier for pruning
     _schreierIndex++;
+
     if (_opts->minDepth == 0) {
-      return true;
+      if (_opts->usesPostFilter()) {
+        auto evaluator = _opts->getPostFilterEvaluator();
+        if (usePostFilter(evaluator)) {
+          return true;
+        }
+      } else {
+        return true;
+      }
     }
   }
   _lastReturned++;
@@ -90,6 +98,14 @@ bool BreadthFirstEnumerator::next() {
   if (_lastReturned < _schreierIndex) {
     // We still have something on our stack.
     // Paths have been read but not returned.
+
+    if (_opts->usesPostFilter()) {
+      auto evaluator = _opts->getPostFilterEvaluator();
+      if (!usePostFilter(evaluator)) {
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -163,10 +179,18 @@ bool BreadthFirstEnumerator::next() {
     
     _opts->isQueryKilledCallback();
 
+    if (_opts->usesPostFilter()) {
+      auto evaluator = _opts->getPostFilterEvaluator();
+      if (!usePostFilter(evaluator)) {
+        shouldReturnPath = false;
+      }
+    }
+
     if (!shouldReturnPath) {
       _lastReturned = _schreierIndex;
       didInsert = false;
     }
+
     if (didInsert) {
       // We exit the loop here.
       // _schreierIndex is moved forward
