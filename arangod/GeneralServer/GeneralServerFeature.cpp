@@ -188,7 +188,8 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption("--http.permanently-redirect-root",
                     "if true, use a permanent redirect. If false, use a temporary",
-                    new BooleanParameter(&_permanentRootRedirect));
+                    new BooleanParameter(&_permanentRootRedirect))
+                    .setIntroducedIn(30712);
 
   options->addSection("frontend", "Frontend options");
 
