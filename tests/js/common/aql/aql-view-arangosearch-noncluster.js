@@ -2055,7 +2055,7 @@ function iResearchAqlTestSuite () {
     testLevenshteinMatch2BM25 : function() {
       var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'dog', 2, false), 'text_en') OPTIONS { waitForSync : true } SORT BM25(doc) DESC LIMIT 1 RETURN doc").toArray();
       assertEqual(1, res.length);
-      assertEqual("full", res[0].name);
+      assertEqual("other half", res[0].name);
     },
 
     testAnalyzerNotOrFalse : function () {
