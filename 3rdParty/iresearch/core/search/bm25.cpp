@@ -462,7 +462,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
               irs::sort::score_cast<score_t>(state.score_buf) = state.filter_boost_->value *
                                                                 state.num_ *
                                                                 tf /
-                                                                (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
+                                                                (state.norm_const_ + state.norm_length_ / state.norm_.read() + tf);
               return state.score_buf;
             }
           };
@@ -473,7 +473,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
               auto& state = *static_cast<bm25::norm_score_ctx*>(ctx);
 
               const float_t tf = ::SQRT(state.freq_->value);
-              irs::sort::score_cast<score_t>(state.score_buf) = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
+              irs::sort::score_cast<score_t>(state.score_buf) = state.num_ * tf / (state.norm_const_ + state.norm_length_ / state.norm_.read() + tf);
 
               return state.score_buf;
             }
