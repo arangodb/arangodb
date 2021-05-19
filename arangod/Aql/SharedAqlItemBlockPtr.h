@@ -185,7 +185,7 @@ AqlItemBlock* SharedAqlItemBlockPtr::get() const noexcept {
 }
 
 void SharedAqlItemBlockPtr::reset(AqlItemBlock* other) noexcept {
-  TRI_ASSERT(_aqlItemBlock != other);
+  TRI_ASSERT(_aqlItemBlock == nullptr || _aqlItemBlock != other);
   decrRefCount();
   _aqlItemBlock = other;
   incrRefCount();
