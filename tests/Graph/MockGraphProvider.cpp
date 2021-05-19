@@ -26,9 +26,9 @@
 
 #include "Basics/StaticStrings.h"
 
+#include "Aql/QueryContext.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
-#include "Aql/QueryContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -46,15 +46,22 @@ auto operator<<(std::ostream& out, MockGraphProvider::Step const& step) -> std::
   out << step._vertex.getID();
   return out;
 }
-}
-}
-}
+}  // namespace graph
+}  // namespace tests
+}  // namespace arangodb
 
 MockGraphProvider::Step::Step(VertexType v, bool isProcessable)
     : arangodb::graph::BaseStep<Step>{}, _vertex(v), _edge({}), _isProcessable(isProcessable) {}
 
 MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProcessable)
     : arangodb::graph::BaseStep<Step>{prev},
+      _vertex(v),
+      _edge(e),
+      _isProcessable(isProcessable) {}
+
+MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
+                              bool isProcessable, size_t depth)
+    : arangodb::graph::BaseStep<Step>{prev, depth},
       _vertex(v),
       _edge(e),
       _isProcessable(isProcessable) {}
@@ -104,15 +111,17 @@ auto MockGraphProvider::fetch(std::vector<Step*> const& looseEnds)
   return futures::makeFuture(std::move(result));
 }
 
-auto MockGraphProvider::expand(Step const& step, size_t previous, std::function<void(Step)> callback) -> void {
-  std::vector<Step> results {};
+auto MockGraphProvider::expand(Step const& step, size_t previous,
+                               std::function<void(Step)> callback) -> void {
+  std::vector<Step> results{};
   results = expand(step, previous);
   for (auto const& s : results) {
     callback(s);
   }
 }
 
-auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex, arangodb::velocypack::Builder& builder) -> void {
+auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex,
+                                           arangodb::velocypack::Builder& builder) -> void {
   std::string id = vertex.getID().toString();
   _stats.addScannedIndex(1);
   builder.openObject();
@@ -121,7 +130,8 @@ auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex, arangodb:
   builder.close();
 }
 
-auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge, arangodb::velocypack::Builder& builder) -> void {
+auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
+                                         arangodb::velocypack::Builder& builder) -> void {
   std::string fromId = edge.getEdge()._from;
   std::string toId = edge.getEdge()._to;
   std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
@@ -151,7 +161,8 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
       for (auto const& edge : _toIndex[source.getVertex().getID().toString()]) {
         VPackHashedStringRef fromH{edge._from.c_str(),
                                    static_cast<uint32_t>(edge._from.length())};
-        result.push_back(Step{previousIndex, fromH, edge, decideProcessable()});
+        result.push_back(Step{previousIndex, fromH, edge, decideProcessable(),
+                              (source.getDepth() + 1)});
 
         LOG_TOPIC("78158", TRACE, Logger::GRAPHS)
             << "  <MockGraphProvider> added <Step><Vertex>: " << fromH
@@ -165,7 +176,8 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
       for (auto const& edge : _fromIndex[source.getVertex().getID().toString()]) {
         VPackHashedStringRef toH{edge._to.c_str(),
                                  static_cast<uint32_t>(edge._to.length())};
-        result.push_back(Step{previousIndex, toH, edge, decideProcessable()});
+        result.push_back(Step{previousIndex, toH, edge, decideProcessable(),
+                              (source.getDepth() + 1)});
 
         LOG_TOPIC("78159", TRACE, Logger::GRAPHS)
             << "  <MockGraphProvider - default> added <Step><Vertex>: " << toH
@@ -179,9 +191,7 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   return result;
 }
 
-[[nodiscard]] transaction::Methods* MockGraphProvider::trx() {
-  return &_trx;
-}
+[[nodiscard]] transaction::Methods* MockGraphProvider::trx() { return &_trx; }
 
 aql::TraversalStats MockGraphProvider::stealStats() {
   auto t = _stats;

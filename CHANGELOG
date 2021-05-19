@@ -1,8 +1,104 @@
 devel
 -----
 
+* Return error 1948 when a negative edge was detected during a
+  weighted traversal or was used as default weight.
+
+* Added 2 options to allow HTTP redirection customization for root ("/") call of
+  HTTP API:
+
+  `--http.permanently-redirect-root`: if true (default), use a permanent
+  redirection (use HTTP 301 code), if false fall back to temporary redirection
+  (use HTTP 302 code);
+  `--http.redirect-root-to`: redirect of root URL to a specified path (redirects
+  to "/_admin/aardvark/index.html" if not set (default)).
+
+* Fixes BTS-416. During shutdown, a shard leader wrongly reported that
+  it could not drop a shard follower instead of correctly indicating
+  the shutdown as reason.
+
+* Fix various issues related to the new WINDOW operation (see BTS-402)
+  - Improved explain output for ISO 8601 duration strings and fixed missing week
+    component.
+  - Improved validation of input data and error messages.
+  - Prevent FILTERs from being moved beyond a WINDOW.
+
+* Fixes BTS-417. In some cases an index did not consider both bounds (lower and
+  upper) for a close range scan if both bounds are expressed using the same
+  operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
+  
+
+* When writing to starting shard leader respond with specific
+  503. Fixes BTS-390.
+
+* Reduced the agency store public members, for simpler support long-term.
+
 * Fixed bug in error reporting when a database create did not work, which
   lead to a busy loop reporting this error to the agency.
+
+* Added a number of tests for the Agency Store public members.
+
+* Improve error reporting for Merkle tree operations and improve memory usage
+  for unused trees by hibernating them. In addition, add some backoff to shard
+  synchronization in case there are repeated sync failures for the same shard.
+
+* Fixes pregel lifetime management. Previously shutting down the server while a
+  pregel job was still running could result in a segfault or a shutdown hanger.
+
+* Updated bundled version of Snappy library to 1.1.9.
+
+* Fixed various issues (mainly data races) reported by ThreadSanitizer.
+
+* Improve "Shards" view in web UI so that the shards of individual collections
+  can be expanded and collapsed without affecting the display of any other
+  shards. Also added a "Toggle all" button the web UI to expand/collapse the
+  shards for all collections.
+
+* Fixed BTS-403: Hot restores must also clear relevant `Current` keys. The
+  overriding of the `Plan` entries needs to be reflected in `Current` to avoid
+  conflicts in maintenance jobs.
+
+* Log a proper message if an unexpected state is encountered when taking over
+  shard leadership. In addition, make the change to the internal followerinfo 
+  state atomic so that it cannot be semi-changed.
+
+* Improve exception safety for maintenance thread and shard unlock
+  operations.
+
+* Fixed two bugs in fuerte with HTTP/2 and VST connections.
+  One could lead to ordered timeouts not being honoured. The other could
+  lead to an ordered callback be called multiple times.
+
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own
+  rebootId increment has triggered plan entry to be removed.
+
+* When writing to starting shard leader respond with specific
+  503. Fixes BTS-390.
+
+* Introduce a new internal error code for cases where a call cannot succeed
+  because the server startup phase is still in progress. This error will be
+  mapped to the HTTP status code 503 (service unavailable).
+  One example where this can happen is when trying to authenticate a request,
+  but the _users collection is not yet available in the cluster.
+
+* Fixed issue BTS-354: Assertion related to getCollection. 
+
+* Fixed a use after free bug in the connection pool.
+
+* Fix DEVSUP-749: Fix potential deadlock when executing concurrent view/link
+  DDL operations and index DDL operations on the same collection.
+
+* Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied,
+  it may rename some variables in the query. The variable renaming was however
+  not carried out for traversal PRUNE conditions, so the PRUNE conditions 
+  could still refer to obsolete variables, which would make the query fail with
+  errors such as 
+    
+      Query: AQL: missing variable ... for node ... while planning registers
+
+* Fixed bug in error reporting when a database create did not work, which led
+  to a busy loop reporting this error to the agency.
 
 * Fixed the error response if the HTTP version is not 1.0 or 1.1 and if
   the Content-Length is too large (> 1 GB).

@@ -84,6 +84,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/NodeTest.cpp
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
+  Agency/StoreTestAPI.cpp
   Agency/SupervisionTest.cpp
   Agency/TransactionBuilderTests.cpp
   Aql/AqlCallListTest.cpp
@@ -182,6 +183,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/ParametersTest.cpp
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
+  Basics/RecursiveLockerTest.cpp
   Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
@@ -224,12 +226,14 @@ set(ARANGODB_TESTS_SOURCES
   Graph/GraphMockProviderInstances.cpp
   Graph/GraphTestTools.cpp
   Graph/KPathFinderTest.cpp
+  Graph/DFSFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/MockGraph.cpp
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/PathValidatorTest.cpp
-  Graph/QueueTest.cpp
+  Graph/FifoQueueTest.cpp
+  Graph/LifoQueueTest.cpp
   Graph/SingleServerProviderTest.cpp
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
@@ -352,9 +356,11 @@ list(APPEND IRESEARCH_LIB_RESOURCES
 )
 
 foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
-  add_custom_command(
-    TARGET arangodbtests POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbtests>"
-    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
-  )
+  if (ELEMENT)
+    add_custom_command(
+      TARGET arangodbtests POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbtests>"
+      COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
+    )
+  endif()
 endforeach()

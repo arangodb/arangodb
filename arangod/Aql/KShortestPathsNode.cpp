@@ -475,6 +475,33 @@ void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
 }
+  
+void KShortestPathsNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inStartVariable != nullptr) {
+    _inStartVariable = Variable::replace(_inStartVariable, replacements);
+  }
+  if (_inTargetVariable != nullptr) {
+    _inTargetVariable = Variable::replace(_inTargetVariable, replacements);
+  }
+}
+
+/// @brief getVariablesSetHere
+std::vector<Variable const*> KShortestPathsNode::getVariablesSetHere() const {
+  std::vector<Variable const*> vars;
+  TRI_ASSERT(_pathOutVariable != nullptr);
+  vars.emplace_back(_pathOutVariable);
+  return vars;
+}
+
+/// @brief getVariablesUsedHere, modifying the set in-place
+void KShortestPathsNode::getVariablesUsedHere(VarSet& vars) const {
+  if (_inStartVariable != nullptr) {
+    vars.emplace(_inStartVariable);
+  }
+  if (_inTargetVariable != nullptr) {
+    vars.emplace(_inTargetVariable);
+  }
+}
 
 std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes() const {
   std::vector<IndexAccessor> indexAccessors{};

@@ -25,8 +25,6 @@
 
 #include "Basics/Common.h"
 
-#include <boost/date_time/posix_time/posix_time.hpp>
-
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/asio_ns.h"
@@ -45,6 +43,8 @@ namespace arangodb {
 class RestPregelHandler;
 
 namespace pregel {
+  
+class PregelFeature;
 
 class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
@@ -90,7 +90,8 @@ class Worker : public IWorker {
     DONE         // after calling finished
   };
 
-  WorkerState _state = WorkerState::DEFAULT;
+  PregelFeature& _feature;
+  std::atomic<WorkerState> _state = WorkerState::DEFAULT;
   WorkerConfig _config;
   uint64_t _expectedGSS = 0;
   uint32_t _messageBatchSize = 500;
@@ -148,7 +149,7 @@ class Worker : public IWorker {
                                   std::function<void(VPackSlice slice)> handle);
 
  public:
-  Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm, VPackSlice params);
+  Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm, VPackSlice params, PregelFeature& feature);
   ~Worker();
 
   // ====== called by rest handler =====
