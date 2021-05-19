@@ -687,16 +687,19 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             }
             break;
           }
-          case OptimizationCase::VERTEX: {
-            // We have the Vertex variable in the statement
+          case OptimizationCase::VERTEX:
+          case OptimizationCase::EDGE: {
+            // We have the Vertex or Edge variable in the statement
+            // Both have about the Same code and just differ in the used variable.
+            auto usedVar = usedCase == OptimizationCase::VERTEX ? vertexVar : edgeVar;
             AstNode* conditionToOptimize = andNode->getMemberUnchecked(i - 1);
             // Create a clone before we modify the Condition
             AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
             bool isSupported = true;
             Ast::traverseReadOnly(
                 conditionToOptimize,
-                [&vertexVar, &isSupported](AstNode const* node) -> bool {
-                  if (!IsSupportedNode(vertexVar, node)) {
+                [&usedVar, &isSupported](AstNode const* node) -> bool {
+                  if (!IsSupportedNode(usedVar, node)) {
                     isSupported = false;
                     return false;
                   }
@@ -704,18 +707,10 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
                 },
                 [](AstNode const*) {});
             if (isSupported) {
-              Ast::replaceVariables(conditionToOptimize,
-                                    {{vertexVar->id, node->getTemporaryVariable()}}, true);
               // Retain original condition, as covered by this Node
               coveredCondition->andCombine(cloned);
-
-              conditionToOptimize->dump(0);
-              cloned->dump(2);
+              node->registerPostFilterCondition(conditionToOptimize);
             }
-            break;
-          }
-          case OptimizationCase::EDGE: {
-            // We have the Edge variable in the statement
             break;
           }
         };

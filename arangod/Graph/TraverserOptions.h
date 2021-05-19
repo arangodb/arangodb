@@ -77,6 +77,11 @@ struct TraverserOptions : public graph::BaseOptions {
   ///        The Node keeps responsibility
   std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
 
+  /// @brief The condition given for PostFilters (might be empty)
+  ///        The Node keeps responsibility
+  ///        This is used to avoid producing paths if the last vertex or edge do not match.
+  std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterExpression;
+
   bool _producePaths{true};
 
  public:
@@ -102,8 +107,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   explicit TraverserOptions(arangodb::aql::QueryContext& query);
 
-  TraverserOptions(arangodb::aql::QueryContext& query,
-                   arangodb::velocypack::Slice definition);
+  TraverserOptions(arangodb::aql::QueryContext& query, arangodb::velocypack::Slice definition);
 
   TraverserOptions(arangodb::aql::QueryContext& query, arangodb::velocypack::Slice info,
                    arangodb::velocypack::Slice collections);
@@ -163,17 +167,29 @@ struct TraverserOptions : public graph::BaseOptions {
                      std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
                      size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
 
+  void activatePostFilter(std::vector<aql::Variable const*> vars,
+                          std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
+                          size_t edgeVarIdx, aql::Expression* expr);
+
   bool usesPrune() const { return _pruneExpression != nullptr; }
+  bool usesPostFilter() const { return _postFilterExpression != nullptr; }
 
   bool isUseBreadthFirst() const { return mode == Order::BFS; }
 
-  bool isUniqueGlobalVerticesAllowed() const { return mode == Order::BFS || mode == Order::WEIGHTED; }
+  bool isUniqueGlobalVerticesAllowed() const {
+    return mode == Order::BFS || mode == Order::WEIGHTED;
+  }
 
   double weightEdge(VPackSlice edge) const;
 
   aql::PruneExpressionEvaluator* getPruneEvaluator() {
     TRI_ASSERT(usesPrune());
     return _pruneExpression.get();
+  }
+
+  aql::PruneExpressionEvaluator* getPostFilterEvaluator() {
+    TRI_ASSERT(usesPostFilter());
+    return _postFilterExpression.get();
   }
 
   auto estimateDepth() const noexcept -> uint64_t override;

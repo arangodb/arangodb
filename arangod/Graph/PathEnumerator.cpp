@@ -42,10 +42,10 @@ namespace arangodb {
 namespace traverser {
 
 EnumeratedPath::EnumeratedPath(arangodb::ResourceMonitor& resourceMonitor)
-  : _resourceMonitor(resourceMonitor) {}
+    : _resourceMonitor(resourceMonitor) {}
 
 EnumeratedPath::~EnumeratedPath() {
-  size_t memoryUsage = 
+  size_t memoryUsage =
       (_vertices.capacity() * sizeof(typename decltype(_vertices)::value_type)) +
       (_edges.capacity() * sizeof(typename decltype(_edges)::value_type));
 
@@ -68,7 +68,7 @@ void EnumeratedPath::growStorage(std::vector<T>& data) {
   }
 
   TRI_ASSERT(capacity > data.size());
-  
+
   if (capacity > data.capacity()) {
     // reserve space
     ResourceUsageScope guard(_resourceMonitor, (capacity - data.capacity()) * sizeof(T));
@@ -95,7 +95,7 @@ void EnumeratedPath::popVertex() noexcept {
   _vertices.pop_back();
 }
 
-void EnumeratedPath::popEdge() noexcept { 
+void EnumeratedPath::popEdge() noexcept {
   TRI_ASSERT(!_edges.empty());
   _edges.pop_back();
 }
@@ -109,9 +109,13 @@ size_t EnumeratedPath::numVertices() const noexcept { return _vertices.size(); }
 
 size_t EnumeratedPath::numEdges() const noexcept { return _edges.size(); }
 
-std::vector<arangodb::velocypack::StringRef> const& EnumeratedPath::vertices() const noexcept { return _vertices; }
+std::vector<arangodb::velocypack::StringRef> const& EnumeratedPath::vertices() const noexcept {
+  return _vertices;
+}
 
-std::vector<graph::EdgeDocumentToken> const& EnumeratedPath::edges() const noexcept { return _edges; }
+std::vector<graph::EdgeDocumentToken> const& EnumeratedPath::edges() const noexcept {
+  return _edges;
+}
 
 arangodb::velocypack::StringRef const& EnumeratedPath::lastVertex() const noexcept {
   TRI_ASSERT(!_vertices.empty());
@@ -123,11 +127,11 @@ graph::EdgeDocumentToken const& EnumeratedPath::lastEdge() const noexcept {
   return _edges.back();
 }
 
-} // namespace
-} // namespace
+}  // namespace traverser
+}  // namespace arangodb
 
 PathEnumerator::PathEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : _traverser(traverser), 
+    : _traverser(traverser),
       _opts(opts),
       _enumeratedPath(_opts->resourceMonitor()),
       _httpRequests(0),
@@ -219,8 +223,7 @@ bool DepthFirstEnumerator::next() {
     bool foundPath = false;
 
     auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice const& edge, size_t cursorId) {
-      if (!keepEdge(eid, edge,
-                    arangodb::velocypack::StringRef(_enumeratedPath.lastVertex()),
+      if (!keepEdge(eid, edge, arangodb::velocypack::StringRef(_enumeratedPath.lastVertex()),
                     _enumeratedPath.numEdges(), cursorId)) {
         return;
       }
@@ -284,6 +287,26 @@ bool DepthFirstEnumerator::next() {
           if (_enumeratedPath.numEdges() < _opts->minDepth) {
             // We have a valid prefix, but do NOT return this path
             break;
+          }
+          if (_opts->usesPostFilter()) {
+            auto evaluator = _opts->getPostFilterEvaluator();
+            TRI_ASSERT(evaluator != nullptr);
+
+            aql::AqlValue vertex, edge;
+            aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+            if (evaluator->needsVertex()) {
+              vertex = lastVertexToAqlValue();
+              evaluator->injectVertex(vertex.slice());
+            }
+            if (evaluator->needsEdge()) {
+              edge = lastEdgeToAqlValue();
+              evaluator->injectEdge(edge.slice());
+            }
+            TRI_ASSERT(!evaluator->needsPath());
+            if (!evaluator->evaluate()) {
+              LOG_DEVEL << "PostFILTERED!";
+              break;
+            }
           }
           return true;
         }
