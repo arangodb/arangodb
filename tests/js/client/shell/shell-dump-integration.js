@@ -297,6 +297,29 @@ function dumpIntegrationSuite () {
       }
     },
     
+    testDumpCompressedEncryptedWithEnvelope: function () {
+      if (!require("internal").isEnterprise()) {
+        return;
+      }
+
+      let keyfile = fs.getTempFile();
+      let path = fs.getTempFile();
+      try {
+        // 32 bytes of garbage
+        fs.writeFileSync(keyfile, "01234567890123456789012345678901");
+
+        let args = ['--compress-output', 'true', '--envelope', 'true', '--encryption.keyfile', keyfile, '--collection', cn];
+        let tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "aes-256-ctr");
+        checkStructureFile(tree, path, false, cn);
+        checkDataFile(tree, path, false, true, false, cn);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
     testDumpCompressedEncryptedNoEnvelope: function () {
       if (!require("internal").isEnterprise()) {
         return;
@@ -313,6 +336,28 @@ function dumpIntegrationSuite () {
         checkEncryption(tree, path, "aes-256-ctr");
         checkStructureFile(tree, path, false, cn);
         checkDataFile(tree, path, false, false, false, cn);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testDumpOverwriteUncompressedWithEnvelope: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--compress-output', 'false', '--envelope', 'true', '--collection', cn];
+        let tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, false, true, true, cn);
+        
+        // second dump, which overwrites
+        args = ['--compress-output', 'false', '--envelope', 'true', '--overwrite', 'true', '--collection', cn];
+        tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, false, true, true, cn);
       } finally {
         try {
           fs.removeDirectory(path);

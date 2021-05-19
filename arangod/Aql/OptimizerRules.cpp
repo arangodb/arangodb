@@ -1992,8 +1992,8 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, std::unique_ptr<ExecutionP
       auto current = stack.back();
       stack.pop_back();
 
-      if (current->getType() == EN::LIMIT) {
-        // cannot push a filter beyond a LIMIT node
+      if (current->getType() == EN::LIMIT || current->getType() == EN::WINDOW) {
+        // cannot push a filter beyond a LIMIT or WINDOW node
         break;
       }
 
@@ -2082,20 +2082,37 @@ class arangodb::aql::RedundantCalculationsReplacer final
     auto node = ExecutionNode::castTo<T*>(en);
     node->_inVariable = Variable::replace(node->_inVariable, _replacements);
   }
-
-  void replaceInCalculation(ExecutionNode* en) {
-    auto node = ExecutionNode::castTo<CalculationNode*>(en);
+  
+  void replaceInExpression(Expression& e) {
     VarSet variables;
-    node->expression()->variables(variables);
+    e.variables(variables);
 
     // check if the calculation uses any of the variables that we want to
     // replace
     for (auto const& it : variables) {
       if (_replacements.find(it->id) != _replacements.end()) {
         // calculation uses a to-be-replaced variable
-        node->expression()->replaceVariables(_replacements);
+        e.replaceVariables(_replacements);
         return;
       }
+    }
+  }
+
+  void replaceInCalculation(ExecutionNode* en) {
+    auto node = ExecutionNode::castTo<CalculationNode*>(en);
+    replaceInExpression(*node->expression());
+  }
+  
+  void replaceInTraversal(ExecutionNode* en) {
+    auto node = ExecutionNode::castTo<TraversalNode*>(en);
+    if (node->pruneExpression() != nullptr) {
+      // need to replace variables in the prune expression
+      replaceInExpression(*node->pruneExpression());
+      // and need to recalculate the set of variables used
+      // by the prune expression
+      VarSet pruneVariables;
+      node->pruneExpression()->variables(pruneVariables);
+      node->_pruneVariables = pruneVariables;
     }
   }
 
@@ -2158,6 +2175,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
       case EN::TRAVERSAL: {
         replaceInVariable<TraversalNode>(en);
+        replaceInTraversal(en);
         break;
       }
 
@@ -3321,6 +3339,7 @@ struct SortToIndexNode final
 
       case EN::SINGLETON:
       case EN::COLLECT:
+      case EN::WINDOW:
       case EN::INSERT:
       case EN::REMOVE:
       case EN::REPLACE:
@@ -5470,7 +5489,7 @@ struct CommonNodeFinder {
       }
     }
     possibleNodes.clear();
-    return (!commonName.empty());
+    return false;
   }
 };
 

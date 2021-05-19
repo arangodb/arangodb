@@ -34,7 +34,6 @@ class LanguageCheckFeature final : public application_features::ApplicationFeatu
   explicit LanguageCheckFeature(application_features::ApplicationServer& server);
   ~LanguageCheckFeature();
 
-  static std::string const& name() noexcept;
   void start() override final;
 };
 

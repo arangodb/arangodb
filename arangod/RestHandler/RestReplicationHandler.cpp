@@ -1384,8 +1384,9 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
-  bool const generateNewRevisionIds =
-      !_request->parsedValue(StaticStrings::PreserveRevisionIds, false);
+  // always regenerate revision ids on restore, so that we cannot run into
+  // any trouble with non-conforming revision-id ranges
+  constexpr bool generateNewRevisionIds = true;
 
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
@@ -1499,12 +1500,15 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
 
         TRI_ASSERT(doc.isObject());
         bool checkKey = true;
+        bool checkRev = generateNewRevisionIds;
         for (auto it : VPackObjectIterator(doc, true)) {
           // only check for "_key" attribute here if we still have to.
           // once we have seen it, it will not show up again in the same document
           bool const isKey = checkKey && (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString);
   
           if (isKey) {
+            // _key attribute
+
             // prevent checking for _key twice in the same document
             checkKey = false;
 
@@ -1521,17 +1525,23 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
               // with MMFiles dumps from <= 3.6
               documentsToRemove.erase(it.value.copyString());
             }
-          }
+          
+            documentsToInsert.add(it.key);
+            documentsToInsert.add(it.value);
+          } else if (checkRev && arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
+            // _rev attribute
 
-          documentsToInsert.add(it.key);
+            // prevent checking for _rev twice in the same document
+            checkRev = false;
 
-          if (generateNewRevisionIds && 
-              !isKey && 
-              arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
             char ridBuffer[arangodb::basics::maxUInt64StringSize];
             RevisionId newRid = physical->newRevisionId();
+            
+            documentsToInsert.add(it.key);
             documentsToInsert.add(newRid.toValuePair(ridBuffer));
           } else {
+            // copy key/value verbatim
+            documentsToInsert.add(it.key);
             documentsToInsert.add(it.value);
           }
         }

@@ -291,7 +291,11 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                       << "synchronous replication: could not drop follower " << follower
                       << " for shard " << cc->vocbase().name() << "/" << tc.collectionName()
                       << ": " << r.errorMessage();
-                  res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                  if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+                    res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+                  } else {
+                    res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                  }
                 }
               }
               // continue dropping the follower for all shards in this

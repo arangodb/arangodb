@@ -71,7 +71,7 @@ class Cursor {
   inline double ttl() const { return _ttl; }
 
   inline double expires() const { return _expires; }
-
+  
   inline bool isUsed() const { return _isUsed; }
 
   inline bool isDeleted() const { return _isDeleted; }
@@ -83,12 +83,12 @@ class Cursor {
     TRI_ASSERT(!_isUsed);
 
     _isUsed = true;
-    _expires = TRI_microtime() + _ttl;
   }
 
   void release() {
     TRI_ASSERT(_isUsed);
     _isUsed = false;
+    _expires = TRI_microtime() + _ttl;
   }
 
   virtual void kill() {}
@@ -138,7 +138,7 @@ class Cursor {
   double _expires;
   bool const _hasCount;
   bool _isDeleted;
-  bool _isUsed;
+  std::atomic<bool> _isUsed;
 };
 }  // namespace arangodb
 

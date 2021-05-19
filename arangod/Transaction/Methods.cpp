@@ -754,7 +754,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     return opRes.result;
   }
 
-  auto translateName = [this](std::string const& collectionName) { 
+  auto translateName = [this](std::string const& collectionName) {
     if (_state->isDBServer()) {
       auto collection = resolver()->getCollectionStructCluster(collectionName);
       if (collection != nullptr) {
@@ -1057,10 +1057,14 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      if (!followerInfo->allowedToWrite()) {
-        // We cannot fulfill minimum replication Factor.
-        // Reject write.
+      switch (followerInfo->allowedToWrite()) {
+      case FollowerInfo::WriteState::FORBIDDEN:
+        // We cannot fulfill minimum replication Factor. Reject write.
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      case FollowerInfo::WriteState::STARTUP:
+        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+      default:
+        break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1357,10 +1361,14 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      if (!followerInfo->allowedToWrite()) {
-        // We cannot fulfill minimum replication Factor.
-        // Reject write.
+      switch (followerInfo->allowedToWrite()) {
+      case FollowerInfo::WriteState::FORBIDDEN:
+        // We cannot fulfill minimum replication Factor. Reject write.
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      case FollowerInfo::WriteState::STARTUP:
+        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+      default:
+        break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1579,10 +1587,14 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      if (!followerInfo->allowedToWrite()) {
-        // We cannot fulfill minimum replication Factor.
-        // Reject write.
+      switch (followerInfo->allowedToWrite()) {
+      case FollowerInfo::WriteState::FORBIDDEN:
+        // We cannot fulfill minimum replication Factor. Reject write.
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      case FollowerInfo::WriteState::STARTUP:
+        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+      default:
+        break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1752,7 +1764,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
   }
 
   resultBuilder.openArray();
-  
+
   auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   iterator->allDocuments(
@@ -1812,10 +1824,14 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options));
       }
-      if (!followerInfo->allowedToWrite()) {
-        // We cannot fulfill minimum replication Factor.
-        // Reject write.
-        return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options));
+      switch (followerInfo->allowedToWrite()) {
+      case FollowerInfo::WriteState::FORBIDDEN:
+        // We cannot fulfill minimum replication Factor. Reject write.
+        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+      case FollowerInfo::WriteState::STARTUP:
+        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+      default:
+        break;
       }
 
       // fetch followers
@@ -1891,20 +1907,43 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
             (responses[i].get().statusCode() == fuerte::StatusAccepted ||
              responses[i].get().statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
-          auto const& followerInfo = collection->followers();
-          LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
+          if (!vocbase().server().isStopping()) {
+            auto const& followerInfo = collection->followers();
+            LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
               << "truncateLocal: dropping follower " << (*followers)[i]
               << " for shard " << collection->vocbase().name() << "/" << collectionName
               << ": " << responses[i].get().combinedResult().errorMessage();
-          res = followerInfo->remove((*followers)[i]);
-          if (res.ok()) {
-            _state->removeKnownServer((*followers)[i]);
-          } else {
-            LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
+            res = followerInfo->remove((*followers)[i]);
+            if (res.ok()) {
+              _state->removeKnownServer((*followers)[i]);
+            } else {
+              LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collection->vocbase().name() << "/" << collection->name()
                 << ": " << res.errorMessage();
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              // Note: it is safe here to exit the loop early. We are losing the leadership here.
+              // No matter what happens next, the Current entry in the agency is rewritten and
+              // thus replication is restarted from the new leader. There is no need to keep
+              // trying to drop followers at this point.
+              if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+                // In this case, we know that we are not or no longer
+                // the leader for this shard. Therefore we need to
+                // send a code which let's the coordinator retry.
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+              } else {
+                // In this case, some other error occurred and we
+                // most likely are still the proper leader, so
+                // the error needs to be reported and the local
+                // transaction must be rolled back.
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              }
+            }
+          } else {
+            LOG_TOPIC("cb953", INFO, Logger::REPLICATION)
+              << "truncateLocal: shutting down and not replicating " << (*followers)[i]
+              << " for shard " << collection->vocbase().name() << "/" << collection->name()
+              << ": " << res.errorMessage();
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
           }
         }
       }
@@ -2426,10 +2465,10 @@ Future<Result> Methods::replicateOperations(
             vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
 
             LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
-                << "synchronous replication of " << opName << " operation: "
-                << "follower " << follower << " for shard "
-                << collection->vocbase().name() << "/" << collection->name()
-                << " refused the operation: " << r.errorMessage();
+              << "synchronous replication of " << opName << " operation: "
+              << "follower " << follower << " for shard "
+              << collection->vocbase().name() << "/" << collection->name()
+              << " refused the operation: " << r.errorMessage();
           }
         }
       }
@@ -2439,27 +2478,51 @@ Future<Result> Methods::replicateOperations(
       }
 
       if (!replicationWorked) {
-        LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
+        if (!vocbase().server().isStopping()) {
+          LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
             << "synchronous replication of " << opName << " operation: "
             << ": dropping follower " << follower << " for shard "
             << collection->vocbase().name() << "/" << collection->name()
             << ": " << resp.combinedResult().errorMessage();
 
-        Result res = collection->followers()->remove(follower);
-        if (res.ok()) {
-          // simon: follower cannot be re-added without lock on collection
-          _state->removeKnownServer(follower);
-        } else {
-          LOG_TOPIC("db473", ERR, Logger::REPLICATION)
+          Result res = collection->followers()->remove(follower);
+          if (res.ok()) {
+            // simon: follower cannot be re-added without lock on collection
+            _state->removeKnownServer(follower);
+          } else {
+            LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication of " << opName << " operation: "
               << "could not drop follower " << follower << " for shard "
               << collection->vocbase().name() << "/" << collection->name()
               << ": " << res.errorMessage();
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+            // Note: it is safe here to exit the loop early. We are losing the leadership here.
+            // No matter what happens next, the Current entry in the agency is rewritten and
+            // thus replication is restarted from the new leader. There is no need to keep
+            // trying to drop followers at this point.
+            if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+              // In this case, we know that we are not or no longer
+              // the leader for this shard. Therefore we need to
+              // send a code which let's the coordinator retry.
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+            } else {
+              // In this case, some other error occurred and we
+              // most likely are still the proper leader, so
+              // the error needs to be reported and the local
+              // transaction must be rolled back.
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+            }
+          }
+        } else {
+          LOG_TOPIC("8921e", INFO, Logger::REPLICATION)
+            << "synchronous replication of " << opName << " operation: "
+            << "follower " << follower << " for shard "
+            << collection->vocbase().name() << "/" << collection->name()
+            << " stopped as we're shutting down";
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
         }
       }
     }
-
+    
     if (didRefuse) {  // case (1), caller may abort this transaction
       return Result(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
     }

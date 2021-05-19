@@ -67,12 +67,11 @@ namespace arangodb {
 
 ExportFeature::ExportFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Export"),
-      _collections(),
-      _graphName(),
       _xgmmlLabelAttribute("label"),
       _typeExport("json"),
+      _queryMaxRuntime(0.0),
+      _useMaxRuntime(false),
       _xgmmlLabelOnly(false),
-      _outputDirectory(),
       _overwrite(false),
       _progress(true),
       _useGzip(false),
@@ -98,6 +97,10 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new VectorParameter<StringParameter>(&_collections));
 
   options->addOption("--query", "AQL query to run", new StringParameter(&_query));
+  
+  options->addOption("--query-max-runtime", "runtime threshold for AQL queries (in seconds, 0 = no limit)", 
+                     new DoubleParameter(&_queryMaxRuntime))
+                     .setIntroducedIn(30800);
 
   options->addOption("--graph-name", "name of a graph to export",
                      new StringParameter(&_graphName));
@@ -192,6 +195,9 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
     _csvFields = StringUtils::split(_csvFieldOptions, ',');
   }
+  
+  // we will use _maxRuntime only if the option was set by the user
+  _useMaxRuntime = options->processingResult().touched("--query-max-runtime");
 }
 
 void ExportFeature::prepare() {
@@ -379,6 +385,9 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   post.add("ttl", VPackValue(::ttlValue));
   post.add("batchSize", VPackValue(_documentsPerBatch));
   post.add("options", VPackValue(VPackValueType::Object));
+  if (_useMaxRuntime) {
+    post.add("maxRuntime", VPackValue(_queryMaxRuntime));
+  }
   post.add("stream", VPackSlice::trueSlice());
   post.close();
   post.close();

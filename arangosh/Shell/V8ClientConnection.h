@@ -177,7 +177,7 @@ class V8ClientConnection {
   std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
   bool _forceJson;
-  bool _setCustomError;
+  std::atomic<bool> _setCustomError;
 
   // a per-endpoint, per-user cache for connections. whenever we reconnect
   // to another endpoint, we can put the old connection into this cache,

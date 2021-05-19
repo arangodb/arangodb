@@ -82,8 +82,9 @@ class V8Context final : public Context {
                                                                   bool embeddable);
 
  private:
-  TRI_v8_global_t* _v8g;
- 
+  static TRI_v8_global_t* getV8State() noexcept;
+
+ private:
   /// @brief the currently ongoing transaction
   std::shared_ptr<TransactionState> _currentTransaction;
 

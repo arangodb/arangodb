@@ -94,6 +94,10 @@ class RocksDBTransactionState final : public TransactionState {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }
 
+  uint64_t numOperations() const {
+    return _numInserts + _numUpdates + _numRemoves;
+  }
+
   bool hasFailedOperations() const override {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
@@ -204,8 +208,6 @@ class RocksDBTransactionState final : public TransactionState {
   cache::Transaction* _cacheTx;
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
-
-  bool _blockers = false;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL

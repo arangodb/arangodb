@@ -3,6 +3,166 @@ v3.8.0 (XXXX-XX-XX)
 
 * Fixes SEARCH-7: inconsistent BM25 scoring for LEVENSHTEIN_MATCH function.
 
+* Rename two metrics with previously Prometheus-incompatible names:
+  - `arangodb_aql_global_query_memory_limit_reached` was renamed to
+    `arangodb_aql_global_query_memory_limit_reached_total`
+  - `arangodb_aql_local_query_memory_limit_reached` was renamed to
+    `arangodb_aql_local_query_memory_limit_reached_total`
+
+  These metrics were introduced in 3.8 so there is no migration for these
+  metrics.
+
+* Return error 1948 when a negative edge was detected during a weighted
+  traversal or was used as default weight.
+
+* Fixes BTS-417. In some cases an index did not consider both bounds (lower and
+  upper) for a close range scan if both bounds are expressed using the same
+  operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
+
+* Fix various issues related to the new WINDOW operation (see BTS-402)
+  - Improved explain output for ISO 8601 duration strings and fixed missing week
+    component.
+  - Improved validation of input data and error messages.
+  - Prevent FILTERs from being moved beyond a WINDOW.
+
+* Fixes BTS-416. During shutdown, a Shard leader wrongly reported that it could
+  not drop a shard follower instead of correctly indicating the shutdown as the
+  reason.
+
+* Fixes pregel lifetime management. Previously shutting down the server while a
+  pregel job was still running could result in a segfault or a shutdown hanger.
+
+* Improve error reporting for Merkle tree operations and improve memory usage
+  for unused trees by hibernating them. In addition, add some backoff to shard
+  synchronization in case there are repeated sync failures for the same shard.
+
+* Fixed BTS-403: Hot restores must also clear relevant `Current` keys. The
+  overriding of the `Plan` entries needs to be reflected in `Current` to avoid
+  conflicts in maintenance jobs.
+
+* Log a proper message if an unexpected state is encountered when taking over
+  shard leadership. In addition, make the change to the internal followerinfo
+  state atomic so that it cannot be semi-changed.
+
+* Fixed two bugs in fuerte with HTTP/2 and VST connections.
+  One could lead to ordered timeouts not being honoured. The other could lead to
+  an ordered callback be called multiple times.
+
+* Improve "Shards" view in web UI so that the shards of individual collections
+  can be expanded and collapsed without affecting the display of any other
+  shards. Also added a "Toggle all" button the web UI to expand/collapse the
+  shards for all collections.
+
+* Improve exception safety for maintenance thread and shard unlock operations.
+
+* Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied, it
+  may rename some variables in the query. The variable renaming was however not
+  carried out for traversal PRUNE conditions, so the PRUNE conditions could
+  still refer to obsolete variables, which would make the query fail with errors
+  such as
+
+    Query: AQL: missing variable ... for node ... while planning registers
+
+* Improve performance of batch CRUD operations (insert, update, replace, remove)
+  if some of the documents in the batch run into write-write conflicts.
+  Rolling back partial operations in case of a failure is very expensive because
+  it requires rebuilding RocksDB write batches for the transaction from scratch.
+  Rebuilding write batches takes time proportional to the number of operations
+  in the batch, and for larger batches the cost can be prohibitive. 
+  Now we are not rolling back write batches in some situations when this is not
+  required, so that in many cases running into a conflict does not have that
+  high overhead. There can still be issues when conflicts happen for index
+  entries, but a lot of previously problematic cases should now work better.
+
+  This change also reduces the RocksDB-internal lock timeout for writing to keys
+  locked by another transaction from 1s to 1ms. This will mean that operations
+  that ran into a write-write conflict may fail quicker than before, and not
+  wait and retry to acquire the locked key(s).
+
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own rebootId
+  increment has triggered plan entry to be removed.
+
+* Fixed issue BTS-354: Assertion related to getCollection.
+
+* Fix DEVSUP-749: Fix potential deadlock when executing concurrent view/link DDL
+  operations and index DDL operations on the same collection.
+
+* When writing to starting shard leader respond with specific 503.
+  Fixes BTS-390.
+
+* Fixed a use after free bug in the connection pool.
+
+* Show peak memory usage in AQL query profiling output.
+
+* Fixed various issues (mainly data races) reported by ThreadSanitizer.
+
+* Fixed bug in error reporting when a database create did not work, which lead
+  to a busy loop reporting this error to the agency.
+
+* Fixed the error response if the HTTP version is not 1.0 or 1.1 and if the
+  Content-Length is too large (> 1 GB).
+
+* Guarded access only to ActionBase::_result.
+
+* Updated arangosync to 2.2.0.
+
+* Fixed proper return value in sendRequestRetry if server is shutting down.
+
+* Fixed internal issue #798: In  rare case when remove request completely cleans
+  just consolidated segment commit could be cancelled and documents removed from
+  collection may be left dangling in the ArangoSearch index.
+  Also fixes ES-810 and BTS-279.
+
+* Fixed a small problem in fuerte which could lead to an assertion failure.
+
+* Retry if an ex-leader can no longer drop a follower because it is no longer
+  leading.
+
+* Fixed issue BTS-373: ASan detected possible heap-buffer-overflow at
+  arangodb::transaction::V8Context::exitV8Context().
+
+* Fix a potential buffer overflow in RestReplicationHandler.
+
+* Make the time-to-live (TTL) value of a streaming cursor only count after the
+  response has been sent to the client.
+
+* Added option `--query-max-runtime` to arangoexport, in order to control
+  maximum query runtime.
+
+* Fix BTS-340: AQL expressions similar to `x < 3 || x` are no longer erroneously
+  be reduced to `x < 3` by the optimizer rule remove-redundant-or.
+
+* Change arangosh client behavior:
+  - *_RAW methods will never add a `body` to HEAD responses
+  - *_RAW methods will now always return velocypack-typed responses in Buffers
+  - `--server.force-json` will now be applied as default, overrideable
+    by user code
+
+
+v3.8.0-beta.1 (2021-04-20)
+--------------------------
+
+* Fix BTS-374: thread race between ArangoSearch link unloading and storage
+  engine WAL flushing.
+
+* Improve parallelism capabilities of arangorestore.
+
+  arangorestore can now dispatch restoring data chunks of a collection to idle
+  background threads, so that multiple restore requests can be in flight for the
+  same collection concurrently.
+
+  This can improve restore speed in situations when there are idle threads left
+  (number of threads can be configured via arangorestore's `--threads` option)
+  and the dump file for the collection is large.
+
+  The improved parallelism is only used when restoring dumps that are in the
+  non-enveloped format. This format has been introduced with ArangoDB 3.8.
+  The reason is that dumps in the non-enveloped format only contain the raw
+  documents, which can be restored independent of each other, i.e. in any order.
+  However, the enveloped format may contain documents and remove operations,
+  which need to be restored in the original order.
+
 * Fix crashes during arangorestore operations due to usage of wrong pointer
   value for updating user permissions.
 

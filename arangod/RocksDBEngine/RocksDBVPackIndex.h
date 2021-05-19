@@ -122,7 +122,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& options) override;
+                OperationOptions const& options, 
+                bool performChecks) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
@@ -132,7 +133,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 LocalDocumentId const& oldDocumentId,
                 velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
                 velocypack::Slice newDoc,
-                OperationOptions const& options) override;
+                OperationOptions const& options,
+                bool performChecks) override;
 
  private:
   /// @brief returns whether the document can be inserted into the index

@@ -28,12 +28,10 @@
 #include "ActionBase.h"
 #include "ActionDescription.h"
 
-#include <chrono>
-
 namespace arangodb {
 namespace maintenance {
 
-class ResignShardLeadership : public ActionBase {
+class ResignShardLeadership : public ActionBase, public ShardDefinition {
  public:
   ResignShardLeadership(MaintenanceFeature&, ActionDescription const& d);
 
