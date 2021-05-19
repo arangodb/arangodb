@@ -4,9 +4,23 @@ v3.8.0 (XXXX-XX-XX)
 * Return error 1948 when a negative edge was detected during a weighted
   traversal or was used as default weight.
 
+* Fixes BTS-417. In some cases an index did not consider both bounds (lower and
+  upper) for a close range scan if both bounds are expressed using the same
+  operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
+
+* Fix various issues related to the new WINDOW operation (see BTS-402)
+  - Improved explain output for ISO 8601 duration strings and fixed missing week
+    component.
+  - Improved validation of input data and error messages.
+  - Prevent FILTERs from being moved beyond a WINDOW.
+
+* Fixes BTS-416. During shutdown, a Shard leader wrongly reported that it could
+  not drop a shard follower instead of correctly indicating the shutdown as the
+  reason.
+
 * Fixes pregel lifetime management. Previously shutting down the server while a
   pregel job was still running could result in a segfault or a shutdown hanger.
-  
+
 * Improve error reporting for Merkle tree operations and improve memory usage
   for unused trees by hibernating them. In addition, add some backoff to shard
   synchronization in case there are repeated sync failures for the same shard.
