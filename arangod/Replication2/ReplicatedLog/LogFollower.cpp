@@ -56,117 +56,116 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
-    -> arangodb::futures::Future<AppendEntriesResult> {
-  auto [result, toBeResolved] = _guardedFollowerData.doUnderLock(
-      [&](GuardedFollowerData& self) -> std::pair<AppendEntriesResult, WaitForQueue> {
-        if (self._logCore == nullptr) {
-          LOG_CTX("d290d", DEBUG, _logContext)
-              << "reject append entries - log core gone";
-          return std::make_pair(AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::LOST_LOG_CORE,
-                                                    req.messageId),
-                                WaitForQueue{});
-        }
+-> arangodb::futures::Future<AppendEntriesResult> {
+  auto self = _guardedFollowerData.getLockedGuard();
 
-        if (self._lastRecvMessageId >= req.messageId) {
-          LOG_CTX("d291d", DEBUG, _logContext)
-              << "reject append entries - message id out dated: " << req.messageId;
-          return std::make_pair(AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::MESSAGE_OUTDATED,
-                                                    req.messageId),
-                                WaitForQueue{});
-        }
-        self._lastRecvMessageId = req.messageId;
+  if (self->_logCore == nullptr) {
+    LOG_CTX("d290d", DEBUG, _logContext)
+        << "reject append entries - log core gone";
+    return AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                               AppendEntriesErrorReason::LOST_LOG_CORE, req.messageId);
+  }
 
-        if (req.leaderId != _leaderId) {
-          LOG_CTX("a2009", DEBUG, _logContext)
-              << "reject append entries - wrong leader, given = " << req.leaderId
-              << " current = " << _leaderId;
-          return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::INVALID_LEADER_ID,
-                                                    req.messageId},
-                                WaitForQueue{});
-        }
+  if (self->_lastRecvMessageId >= req.messageId) {
+    LOG_CTX("d291d", DEBUG, _logContext)
+        << "reject append entries - message id out dated: " << req.messageId;
+    return AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                               AppendEntriesErrorReason::MESSAGE_OUTDATED, req.messageId);
+  }
+  self->_lastRecvMessageId = req.messageId;
 
-        // TODO does >= suffice here? Maybe we want to do an atomic operation
-        //      before increasing our term
-        if (req.leaderTerm != _currentTerm) {
-          LOG_CTX("dd7a3", DEBUG, _logContext)
-              << "reject append entries - wrong term, given = " << req.leaderTerm
-              << ", current = " << _currentTerm;
-          return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                    AppendEntriesErrorReason::WRONG_TERM, req.messageId},
-                                WaitForQueue{});
-        }
-        // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
+  if (req.leaderId != _leaderId) {
+    LOG_CTX("a2009", DEBUG, _logContext)
+        << "reject append entries - wrong leader, given = " << req.leaderId
+        << " current = " << _leaderId;
+    return AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                               AppendEntriesErrorReason::INVALID_LEADER_ID, req.messageId};
+  }
 
-        if (req.prevLogIndex > LogIndex{0}) {
-          auto entry = self._inMemoryLog.getEntryByIndex(req.prevLogIndex);
-          if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
+  // TODO does >= suffice here? Maybe we want to do an atomic operation
+  //      before increasing our term
+  if (req.leaderTerm != _currentTerm) {
+    LOG_CTX("dd7a3", DEBUG, _logContext)
+        << "reject append entries - wrong term, given = " << req.leaderTerm
+        << ", current = " << _currentTerm;
+    return AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                               AppendEntriesErrorReason::WRONG_TERM, req.messageId};
+  }
+  // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
 
-            // TODO If desired, the protocol can be optimized to reduce the number
-            //      of rejected AppendEntries RPCs. For example, when rejecting
-            //      an AppendEntries request, the follower can include the term
-            //      of the conflicting entry and the first index it stores for
-            //      that term. With this information, the leader can decrement
-            //      nextIndex to bypass all of the conflicting entries in that
-            //      term; one AppendEntries RPC will be required for each term
-            //      with conflicting entries, rather than one RPC per entry.
-            // from raft-pdf page 7-8
-            LOG_CTX("1e86a", TRACE, _logContext) << "reject append entries - prev log index/term not matching";
-            return std::make_pair(AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                                      AppendEntriesErrorReason::NO_PREV_LOG_MATCH, req.messageId},
-                                  WaitForQueue{});
-          }
-        }
+  if (req.prevLogIndex > LogIndex{0}) {
+    auto entry = self->_inMemoryLog.getEntryByIndex(req.prevLogIndex);
+    if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
+      // TODO If desired, the protocol can be optimized to reduce the number
+      //      of rejected AppendEntries RPCs. For example, when rejecting
+      //      an AppendEntries request, the follower can include the term
+      //      of the conflicting entry and the first index it stores for
+      //      that term. With this information, the leader can decrement
+      //      nextIndex to bypass all of the conflicting entries in that
+      //      term; one AppendEntries RPC will be required for each term
+      //      with conflicting entries, rather than one RPC per entry.
+      // from raft-pdf page 7-8
+      LOG_CTX("1e86a", TRACE, _logContext)
+          << "reject append entries - prev log index/term not matching";
+      return AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                                 AppendEntriesErrorReason::NO_PREV_LOG_MATCH, req.messageId};
+    }
+  }
 
-        auto res = self._logCore->removeBack(req.prevLogIndex + 1);
+  auto res = self->_logCore->removeBack(req.prevLogIndex + 1);
+  if (!res.ok()) {
+    LOG_CTX("f17b8", ERR, _logContext)
+        << "failed to remove log entries after " << req.prevLogIndex;
+    abort();  // TODO abort?
+  }
+
+  auto iter = std::make_unique<ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>>(
+      req.entries.begin(), req.entries.end());
+  auto core = self->_logCore.get();
+  return core->insertAsync(std::move(iter), req.waitForSync)
+      .thenValue([self = std::move(self), req = std::move(req)](Result res) mutable {
         if (!res.ok()) {
-          LOG_CTX("f17b8", ERR, _logContext) << "failed to remove log entries after " << req.prevLogIndex;
+          LOG_CTX("216d8", ERR, self->_self._logContext) << "failed to insert log entries";
           abort();  // TODO abort?
         }
 
-        auto iter =
-            ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>(
-                req.entries.begin(), req.entries.end());
-        // TODO can we make this async?
-        res = self._logCore->insert(iter, req.waitForSync);
-        if (!res.ok()) {
-          LOG_CTX("216d8", ERR, _logContext) << "failed to insert log entries";
-          abort();  // TODO abort?
-        }
-
-        auto transientLog = self._inMemoryLog._log.transient();
+        auto transientLog = self->_inMemoryLog._log.transient();
         transientLog.take(req.prevLogIndex.value);
         transientLog.append(req.entries.transient());
-        self._inMemoryLog._log = std::move(transientLog).persistent();
+        self->_inMemoryLog._log = std::move(transientLog).persistent();
 
-        LOG_CTX("dd72d", TRACE, _logContext) << "appended " << req.entries.size() << " log entries after "
+        LOG_CTX("dd72d", TRACE, self->_self._logContext)
+            << "appended " << req.entries.size() << " log entries after "
             << req.prevLogIndex << ", leader commit index = " << req.leaderCommit;
 
         WaitForQueue toBeResolved;
-        if (self._commitIndex < req.leaderCommit && !self._inMemoryLog._log.empty()) {
-          self._commitIndex =
-              std::min(req.leaderCommit, self._inMemoryLog._log.back().logIndex());
-          LOG_CTX("1641d", TRACE, _logContext) << "increment commit index: " << self._commitIndex;
+        if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog._log.empty()) {
+          self->_commitIndex =
+              std::min(req.leaderCommit, self->_inMemoryLog._log.back().logIndex());
+          LOG_CTX("1641d", TRACE, self->_self._logContext)
+              << "increment commit index: " << self->_commitIndex;
 
-          auto const end = self._waitForQueue.upper_bound(self._commitIndex);
-          for (auto it = self._waitForQueue.begin(); it != end;) {
-            LOG_CTX("d32f1", TRACE, _logContext) << "resolve promise for index " << it->first;
-            toBeResolved.insert(self._waitForQueue.extract(it++));
+          auto const end = self->_waitForQueue.upper_bound(self->_commitIndex);
+          for (auto it = self->_waitForQueue.begin(); it != end;) {
+            LOG_CTX("d32f1", TRACE, self->_self._logContext)
+                << "resolve promise for index " << it->first;
+            toBeResolved.insert(self->_waitForQueue.extract(it++));
           }
         }
 
-        return std::make_pair(AppendEntriesResult{_currentTerm, req.messageId}, std::move(toBeResolved));
+        return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
+                              std::move(toBeResolved));
+      })
+      .thenValue([](auto&& res) {
+        auto&& [result, toBeResolved] = res;
+        for (auto& promise : toBeResolved) {
+          // TODO what do we resolve this with? QuorumData is not available on follower
+          // TODO execute this in a different context.
+          promise.second.setValue(std::shared_ptr<QuorumData>{});
+        }
+
+        return std::move(result);
       });
-
-  for (auto& promise : toBeResolved) {
-    // TODO what do we resolve this with? QuorumData is not available on follower
-    // TODO execute this in a different context.
-    promise.second.setValue(std::shared_ptr<QuorumData>{});
-  }
-
-  return std::move(result);
 }
 
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(

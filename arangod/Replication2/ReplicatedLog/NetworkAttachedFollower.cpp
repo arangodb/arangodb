@@ -55,19 +55,13 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
 
   network::RequestOptions opts;
   opts.database = database;
-  LOG_DEVEL << "sending append entries to " << id << " with payload "
-            << VPackSlice(buffer.data()).toJson();
   auto f = network::sendRequest(pool, "server:" + id, arangodb::fuerte::RestVerb::Post,
                                 path, std::move(buffer), opts);
 
-  return std::move(f).thenValue([this](network::Response result) -> AppendEntriesResult {
-    LOG_DEVEL << "Append entries for " << id
-              << " returned, fuerte ok = " << result.ok();
+  return std::move(f).thenValue([](network::Response result) -> AppendEntriesResult {
     if (result.fail()) {
-      // TODO use better exception calss
-      throw std::runtime_error("network error");
+      THROW_ARANGO_EXCEPTION(result.combinedResult());
     }
-    LOG_DEVEL << "Result for " << id << " is " << result.slice().toJson();
     TRI_ASSERT(result.slice().get("error").isFalse());  // TODO
     return AppendEntriesResult::fromVelocyPack(result.slice().get("result"));
   });

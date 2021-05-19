@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <stdexcept>
@@ -84,42 +85,35 @@ class MutexGuard {
   explicit MutexGuard(T& value, L mutexLock);
   ~MutexGuard() = default;
 
-  auto get() noexcept -> T&;
-  auto get() const noexcept -> T const&;
+  MutexGuard(MutexGuard&&) noexcept = default;
+  MutexGuard& operator=(MutexGuard&&) noexcept = default;
 
-  auto operator->() noexcept -> T*;
-  auto operator->() const noexcept -> T const*;
+  auto get() const noexcept -> T&;
+  auto operator->() const noexcept -> T*;
 
  private:
-  T& _value;
+  struct nop {
+    void operator()(T*) {}
+  };
+  std::unique_ptr<T, nop> _value;
   L _mutexLock;
 };
 
 template <class T, class L>
 MutexGuard<T, L>::MutexGuard(T& value, L mutexLock)
-    : _value(value), _mutexLock(std::move(mutexLock)) {
+    : _value(&value), _mutexLock(std::move(mutexLock)) {
   if (ADB_UNLIKELY(!_mutexLock.owns_lock())) {
     throw std::invalid_argument("Lock not owned");
   }
 }
 
 template <class T, class L>
-auto MutexGuard<T, L>::get() noexcept -> T& {
-  return _value;
+auto MutexGuard<T, L>::get() const noexcept -> T& {
+  return *_value;
 }
 
 template <class T, class L>
-auto MutexGuard<T, L>::get() const noexcept -> T const& {
-  return _value;
-}
-
-template <class T, class L>
-auto MutexGuard<T, L>::operator->() noexcept -> T* {
-  return std::addressof(get());
-}
-
-template <class T, class L>
-auto MutexGuard<T, L>::operator->() const noexcept -> T const* {
+auto MutexGuard<T, L>::operator->() const noexcept -> T* {
   return std::addressof(get());
 }
 
