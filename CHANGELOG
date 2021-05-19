@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Return error 1948 when a negative edge was detected during a weighted
+  traversal or was used as default weight.
+
 * Fixes BTS-417. In some cases an index did not consider both bounds (lower and
   upper) for a close range scan if both bounds are expressed using the same
   operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
