@@ -10,6 +10,15 @@ v3.8.0 (XXXX-XX-XX)
   `--http.redirect-root-to`: redirect of root URL to a specified path (redirects
   to "/_admin/aardvark/index.html" if not set (default)).
 
+* Rename two metrics with previously Prometheus-incompatible names:
+  - `arangodb_aql_global_query_memory_limit_reached` was renamed to
+    `arangodb_aql_global_query_memory_limit_reached_total`
+  - `arangodb_aql_local_query_memory_limit_reached` was renamed to
+    `arangodb_aql_local_query_memory_limit_reached_total`
+
+  These metrics were introduced in 3.8 so there is no migration for these
+  metrics.
+
 * Return error 1948 when a negative edge was detected during a weighted
   traversal or was used as default weight.
 
