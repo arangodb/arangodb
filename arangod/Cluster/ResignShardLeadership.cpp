@@ -107,8 +107,11 @@ bool ResignShardLeadership::first() {
     }
 
     // Get write transaction on collection
-    auto ctx = std::make_shared<transaction::StandaloneContext>(*vocbase);
-    SingleCollectionTransaction trx{ctx, *col, AccessMode::Type::EXCLUSIVE};
+    transaction::StandaloneContext ctx(*vocbase);
+    SingleCollectionTransaction trx{
+      std::shared_ptr<transaction::Context>(
+        std::shared_ptr<transaction::Context>(), &ctx),
+      *col, AccessMode::Type::EXCLUSIVE};
 
     Result res = trx.begin();
 
