@@ -88,7 +88,7 @@ void RestActionHandler::executeAction() {
       GeneralServerFeature* gs = GeneralServerFeature::GENERAL_SERVER;
 
       if (gs == nullptr) {
-	_response->setResponseCode(rest::ResponseCode::FOUND);
+        _response->setResponseCode(rest::ResponseCode::FOUND);
         _response->setHeaderNC(StaticStrings::Location,
                                "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
                                "/_admin/aardvark/index.html");
