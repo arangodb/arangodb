@@ -218,8 +218,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 #endif
 
  private:
-  struct Context {
-    Context(ExecutionBlockImpl& block, AqlCallStack const& callstack);
+  struct ExecutionContext {
+    ExecutionContext(ExecutionBlockImpl& block, AqlCallStack const& callstack);
     AqlCallStack stack;
     AqlCallList clientCallList;
     AqlCall clientCall;
@@ -231,7 +231,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack);
 
   std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
-      Context& ctx, AqlCallType const& aqlCall);
+      ExecutionContext& ctx, AqlCallType const& aqlCall);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);

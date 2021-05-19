@@ -663,7 +663,7 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executeFetcher(Context& ctx,
+auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                                   AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
   // TODO The logic in the MultiDependencySingleRowFetcher branch should be
@@ -1203,7 +1203,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack) {
   // We can only work on a Stack that has valid calls for all levels.  
   TRI_ASSERT(callStack.hasAllValidCalls());
-  Context ctx(*this, callStack);
+  ExecutionContext ctx(*this, callStack);
 
   ExecutorState localExecutorState = ExecutorState::DONE;
 
@@ -1854,7 +1854,8 @@ auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range, SkipRes
 #endif
 
 template <class Executor>
-ExecutionBlockImpl<Executor>::Context::Context(ExecutionBlockImpl& block, AqlCallStack const& callstack)
+ExecutionBlockImpl<Executor>::ExecutionContext::ExecutionContext(
+    ExecutionBlockImpl& block, AqlCallStack const& callstack)
     : stack(callstack), clientCallList(this->stack.popCall()) {
   if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     // In subqeryEndExecutor we actually manage two calls.
