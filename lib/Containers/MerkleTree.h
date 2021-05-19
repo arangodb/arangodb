@@ -57,7 +57,7 @@ class MerkleTree {
   // A MerkleTree has three parameters which define its semantics:
   //  - rangeMin: lower bound (inclusive) for _rev values it can take
   //  - rangeMax: upper bound (exclusive) for _rev values it can take
-  //  - maxDepth: depth of the tree (root plus so many levels below)
+  //  - depth: depth of the tree (root plus so many levels below)
   // We call rangeMin-rangeMax the "width" of the tree.
   //
   // We do no longer grow trees in depth, since this would mean a complete
@@ -75,8 +75,8 @@ class MerkleTree {
   // Unfortunately, we can only compare two different MerkleTrees, if
   // the difference of their rangeMin values is a multiple of the number
   // of _rev values in a leaf node, which is 
-  //   (rangeMax-rangeMin)/(BranchingFactor^maxDepth),
-  // since BranchingFactor^maxDepth is the number of leaves. Therefore
+  //   (rangeMax-rangeMin)/(BranchingFactor^depth),
+  // since BranchingFactor^depth is the number of leaves. Therefore
   // we must ensure that trees of replicas of shards which we must be
   // able to compare, remain compatible. Therefore, we pick a magic
   // constant M as the initial value of rangeMin, which is the same for
@@ -84,10 +84,10 @@ class MerkleTree {
   // at all times, for all changes to rangeMin and rangeMax we ever do:
   //
   // 1. rangeMax-rangeMin is a power of two and is a multiple of
-  //    the number of leaves in the tree, which is BranchingFactor^maxDepth
+  //    the number of leaves in the tree, which is BranchingFactor^depth
   //    That is, we can only ever grow the width by factors of 2.
   // 2. M - rangeMin is divisible by 
-  //      (rangeMax-rangeMin)/(BranchingFactor^maxDepth)
+  //      (rangeMax-rangeMin)/(BranchingFactor^depth)
   //
   // Condition 1. ensures that each leaf is responsible for the same
   // number of _rev values and that we can always grow rangeMax-rangeMin
@@ -120,25 +120,25 @@ class MerkleTree {
   struct Meta {
     std::uint64_t rangeMin;
     std::uint64_t rangeMax;
-    std::uint64_t maxDepth;
+    std::uint64_t depth;
     std::uint64_t initialRangeMin;
   };
   static_assert(sizeof(Meta) == 32, "Meta size assumptions invalid.");
   static constexpr std::uint64_t MetaSize =
       (CacheLineSize * ((sizeof(Meta) + (CacheLineSize - 1)) / CacheLineSize));
 
-  static constexpr std::uint64_t nodeCountUpToDepth(std::uint64_t maxDepth) noexcept;
+  static constexpr std::uint64_t nodeCountUpToDepth(std::uint64_t depth) noexcept;
   static constexpr std::uint64_t nodeCountAboveDepth(std::uint64_t depth) noexcept;
-  static constexpr std::uint64_t allocationSize(std::uint64_t maxDepth) noexcept;
+  static constexpr std::uint64_t allocationSize(std::uint64_t depth) noexcept;
 
  public:
   /**
    * @brief Calculates the number of nodes at the given depth
    *
-   * @param maxDepth The same depth value used for the calculation
+   * @param depth The same depth value used for the calculation
    */
-  static constexpr std::uint64_t nodeCountAtDepth(std::uint64_t maxDepth) noexcept {
-    return static_cast<std::uint64_t>(1) << (BranchingBits * maxDepth);
+  static constexpr std::uint64_t nodeCountAtDepth(std::uint64_t depth) noexcept {
+    return static_cast<std::uint64_t>(1) << (BranchingBits * depth);
   }
 
   /**
@@ -148,9 +148,9 @@ class MerkleTree {
    * mulitple of this value. The default is chosen so that each leaf bucket
    * initially covers a range of 64 keys.
    *
-   * @param maxDepth The same depth value passed to the constructor
+   * @param depth The same depth value passed to the constructor
    */
-  static std::uint64_t defaultRange(std::uint64_t maxDepth);
+  static std::uint64_t defaultRange(std::uint64_t depth);
 
   /**
    * @brief Construct a tree from a buffer containing a serialized tree
@@ -195,7 +195,7 @@ class MerkleTree {
   /**
    * @brief Construct a Merkle tree of a given depth with a given minimum key
    *
-   * @param maxDepth The depth of the tree. This determines how much memory The
+   * @param depth    The depth of the tree. This determines how much memory The
    *                 tree will consume, and how fine-grained the hash is.
    *                 Constructor will throw if a value less than 2 is specified.
    * @param rangeMin The minimum key that can be stored in the tree.
@@ -211,9 +211,9 @@ class MerkleTree {
    *                 merged as necessary (growRight).
    * @param initialRangeMin The initial value of rangeMin when the tree was
    *                 first created and was still empty.
-   * @throws std::invalid_argument  If maxDepth is less than 2
+   * @throws std::invalid_argument  If depth is less than 2
    */
-  MerkleTree(std::uint64_t maxDepth, std::uint64_t rangeMin, std::uint64_t rangeMax = 0, std::uint64_t initialRangeMin = 0);
+  MerkleTree(std::uint64_t depth, std::uint64_t rangeMin, std::uint64_t rangeMax = 0, std::uint64_t initialRangeMin = 0);
 
   ~MerkleTree();
 
@@ -243,7 +243,7 @@ class MerkleTree {
   /**
    * @brief Returns the maximum depth of the tree
    */
-  std::uint64_t maxDepth() const;
+  std::uint64_t depth() const;
 
   /**
    * @brief Returns the number of bytes allocated for the tree
@@ -328,7 +328,7 @@ class MerkleTree {
    * @param depth     Maximum depth to serialize
    */
   void serialize(velocypack::Builder& output,
-                 std::uint64_t maxDepth = std::numeric_limits<std::uint64_t>::max()) const;
+                 std::uint64_t depth = std::numeric_limits<std::uint64_t>::max()) const;
 
   /**
    * @brief Provides a partition of the keyspace

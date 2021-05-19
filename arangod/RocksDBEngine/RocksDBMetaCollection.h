@@ -118,7 +118,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   virtual RocksDBKeyBounds bounds() const = 0;
   
   /// @brief produce a revision tree from the documents in the collection
-  ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> revisionTreeFromCollection();
+  ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> revisionTreeFromCollection(bool checkForBlockers);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
@@ -177,7 +177,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
     std::unique_ptr<containers::RevisionTree> clone() const;
     std::uint64_t count() const;
     std::uint64_t rootValue() const;
-    std::uint64_t maxDepth() const;
+    std::uint64_t depth() const;
 
     // potentially expensive! only call when necessary
     std::uint64_t compressedSize() const;
@@ -210,8 +210,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
     /// @brief collecion object, used only for context in log messages
     LogicalCollection const& _logicalCollection;
 
-    /// @brief maxDepth of tree. supposed to never change
-    std::uint64_t const _maxDepth;
+    /// @brief depth of tree. supposed to never change
+    std::uint64_t const _depth;
   
     /// @brief number of hibernation requests received (we may ignore the
     /// first few ones)

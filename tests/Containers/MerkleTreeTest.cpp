@@ -180,7 +180,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
 
   // build set of indexes that should be touched
   std::set<std::uint64_t> indices0;
-  for (std::uint64_t depth = 0; depth <= meta().maxDepth; ++depth) {
+  for (std::uint64_t depth = 0; depth <= meta().depth; ++depth) {
     indices0.emplace(this->index(0, depth));
   }
 
@@ -202,7 +202,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
 
   // build set of indexes that should be touched
   std::set<std::uint64_t> indices63;
-  for (std::uint64_t depth = 0; depth <= meta().maxDepth; ++depth) {
+  for (std::uint64_t depth = 0; depth <= meta().depth; ++depth) {
     indices63.emplace(this->index(63, depth));
   }
 
@@ -227,7 +227,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
 
   // build set of indexes that should be touched
   std::set<std::uint64_t> indices1;
-  for (std::uint64_t depth = 0; depth <= meta().maxDepth; ++depth) {
+  for (std::uint64_t depth = 0; depth <= meta().depth; ++depth) {
     indices1.emplace(this->index(1, depth));
   }
 
@@ -712,7 +712,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
 
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
   
-  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(6, tree.depth());
   ASSERT_EQ(0, tree.count());
   ASSERT_EQ(0, tree.rootValue());
   
@@ -724,7 +724,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
     tree.insert(i);
   }
   
-  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(6, tree.depth());
   ASSERT_EQ(10000, tree.count());
   ASSERT_EQ(4298149919775466880ULL, tree.rootValue());
   std::tie(left, right) = tree.range();
@@ -735,7 +735,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
     tree.remove(i);
   }
   
-  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(6, tree.depth());
   ASSERT_EQ(0, tree.count());
   ASSERT_EQ(0, tree.rootValue());
   std::tie(left, right) = tree.range();
@@ -756,7 +756,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
     tree.insert(revisions);
   }
   
-  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(6, tree.depth());
   ASSERT_EQ(10'000'000, tree.count());
   ASSERT_EQ(9116977756596679424ULL, tree.rootValue());
   std::tie(left, right) = tree.range();
@@ -771,7 +771,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
     tree.remove(revisions);
   }
   
-  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(6, tree.depth());
   ASSERT_EQ(0, tree.count());
   ASSERT_EQ(0, tree.rootValue());
   std::tie(left, right) = tree.range();
@@ -785,7 +785,7 @@ TEST(MerkleTreeTest, test_large_steps) {
   
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
   
-  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(6, tree.depth());
   ASSERT_EQ(0, tree.count());
   ASSERT_EQ(0, tree.rootValue());
   
@@ -800,7 +800,7 @@ TEST(MerkleTreeTest, test_large_steps) {
     tree.insert(i);
   }
   
-  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(6, tree.depth());
   EXPECT_EQ(10'000'000, tree.count());
   EXPECT_EQ(7036974261486883938ULL, tree.rootValue());
   std::tie(left, right) = tree.range();
@@ -812,7 +812,7 @@ TEST(MerkleTreeTest, test_large_steps) {
     tree.remove(i);
   }
   
-  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(6, tree.depth());
   ASSERT_EQ(0, tree.count());
   ASSERT_EQ(0, tree.rootValue());
   std::tie(left, right) = tree.range();
@@ -826,7 +826,7 @@ TEST(MerkleTreeTest, test_check_consistency) {
   
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
   
-  ASSERT_EQ(6, tree.maxDepth());
+  ASSERT_EQ(6, tree.depth());
   ASSERT_EQ(0, tree.count());
   ASSERT_EQ(0, tree.rootValue());
   
@@ -877,7 +877,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_simple) {
 
   arangodb::containers::FnvHashProvider hasher;
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(0, count());
   ASSERT_EQ(0, rootValue());
   
@@ -885,7 +885,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_simple) {
   insert(rangeMin + bucketWidth);
   insert(rangeMin + 47 * bucketWidth);
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(3, count());
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
             hasher.hash(rangeMin + 47 * bucketWidth), rootValue());
@@ -896,7 +896,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_simple) {
   // Must not throw:
   checkConsistency();
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(4, count());
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
             hasher.hash(rangeMin + 47 * bucketWidth) ^
@@ -905,14 +905,14 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_simple) {
   ASSERT_EQ(rangeMax, range().second);
 
   // Now check the bottommost buckets:
-  Node& n = node(index(rangeMin, maxDepth()));
+  Node& n = node(index(rangeMin, depth()));
   ASSERT_EQ(2, n.count);
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth),
             n.hash);
-  Node& n2 = node(index(rangeMin - 1, maxDepth()));
+  Node& n2 = node(index(rangeMin - 1, depth()));
   ASSERT_EQ(1, n2.count);
   ASSERT_EQ(hasher.hash(rangeMin - 1), n2.hash);
-  Node& n3 = node(index(rangeMin + 47 * bucketWidth, maxDepth()));
+  Node& n3 = node(index(rangeMin + 47 * bucketWidth, depth()));
   ASSERT_EQ(1, n3.count);
   ASSERT_EQ(hasher.hash(rangeMin + 47 * bucketWidth), n3.hash);
 }
@@ -926,7 +926,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_with_shift) {
 
   arangodb::containers::FnvHashProvider hasher;
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(0, count());
   ASSERT_EQ(0, rootValue());
   
@@ -942,7 +942,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_with_shift) {
     rangeMax = range().second;
   }
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(0, count());
   ASSERT_EQ(0, rootValue());
   ASSERT_EQ(rangeMin - initWidth, range().first);
@@ -956,7 +956,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_with_shift) {
   insert(rangeMin + bucketWidth);
   insert(rangeMin + 47 * bucketWidth);
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(3, count());
   ASSERT_EQ(rangeMin, range().first);
   ASSERT_EQ(rangeMax, range().second);
@@ -969,7 +969,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_with_shift) {
   // Must not throw:
   checkConsistency();
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(4, count());
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
             hasher.hash(rangeMin + 47 * bucketWidth) ^
@@ -978,13 +978,13 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_with_shift) {
   ASSERT_EQ(rangeMax + bucketWidth, range().second);
 
   // Now check the bottommost buckets:
-  Node& n = node(index(rangeMin, maxDepth()));
+  Node& n = node(index(rangeMin, depth()));
   ASSERT_EQ(2, n.count);
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin - 1), n.hash);
-  Node& n2 = node(index(rangeMin + bucketWidth, maxDepth()));
+  Node& n2 = node(index(rangeMin + bucketWidth, depth()));
   ASSERT_EQ(1, n2.count);
   ASSERT_EQ(hasher.hash(rangeMin + bucketWidth), n2.hash);
-  Node& n3 = node(index(rangeMin + 47 * bucketWidth, maxDepth()));
+  Node& n3 = node(index(rangeMin + 47 * bucketWidth, depth()));
   ASSERT_EQ(1, n3.count);
   ASSERT_EQ(hasher.hash(rangeMin + 47 * bucketWidth), n3.hash);
 }
@@ -998,7 +998,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_simple) {
 
   arangodb::containers::FnvHashProvider hasher;
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(0, count());
   ASSERT_EQ(0, rootValue());
   
@@ -1006,7 +1006,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_simple) {
   insert(rangeMin + bucketWidth);
   insert(rangeMin + 47 * bucketWidth);
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(3, count());
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
             hasher.hash(rangeMin + 47 * bucketWidth), rootValue());
@@ -1017,7 +1017,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_simple) {
   // Must not throw:
   checkConsistency();
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(4, count());
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
             hasher.hash(rangeMin + 47 * bucketWidth) ^
@@ -1026,14 +1026,14 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_simple) {
   ASSERT_EQ(rangeMax + initWidth, range().second);
 
   // Now check the bottommost buckets:
-  Node& n = node(index(rangeMin, maxDepth()));
+  Node& n = node(index(rangeMin, depth()));
   ASSERT_EQ(2, n.count);
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth),
             n.hash);
-  Node& n2 = node(index(rangeMax + 42, maxDepth()));
+  Node& n2 = node(index(rangeMax + 42, depth()));
   ASSERT_EQ(1, n2.count);
   ASSERT_EQ(hasher.hash(rangeMax + 42), n2.hash);
-  Node& n3 = node(index(rangeMin + 47 * bucketWidth, maxDepth()));
+  Node& n3 = node(index(rangeMin + 47 * bucketWidth, depth()));
   ASSERT_EQ(1, n3.count);
   ASSERT_EQ(hasher.hash(rangeMin + 47 * bucketWidth), n3.hash);
 }
@@ -1047,7 +1047,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_with_shift) {
 
   arangodb::containers::FnvHashProvider hasher;
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(0, count());
   ASSERT_EQ(0, rootValue());
   
@@ -1063,7 +1063,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_with_shift) {
     rangeMax = range().second;
   }
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(0, count());
   ASSERT_EQ(0, rootValue());
   ASSERT_EQ(rangeMin - initWidth, range().first);
@@ -1077,7 +1077,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_with_shift) {
   insert(rangeMin + bucketWidth);
   insert(rangeMin + 47 * bucketWidth);
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(3, count());
   ASSERT_EQ(rangeMin, range().first);
   ASSERT_EQ(rangeMax, range().second);
@@ -1090,7 +1090,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_with_shift) {
   // Must not throw:
   checkConsistency();
 
-  ASSERT_EQ(6, maxDepth());
+  ASSERT_EQ(6, depth());
   ASSERT_EQ(4, count());
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth) ^
             hasher.hash(rangeMin + 47 * bucketWidth) ^
@@ -1099,16 +1099,16 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_with_shift) {
   ASSERT_EQ(rangeMax + (rangeMax - rangeMin) - bucketWidth, range().second);
 
   // Now check the bottommost buckets:
-  Node& n = node(index(rangeMin, maxDepth()));
+  Node& n = node(index(rangeMin, depth()));
   ASSERT_EQ(1, n.count);
   ASSERT_EQ(hasher.hash(rangeMin), n.hash);
-  Node& n2 = node(index(rangeMin + bucketWidth, maxDepth()));
+  Node& n2 = node(index(rangeMin + bucketWidth, depth()));
   ASSERT_EQ(1, n2.count);
   ASSERT_EQ(hasher.hash(rangeMin + bucketWidth), n2.hash);
-  Node& n3 = node(index(rangeMin + 47 * bucketWidth, maxDepth()));
+  Node& n3 = node(index(rangeMin + 47 * bucketWidth, depth()));
   ASSERT_EQ(1, n3.count);
   ASSERT_EQ(hasher.hash(rangeMin + 47 * bucketWidth), n3.hash);
-  Node& n4 = node(index(rangeMax, maxDepth()));
+  Node& n4 = node(index(rangeMax, depth()));
   ASSERT_EQ(1, n4.count);
   ASSERT_EQ(hasher.hash(rangeMax), n4.hash);
 }

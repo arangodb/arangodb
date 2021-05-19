@@ -337,7 +337,7 @@ void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::Revision
   TRI_ASSERT(_logicalCollection.useSyncByRevision());
   TRI_ASSERT(_logicalCollection.syncByRevision());
   TRI_ASSERT(tree != nullptr);
-  TRI_ASSERT(tree->maxDepth() == revisionTreeDepth);
+  TRI_ASSERT(tree->depth() == revisionTreeDepth);
   
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(tree), _logicalCollection);
@@ -368,7 +368,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
  
   applyUpdates(safeSeq);
   TRI_ASSERT(_revisionTree != nullptr);
-  TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
+  TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
   
   // now clone the tree so we can apply all updates consistent with our ongoing trx
   auto tree = _revisionTree->clone();
@@ -502,7 +502,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
  
     // applyUpdates will make sure we will have a valid tree
     TRI_ASSERT(_revisionTree != nullptr);
-    TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
+    TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
 
     bool neverDone = _revisionTreeSerializedSeq == _revisionTreeCreationSeq;
     bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
@@ -529,7 +529,8 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   return commitSeq;
 }
 
-ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> RocksDBMetaCollection::revisionTreeFromCollection() {
+ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> 
+RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
   SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
 
@@ -543,6 +544,11 @@ ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNu
   }
 
   auto* state = RocksDBTransactionState::toState(&trx);
+
+  if (checkForBlockers &&
+      _meta.hasBlockerUpTo(state->beginSeq())) {
+    return Result(TRI_ERROR_LOCKED, "cannot rebuild revision tree now as there are still transaction blockers in place");
+  }
 
   auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
   if (!iter) {
@@ -604,7 +610,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
       
-    auto result = revisionTreeFromCollection();
+    auto result = revisionTreeFromCollection(true);
     if (result.fail()) {
       return result.result(); 
     }
@@ -716,7 +722,7 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder, bool from
 
   if (fromCollection) {
     // rebuild a temporary tree from the collection
-    auto result = revisionTreeFromCollection();
+    auto result = revisionTreeFromCollection(false);
 
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result.result());
@@ -878,7 +884,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
   // make sure we will have a _revisionTree ready after this
   ensureRevisionTree();
   TRI_ASSERT(_revisionTree != nullptr);
-  TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
+  TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
   
   Result res = basics::catchVoidToResult([&]() -> void {
     // bump sequence number upwards
@@ -1245,7 +1251,7 @@ void RocksDBMetaCollection::ensureRevisionTree() {
     auto& engine = selector.engine<RocksDBEngine>();
 
     auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
-    TRI_ASSERT(newTree->maxDepth() == revisionTreeDepth);
+    TRI_ASSERT(newTree->depth() == revisionTreeDepth);
 
     _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
     _revisionTreeCreationSeq = engine.db()->GetLatestSequenceNumber();
@@ -1253,7 +1259,7 @@ void RocksDBMetaCollection::ensureRevisionTree() {
   }
 
   TRI_ASSERT(_revisionTree != nullptr);
-  TRI_ASSERT(_revisionTree->maxDepth() == revisionTreeDepth);
+  TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
 }
 
 /// @brief construct from revision tree
@@ -1261,10 +1267,10 @@ RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(std::unique_pt
                                                                   LogicalCollection const& collection) 
     : _tree(std::move(tree)),
       _logicalCollection(collection),
-      _maxDepth(_tree->maxDepth()),
+      _depth(_tree->depth()),
       _hibernationRequests(0),
       _compressible(true) {
-  TRI_ASSERT(_maxDepth == revisionTreeDepth);
+  TRI_ASSERT(_depth == revisionTreeDepth);
 }
 
 void RocksDBMetaCollection::RevisionTreeAccessor::insert(std::vector<std::uint64_t> const& keys) {
@@ -1308,8 +1314,8 @@ std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::rootValue() const {
   return _tree->rootValue();
 }
 
-std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::maxDepth() const {
-  return _maxDepth;
+std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::depth() const {
+  return _depth;
 }
 
 void RocksDBMetaCollection::RevisionTreeAccessor::checkConsistency() const {
@@ -1411,7 +1417,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
     // reset hibernation counter
     _hibernationRequests = 0;
 
-    TRI_ASSERT(_tree->maxDepth() == _maxDepth);
+    TRI_ASSERT(_tree->depth() == _depth);
     
     LOG_TOPIC("e9c29", DEBUG, Logger::REPLICATION) 
         << "resurrected revision tree for " 
