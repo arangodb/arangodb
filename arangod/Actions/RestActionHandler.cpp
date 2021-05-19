@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Statistics/RequestStatistics.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -83,11 +84,14 @@ void RestActionHandler::executeAction() {
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
     if (suffixes.empty() ||
         (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
-      // redirect to just /
-      _response->setResponseCode(rest::ResponseCode::MOVED_PERMANENTLY);
+      // request to just /
+      auto& gs = server().getFeature<GeneralServerFeature>();
+      _response->setResponseCode(gs.permanentRootRedirect()
+				 ? rest::ResponseCode::MOVED_PERMANENTLY
+				 : rest::ResponseCode::FOUND);
       _response->setHeaderNC(StaticStrings::Location,
                              "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
-                                 "/_admin/aardvark/index.html");
+			     gs.redirectRootTo());
       return;
     }
   }
