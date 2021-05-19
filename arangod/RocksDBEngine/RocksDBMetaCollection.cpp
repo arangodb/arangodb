@@ -1221,7 +1221,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRe
   // for smart edge collection children collections, the _rev values are determined
   // via the agency's uniqid() function. they can be anything, so we need to assume
   // 0 as the lower bound.
-  // for other collections, it is mostly safe safe to assume that there will be no 
+  // for other collections, it is mostly safe to assume that there will be no 
   // data inserted with non-recent revisions. So a minRevision id that is relatively
   // recent (HLC value from January 2021) will mostly work for these cases. There are
   // some exceptions (e.g. some system colections are never dropped by the replication
@@ -1425,4 +1425,3 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
   }
   TRI_ASSERT(_tree != nullptr);
 }
-
