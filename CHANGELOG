@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixes SEARCH-7: inconsistent BM25 scoring for LEVENSHTEIN_MATCH function.
+
 * Fix crashes during arangorestore operations due to usage of wrong pointer
   value for updating user permissions.
 
