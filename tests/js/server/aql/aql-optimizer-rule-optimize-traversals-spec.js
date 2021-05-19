@@ -505,6 +505,26 @@ describe('Rule optimize-traversals', () => {
       expect(result[0].items).to.equal(1);
     });
 
+    it.only('should optimize when filtered on v - BFS', () => {
+      let query = `
+        FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
+        OPTIONS {bfs: true}
+        FILTER v.label == '4'
+        RETURN p
+      `;
+      const bindVars = {
+        start: 'circles/A',
+        graph: graphName
+      };
+
+      const profile = db._query(query, bindVars, {profile: 2}).getExtra();
+      const result = getCompactStatsNodes(profile).filter(n => n.type === TraversalBlock);
+      // We only have one TraversalBlock
+      expect(result.length).to.equal(1);
+      // The traversal shall only output a single Path.
+      expect(result[0].items).to.equal(1);
+    });
+
     it('should optimize when filtered on e', () => {
       let query = `
         FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
