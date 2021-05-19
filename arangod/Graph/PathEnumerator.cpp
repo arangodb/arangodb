@@ -216,20 +216,7 @@ bool DepthFirstEnumerator::next() {
     if (_opts->minDepth == 0) {
       if (_opts->usesPostFilter()) {
         auto evaluator = _opts->getPostFilterEvaluator();
-        TRI_ASSERT(evaluator != nullptr);
-
-        aql::AqlValue vertex, edge;
-        aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
-        if (evaluator->needsVertex()) {
-          vertex = lastVertexToAqlValue();
-          evaluator->injectVertex(vertex.slice());
-        }
-        if (evaluator->needsEdge()) {
-          edge = lastEdgeToAqlValue();
-          evaluator->injectEdge(edge.slice());
-        }
-        TRI_ASSERT(!evaluator->needsPath());
-        if (evaluator->evaluate()) {
+        if (usePostFilter(evaluator)) {
           return true;
         }
       } else {
@@ -328,25 +315,14 @@ bool DepthFirstEnumerator::next() {
             // We have a valid prefix, but do NOT return this path
             break;
           }
+
           if (_opts->usesPostFilter()) {
             auto evaluator = _opts->getPostFilterEvaluator();
-            TRI_ASSERT(evaluator != nullptr);
-
-            aql::AqlValue vertex, edge;
-            aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
-            if (evaluator->needsVertex()) {
-              vertex = lastVertexToAqlValue();
-              evaluator->injectVertex(vertex.slice());
-            }
-            if (evaluator->needsEdge()) {
-              edge = lastEdgeToAqlValue();
-              evaluator->injectEdge(edge.slice());
-            }
-            TRI_ASSERT(!evaluator->needsPath());
-            if (!evaluator->evaluate()) {
+            if (!usePostFilter(evaluator)) {
               break;
             }
           }
+
           return true;
         }
       } else {
