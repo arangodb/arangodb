@@ -2969,14 +2969,7 @@ void RestReplicationHandler::handleCommandRevisionTree() {
   }
 
   // shall we do a verification?
-  bool found{false};
-  bool withVerification{false};
-  std::string const& verificationString = _request->value("verification", found);
-  if (found) {
-    if (verificationString.compare("true") == 0) {
-      withVerification = true;
-    }
-  }
+  bool withVerification = _request->parsedValue("verification", false);
 
   auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
   if (!tree) {
