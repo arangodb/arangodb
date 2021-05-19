@@ -38,6 +38,7 @@
 #include <functional>
 
 namespace arangodb {
+class RevisionReplicationIterator;
 
 class RocksDBMetaCollection : public PhysicalCollection {
  public:
@@ -120,6 +121,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   
   /// @brief produce a revision tree from the documents in the collection
   ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> revisionTreeFromCollection(bool checkForBlockers);
+
+  std::unique_ptr<containers::RevisionTree> buildTreeFromIterator(RevisionReplicationIterator& it) const;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);

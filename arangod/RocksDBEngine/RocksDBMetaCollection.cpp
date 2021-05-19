@@ -435,32 +435,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::computeRevision
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(iter.get());
   
-  std::vector<std::uint64_t> revisions;
-  revisions.reserve(4096);
-  
-  auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
-  
-  while (it.hasMore()) {
-    revisions.emplace_back(it.revision().id());
-    if (revisions.size() >= 4096) {  // arbitrary batch size
-      newTree->insert(revisions);
-      revisions.clear();
-    
-      if (_logicalCollection.vocbase().server().isStopping()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-      }
-    }
-    it.next();
-  }
-  if (!revisions.empty()) {
-    newTree->insert(revisions);
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  newTree->checkConsistency();
-#endif
-
-  return newTree;
+  return buildTreeFromIterator(it);
 }
 
 bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const {
@@ -603,6 +578,11 @@ RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(iter.get());
   
+  auto newTree = buildTreeFromIterator(it);
+  return std::make_pair(std::move(newTree), state->beginSeq());
+}
+
+std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::buildTreeFromIterator(RevisionReplicationIterator& it) const {
   std::vector<std::uint64_t> revisions;
   revisions.reserve(1024);
   
@@ -628,7 +608,7 @@ RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   newTree->checkConsistency();
 #endif
 
-  return std::make_pair(std::move(newTree), state->beginSeq());
+  return newTree;
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
