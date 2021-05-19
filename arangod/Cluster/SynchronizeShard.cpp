@@ -1257,31 +1257,6 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
                                          url, std::move(buffer), options);
         
-      /*
-      // TODO: make this work!
-      // while the request is pending, rebuild the revision tree for our local collection
-      {
-        LOG_TOPIC("04c25", INFO, Logger::MAINTENANCE) 
-            << "rebuilding revision tree on follower for shard " 
-            << getDatabase() << "/" << getShard();
-    
-        double start = TRI_microtime();
-        Result result = collection.getPhysical()->rebuildRevisionTree();
-        
-        if (result.fail()) {
-          LOG_TOPIC("92233", WARN, Logger::MAINTENANCE) 
-              << "unable to rebuild revision tree on follower for shard " 
-              << getDatabase() << "/" << getShard() << ": " << result.errorMessage();
-          // still go on...
-        }
-
-        LOG_TOPIC("1c9e7", INFO, Logger::MAINTENANCE) 
-            << "rebuilt revision tree on follower for shard " 
-            << getDatabase() << "/" << getShard() << ": " << result.errorMessage() 
-            << ", took: " << (TRI_microtime() - start) << "s";
-      }
-      */
-
       network::Response const& r = future.get();
 
       Result result = r.combinedResult();

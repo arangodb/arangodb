@@ -612,6 +612,33 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       _revisionTreeApplied = beginSeq;
       _revisionTreeCreationSeq = beginSeq;
       _revisionTreeSerializedSeq = beginSeq;
+
+      // finally remove all pending updates up to including our own sequence number
+      {
+        std::unique_lock<std::mutex> guard(_revisionBufferLock);
+    
+        {
+          auto it = _revisionTruncateBuffer.begin(); 
+          while (it != _revisionTruncateBuffer.end() && *it <= beginSeq) {
+            it = _revisionTruncateBuffer.erase(it);
+          }
+        }
+        
+        {
+          auto it = _revisionInsertBuffers.begin(); 
+          while (it != _revisionInsertBuffers.end() && it->first <= beginSeq) {
+            it = _revisionInsertBuffers.erase(it);
+          }
+        }
+        
+        {
+          auto it = _revisionRemovalBuffers.begin(); 
+          while (it != _revisionRemovalBuffers.end() && it->first <= beginSeq) {
+            it = _revisionRemovalBuffers.erase(it);
+          }
+        }
+      }
+
     }
     return {};
   });
