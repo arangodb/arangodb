@@ -936,7 +936,7 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_with_shift) {
   // the size of a bucket becomes 2^24 and with the next grow operation
   // the difference initialRangeMin - rangeMin would no longer be divisble
   // by the bucket size.
-  growLeft(rangeMin-1);
+  growLeft(rangeMin - 1);
   for (int i = 0; i < 17; ++i) {
     growRight(rangeMax);
     rangeMax = range().second;

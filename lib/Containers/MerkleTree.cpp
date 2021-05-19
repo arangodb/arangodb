@@ -461,9 +461,9 @@ std::uint64_t MerkleTree<Hasher, BranchingBits>::byteSize() const {
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
-void MerkleTree<Hasher, BranchingBits>::checkInsertMinMax(std::unique_lock<std::shared_mutex>& guard,
-                                                          std::uint64_t minKey,
-                                                          std::uint64_t maxKey) {
+void MerkleTree<Hasher, BranchingBits>::prepareInsertMinMax(std::unique_lock<std::shared_mutex>& guard,
+                                                            std::uint64_t minKey,
+                                                            std::uint64_t maxKey) {
   if (minKey < meta().rangeMin) {
     // unlock so we can get exclusive access to grow the range
     guard.unlock();
@@ -483,8 +483,8 @@ template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::insert(std::uint64_t key) {
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
 
-  // may throw if key < rangeMin, or grow the tree if key >= rangeMax
-  checkInsertMinMax(guard, key, key);
+  // may grow the tree so it can store key
+  prepareInsertMinMax(guard, key, key);
 
   modify(key, /*isInsert*/ true);
 }
@@ -508,8 +508,8 @@ void MerkleTree<Hasher, BranchingBits>::insert(std::vector<std::uint64_t> const&
 
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
   
-  // may throw if minKey < rangeMin, or grow the tree if maxKey >= rangeMax
-  checkInsertMinMax(guard, minKey, maxKey);
+  // may grow the tree so it can store minKey and MaxKey
+  prepareInsertMinMax(guard, minKey, maxKey);
 
   modify(sortedKeys, /*isInsert*/ true);
 }

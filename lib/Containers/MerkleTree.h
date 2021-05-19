@@ -388,7 +388,8 @@ class MerkleTree {
   
  private:
   /**
-   * @brief Checks the min and max keys for an insert
+   * @brief Checks the min and max keys for an insert, and grows
+   * the tree as necessary
    *
    * If minKey < rangeMin, this will grow the tree to the left
    * If maxKey >= rangeMax, this will grow the tree to the right
@@ -397,9 +398,9 @@ class MerkleTree {
    * @param minKey Minimum key to insert
    * @param maxKey Maximum key to insert
    */
-  void checkInsertMinMax(std::unique_lock<std::shared_mutex>& guard,
-                         std::uint64_t minKey,
-                         std::uint64_t maxKey);
+  void prepareInsertMinMax(std::unique_lock<std::shared_mutex>& guard,
+                           std::uint64_t minKey,
+                           std::uint64_t maxKey);
 
   /**
    * @brief Checks the consistency of the tree
