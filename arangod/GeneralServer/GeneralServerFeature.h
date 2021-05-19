@@ -90,7 +90,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
       return url;
     }
 
-    return _redirectRootTo;
+    return GENERAL_SERVER->_redirectRootTo;
   }
 
  private:
