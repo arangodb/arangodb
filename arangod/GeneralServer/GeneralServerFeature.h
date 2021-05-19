@@ -75,6 +75,24 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
     return GENERAL_SERVER->reloadTLSInternal();
   }
 
+  static bool permanentRootRedirect() {
+    if (GENERAL_SERVER == nullptr) {
+      return false;
+    }
+
+    return GENERAL_SERVER->_permanentRootRedirect;
+  }
+
+  static std::string redirectRootTo() {
+    static std::string url = "/_admin/aardvark/index.html";
+
+    if (GENERAL_SERVER == nullptr) {
+      return url;
+    }
+
+    return GENERAL_SERVER->_redirectRootTo;
+  }
+
  private:
   static GeneralServerFeature* GENERAL_SERVER;
 
@@ -111,8 +129,10 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
   bool _proxyCheck;
+  bool _permanentRootRedirect;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
+  std::string _redirectRootTo;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
