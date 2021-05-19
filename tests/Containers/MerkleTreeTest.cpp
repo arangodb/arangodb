@@ -512,7 +512,7 @@ TEST(MerkleTreeTest, test_serializeBinarySnappySmall) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  ASSERT_LE(t1s.size(), 2'000);
+  ASSERT_EQ(595, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -541,7 +541,7 @@ TEST(MerkleTreeTest, test_serializeBinarySnappyLarge) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  ASSERT_LE(t1s.size(), 5'000'000);
+  ASSERT_EQ(2451379, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -564,7 +564,7 @@ TEST(MerkleTreeTest, test_serializeBinaryBottomMostSmall) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  ASSERT_LE(t1s.size(), 2'000);
+  ASSERT_EQ(674, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -593,7 +593,7 @@ TEST(MerkleTreeTest, test_serializeBinaryBottomMostLarge) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  ASSERT_LE(t1s.size(), 4'900'000);
+  ASSERT_EQ(3906294, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -616,7 +616,7 @@ TEST(MerkleTreeTest, test_serializeBinaryUncompressedSmall) {
 
   std::string t1s;
   t1.serializeBinary(t1s, false);
-  ASSERT_LE(t1s.size(), 2'000);
+  ASSERT_EQ(1234, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -645,7 +645,7 @@ TEST(MerkleTreeTest, test_serializeBinaryUncompressedLarge) {
 
   std::string t1s;
   t1.serializeBinary(t1s, false);
-  ASSERT_LE(t1s.size(), 4'900'000);
+  ASSERT_EQ(4793554, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
