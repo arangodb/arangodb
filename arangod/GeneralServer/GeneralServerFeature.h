@@ -84,7 +84,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   }
 
   static std::string redirectRootTo() {
-    static std::vector<std::string> url = "/_admin/aardvark/index.html";
+    static std::string url = "/_admin/aardvark/index.html";
 
     if (GENERAL_SERVER == nullptr) {
       return url;
