@@ -112,16 +112,6 @@ class InternalMerkleTreeTest
       : MerkleTree<::arangodb::containers::FnvHashProvider, 3>(2, 0, 64) {}
 };
 
-TEST_F(InternalMerkleTreeTest, test_childrenAreLeaves) {
-  ASSERT_FALSE(childrenAreLeaves(0));
-  for (std::uint64_t index = 1; index < 9; ++index) {
-    ASSERT_TRUE(childrenAreLeaves(index));
-  }
-  for (std::uint64_t index = 9; index < 73; ++index) {
-    ASSERT_FALSE(childrenAreLeaves(index));
-  }
-}
-
 TEST_F(InternalMerkleTreeTest, test_chunkRange) {
   auto r = chunkRange(0, 0);
   ASSERT_EQ(r.first, 0);
@@ -145,22 +135,10 @@ TEST_F(InternalMerkleTreeTest, test_index) {
   ASSERT_EQ(range.first, 0);
   ASSERT_EQ(range.second, 64);
 
-  // make sure depth 0 always gets us 0
-  ASSERT_EQ(index(0, 0), 0);
-  ASSERT_EQ(index(63, 0), 0);
-
-  // check boundaries at level 1
-  for (std::uint64_t chunk = 0; chunk < 8; ++chunk) {
-    std::uint64_t left = chunk * 8;
-    std::uint64_t right = ((chunk + 1) * 8) - 1;
-    ASSERT_EQ(index(left, 1), chunk + 1);
-    ASSERT_EQ(index(right, 1), chunk + 1);
-  }
-
   // check boundaries at level 2
   for (std::uint64_t chunk = 0; chunk < 64; ++chunk) {
     std::uint64_t left = chunk;  // only one value per chunk
-    ASSERT_EQ(index(left, 2), chunk + 9);
+    ASSERT_EQ(index(left), chunk + 9);
   }
 }
 
@@ -179,10 +157,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   ASSERT_EQ(count(), 1);
 
   // build set of indexes that should be touched
-  std::set<std::uint64_t> indices0;
-  for (std::uint64_t depth = 0; depth <= meta().depth; ++depth) {
-    indices0.emplace(this->index(0, depth));
-  }
+  std::set<std::uint64_t> indices0{ this->index(0) };
 
   ::arangodb::containers::FnvHashProvider hasher;
   // check that it sets everything it should, and nothing it shouldn't
@@ -201,10 +176,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   ASSERT_EQ(count(), 2);
 
   // build set of indexes that should be touched
-  std::set<std::uint64_t> indices63;
-  for (std::uint64_t depth = 0; depth <= meta().depth; ++depth) {
-    indices63.emplace(this->index(63, depth));
-  }
+  std::set<std::uint64_t> indices63{ this->index(63) };
 
   // check that it sets everything it should, and nothing it shouldn't
   for (std::uint64_t index = 0; index < 73; ++index) {
@@ -226,10 +198,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   ASSERT_EQ(count(), 3);
 
   // build set of indexes that should be touched
-  std::set<std::uint64_t> indices1;
-  for (std::uint64_t depth = 0; depth <= meta().depth; ++depth) {
-    indices1.emplace(this->index(1, depth));
-  }
+  std::set<std::uint64_t> indices1{ this->index(1) };
 
   // check that it sets everything it should, and nothing it shouldn't
   for (std::uint64_t index = 0; index < 73; ++index) {
@@ -321,7 +290,7 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
       hash2[i] ^= hasher.hash(static_cast<std::uint64_t>(i));
     }
     for (std::uint64_t i = 0; i < 64; ++i) {
-      Node& node = this->node(this->index(static_cast<std::uint64_t>(i), 2));
+      Node& node = this->node(this->index(static_cast<std::uint64_t>(i)));
       ASSERT_EQ(node.count, 1);
       ASSERT_EQ(node.hash, hash2[i]);
     }
@@ -512,7 +481,7 @@ TEST(MerkleTreeTest, test_serializeBinarySnappySmall) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  ASSERT_EQ(595, t1s.size());
+  ASSERT_EQ(520, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -541,7 +510,7 @@ TEST(MerkleTreeTest, test_serializeBinarySnappyLarge) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  ASSERT_EQ(2451379, t1s.size());
+  ASSERT_EQ(2143871, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -564,7 +533,7 @@ TEST(MerkleTreeTest, test_serializeBinaryBottomMostSmall) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  ASSERT_EQ(674, t1s.size());
+  ASSERT_EQ(690, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -593,7 +562,7 @@ TEST(MerkleTreeTest, test_serializeBinaryBottomMostLarge) {
 
   std::string t1s;
   t1.serializeBinary(t1s, true);
-  ASSERT_EQ(3906294, t1s.size());
+  ASSERT_EQ(3906310, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -616,7 +585,7 @@ TEST(MerkleTreeTest, test_serializeBinaryUncompressedSmall) {
 
   std::string t1s;
   t1.serializeBinary(t1s, false);
-  ASSERT_EQ(1234, t1s.size());
+  ASSERT_EQ(1090, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -645,7 +614,7 @@ TEST(MerkleTreeTest, test_serializeBinaryUncompressedLarge) {
 
   std::string t1s;
   t1.serializeBinary(t1s, false);
-  ASSERT_EQ(4793554, t1s.size());
+  ASSERT_EQ(4194370, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
@@ -905,14 +874,14 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_simple) {
   ASSERT_EQ(rangeMax, range().second);
 
   // Now check the bottommost buckets:
-  Node& n = node(index(rangeMin, depth()));
+  Node& n = node(index(rangeMin));
   ASSERT_EQ(2, n.count);
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth),
             n.hash);
-  Node& n2 = node(index(rangeMin - 1, depth()));
+  Node& n2 = node(index(rangeMin - 1));
   ASSERT_EQ(1, n2.count);
   ASSERT_EQ(hasher.hash(rangeMin - 1), n2.hash);
-  Node& n3 = node(index(rangeMin + 47 * bucketWidth, depth()));
+  Node& n3 = node(index(rangeMin + 47 * bucketWidth));
   ASSERT_EQ(1, n3.count);
   ASSERT_EQ(hasher.hash(rangeMin + 47 * bucketWidth), n3.hash);
 }
@@ -978,13 +947,13 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_with_shift) {
   ASSERT_EQ(rangeMax + bucketWidth, range().second);
 
   // Now check the bottommost buckets:
-  Node& n = node(index(rangeMin, depth()));
+  Node& n = node(index(rangeMin));
   ASSERT_EQ(2, n.count);
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin - 1), n.hash);
-  Node& n2 = node(index(rangeMin + bucketWidth, depth()));
+  Node& n2 = node(index(rangeMin + bucketWidth));
   ASSERT_EQ(1, n2.count);
   ASSERT_EQ(hasher.hash(rangeMin + bucketWidth), n2.hash);
-  Node& n3 = node(index(rangeMin + 47 * bucketWidth, depth()));
+  Node& n3 = node(index(rangeMin + 47 * bucketWidth));
   ASSERT_EQ(1, n3.count);
   ASSERT_EQ(hasher.hash(rangeMin + 47 * bucketWidth), n3.hash);
 }
@@ -1026,14 +995,14 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_simple) {
   ASSERT_EQ(rangeMax + initWidth, range().second);
 
   // Now check the bottommost buckets:
-  Node& n = node(index(rangeMin, depth()));
+  Node& n = node(index(rangeMin));
   ASSERT_EQ(2, n.count);
   ASSERT_EQ(hasher.hash(rangeMin) ^ hasher.hash(rangeMin + bucketWidth),
             n.hash);
-  Node& n2 = node(index(rangeMax + 42, depth()));
+  Node& n2 = node(index(rangeMax + 42));
   ASSERT_EQ(1, n2.count);
   ASSERT_EQ(hasher.hash(rangeMax + 42), n2.hash);
-  Node& n3 = node(index(rangeMin + 47 * bucketWidth, depth()));
+  Node& n3 = node(index(rangeMin + 47 * bucketWidth));
   ASSERT_EQ(1, n3.count);
   ASSERT_EQ(hasher.hash(rangeMin + 47 * bucketWidth), n3.hash);
 }
@@ -1099,16 +1068,16 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_with_shift) {
   ASSERT_EQ(rangeMax + (rangeMax - rangeMin) - bucketWidth, range().second);
 
   // Now check the bottommost buckets:
-  Node& n = node(index(rangeMin, depth()));
+  Node& n = node(index(rangeMin));
   ASSERT_EQ(1, n.count);
   ASSERT_EQ(hasher.hash(rangeMin), n.hash);
-  Node& n2 = node(index(rangeMin + bucketWidth, depth()));
+  Node& n2 = node(index(rangeMin + bucketWidth));
   ASSERT_EQ(1, n2.count);
   ASSERT_EQ(hasher.hash(rangeMin + bucketWidth), n2.hash);
-  Node& n3 = node(index(rangeMin + 47 * bucketWidth, depth()));
+  Node& n3 = node(index(rangeMin + 47 * bucketWidth));
   ASSERT_EQ(1, n3.count);
   ASSERT_EQ(hasher.hash(rangeMin + 47 * bucketWidth), n3.hash);
-  Node& n4 = node(index(rangeMax, depth()));
+  Node& n4 = node(index(rangeMax));
   ASSERT_EQ(1, n4.count);
   ASSERT_EQ(hasher.hash(rangeMax), n4.hash);
 }
@@ -1341,14 +1310,14 @@ TEST(MerkleTreeTest, test_to_string) {
   for (size_t i = 0; i < 100; ++i) {
     data.push_back(uni(mt));
   }
-  for (auto x : data) {
-    t1.insert(x);
-  }
-  
+  t1.insert(data);
+ 
+  // the exact size of the response is unclear here, due to the pseudo-random
+  // inserts
   std::string s = t1.toString(false);
-  ASSERT_LE(1457, s.size());
+  ASSERT_LE(1200, s.size());
   s = t1.toString(true);
-  ASSERT_LE(1457, s.size());
+  ASSERT_LE(1400, s.size());
 }
 
 TEST(MerkleTreeTest, test_diff_one_side_empty_random_data_shifted) {
