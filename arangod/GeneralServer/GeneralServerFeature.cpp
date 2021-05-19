@@ -184,7 +184,8 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption("--http.permanently-redirect-root",
                     "if true, use a permanent redirect. If false, use a temporary",
-                    new BooleanParameter(&_permanentRootRedirect));
+                    new BooleanParameter(&_permanentRootRedirect))
+                    .setIntroducedIn(30712);
 
   options->addOption("--frontend.proxy-request-check",
                      "enable proxy request checking",
