@@ -34,7 +34,7 @@ namespace arangodb {
 class ReplicatedLogFeature : public application_features::ApplicationFeature {
  public:
   explicit ReplicatedLogFeature(application_features::ApplicationServer& server);
-  ~ReplicatedLogFeature() override = default;
+  ~ReplicatedLogFeature() override;
 
   auto metrics() -> replication2::replicated_log::ReplicatedLogMetrics&;
 

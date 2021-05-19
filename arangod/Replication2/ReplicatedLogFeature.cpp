@@ -46,3 +46,5 @@ ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
 auto ReplicatedLogFeature::metrics() -> replication2::replicated_log::ReplicatedLogMetrics& {
   return *_replicatedLogMetrics;
 }
+
+ReplicatedLogFeature::~ReplicatedLogFeature() = default;
