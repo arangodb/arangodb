@@ -7,15 +7,22 @@ v3.8.0 (XXXX-XX-XX)
   - `arangodb_aql_local_query_memory_limit_reached` was renamed to
     `arangodb_aql_local_query_memory_limit_reached_total`
 
-  These metrics were introduced in 3.8 so there is no migration for these 
+  These metrics were introduced in 3.8 so there is no migration for these
   metrics.
+
+* Return error 1948 when a negative edge was detected during a weighted
+  traversal or was used as default weight.
+
+* Fixes BTS-417. In some cases an index did not consider both bounds (lower and
+  upper) for a close range scan if both bounds are expressed using the same
+  operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
 
 * Fix various issues related to the new WINDOW operation (see BTS-402)
   - Improved explain output for ISO 8601 duration strings and fixed missing week
     component.
   - Improved validation of input data and error messages.
   - Prevent FILTERs from being moved beyond a WINDOW.
-  
+
 * Fixes BTS-416. During shutdown, a Shard leader wrongly reported that it could
   not drop a shard follower instead of correctly indicating the shutdown as the
   reason.
