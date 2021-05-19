@@ -88,9 +88,12 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+<<<<<<< HEAD
  
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
+  bool permanentRootRedirect() const { return _permanentRootRedirect; }
+  std::string redirectRootTo() const { return _redirectRootTo; }
 
  private:
   Result reloadTLSInternal() {  // reload TLS data from disk
@@ -111,8 +114,10 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
   bool _proxyCheck;
+  bool _permanentRootRedirect;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
+  std::string _redirectRootTo;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
