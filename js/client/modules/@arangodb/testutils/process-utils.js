@@ -1747,7 +1747,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       if (arangod.role === "coordinator") {
         url += '/_admin/aardvark/index.html';
         coordinatorTickles++;
-        if (coordinatorTickles == 10) {
+        if (coordinatorTickles === 10) {
           let coordinatorLogFile = arangod.args['log.file'];
           print('================= Coordinator log file start =================');
           print(coordinatorLogFile);
