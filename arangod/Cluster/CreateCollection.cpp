@@ -40,6 +40,8 @@
 #include "VocBase/Methods/Databases.h"
 
 #include <Replication2/ReplicatedLog/NetworkAttachedFollower.h>
+#include <Replication2/ReplicatedLog/LogLeader.h>
+#include <Replication2/ReplicatedLog/ReplicatedLog.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>

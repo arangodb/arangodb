@@ -30,6 +30,7 @@
 #include "Methods.h"
 
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"

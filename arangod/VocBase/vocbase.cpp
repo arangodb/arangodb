@@ -66,7 +66,6 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/LogManager.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
