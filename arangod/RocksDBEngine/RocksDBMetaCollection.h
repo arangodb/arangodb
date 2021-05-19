@@ -79,6 +79,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree, uint64_t seq);
   std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
+  std::unique_ptr<containers::RevisionTree> computeRevisionTree(uint64_t batchId) override;
 
   bool needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const;
   rocksdb::SequenceNumber lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq);

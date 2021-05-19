@@ -421,6 +421,48 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   });
 }
 
+std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::computeRevisionTree(uint64_t batchId) {
+  std::unique_ptr<ReplicationIterator> iter
+    = _logicalCollection.getPhysical()->getReplicationIterator(ReplicationIterator::Ordering::Revision, batchId);
+  if (!iter) {
+    LOG_TOPIC("52617", WARN, arangodb::Logger::ENGINES)
+        << "failed to retrieve replication iterator to build revision tree "
+           "for collection '"
+        << _logicalCollection.id().id() << "'";
+    return nullptr;
+  }
+
+  RevisionReplicationIterator& it =
+      *static_cast<RevisionReplicationIterator*>(iter.get());
+  
+  std::vector<std::uint64_t> revisions;
+  revisions.reserve(4096);
+  
+  auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
+  
+  while (it.hasMore()) {
+    revisions.emplace_back(it.revision().id());
+    if (revisions.size() >= 4096) {  // arbitrary batch size
+      newTree->insert(revisions);
+      revisions.clear();
+    
+      if (_logicalCollection.vocbase().server().isStopping()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+    }
+    it.next();
+  }
+  if (!revisions.empty()) {
+    newTree->insert(revisions);
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  newTree->checkConsistency();
+#endif
+
+  return newTree;
+}
+
 bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const {
   if (!_logicalCollection.useSyncByRevision()) {
     return maxCommitSeq > _revisionTreeApplied.load();

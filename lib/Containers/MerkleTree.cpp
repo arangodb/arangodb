@@ -750,7 +750,6 @@ void MerkleTree<Hasher, BranchingBits>::serialize(velocypack::Builder& output,
                                                   std::uint64_t depth) const {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
 
-  TRI_ASSERT(output.isEmpty());
   char ridBuffer[arangodb::basics::maxUInt64StringSize];
   depth = std::min(depth, meta().depth);
 
