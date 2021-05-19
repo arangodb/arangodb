@@ -1,6 +1,30 @@
 devel
 -----
 
+* Added 2 options to allow HTTP redirection customization for root ("/") call of
+  HTTP API:
+
+  `--http.permanently-redirect-root`: if true (default), use a permanent
+  redirection (use HTTP 301 code), if false fall back to temporary redirection
+  (use HTTP 302 code);
+  `--http.redirect-root-to`: redirect of root URL to a specified path (redirects
+  to "/_admin/aardvark/index.html" if not set (default)).
+
+* Fixes BTS-416. During shutdown, a shard leader wrongly reported that
+  it could not drop a shard follower instead of correctly indicating
+  the shutdown as reason.
+
+* Fix various issues related to the new WINDOW operation (see BTS-402)
+  - Improved explain output for ISO 8601 duration strings and fixed missing week
+    component.
+  - Improved validation of input data and error messages.
+  - Prevent FILTERs from being moved beyond a WINDOW.
+
+* Fixes BTS-417. In some cases an index did not consider both bounds (lower and
+  upper) for a close range scan if both bounds are expressed using the same
+  operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
+  
+
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
 
@@ -17,7 +41,7 @@ devel
 
 * Fixes pregel lifetime management. Previously shutting down the server while a
   pregel job was still running could result in a segfault or a shutdown hanger.
-  
+
 * Updated bundled version of Snappy library to 1.1.9.
 
 * Fixed various issues (mainly data races) reported by ThreadSanitizer.

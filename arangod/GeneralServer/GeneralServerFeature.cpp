@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
@@ -124,6 +124,8 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true),
+      _permanentRootRedirect(true),
+      _redirectRootTo("/_admin/aardvark/index.html"),
       _numIoThreads(0) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
@@ -174,6 +176,15 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--http.trusted-origin",
                      "trusted origin URLs for CORS requests with credentials",
                      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
+
+  options->addOption("--http.redirect-root-to",
+                    "redirect of root URL",
+                    new StringParameter(&_redirectRootTo))
+                    .setIntroducedIn(30712);
+
+  options->addOption("--http.permanently-redirect-root",
+                    "if true, use a permanent redirect. If false, use a temporary",
+                    new BooleanParameter(&_permanentRootRedirect));
 
   options->addOption("--frontend.proxy-request-check",
                      "enable proxy request checking",
@@ -297,6 +308,14 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
     }
   }
   return res;
+}
+
+bool GeneralServerFeature::permanentRootRedirect() const {
+  return _permanentRootRedirect;
+}
+
+std::string GeneralServerFeature::redirectRootTo() const {
+  return _redirectRootTo;
 }
 
 rest::RestHandlerFactory& GeneralServerFeature::handlerFactory() {
