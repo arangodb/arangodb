@@ -706,10 +706,10 @@ TEST(MerkleTreeTest, test_serializePortableLarge) {
   ASSERT_TRUE(t2->diff(t1).empty());
 }
 
-TEST(MerkleTreeTest, test_tree_based_on_2020_hlcs) {
-  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
-  uint64_t rangeMax = uint64_t(1654481800413577216ULL);
-  
+TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
+  uint64_t rangeMin = uint64_t(1609459200000000000ULL);
+  uint64_t rangeMax = uint64_t(1609459200016777216ULL);
+
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
   
   ASSERT_EQ(6, tree.maxDepth());
@@ -726,7 +726,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2020_hlcs) {
   
   ASSERT_EQ(6, tree.maxDepth());
   ASSERT_EQ(10000, tree.count());
-  ASSERT_EQ(13533672744353677152ULL, tree.rootValue());
+  ASSERT_EQ(4298149919775466880ULL, tree.rootValue());
   std::tie(left, right) = tree.range();
   ASSERT_EQ(rangeMin, left);
   ASSERT_EQ(rangeMax, right);
@@ -758,7 +758,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2020_hlcs) {
   
   ASSERT_EQ(6, tree.maxDepth());
   ASSERT_EQ(10'000'000, tree.count());
-  ASSERT_EQ(14528932675464142080ULL, tree.rootValue());
+  ASSERT_EQ(9116977756596679424ULL, tree.rootValue());
   std::tie(left, right) = tree.range();
   ASSERT_EQ(rangeMin, left);
   ASSERT_EQ(rangeMax, right);
@@ -780,8 +780,8 @@ TEST(MerkleTreeTest, test_tree_based_on_2020_hlcs) {
 }
 
 TEST(MerkleTreeTest, test_large_steps) {
-  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
-  uint64_t rangeMax = uint64_t(1654481800413577216ULL);
+  uint64_t rangeMin = uint64_t(1609459200000000000ULL);
+  uint64_t rangeMax = uint64_t(1609459200016777216ULL);
   
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
   
@@ -802,9 +802,9 @@ TEST(MerkleTreeTest, test_large_steps) {
   
   ASSERT_EQ(6, tree.maxDepth());
   EXPECT_EQ(10'000'000, tree.count());
-  EXPECT_EQ(10681126656127731097ULL, tree.rootValue());
+  EXPECT_EQ(7036974261486883938ULL, tree.rootValue());
   std::tie(left, right) = tree.range();
-  rangeMax = 1654481937835753472ULL;
+  rangeMax = 1609459337438953472ULL;
   EXPECT_EQ(rangeMin, left);
   EXPECT_EQ(rangeMax, right);
   
@@ -821,8 +821,8 @@ TEST(MerkleTreeTest, test_large_steps) {
 }
 
 TEST(MerkleTreeTest, test_check_consistency) {
-  uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
-  uint64_t rangeMax = uint64_t(1654481800413577216ULL);
+  uint64_t rangeMin = uint64_t(1609459200000000000ULL);
+  uint64_t rangeMax = uint64_t(1609459200016777216ULL);
   
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> tree(6, rangeMin);
   
@@ -865,7 +865,7 @@ class MerkleTreeGrowTests
  public:
   MerkleTreeGrowTests()
       : MerkleTree<::arangodb::containers::FnvHashProvider, 3>(
-          6, uint64_t(1577836800000ULL) << 20ULL) {}
+          6, uint64_t(1609459200000000000ULL)) {}
 };
 
 TEST_F(MerkleTreeGrowTests, test_grow_left_simple) {
@@ -1346,9 +1346,9 @@ TEST(MerkleTreeTest, test_to_string) {
   }
   
   std::string s = t1.toString(false);
-  ASSERT_LE(1500, s.size());
+  ASSERT_LE(1457, s.size());
   s = t1.toString(true);
-  ASSERT_LE(1500, s.size());
+  ASSERT_LE(1457, s.size());
 }
 
 TEST(MerkleTreeTest, test_diff_one_side_empty_random_data_shifted) {

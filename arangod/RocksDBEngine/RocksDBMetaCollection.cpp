@@ -598,48 +598,54 @@ void RocksDBMetaCollection::corruptRevisionTree(uint64_t count, uint64_t hash) {
 
 Result RocksDBMetaCollection::rebuildRevisionTree() {
   return basics::catchToResult([this]() -> Result {
-    if (_logicalCollection.useSyncByRevision()) {
-      std::unique_lock<std::mutex> guard(_revisionTreeLock);
-      
-      auto result = revisionTreeFromCollection();
-      if (result.fail()) {
-        return result.result(); 
-      }
-
-      auto&& [newTree, beginSeq] = result.get();
-
-      _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
-      _revisionTreeApplied = beginSeq;
-      _revisionTreeCreationSeq = beginSeq;
-      _revisionTreeSerializedSeq = beginSeq;
-
-      // finally remove all pending updates up to including our own sequence number
-      {
-        std::unique_lock<std::mutex> guard(_revisionBufferLock);
-    
-        {
-          auto it = _revisionTruncateBuffer.begin(); 
-          while (it != _revisionTruncateBuffer.end() && *it <= beginSeq) {
-            it = _revisionTruncateBuffer.erase(it);
-          }
-        }
-        
-        {
-          auto it = _revisionInsertBuffers.begin(); 
-          while (it != _revisionInsertBuffers.end() && it->first <= beginSeq) {
-            it = _revisionInsertBuffers.erase(it);
-          }
-        }
-        
-        {
-          auto it = _revisionRemovalBuffers.begin(); 
-          while (it != _revisionRemovalBuffers.end() && it->first <= beginSeq) {
-            it = _revisionRemovalBuffers.erase(it);
-          }
-        }
-      }
-
+    if (!_logicalCollection.useSyncByRevision()) {
+      return {};
     }
+
+    std::unique_lock<std::mutex> guard(_revisionTreeLock);
+      
+    auto result = revisionTreeFromCollection();
+    if (result.fail()) {
+      return result.result(); 
+    }
+
+    auto&& [newTree, beginSeq] = result.get();
+
+    if (_meta.hasBlockerUpTo(beginSeq)) {
+      return {TRI_ERROR_LOCKED, "cannot rebuild revision tree now as there are still transaction blockers in place"};
+    }
+
+    _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
+    _revisionTreeApplied = beginSeq;
+    _revisionTreeCreationSeq = beginSeq;
+    _revisionTreeSerializedSeq = beginSeq;
+
+    {
+      // finally remove all pending updates up to including our own sequence number
+      std::unique_lock<std::mutex> guard(_revisionBufferLock);
+    
+      {
+        auto it = _revisionTruncateBuffer.begin(); 
+        while (it != _revisionTruncateBuffer.end() && *it <= beginSeq) {
+          it = _revisionTruncateBuffer.erase(it);
+        }
+      }
+        
+      {
+        auto it = _revisionInsertBuffers.begin(); 
+        while (it != _revisionInsertBuffers.end() && it->first <= beginSeq) {
+          it = _revisionInsertBuffers.erase(it);
+        }
+      }
+        
+      {
+        auto it = _revisionRemovalBuffers.begin(); 
+        while (it != _revisionRemovalBuffers.end() && it->first <= beginSeq) {
+          it = _revisionRemovalBuffers.erase(it);
+        }
+      }
+    }
+
     return {};
   });
 }
@@ -768,7 +774,7 @@ void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
   obj->add("removes", VPackValue(removes));
   obj->add("truncates", VPackValue(truncates));
 }
-
+  
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transactionId) {
   auto& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
@@ -1223,7 +1229,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRe
   // being "older" than on the leader, plus because of DC2DC, which may insert 
   // arbitrary data into a collection). For these special cases no current minRevision
   // value would do, but we would like to avoid using a value very much in the past.
-  // thus we still go with a HLC from January 2020 and in addition allow the 
+  // thus we still go with a HLC from January 2021 and in addition allow the 
   // minRevision to decrease in the revision trees.
   RevisionId minRevision = _logicalCollection.isSmartChild() 
                             ? RevisionId::none()
