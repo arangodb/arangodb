@@ -1914,7 +1914,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() noexcept {
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult() noexcept -> Result {
+auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult() noexcept -> PrefetchResult {
   TRI_ASSERT(_result);
   _state.store(State::Consumed, std::memory_order_relaxed);
   auto r = std::move(_result.value());

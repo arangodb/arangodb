@@ -330,13 +330,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       Finished,
       Consumed
     };
-    using Result = std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>;
+    using PrefetchResult = std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>;
     
     bool isConsumed() const noexcept;
     bool tryClaim() noexcept;
     void waitFor() noexcept;
     void reset() noexcept;
-    Result stealResult() noexcept;
+    PrefetchResult stealResult() noexcept;
     
     void execute(ExecutionBlockImpl& block, AqlCallStack& stack);
     
@@ -344,7 +344,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     std::atomic<State> _state{State::Pending};
     std::mutex _lock;
     std::condition_variable _bell;
-    std::optional<Result> _result;
+    std::optional<PrefetchResult> _result;
   };
 
   RegisterInfos _registerInfos;
