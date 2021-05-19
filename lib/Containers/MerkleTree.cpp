@@ -1140,6 +1140,11 @@ void MerkleTree<Hasher, BranchingBits>::growRight(std::uint64_t key) {
     std::uint64_t const width = rangeMax - rangeMin;
     TRI_ASSERT(NumberUtils::isPowerOf2(width));
 
+    if (width > std::numeric_limits<uint64_t>::max() - rangeMax) {
+      // Oh dear, this would lead to overflow of uint64_t in rangeMax,
+      // throw up our hands in despair:
+      throw std::out_of_range("Cannot grow MerkleTree because of overflow in rangeMax.");
+    }
     std::uint64_t const keysPerBucket = width / nodeCountAtDepth(maxDepth);
 
     // First find out if we need to shift or not, this is for the
@@ -1253,6 +1258,12 @@ void MerkleTree<Hasher, BranchingBits>::growLeft(std::uint64_t key) {
 
     std::uint64_t const width = rangeMax - rangeMin;
     std::uint64_t const keysPerBucket = width / nodeCountAtDepth(maxDepth);
+
+    if (width > rangeMin) {
+      // Oh dear, this would lead to underflow of uint64_t in rangeMin,
+      // throw up our hands in despair:
+      throw std::out_of_range("Cannot grow MerkleTree because of underflow in rangeMin.");
+    }
 
     TRI_ASSERT(rangeMin < rangeMax);
 

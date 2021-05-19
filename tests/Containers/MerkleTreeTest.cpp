@@ -1408,3 +1408,22 @@ TEST(MerkleTreeTest, test_diff_one_side_empty_random_data_shifted) {
   ASSERT_EQ(posi, d1.size());     // All intervals should be consumed
 }
 
+TEST(MerkleTreeTest, overflow_underflow) {
+  constexpr uint64_t M = (std::numeric_limits<uint64_t>::max() >> 1) + 1;
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t(6, 0, M, 0);
+  try {
+    t.insert(M);   // must throw because of overflow
+    ASSERT_TRUE(false);
+  } catch (std::out_of_range const& exc) {
+    std::string msg{exc.what()};
+    ASSERT_TRUE(msg.find("overflow") != std::string::npos);
+  }
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(6, 1, M + 1, 1);
+  try {
+    t2.insert(0);   // must throw because of underflow
+    ASSERT_TRUE(false);
+  } catch (std::out_of_range const& exc) {
+    std::string msg{exc.what()};
+    ASSERT_TRUE(msg.find("underflow") != std::string::npos);
+  }
+};
