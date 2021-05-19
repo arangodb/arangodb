@@ -1,6 +1,9 @@
 devel
 -----
 
+* Return error 1948 when a negative edge was detected during a
+  weighted traversal or was used as default weight.
+
 * Added 2 options to allow HTTP redirection customization for root ("/") call of
   HTTP API:
 
