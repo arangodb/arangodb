@@ -712,11 +712,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(Context& ctx,
         // some other thread is currently executing our prefetch task
         // -> wait till it has finished.
         _prefetchTask->waitFor();
-        TRI_ASSERT(_prefetchTask->result);
-        _prefetchTask->state.store(PrefetchTask::State::Consumed, std::memory_order_relaxed);
-        auto result = std::move(_prefetchTask->result.value());
-        _prefetchTask->result.reset();
-        return result;
+        return _prefetchTask->stealResult();
       } else {
         return _rowFetcher.execute(ctx.stack);
       }
@@ -729,8 +725,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(Context& ctx,
       if (_prefetchTask == nullptr) {
         _prefetchTask = std::make_shared<PrefetchTask>();
       }
-      TRI_ASSERT(!_prefetchTask->result);
-      _prefetchTask->state.store(PrefetchTask::State::Pending);
+      _prefetchTask->reset();
 
       // TODO - we should avoid flooding the queue with too many tasks as that
       // can significantly delay processing of user REST requests.
@@ -1888,47 +1883,62 @@ ExecutionBlockImpl<Executor>::Context::Context(ExecutionBlockImpl& block, AqlCal
 
 template <class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
-  return state.load(std::memory_order_relaxed) == State::Consumed;
+  return _state.load(std::memory_order_relaxed) == State::Consumed;
 }
 
 template <class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
   auto expected = State::Pending;
-  return state.load(std::memory_order_relaxed) == expected &&
-    state.compare_exchange_strong(expected, State::InProgress, std::memory_order_relaxed);
+  return _state.load(std::memory_order_relaxed) == expected &&
+         _state.compare_exchange_strong(expected, State::InProgress, std::memory_order_relaxed);
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::PrefetchTask::reset() noexcept {
+  TRI_ASSERT(!_result);
+  _state.store(State::Pending);
 }
 
 template <class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() noexcept {
   // (1) - this acquire-load synchronizes with the release-store (3)
-  if (state.load(std::memory_order_acquire) == State::Finished) {
+  if (_state.load(std::memory_order_acquire) == State::Finished) {
     return;
   }
-  std::unique_lock<std::mutex> guard(lock);
-  bell.wait(guard, [this]() {
+  std::unique_lock<std::mutex> guard(_lock);
+  _bell.wait(guard, [this]() {
     // (2) - this acquire-load synchronizes with the release-store (3)
-    return state.load(std::memory_order_acquire) == State::Finished;
+    return _state.load(std::memory_order_acquire) == State::Finished;
   });
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult() noexcept -> Result {
+  TRI_ASSERT(_result);
+  _state.store(State::Consumed, std::memory_order_relaxed);
+  auto r = std::move(_result.value());
+  _result.reset();
+  return r;
 }
 
 template <class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::execute(ExecutionBlockImpl& block, AqlCallStack& stack) {
   if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher> ||
                 executorHasSideEffects<Executor>) {
-    TRI_ASSERT(false)
+    TRI_ASSERT(false);
   } else {
-    TRI_ASSERT(state.load() == State::InProgress);
-    TRI_ASSERT(!result);
-    result = block._rowFetcher.execute(stack);
+    TRI_ASSERT(_state.load() == State::InProgress);
+    TRI_ASSERT(!_result);
+    _result = block._rowFetcher.execute(stack);
 
     // (3) - this release-store synchronizes with the acquire-load (1, 2)
-    state.store(State::Finished, std::memory_order_release);
+    _state.store(State::Finished, std::memory_order_release);
 
     // need to temporarily lock the mutex to enforce serialization with the waiting thread
-    lock.lock();
-    lock.unlock();
+    _lock.lock();
+    _lock.unlock();
 
-    bell.notify_one();
+    _bell.notify_one();
   }
 }
 
