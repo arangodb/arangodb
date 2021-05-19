@@ -689,7 +689,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           }
           case OptimizationCase::VERTEX: {
             // We have the Vertex variable in the statement
-            AstNode* conditionToOptimize = andNode->getMember(i - 1);
+            AstNode* conditionToOptimize = andNode->getMemberUnchecked(i - 1);
             // Create a clone before we modify the Condition
             AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
             bool isSupported = true;
@@ -705,7 +705,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
                 [](AstNode const*) {});
             if (isSupported) {
               Ast::replaceVariables(conditionToOptimize,
-                                    {{vertexVar->id, node->getTemporaryVariable()}});
+                                    {{vertexVar->id, node->getTemporaryVariable()}}, true);
               // Retain original condition, as covered by this Node
               coveredCondition->andCombine(cloned);
 
