@@ -85,21 +85,12 @@ void RestActionHandler::executeAction() {
     if (suffixes.empty() ||
         (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
       // request to just /
-      GeneralServerFeature* gs = GeneralServerFeature::GENERAL_SERVER;
-
-      if (gs == nullptr) {
-        _response->setResponseCode(rest::ResponseCode::FOUND);
-        _response->setHeaderNC(StaticStrings::Location,
-                               "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
-                               "/_admin/aardvark/index.html");
-      } else {
-        _response->setResponseCode(gs->ermanentRootRedirect()
-                                   ? rest::ResponseCode::MOVED_PERMANENTLY
-                                   : rest::ResponseCode::FOUND);
-        _response->setHeaderNC(StaticStrings::Location,
-                               "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
-                               gs.redirectRootTo());
-      }
+      _response->setResponseCode(GeneralServerFeature::permanentRootRedirect()
+                                 ? rest::ResponseCode::MOVED_PERMANENTLY
+                                 : rest::ResponseCode::FOUND);
+      _response->setHeaderNC(StaticStrings::Location,
+                             "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
+                             GeneralServerFeature::redirectRootTo());
       return;
     }
   }

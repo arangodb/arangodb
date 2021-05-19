@@ -75,6 +75,24 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
     return GENERAL_SERVER->reloadTLSInternal();
   }
 
+  static bool permanentRootRedirect() {
+    if (GENERAL_SERVER == nullptr) {
+      return false;
+    }
+
+    return GENERAL_SERVER->_permanentRootRedirect;
+  }
+
+  static std::string redirectRootTo() {
+    static std::vector<std::string> url = "/_admin/aardvark/index.html";
+
+    if (GENERAL_SERVER == nullptr) {
+      return url;
+    }
+
+    return _redirectRootTo;
+  }
+
  private:
   static GeneralServerFeature* GENERAL_SERVER;
 
@@ -91,8 +109,6 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
  
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
-  bool permanentRootRedirect() const { return _permanentRootRedirect; }
-  std::string redirectRootTo() const { return _redirectRootTo; }
 
  private:
   Result reloadTLSInternal() {  // reload TLS data from disk
