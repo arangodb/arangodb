@@ -176,7 +176,9 @@ Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& ap
       _clientInfo{applierConfig._clientInfoString} {
 
   _connectionLease = applierConfig._server.getFeature<ReplicationFeature>().connectionCache().acquire(
-      _endpointString, applierConfig._requestTimeout, applierConfig._connectTimeout, 
+      _endpointString, 
+      applierConfig._connectTimeout, 
+      applierConfig._requestTimeout, 
       static_cast<size_t>(applierConfig._maxConnectRetries),
       static_cast<uint64_t>(applierConfig._sslProtocol));
 
@@ -219,6 +221,21 @@ std::string const& Connection::clientInfo() const { return _clientInfo; }
 
 void Connection::setAborted(bool value) {
   if (_client) {
+    // fetch the state of the SimpleHttpClient
+    httpclient::SimpleHttpClient::request_state st;
+    {
+      std::lock_guard<std::mutex> guard(_mutex);
+      st = _client->state();
+    }
+
+    if (st != httpclient::SimpleHttpClient::request_state::IN_CONNECT && 
+        st != httpclient::SimpleHttpClient::request_state::FINISHED) {
+      // other states: IN_WRITE, IN_READ_HEADER, IN_READ_BODY, IN_READ_CHUNKED_HEADER, IN_READ_CHUNKED_BODY, DEAD
+      // if we have a SimpleHttpClient in such state, it will probably mean the connection has pending data or
+      // is broken. thus we mark it as non-recyclable. the side-effect that the connection will not be inserted
+      // back into the connection cache.
+      preventRecycling();
+    }
     _client->setAborted(value);
   }
 }
@@ -228,6 +245,10 @@ bool Connection::isAborted() const {
     return _client->isAborted();
   }
   return true;
+}
+
+void Connection::preventRecycling() {
+  _connectionLease.preventRecycling();
 }
 
 ProgressInfo::ProgressInfo(Setter s) : _setter{s} {}
@@ -242,7 +263,7 @@ constexpr double BatchInfo::DefaultTimeout;
 /// @brief send a "start batch" command
 /// @param patchCount try to patch count of this collection
 ///        only effective with the incremental sync (optional)
-Result BatchInfo::start(replutils::Connection const& connection,
+Result BatchInfo::start(replutils::Connection& connection,
                         replutils::ProgressInfo& progress, replutils::LeaderInfo& leader,
                         SyncerId const& syncerId, char const* context,
                         std::string const& patchCount) {
@@ -343,7 +364,7 @@ Result BatchInfo::start(replutils::Connection const& connection,
 }
 
 /// @brief send an "extend batch" command
-Result BatchInfo::extend(replutils::Connection const& connection,
+Result BatchInfo::extend(replutils::Connection& connection,
                          replutils::ProgressInfo& progress, SyncerId const syncerId) {
   if (id == 0) {
     return Result();
@@ -395,7 +416,7 @@ Result BatchInfo::extend(replutils::Connection const& connection,
 }
 
 /// @brief send a "finish batch" command
-Result BatchInfo::finish(replutils::Connection const& connection,
+Result BatchInfo::finish(replutils::Connection& connection,
                          replutils::ProgressInfo& progress, SyncerId const syncerId) {
   if (id == 0) {
     return Result();
@@ -507,10 +528,11 @@ bool hasFailed(httpclient::SimpleHttpResult* response) {
 }
 
 Result buildHttpError(httpclient::SimpleHttpResult* response,
-                      std::string const& url, Connection const& connection) {
+                      std::string const& url, Connection& connection) {
   TRI_ASSERT(hasFailed(response));
 
   if (response == nullptr || !response->isComplete()) {
+    connection.preventRecycling();
     std::string errorMsg;
     connection.lease([&errorMsg](httpclient::SimpleHttpClient* client) {
       errorMsg = client->getErrorMessage();

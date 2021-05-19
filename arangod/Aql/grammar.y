@@ -201,6 +201,49 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
   return true;
 }
 
+
+/// @brief validate the WINDOW specification
+bool validateWindowSpec(Parser* parser, AstNode const* spec,
+                        int line, int column) {
+  bool preceding = false;
+  bool following = false;
+  
+  size_t const n = spec->numMembers();
+  if (n == 0) {
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "At least one WINDOW bound must be specified ('preceding'/'following')", line, column);
+    return false;
+  }
+  
+  for (size_t i = 0; i < n; ++i) {
+    auto member = spec->getMemberUnchecked(i);
+
+    if (member != nullptr) {
+      TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+      bool* attr{};
+      auto name = member->getString();
+      if (name == "preceding") {
+        attr = &preceding;
+      } else if (name == "following") {
+        attr = &following;
+      } else  {
+        char const* error = "Invalid WINDOW attribute '%s'; only \"preceding\" and \"following\" are supported";
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name.c_str(), line, column);
+        return false;
+      }
+      
+      if (*attr) {
+        char const* error = "WINDOW attribute '%s' is specified multiple times";
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name.c_str(), line, column);
+        return false;
+      }
+      
+      // mark this attribute as "seen"
+      *attr = true;
+    }
+  }
+  return true;
+}
+
 /// @brief start a new scope for the collect
 bool startCollectScope(arangodb::aql::Scopes* scopes) {
   // check if we are in the main scope
@@ -208,6 +251,7 @@ bool startCollectScope(arangodb::aql::Scopes* scopes) {
       scopes->type() == arangodb::aql::AQL_SCOPE_SUBQUERY) {
     return false;
   }
+
 
   // end the active scopes
   scopes->endNested();
@@ -1129,6 +1173,10 @@ window_statement:
         YYABORT;
       }
       
+      if (!::validateWindowSpec(parser, $2, yylloc.first_line, yylloc.first_column)) {
+        YYABORT;
+      }
+      
       auto node = parser->ast()->createNodeWindow(/*spec*/$2, /*range*/nullptr, /*aggrs*/$3);
       parser->ast()->addOperation(node);
     }
@@ -1137,6 +1185,10 @@ window_statement:
     
     // validate aggregates
     if (!::validateAggregates(parser, $5, yylloc.first_line, yylloc.first_column)) {
+      YYABORT;
+    }
+    
+    if (!::validateWindowSpec(parser, $4, yylloc.first_line, yylloc.first_column)) {
       YYABORT;
     }
     
