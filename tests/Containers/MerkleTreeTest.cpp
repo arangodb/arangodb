@@ -520,14 +520,14 @@ TEST(MerkleTreeTest, test_serializeBinarySnappySmall) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
-/*
+
 TEST(MerkleTreeTest, test_serializeBinarySnappyLarge) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeSnappy");
   auto guard = arangodb::scopeGuard([]() {
     TRI_RemoveFailurePointDebugging("MerkleTree::serializeSnappy");
   });
   
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 1ULL << 18);
 
   std::vector<std::uint64_t> keys;
   for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
@@ -549,7 +549,6 @@ TEST(MerkleTreeTest, test_serializeBinarySnappyLarge) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
-*/
 
 TEST(MerkleTreeTest, test_serializeBinaryBottomMostSmall) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeBottomMost");
@@ -573,14 +572,14 @@ TEST(MerkleTreeTest, test_serializeBinaryBottomMostSmall) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
-/*
+
 TEST(MerkleTreeTest, test_serializeBinaryBottomMostLarge) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeBottomMost");
   auto guard = arangodb::scopeGuard([]() {
     TRI_RemoveFailurePointDebugging("MerkleTree::serializeBottomMost");
   });
 
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 1ULL << 18);
   
   std::vector<std::uint64_t> keys;
   for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
@@ -602,14 +601,14 @@ TEST(MerkleTreeTest, test_serializeBinaryBottomMostLarge) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
-*/
+
 TEST(MerkleTreeTest, test_serializeBinaryUncompressedSmall) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
   auto guard = arangodb::scopeGuard([]() {
     TRI_RemoveFailurePointDebugging("MerkleTree::serializeUncompressed");
   });
   
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 1ULL << 18);
 
   for (std::uint64_t i = 0; i < 32; ++i) {
     t1.insert(2 * i);
@@ -626,14 +625,13 @@ TEST(MerkleTreeTest, test_serializeBinaryUncompressedSmall) {
   ASSERT_TRUE(t2->diff(t1).empty());
 }
 
-/*
 TEST(MerkleTreeTest, test_serializeBinaryUncompressedLarge) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
   auto guard = arangodb::scopeGuard([]() {
     TRI_RemoveFailurePointDebugging("MerkleTree::serializeUncompressed");
   });
 
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 1ULL << 18);
   
   std::vector<std::uint64_t> keys;
   for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
@@ -655,7 +653,6 @@ TEST(MerkleTreeTest, test_serializeBinaryUncompressedLarge) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
-*/
 
 TEST(MerkleTreeTest, test_serializePortableSmall) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
@@ -680,14 +677,13 @@ TEST(MerkleTreeTest, test_serializePortableSmall) {
   ASSERT_TRUE(t2->diff(t1).empty());
 }
 
-/*
 TEST(MerkleTreeTest, test_serializePortableLarge) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
   auto guard = arangodb::scopeGuard([]() {
     TRI_RemoveFailurePointDebugging("MerkleTree::serializeUncompressed");
   });
 
-  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 64);
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 1ULL << 18);
 
   std::vector<std::uint64_t> keys;
   for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
@@ -709,7 +705,6 @@ TEST(MerkleTreeTest, test_serializePortableLarge) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
-*/
 
 TEST(MerkleTreeTest, test_tree_based_on_2020_hlcs) {
   uint64_t rangeMin = uint64_t(1577836800000ULL) << 20ULL;
