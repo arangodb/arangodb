@@ -92,7 +92,7 @@ struct OperationMeasurement
     stop();
     static std::array<std::pair<std::string_view, StatExtractor>, 5> sorted_duration_stats = {{
       {"max", [](DurationIt begin, DurationIt end, InformValue inform) { inform (*(end-1)); }},
-      {"min", [](DurationIt begin, DurationIt end, InformValue inform) { inform (*begin)); }},
+      {"min", [](DurationIt begin, DurationIt end, InformValue inform) { inform (*begin); }},
       {"avg", [](DurationIt begin, DurationIt end, InformValue inform) { 
         inform (std::accumulate(begin, end, OperationMeasurement::Clock::duration::zero()) / std::distance(begin, end));
       }},
@@ -100,7 +100,7 @@ struct OperationMeasurement
         inform (*(begin + std::distance(begin,end) / 2));
       }},
       {"max10", [](DurationIt begin, DurationIt end, InformValue inform) { 
-        for (auto it {end - std::min(10, std::distance(begin, end))}; it != end; ++it) {
+        for (auto it {end - std::min(10l, std::distance(begin, end))}; it != end; ++it) {
           inform(*it);
         }
       }}
@@ -128,7 +128,7 @@ struct OperationMeasurement
 
     if (!durations.empty()) {
       auto inform {[](Duration d){ std::cout << std::setw(10) << d.count() << "ns ";}};
-      std::sort(durations);
+      std::sort(durations.begin(), durations.end());
       for (auto const& stat: sorted_duration_stats) {
         std::cout << std::setw(5) << stat.first << ": ";
         stat.second(durations.begin(), durations.end(), inform);
