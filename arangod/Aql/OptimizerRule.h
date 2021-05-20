@@ -322,6 +322,10 @@ struct OptimizerRule {
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
+    // allows execution nodes to asynchronously prefetch the next batch from their
+    // upstream node.
+    asyncPrefetch,
+    
     // reduce a sorted gather to an unsorted gather if only a single shard is affected
     decayUnnecessarySortedGatherRule,
 

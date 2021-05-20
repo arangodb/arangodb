@@ -18,7 +18,7 @@ struct elsa<ErrorCode> {
 #include <cinttypes>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 350> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 351> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -573,6 +573,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 350> ErrorMessage
       "no valid initial collection found"},
     {TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,  // 1947
       "referenced vertex collection is not part of the graph"},
+    {TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,  // 1948
+      "negative edge weight found"},
     {TRI_ERROR_SESSION_UNKNOWN,  // 1950
       "unknown session"},
     {TRI_ERROR_SESSION_EXPIRED,  // 1951

@@ -1823,6 +1823,13 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     double time = TRI_microtime();
 
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      // set request timeout to a maximum of 10 seconds. we do this to be able
+      // to get out of stalled requests to failed/non-responsive leaders quicker.
+      double oldTimeout = client->params().getRequestTimeout();
+      client->params().setRequestTimeout(std::min(_state.applier._requestTimeout, 10.0));
+      auto guard = scopeGuard([&]() {
+        client->params().setRequestTimeout(oldTimeout);
+      });
       auto headers = replutils::createHeaders();
       response.reset(client->request(rest::RequestType::PUT, url, body.c_str(),
                                      body.size(), headers));
