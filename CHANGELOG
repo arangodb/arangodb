@@ -1,6 +1,18 @@
 devel
 -----
 
+* Fixed BTS-422: SingleRemoteModification in AQL behaves different.
+
+  This disables the optimizer rule `optimize-cluster-single-document-operations`
+  for array inputs, e.g.
+  
+      INSERT [...] INTO collection
+      REMOVE [...] IN collection
+
+  For the cases, the optimization is not pulled off, and the normal insert/
+  update/replace/remove behavior is executed, which will fail because of an
+  array being used as input.
+
 * Fixes SEARCH-7: inconsistent BM25 scoring for LEVENSHTEIN_MATCH function.
 
 * Return error 1948 when a negative edge was detected during a
