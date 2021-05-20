@@ -72,6 +72,9 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock.replicatedLogAppendEntriesRttUs);
     EXPECT_EQ(numAppendEntries, 0);
+    auto numFollowerAppendEntries =
+        countHistogramEntries(_logMetricsMock.replicatedLogFollowerAppendEntriesRtUs);
+    EXPECT_EQ(numFollowerAppendEntries, 0);
   }
 
   {
@@ -180,6 +183,9 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock.replicatedLogAppendEntriesRttUs);
     EXPECT_EQ(numAppendEntries, 4);
+    auto numFollowerAppendEntries =
+        countHistogramEntries(_logMetricsMock.replicatedLogFollowerAppendEntriesRtUs);
+    EXPECT_EQ(numFollowerAppendEntries, 4);
   }
 }
 
