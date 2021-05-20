@@ -574,6 +574,9 @@ std::string AgencyCommHelper::generateStamp() {
   return std::string(buffer, len);
 }
 
+network::Timeout AgencyCommHelper::defaultTimeout() {
+  return network::Timeout{AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout};
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        AgencyComm
 // -----------------------------------------------------------------------------
