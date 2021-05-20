@@ -122,7 +122,6 @@ for i, metric in enumerate(METRICSLIST):
         except FileNotFoundError:
             print("Could not open file '" + filename + "'")
             bad = True
-            continue
         if not bad:
             try:
                 y = load(s, Loader=Loader)
