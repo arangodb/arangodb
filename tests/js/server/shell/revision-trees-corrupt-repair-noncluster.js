@@ -84,13 +84,10 @@ jsunity.jsUnity.attachAssertions();
       let summary = c1._revisionTreeSummary();
       assertEqual(summary.count, 17);
       assertEqual(summary.hash, 17);
-      try {
-        trees = c1._revisionTreeVerification();
-        assertFalse(trees.equal);
-      } catch (e) {
-        // Ignore exception when in maintainer mode, without maintainer
-        // mode we get non-equality
-      }
+      internal.debugSetFailAt("MerkleTree::skipConsistencyCheck");
+      trees = c1._revisionTreeVerification();
+      assertFalse(trees.equal);
+      internal.debugClearFailAt();
 
       // And repair it again:
       c1._revisionTreeRebuild();

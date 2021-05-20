@@ -586,8 +586,8 @@ void MerkleTree<Hasher, BranchingBits>::corrupt(std::uint64_t count, std::uint64
     std::uint32_t pos = arangodb::RandomGenerator::interval(0, static_cast<uint32_t>(nodeCountAtDepth(meta().depth))); 
 
     Node& node = this->node(pos);
-    node.count = arangodb::RandomGenerator::interval(0, UINT32_MAX);
-    node.hash = arangodb::RandomGenerator::interval(0, UINT32_MAX);
+    node.count = arangodb::RandomGenerator::interval(int64_t{0}, int64_t{UINT32_MAX});
+    node.hash = arangodb::RandomGenerator::interval(int64_t{0}, int64_t{UINT32_MAX});
   }
 }
 #endif
@@ -1282,6 +1282,10 @@ std::pair<std::uint64_t, std::uint64_t> MerkleTree<Hasher, BranchingBits>::chunk
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::checkInternalConsistency() const {
+  TRI_IF_FAILURE("MerkleTree::skipConsistencyCheck") {
+    return;
+  }
+
   // not thread-safe, lock buffer from outside
   if (!_buffer) {
     return;
