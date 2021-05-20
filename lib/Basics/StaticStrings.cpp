@@ -258,7 +258,7 @@ std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Schema("schema");
 std::string const StaticStrings::InternalCollectionType(
-    "internalColelctionType");
+    "internalCollectionType");
 std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
