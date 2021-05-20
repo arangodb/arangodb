@@ -49,7 +49,7 @@ function waitForTreeReady(c) {
         return;
       }
     }
-    console.log("Still waiting for pending updates in tree: ", pending);
+    print("Still waiting for pending updates in tree: ", pending);
     wait(0.5);
   }
 }
