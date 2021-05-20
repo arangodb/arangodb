@@ -1951,8 +1951,8 @@ function iResearchAqlTestSuite () {
             " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
           assertEqual(3, res.length);  
           assertEqual('1', res[0].value1);
-          assertEqual('3', res[1].value1);
-          assertEqual('2', res[2].value1);
+          assertEqual('2', res[1].value1);
+          assertEqual('3', res[2].value1);
         }
         {
           let res = db._query("FOR d IN " + queryView  + 
@@ -2055,7 +2055,7 @@ function iResearchAqlTestSuite () {
     testLevenshteinMatch2BM25 : function() {
       var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'dog', 2, false), 'text_en') OPTIONS { waitForSync : true } SORT BM25(doc) DESC LIMIT 1 RETURN doc").toArray();
       assertEqual(1, res.length);
-      assertEqual("full", res[0].name);
+      assertEqual("other half", res[0].name);
     },
 
     testAnalyzerNotOrFalse : function () {

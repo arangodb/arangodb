@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include <atomic>
+#include <mutex>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>

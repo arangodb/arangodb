@@ -144,9 +144,9 @@ DECLARE_GAUGE(
         std::to_string(ResourceMonitor::chunkSize) + " bytes steps");
 DECLARE_GAUGE(arangodb_aql_global_memory_limit, uint64_t,
               "Total memory limit for all AQL queries combined [bytes]");
-DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached,
+DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached_total,
                 "Number of global AQL query memory limit violations");
-DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached,
+DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
 
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
@@ -194,9 +194,9 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _globalQueryMemoryLimit(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_limit{})),
       _globalQueryMemoryLimitReached(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_query_memory_limit_reached{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_query_memory_limit_reached_total{})),
       _localQueryMemoryLimitReached(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_local_query_memory_limit_reached{})) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_local_query_memory_limit_reached_total{})) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
