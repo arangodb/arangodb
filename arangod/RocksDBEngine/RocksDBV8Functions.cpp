@@ -245,6 +245,9 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
     double ttl = 3600;
     RocksDBReplicationContext* ctx 
       = manager->createContext(engine, ttl, SyncerId{17}, ServerId{17}, "");
+    if (ctx == nullptr) {
+      TRI_V8_THROW_EXCEPTION_INTERNAL("Could not create RocksDBReplicationContext");
+    }
     RocksDBReplicationContextGuard guard(manager, ctx);
     auto* physical = toRocksDBCollection(*collection);
     auto batchId = ctx->id();
