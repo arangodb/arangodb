@@ -560,7 +560,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLogMetricsDeclarations.h
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-        Replication2/LogContext.h Replication2/ReplicatedLog/LogContextKeys.h Replication2/ReplicatedLog/messages.h)
+        Replication2/LogContext.h Replication2/ReplicatedLog/LogContextKeys.h Replication2/ReplicatedLog/messages.h Replication2/DeferredExecution.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp

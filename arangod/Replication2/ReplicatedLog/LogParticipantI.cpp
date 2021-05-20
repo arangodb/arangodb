@@ -35,8 +35,10 @@ auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus 
 replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore)
     : _logCore(std::move(logCore)) {}
 
-auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::unique_ptr<LogCore> {
-  return std::move(_logCore);
+auto replicated_log::LogUnconfiguredParticipant::resign() &&
+    -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> {
+  auto nop = DeferredExecutor{};
+  return std::make_tuple(std::move(_logCore), std::move(nop));
 }
 
 auto replicated_log::LogUnconfiguredParticipant::waitFor(LogIndex)

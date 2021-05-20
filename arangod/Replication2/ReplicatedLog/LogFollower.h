@@ -54,7 +54,7 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
   auto appendEntries(AppendEntriesRequest) -> futures::Future<AppendEntriesResult> override;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
-  auto resign() && -> std::unique_ptr<LogCore> override;
+  auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> override;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 

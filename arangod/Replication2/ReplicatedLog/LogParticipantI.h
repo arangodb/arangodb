@@ -28,6 +28,7 @@
 #include <Futures/Future.h>
 #include <Futures/Promise.h>
 
+#include <Replication2/DeferredExecution.h>
 #include <map>
 #include <memory>
 
@@ -45,7 +46,8 @@ struct LogCore;
 struct LogParticipantI {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   virtual ~LogParticipantI() = default;
-  [[nodiscard]] virtual auto resign() && -> std::unique_ptr<LogCore> = 0;
+  [[nodiscard]] virtual auto resign() &&
+      -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> = 0;
 
   using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
   using WaitForFuture = futures::Future<std::shared_ptr<QuorumData>>;
@@ -68,7 +70,8 @@ struct LogUnconfiguredParticipant
   explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore);
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
-  auto resign() && -> std::unique_ptr<LogCore> override;
+  auto resign() &&
+      -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   std::unique_ptr<LogCore> _logCore;
 };

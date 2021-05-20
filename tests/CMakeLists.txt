@@ -295,7 +295,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/RocksDBLogTest.cpp
   Replication2/SimpleInsertTests.cpp
   Replication2/TestHelper.cpp
-  )
+        Replication2/LogReclaimTest.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

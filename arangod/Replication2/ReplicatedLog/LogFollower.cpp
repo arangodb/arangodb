@@ -211,10 +211,10 @@ auto replicated_log::LogFollower::getParticipantId() const noexcept -> Participa
   return _participantId;
 }
 
-auto replicated_log::LogFollower::resign() && -> std::unique_ptr<LogCore> {
+auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> {
   return _guardedFollowerData.doUnderLock([this](auto& followerData) {
     LOG_CTX("838fe", DEBUG, _logContext) << "follower resign";
-    return std::move(followerData._logCore);
+    return std::make_tuple(std::move(followerData._logCore), DeferredExecutor{});
   });
 }
 

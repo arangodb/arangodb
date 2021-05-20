@@ -57,17 +57,18 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
     -> std::shared_ptr<LogLeader> {
   auto leader = std::shared_ptr<LogLeader>{};
-  {
+  auto deferred = std::invoke([&]{
     std::unique_lock guard(_mutex);
     LOG_CTX("23d7b", DEBUG, _logContext)
         << "becoming leader in term " << termData.term;
     // TODO Resign: will resolve some promises because leader resigned
     //      those promises will call ReplicatedLog::getLeader() -> DEADLOCK
-    auto logCore = std::move(*_participant).resign();
+    auto [logCore, deferred] = std::move(*_participant).resign();
     leader = LogLeader::construct(termData, std::move(logCore), follower,
                                   _logContext, _metrics);
     _participant = std::static_pointer_cast<LogParticipantI>(leader);
-  }
+    return std::move(deferred);
+  });
 
   // resolve(promises);
 
@@ -77,19 +78,24 @@ auto replicated_log::ReplicatedLog::becomeLeader(
 auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm term,
                                                    ParticipantId leaderId)
     -> std::shared_ptr<LogFollower> {
-  std::unique_lock guard(_mutex);
-  auto logCore = std::move(*_participant).resign();
-  LOG_CTX("23d7b", DEBUG, _logContext) << "becoming follower in term " << term << " with leader " << leaderId;
-  // TODO this is a cheap trick for now. Later we should be aware of the fact
-  //      that the log might not start at 1.
-  auto iter = logCore->read(LogIndex{0});
-  auto log = InMemoryLog{};
-  while (auto entry = iter->next()) {
-    log._log = log._log.push_back(std::move(entry).value());
-  }
-  auto follower = std::make_shared<LogFollower>(_logContext, _metrics, std::move(id), std::move(logCore),
-                                                term, std::move(leaderId), log);
-  _participant = std::static_pointer_cast<LogParticipantI>(follower);
+  auto [follower, deferred] = std::invoke([&] {
+    std::unique_lock guard(_mutex);
+    auto [logCore, deferred] = std::move(*_participant).resign();
+    LOG_CTX("23d7b", DEBUG, _logContext)
+        << "becoming follower in term " << term << " with leader " << leaderId;
+    // TODO this is a cheap trick for now. Later we should be aware of the fact
+    //      that the log might not start at 1.
+    auto iter = logCore->read(LogIndex{0});
+    auto log = InMemoryLog{};
+    while (auto entry = iter->next()) {
+      log._log = log._log.push_back(std::move(entry).value());
+    }
+    auto follower = std::make_shared<LogFollower>(_logContext, _metrics,
+                                                  std::move(id), std::move(logCore),
+                                                  term, std::move(leaderId), log);
+    _participant = std::static_pointer_cast<LogParticipantI>(follower);
+    return std::make_tuple(follower, std::move(deferred));
+  });
   return follower;
 }
 
@@ -126,8 +132,11 @@ auto replicated_log::ReplicatedLog::getFollower() const -> std::shared_ptr<LogFo
 }
 
 auto replicated_log::ReplicatedLog::drop() -> std::unique_ptr<LogCore> {
-  std::unique_lock guard(_mutex);
-  auto core = std::move(*_participant).resign();
-  _participant = nullptr;
-  return core;
+  auto [core, deferred] = std::invoke([&]{
+    std::unique_lock guard(_mutex);
+    auto res = std::move(*_participant).resign();
+    _participant = nullptr;
+    return res;
+  });
+  return std::move(core);
 }
