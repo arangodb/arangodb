@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue, assertNotEqual, arango */
+/* global assertEqual, assertFalse, assertTrue, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for revision trees - corrupt and repair
