@@ -33,10 +33,13 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 const wait = internal.wait;
 const primaryEndpoint = arango.getEndpoint();
+const helper = require("@arangodb/test-helper");
 
 function waitForTreeReady(c) {
   while (true) {
-    let pending = c._revisionTreePendingUpdates();
+    let name = c.name();
+    let pending = db._connection.POST("/_admin/execute?returnAsJSON=true",
+      `return require("internal").db._collection("${name}")._revisionTreePendingUpdates();`);
     // For whatever reason, sometimes we get an empty object back, let's
     // skip that.
     if (pending.hasOwnProperty("inserts")) {
@@ -75,26 +78,20 @@ function corruptRepairSuite () {
 
     testRevisionTreeCorrupt: function() {
       const c1 = db._collection(colName1);
-      assertEqual(c1._revisionTreeSummary().count, c1.count());
-      assertEqual(c1._revisionTreeSummary().count, 1000);
       let trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
 
       // Not let's corrupt the tree:
-      c1._revisionTreeCorrupt(17, 17);
-      let summary = c1._revisionTreeSummary();
-      assertEqual(summary.count, 17);
-      assertEqual(summary.hash, 17);
-      internal.debugSetFailAt(primaryEndpoint, "MerkleTree::skipConsistencyCheck");
+      db._connection.POST("/_admin/execute?returnAsJSON=true",
+        `require("internal").db._collection("${colName1}")._revisionTreeCorrupt(17, 17); return true;`);
+      helper.debugSetFailAt(primaryEndpoint, "MerkleTree::skipConsistencyCheck");
       trees = c1._revisionTreeVerification();
       assertFalse(trees.equal);
-      internal.debugClearFailAt(primaryEndpoint);
+      helper.debugClearFailAt(primaryEndpoint);
 
       // And repair it again:
-      c1._revisionTreeRebuild();
-      summary = c1._revisionTreeSummary();
-      assertNotEqual(summary.count, 17);
-      assertNotEqual(summary.hash, 17);
+      db._connection.POST("/_admin/execute?returnAsJSON=true",
+        `require("internal").db._collection("${colName1}")._revisionTreeRebuild(); return true;`);
       trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
     },
@@ -102,7 +99,7 @@ function corruptRepairSuite () {
   };
 }
 
-if (internal.debugCanUseFailAt(primaryEndpoint)) {
+if (helper.debugCanUseFailAt(primaryEndpoint)) {
   jsunity.run(corruptRepairSuite);
 }
 

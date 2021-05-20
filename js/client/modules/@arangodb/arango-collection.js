@@ -1527,3 +1527,30 @@ ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   arangosh.checkRequestResult(requestResult);
   return { result: true };
 };
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief MerkleTreeVerification
+//////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._revisionTreeVerification = function() {
+  var batch = this._database._connection.POST(this._prefixurl('/_api/replication/batch'), {ttl : 3600});
+  if (!batch.hasOwnProperty("id")) {
+    throw "Could not create batch!";
+  }
+  var requestResult = this._database._connection.GET(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${this._name}&verification=true&batchId=${batch.id}`));
+  this._database._connection.DELETE(this._prefixurl(
+    `/_api/replication/batch/${batch.id}`));
+  return requestResult;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief MerkleTreeRebuilding
+//////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._revisionTreeRebuild = function() {
+  // For some reason we need a batch ID here, which is not used!
+  var requestResult = this._database._connection.POST(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${this._name}&batchId=42`), {});
+};
+
