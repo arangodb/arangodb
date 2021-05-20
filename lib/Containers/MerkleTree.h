@@ -122,13 +122,12 @@ class MerkleTree {
     std::uint64_t rangeMax;
     std::uint64_t depth;
     std::uint64_t initialRangeMin;
+    Node summary;
   };
-  static_assert(sizeof(Meta) == 32, "Meta size assumptions invalid.");
+  static_assert(sizeof(Meta) == 48, "Meta size assumptions invalid.");
   static constexpr std::uint64_t MetaSize =
       (CacheLineSize * ((sizeof(Meta) + (CacheLineSize - 1)) / CacheLineSize));
 
-  static constexpr std::uint64_t nodeCountUpToDepth(std::uint64_t depth) noexcept;
-  static constexpr std::uint64_t nodeCountAboveDepth(std::uint64_t depth) noexcept;
   static constexpr std::uint64_t allocationSize(std::uint64_t depth) noexcept;
 
  public:
@@ -367,22 +366,23 @@ class MerkleTree {
   explicit MerkleTree(std::unique_ptr<uint8_t[]> buffer);
   explicit MerkleTree(MerkleTree<Hasher, BranchingBits> const& other);
 
-  Meta& meta() const noexcept;
+  Meta& meta() noexcept;
+  Meta const& meta() const noexcept;
+
   Node& node(std::uint64_t index) noexcept;
   Node const& node(std::uint64_t index) const noexcept;
-  std::uint64_t index(std::uint64_t key, std::uint64_t depth) const noexcept;
+
+  std::uint64_t index(std::uint64_t key) const noexcept;
   void modify(std::uint64_t key, bool isInsert);
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
-  bool modifyLocal(std::uint64_t depth, std::uint64_t key, std::uint64_t value,
-                   bool isInsert);
-  void completeFromDeepest() noexcept;
+  bool modifyLocal(Node& node, std::uint64_t count, std::uint64_t value, bool isInsert) noexcept;
+  bool modifyLocal(std::uint64_t key, std::uint64_t value, bool isInsert) noexcept;
   void leftCombine(bool withShift) noexcept;
   void rightCombine(bool withShift) noexcept;
   void growLeft(std::uint64_t key);
   void growRight(std::uint64_t key);
   bool equalAtIndex(MerkleTree<Hasher, BranchingBits> const& other,
                     std::uint64_t index) const noexcept;
-  bool childrenAreLeaves(std::uint64_t index) const noexcept;
   std::pair<std::uint64_t, std::uint64_t> chunkRange(std::uint64_t chunk, std::uint64_t depth) const;
   void storeBottomMostCompressed(std::string& output) const;
   
