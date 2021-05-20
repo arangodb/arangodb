@@ -1,6 +1,9 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
+* Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
+  function.
+
 * Added 2 options to allow HTTP redirection customization for root ("/") call of
   HTTP API:
 

@@ -1321,15 +1321,17 @@ class block_disjunction final
 
     cur_ = *mask_;
     begin_ = mask_ + 1;
-    while (!cur_) {
-      cur_ = *begin_++;
-      doc_base_ += bits_required<uint64_t>();
-    }
-    assert(cur_);
-
     if constexpr (traits_type::min_match() || traits_type::score()) {
       buf_offset_ = 0;
     }
+    while (!cur_) {
+      cur_ = *begin_++;
+      doc_base_ += bits_required<uint64_t>();
+      if constexpr (traits_type::min_match() || traits_type::score()) {
+        buf_offset_ += bits_required<uint64_t>();
+      }
+    }
+    assert(cur_);
 
     return true;
   }
@@ -1388,8 +1390,8 @@ class block_disjunction final
   size_t match_count_;
   cost cost_;
   size_t buf_offset_{}; // offset within a buffer
-  score_buffer_type score_buf_;
-  min_match_buffer_type match_buf_;
+  score_buffer_type score_buf_;     // FIXME EBO
+  min_match_buffer_type match_buf_; // FIXME EBO
   const byte_type* score_value_{score_buf_.data()};
   order::prepared::merger merger_;
 }; // block_disjunction
