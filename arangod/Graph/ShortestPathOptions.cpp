@@ -161,9 +161,11 @@ void ShortestPathOptions::addReverseLookupInfo(aql::ExecutionPlan* plan,
 double ShortestPathOptions::weightEdge(VPackSlice edge) const {
   TRI_ASSERT(useWeight());
   const auto weight = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-      edge, _weightAttribute.c_str(), _defaultWeight);
-  if (weight < 0.) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+      edge, _weightAttribute, _defaultWeight);
+  if (weight <= 0.) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_GRAPH_INVALID_EDGE_WEIGHT,
+        "negative or zero value default weight not allowed");
   }
 
   return weight;
@@ -216,9 +218,10 @@ auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
 }
 
 auto ShortestPathOptions::setDefaultWeight(double weight) -> void {
-  if (weight < 0.) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
-                                   "negative default weight not allowed");
+  if (weight <= 0.) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_GRAPH_INVALID_EDGE_WEIGHT,
+        "negative or zero value default weight not allowed");
   }
   _defaultWeight = weight;
 }
@@ -248,7 +251,7 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       _reverseLookupInfos{other._reverseLookupInfos},
       _weightAttribute{other._weightAttribute},
       _defaultWeight{other._defaultWeight} {
-  TRI_ASSERT(other._defaultWeight >= 0.);
+  TRI_ASSERT(other._defaultWeight > 0.);
 }
 
 template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(
