@@ -26,7 +26,6 @@
 
 #include "Agency/Store.h"
 #include "Mocks/Servers.h"
-#include "fakeit.hpp"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Compare.h>
