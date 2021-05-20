@@ -142,7 +142,7 @@ struct DelayedFollowerLog : AbstractFollower {
 struct DelayedLogLeader : LogParticipantI {
   explicit DelayedLogLeader(std::shared_ptr<LogLeader> leader);
   auto getStatus() const -> LogStatus override;
-  auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> override;
+  auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
   auto insert(LogPayload payload) -> LogIndex {
     return _leader->insert(std::move(payload));

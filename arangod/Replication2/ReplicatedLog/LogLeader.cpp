@@ -287,7 +287,7 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
   return _guardedLeaderData.getLockedGuard();
 }
 
-auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> {
+auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
   // TODO Do we need to do more than that, like make sure to refuse future
   //      requests?
   auto [core, promises] = _guardedLeaderData.doUnderLock(
@@ -307,7 +307,7 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCor
       });
 
   return std::make_tuple(std::move(core),
-                         DeferredExecutor([promises = std::move(promises)]() mutable noexcept {
+                         DeferredAction([promises = std::move(promises)]() mutable noexcept {
                            for (auto& [idx, promise] : promises) {
                              promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
                                                                     __FILE__, __LINE__));

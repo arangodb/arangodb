@@ -104,7 +104,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
 
-  auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> override;
+  auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
 

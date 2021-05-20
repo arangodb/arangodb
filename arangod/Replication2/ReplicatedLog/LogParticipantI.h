@@ -47,7 +47,7 @@ struct LogParticipantI {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   virtual ~LogParticipantI() = default;
   [[nodiscard]] virtual auto resign() &&
-      -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> = 0;
+      -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
 
   using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
   using WaitForFuture = futures::Future<std::shared_ptr<QuorumData>>;
@@ -71,7 +71,7 @@ struct LogUnconfiguredParticipant
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   auto resign() &&
-      -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> override;
+      -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   std::unique_ptr<LogCore> _logCore;
 };

@@ -36,8 +36,8 @@ replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(std::uniq
     : _logCore(std::move(logCore)) {}
 
 auto replicated_log::LogUnconfiguredParticipant::resign() &&
-    -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> {
-  auto nop = DeferredExecutor{};
+    -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
+  auto nop = DeferredAction{};
   return std::make_tuple(std::move(_logCore), std::move(nop));
 }
 

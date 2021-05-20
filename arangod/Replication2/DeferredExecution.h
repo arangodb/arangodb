@@ -25,14 +25,14 @@
 
 namespace arangodb {
 
-struct DeferredExecutor {
-  DeferredExecutor() = default;
-  DeferredExecutor(DeferredExecutor&&) noexcept = default;
-  DeferredExecutor& operator=(DeferredExecutor&&) noexcept = default;
-  DeferredExecutor(DeferredExecutor const&) noexcept = delete;
-  DeferredExecutor& operator=(DeferredExecutor const&) noexcept = delete;
+struct DeferredAction {
+  DeferredAction() = default;
+  DeferredAction(DeferredAction&&) noexcept = default;
+  DeferredAction& operator=(DeferredAction&&) noexcept = default;
+  DeferredAction(DeferredAction const&) noexcept = delete;
+  DeferredAction& operator=(DeferredAction const&) noexcept = delete;
 
-  ~DeferredExecutor() {
+  ~DeferredAction() {
     fire();
   }
 
@@ -45,7 +45,7 @@ struct DeferredExecutor {
   using function_object = fu2::unique_function<void() noexcept>;
 
   template<typename F>
-  explicit DeferredExecutor(F&& fo) noexcept(std::is_nothrow_constructible_v<function_object, F>)
+  explicit DeferredAction(F&& fo) noexcept(std::is_nothrow_constructible_v<function_object, F>)
       : _function(std::forward<F>(fo)) {}
 
  private:

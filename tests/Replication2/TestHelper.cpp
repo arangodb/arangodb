@@ -143,6 +143,6 @@ DelayedLogLeader::DelayedLogLeader(std::shared_ptr<LogLeader>  leader)
 LogStatus DelayedLogLeader::getStatus() const {
   return _leader->getStatus();
 }
-auto DelayedLogLeader::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredExecutor> {
+auto DelayedLogLeader::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
   return std::move(*_leader).resign();
 }
