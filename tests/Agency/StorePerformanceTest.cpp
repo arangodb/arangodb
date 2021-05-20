@@ -87,7 +87,7 @@ struct OperationMeasurement
     return *this;
   }
 
-  void report(bool sequential = true) 
+  void report(size_t block_size = 0) 
   {
     stop();
     static std::array<std::pair<std::string_view, StatExtractor>, 5> duration_stats = {{
@@ -118,13 +118,21 @@ struct OperationMeasurement
     std::vector<OperationMeasurement::Clock::duration> durations;
     auto begin{observations_.begin()};
     auto from {*begin};
-    std::transform(++begin, observations_.end(), std::back_inserter(durations), [sequential, &from](auto const point){ 
-      auto d {point - from};
-      if (sequential) {
+    auto const absolute_start {*begin};
+    size_t block_position {0};
+    std::transform(++begin, observations_.end(), std::back_inserter(durations), 
+      [absolute_start, block_size, &from, &block_position](auto const point) {
+        auto d {point - from};
+        if (block_size) {
+          ++block_position;
+          if (block_position > block_size) {
+            d = point - absolute_start;
+            block_position = 1;
+          }
+        }
         from = point;
-      }
-      return d;
-    });
+        return d;
+      });
 
     auto inform {[](Duration d){ std::cout << std::setw(10) << d.count() << "ns ";}};
     for (auto const& stat: duration_stats) {
@@ -286,38 +294,41 @@ class StorePerformanceTest : public ::testing::Test {
         [](auto const& element) { return element.second; });
   }
 
-  void threaded_writes(std::function<std::string()> value_generator) {
-    auto const count {repetition_times[0]};
+  void threaded_writes(std::function<std::string()> value_generator, size_t const count_threads) {
+    auto const operations_count {repetition_times[1]};
     std::vector<std::thread> threads;
-    OperationMeasurement::Observations points{1 + count};
+    OperationMeasurement::Observations points{1 + count_threads * operations_count};
     std::mutex m_ready, m_start;
     std::condition_variable cv_ready, cv_start;
     std::atomic_uint worker_count{0};
-    std::generate_n(std::back_inserter(threads), count, [this, &m_start, &cv_start, &cv_ready, &worker_count, &points, value_generator](){ 
-      return std::thread([this, &m_start, &cv_start, &cv_ready, &worker_count, &points, value_generator]() {
+    std::generate_n(std::back_inserter(threads), count_threads, 
+    [this, &m_start, &cv_start, &cv_ready, &worker_count, &points, value_generator, operations_count](){ 
+      return std::thread([this, &m_start, &cv_start, &cv_ready, &worker_count, &points, value_generator, operations_count]() {
         uint const thread_index {worker_count++};
         auto const write_query {VPackParser::fromJson(value_generator())};
+        auto observation_point {points.data() + 1 + thread_index * operations_count};
         std::unique_lock<std::mutex> lk{m_start};
         cv_ready.notify_one();
         cv_start.wait(lk);
-        for (size_t i{}; i < repetition_times[1]; ++i) {
+        for (size_t i{}; i < operations_count; ++i) {
           write(write_query);
+          *observation_point = OperationMeasurement::Clock::now();
+          ++observation_point;
         }
-        points.at(1 + thread_index) = OperationMeasurement::Clock::now();
       });});
     std::unique_lock<std::mutex> lk{m_ready};
-    cv_ready.wait(lk, [&worker_count, count](){ 
-      return worker_count.load() == count;
+    cv_ready.wait(lk, [&worker_count, count_threads](){ 
+      return worker_count.load() == count_threads;
     });
     
-    std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    std::this_thread::sleep_for(std::chrono::milliseconds{200});
     points[0] = OperationMeasurement::Clock::now();
     cv_start.notify_all();
     for (auto& thread: threads) {
       thread.join();
     }
-    OperationMeasurement{std::move(points)}.report(false);
-
+    std::cout << count_threads << " threads\n";
+    OperationMeasurement{std::move(points)}.report(operations_count);
   }
 };
 
@@ -633,17 +644,21 @@ TEST_F(StorePerformanceTest, tree_add_remove_readd) {
 // test for contention:
 // multiple threads manipulate values
 TEST_F(StorePerformanceTest, multiple_threads_all_separate_keys) {
-  threaded_writes([](){
-      std::string const key {rand_path()};
-      return "[[{\"" + key + "\": " + std::to_string(rand()) + "}]]";
-    });
+  for (auto thread_count: {2, 4, 7, 8, 15, 16, 32}) {
+    threaded_writes([](){
+        std::string const key {rand_path()};
+        return "[[{\"" + key + "\": " + std::to_string(rand()) + "}]]";
+      }, thread_count);
+  }
 }
 
 TEST_F(StorePerformanceTest, multiple_threads_high_concurrence) {
-  threaded_writes([](){
-      std::string const key {std::string("k") + std::to_string(rand() % 3)};
-      return "[[{\"" + key + "\": " + std::to_string(rand()) + "}]]";
-    });
+  for (auto thread_count: {2, 4, 7, 8, 15, 16, 32}) {
+    threaded_writes([](){
+        std::string const key {std::string("k") + std::to_string(rand() % 3)};
+        return "[[{\"" + key + "\": " + std::to_string(rand()) + "}]]";
+      }, thread_count);
+  }
 }
 
 }  // namespace store_performance_test
