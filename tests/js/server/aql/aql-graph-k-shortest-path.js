@@ -583,7 +583,7 @@ function kShortestPathsErrorTestSuite() {
       gm._drop(graphName, true);
     },
 
-    testKShortestPathNegativeDefaultEdgeWeight: function () {
+    testKShortestPathsNegativeDefaultEdgeWeight: function () {
       const source = `${vName}/${keyA}`;
       const target = `${vName}/${keyD}`;
 
@@ -607,7 +607,7 @@ function kShortestPathsErrorTestSuite() {
       }
     },
 
-    testKShortestPathNegativeEdgeWeight: function () {
+    testKShortestPathsNegativeEdgeWeight: function () {
       const source = `${vName}/${keyA}`;
       const target = `${vName}/${keyD}`;
 
