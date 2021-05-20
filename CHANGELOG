@@ -1,7 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* Fixes SEARCH-7: inconsistent BM25 scoring for LEVENSHTEIN_MATCH function.
+* Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
+  function.
 
 * Rename two metrics with previously Prometheus-incompatible names:
   - `arangodb_aql_global_query_memory_limit_reached` was renamed to
