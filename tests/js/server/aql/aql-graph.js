@@ -1459,6 +1459,103 @@ function kPathsTestSuite () {
   };
 }
 
+function ShortestPathErrorTestSuite() {
+
+  const graphName = "UnitTestGraph";
+  const vName = "UnitTestVertices";
+  const eName = "UnitTestEdges";
+
+  const keyA = "A";
+  const keyB = "B";
+  const keyC = "C";
+  const keyD = "D";
+  const keyE = "E";
+
+  function createGraph() {
+    /*
+     * Graph:
+     *   A  -> B  -> E
+     *    ⬊ C -> D ⬈
+     */
+    gm._create(graphName, [gm._relation(eName, vName, vName)], [], {});
+
+    const vertexes = [
+      {_key: keyA, value: 1},
+      {_key: keyB, value: 1},
+      {_key: keyC, value: 1},
+      {_key: keyD, value: 1},
+      {_key: keyE, value: 1}
+    ];
+
+    const edges = [
+      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyB}`, weight: 1},
+      {_from: `${vName}/${keyB}`, _to: `${vName}/${keyE}`, weight: -1},
+      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyC}`, weight: -1},
+      {_from: `${vName}/${keyC}`, _to: `${vName}/${keyD}`, weight: 1},
+      {_from: `${vName}/${keyD}`, _to: `${vName}/${keyE}`, weight: -1}
+    ];
+
+    db[vName].insert(vertexes);
+    db[eName].insert(edges);
+  }
+
+
+  return {
+    setUpAll: function () {
+      createGraph();
+    },
+
+    tearDownAll: function () {
+      gm._drop(graphName, true);
+    },
+
+    testShortestPathNegativeDefaultEdgeWeight: function () {
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const bindVars = {
+        weight: -1
+      };
+
+      const query = `
+        FOR path IN OUTBOUND SHORTEST_PATH "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {defaultWeight: @weight}
+          RETURN path
+      `;
+
+      try {
+        let res = db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        console.warn(err);
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
+      }
+    },
+
+    testShortestPathNegativeEdgeWeight: function () {
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const bindVars = {
+        weight: 1,
+        weightAttributeToUse: "weight"
+      };
+
+      const query = `
+        FOR path IN OUTBOUND SHORTEST_PATH "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {defaultWeight: @weight, weightAttribute: @weightAttributeToUse}
+          RETURN path
+      `;
+
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
+      }
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -1472,5 +1569,6 @@ if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 jsunity.run(kPathsTestSuite);
+jsunity.run(ShortestPathErrorTestSuite);
 
 return jsunity.done();
