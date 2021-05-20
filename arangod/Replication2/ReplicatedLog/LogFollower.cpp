@@ -22,10 +22,11 @@
 
 #include "LogFollower.h"
 
+#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/messages.h"
-
-#include "LogContextKeys.h"
+#include "Replication2/ReplicatedLogMetrics.h"
+#include "RestServer/Metrics.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
@@ -34,6 +35,7 @@
 #include <Futures/Promise.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <string>
 #include <utility>
@@ -56,7 +58,15 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
--> arangodb::futures::Future<AppendEntriesResult> {
+    -> arangodb::futures::Future<AppendEntriesResult> {
+  auto const startTime = std::chrono::steady_clock::now();
+  auto measureTime = DeferredAction{[startTime, &metrics = _logMetrics]() noexcept {
+    auto const endTime = std::chrono::steady_clock::now();
+    auto const duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
+    metrics.replicatedLogFollowerAppendEntriesRtUs.count(duration.count());
+  }};
+
   auto self = _guardedFollowerData.getLockedGuard();
 
   if (self->_logCore == nullptr) {
@@ -156,14 +166,14 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
                               std::move(toBeResolved));
       })
-      .thenValue([](auto&& res) {
+      .thenValue([measureTime = std::move(measureTime)](auto&& res) mutable {
+        measureTime.fire();
         auto&& [result, toBeResolved] = res;
         for (auto& promise : toBeResolved) {
           // TODO what do we resolve this with? QuorumData is not available on follower
           // TODO execute this in a different context.
           promise.second.setValue(std::shared_ptr<QuorumData>{});
         }
-
         return std::move(result);
       });
 }

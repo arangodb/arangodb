@@ -30,6 +30,7 @@ struct ReplicatedLogMetricsMockContainer {
 
   std::shared_ptr<Gauge<uint64_t>> replicatedLogNumber;
   std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> replicatedLogAppendEntriesRttUs;
+  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> replicatedLogFollowerAppendEntriesRtUs;
 };
 
 struct ReplicatedLogMetricsMock

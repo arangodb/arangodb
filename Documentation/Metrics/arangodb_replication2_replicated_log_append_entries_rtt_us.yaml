@@ -1,7 +1,7 @@
 name: arangodb_replication2_replicated_log_append_entries_rtt_us
 introducedIn: "3.9.0"
 help: |
-  Histogram of the duration of appendEntries calls in us. TODO make this more precise
+  Histogram of the duration of appendEntries requests in us. TODO make this more precise
 unit: number
 type: histogram
 category: Replication
@@ -9,4 +9,4 @@ complexity: advanced
 exposedBy:
   - dbserver
 description: |
-  Histogram of the duration of appendEntries calls in us. TODO extend this description.
+  Histogram of the duration of appendEntries requests in us. TODO extend this description.

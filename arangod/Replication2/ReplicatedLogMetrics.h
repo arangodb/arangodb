@@ -42,11 +42,13 @@ struct ReplicatedLogMetrics {
 
   Gauge<uint64_t>& replicatedLogNumber;
   Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs;
+  Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
   ReplicatedLogMetrics(Gauge<uint64_t>& replicatedLogNumber,
-                       Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs);
+                       Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs,
+                       Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs);
 #endif
 };
 

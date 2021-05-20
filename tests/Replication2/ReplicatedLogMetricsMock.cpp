@@ -31,10 +31,13 @@ auto buildMetric() {
 
 ReplicatedLogMetricsMock::ReplicatedLogMetricsMock(ReplicatedLogMetricsMockContainer&& metricsContainer)
     : ReplicatedLogMetrics(*metricsContainer.replicatedLogNumber,
-                           *metricsContainer.replicatedLogAppendEntriesRttUs),
+                           *metricsContainer.replicatedLogAppendEntriesRttUs,
+                           *metricsContainer.replicatedLogFollowerAppendEntriesRtUs),
       metricsContainer(std::move(metricsContainer)) {}
 
 ReplicatedLogMetricsMockContainer::ReplicatedLogMetricsMockContainer()
     : replicatedLogNumber(buildMetric<arangodb_replication2_replicated_log_number>()),
       replicatedLogAppendEntriesRttUs(
-          buildMetric<arangodb_replication2_replicated_log_append_entries_rtt_us>()) {}
+          buildMetric<arangodb_replication2_replicated_log_append_entries_rtt_us>()),
+      replicatedLogFollowerAppendEntriesRtUs(
+          buildMetric<arangodb_replication2_replicated_log_follower_append_entries_rt_us>()) {}

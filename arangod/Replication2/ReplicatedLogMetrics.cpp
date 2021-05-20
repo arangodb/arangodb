@@ -31,9 +31,13 @@ using namespace arangodb::replication2::replicated_log;
 ReplicatedLogMetrics::ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature)
     : replicatedLogNumber(metricsFeature.add(arangodb_replication2_replicated_log_number{})),
       replicatedLogAppendEntriesRttUs(metricsFeature.add(
-          arangodb_replication2_replicated_log_append_entries_rtt_us{})) {}
+          arangodb_replication2_replicated_log_append_entries_rtt_us{})),
+      replicatedLogFollowerAppendEntriesRtUs(metricsFeature.add(
+          arangodb_replication2_replicated_log_follower_append_entries_rt_us{})) {}
 
 ReplicatedLogMetrics::ReplicatedLogMetrics(Gauge<uint64_t>& replicatedLogNumber,
-                                           Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs)
+                                           Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs,
+                                           Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs)
     : replicatedLogNumber(replicatedLogNumber),
-      replicatedLogAppendEntriesRttUs(replicatedLogAppendEntriesRttUs) {}
+      replicatedLogAppendEntriesRttUs(replicatedLogAppendEntriesRttUs),
+      replicatedLogFollowerAppendEntriesRtUs(replicatedLogFollowerAppendEntriesRtUs) {}

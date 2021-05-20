@@ -37,5 +37,7 @@ DECLARE_GAUGE(arangodb_replication2_replicated_log_number, std::uint64_t,
 
 DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_rtt_us,
                   AppendEntriesRttScale, "RTT for AppendEntries requests [us]");
+DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_follower_append_entries_rt_us,
+                  AppendEntriesRttScale, "RT for AppendEntries call [us]");
 
 }  // namespace arangodb
