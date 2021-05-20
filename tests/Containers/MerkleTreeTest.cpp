@@ -455,6 +455,7 @@ TEST(MerkleTreeTest, test_diff_misc) {
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 TEST(MerkleTreeTest, test_serializeBinarySnappySmall) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeSnappy");
   auto guard = arangodb::scopeGuard([]() {
@@ -477,7 +478,9 @@ TEST(MerkleTreeTest, test_serializeBinarySnappySmall) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
+#endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 TEST(MerkleTreeTest, test_serializeBinarySnappyLarge) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeSnappy");
   auto guard = arangodb::scopeGuard([]() {
@@ -506,7 +509,9 @@ TEST(MerkleTreeTest, test_serializeBinarySnappyLarge) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
+#endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 TEST(MerkleTreeTest, test_serializeBinaryBottomMostSmall) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeBottomMost");
   auto guard = arangodb::scopeGuard([]() {
@@ -529,7 +534,9 @@ TEST(MerkleTreeTest, test_serializeBinaryBottomMostSmall) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
+#endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 TEST(MerkleTreeTest, test_serializeBinaryBottomMostLarge) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeBottomMost");
   auto guard = arangodb::scopeGuard([]() {
@@ -558,7 +565,9 @@ TEST(MerkleTreeTest, test_serializeBinaryBottomMostLarge) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
+#endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 TEST(MerkleTreeTest, test_serializeBinaryUncompressedSmall) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
   auto guard = arangodb::scopeGuard([]() {
@@ -581,7 +590,9 @@ TEST(MerkleTreeTest, test_serializeBinaryUncompressedSmall) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
+#endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 TEST(MerkleTreeTest, test_serializeBinaryUncompressedLarge) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
   auto guard = arangodb::scopeGuard([]() {
@@ -610,7 +621,9 @@ TEST(MerkleTreeTest, test_serializeBinaryUncompressedLarge) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
+#endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 TEST(MerkleTreeTest, test_serializePortableSmall) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
   auto guard = arangodb::scopeGuard([]() {
@@ -633,7 +646,9 @@ TEST(MerkleTreeTest, test_serializePortableSmall) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
+#endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 TEST(MerkleTreeTest, test_serializePortableLarge) {
   TRI_AddFailurePointDebugging("MerkleTree::serializeUncompressed");
   auto guard = arangodb::scopeGuard([]() {
@@ -662,6 +677,7 @@ TEST(MerkleTreeTest, test_serializePortableLarge) {
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
 }
+#endif
 
 TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
   uint64_t rangeMin = uint64_t(1609459200000000000ULL);

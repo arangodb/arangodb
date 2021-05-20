@@ -894,7 +894,10 @@ template <typename Hasher, std::uint64_t const BranchingBits>
 MerkleTree<Hasher, BranchingBits>::MerkleTree(MerkleTree<Hasher, BranchingBits> const& other)
     : _buffer(new uint8_t[allocationSize(other.meta().depth)]) {
   // this is a protected constructor, and we get here only via clone().
-  // in this case `other`  is already properly locked
+  // in this case `other` is already properly locked
+  
+  // zero fill the first few bytes so we have comparable trees
+  memset(_buffer.get(), 0, MetaSize);  
 
   // no lock necessary here for ourselves, as no other thread can see us yet
   new (&meta()) Meta{other.meta().rangeMin, other.meta().rangeMax, other.meta().depth, other.meta().initialRangeMin, other.meta().summary};
