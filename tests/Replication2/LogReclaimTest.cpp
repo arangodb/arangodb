@@ -54,5 +54,36 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
   leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 1);
   ASSERT_TRUE(f.isReady());
   auto newLeader = std::move(f).get();
+
+  ASSERT_NE(newLeader, nullptr);
+}
+
+TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
+
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto followerLog = makeReplicatedLog(LogId{2});
+
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+  auto leader = leaderLog->becomeLeader(LogLeader::TermData{LogTerm{1}, "leader", false, 2}, {follower});
+
+  auto idx = leader->insert(LogPayload{"payload"});
+  auto f = follower->waitFor(idx).then([&](futures::Try<std::shared_ptr<QuorumData>>&& quorum) {
+    EXPECT_TRUE(quorum.hasException());
+    try {
+      quorum.throwIfFailed();
+    } catch(basics::Exception const& ex) {
+      EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
+    } catch(...) {
+      ADD_FAILURE() << "unexpected exception";
+    }
+
+    return leaderLog->getLeader();
+  });
+
+  followerLog->becomeLeader("leader", LogTerm{2}, {follower}, 1);
+  ASSERT_TRUE(f.isReady());
+  auto newLeader = std::move(f).get();
+
+  ASSERT_NE(newLeader, nullptr);
 }
 

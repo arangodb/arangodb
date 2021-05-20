@@ -134,6 +134,10 @@ struct DelayedFollowerLog : AbstractFollower {
   auto resign() && {
     return std::move(*_follower).resign();
   }
+
+  auto waitFor(LogIndex index) {
+    return _follower->waitFor(index);
+  }
  private:
   Guarded<std::deque<std::shared_ptr<AsyncRequest>>> _asyncQueue;
   std::shared_ptr<LogFollower> _follower;
