@@ -1,6 +1,14 @@
 devel
 -----
 
+* Improve Merkle tree memory usage and allow left-growth of trees, too. This
+  can help with insertions of arbitrarily old data.
+
+* Added metric `arangodb_sync_rebuilds_total` to track the full rebuild of a
+  shard follower after too many subsequent shard synchronization failures. This
+  metric should always have a value of 0. Everything else indicates a serious
+  problem.
+
 * Fixes SEARCH-7: inconsistent BM25 scoring for LEVENSHTEIN_MATCH function.
 
 * Return error 1948 when a negative edge was detected during a
