@@ -1551,5 +1551,5 @@ ArangoCollection.prototype._revisionTreeVerification = function() {
 ArangoCollection.prototype._revisionTreeRebuild = function() {
   // For some reason we need a batch ID here, which is not used!
   var requestResult = this._database._connection.POST(this._prefixurl(
-    `/_api/replication/revisions/tree?collection=${this._name}&batchId=42`), {});
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&batchId=42`), {});
 };
