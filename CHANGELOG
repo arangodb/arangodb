@@ -1,6 +1,15 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Added 2 options to allow HTTP redirection customization for root ("/") call of
+  HTTP API:
+
+  `--http.permanently-redirect-root`: if true (default), use a permanent
+  redirection (use HTTP 301 code), if false fall back to temporary redirection
+  (use HTTP 302 code);
+  `--http.redirect-root-to`: redirect of root URL to a specified path (redirects
+  to "/_admin/aardvark/index.html" if not set (default)).
+
 * Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
   function.
 
