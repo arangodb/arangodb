@@ -1,0 +1,12 @@
+name: arangodb_replication2_replicated_log_number
+introducedIn: "3.9.0"
+help: |
+  Number of replicated logs.
+unit: number
+type: counter
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of replicated logs. TODO extend this description.

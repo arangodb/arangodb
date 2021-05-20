@@ -22,8 +22,12 @@
 
 #include "LogLeader.h"
 
+#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLogMetrics.h"
+
+#include "RestServer/Metrics.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Guarded.h>
@@ -43,8 +47,6 @@
 #include <functional>
 #include <thread>
 #include <type_traits>
-
-#include "LogContextKeys.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -168,19 +170,24 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
       // when the request returns. If the locking is successful
       // we are still in the same term.
       auto messageId = it->_request.messageId;
-      LOG_CTX("1b0ec", TRACE, it->_follower->logContext) << "sending append entries, messageId = " << messageId;
+      LOG_CTX("1b0ec", TRACE, it->_follower->logContext)
+          << "sending append entries, messageId = " << messageId;
       auto startTime = std::chrono::steady_clock::now();
       it->_follower->_impl->appendEntries(std::move(it->_request))
           .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
                       lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
                       currentTerm = it->_currentTerm, messageId = messageId,
                       startTime](futures::Try<AppendEntriesResult>&& res) {
-            auto endTime = std::chrono::steady_clock::now();
+            auto const endTime = std::chrono::steady_clock::now();
+
             // TODO report (endTime - startTime) to
             //      server().getFeature<ReplicatedLogFeature>().metricReplicatedLogAppendEntriesRtt(),
             //      probably implicitly so tests can be done as well
             // TODO This has to be noexcept
             if (auto self = parentLog.lock()) {
+              auto const duration =
+                  std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
+              self->_logMetrics.replicatedLogAppendEntriesRttUs.count(duration.count());
               LOG_CTX("8ff44", TRACE, follower.logContext)
                   << "received append entries response, messageId = " << messageId;
               auto [preparedRequests, resolvedPromises] = std::invoke([&] {
@@ -406,7 +413,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   WaitForQueue toBeResolved;
   auto const end = _waitForQueue.upper_bound(_commitIndex);
   for (auto it = _waitForQueue.begin(); it != end;) {
-    LOG_CTX("37d9c", TRACE, _self._logContext) << "resolving promise for index " << it->first;
+    LOG_CTX("37d9c", TRACE, _self._logContext)
+        << "resolving promise for index " << it->first;
     toBeResolved.insert(_waitForQueue.extract(it++));
   }
   return ResolvedPromiseSet{std::move(toBeResolved), quorum};
@@ -753,6 +761,5 @@ replicated_log::LogLeader::FollowerInfo::FollowerInfo(std::shared_ptr<AbstractFo
                                                       LogContext logContext)
     : _impl(std::move(impl)),
       lastAckedIndex(lastLogIndex),
-      logContext(
-          logContext.with<logContextKeyLogComponent>("follower-info")
-              .with<logContextKeyFollowerId>(_impl->getParticipantId())) {}
+      logContext(logContext.with<logContextKeyLogComponent>("follower-info")
+                     .with<logContextKeyFollowerId>(_impl->getParticipantId())) {}

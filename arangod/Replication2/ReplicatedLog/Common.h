@@ -43,25 +43,20 @@ namespace arangodb::replication2 {
 
 template <typename T, typename S = T>
 struct implement_compare {
-  [[nodiscard]] auto operator==(S const& other) const -> bool {
-    return self() <= other && other <= self();
+  [[nodiscard]] friend auto operator==(T const& left, S const& right) -> bool {
+    return left <= right && right <= left;
   }
-  [[nodiscard]] auto operator!=(S const& other) const -> bool {
-    return !(self() == other);
+  [[nodiscard]] friend auto operator!=(T const& left, S const& right) -> bool {
+    return !(left == right);
   }
-  [[nodiscard]] auto operator<(S const& other) const -> bool {
-    return !(other <= self());
+  [[nodiscard]] friend auto operator<(T const& left, S const& right) -> bool {
+    return !(right <= left);
   }
-  [[nodiscard]] auto operator>=(S const& other) const -> bool {
-    return other <= self();
+  [[nodiscard]] friend auto operator>=(T const& left, S const& right) -> bool {
+    return right <= left;
   }
-  [[nodiscard]] auto operator>(S const& other) const -> bool {
-    return other < self();
-  }
-
- private:
-  [[nodiscard]] auto self() const -> T const& {
-    return static_cast<T const&>(*this);
+  [[nodiscard]] friend auto operator>(T const& left, S const& right) -> bool {
+    return right < left;
   }
 };
 

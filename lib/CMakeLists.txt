@@ -122,6 +122,7 @@ add_library(arango STATIC
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/Identifier.cpp
+  Basics/IndexIter.h
   Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp

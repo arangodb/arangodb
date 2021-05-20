@@ -29,13 +29,13 @@
 namespace arangodb {
 
 struct AppendEntriesRttScale {
-  static log_scale_t<std::uint64_t> scale() { return {2, 1, 120000, 16}; }
+  static log_scale_t<std::uint64_t> scale() { return {2, 1, 120000000, 16}; }
 };
 
 DECLARE_GAUGE(arangodb_replication2_replicated_log_number, std::uint64_t,
               "Number of replicated logs on this arangodb instance");
 
-DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_rtt_ms,
-                  AppendEntriesRttScale, "RTT for AppendEntries requests [ms]");
+DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_rtt_us,
+                  AppendEntriesRttScale, "RTT for AppendEntries requests [us]");
 
 }  // namespace arangodb

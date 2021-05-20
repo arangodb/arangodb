@@ -22,6 +22,8 @@
 
 #include "TestHelper.h"
 
+#include <Basics/IndexIter.h>
+
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/types.h"
@@ -45,6 +47,14 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
                            leaderId, std::move(coreA), LogTerm{1},
                            std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
 
+  auto countHistogramEntries = [](auto const& histogram) {
+    auto [begin, end] =
+        makeIndexIterPair([&](std::size_t i) { return histogram.load(i); }, 0,
+                          histogram.size());
+
+    return std::accumulate(begin, end, 0);
+  };
+
   {
     // Nothing written on the leader
     auto status = std::get<LeaderStatus>(leader->getStatus());
@@ -56,6 +66,12 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     auto status = std::get<FollowerStatus>(follower->getStatus());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead, LogIndex{0});
+  }
+  {
+    // Metric still unused
+    auto numAppendEntries =
+        countHistogramEntries(_logMetricsMock.replicatedLogAppendEntriesRttUs);
+    EXPECT_EQ(numAppendEntries, 0);
   }
 
   {
@@ -155,6 +171,15 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     }
 
     EXPECT_FALSE(follower->hasPendingAppendEntries());
+  }
+  {
+    // Metric should have registered four appendEntries.
+    // There was one insert, resulting in one appendEntries each to the follower
+    // and the local follower. After the followers responded, the commit index
+    // is updated, and both followers get another appendEntries request.
+    auto numAppendEntries =
+        countHistogramEntries(_logMetricsMock.replicatedLogAppendEntriesRttUs);
+    EXPECT_EQ(numAppendEntries, 4);
   }
 }
 

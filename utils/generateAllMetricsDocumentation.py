@@ -64,7 +64,7 @@ NAMEMATCH = re.compile(r"^\s*([a-z_A-Z0-9]+)\s*,")
 for root, dirs, files in os.walk("."):
     if root[:10] == "./arangod/" or root[:6] == "./lib/":
         for f in files:
-            if f[-4:] == ".cpp":
+            if f[-4:] == ".cpp" or f[-2:] == ".h":
                 ff = os.path.join(root, f)
                 continuation = False
                 s = open(ff, 'rt', encoding='utf-8')
