@@ -161,7 +161,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
 
   ::arangodb::containers::FnvHashProvider hasher;
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::uint64_t index = 0; index < 73; ++index) {
+  for (std::uint64_t index = 0; index < 64; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::uint64_t expectedCount = inSet0 ? 1 : 0;
     std::uint64_t expectedHash = inSet0 ? hasher.hash(0) : 0;
@@ -179,7 +179,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   std::set<std::uint64_t> indices63{ this->index(63) };
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::uint64_t index = 0; index < 73; ++index) {
+  for (std::uint64_t index = 0; index < 64; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::uint64_t expectedCount = inSet0 ? 1 : 0;
     std::uint64_t expectedHash = inSet0 ? hasher.hash(0) : 0;
@@ -201,7 +201,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   std::set<std::uint64_t> indices1{ this->index(1) };
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::uint64_t index = 0; index < 73; ++index) {
+  for (std::uint64_t index = 0; index < 64; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::uint64_t expectedCount = inSet0 ? 1 : 0;
     std::uint64_t expectedHash = inSet0 ? hasher.hash(0) : 0;
@@ -224,7 +224,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   ASSERT_EQ(count(), 2);
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::uint64_t index = 0; index < 73; ++index) {
+  for (std::uint64_t index = 0; index < 64; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::uint64_t expectedCount = inSet0 ? 1 : 0;
     std::uint64_t expectedHash = inSet0 ? hasher.hash(0) : 0;
@@ -243,7 +243,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   ASSERT_EQ(count(), 1);
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::uint64_t index = 0; index < 73; ++index) {
+  for (std::uint64_t index = 0; index < 64; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::uint64_t expectedCount = inSet0 ? 1 : 0;
     std::uint64_t expectedHash = inSet0 ? hasher.hash(0) : 0;
@@ -258,7 +258,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   ASSERT_EQ(count(), 0);
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::uint64_t index = 0; index < 73; ++index) {
+  for (std::uint64_t index = 0; index < 64; ++index) {
     InternalMerkleTreeTest::Node& node = this->node(index);
     ASSERT_EQ(node.count, 0);
     ASSERT_EQ(node.hash, 0);
