@@ -1,6 +1,18 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-422: SingleRemoteModification in AQL behaves different.
+
+  This disables the optimizer rule `optimize-cluster-single-document-operations`
+  for array inputs, e.g.
+  
+      INSERT [...] INTO collection
+      REMOVE [...] IN collection
+
+  For the cases, the optimization is not pulled off, and the normal insert/
+  update/replace/remove behavior is executed, which will fail because of an
+  array being used as input.
+
 * Added 2 options to allow HTTP redirection customization for root ("/") call of
   HTTP API:
 
