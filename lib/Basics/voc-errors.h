@@ -1466,11 +1466,11 @@ constexpr auto TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION                            
 /// collection which is not used in any edge definition of the graph.
 constexpr auto TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED             = ErrorCode{1947};
 
-/// 1948: ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT
-/// "negative edge weight found"
-/// a negative edge weight was found during a weighted graph traversal or
-/// shortest path query
-constexpr auto TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT                              = ErrorCode{1948};
+/// 1948: ERROR_GRAPH_INVALID_EDGE_WEIGHT
+/// "negative or zero value edge weight found"
+/// a negative or zero value edge weight was found during a weighted graph
+/// traversal or shortest path query
+constexpr auto TRI_ERROR_GRAPH_INVALID_EDGE_WEIGHT                               = ErrorCode{1948};
 
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
