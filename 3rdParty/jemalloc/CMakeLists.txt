@@ -56,11 +56,11 @@ if (LINUX OR DARWIN)
                   --with-version=${JEMALLOC_VERSION}-0-g0
 		  ${JEMALLOC_PROF}
     BUILD_COMMAND
-      ${MAKE} build_lib_static
+      $(MAKE) build_lib_static
     BUILD_IN_SOURCE
       1
     INSTALL_COMMAND
-      ${MAKE} install_include
+      $(MAKE) install_include
            && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
            && ${CMAKE_COMMAND} -E copy ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
     STEP_TARGETS
