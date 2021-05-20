@@ -51,9 +51,9 @@ struct OperationMeasurement
 {
   using Clock = std::chrono::high_resolution_clock;
   using Duration = Clock::duration;
-  using DurationIterator = std::vector<Duration>::iterator;
+  using DurationIt = std::vector<Duration>::iterator;
   using InformValue = std::function<void(Duration)>;
-  using StatExtractor = std::function<void(DurationIterator,DurationIterator,InformValue)>;
+  using StatExtractor = std::function<void(DurationIt,DurationIt,InformValue)>;
   using Observation = Clock::time_point;
   using Observations = std::vector<Observation>;
   
@@ -87,34 +87,28 @@ struct OperationMeasurement
     return *this;
   }
 
-  void report(size_t block_size = 0) 
+  void report(size_t block_size = std::numeric_limits<size_t>::max()) 
   {
     stop();
-    static std::array<std::pair<std::string_view, StatExtractor>, 5> duration_stats = {{
-      {"max", [](DurationIterator begin, DurationIterator end, InformValue inform) { inform (*std::max_element(begin,end)); }},
-      {"min", [](DurationIterator begin, DurationIterator end, InformValue inform) { inform (*std::min_element(begin,end)); }},
-      {"avg", [](DurationIterator begin, DurationIterator end, InformValue inform) { 
-        if (begin != end) { 
-          inform (std::accumulate(begin, end, OperationMeasurement::Clock::duration::zero()) / std::distance(begin, end));
-        }
+    static std::array<std::pair<std::string_view, StatExtractor>, 5> sorted_duration_stats = {{
+      {"max", [](DurationIt begin, DurationIt end, InformValue inform) { inform (*(end-1)); }},
+      {"min", [](DurationIt begin, DurationIt end, InformValue inform) { inform (*begin)); }},
+      {"avg", [](DurationIt begin, DurationIt end, InformValue inform) { 
+        inform (std::accumulate(begin, end, OperationMeasurement::Clock::duration::zero()) / std::distance(begin, end));
       }},
-      {"med", [](DurationIterator begin, DurationIterator end, InformValue inform) { 
-        if (begin != end) { 
-          std::vector<Duration> copy {begin, end};
-          std::sort(copy.begin(), copy.end());
-          inform (copy[copy.size() / 2]);
-        }
+      {"med", [](DurationIt begin, DurationIt end, InformValue inform) { 
+        inform (*(begin + std::distance(begin,end) / 2));
       }},
-      {"max10", [](DurationIterator begin, DurationIterator end, InformValue inform) { 
-        if (begin != end) { 
-          std::vector<Duration> copy {begin, end};
-          std::sort(copy.begin(), copy.end(), [](Duration const& a, Duration const& b){ return b < a; });
-          copy.resize(std::min(10ul, copy.size()));
-          std::for_each(copy.begin(), copy.end(), inform);
+      {"max10", [](DurationIt begin, DurationIt end, InformValue inform) { 
+        for (auto it {end - std::min(10, std::distance(begin, end))}; it != end; ++it) {
+          inform(*it);
         }
-      }},
+      }}
     }};
 
+    // transform the observed time points into durations, as per the layout given by block_size
+    // observations is a vector with one starting value at position 0
+    // and then runs of block_size values which each are the measurements
     std::vector<OperationMeasurement::Clock::duration> durations;
     auto begin{observations_.begin()};
     auto from {*begin};
@@ -123,22 +117,23 @@ struct OperationMeasurement
     std::transform(++begin, observations_.end(), std::back_inserter(durations), 
       [absolute_start, block_size, &from, &block_position](auto const point) {
         auto d {point - from};
-        if (block_size) {
-          ++block_position;
-          if (block_position > block_size) {
-            d = point - absolute_start;
-            block_position = 1;
-          }
+        if (++block_position == block_size) {
+          block_position = 0;
+          from = absolute_start;
+        } else {
+          from = point;
         }
-        from = point;
         return d;
       });
 
-    auto inform {[](Duration d){ std::cout << std::setw(10) << d.count() << "ns ";}};
-    for (auto const& stat: duration_stats) {
-      std::cout << std::setw(5) << stat.first << ": ";
-      stat.second(durations.begin(), durations.end(), inform);
-      std::cout << std::endl;
+    if (!durations.empty()) {
+      auto inform {[](Duration d){ std::cout << std::setw(10) << d.count() << "ns ";}};
+      std::sort(durations);
+      for (auto const& stat: sorted_duration_stats) {
+        std::cout << std::setw(5) << stat.first << ": ";
+        stat.second(durations.begin(), durations.end(), inform);
+        std::cout << std::endl;
+      }
     }
   }
 
