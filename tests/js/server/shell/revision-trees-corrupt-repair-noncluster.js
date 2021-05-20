@@ -51,8 +51,8 @@ function waitForTreeReady(c) {
 }
 
 function corruptRepairSuite () {
-'use strict';
-jsunity.jsUnity.attachAssertions();
+  'use strict';
+  jsunity.jsUnity.attachAssertions();
 
   const colName1 = 'UnitTestsTreeCorrupt';
 
