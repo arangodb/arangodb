@@ -290,29 +290,36 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
 auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
   // TODO Do we need to do more than that, like make sure to refuse future
   //      requests?
-  auto [core, promises] = _guardedLeaderData.doUnderLock(
-      [this, &localFollower = *_localFollower,
-       &participantId = _termData.id](GuardedLeaderData& leaderData) {
-        if (leaderData._didResign) {
-          LOG_CTX("5d3b8", ERR, _logContext)
-              << "Leader " << participantId << " already resigned!";
-          TRI_ASSERT(false);
-        }
+  return _guardedLeaderData.doUnderLock([this, &localFollower = *_localFollower,
+                                         &participantId = _termData.id](GuardedLeaderData& leaderData) {
+    if (leaderData._didResign) {
+      LOG_CTX("5d3b8", ERR, _logContext) << "Leader " << participantId << " already resigned!";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
 
-        LOG_CTX("8696f", INFO, _logContext) << "resign";
-        leaderData._didResign = true;
-        auto queue = std::move(leaderData._waitForQueue);
-        leaderData._waitForQueue.clear();
-        return std::make_pair(std::move(localFollower).resign(), std::move(queue));
-      });
+    // WARNING! This stunt is here to make things exception safe.
+    // The move constructor of std::multimap is **not** noexcept.
+    // Thus we have to make a new map unique and use std::swap to
+    // transfer the content. And then move the unique_ptr into
+    // the lambda.
+    auto queue = std::make_unique<WaitForQueue>();
 
-  return std::make_tuple(std::move(core),
-                         DeferredAction([promises = std::move(promises)]() mutable noexcept {
-                           for (auto& [idx, promise] : promises) {
-                             promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
-                                                                    __FILE__, __LINE__));
-                           }
-                         }));
+    LOG_CTX("8696f", INFO, _logContext) << "resign";
+    leaderData._didResign = true;
+    using std::swap;
+    swap(*queue, leaderData._waitForQueue);
+    return std::make_tuple(std::move(localFollower).resign(),
+                           DeferredAction([promises = std::move(queue)]() mutable noexcept {
+                             for (auto& [idx, promise] : *promises) {
+                               // Check this to make sure that setException does not throw
+                               if (!promise.isFulfilled()) {
+                                 promise.setException(
+                                     basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
+                                                       __FILE__, __LINE__));
+                               }
+                             }
+                           }));
+  });
 }
 
 auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
@@ -353,7 +360,7 @@ auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
   // TODO this has to be lock free
   // TODO investigate what order between insert-increaseTerm is required?
   // Currently we use a mutex. Is this the only valid semantic?
-  return _guardedLeaderData.doUnderLock([self = this, &payload](auto& leaderData) {
+  return _guardedLeaderData.doUnderLock([self = this, &payload](GuardedLeaderData& leaderData) {
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
@@ -410,14 +417,20 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   _commitIndex = newIndex;
   _lastQuorum = quorum;
 
-  WaitForQueue toBeResolved;
-  auto const end = _waitForQueue.upper_bound(_commitIndex);
-  for (auto it = _waitForQueue.begin(); it != end;) {
-    LOG_CTX("37d9c", TRACE, _self._logContext)
-        << "resolving promise for index " << it->first;
-    toBeResolved.insert(_waitForQueue.extract(it++));
+  try {
+    WaitForQueue toBeResolved;
+    auto const end = _waitForQueue.upper_bound(_commitIndex);
+    for (auto it = _waitForQueue.begin(); it != end;) {
+      LOG_CTX("37d9c", TRACE, _self._logContext)
+          << "resolving promise for index " << it->first;
+      toBeResolved.insert(_waitForQueue.extract(it++));
+    }
+    return ResolvedPromiseSet{std::move(toBeResolved), quorum};
+  } catch (...) {
+    // If those promises are not fulfilled we can not continue.
+    // Note that the move constructor of std::multi_map is not noexcept.
+    abort();
   }
-  return ResolvedPromiseSet{std::move(toBeResolved), quorum};
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntries(std::weak_ptr<LogLeader> const& parentLog)
