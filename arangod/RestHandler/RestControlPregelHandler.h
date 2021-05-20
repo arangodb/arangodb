@@ -27,6 +27,10 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
+
+namespace pregel {
+  class PregelFeature;
+}
 class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestControlPregelHandler(application_features::ApplicationServer&,
@@ -44,6 +48,8 @@ class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
   void startExecution();
   void getExecutionStatus();
   void cancelExecution();
+
+  pregel::PregelFeature& _pregel;
 };
 }  // namespace arangodb
 

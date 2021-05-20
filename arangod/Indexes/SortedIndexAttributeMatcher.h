@@ -31,6 +31,7 @@
 namespace arangodb {
 namespace aql {
 class Ast;
+enum AstNodeType : uint32_t;
 struct AstNode;
 class SortCondition;
 struct Variable;
@@ -93,7 +94,7 @@ bool accessFitsIndex(
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     std::unordered_set<std::string>& nonNullAttributes, bool isExecution);
 
-bool isDuplicateOperator(arangodb::aql::AstNode const* node,
+bool isDuplicateOperator(arangodb::aql::AstNodeType type,
                          ::arangodb::containers::HashSet<int> const& operatorsFound);
 };  // namespace SortedIndexAttributeMatcher
 

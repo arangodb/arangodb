@@ -1,6 +1,47 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Added 2 options to allow HTTP redirection customization for root ("/") call of
+  HTTP API:
+
+  `--http.permanently-redirect-root`: if true (default), use a permanent
+  redirection (use HTTP 301 code), if false fall back to temporary redirection
+  (use HTTP 302 code);
+  `--http.redirect-root-to`: redirect of root URL to a specified path (redirects
+  to "/_admin/aardvark/index.html" if not set (default)).
+
+* Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
+  function.
+
+* Rename two metrics with previously Prometheus-incompatible names:
+  - `arangodb_aql_global_query_memory_limit_reached` was renamed to
+    `arangodb_aql_global_query_memory_limit_reached_total`
+  - `arangodb_aql_local_query_memory_limit_reached` was renamed to
+    `arangodb_aql_local_query_memory_limit_reached_total`
+
+  These metrics were introduced in 3.8 so there is no migration for these
+  metrics.
+
+* Return error 1948 when a negative edge was detected during a weighted
+  traversal or was used as default weight.
+
+* Fixes BTS-417. In some cases an index did not consider both bounds (lower and
+  upper) for a close range scan if both bounds are expressed using the same
+  operator, e.g., `FILTER doc.beginDate >= lb AND ub >= doc.beginDate`.
+
+* Fix various issues related to the new WINDOW operation (see BTS-402)
+  - Improved explain output for ISO 8601 duration strings and fixed missing week
+    component.
+  - Improved validation of input data and error messages.
+  - Prevent FILTERs from being moved beyond a WINDOW.
+
+* Fixes BTS-416. During shutdown, a Shard leader wrongly reported that it could
+  not drop a shard follower instead of correctly indicating the shutdown as the
+  reason.
+
+* Fixes pregel lifetime management. Previously shutting down the server while a
+  pregel job was still running could result in a segfault or a shutdown hanger.
+
 * Improve error reporting for Merkle tree operations and improve memory usage
   for unused trees by hibernating them. In addition, add some backoff to shard
   synchronization in case there are repeated sync failures for the same shard.
