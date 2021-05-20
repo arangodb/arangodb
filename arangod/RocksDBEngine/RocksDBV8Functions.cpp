@@ -31,6 +31,8 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
@@ -221,6 +223,86 @@ static void JS_CollectionRevisionTreeCorrupt(v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
+
+static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  std::unique_ptr<containers::RevisionTree> storedTree;
+  std::unique_ptr<containers::RevisionTree> computedTree;
+
+  {
+    TRI_vocbase_t& vocbase = collection->vocbase();
+    auto& server = vocbase.server();
+    RocksDBEngine& engine = server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    RocksDBReplicationManager* manager = engine.replicationManager();
+    double ttl = 3600;
+    RocksDBReplicationContext* ctx 
+      = manager->createContext(engine, ttl, SyncerId{17}, ServerId{17}, "");
+    RocksDBReplicationContextGuard guard(manager, ctx);
+    auto* physical = toRocksDBCollection(*collection);
+    auto batchId = ctx->id();
+    storedTree = physical->revisionTree(batchId);
+    computedTree = physical->computeRevisionTree(batchId);
+    ctx->setDeleted();
+  }
+
+  VPackBuilder builder;
+  { 
+    VPackObjectBuilder guard(&builder);
+    if (storedTree != nullptr) {
+      builder.add(VPackValue("storedTree"));
+      storedTree->serialize(builder);
+    } else {
+      builder.add("storedTree", VPackValue(false));
+    }
+    if (computedTree != nullptr) {
+      builder.add(VPackValue("computedTree"));
+      computedTree->serialize(builder);
+    } else {
+      builder.add("computedTree", VPackValue(false));
+    }
+    if (storedTree != nullptr && computedTree != nullptr) {
+      try {
+        std::vector<std::pair<uint64_t, uint64_t>> diff
+          = computedTree->diff(*storedTree);
+        builder.add("equal", VPackValue(diff.empty()));
+      } catch(std::exception const& exc) {
+        builder.add("equal", VPackValue(std::string(exc.what())));
+      }
+    }
+  }
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_CollectionRevisionTreeRebuild(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  auto* physical = toRocksDBCollection(*collection);
+  Result result = physical->rebuildRevisionTree();
+
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION_FULL(result.errorNumber(), result.errorMessage());
+  }
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
 #endif
 
 static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -297,6 +379,14 @@ void RocksDBV8Functions::registerResources() {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_revisionTreeCorrupt"),
                        JS_CollectionRevisionTreeCorrupt);
+  // get trees from RAM and freshly computed
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "_revisionTreeVerification"),
+                       JS_CollectionRevisionTreeVerification);
+  // rebuildRevisionTree
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "_revisionTreeRebuild"),
+                       JS_CollectionRevisionTreeRebuild);
 #endif
 
   // add global WAL handling functions
