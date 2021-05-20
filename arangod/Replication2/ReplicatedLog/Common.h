@@ -105,9 +105,9 @@ class LogEntry {
  public:
   LogEntry(LogTerm, LogIndex, LogPayload);
 
-  [[nodiscard]] auto logTerm() const -> LogTerm;
-  [[nodiscard]] auto logIndex() const -> LogIndex;
-  [[nodiscard]] auto logPayload() const -> LogPayload const&;
+  [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
+  [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
+  [[nodiscard]] auto logPayload() const noexcept -> LogPayload const&;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LogEntry;

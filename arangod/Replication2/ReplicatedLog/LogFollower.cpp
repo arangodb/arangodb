@@ -122,6 +122,9 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     }
   }
 
+  // prepare the new in memory state
+  auto newInMemoryLog = self->_inMemoryLog._log.take(req.prevLogIndex.value);
+
   auto res = self->_logCore->removeBack(req.prevLogIndex + 1);
   if (!res.ok()) {
     LOG_CTX("f17b8", ERR, _logContext)
@@ -129,20 +132,28 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     abort();  // TODO abort?
   }
 
+  // commit the deletion in memory
+  self->_inMemoryLog._log = newInMemoryLog;
+  newInMemoryLog = std::invoke([&]{
+    auto transient = newInMemoryLog.transient();
+    transient.append(req.entries.transient());
+    return transient.persistent();
+  });
+
   auto iter = std::make_unique<ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>>(
       req.entries.begin(), req.entries.end());
   auto core = self->_logCore.get();
   return core->insertAsync(std::move(iter), req.waitForSync)
-      .thenValue([self = std::move(self), req = std::move(req)](Result res) mutable {
+      .thenValue([self = std::move(self), req = std::move(req),
+                  newInMemoryLog = std::move(newInMemoryLog)](Result const& res) mutable {
         if (!res.ok()) {
-          LOG_CTX("216d8", ERR, self->_self._logContext) << "failed to insert log entries";
+          LOG_CTX("216d8", ERR, self->_self._logContext)
+              << "failed to insert log entries";
           abort();  // TODO abort?
         }
 
-        auto transientLog = self->_inMemoryLog._log.transient();
-        transientLog.take(req.prevLogIndex.value);
-        transientLog.append(req.entries.transient());
-        self->_inMemoryLog._log = std::move(transientLog).persistent();
+        // commit the write in memory
+        self->_inMemoryLog._log = std::move(newInMemoryLog);
 
         LOG_CTX("dd72d", TRACE, self->_self._logContext)
             << "appended " << req.entries.size() << " log entries after "
@@ -155,11 +166,16 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
           LOG_CTX("1641d", TRACE, self->_self._logContext)
               << "increment commit index: " << self->_commitIndex;
 
-          auto const end = self->_waitForQueue.upper_bound(self->_commitIndex);
-          for (auto it = self->_waitForQueue.begin(); it != end;) {
-            LOG_CTX("d32f1", TRACE, self->_self._logContext)
-                << "resolve promise for index " << it->first;
-            toBeResolved.insert(self->_waitForQueue.extract(it++));
+          try {
+            auto const end = self->_waitForQueue.upper_bound(self->_commitIndex);
+            for (auto it = self->_waitForQueue.begin(); it != end;) {
+              LOG_CTX("d32f1", TRACE, self->_self._logContext)
+                  << "resolve promise for index " << it->first;
+              toBeResolved.insert(self->_waitForQueue.extract(it++));
+            }
+          } catch(...) {
+            // we can not continue because some promises are not fulfilled
+            abort();
           }
         }
 
@@ -172,7 +188,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         for (auto& promise : toBeResolved) {
           // TODO what do we resolve this with? QuorumData is not available on follower
           // TODO execute this in a different context.
-          promise.second.setValue(std::shared_ptr<QuorumData>{});
+          if (!promise.second.isFulfilled()) {
+            // This only throws if promise was fulfilled earlier.
+            promise.second.setValue(std::shared_ptr<QuorumData>{});
+          }
         }
         return std::move(result);
       });

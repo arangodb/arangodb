@@ -48,7 +48,7 @@ auto replicated_log::InMemoryLog::getNextIndex() const -> LogIndex {
   return LogIndex{_log.size() + 1};
 }
 
-auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const
+auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noexcept
     -> std::optional<LogEntry> {
   if (_log.size() < idx.value || idx.value == 0) {
     return std::nullopt;
