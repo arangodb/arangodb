@@ -138,7 +138,7 @@ TEST_F(InternalMerkleTreeTest, test_index) {
   // check boundaries at level 2
   for (std::uint64_t chunk = 0; chunk < 64; ++chunk) {
     std::uint64_t left = chunk;  // only one value per chunk
-    ASSERT_EQ(index(left), chunk + 9);
+    ASSERT_EQ(index(left), chunk);
   }
 }
 
@@ -294,13 +294,8 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
       ASSERT_EQ(node.count, 1);
       ASSERT_EQ(node.hash, hash2[i]);
     }
-    for (std::uint64_t i = 0; i < 8; ++i) {
-      Node& node = this->node(i + 1);
-      ASSERT_EQ(node.count, 8);
-      ASSERT_EQ(node.hash, hash1[i]);
-    }
     {
-      Node& node = this->node(0);
+      Node const& node = this->meta().summary;
       ASSERT_EQ(node.count, 64);
       ASSERT_EQ(node.hash, hash0);
     }
@@ -325,19 +320,12 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
       hash2[i / 2] ^= hasher.hash(static_cast<std::uint64_t>(i));
     }
     for (std::uint64_t i = 0; i < 64; ++i) {
-      Node& node = this->node(i + 9);
+      Node const& node = this->node(i);
       ASSERT_EQ(node.count, 2);
-      if (node.hash != hash2[i]) {
-      }
       ASSERT_EQ(node.hash, hash2[i]);
     }
-    for (std::uint64_t i = 0; i < 8; ++i) {
-      Node& node = this->node(i + 1);
-      ASSERT_EQ(node.count, 16);
-      ASSERT_EQ(node.hash, hash1[i]);
-    }
     {
-      Node& node = this->node(0);
+      Node const& node = this->meta().summary;
       ASSERT_EQ(node.count, 128);
       ASSERT_EQ(node.hash, hash0);
     }
