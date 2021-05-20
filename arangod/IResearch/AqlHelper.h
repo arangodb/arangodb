@@ -516,6 +516,40 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
                                          aql::Variable const& ref) noexcept;
 
+
+template<typename Visitor>
+bool visitAllAttributeAccess(aql::AstNode const* node,
+                             aql::Variable const& ref,
+                             QueryContext const& ctx,
+                             Visitor& visitor) {
+  if (!node) {
+    return false;
+  }
+  std::string name;
+  switch (node->type) {
+    case aql::NODE_TYPE_ATTRIBUTE_ACCESS:
+    case aql::NODE_TYPE_INDEXED_ACCESS:
+      if (checkAttributeAccess(node, ref) && nameFromAttributeAccess(name, *node, ctx)) {
+        if (!visitor(name)) {
+          return false;
+        }
+      } else if (findReference(*node, ref)) {
+        return false;
+      }
+    default: {
+      size_t const n = node->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto const* member = node->getMemberUnchecked(i);
+        TRI_ASSERT(member);
+        if (!visitAllAttributeAccess(member, ref, ctx, visitor)) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 }  // namespace iresearch
 }  // namespace arangodb
 

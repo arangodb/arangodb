@@ -165,13 +165,51 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_equality) {
   estimateFilterCondition(queryString, fields, expected);
 }
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_index) {
-  std::string queryString = "FOR d IN test FILTER d.a[5] == 'value' RETURN d ";
+TEST_F(IResearchInvertedIndexConditionTest, test_not_mix_atr) {
+  std::string queryString = "FOR c IN test FOR d IN test FILTER d.a == c.missing RETURN d ";
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected);
 }
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_index) {
+  std::string queryString = "FOR d IN test FILTER d.a[5] == 'value' RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_index_attribute) {
+  std::string queryString = "FOR d IN test FILTER d['a'] == 'value' RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_index_attribute_chain) {
+  std::string queryString = "FOR d IN test FILTER d.a['b'] == 'value' RETURN d ";
+  std::vector<std::string> fields = {"a.b"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_index_attribute_chain_missing) {
+  std::string queryString = "FOR d IN test FILTER d['a']['c'] == 'value' RETURN d ";
+  std::vector<std::string> fields = {"a.b"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_index_attribute_missing) {
+  std::string queryString = "FOR d IN test FILTER d['a'] == 'value' RETURN d ";
+  std::vector<std::string> fields = {"b"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected);
+}
+
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_expansion) {
   std::string queryString = "FOR d IN test FILTER d.a[*] == 'value' RETURN d ";

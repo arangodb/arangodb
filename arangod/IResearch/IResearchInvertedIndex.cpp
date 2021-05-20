@@ -25,28 +25,47 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "Basics/AttributeNameParser.h"
 
 
 namespace {
 using namespace arangodb;
+using namespace arangodb::iresearch;
 
 struct CheckFieldsAccess {
 
-  CheckFieldsAccess(std::vector<std::vector<arangodb::basics::AttributeName>> const& f) : _fields(f) {}
+  CheckFieldsAccess(QueryContext const& ctx,
+                    aql::Variable const& ref,
+                    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
+    : _ctx(ctx),_ref(ref) {
+    _fields.insert(std::begin(fields), std::end(fields));
+  }
 
-  bool attributeAccess(aql::AstNode const&) const { 
+  bool operator()(std::string_view name) const {
+    try {
+      TRI_ParseAttributeString(_name, _parsed, false);
+      if (_fields.find(_parsed) == _fields.end()) {
+        LOG_TOPIC("bf92f", TRACE, arangodb::iresearch::TOPIC)
+            << "Attribute '" << _name << "' is not covered by index";
+        return false;
+      }
+    } catch (arangodb::basics::Exception const& ex) {
+      // we can`t handle expansion in ArangoSearch index
+      LOG_TOPIC("2ec9a", TRACE, arangodb::iresearch::TOPIC)
+          << "Failed to parse attribute access: " << ex.message();
+      return false;
+    }
     return true;
   }
 
-  bool indexAccess(aql::AstNode const&) const {
-    return true;
-  }
-
-  bool expansion(aql::AstNode const&) const {
-    return false;  // do not support [*]
-  }
-
-  std::vector<std::vector<arangodb::basics::AttributeName>> const& _fields;
+  mutable std::string _name;
+  mutable std::vector<arangodb::basics::AttributeName> _parsed;
+  QueryContext const& _ctx;
+  aql::Variable const& _ref;
+  using atr_ref = std::reference_wrapper<std::vector<arangodb::basics::AttributeName> const>;
+  std::unordered_set<atr_ref, 
+                     std::hash<std::vector<arangodb::basics::AttributeName>>,
+                     std::equal_to<std::vector<arangodb::basics::AttributeName>>> _fields;
 };
 }
 
@@ -91,16 +110,23 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     return  filterCosts;
   }
 
+  // We don`t want byExpression filters
+  // and can`t apply index if we are not sure what attribute is 
+  // accessed so we provide QueryContext which is unable to 
+  // execute expressions and only allow to pass conditions with constant
+  // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a variable from
+  // the upstream loop we may get here a field we don`t have in the index.
+  QueryContext const queryCtx = {nullptr, nullptr, nullptr,
+                                 nullptr, nullptr, reference};
+
+
   // check that only covered attributes are referenced
-  if (!visit<true>(*node, CheckFieldsAccess(fields()))) {
+  if (!visitAllAttributeAccess(node, *reference, queryCtx, CheckFieldsAccess(queryCtx, *reference, fields()))) {
     LOG_TOPIC("d2beb", TRACE, iresearch::TOPIC)
              << "Found unknown attribute access. Skipping index " << id().id();
     return  filterCosts;
   }
 
-
-  QueryContext const queryCtx = {nullptr, nullptr, nullptr, // We don`t want byExpression filters
-                                 nullptr, nullptr, reference};
   auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false);
   LOG_TOPIC_IF("ee0f7", TRACE, iresearch::TOPIC, rv.fail())
              << "Failed to build filter with error'" << rv.errorMessage() <<"' Skipping index " << id().id();
