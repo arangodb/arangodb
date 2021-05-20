@@ -23,8 +23,32 @@
 
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFilterFactory.h"
 
+
+namespace {
+using namespace arangodb;
+
+struct CheckFieldsAccess {
+
+  CheckFieldsAccess(std::vector<std::vector<arangodb::basics::AttributeName>> const& f) : _fields(f) {}
+
+  bool attributeAccess(aql::AstNode const&) const { 
+    return true;
+  }
+
+  bool indexAccess(aql::AstNode const&) const {
+    return true;
+  }
+
+  bool expansion(aql::AstNode const&) const {
+    return false;  // do not support [*]
+  }
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& _fields;
+};
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -62,16 +86,29 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   // not use index here.
   // FIXME: maybe in future we will be able to optimize just deterministic part?
   if (!node->isDeterministic()) {
+    LOG_TOPIC("750e6", TRACE, iresearch::TOPIC)
+             << "Found non-deterministic condition. Skipping index " << id().id();
     return  filterCosts;
   }
+
+  // check that only covered attributes are referenced
+  if (!visit<true>(*node, CheckFieldsAccess(fields()))) {
+    LOG_TOPIC("d2beb", TRACE, iresearch::TOPIC)
+             << "Found unknown attribute access. Skipping index " << id().id();
+    return  filterCosts;
+  }
+
 
   QueryContext const queryCtx = {nullptr, nullptr, nullptr, // We don`t want byExpression filters
                                  nullptr, nullptr, reference};
   auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false);
+  LOG_TOPIC_IF("ee0f7", TRACE, iresearch::TOPIC, rv.fail())
+             << "Failed to build filter with error'" << rv.errorMessage() <<"' Skipping index " << id().id();
+
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = 0; // FIXME: we may use stored values!
-  }
+  } 
   return filterCosts;
 }
 
