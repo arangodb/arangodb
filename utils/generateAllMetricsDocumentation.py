@@ -122,41 +122,41 @@ for i, metric in enumerate(METRICSLIST):
         except FileNotFoundError:
             print("Could not open file '" + filename + "'")
             bad = True
-            continue
-        try:
-            y = load(s, Loader=Loader)
-        except YAMLError as err:
-            print("Could not parse YAML file '" + filename + "', error:\n" + str(err))
-            bad = True
-            continue
-
-        YAMLS.append(y)   # for later dump
-
-        # Check a few things in the yaml:
-        for attr in ["name", "help", "exposedBy", "description", "unit",\
-                     "type", "category", "complexity", "introducedIn"]:
-            if not attr in y:
-                print("YAML file '" + filename + \
-                      "' does not have required attribute '" + attr + "'")
-                bad = True
         if not bad:
-            for attr in ["name", "help", "description", "unit",\
-                         "type", "category", "complexity", "introducedIn"]:
-                if not isinstance(y[attr], str):
-                    print("YAML file '" + filename + "' has an attribute '" +\
-                          attr + "' whose value must be a string but isn't.")
-                    bad = True
-            if not isinstance(y["exposedBy"], list):
-                print("YAML file '" + filename + \
-                      "' has an attribute 'exposedBy' whose value " + \
-                      "must be a list but isn't.")
+            try:
+                y = load(s, Loader=Loader)
+            except YAMLError as err:
+                print("Could not parse YAML file '" + filename + "', error:\n" + str(err))
                 bad = True
-            if not bad:
-                if not y["category"] in CATEGORYNAMES:
+
+        if not bad:
+            YAMLS.append(y)   # for later dump
+
+            # Check a few things in the yaml:
+            for attr in ["name", "help", "exposedBy", "description", "unit",\
+                         "type", "category", "complexity", "introducedIn"]:
+                if not attr in y:
                     print("YAML file '" + filename + \
-                          "' has an unknown category '" + y["category"] + \
-                          "', please fix.")
+                          "' does not have required attribute '" + attr + "'")
                     bad = True
+            if not bad:
+                for attr in ["name", "help", "description", "unit",\
+                             "type", "category", "complexity", "introducedIn"]:
+                    if not isinstance(y[attr], str):
+                        print("YAML file '" + filename + "' has an attribute '" +\
+                            attr + "' whose value must be a string but isn't.")
+                        bad = True
+                if not isinstance(y["exposedBy"], list):
+                    print("YAML file '" + filename + \
+                          "' has an attribute 'exposedBy' whose value " + \
+                          "must be a list but isn't.")
+                    bad = True
+                if not bad:
+                    if not y["category"] in CATEGORYNAMES:
+                        print("YAML file '" + filename + \
+                           "' has an unknown category '" + y["category"] + \
+                                "', please fix.")
+                        bad = True
 
     if bad:
         MISSING = True
