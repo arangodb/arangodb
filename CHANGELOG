@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Ensure that LDAP options for async, referrals and restart set the off value
+  correctly. Otherwise, this can result in an "operations error".
+
 * Added 2 options to allow HTTP redirection customization for root ("/") call of
   HTTP API:
 
