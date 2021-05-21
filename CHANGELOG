@@ -4,7 +4,19 @@ v3.8.0 (XXXX-XX-XX)
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
 
-* Fixes SEARCH-7: inconsistent BM25 scoring for LEVENSHTEIN_MATCH function.
+* Fixed issue BTS-424: fix invalid input row handling in WINDOW execution.
+
+* Added 2 options to allow HTTP redirection customization for root ("/") call of
+  HTTP API:
+
+  `--http.permanently-redirect-root`: if true (default), use a permanent
+  redirection (use HTTP 301 code), if false fall back to temporary redirection
+  (use HTTP 302 code);
+  `--http.redirect-root-to`: redirect of root URL to a specified path (redirects
+  to "/_admin/aardvark/index.html" if not set (default)).
+
+* Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
+  function.
 
 * Rename two metrics with previously Prometheus-incompatible names:
   - `arangodb_aql_global_query_memory_limit_reached` was renamed to
