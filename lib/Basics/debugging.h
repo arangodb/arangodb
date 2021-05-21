@@ -126,6 +126,8 @@ struct is_associative {
 
 }  // namespace container_traits
 
+namespace arangodb {
+
 template <class T>
 struct remove_cvref {
   typedef std::remove_cv_t<std::remove_reference_t<T>> type;
@@ -197,20 +199,29 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
   return o;
 }
 
+}  // namespace arangodb
+
 /// @brief assert
 #ifndef TRI_ASSERT
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                           \
-  if (!(ADB_LIKELY(expr))) {                                                           \
-    arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, __FUNCTION__, #expr); \
-  } else {}
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                             \
+  do {                                                                                   \
+    if (!(ADB_LIKELY(expr))) {                                                           \
+      arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, __FUNCTION__, #expr); \
+    } else {                                                                             \
+    }                                                                                    \
+  } while (false)
 
 #else
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                           \
-  while (false) { (void)(expr); }
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/ \
+  do {                                       \
+    if (false) {                             \
+      (void)(expr);                          \
+    }                                        \
+  } while (false)
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 

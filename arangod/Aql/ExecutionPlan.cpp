@@ -255,6 +255,11 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
           }
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->defaultWeight = value->getDoubleValue();
+          if (options->defaultWeight < 0.) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
+                "negative default weight not allowed");
+          }
         } else if (name == "weightAttribute" && value->isStringValue()) {
           options->weightAttribute = value->getString();
         } else if (name == "parallelism") {

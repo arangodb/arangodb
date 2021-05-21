@@ -205,7 +205,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       auto regsToReuse =
           calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
       for (auto const& reg : regsToReuse) {
-        TRI_ASSERT(reg.isRegularRegister())
+        TRI_ASSERT(reg.isRegularRegister());
         regVarMappingStack.back().erase(reg);
       }
 

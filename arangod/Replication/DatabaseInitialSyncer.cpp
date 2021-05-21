@@ -976,7 +976,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* coll,
                                                   std::string const& leaderColl,
                                                   TRI_voc_tick_t maxTick) {
-  if (coll->syncByRevision() && _config.leader.version() >= 30700) {
+  if (coll->syncByRevision() && _config.leader.version() >= 30800) {
     // local collection should support revisions, and leader is at least aware
     // of the revision-based protocol, so we can query it to find out if we
     // can use the new protocol; will fall back to old one if leader collection
@@ -1418,8 +1418,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
   // diff with local tree
   //std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();
-  std::unique_ptr<containers::RevisionTree> treeLocal =
-      physical->revisionTree(*trx);
+  auto treeLocal = physical->revisionTree(*trx);
   if (!treeLocal) {
     // local collection does not support syncing by revision, fall back to keys
     guard.fire();

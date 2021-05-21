@@ -63,7 +63,7 @@ function recoverySuite () {
           return false;
         }
 
-        if (line.match(/\{(memory|performance|slow background)\}/)) {
+        if (line.match(/\{(memory|performance)\}/)) {
           // ignore errors about memory/performance configuration
           return false;
         }
@@ -74,6 +74,10 @@ function recoverySuite () {
         }
         if (line.match(/\[bd666\].*=+/)) {
           // and its following lie ===============================
+          return false;
+        }
+        if (internal.env["isAsan"] === "true" && line.match(/\[3ad54\].*=+/)) {
+          // intentionally ignore "slow background settings sync: " in case of ASan
           return false;
         }
 

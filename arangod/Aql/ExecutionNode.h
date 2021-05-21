@@ -470,6 +470,10 @@ class ExecutionNode {
   bool isInSplicedSubquery() const noexcept;
 
   void setIsInSplicedSubquery(bool) noexcept;
+  
+  bool isAsyncPrefetchEnabled() const noexcept { return _isAsyncPrefetchEnabled; }
+
+  void setIsAsyncPrefetchEnabled(bool v) noexcept { _isAsyncPrefetchEnabled = v; }
 
   [[nodiscard]] static bool isIncreaseDepth(NodeType type);
   [[nodiscard]] bool isIncreaseDepth() const;
@@ -539,6 +543,9 @@ class ExecutionNode {
   bool _varUsageValid;
 
   bool _isInSplicedSubquery;
+  
+  /// @brief whether or not asynchronous prefetching is enabled for this node
+  bool _isAsyncPrefetchEnabled{false};
 
   /// @brief _plan, the ExecutionPlan object
   ExecutionPlan* _plan;
