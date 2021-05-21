@@ -555,8 +555,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 354> ErrorMessage
       "no valid initial collection found"},
     {TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,  // 1947
       "referenced vertex collection is not part of the graph"},
-    {TRI_ERROR_GRAPH_INVALID_EDGE_WEIGHT,  // 1948
-      "negative or zero value edge weight found"},
+    {TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,  // 1948
+      "negative edge weight found"},
     {TRI_ERROR_SESSION_UNKNOWN,  // 1950
       "unknown session"},
     {TRI_ERROR_SESSION_EXPIRED,  // 1951
