@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-409: return error 1948 when a negative edge was detected during a
+  weighted traversal or was used as default weight.
+
 * Fixes SEARCH-7: inconsistent BM25 scoring for LEVENSHTEIN_MATCH function.
 
 * Return error 1948 when a negative edge was detected during a
