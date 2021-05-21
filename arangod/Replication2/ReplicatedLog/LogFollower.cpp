@@ -48,6 +48,7 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
+#include <Basics/application-exit.h>
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
 #if (_MSC_VER >= 1)
@@ -122,6 +123,9 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     }
   }
 
+  // preallocate for exception-safety, used later
+  auto toBeResolved = std::make_unique<WaitForQueue>();
+
   // prepare the new in memory state
   auto newInMemoryLog = self->_inMemoryLog._log.take(req.prevLogIndex.value);
 
@@ -133,9 +137,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   }
 
   // commit the deletion in memory
-  self->_inMemoryLog._log = newInMemoryLog;
+  // TODO static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
+  self->_inMemoryLog._log = std::move(newInMemoryLog);
   newInMemoryLog = std::invoke([&]{
-    auto transient = newInMemoryLog.transient();
+    auto transient = self->_inMemoryLog._log.transient();
     transient.append(req.entries.transient());
     return transient.persistent();
   });
@@ -145,11 +150,19 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   auto core = self->_logCore.get();
   return core->insertAsync(std::move(iter), req.waitForSync)
       .thenValue([self = std::move(self), req = std::move(req),
-                  newInMemoryLog = std::move(newInMemoryLog)](Result const& res) mutable {
+                  newInMemoryLog = std::move(newInMemoryLog),
+                  toBeResolved = std::move(toBeResolved)](Result&& res) mutable {
         if (!res.ok()) {
           LOG_CTX("216d8", ERR, self->_self._logContext)
               << "failed to insert log entries";
-          abort();  // TODO abort?
+          return std::make_pair(
+              AppendEntriesResult{
+                  self->_self._currentTerm,
+                  res.errorNumber(),
+                  AppendEntriesErrorReason::NONE,
+                  req.messageId,
+              },
+              DeferredAction{});
         }
 
         // commit the write in memory
@@ -159,7 +172,6 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
             << "appended " << req.entries.size() << " log entries after "
             << req.prevLogIndex << ", leader commit index = " << req.leaderCommit;
 
-        WaitForQueue toBeResolved;
         if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog._log.empty()) {
           self->_commitIndex =
               std::min(req.leaderCommit, self->_inMemoryLog._log.back().logIndex());
@@ -171,28 +183,37 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
             for (auto it = self->_waitForQueue.begin(); it != end;) {
               LOG_CTX("d32f1", TRACE, self->_self._logContext)
                   << "resolve promise for index " << it->first;
-              toBeResolved.insert(self->_waitForQueue.extract(it++));
+              toBeResolved->insert(self->_waitForQueue.extract(it++));
             }
-          } catch(...) {
+          } catch (std::exception const& e) {
             // we can not continue because some promises are not fulfilled
-            abort();
+            LOG_CTX("799e3", FATAL, self->_self._logContext)
+                << "Critical section in appendEntries threw exception: " << e.what()
+                << " - unable to continue safely. Bye Bye.";
+            FATAL_ERROR_EXIT();
+          } catch (...) {
+            LOG_CTX("799e3", FATAL, self->_self._logContext)
+                << "Critical section in appendEntries threw unknown exception"
+                << " - unable to continue safely. Bye Bye.";
+            FATAL_ERROR_EXIT();
           }
         }
 
         return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
-                              std::move(toBeResolved));
+                              DeferredAction([toBeResolved = std::move(toBeResolved)]() noexcept {
+                                for (auto& promise : *toBeResolved) {
+                                  // TODO what do we resolve this with? QuorumData is not available on follower
+                                  // TODO execute this in a different context.
+                                  if (!promise.second.isFulfilled()) {
+                                    // This only throws if promise was fulfilled earlier.
+                                    promise.second.setValue(std::shared_ptr<QuorumData>{});
+                                  }
+                                }
+                              }));
       })
-      .thenValue([measureTime = std::move(measureTime)](auto&& res) mutable {
+      .then([measureTime = std::move(measureTime)](auto&& res) mutable {
         measureTime.fire();
-        auto&& [result, toBeResolved] = res;
-        for (auto& promise : toBeResolved) {
-          // TODO what do we resolve this with? QuorumData is not available on follower
-          // TODO execute this in a different context.
-          if (!promise.second.isFulfilled()) {
-            // This only throws if promise was fulfilled earlier.
-            promise.second.setValue(std::shared_ptr<QuorumData>{});
-          }
-        }
+        auto&& [result, toBeResolved] = res.get();
         return std::move(result);
       });
 }
