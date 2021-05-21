@@ -57,7 +57,7 @@
 #endif
 
 // can turn this on for more aggressive and expensive consistency checks
-#define PARANOID_TREE_CHECKS
+// #define PARANOID_TREE_CHECKS
 
 namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
@@ -269,11 +269,7 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   }
 
   read = slice.get(StaticStrings::RevisionTreeInitialRangeMin);
-  if (!read.isString()) {
-    return nullptr;
-  }
-  p = read.getString(l);
-  std::uint64_t initialRangeMin = basics::HybridLogicalClock::decodeTimeStamp(p, l);
+  std::uint64_t initialRangeMin = basics::HybridLogicalClock::decodeTimeStamp(read);
   if (initialRangeMin == std::numeric_limits<std::uint64_t>::max()) {
     return nullptr;
   }
@@ -312,15 +308,10 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
     std::uint64_t count = read.getNumber<std::uint64_t>();
 
     read = nodeSlice.get(StaticStrings::RevisionTreeHash);
-    if (!read.isString()) {
+    if (!read.isNumber()) {
       return nullptr;
     }
-    p = nodeSlice.get(StaticStrings::RevisionTreeHash).getString(l);
-    std::uint64_t hash = basics::HybridLogicalClock::decodeTimeStamp(p, l);
-    if (hash == std::numeric_limits<std::uint64_t>::max()) {
-      return nullptr;
-    }
-
+    std::uint64_t hash = read.getNumber<std::uint64_t>();
     Node& node = tree->node(index);
     node.count = count;
     node.hash = hash;
@@ -767,9 +758,8 @@ void MerkleTree<Hasher, BranchingBits>::serialize(velocypack::Builder& output,
   for (std::uint64_t index = 0; index < last; ++index) {
     velocypack::ObjectBuilder nodeGuard(&output);
     Node const& node = this->node(index);
-    output.add(StaticStrings::RevisionTreeHash,
-               basics::HybridLogicalClock::encodeTimeStampToValuePair(node.hash, ridBuffer));
     output.add(StaticStrings::RevisionTreeCount, velocypack::Value(node.count));
+    output.add(StaticStrings::RevisionTreeHash, velocypack::Value(node.hash)); 
   }
 }
 
@@ -1012,7 +1002,8 @@ void MerkleTree<Hasher, BranchingBits>::modify(std::vector<std::uint64_t> const&
   }
   
   // adjust summary node
-  modifyLocal(meta().summary, totalCount, totalHash, isInsert);
+  bool success = modifyLocal(meta().summary, totalCount, totalHash, isInsert);
+  TRI_ASSERT(success);
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>

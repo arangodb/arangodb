@@ -913,7 +913,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     auto bumpSequence = [this](rocksdb::SequenceNumber seq) noexcept {
       rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
       while (seq > applied) {
-        _revisionTreeApplied.compare_exchange_strong(applied, seq);
+        if (_revisionTreeApplied.compare_exchange_weak(applied, seq)) {
+          break;
+        }
       }
     };
 
