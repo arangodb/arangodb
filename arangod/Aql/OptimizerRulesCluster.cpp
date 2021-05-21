@@ -320,6 +320,27 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
         keyVar = updateReplaceNode->inKeyVariable();
       }
     }
+    
+    auto isArrayInput = [&](Variable const* variable) {
+      if (variable == nullptr) {
+        return false;
+      }
+
+      ExecutionNode* setter = plan->getVarSetBy(variable->id);
+      if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+        CalculationNode const* calc = ExecutionNode::castTo<CalculationNode*>(setter);
+        AstNode const* expr = calc->expression()->node();
+        if (expr->isArray()) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (isArrayInput(keyVar) || isArrayInput(update)) {
+      // cannot handle arrays as inputs here
+      continue;
+    }
 
     ExecutionNode* cursor = node;
     CalculationNode* calc = nullptr;
