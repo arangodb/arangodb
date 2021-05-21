@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue BTS-424: fix invalid input row handling in WINDOW execution.
+
 * Added 2 options to allow HTTP redirection customization for root ("/") call of
   HTTP API:
 
