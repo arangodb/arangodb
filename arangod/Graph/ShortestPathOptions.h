@@ -100,7 +100,7 @@ struct ShortestPathOptions : public BaseOptions {
   auto estimateDepth() const noexcept -> uint64_t override;
 
   auto setWeightAttribute(std::string attribute) -> void;
-  auto getWeightAttribute() const -> std::string;
+  auto getWeightAttribute() const& -> std::string;
   auto setDefaultWeight(double weight) -> void;
   auto getDefaultWeight() const -> double;
 
