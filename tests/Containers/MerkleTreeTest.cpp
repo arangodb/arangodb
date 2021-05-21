@@ -1113,6 +1113,7 @@ TEST(MerkleTreeTest, test_diff_with_shift_1) {
   expected.emplace_back(std::pair(M + W, M + W + 3));
   t2.insert(M + W + 8);      // not in t1, second last bucket in t2
   expected.emplace_back(std::pair(M + W + 8, M + W + 11));
+  ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
   t2.clear();
   expected.clear();
   
@@ -1123,6 +1124,7 @@ TEST(MerkleTreeTest, test_diff_with_shift_1) {
   t2.insert(M + W + 4);      // not in t1, third last bucket in t2
   t2.insert(M + W + 8);      // not in t1, second last bucket in t2
   expected.emplace_back(std::pair(M + W - 8, M + W + 11));
+  ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
   t2.clear();
   expected.clear();
 
@@ -1141,7 +1143,7 @@ TEST(MerkleTreeTest, test_diff_with_shift_1) {
   t2.insert(M + W);
   t2.insert(M + W + 5);
   expected.emplace_back(std::pair(M + W, M + W + 7));
-  t2.clear();
+  ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 }
 
 TEST(MerkleTreeTest, test_diff_empty_random_data_shifted) {
