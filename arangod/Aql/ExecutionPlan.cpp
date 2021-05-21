@@ -315,10 +315,10 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast, AstNode 
         TRI_ASSERT(value->isConstant());
 
         if (name == "weightAttribute" && value->isStringValue()) {
-          options->weightAttribute =
-              std::string(value->getStringValue(), value->getStringLength());
+          options->setWeightAttribute(
+              std::string(value->getStringValue(), value->getStringLength()));
         } else if (name == "defaultWeight" && value->isNumericValue()) {
-          options->defaultWeight = value->getDoubleValue();
+          options->setDefaultWeight(value->getDoubleValue());
         } else if (name == StaticStrings::GraphRefactorFlag) {
           options->setRefactor(value->getBoolValue());
         }

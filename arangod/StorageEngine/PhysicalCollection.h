@@ -216,6 +216,7 @@ class PhysicalCollection {
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId);
+  virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(uint64_t batchId);
 
   virtual Result rebuildRevisionTree();
 
