@@ -501,23 +501,15 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_range_func_bind) {
   estimateFilterCondition(queryString, fields, expected, &ctx);
 }
 
-// FIXME:  to make this pass we need to provide ast/plan to supportsFilterCondition in order to calculate bindVars
-TEST_F(IResearchInvertedIndexConditionTest, test_with_levenshtein_with_bind) {
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->add("x", VPackValue("sometext"));
-  bindVars->close();
-
+TEST_F(IResearchInvertedIndexConditionTest, test_with_levenshtein_nondet) {
   ExpressionContextMock ctx;
   auto obj2 = VPackParser::fromJson("2");
   ctx.vars.emplace("a", arangodb::aql::AqlValue(obj2->slice()));
-  std::string queryString = "LET a  = 2 FOR d IN test FILTER LEVENSHTEIN_MATCH(d.a, @x, a, true, 5) RETURN d ";
+  std::string queryString = "LET a  = 2 FOR d IN test FILTER LEVENSHTEIN_MATCH(d.a, 'sometext', NOOPT(a), true, 5) RETURN d ";
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
-  expected.supportsCondition = true;
-  estimateFilterCondition(queryString, fields, expected, &ctx, bindVars);
+  estimateFilterCondition(queryString, fields, expected, &ctx);
 }
-
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_levenshtein) {
   ExpressionContextMock ctx;
@@ -527,5 +519,13 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_levenshtein) {
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected, &ctx);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_levenshtein_longdist) {
+  ExpressionContextMock ctx;
+  std::string queryString = "FOR d IN test FILTER LEVENSHTEIN_MATCH(d.a, 'sometext', 10, true, 5) RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected, &ctx);
 }
