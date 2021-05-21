@@ -320,17 +320,17 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
   return _opts->cache()->fetchEdgeAqlResult(_enumeratedPath.lastEdge());
 }
 
-VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result) {
+VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result, bool fromPrune) {
   result.clear();
   result.openObject();
-  if (_opts->producePathsEdges()) {
+  if (fromPrune || _opts->producePathsEdges()) {
     result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
     for (auto const& it : _enumeratedPath.edges()) {
       _opts->cache()->insertEdgeIntoResult(it, result);
     }
     result.close();
   }
-  if (_opts->producePathsVertices()) {
+  if (fromPrune || _opts->producePathsVertices()) {
     result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
     for (auto const& it : _enumeratedPath.vertices()) {
       _traverser->addVertexToVelocyPack(VPackStringRef(it), result);
@@ -343,7 +343,7 @@ VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result) {
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(VPackBuilder& result) {
-  return arangodb::aql::AqlValue(pathToSlice(result));
+  return arangodb::aql::AqlValue(pathToSlice(result, false));
 }
 
 bool DepthFirstEnumerator::shouldPrune() {
@@ -370,7 +370,7 @@ bool DepthFirstEnumerator::shouldPrune() {
     evaluator->injectEdge(edge.slice());
   }
   if (evaluator->needsPath()) {
-    VPackSlice path = pathToSlice(*pathBuilder.get());
+    VPackSlice path = pathToSlice(*pathBuilder.get(), true);
     evaluator->injectPath(path);
   }
   return evaluator->evaluate();

@@ -5859,6 +5859,16 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
         VarSet vars;
         bool canOptimize = true;
 
+        if (options->usesPrune()) {
+          std::vector<Variable const*> pruneVars;
+          traversal->getPruneVariables(pruneVars);
+          if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) != pruneVars.end()) {
+            // prune uses the path. we don't know if the optimization
+            // will be safe. better abort
+            canOptimize = false;
+          }
+        }
+
         ExecutionNode* current = traversal->getFirstParent();
         while (current != nullptr && canOptimize) {
           switch (current->getType()) {
@@ -5893,9 +5903,9 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
         if (canOptimize) {
           // check which attribute from the path are actually used
-          bool producePathsVertices = (attributes.find("vertices") != attributes.end());
-          bool producePathsEdges = (attributes.find("edges") != attributes.end());
-          bool producePathsWeights = (attributes.find("weights") != attributes.end());
+          bool producePathsVertices = (attributes.find(StaticStrings::GraphQueryVertices) != attributes.end());
+          bool producePathsEdges = (attributes.find(StaticStrings::GraphQueryEdges) != attributes.end());
+          bool producePathsWeights = (attributes.find(StaticStrings::GraphQueryWeights) != attributes.end());
 
           if (!producePathsVertices || !producePathsEdges || !producePathsWeights) {
             // pass the info to the traversal

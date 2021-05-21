@@ -188,7 +188,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   auto producePathsVertices() const noexcept -> bool { return _producePathsVertices; }
   auto producePathsEdges() const noexcept -> bool { return _producePathsEdges; }
-  auto producePathsWeights() const noexcept -> bool { return _producePathsWeights; }
+  auto producePathsWeights() const noexcept -> bool { return _producePathsWeights && mode == Order::WEIGHTED; }
 
   auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
 
