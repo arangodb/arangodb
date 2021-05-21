@@ -257,8 +257,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
           options->defaultWeight = value->getDoubleValue();
           if (options->defaultWeight < 0.) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_GRAPH_INVALID_EDGE_WEIGHT,
-                "negative or zero value default weight not allowed");
+                TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
+                "negative default weight not allowed");
           }
         } else if (name == "weightAttribute" && value->isStringValue()) {
           options->weightAttribute = value->getString();
