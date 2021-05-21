@@ -2990,9 +2990,9 @@ void RestReplicationHandler::handleCommandRevisionTree() {
     }
 
     VPackObjectBuilder guard(&result);
-    result.add(VPackValue("computedTree"));
+    result.add(VPackValue("computed"));
     tree2->serialize(result);
-    result.add(VPackValue("storedTree"));
+    result.add(VPackValue("stored"));
     tree->serialize(result);
     auto diff = tree->diff(*tree2);
     result.add("equal", VPackValue(diff.empty()));

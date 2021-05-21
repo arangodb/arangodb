@@ -249,11 +249,16 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
       TRI_V8_THROW_EXCEPTION_INTERNAL("Could not create RocksDBReplicationContext");
     }
     RocksDBReplicationContextGuard guard(manager, ctx);
-    auto* physical = toRocksDBCollection(*collection);
-    auto batchId = ctx->id();
-    storedTree = physical->revisionTree(batchId);
-    computedTree = physical->computeRevisionTree(batchId);
-    ctx->setDeleted();
+    try {
+      auto* physical = toRocksDBCollection(*collection);
+      auto batchId = ctx->id();
+      storedTree = physical->revisionTree(batchId);
+      computedTree = physical->computeRevisionTree(batchId);
+      ctx->setDeleted();
+    } catch (...) {
+      ctx->setDeleted();
+      throw;
+    }
   }
 
   VPackBuilder builder;
@@ -266,18 +271,18 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
       builder.add("storedTree", VPackValue(false));
     }
     if (computedTree != nullptr) {
-      builder.add(VPackValue("computedTree"));
+      builder.add(VPackValue("computed"));
       computedTree->serialize(builder);
     } else {
-      builder.add("computedTree", VPackValue(false));
+      builder.add("computed", VPackValue(false));
     }
     if (storedTree != nullptr && computedTree != nullptr) {
       try {
         std::vector<std::pair<uint64_t, uint64_t>> diff
           = computedTree->diff(*storedTree);
         builder.add("equal", VPackValue(diff.empty()));
-      } catch(std::exception const& exc) {
-        builder.add("equal", VPackValue(std::string(exc.what())));
+      } catch (std::exception const& ex) {
+        builder.add("error", VPackValue(ex.what()));
       }
     }
   }
