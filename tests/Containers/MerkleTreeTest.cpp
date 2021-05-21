@@ -1100,7 +1100,7 @@ TEST(MerkleTreeTest, test_diff_with_shift_1) {
   expected.emplace_back(std::pair(M, M+3));
   t1.insert(M + 8);  // third bucket in t1
   expected.emplace_back(std::pair(M+8, M+11));
-  t1.insert(M + 16); // firth bucket in t1, first bucket in t2
+  t1.insert(M + 16); // fifth bucket in t1, first bucket in t2
   expected.emplace_back(std::pair(M+16, M+19));
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
   t1.clear();
