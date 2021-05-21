@@ -224,7 +224,7 @@ auto ShortestPathOptions::setDefaultWeight(double weight) -> void {
 }
 
 auto ShortestPathOptions::setWeightAttribute(std::string attribute) -> void {
-  _weightAttribute = attribute;
+  _weightAttribute = std::move(attribute);
 }
 
 auto ShortestPathOptions::getDefaultWeight() const -> double {
@@ -232,7 +232,7 @@ auto ShortestPathOptions::getDefaultWeight() const -> double {
   return _defaultWeight;
 }
 
-auto ShortestPathOptions::getWeightAttribute() const -> std::string {
+auto ShortestPathOptions::getWeightAttribute() const& -> std::string {
   return _weightAttribute;
 }
 
