@@ -1,6 +1,9 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
+* Ensure that LDAP options for async, referrals and restart set the off value
+  correctly. Otherwise, this can result in an "operations error".
+
 * Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
   function.
 
