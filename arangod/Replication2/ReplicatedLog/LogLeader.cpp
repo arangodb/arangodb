@@ -187,7 +187,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
             if (auto self = parentLog.lock()) {
               auto const duration =
                   std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-              self->_logMetrics.replicatedLogAppendEntriesRttUs.count(duration.count());
+              self->_logMetrics.replicatedLogAppendEntriesRttUs->count(duration.count());
               LOG_CTX("8ff44", TRACE, follower.logContext)
                   << "received append entries response, messageId = " << messageId;
               auto [preparedRequests, resolvedPromises] = std::invoke([&] {

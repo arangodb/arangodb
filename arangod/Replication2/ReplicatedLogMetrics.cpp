@@ -29,15 +29,35 @@
 using namespace arangodb::replication2::replicated_log;
 
 ReplicatedLogMetrics::ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature)
-    : replicatedLogNumber(metricsFeature.add(arangodb_replication2_replicated_log_number{})),
-      replicatedLogAppendEntriesRttUs(metricsFeature.add(
-          arangodb_replication2_replicated_log_append_entries_rtt_us{})),
-      replicatedLogFollowerAppendEntriesRtUs(metricsFeature.add(
-          arangodb_replication2_replicated_log_follower_append_entries_rt_us{})) {}
+    : ReplicatedLogMetrics(&metricsFeature) {}
 
-ReplicatedLogMetrics::ReplicatedLogMetrics(Gauge<uint64_t>& replicatedLogNumber,
-                                           Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs,
-                                           Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs)
-    : replicatedLogNumber(replicatedLogNumber),
-      replicatedLogAppendEntriesRttUs(replicatedLogAppendEntriesRttUs),
-      replicatedLogFollowerAppendEntriesRtUs(replicatedLogFollowerAppendEntriesRtUs) {}
+template <typename Builder, bool mock>
+auto ReplicatedLogMetrics::createMetric(arangodb::MetricsFeature* metricsFeature)
+    -> std::shared_ptr<typename Builder::metric_t> {
+  TRI_ASSERT((metricsFeature == nullptr) == mock);
+  if constexpr (!mock) {
+    return metricsFeature->addShared(Builder{});
+  } else {
+    return std::dynamic_pointer_cast<typename Builder::metric_t>(Builder{}.build());
+  }
+}
+
+template <typename MFP, std::enable_if_t<std::is_same_v<arangodb::MetricsFeature*, MFP> || std::is_null_pointer_v<MFP>, int>, bool mock>
+ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
+    : replicatedLogNumber(
+          createMetric<arangodb_replication2_replicated_log_number, mock>(metricsFeature)),
+      replicatedLogAppendEntriesRttUs(
+          createMetric<arangodb_replication2_replicated_log_append_entries_rtt_us, mock>(
+              metricsFeature)),
+      replicatedLogFollowerAppendEntriesRtUs(
+          createMetric<arangodb_replication2_replicated_log_follower_append_entries_rt_us, mock>(
+              metricsFeature)) {
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  static_assert(!mock);
+  static_assert(!isNullptrT);
+#endif
+}
+
+template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(
+    arangodb::MetricsFeature*);
+template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(nullptr_t);

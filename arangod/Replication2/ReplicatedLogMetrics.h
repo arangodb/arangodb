@@ -23,6 +23,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 template <typename T>
 class Histogram;
@@ -40,16 +41,20 @@ namespace arangodb::replication2::replicated_log {
 struct ReplicatedLogMetrics {
   explicit ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature);
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+ private:
+  template <typename Builder, bool mock = false>
+  static auto createMetric(MetricsFeature* metricsFeature)
+      -> std::shared_ptr<typename Builder::metric_t>;
+
  protected:
-  ReplicatedLogMetrics(Gauge<uint64_t>& replicatedLogNumber,
-                       Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs,
-                       Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs);
-#endif
+  template <typename MFP, std::enable_if_t<std::is_same_v<arangodb::MetricsFeature*, MFP> || std::is_null_pointer_v<MFP>, int> = 0,
+            bool mock = std::is_null_pointer_v<MFP>>
+  explicit ReplicatedLogMetrics(MFP metricsFeature);
+
  public:
-  Gauge<uint64_t>& replicatedLogNumber;
-  Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs;
-  Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs;
+  std::shared_ptr<Gauge<uint64_t>> const replicatedLogNumber;
+  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> const replicatedLogAppendEntriesRttUs;
+  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> const replicatedLogFollowerAppendEntriesRtUs;
 };
 
 }  // namespace arangodb::replication2::replicated_log

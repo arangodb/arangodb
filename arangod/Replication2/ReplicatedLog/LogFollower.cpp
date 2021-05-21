@@ -65,7 +65,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     auto const endTime = std::chrono::steady_clock::now();
     auto const duration =
         std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-    metrics.replicatedLogFollowerAppendEntriesRtUs.count(duration.count());
+    metrics.replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
   }};
 
   auto self = _guardedFollowerData.getLockedGuard();

@@ -25,17 +25,7 @@
 #include <Replication2/ReplicatedLogMetrics.h>
 #include <Replication2/ReplicatedLogMetricsDeclarations.h>
 
-struct ReplicatedLogMetricsMockContainer {
-  ReplicatedLogMetricsMockContainer();
-
-  std::shared_ptr<Gauge<uint64_t>> replicatedLogNumber;
-  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> replicatedLogAppendEntriesRttUs;
-  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> replicatedLogFollowerAppendEntriesRtUs;
-};
-
 struct ReplicatedLogMetricsMock
     : arangodb::replication2::replicated_log::ReplicatedLogMetrics {
-  explicit ReplicatedLogMetricsMock(ReplicatedLogMetricsMockContainer&&);
-
-  ReplicatedLogMetricsMockContainer metricsContainer;
+  ReplicatedLogMetricsMock();
 };
