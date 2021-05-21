@@ -74,8 +74,8 @@ class MerkleTree {
   // Unfortunately, we can only compare two different MerkleTrees, if
   // the difference of their rangeMin values is a multiple of the number
   // of _rev values in a leaf node, which is 
-  //   (rangeMax-rangeMin)/(BranchingFactor^depth),
-  // since BranchingFactor^depth is the number of leaves. Therefore
+  //   (rangeMax-rangeMin)/(1ULL << (BranchingBits*depth)),
+  // since (1ULL << (BranchingBits*depth)) is the number of leaves. Therefore
   // we must ensure that trees of replicas of shards which we must be
   // able to compare, remain compatible. Therefore, we pick a magic
   // constant M as the initial value of rangeMin, which is the same for
@@ -83,10 +83,11 @@ class MerkleTree {
   // at all times, for all changes to rangeMin and rangeMax we ever do:
   //
   // 1. rangeMax-rangeMin is a power of two and is a multiple of
-  //    the number of leaves in the tree, which is BranchingFactor^depth
+  //    the number of leaves in the tree, which is
+  //      1ULL << (BranchingBits*depth)
   //    That is, we can only ever grow the width by factors of 2.
   // 2. M - rangeMin is divisible by 
-  //      (rangeMax-rangeMin)/(BranchingFactor^depth)
+  //      (rangeMax-rangeMin)/(1ULL << (BranchingBits*depth))
   //
   // Condition 1. ensures that each leaf is responsible for the same
   // number of _rev values and that we can always grow rangeMax-rangeMin
@@ -102,8 +103,6 @@ class MerkleTree {
   static constexpr std::uint64_t CacheLineSize =
       64;  // TODO replace with std::hardware_constructive_interference_size
            // once supported by all necessary compilers
-  static constexpr std::uint64_t BranchingFactor = static_cast<std::uint64_t>(1)
-                                                   << BranchingBits;
 
   struct Node {
     std::uint64_t count;
