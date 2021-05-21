@@ -56,7 +56,6 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
   rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   TRI_ASSERT(ro.snapshot != nullptr);
   TRI_ASSERT(ro.prefix_same_as_start);
-  ro.fill_cache = AllIteratorFillBlockCache;
   ro.verify_checksums = false;  // TODO evaluate
   ro.iterate_upper_bound = &_upperBound;
   // options.readahead_size = 4 * 1024 * 1024;
