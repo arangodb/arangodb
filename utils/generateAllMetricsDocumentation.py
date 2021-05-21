@@ -179,7 +179,17 @@ OUTPUT = dump(YAMLS, Dumper=Dumper)
 if DUMPMETRICS:
     # Dump what we have:
     S = open(OUTFILE, "w")
-    S.write(OUTPUT)
+    for i, yamlfile in enumerate(YAMLFILES):
+        I = open(os.path.join("Documentation/Metrics", yamlfile), 'rt', encoding='utf-8')
+        prefix = "- "
+        while True:
+            l = I.readline()
+            if l == "":
+                break
+            S.write(prefix)
+            prefix = "  "
+            S.write(l)
+        I.close()
     S.close()
 
 if MISSING:
