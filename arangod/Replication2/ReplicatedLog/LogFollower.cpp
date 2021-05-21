@@ -257,7 +257,6 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
     return std::invoke([&]() noexcept {
       using std::swap;
       swap(*queue, followerData._waitForQueue);
-
       auto lambda = [queue = std::move(queue)]() mutable noexcept {
         for (auto& [idx, promise] : *queue) {
           promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
@@ -266,7 +265,6 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
       };
       static_assert(std::is_nothrow_constructible_v<DeferredAction, decltype(lambda)&&>);
       auto action = DeferredAction{std::move(lambda)};
-
       return std::make_tuple(std::move(followerData._logCore), std::move(action));
     });
   });

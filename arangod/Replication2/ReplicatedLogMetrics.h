@@ -46,7 +46,7 @@ struct ReplicatedLogMetrics {
                        Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs,
                        Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs);
 #endif
-
+ public:
   Gauge<uint64_t>& replicatedLogNumber;
   Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs;
   Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs;

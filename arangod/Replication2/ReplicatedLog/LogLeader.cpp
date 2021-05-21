@@ -718,6 +718,14 @@ auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
 
 auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesRequest const request)
     -> futures::Future<AppendEntriesResult> {
+  auto const startTime = std::chrono::steady_clock::now();
+  auto measureTime = DeferredAction{[startTime, &metrics = _self._logMetrics]() noexcept {
+    auto const endTime = std::chrono::steady_clock::now();
+    auto const duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
+    metrics.replicatedLogFollowerAppendEntriesRtUs.count(duration.count());
+  }};
+
   auto logCoreGuard = _guardedLogCore.getLockedGuard();
   auto& logCore = logCoreGuard.get();
 
@@ -745,7 +753,8 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
   auto iter = std::make_unique<ReplicatedLogIterator>(request.entries);
   return logCore->insertAsync(std::move(iter), request.waitForSync)
       .thenValue([term = request.leaderTerm, messageId = request.messageId,
-                  logContext = std::move(messageLogContext)](Result const& res) {
+                  logContext = std::move(messageLogContext),
+                  measureTime = std::move(measureTime)](Result const& res) {
         if (!res.ok()) {
           LOG_CTX("fdc87", ERR, logContext)
               << "local follower failed to write entries: " << res;
