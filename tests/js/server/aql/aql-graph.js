@@ -1528,7 +1528,7 @@ function ShortestPathErrorTestSuite() {
         fail();
       } catch (err) {
         console.warn(err);
-        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_INVALID_EDGE_WEIGHT.code);
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
       }
     },
 
@@ -1551,7 +1551,7 @@ function ShortestPathErrorTestSuite() {
         db._query(query, bindVars);
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_INVALID_EDGE_WEIGHT.code);
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
       }
     }
   };

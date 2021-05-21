@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
- /*global assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -222,7 +222,7 @@ function WeightedTraveralsErrorTestSuite() {
         db._query({query, bindVars: {weight: -1}});
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_INVALID_EDGE_WEIGHT.code);
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
       }
     },
 
@@ -238,7 +238,7 @@ function WeightedTraveralsErrorTestSuite() {
         db._query(query);
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_INVALID_EDGE_WEIGHT.code);
+        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
       }
     },
   };
