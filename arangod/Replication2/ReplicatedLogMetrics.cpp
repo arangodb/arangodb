@@ -60,4 +60,4 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
 
 template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(
     arangodb::MetricsFeature*);
-template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(nullptr_t);
+template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(std::nullptr_t);
