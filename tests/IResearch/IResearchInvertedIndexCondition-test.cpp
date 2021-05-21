@@ -151,6 +151,7 @@ class IResearchInvertedIndexConditionTest
       auto costs = Index.supportsFilterCondition({}, filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
+    // runtime is not intended - we must decide during optimize time!
   }
 
   arangodb::LogicalCollection& collection() {return *_collection;}

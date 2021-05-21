@@ -481,8 +481,7 @@ typedef std::function<
 Result filter(irs::boolean_filter* filter,
               QueryContext const& queryctx,
               FilterContext const& filterCtx,
-              aql::AstNode const& node,
-              bool noByExpressionFilter = false);
+              aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends value tokens to a phrase filter
@@ -4021,7 +4020,7 @@ Result fromFilter(irs::boolean_filter* filter, QueryContext const& ctx,
 }
 
 Result filter(irs::boolean_filter* filter, QueryContext const& queryCtx,
-              FilterContext const& filterCtx, aql::AstNode const& node, bool noExpressionFilter) {
+              FilterContext const& filterCtx, aql::AstNode const& node) {
   switch (node.type) {
     case aql::NODE_TYPE_FILTER:  // FILTER
       return fromFilter(filter, queryCtx, filterCtx, node);
