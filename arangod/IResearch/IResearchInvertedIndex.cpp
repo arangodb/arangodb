@@ -33,20 +33,20 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 struct CheckFieldsAccess {
-
   CheckFieldsAccess(QueryContext const& ctx,
                     aql::Variable const& ref,
                     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
-    : _ctx(ctx),_ref(ref) {
+    : _ctx(ctx), _ref(ref) {
     _fields.insert(std::begin(fields), std::end(fields));
   }
 
   bool operator()(std::string_view name) const {
     try {
-      TRI_ParseAttributeString(_name, _parsed, false);
+      _parsed.clear();
+      TRI_ParseAttributeString(name, _parsed, false);
       if (_fields.find(_parsed) == _fields.end()) {
         LOG_TOPIC("bf92f", TRACE, arangodb::iresearch::TOPIC)
-            << "Attribute '" << _name << "' is not covered by index";
+            << "Attribute '" << name << "' is not covered by index";
         return false;
       }
     } catch (arangodb::basics::Exception const& ex) {
@@ -58,16 +58,15 @@ struct CheckFieldsAccess {
     return true;
   }
 
-  mutable std::string _name;
   mutable std::vector<arangodb::basics::AttributeName> _parsed;
   QueryContext const& _ctx;
   aql::Variable const& _ref;
   using atr_ref = std::reference_wrapper<std::vector<arangodb::basics::AttributeName> const>;
-  std::unordered_set<atr_ref, 
+  std::unordered_set<atr_ref,
                      std::hash<std::vector<arangodb::basics::AttributeName>>,
                      std::equal_to<std::vector<arangodb::basics::AttributeName>>> _fields;
 };
-}
+} // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -103,7 +102,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
 
   // non-deterministic condition will mean full-scan. So we should
   // not use index here.
-  // FIXME: maybe in future we will be able to optimize just deterministic part?
+  // FIXME: maybe in the future we will be able to optimize just deterministic part?
   if (!node->isDeterministic()) {
     LOG_TOPIC("750e6", TRACE, iresearch::TOPIC)
              << "Found non-deterministic condition. Skipping index " << id().id();
@@ -111,8 +110,8 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   }
 
   // We don`t want byExpression filters
-  // and can`t apply index if we are not sure what attribute is 
-  // accessed so we provide QueryContext which is unable to 
+  // and can`t apply index if we are not sure what attribute is
+  // accessed so we provide QueryContext which is unable to
   // execute expressions and only allow to pass conditions with constant
   // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a variable from
   // the upstream loop we may get here a field we don`t have in the index.
@@ -134,7 +133,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = 0; // FIXME: we may use stored values!
-  } 
+  }
   return filterCosts;
 }
 
