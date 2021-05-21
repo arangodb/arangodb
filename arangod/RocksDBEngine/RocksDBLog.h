@@ -33,7 +33,7 @@ namespace arangodb {
 struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   struct Executor {
     virtual ~Executor() = default;
-    virtual void operator()(fu2::unique_function<void()>) = 0;
+    virtual void operator()(fu2::unique_function<void() noexcept>) = 0;
   };
 
   RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
@@ -48,8 +48,6 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
                WriteOptions const& options)
   -> futures::Future<Result>;
 
-  //std::mutex _persistorMutex;
-  std::atomic<unsigned> _activePersistorThreads = 0;
   struct PersistRequest {
     PersistRequest(std::shared_ptr<arangodb::replication2::PersistedLog> log,
                    std::unique_ptr<arangodb::replication2::LogIterator> iter,
@@ -60,14 +58,12 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
     futures::Promise<Result> promise;
   };
 
-  //std::vector<PersistRequest> _pendingPersistRequests;
-
-
   struct Lane {
     Lane() = default;
     std::mutex _persistorMutex;
     std::vector<PersistRequest> _pendingPersistRequests;
     bool _waitForSync = false;
+    std::atomic<unsigned> _activePersistorThreads = 0;
   };
 
 

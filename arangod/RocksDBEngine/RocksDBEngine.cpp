@@ -876,7 +876,7 @@ void RocksDBEngine::start() {
     explicit SchedulerExecutor(arangodb::application_features::ApplicationServer& server)
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
-    void operator()(fu2::unique_function<void()> func) override {
+    void operator()(fu2::unique_function<void() noexcept> func) override {
       std::ignore = _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
     }
 

@@ -179,16 +179,19 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
   while (true) {
     std::vector<PersistRequest> pendingRequests;
     {
+      // std::mutex::lock is not noexcept, but there is no other solution
+      // to this problem instead of crashing the server.
       std::unique_lock guard(lane._persistorMutex);
       if (lane._pendingPersistRequests.empty()) {
         // no more work to do
-        _activePersistorThreads -= 1;
+        lane._activePersistorThreads -= 1;
         return;
       }
       std::swap(pendingRequests, lane._pendingPersistRequests);
     }
 
     auto current = pendingRequests.begin();
+    auto start = current;
     try {
       // catch to result is not noexcept
       auto result = basics::catchToResult([&] {
@@ -197,7 +200,7 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         while (current != std::end(pendingRequests)) {
           wb.Clear();
 
-          auto const start = current;
+          start = current;
           while (wb.Count() < 1000 && current != std::end(pendingRequests)) {
             auto* log_ptr = dynamic_cast<RocksDBLog*>(current->log.get());
             TRI_ASSERT(log_ptr != nullptr);
@@ -230,16 +233,18 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
       });
 
       // resolve all promises with the result
-      for (; current != std::end(pendingRequests); ++current) {
-        if (!current->promise.isFulfilled()) {
-          current->promise.setValue(result);
+      if (result.fail()) {
+        for (; start != std::end(pendingRequests); ++start) {
+          if (!start->promise.isFulfilled()) {
+            start->promise.setValue(result);
+          }
         }
       }
     } catch (...) {
       auto ex_ptr = std::current_exception();
-      for (; current != std::end(pendingRequests); ++current) {
-        if (!current->promise.isFulfilled()) {
-          current->promise.setException(ex_ptr);
+      for (; start != std::end(pendingRequests); ++start) {
+        if (!start->promise.isFulfilled()) {
+          start->promise.setException(ex_ptr);
         }
       }
     }
@@ -255,6 +260,11 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::Persis
 
   Lane& lane = _lanes[options.waitForSync ? 0 : 1];
 
+  auto lambda =
+      fu2::unique_function<void() noexcept>{[self = shared_from_this(), &lane]() noexcept {
+        self->runPersistorWorker(lane);
+      }};
+
   {
     std::unique_lock guard(lane._persistorMutex);
     lane._pendingPersistRequests.emplace_back(std::move(log), std::move(iter), std::move(p));
@@ -262,13 +272,12 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::Persis
     //      maybe we want to limit it for each lane as well?
 
     // TODO add options for max number of persistor threads for replicated logs
-    if (_activePersistorThreads == 0 || (lane._pendingPersistRequests.size() > 100 && _activePersistorThreads < 2)) {
+    if (lane._activePersistorThreads == 0 ||
+        (lane._pendingPersistRequests.size() > 100 && lane._activePersistorThreads < 2)) {
       // start a new worker thread
-      _activePersistorThreads += 1;
+      lane._activePersistorThreads += 1;
       guard.unlock();
-      _executor->operator()([this, self = shared_from_this(), &lane] {
-        this->runPersistorWorker(lane);
-      });
+      _executor->operator()(std::move(lambda));
     }
   }
   return f;

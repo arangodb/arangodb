@@ -47,7 +47,7 @@ struct RocksDBLogTest : testing::Test {
     }
 
     struct SyncExecutor : RocksDBLogPersistor::Executor {
-      void operator()(fu2::unique_function<void()> f) override {
+      void operator()(fu2::unique_function<void() noexcept> f) override {
         std::move(f).operator()();
       }
     };
