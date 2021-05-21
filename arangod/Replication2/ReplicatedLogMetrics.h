@@ -40,16 +40,16 @@ namespace arangodb::replication2::replicated_log {
 struct ReplicatedLogMetrics {
   explicit ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature);
 
-  Gauge<uint64_t>& replicatedLogNumber;
-  Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs;
-  Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs;
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
   ReplicatedLogMetrics(Gauge<uint64_t>& replicatedLogNumber,
                        Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs,
                        Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs);
 #endif
+
+  Gauge<uint64_t>& replicatedLogNumber;
+  Histogram<log_scale_t<std::uint64_t>>& replicatedLogAppendEntriesRttUs;
+  Histogram<log_scale_t<std::uint64_t>>& replicatedLogFollowerAppendEntriesRtUs;
 };
 
 }  // namespace arangodb::replication2::replicated_log
