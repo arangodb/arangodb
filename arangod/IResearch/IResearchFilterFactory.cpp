@@ -1675,7 +1675,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx
 
   if (!filter) {
     // can't evaluate non constant filter before the execution
-    return {}; // FIXME!!!!!!! we could miss no-determ node here\!
+    return {};
   }
 
   ScopedAqlValue value(*valueNode);

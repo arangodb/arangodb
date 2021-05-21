@@ -276,6 +276,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_array_as_nodeterm_var_comp
   std::string queryString = "LET arr = [1,2, NOOPT(3)] FOR d IN test FILTER arr ALL IN d.a  RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true; // we can support as NOOPT will be evaluated out of our scope
   estimateFilterCondition(queryString, fields, expected);
 }
 
@@ -300,6 +301,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_in_nondeterm_array) {
   std::string queryString = "LET arr = [1,2,NOOPT(3)] FOR d IN test FILTER d.a IN arr RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true; // NOOPT is evaluated out of our loop - so we support this
   estimateFilterCondition(queryString, fields, expected);
 }
 
@@ -318,8 +320,16 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_range) {
   estimateFilterCondition(queryString, fields, expected);
 }
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_nondet_range) {
+TEST_F(IResearchInvertedIndexConditionTest, test_with_nondet_var_range) {
   std::string queryString = "LET lim = NOOPT(10) FOR d IN test FILTER d.a IN 1..lim RETURN d ";
+  std::vector<std::string> fields = {"a", "b", "c", "d"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_nondet_range) {
+  std::string queryString = "FOR d IN test FILTER d.a IN 1..NOOPT(10) RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
@@ -337,6 +347,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_nondet_range_as_var) {
   std::string queryString = "LET r = 1..NOOPT(10) FOR d IN test FILTER d.a IN r RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected);
 }
 
