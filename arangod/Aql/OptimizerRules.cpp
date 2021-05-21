@@ -5846,9 +5846,11 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     if (outVariable != nullptr) {
       if (!n->isVarUsedLater(outVariable)) {
         // traversal path outVariable not used later
+        LOG_DEVEL << "VARIABLE NOT USED LATER";
         options->setProducePaths(/*vertices*/ false, /*edges*/ false, /*weights*/ false);
         if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
             pruneVars.end()) {
+        LOG_DEVEL << "COMPLETELY REMOVED";
           traversal->setPathOutput(nullptr);
         }
         modified = true;
@@ -5902,10 +5904,22 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
         }
 
         if (canOptimize) {
-          // check which attribute from the path are actually used
+          // check which attributes from the path are actually used
           bool producePathsVertices = (attributes.find(StaticStrings::GraphQueryVertices) != attributes.end());
           bool producePathsEdges = (attributes.find(StaticStrings::GraphQueryEdges) != attributes.end());
-          bool producePathsWeights = (attributes.find(StaticStrings::GraphQueryWeights) != attributes.end());
+          bool producePathsWeights = (attributes.find(StaticStrings::GraphQueryWeights) != attributes.end()) && 
+                                     (options->mode == traverser::TraverserOptions::Order::WEIGHTED);
+
+          if (!producePathsVertices && !producePathsEdges && !producePathsWeights &&
+              !attributes.empty()) {
+            // none of the existing path attributes is actually accessed - but a different 
+            // (non-existing) attribute is accessed, e.g. `p.whatever`.
+            // in order to not optimize away our path variable, and then being unable to access
+            // the non-existing attribute, we simply activate the production of vertices.
+            // this prevents us from running into errors trying to access an attribute of
+            // an optimzed-away variable later
+            producePathsVertices = true;
+          }
 
           if (!producePathsVertices || !producePathsEdges || !producePathsWeights) {
             // pass the info to the traversal
