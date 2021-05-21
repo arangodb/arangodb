@@ -839,13 +839,14 @@ class MerkleTreeGrowTests
   MerkleTreeGrowTests()
       : MerkleTree<::arangodb::containers::FnvHashProvider, 3>(
           6, uint64_t(1609459200000000000ULL)) {}
-};
-
-TEST_F(MerkleTreeGrowTests, test_grow_left_simple) {
+ public:
   uint64_t rangeMin = range().first;
   uint64_t initWidth = 1ULL << 24;
   uint64_t bucketWidth = 1ULL << 6;
   uint64_t rangeMax = range().second;
+};
+
+TEST_F(MerkleTreeGrowTests, test_grow_left_simple) {
   ASSERT_EQ(rangeMin + initWidth, rangeMax);
 
   arangodb::containers::FnvHashProvider hasher;
@@ -891,10 +892,6 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_simple) {
 }
 
 TEST_F(MerkleTreeGrowTests, test_grow_left_with_shift) {
-  uint64_t rangeMin = range().first;
-  uint64_t initWidth = 1ULL << 24;
-  uint64_t bucketWidth = 1ULL << 6;
-  uint64_t rangeMax = range().second;
   ASSERT_EQ(rangeMin + initWidth, rangeMax);
 
   arangodb::containers::FnvHashProvider hasher;
@@ -963,10 +960,6 @@ TEST_F(MerkleTreeGrowTests, test_grow_left_with_shift) {
 }
 
 TEST_F(MerkleTreeGrowTests, test_grow_right_simple) {
-  uint64_t rangeMin = range().first;
-  uint64_t initWidth = 1ULL << 24;
-  uint64_t bucketWidth = 1ULL << 6;
-  uint64_t rangeMax = range().second;
   ASSERT_EQ(rangeMin + initWidth, rangeMax);
 
   arangodb::containers::FnvHashProvider hasher;
@@ -1012,10 +1005,6 @@ TEST_F(MerkleTreeGrowTests, test_grow_right_simple) {
 }
 
 TEST_F(MerkleTreeGrowTests, test_grow_right_with_shift) {
-  uint64_t rangeMin = range().first;
-  uint64_t initWidth = 1ULL << 24;
-  uint64_t bucketWidth = 1ULL << 6;
-  uint64_t rangeMax = range().second;
   ASSERT_EQ(rangeMin + initWidth, rangeMax);
 
   arangodb::containers::FnvHashProvider hasher;
@@ -1100,7 +1089,7 @@ TEST(MerkleTreeTest, test_diff_with_shift_1) {
   expected.emplace_back(std::pair(M, M+3));
   t1.insert(M + 8);  // third bucket in t1
   expected.emplace_back(std::pair(M+8, M+11));
-  t1.insert(M + 16); // firth bucket in t1, first bucket in t2
+  t1.insert(M + 16); // fifth bucket in t1, first bucket in t2
   expected.emplace_back(std::pair(M+16, M+19));
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
   t1.clear();
@@ -1111,7 +1100,7 @@ TEST(MerkleTreeTest, test_diff_with_shift_1) {
   t1.insert(M + 4);  // second bucket in t1
   t1.insert(M + 8);  // third bucket in t1
   t1.insert(M + 12); // fourth bucket in t1
-  t1.insert(M + 16); // firth bucket in t1, first bucket in t2
+  t1.insert(M + 16); // fifth bucket in t1, first bucket in t2
   expected.emplace_back(std::pair(M, M+19));
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
   t1.clear();
