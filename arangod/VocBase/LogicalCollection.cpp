@@ -1001,6 +1001,27 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   _waitForSync = Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString, _waitForSync);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern, replicationFactor);
 
+  if (ServerState::instance()->isDBServer()) {
+    // This code is only allowed to be executed by the maintenance
+    // and should only be triggered during cluster upgrades.
+    // The user is NOT allowed to modify this value in any way.
+    auto nextType =
+        Helper::getNumericValue<InternalCollectionType>(slice, StaticStrings::InternalCollectionType,
+                                                        _collectionType);
+    if (nextType != _collectionType) {
+      // We can only apply this operation If we are write locked.
+      // The WriteLock is guaranteed by the maintenance.
+      // Otherwise someone may insert a document and perform an unprotected
+      // access to _internalValidator.
+
+      // TODO Check if we need to make sure we are write locked.
+      // TRI_ASSERT(statusLock().isLockedWrite());
+      _collectionType = nextType;
+      _internalValidator.reset();
+      decorateWithInternalValidators();
+    }
+  }
+
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
