@@ -405,28 +405,28 @@ TEST_F(IResearchInvertedIndexConditionTest, test_exists) {
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_no_fields) {
   std::string queryString = "FOR d IN test FILTER d.a == 'value' RETURN d ";
-  std::vector<std::string> fields = {"b"}; // field a is not indexed :(
+  std::vector<std::string> fields = {"b"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_sub_fields_no_nested) {
   std::string queryString = "FOR d IN test FILTER d.b == 'value' RETURN d ";
-  std::vector<std::string> fields = {"b.a"}; // field a is not indexed :(
+  std::vector<std::string> fields = {"b.a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_sub_fields_wrong_nested) {
   std::string queryString = "FOR d IN test FILTER d.b.a == 'value' RETURN d ";
-  std::vector<std::string> fields = {"b.c"}; // field a is not indexed :(
+  std::vector<std::string> fields = {"b.c"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_sub_fields_covered) {
   std::string queryString = "FOR d IN test FILTER d.b.a == 'value' RETURN d ";
-  std::vector<std::string> fields = {"b.a"}; // field a is not indexed :(
+  std::vector<std::string> fields = {"b.a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected);
@@ -434,7 +434,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_sub_fields_covered) {
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_no_fields_one_missing) {
   std::string queryString = "FOR d IN test FILTER d.a == 'value' OR d.b == 'c' RETURN d ";
-  std::vector<std::string> fields = {"b"}; // field a is not indexed :(
+  std::vector<std::string> fields = {"b"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
