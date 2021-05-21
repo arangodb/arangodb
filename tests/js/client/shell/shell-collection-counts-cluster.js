@@ -64,10 +64,7 @@ let getCoordinators = function() {
   return getServers('coordinator');
 };
 
-// this array will be modified by tests
-let failurePointsToKeep = [];
-
-let clearFailurePoints = function () {
+let clearFailurePoints = function (failurePointsToKeep) {
   getDBServers().forEach((server) => {
     // clear all failure points
     request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
@@ -118,7 +115,7 @@ function BaseTestConfig () {
           }
         } else if (tries === 20) {
           // wait several seconds so we can be sure the
-          clearFailurePoints();
+          clearFailurePoints([]);
         }
         require("internal").sleep(0.5);
       }
@@ -170,7 +167,7 @@ function BaseTestConfig () {
 
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 2 });
 
@@ -289,7 +286,7 @@ function BaseTestConfig () {
 
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 2 });
 
@@ -355,7 +352,7 @@ function BaseTestConfig () {
 
       assertNotEqual(100000, c.count());
       assertEqual(100000, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 2 });
 
@@ -421,7 +418,7 @@ function BaseTestConfig () {
 
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 3 });
 
@@ -552,7 +549,7 @@ function BaseTestConfig () {
 
       assertNotEqual(100000, c.count());
       assertEqual(100000, c.toArray().length);
-      clearFailurePoints();
+      clearFailurePoints([]);
 
       c.properties({ replicationFactor: 3 });
 
@@ -735,7 +732,7 @@ function BaseTestConfig () {
 
       assertEqual(101, c.toArray().length);
       
-      clearFailurePoints();
+      clearFailurePoints([]);
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -810,7 +807,7 @@ function BaseTestConfig () {
 
       assertEqual(101, c.toArray().length);
       
-      clearFailurePoints();
+      clearFailurePoints([]);
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -888,7 +885,7 @@ function BaseTestConfig () {
       assertEqual(101, c.toArray().length);
       assertEqual(101, c.count());
       
-      clearFailurePoints();
+      clearFailurePoints([]);
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -1026,14 +1023,12 @@ function collectionCountsSuiteOldFormat () {
   let suite = {
     setUp : function () {
       // this disables usage of the new collection format
-      failurePointsToKeep = ["disableRevisionsAsDocumentIds"];
-      clearFailurePoints();
+      clearFailurePoints(["disableRevisionsAsDocumentIds"]);
       db._drop(cn);
     },
 
     tearDown : function () {
-      failurePointsToKeep = [];
-      clearFailurePoints();
+      clearFailurePoints([]);
       db._drop(cn);
     }
   };
@@ -1047,14 +1042,12 @@ function collectionCountsSuiteNewFormat () {
 
   let suite = {
     setUp : function () {
-      failurePointsToKeep = [];
-      clearFailurePoints();
+      clearFailurePoints([]);
       db._drop(cn);
     },
 
     tearDown : function () {
-      failurePointsToKeep = [];
-      clearFailurePoints();
+      clearFailurePoints([]);
       db._drop(cn);
     }
   };
