@@ -189,7 +189,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                    "be a string or array of strings");
   }
 
-  _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
+  readProduceInfo(obj);
 }
 
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlice info,
@@ -409,7 +409,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
   TRI_ASSERT(uniqueVertices != TraverserOptions::UniquenessLevel::GLOBAL || isUniqueGlobalVerticesAllowed());
 
-  _produceVertices = VPackHelper::getBooleanValue(info, "produceVertices", true);
+  readProduceInfo(info);
 }
 
 TraverserOptions::TraverserOptions(TraverserOptions const& other, bool const allowAlreadyBuiltCopy)
@@ -506,6 +506,9 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   }
 
   builder.add("produceVertices", VPackValue(_produceVertices));
+  builder.add("producePathsVertices", VPackValue(_producePathsVertices));
+  builder.add("producePathsEdges", VPackValue(_producePathsEdges));
+  builder.add("producePathsWeights", VPackValue(_producePathsWeights));
   builder.add("type", VPackValue("traversal"));
 }
 
@@ -850,4 +853,11 @@ auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {
   // The depth will be used as a power for the estimates.
   // So having power 7 is evil enough...
   return std::min(maxDepth, static_cast<uint64_t>(7));
+}
+
+void TraverserOptions::readProduceInfo(VPackSlice obj) {
+  _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
+  _producePathsVertices = VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
+  _producePathsEdges = VPackHelper::getBooleanValue(obj, "producePathsEdges", true);
+  _producePathsWeights = VPackHelper::getBooleanValue(obj, "producePathsWeights", true);
 }

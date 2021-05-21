@@ -222,20 +222,20 @@ VPackSlice WeightedEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t i
   result.clear();
   {
     VPackObjectBuilder ob(&result);
-    {  // edges
+    if (_opts->producePathsEdges()) {  // edges
       VPackArrayBuilder ab(&result, StaticStrings::GraphQueryEdges);
       std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(), [&](size_t idx) {
         _opts->cache()->insertEdgeIntoResult(_schreier[idx].fromEdgeToken, result);
       });
     }
-    {  // vertices
+    if (_opts->producePathsVertices()) {  // vertices
       VPackArrayBuilder ab(&result, StaticStrings::GraphQueryVertices);
       _traverser->addVertexToVelocyPack(_schreier[0].currentVertexId, result);
       std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(), [&](size_t idx) {
         _traverser->addVertexToVelocyPack(_schreier[idx].currentVertexId, result);
       });
     }
-    {  // weights
+    if (_opts->producePathsWeights()) {  // weights
       VPackArrayBuilder ab(&result, "weights");
       result.add(VPackValue(_schreier[0].accumWeight));
       std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(), [&](size_t idx) {

@@ -219,18 +219,22 @@ VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size
 
   result.clear();
   result.openObject();
-  result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
-  for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
-    _opts->cache()->insertEdgeIntoResult(_schreier[*it].edge, result);
+  if (_opts->producePathsEdges()) {
+    result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
+    for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
+      _opts->cache()->insertEdgeIntoResult(_schreier[*it].edge, result);
+    }
+    result.close();  // edges
   }
-  result.close();  // edges
-  result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
-  // Always add the start vertex
-  _traverser->addVertexToVelocyPack(_schreier[0].vertex, result);
-  for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
-    _traverser->addVertexToVelocyPack(_schreier[*it].vertex, result);
+  if (_opts->producePathsVertices()) {
+    result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
+    // Always add the start vertex
+    _traverser->addVertexToVelocyPack(_schreier[0].vertex, result);
+    for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
+      _traverser->addVertexToVelocyPack(_schreier[*it].vertex, result);
+    }
+    result.close();  // vertices
   }
-  result.close();  // vertices
   result.close();
   TRI_ASSERT(result.isClosed());
   return result.slice();

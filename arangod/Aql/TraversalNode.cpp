@@ -905,7 +905,7 @@ void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
 }
 
 bool TraversalNode::isPathOutVariableUsedLater() const {
-  return _pathOutVariable != nullptr && options()->producePaths();
+  return _pathOutVariable != nullptr && (options()->producePathsVertices() || options()->producePathsEdges());
 }
 
 bool TraversalNode::isPathOutVariableAccessed() const {

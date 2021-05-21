@@ -5843,14 +5843,67 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     }
 
     outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
-      // traversal path outVariable not used later
-      options->setProducePaths(false);
-      if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
-          pruneVars.end()) {
-        traversal->setPathOutput(nullptr);
+    if (outVariable != nullptr) {
+      if (!n->isVarUsedLater(outVariable)) {
+        // traversal path outVariable not used later
+        options->setProducePaths(/*vertices*/ false, /*edges*/ false, /*weights*/ false);
+        if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
+            pruneVars.end()) {
+          traversal->setPathOutput(nullptr);
+        }
+        modified = true;
+      } else {
+        // path is used later, but lets check which of its sub-attributes
+        // "vertices" or "edges" are in use (or the complete path)
+        std::unordered_set<std::string> attributes;
+        VarSet vars;
+        bool canOptimize = true;
+
+        ExecutionNode* current = traversal->getFirstParent();
+        while (current != nullptr && canOptimize) {
+          switch (current->getType()) {
+            case EN::CALCULATION: {
+              vars.clear();
+              current->getVariablesUsedHere(vars);
+              if (vars.find(outVariable) != vars.end()) {
+                // path variable used here
+                Expression* exp = ExecutionNode::castTo<CalculationNode*>(current)->expression();
+                AstNode const* node = exp->node();
+                if (!Ast::getReferencedAttributes(node, outVariable, attributes)) {
+                  // full path variable is used, or accessed in a way that we don't 
+                  // understand, e.g. "p" or "p[0]" or "p[*]..."
+                  canOptimize = false;
+                }
+              }
+              break;
+            }
+            default: {
+              // if the path is used by any other node type, we don't know what to do
+              // and will not optimize parts of it away
+              vars.clear();
+              current->getVariablesUsedHere(vars);
+              if (vars.find(outVariable) != vars.end()) {
+                canOptimize = false;
+              }
+              break;
+            }
+          }
+          current = current->getFirstParent();
+        }
+
+        if (canOptimize) {
+          // check which attribute from the path are actually used
+          bool producePathsVertices = (attributes.find("vertices") != attributes.end());
+          bool producePathsEdges = (attributes.find("edges") != attributes.end());
+          bool producePathsWeights = (attributes.find("weights") != attributes.end());
+
+          if (!producePathsVertices || !producePathsEdges || !producePathsWeights) {
+            // pass the info to the traversal
+            options->setProducePaths(producePathsVertices, producePathsEdges, producePathsWeights);
+            modified = true;
+          }
+        }
       }
-      modified = true;
     }
 
     // check if we can make use of the optimized neighbors enumerator

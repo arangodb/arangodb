@@ -323,17 +323,20 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
 VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result) {
   result.clear();
   result.openObject();
-  result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
-  for (auto const& it : _enumeratedPath.edges()) {
-    // TRI_ASSERT(it != nullptr);
-    _opts->cache()->insertEdgeIntoResult(it, result);
+  if (_opts->producePathsEdges()) {
+    result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
+    for (auto const& it : _enumeratedPath.edges()) {
+      _opts->cache()->insertEdgeIntoResult(it, result);
+    }
+    result.close();
   }
-  result.close();
-  result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
-  for (auto const& it : _enumeratedPath.vertices()) {
-    _traverser->addVertexToVelocyPack(VPackStringRef(it), result);
+  if (_opts->producePathsVertices()) {
+    result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
+    for (auto const& it : _enumeratedPath.vertices()) {
+      _traverser->addVertexToVelocyPack(VPackStringRef(it), result);
+    }
+    result.close();
   }
-  result.close();
   result.close();
   TRI_ASSERT(result.isClosed());
   return result.slice();
