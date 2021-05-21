@@ -77,9 +77,9 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
     LogFollower const& _self;
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
-    std::multimap<LogIndex, WaitForPromise> _waitForQueue{};
     LogIndex _commitIndex{0};
     MessageId _lastRecvMessageId{0};
+    Guarded<WaitForQueue> _waitForQueue;
   };
   [[maybe_unused]] ReplicatedLogMetrics& _logMetrics;
   ParticipantId const _participantId;

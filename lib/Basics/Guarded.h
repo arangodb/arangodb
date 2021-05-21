@@ -154,8 +154,11 @@ class Guarded {
   template <class U, std::enable_if_t<std::is_assignable_v<T, U>, int> = 0>
   void assign(U&&);
 
-  auto getLockedGuard() -> MutexGuard<value_type, lock_type>;
-  auto getLockedGuard() const -> MutexGuard<value_type const, lock_type>;
+  using mutex_guard_type = MutexGuard<value_type, lock_type>;
+  using const_mutex_guard_type = MutexGuard<value_type const, lock_type>;
+
+  auto getLockedGuard() -> mutex_guard_type;
+  auto getLockedGuard() const -> const_mutex_guard_type;
 
   auto tryLockedGuard() -> std::optional<MutexGuard<value_type, lock_type>>;
   auto tryLockedGuard() const -> std::optional<MutexGuard<value_type const, lock_type>>;

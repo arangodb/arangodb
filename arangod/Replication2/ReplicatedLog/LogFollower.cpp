@@ -68,6 +68,19 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     metrics.replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
   }};
 
+  struct WaitForQueueResolve {
+    WaitForQueueResolve(Guarded<WaitForQueue>::mutex_guard_type guard, LogIndex commitIndex)
+        : _guard(std::move(guard)),
+          begin(_guard->begin()),
+          end(_guard->upper_bound(commitIndex)) {}
+
+    Guarded<WaitForQueue>::mutex_guard_type _guard;
+    WaitForQueue::iterator begin;
+    WaitForQueue::iterator end;
+  };
+
+  auto toBeResolved = std::make_unique<std::optional<WaitForQueueResolve>>();
+
   auto self = _guardedFollowerData.getLockedGuard();
 
   if (self->_logCore == nullptr) {
@@ -123,9 +136,6 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     }
   }
 
-  // preallocate for exception-safety, used later
-  auto toBeResolved = std::make_unique<WaitForQueue>();
-
   // prepare the new in memory state
   auto newInMemoryLog = self->_inMemoryLog._log.take(req.prevLogIndex.value);
 
@@ -178,38 +188,22 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
           LOG_CTX("1641d", TRACE, self->_self._logContext)
               << "increment commit index: " << self->_commitIndex;
 
-          try {
-            auto const end = self->_waitForQueue.upper_bound(self->_commitIndex);
-            for (auto it = self->_waitForQueue.begin(); it != end;) {
-              LOG_CTX("d32f1", TRACE, self->_self._logContext)
-                  << "resolve promise for index " << it->first;
-              toBeResolved->insert(self->_waitForQueue.extract(it++));
-            }
-          } catch (std::exception const& e) {
-            // we can not continue because some promises are not fulfilled
-            LOG_CTX("799e3", FATAL, self->_self._logContext)
-                << "Critical section in appendEntries threw exception: " << e.what()
-                << " - unable to continue safely. Bye Bye.";
-            FATAL_ERROR_EXIT();
-          } catch (...) {
-            LOG_CTX("799e3", FATAL, self->_self._logContext)
-                << "Critical section in appendEntries threw unknown exception"
-                << " - unable to continue safely. Bye Bye.";
-            FATAL_ERROR_EXIT();
-          }
-        }
-
-        return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
-                              DeferredAction([toBeResolved = std::move(toBeResolved)]() noexcept {
-                                for (auto& promise : *toBeResolved) {
-                                  // TODO what do we resolve this with? QuorumData is not available on follower
-                                  // TODO execute this in a different context.
-                                  if (!promise.second.isFulfilled()) {
-                                    // This only throws if promise was fulfilled earlier.
-                                    promise.second.setValue(std::shared_ptr<QuorumData>{});
+          *toBeResolved = WaitForQueueResolve{self->_waitForQueue.getLockedGuard(),
+                                              self->_commitIndex};
+          return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
+                                DeferredAction([toBeResolved = std::move(toBeResolved)]() noexcept {
+                                  for (auto it = toBeResolved->value().begin;
+                                       it != toBeResolved->value().end; it++) {
+                                    // TODO what do we resolve this with? QuorumData is not available on follower
+                                    // TODO execute this in a different context.
+                                    if (!it->second.isFulfilled()) {
+                                      // This only throws if promise was fulfilled earlier.
+                                      it->second.setValue(std::shared_ptr<QuorumData>{});
+                                    }
                                   }
-                                }
-                              }));
+                                }));
+        }
+        return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId}, DeferredAction{});
       })
       .then([measureTime = std::move(measureTime)](auto&& res) mutable {
         measureTime.fire();
@@ -230,7 +224,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::waitFor(LogIndex index)
   }
   // emplace might throw a std::bad_alloc but the remainder is noexcept
   // so either you inserted it and or nothing happens
-  auto it = _waitForQueue.emplace(index, WaitForPromise{});
+  auto it = _waitForQueue.getLockedGuard()->emplace(index, WaitForPromise{});
   auto& promise = it->second;
   auto&& future = promise.getFuture();
   TRI_ASSERT(future.valid());
@@ -277,7 +271,10 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
     // Guarantee that the code below never throws an exception
     return std::invoke([&]() noexcept {
       using std::swap;
-      swap(*queue, followerData._waitForQueue);
+      {
+        auto guard = followerData._waitForQueue.getLockedGuard();
+        swap(*queue, guard.get());
+      }
       auto lambda = [queue = std::move(queue)]() mutable noexcept {
         for (auto& [idx, promise] : *queue) {
           promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
