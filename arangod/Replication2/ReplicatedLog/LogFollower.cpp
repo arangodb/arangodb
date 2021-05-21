@@ -207,6 +207,8 @@ auto replicated_log::LogFollower::GuardedFollowerData::waitFor(LogIndex index)
     // TODO give current term?
     return futures::Future<std::shared_ptr<QuorumData>>{std::in_place, nullptr};
   }
+  // emplace might throw a std::bad_alloc but the remainder is noexcept
+  // so either you inserted it and or nothing happens
   auto it = _waitForQueue.emplace(index, WaitForPromise{});
   auto& promise = it->second;
   auto&& future = promise.getFuture();
@@ -243,14 +245,30 @@ auto replicated_log::LogFollower::getParticipantId() const noexcept -> Participa
 auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
   return _guardedFollowerData.doUnderLock([this](GuardedFollowerData& followerData) {
     LOG_CTX("838fe", DEBUG, _logContext) << "follower resign";
-    return std::make_tuple(
-        std::move(followerData._logCore),
-        DeferredAction{[queue = std::move(followerData._waitForQueue)]() mutable noexcept {
-          for (auto& [idx, promise] : queue) {
-            promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
-                                                   __FILE__, __LINE__));
-          }
-        }});
+    if (followerData._logCore == nullptr) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    }
+
+    // Use swap for multimap because its noexcept
+    // use a unique ptr because move constructor for multimaps is not noexcept
+    auto queue = std::make_unique<WaitForQueue>();
+    // Guarantee that the code below never throws an exception
+    return std::invoke([&]() noexcept {
+      using std::swap;
+      swap(*queue, followerData._waitForQueue);
+
+      auto lambda = [queue = std::move(queue)]() mutable noexcept {
+        for (auto& [idx, promise] : *queue) {
+          promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
+                                                 __FILE__, __LINE__));
+        }
+      };
+      static_assert(std::is_nothrow_constructible_v<DeferredAction, decltype(lambda)&&>);
+      auto action = DeferredAction{std::move(lambda)};
+
+      return std::make_tuple(std::move(followerData._logCore), std::move(action));
+    });
   });
 }
 
@@ -274,7 +292,7 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
   return self->waitFor(idx);
 }
 
-auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const
+auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept
     -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;

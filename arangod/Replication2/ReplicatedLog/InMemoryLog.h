@@ -48,8 +48,8 @@ namespace arangodb::replication2::replicated_log {
  * instance), this is restored from the persisted log.
  */
 struct InMemoryLog {
-  [[nodiscard]] auto getLastIndex() const -> LogIndex;
-  [[nodiscard]] auto getNextIndex() const -> LogIndex;
+  [[nodiscard]] auto getLastIndex() const noexcept -> LogIndex;
+  [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept -> std::optional<LogEntry>;
 
   immer::flex_vector<LogEntry> _log{};

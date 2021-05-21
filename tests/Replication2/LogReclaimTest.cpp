@@ -71,9 +71,11 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
     EXPECT_TRUE(quorum.hasException());
     try {
       quorum.throwIfFailed();
-    } catch(basics::Exception const& ex) {
+    } catch (basics::Exception const& ex) {
       EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
-    } catch(...) {
+    } catch (std::exception const& e) {
+      ADD_FAILURE() << "unexpected exception: " << e.what();
+    } catch (...) {
       ADD_FAILURE() << "unexpected exception";
     }
 

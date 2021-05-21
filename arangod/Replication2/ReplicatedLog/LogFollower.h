@@ -70,7 +70,7 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
     GuardedFollowerData(LogFollower const& self, std::unique_ptr<LogCore> logCore,
                         InMemoryLog inMemoryLog);
 
-    [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
+    [[nodiscard]] auto getLocalStatistics() const noexcept -> LogStatistics;
 
     [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture;
 

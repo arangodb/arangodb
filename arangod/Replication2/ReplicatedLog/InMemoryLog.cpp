@@ -40,11 +40,11 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-auto replicated_log::InMemoryLog::getLastIndex() const -> LogIndex {
+auto replicated_log::InMemoryLog::getLastIndex() const noexcept -> LogIndex {
   return LogIndex{_log.size()};
 }
 
-auto replicated_log::InMemoryLog::getNextIndex() const -> LogIndex {
+auto replicated_log::InMemoryLog::getNextIndex() const noexcept -> LogIndex {
   return LogIndex{_log.size() + 1};
 }
 
