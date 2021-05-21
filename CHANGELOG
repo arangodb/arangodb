@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue BTS-424: fix invalid input row handling in WINDOW execution.
+
 * Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
   function.
 
