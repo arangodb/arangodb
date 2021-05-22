@@ -106,51 +106,51 @@ module.exports = exports =
     header (...args) {
       const {
         name,
-        schema: {schema, validate} = MATCH_STRINGS_MODEL,
+        model = MATCH_STRINGS_MODEL,
         description
       } = check(
         'endpoint.header',
         args,
-        [['name', 'string'], ['schema', check.validateSchema], ['description', 'string']],
+        [['name', 'string'], ['model', check.validateModel], ['description', 'string']],
         [['name', 'string'], ['description', 'string']],
-        [['name', 'string'], ['schema', check.validateSchema]],
+        [['name', 'string'], ['model', check.validateModel]],
         [['name', 'string']]
       );
-      this._headers.set(name.toLowerCase(), {schema, validate, description});
+      this._headers.set(name.toLowerCase(), {...model, description});
       return this;
     }
 
     pathParam (...args) {
       const {
         name,
-        schema: {schema, validate} = MATCH_STRINGS_MODEL,
+        model = MATCH_STRINGS_MODEL,
         description
       } = check(
         'endpoint.pathParam',
         args,
-        [['name', 'string'], ['schema', check.validateSchema], ['description', 'string']],
+        [['name', 'string'], ['model', check.validateModel], ['description', 'string']],
         [['name', 'string'], ['description', 'string']],
-        [['name', 'string'], ['schema', check.validateSchema]],
+        [['name', 'string'], ['model', check.validateModel]],
         [['name', 'string']]
       );
-      this._pathParams.set(name, {schema, validate, description});
+      this._pathParams.set(name, {...model, description});
       return this;
     }
 
     queryParam  (...args) {
       const {
         name,
-        schema: {schema, validate} = MATCH_STRINGS_MODEL,
+        model = MATCH_STRINGS_MODEL,
         description
       } = check(
         'endpoint.queryParam',
         args,
-        [['name', 'string'], ['schema', check.validateSchema], ['description', 'string']],
+        [['name', 'string'], ['model', check.validateModel], ['description', 'string']],
         [['name', 'string'], ['description', 'string']],
-        [['name', 'string'], ['schema', check.validateSchema]],
+        [['name', 'string'], ['model', check.validateModel]],
         [['name', 'string']]
       );
-      this._queryParams.set(name, {schema, validate, description});
+      this._queryParams.set(name, {...model, description});
       return this;
     }
 

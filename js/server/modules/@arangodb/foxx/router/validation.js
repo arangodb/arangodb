@@ -34,7 +34,11 @@ exports.validateParams = function validateParams (typeDefs, rawParams, type) {
   }
   const params = {};
   for (const [name, def] of typeDefs) {
-    const result = def.validate(rawParams[name]);
+    let value = rawParams[name];
+    if (def.fromClient) {
+      value = def.fromClient(value);
+    }
+    const result = def.validate(value);
     if (result.error) {
       const e = result.error;
       e.message = e.message.replace(/^"value"/, `${type} "${name}"`);
