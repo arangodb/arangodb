@@ -1,8 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* Ensure that LDAP options for async, referrals and restart set the off value
-  correctly. Otherwise, this can result in an "operations error".
+* Fixed ES-881: ensure that LDAP options for async, referrals and restart set
+  the off value correctly. Otherwise, this can result in an "operations error".
 
 * Improve Merkle tree memory usage and allow left-growth of trees, too. This can
   help with insertions of arbitrarily old data.
