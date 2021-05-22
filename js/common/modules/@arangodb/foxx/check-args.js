@@ -286,9 +286,9 @@ exports.validateModel = function (value) {
   }
 
   let index = multiple ? '[0]' : '';
-  if (model && typeof model !== "object") {
+  if (model && typeof model !== "object" && typeof model !== "boolean") {
     return {value, error: new Error(
-      `"value"${index} is not an object`
+      `"value"${index} must be an object or boolean`
     ), warnings};
   }
 
