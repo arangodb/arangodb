@@ -310,7 +310,9 @@ exports.validateModel = function (value) {
     return {value, error: result.error, warnings};
   }
   model.schema = result.value.schema;
-  model.validate = result.value.validate;
+  if (model.schema !== true || !model.validate) {
+    model.validate = result.value.validate;
+  }
 
   if (!model.forClient && typeof model.toClient === 'function') {
     warnings.push(il`
@@ -349,7 +351,25 @@ exports.validateModel = function (value) {
     } else {
       model.schema = {type: "array", items: baseModel.schema};
     }
-    model.validate = createSchemaValidator(model.schema);
+    if (baseModel.schema === true && baseModel.validate) {
+      const validateItem = baseModel.validate;
+      model.validate = (value) => {
+        if (!Array.isArray(value)) {
+          return {value, error: new Error(`"value" must be an array.`)};
+        }
+        const arr = Array(value.length);
+        for (const item of value) {
+          const result = validateItem(item);
+          if (result.error) {
+            return result;
+          }
+          arr.push(result.value);
+        }
+        return {value: arr, error: null};
+      };
+    } else {
+      model.validate = createSchemaValidator(model.schema);
+    }
   }
 
   return {value: model, error: null};
