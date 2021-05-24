@@ -1,6 +1,12 @@
 devel
 -----
 
+* added LDAP tests for fail-over or alternate LDAP servers. There are the
+  following test scenarios:
+ - two LDAP servers, each responsible for the same users. The second one
+   is a fail-over for the first one.
+ - two LDAP servers, responsbible for different users.
+
 * Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
   function.
 
