@@ -9,6 +9,9 @@ devel
   metric should always have a value of 0. Everything else indicates a serious
   problem.
 
+* Fixed ES-881: ensure that LDAP options for async, referrals and restart set
+  the off value correctly. Otherwise, this can result in an "operations error".
+
 * Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
   function.
 
