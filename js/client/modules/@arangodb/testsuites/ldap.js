@@ -54,7 +54,7 @@ const testPaths = {
   'ldapsearchplaceholder': [tu.pathForTesting('client/authentication')],
   'ldaprolesimple': [tu.pathForTesting('client/authentication')],
   'ldapsearchsimple': [tu.pathForTesting('client/authentication')],
-  'ldapfailover': tu.pathForTesting('client/ldapfailover')
+  'ldapfailover': tu.pathForTesting('client/ldap')
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -124,7 +124,7 @@ const ldapFailoverConf = {
   'ldap.prefix': 'uid=',
   'ldap.suffix': ',dc=arangodb,dc=com',
   'ldap.roles-attribute-name': 'sn',
-  'ldap.responsible-for': tu.pathForTesting('client/ldapfailover/responsible1'),
+  'ldap.responsible-for': tu.pathForTesting('client/ldap/responsible1'),
 
   'ldap2.enabled': true,
   'ldap2.server': 'ldapserver2',
@@ -135,7 +135,7 @@ const ldapFailoverConf = {
   'ldap2.prefix': 'uid=',
   'ldap2.suffix': ',dc=com',
   'ldap2.roles-attribute-name': 'sn',
-  'ldap2.responsible-for': tu.pathForTesting('client/ldapfailover/responsible2')
+  'ldap2.responsible-for': tu.pathForTesting('client/ldap/responsible2')
 };
 
 // //////////////////////////////////////////////////////////////////////////////
