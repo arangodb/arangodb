@@ -37,7 +37,6 @@
 using namespace arangodb;
 
 namespace {
-constexpr bool AllIteratorFillBlockCache = true;
 constexpr bool AnyIteratorFillBlockCache = false;
 }  // namespace
 
