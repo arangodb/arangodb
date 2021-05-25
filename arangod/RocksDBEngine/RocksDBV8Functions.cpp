@@ -243,6 +243,7 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
     RocksDBEngine& engine = server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     RocksDBReplicationManager* manager = engine.replicationManager();
     double ttl = 3600;
+    // the "17" is a magic number number. we just need any client id to proceed.
     RocksDBReplicationContext* ctx 
       = manager->createContext(engine, ttl, SyncerId{17}, ServerId{17}, "");
     if (ctx == nullptr) {
@@ -265,10 +266,10 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
   { 
     VPackObjectBuilder guard(&builder);
     if (storedTree != nullptr) {
-      builder.add(VPackValue("storedTree"));
+      builder.add(VPackValue("stored"));
       storedTree->serialize(builder);
     } else {
-      builder.add("storedTree", VPackValue(false));
+      builder.add("stored", VPackValue(false));
     }
     if (computedTree != nullptr) {
       builder.add(VPackValue("computed"));
