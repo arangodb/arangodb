@@ -2958,7 +2958,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     node.setVarUsageValid();
     singleton.setVarUsageValid();
 
-    node.planRegisters(nullptr);
+    node.planRegisters();
 
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
 
@@ -3048,8 +3048,8 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   node.setVarsValid({arangodb::aql::VarSet{&outVariable}});
   singleton.setVarUsageValid();
   node.setVarUsageValid();
-  singleton.planRegisters(nullptr);
-  node.planRegisters(nullptr);
+  singleton.planRegisters();
+  node.planRegisters();
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
   auto emptyBlock = node.createBlock(engine, EMPTY);
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
@@ -3097,8 +3097,8 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   node.setVarsValid({arangodb::aql::VarSet{&outNmColPtr, &outNmDocId}});
   singleton.setVarUsageValid();
   node.setVarUsageValid();
-  singleton.planRegisters(nullptr);
-  node.planRegisters(nullptr);
+  singleton.planRegisters();
+  node.planRegisters();
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
   auto emptyBlock = node.createBlock(engine, EMPTY);
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);

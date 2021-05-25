@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
-#define ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionState.h"
@@ -115,4 +114,3 @@ class UnsortedGatherExecutor {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H

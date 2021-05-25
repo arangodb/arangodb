@@ -213,17 +213,15 @@ bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   auto [shadowRowsBegin, shadowRowsEnd] = block().getShadowRowIndexesFrom(0);
 
   // Count the number of shadow rows before this row.
-  size_t const numShadowRowsBeforeCurrentRow = [this, shadowRowsBegin = shadowRowsBegin]() {
-    // this is the last shadow row after _baseIndex, i.e.
-    // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
-    auto [offsetBegin, offsetEnd] = block().getShadowRowIndexesFrom(_baseIndex);
-    // But, as _baseIndex must not be a shadow row, it's actually
-    // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
-    // so the same as shadowRowIndexes.upper_bound(_baseIndex)
-    TRI_ASSERT(offsetBegin == offsetEnd || _baseIndex < *offsetBegin);
 
-    return std::distance(shadowRowsBegin, offsetBegin);
-  }();
+  // this is the last shadow row after _baseIndex, i.e.
+  // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
+  auto [offsetBegin, offsetEnd] = block().getShadowRowIndexesFrom(_baseIndex);
+  // But, as _baseIndex must not be a shadow row, it's actually
+  // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
+  // so the same as shadowRowIndexes.upper_bound(_baseIndex)
+  TRI_ASSERT(offsetBegin == offsetEnd || _baseIndex < *offsetBegin);
+  size_t const numShadowRowsBeforeCurrentRow = std::distance(shadowRowsBegin, offsetBegin);
   TRI_ASSERT(numShadowRowsBeforeCurrentRow <= static_cast<size_t>(std::distance(shadowRowsBegin, shadowRowsEnd)));
 
   return numShadowRowsBeforeCurrentRow == _baseIndex;

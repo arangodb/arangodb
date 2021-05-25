@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_MAINTENANCE_H
-#define ARANGODB_MAINTENANCE_MAINTENANCE_H
+#pragma once
 
 #include "Agency/Node.h"
 #include "Basics/Result.h"
@@ -206,4 +205,3 @@ void syncReplicatedShardsWithLeaders(
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

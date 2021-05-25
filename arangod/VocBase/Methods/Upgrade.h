@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_UPGRADE_H
-#define ARANGOD_VOC_BASE_API_UPGRADE_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -144,4 +143,3 @@ struct Upgrade {
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

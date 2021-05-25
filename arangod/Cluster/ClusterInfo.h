@@ -23,8 +23,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_INFO_H
-#define ARANGOD_CLUSTER_CLUSTER_INFO_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -361,7 +360,6 @@ class ClusterInfo final {
     std::mutex _m;
     std::condition_variable _cv;
     bool _news;
-    application_features::ApplicationServer& _server;
     std::string _section;
     std::function<void()> _f;
     AgencyCallbackRegistry* _cr;
@@ -1254,4 +1252,3 @@ futures::Future<ResultT<uint64_t>> fetchCurrentVersion(network::Timeout timeout)
 
 }  // end namespace arangodb
 
-#endif

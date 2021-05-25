@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_PLAN_H
-#define ARANGOD_AQL_EXECUTION_PLAN_H 1
+#pragma once
 
 #include <array>
 
@@ -166,6 +165,10 @@ class ExecutionPlan {
     return (_excludeFromScatterGather.find(node) != _excludeFromScatterGather.end());
   }
 
+  void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
+  
+  bool isAsyncPrefetchEnabled() const noexcept { return _isAsyncPrefetchEnabled; }
+  
   /// @brief get the node where variable with id <id> is introduced . . .
   ExecutionNode* getVarSetBy(VariableId id) const {
     auto it = _varSetBy.find(id);
@@ -401,6 +404,10 @@ class ExecutionPlan {
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
 
+  /// @brief flag to indicate whether the postprocessing step to enable async
+  /// prefetching on the node level should be executed.
+  bool _isAsyncPrefetchEnabled{false};
+  
   /// @brief current nesting level while building the plan
   int _nestingLevel;
 
@@ -433,4 +440,3 @@ Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
   return ExecutionNode::castTo<Node*>(registerNode(std::move(node)));
 }
 
-#endif

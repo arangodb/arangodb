@@ -61,7 +61,6 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
   options->addOption("--server.flush-interval",
                      "interval (in microseconds) for flushing data",
                      new UInt64Parameter(&_flushInterval),

@@ -52,7 +52,7 @@ CollectNode::CollectNode(
     std::unordered_map<VariableId, std::string const> const& variableMap,
     std::vector<GroupVarInfo> const& groupVariables,
     std::vector<AggregateVarInfo> const& aggregateVariables,
-    bool isDistinctCommand, bool count)
+    bool isDistinctCommand)
     : ExecutionNode(plan, base),
       _options(base),
       _groupVariables(groupVariables),
@@ -62,15 +62,7 @@ CollectNode::CollectNode(
       _keepVariables(keepVariables),
       _variableMap(variableMap),
       _isDistinctCommand(isDistinctCommand),
-      _specialized(false) {
-  // TODO - this is only relevant for backwards compatibility in cluster upgrade 3.7 -> 3.8
-  // and can be removed in 3.9.
-  if (count) {
-    TRI_ASSERT(aggregateVariables.empty());
-    _aggregateVariables.push_back({outVariable, nullptr, "COUNT"});
-    _outVariable = nullptr;
-  }
-}
+      _specialized(false) {}
 
 CollectNode::CollectNode(
     ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
@@ -152,8 +144,6 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     }
   }
 
-  // TODO - this can be removed in 3.9
-  nodes.add("count", VPackValue(false));
   nodes.add("isDistinctCommand", VPackValue(_isDistinctCommand));
   nodes.add("specialized", VPackValue(_specialized));
   nodes.add(VPackValue("collectOptions"));
@@ -653,6 +643,25 @@ void CollectNode::calculateAccessibleUserVariables(ExecutionNode const& node,
                                                    std::vector<Variable const*>& userVariables) {
   // This is just a wrapper around the static function with the same name:
   std::ignore = ::calculateAccessibleUserVariables(node, userVariables, false, 0);
+}
+
+void CollectNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  for (auto& variable : _groupVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  for (auto& variable : _keepVariables) {
+    auto old = variable;
+    variable = Variable::replace(old, replacements);
+  }
+  for (auto& variable : _aggregateVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  if (_expressionVariable != nullptr) {
+    _expressionVariable = Variable::replace(_expressionVariable, replacements);
+  }
+  for (auto const& it : replacements) {
+    _variableMap.try_emplace(it.second->id, it.second->name);
+  }
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place

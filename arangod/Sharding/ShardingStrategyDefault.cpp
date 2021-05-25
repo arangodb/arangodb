@@ -138,7 +138,6 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
 
   if (slice.isObject()) {
     for (auto const& attr : attributes) {
-      
       arangodb::velocypack::StringRef realAttr;
       ::Part part;
       ::parseAttributeAndPart(attr, realAttr, part);

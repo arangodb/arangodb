@@ -422,9 +422,12 @@ auto zkd::specializeCondition(arangodb::Index const* index, arangodb::aql::AstNo
 arangodb::Result arangodb::RocksDBZkdIndexBase::insert(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
     const arangodb::LocalDocumentId& documentId,
-    arangodb::velocypack::Slice doc, const arangodb::OperationOptions& options) {
+    arangodb::velocypack::Slice doc, const arangodb::OperationOptions& options,
+    bool performChecks) {
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
+
+  // TODO what about performChecks?
 
   auto key_value = readDocumentKey(doc, _fields);
 
@@ -511,14 +514,14 @@ std::unique_ptr<IndexIterator> arangodb::RocksDBUniqueZkdIndex::iteratorForCondi
                                                           fields().size());
 }
 
-
 arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
-    const arangodb::LocalDocumentId& documentId,
-    arangodb::velocypack::Slice doc, const arangodb::OperationOptions& options) {
+    const arangodb::LocalDocumentId& documentId, arangodb::velocypack::Slice doc,
+    const arangodb::OperationOptions& options, bool performChecks) {
   TRI_ASSERT(_unique == true);
   TRI_ASSERT(_sparse == false);
 
+  // TODO what about performChecks
   auto key_value = readDocumentKey(doc, _fields);
 
   RocksDBKey rocks_key;
@@ -543,10 +546,10 @@ arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(
   return Result();
 }
 
-arangodb::Result arangodb::RocksDBUniqueZkdIndex::remove(arangodb::transaction::Methods& trx,
-                                                       arangodb::RocksDBMethods* methods,
-                                                       const arangodb::LocalDocumentId& documentId,
-                                                       arangodb::velocypack::Slice doc) {
+arangodb::Result arangodb::RocksDBUniqueZkdIndex::remove(
+    arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
+    const arangodb::LocalDocumentId& documentId,
+    arangodb::velocypack::Slice doc) {
   TRI_ASSERT(_unique == true);
   TRI_ASSERT(_sparse == false);
 

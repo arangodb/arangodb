@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H
-#define ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H 1
+#pragma once
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/InputAqlItemRow.h"
@@ -113,4 +112,3 @@ struct SingleRemoteModificationExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

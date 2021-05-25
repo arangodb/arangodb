@@ -446,7 +446,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
           _agent->commitHist().count(
-            duration<float, std::milli>(high_resolution_clock::now()-start).count());
+            duration<float, std::milli>(high_resolution_clock::now() - start).count());
         }
       }
     }
@@ -753,8 +753,9 @@ RestStatus RestAgencyHandler::handleState() {
     VPackObjectBuilder o(&body);
     _agent->readDB(body);
   }
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptions());
+
+  transaction::StandaloneContext ctx(_vocbase);
+  generateResult(rest::ResponseCode::OK, body.slice(), ctx.getVPackOptions());
   return RestStatus::DONE;
 }
 

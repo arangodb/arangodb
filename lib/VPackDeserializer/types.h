@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef DESERIALIZER_TYPES_H
-#define DESERIALIZER_TYPES_H
+#pragma once
 #include <variant>
 
 namespace arangodb {
@@ -162,4 +161,3 @@ class result {
 template <typename T>
 using deserializer_result =
     arangodb::velocypack::deserializer::result<T, arangodb::velocypack::deserializer::error>;
-#endif  // DESERIALIZER_TYPES_H

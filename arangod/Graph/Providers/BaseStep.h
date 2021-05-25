@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDERS_BASE_STEP_H
-#define ARANGOD_GRAPH_PROVIDERS_BASE_STEP_H 1
+#pragma once
 
 #include <numeric>
 
@@ -32,9 +31,10 @@ namespace graph {
 template <class StepDetails>
 class BaseStep {
  public:
-  BaseStep() : _previous{std::numeric_limits<size_t>::max()} {}
+  BaseStep() : _previous{std::numeric_limits<size_t>::max()}, _depth{0} {}
 
-  BaseStep(size_t prev) : _previous{prev} {}
+  BaseStep(size_t prev) : _previous{prev}, _depth{0} {}
+  BaseStep(size_t prev, size_t depth) : _previous{prev}, _depth{depth} {}
 
   size_t getPrevious() const { return _previous; }
 
@@ -42,12 +42,17 @@ class BaseStep {
     return _previous == std::numeric_limits<size_t>::max();
   }
 
-  bool isLooseEnd() const {return static_cast<StepDetails*>(this)->isLooseEnd();}
+  bool isLooseEnd() const {
+    return static_cast<StepDetails*>(this)->isLooseEnd();
+  }
+
+  size_t getDepth() const {
+    return _depth;
+  }
 
  private:
   size_t const _previous;
+  size_t const _depth;
 };
 }  // namespace graph
 }  // namespace arangodb
-
-#endif

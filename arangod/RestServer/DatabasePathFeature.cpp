@@ -60,8 +60,6 @@ DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer
 }
 
 void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
-
   options->addOption("--database.directory", "path to the database directory",
                      new StringParameter(&_directory));
 

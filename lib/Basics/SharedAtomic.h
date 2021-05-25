@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_SHARED_ATOMIC_H
-#define ARANGO_SHARED_ATOMIC_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -37,6 +36,7 @@ struct SharedAtomic {
   SharedAtomic(T t) : _data(t) {}
   SharedAtomic(T& t) : _data(t) {}
   SharedAtomic(SharedAtomic<T>& t) : _data(t.load(std::memory_order_seq_cst)) {}
+  // cppcheck-suppress operatorEqVarError
   SharedAtomic<T>& operator=(SharedAtomic<T> const& other) {
     _data = other.load(std::memory_order_seq_cst);
     return *this;
@@ -136,4 +136,3 @@ struct SharedAtomic {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

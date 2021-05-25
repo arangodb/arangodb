@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_H
-#define ARANGOD_GRAPH_TRAVERSER_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
@@ -334,4 +333,3 @@ class Traverser {
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PATH_VALIDATOR_H
-#define ARANGOD_GRAPH_PATH_VALIDATOR_H 1
+#pragma once
 
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
@@ -60,4 +59,3 @@ class PathValidator {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

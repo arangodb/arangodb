@@ -167,7 +167,7 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
 #endif
           callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
           return true;
-        });
+        }).ok();
       });
     }
   }

@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_H
-#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_H 1
+#pragma once
 
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchViewMeta.h"
@@ -254,4 +253,3 @@ class IResearchView final: public arangodb::LogicalView {
 } // iresearch
 } // arangodb
 
-#endif

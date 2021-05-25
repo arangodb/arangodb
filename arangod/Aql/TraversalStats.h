@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TRAVERSAL_STATS_H
-#define ARANGOD_AQL_TRAVERSAL_STATS_H
+#pragma once
 
 #include <cstddef>
 
@@ -78,4 +77,3 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

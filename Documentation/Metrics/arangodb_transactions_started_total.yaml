@@ -1,4 +1,6 @@
 name: arangodb_transactions_started_total
+renamedFrom: arangodb_transactions_started
+introducedIn: "3.8.0"
 help: |
   Number of transactions started.
 unit: number
@@ -9,5 +11,10 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Number of transactions started.
+  Total number of transactions started/begun. In the cluster, this metric will 
+  be collected separately for transactions on coordinators and the
+  transaction counterparts on leaders and followers.
+  This metric was named `arangodb_transactions_started` in previous
+  versions of ArangoDB.

@@ -66,7 +66,6 @@ std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
-std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
 std::string const StaticStrings::Compact("compact");
 
 // replication headers
@@ -233,6 +232,9 @@ std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 // accept-encodings
 std::string const StaticStrings::EncodingIdentity("identity");
 std::string const StaticStrings::EncodingDeflate("deflate");
+
+std::string const StaticStrings::Body("body");
+std::string const StaticStrings::ParsedBody("parsedBody");
 
 // collection attributes
 std::string const StaticStrings::CacheEnabled("cacheEnabled");

@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_INDEX_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_INDEX_ID_H 1
+#pragma once
 
 #include <limits>
 
@@ -67,4 +66,3 @@ static_assert(sizeof(IndexId) == sizeof(IndexId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::IndexId)
 
-#endif

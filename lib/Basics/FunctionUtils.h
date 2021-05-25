@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FUNCTION_UTILS_H
-#define ARANGODB_BASICS_FUNCTION_UTILS_H 1
+#pragma once
 
 #include <algorithm>
 #include <chrono>
@@ -85,4 +84,3 @@ bool retryUntilTimeout(std::function<bool()> fn, LogTopic& topic, std::string co
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

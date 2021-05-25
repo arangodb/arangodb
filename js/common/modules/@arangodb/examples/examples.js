@@ -48,32 +48,40 @@ exports.Examples = {
   'mps_graph': {
     createDS: function() {
       examples.loadGraph("mps_graph");
-    },  
+    },
     removeDS: function() {
       examples.dropGraph("mps_graph");
-    }   
-  }, 
+    }
+  },
   'knows_graph': {
     createDS: function() {
       examples.loadGraph("knows_graph");
-    },  
+    },
     removeDS: function() {
       examples.dropGraph("knows_graph");
-    }   
+    }
   },
   'routeplanner': {
     createDS: function() {
       examples.loadGraph("routeplanner");
-    },  
+    },
     removeDS: function() {
       examples.dropGraph("routeplanner");
-    }   
+    }
+  },
+  'connectedComponentsGraph': {
+    createDS: function() {
+      examples.loadGraph("connectedComponentsGraph");
+    },
+    removeDS: function() {
+      examples.dropGraph("connectedComponentsGraph");
+    }
   },
   'joinSampleDataset': {
     createDS: function() {
       db._create("users");
       db._create("relations");
-      
+
       [ [1, "Abigail", true ],
         [2, "Fred", true ],
         [3, "Mary", true ],

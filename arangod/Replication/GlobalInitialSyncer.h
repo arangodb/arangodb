@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_GLOBAL_INITIAL_SYNCER_H
-#define ARANGOD_REPLICATION_GLOBAL_INITIAL_SYNCER_H 1
+#pragma once
 
 #include "Replication/InitialSyncer.h"
 
@@ -66,4 +65,3 @@ class GlobalInitialSyncer : public InitialSyncer {
 };
 }  // namespace arangodb
 
-#endif

@@ -104,7 +104,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30500);
 
-  options->addSection("log", "Configure the logging");
+  options->addSection("log", "logging");
 
   options->addOption("--log.color", "use colors for TTY logging",
                      new BooleanParameter(&_useColor),

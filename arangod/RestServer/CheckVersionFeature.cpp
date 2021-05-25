@@ -69,8 +69,6 @@ CheckVersionFeature::CheckVersionFeature(application_features::ApplicationServer
 }
 
 void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
-
   options->addOldOption("check-version", "database.check-version");
 
   options->addOption("--database.check-version",

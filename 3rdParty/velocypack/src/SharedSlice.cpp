@@ -124,6 +124,8 @@ ValueType SharedSlice::type() const noexcept { return slice().type(); }
 
 char const* SharedSlice::typeName() const { return slice().typeName(); }
 
+uint64_t SharedSlice::volatileHash() const { return slice().volatileHash(); }
+
 uint64_t SharedSlice::hash(uint64_t seed) const { return slice().hash(seed); }
 
 uint32_t SharedSlice::hash32(uint32_t seed) const {
@@ -318,12 +320,9 @@ std::string SharedSlice::copyString() const { return slice().copyString(); }
 
 StringRef SharedSlice::stringRef() const { return slice().stringRef(); }
 
-#ifdef VELOCYPACK_HAS_STRING_VIEW
 std::string_view SharedSlice::stringView() const {
   return slice().stringView();
 }
-
-#endif
 
 std::shared_ptr<uint8_t const> SharedSlice::getBinary(ValueLength& length) const {
   return aliasPtr(slice().getBinary(length));

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_TRAVERSER_ENGINE_H
-#define ARANGOD_CLUSTER_TRAVERSER_ENGINE_H 1
+#pragma once
 
 #include <memory>
 #include <unordered_map>
@@ -189,4 +188,3 @@ class TraverserEngine : public BaseTraverserEngine {
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

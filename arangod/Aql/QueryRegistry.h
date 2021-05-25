@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_REGISTRY_H
-#define ARANGOD_AQL_QUERY_REGISTRY_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -122,6 +121,10 @@ class QueryRegistry {
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  bool queryIsRegistered(std::string const& dbName, QueryId id);
+#endif
+
  private:
   
   /// @brief a struct for all information regarding one query in the registry
@@ -181,4 +184,3 @@ class QueryRegistry {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

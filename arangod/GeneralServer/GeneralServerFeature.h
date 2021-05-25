@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H
-#define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -50,6 +49,8 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   bool allowMethodOverride() const;
   std::vector<std::string> const& accessControlAllowOrigins() const;
   Result reloadTLS();
+  bool permanentRootRedirect() const;
+  std::string redirectRootTo() const;
 
   rest::RestHandlerFactory& handlerFactory();
   rest::AsyncJobManager& jobManager();
@@ -63,8 +64,10 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
   bool _proxyCheck;
+  bool _permanentRootRedirect;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
+  std::string _redirectRootTo;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
@@ -73,4 +76,3 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
 
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_HINTS_H
-#define ARANGOD_TRANSACTION_HINTS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -80,4 +79,3 @@ class Hints {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

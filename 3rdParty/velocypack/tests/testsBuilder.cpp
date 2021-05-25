@@ -28,10 +28,7 @@
 #include <iostream>
 #include <ostream>
 #include <string>
-
-#if __cplusplus >= 201703L
 #include <string_view>
-#endif
 
 #include "tests-common.h"
 
@@ -1712,7 +1709,6 @@ TEST(BuilderTest, StringString) {
   ASSERT_EQ(value, c);
 }
 
-#if __cplusplus >= 201703L
 TEST(BuilderTest, StringView) {
   std::string_view const value("der fuxx ging in den wald und aß pilze");
   Builder b;
@@ -1730,7 +1726,6 @@ TEST(BuilderTest, StringView) {
   ASSERT_EQ(value.size(), c.size());
   ASSERT_EQ(value, c);
 }
-#endif
 
 TEST(BuilderTest, BinaryViaValuePair) {
   uint8_t binaryStuff[] = {0x02, 0x03, 0x05, 0x08, 0x0d};
@@ -3557,7 +3552,6 @@ TEST(BuilderTest, TestBoundariesWithPaddingButContainingNones) {
   }
 }
 
-#if __cplusplus >= 201703L
 TEST(BuilderTest, getSharedSliceEmpty) {
   SharedSlice ss;
   Builder b;
@@ -3625,7 +3619,6 @@ TEST(BuilderTest, stealSharedSlice) {
   check(smallBuilder, true);
   check(largeBuilder, false);
 }
-#endif
 
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);

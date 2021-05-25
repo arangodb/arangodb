@@ -56,6 +56,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchVPackTermAttribute.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/IndexFactory.h"
 #include "Network/NetworkFeature.h"
@@ -254,6 +255,108 @@ class TestAnalyzer : public irs::analysis::analyzer {
 };
 
 REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
+
+
+class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
+ public:
+  static constexpr irs::string_ref type_name() noexcept {
+    return "iresearch-tokens-typed";
+  }
+
+  static ptr make(irs::string_ref const& args) {
+    PTR_NAMED(TestTokensTypedAnalyzer, ptr, args);
+    return ptr;
+  }
+
+  static bool normalize(irs::string_ref const& args, std::string& out) {
+    out.assign(args.c_str(), args.size());
+    return true;
+  }
+
+  explicit TestTokensTypedAnalyzer(irs::string_ref const& args) : irs::analysis::analyzer(irs::type<TestTokensTypedAnalyzer>::get()) {
+    VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
+    if (slice.hasKey("type")) {
+      auto type = slice.get("type").stringRef();
+      if (type == "number") {
+        _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
+        _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(1));
+        _vpackTerm.value = _typedValue.slice();
+      } else if (type == "bool") {
+         _returnType.value = arangodb::iresearch::AnalyzerValueType::Bool;
+      } else if (type == "string") {
+         _returnType.value = arangodb::iresearch::AnalyzerValueType::String;
+         _term.value = irs::ref_cast<irs::byte_type>(_strVal);
+      } else {
+        // Failure here means we have unexpected type
+        EXPECT_TRUE(false);
+      }
+    }
+  }
+
+  virtual bool reset(irs::string_ref const& data) override {
+    if (!data.null()) {
+      _strVal = data;
+    } else {
+      _strVal.clear();
+    }
+    return true;
+  }
+
+  virtual bool next() override {
+    if (!_strVal.empty()) {
+      switch (_returnType.value) {
+        case arangodb::iresearch::AnalyzerValueType::Bool:
+          _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(_strVal.size() % 2 == 0));
+          _vpackTerm.value = _typedValue.slice();
+          break;
+        case arangodb::iresearch::AnalyzerValueType::Number:
+          _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(
+            static_cast<double>(_strVal.size() % 2)));
+          _vpackTerm.value = _typedValue.slice();
+          break;
+        case arangodb::iresearch::AnalyzerValueType::String:
+          _term.value = irs::ref_cast<irs::byte_type>(_strVal);
+          break;
+        default:
+          // New return type was added?
+          EXPECT_TRUE(false);
+          break;
+      }
+      _strVal.pop_back();
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::term_attribute>::id()) {
+      return &_term;
+    }
+    if (type == irs::type<irs::increment>::id()) {
+      return &_inc;
+    }
+    if (type == irs::type<arangodb::iresearch::AnalyzerValueTypeAttribute>::id()) {
+      return &_returnType;
+    }
+    if (type == irs::type<arangodb::iresearch::VPackTermAttribute>::id()) {
+      return &_vpackTerm;
+    }
+    return nullptr;
+  }
+
+ private:
+  std::string _strVal;
+  irs::term_attribute _term;
+  arangodb::iresearch::VPackTermAttribute _vpackTerm;
+  irs::increment _inc;
+  arangodb::iresearch::AnalyzerValueTypeAttribute _returnType;
+  arangodb::aql::AqlValue _typedValue;
+};
+
+REGISTER_ANALYZER_VPACK(TestTokensTypedAnalyzer, TestTokensTypedAnalyzer::make,
+                        TestTokensTypedAnalyzer::normalize);
+
 
 struct Analyzer {
   irs::string_ref type;
@@ -2703,6 +2806,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
                    .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer",
                             "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice())
                    .ok()));
+  ASSERT_TRUE(
+      (true == analyzers
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_number_analyzer",
+                            "iresearch-tokens-typed", VPackParser::fromJson("{\"type\":\"number\"}")->slice())
+                   .ok()));
+  ASSERT_TRUE(
+      (true == analyzers
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_bool_analyzer",
+                            "iresearch-tokens-typed", VPackParser::fromJson("{\"type\":\"bool\"}")->slice())
+                   .ok()));
   ASSERT_FALSE(!result.first);
 
   arangodb::SingleCollectionTransaction trx(
@@ -2746,6 +2859,57 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     auto value = entry.slice().copyString();
     EXPECT_EQ(data, value);
   }
+
+  // test typed analyzer tokenization BTS-357
+  {
+    std::string analyzer(arangodb::StaticStrings::SystemDatabase +
+                         "::test_number_analyzer");
+    irs::string_ref data("123");
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(data.c_str(), data.size());
+    args->emplace_back(analyzer.c_str(), analyzer.size());
+    AqlValueWrapper result(impl(&exprCtx, node, *args));
+    ASSERT_TRUE(result->isArray());
+    ASSERT_EQ(3, result->length());
+    std::string expected123[] = {
+      "oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w",
+      "oIAAAAAAAAAA", "sIAAAAAAAA==", "wIAAAAA=", "0IAA",
+      "oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"};
+    for (size_t i = 0; i < result->length(); ++i) {
+      bool mustDestroy;
+      auto entry = result->at(i, mustDestroy, false).slice();
+      ASSERT_TRUE(entry.isArray());
+      ASSERT_EQ(4, entry.length());
+      for (size_t j = 0; j < entry.length(); ++j) {
+        auto actual = entry.at(j);
+        ASSERT_TRUE(actual .isString());
+        ASSERT_EQ(expected123[i * 4 + j], actual.copyString());
+      }
+    }
+  }
+
+  // test typed analyzer tokenization BTS-357
+  {
+    std::string analyzer(arangodb::StaticStrings::SystemDatabase +
+                         "::test_bool_analyzer");
+    irs::string_ref data("123");
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(data.c_str(), data.size());
+    args->emplace_back(analyzer.c_str(), analyzer.size());
+    AqlValueWrapper result(impl(&exprCtx, node, *args));
+    ASSERT_TRUE(result->isArray());
+    ASSERT_EQ(3, result->length());
+    std::string expected1[] = {"AA==", "/w==", "AA=="};
+    for (size_t i = 0; i < result->length(); ++i) {
+      bool mustDestroy;
+      auto entry = result->at(i, mustDestroy, false).slice();
+      ASSERT_TRUE(entry.isArray());
+      ASSERT_TRUE(entry.at(0).isString());
+      ASSERT_EQ(expected1[i], arangodb::iresearch::getStringRef(entry.at(0)));
+    }
+  }
+
+
 
   // test invalid arg count
   // Zero count (less than expected)

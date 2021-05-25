@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H
-#define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
+#pragma once
 
 #include <functional>
 #include <string>
@@ -172,4 +171,3 @@ IndexIterator::DocumentCallback buildDocumentCallback(DocumentProducingFunctionC
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

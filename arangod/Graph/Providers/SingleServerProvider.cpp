@@ -45,31 +45,24 @@ auto operator<<(std::ostream& out, SingleServerProvider::Step const& step) -> st
 }  // namespace graph
 }  // namespace arangodb
 
-IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
-                             aql::AstNode* condition, std::optional<size_t> memberToUpdate)
-    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {}
-
-aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
-transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
-  return _idx;
-}
-std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
-  return _memberToUpdate;
-}
-
 SingleServerProvider::Step::Step(VertexType v) : _vertex(v), _edge() {}
 
 SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev)
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)) {}
+
+SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth)
+    : BaseStep(prev, depth), _vertex(v), _edge(std::move(edge)) {}
 
 SingleServerProvider::Step::~Step() = default;
 
 VertexType const& SingleServerProvider::Step::Vertex::getID() const {
   return _vertex;
 }
+
 EdgeDocumentToken const& SingleServerProvider::Step::Edge::getID() const {
   return _token;
 }
+
 bool SingleServerProvider::Step::Edge::isValid() const {
   return getID().localDocumentId() != DataSourceId::none();
 };
@@ -88,8 +81,9 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
                                            BaseProviderOptions opts,
                                            arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())),
-      _cache(_trx.get(), &queryContext, resourceMonitor, opts.collectionToShardMap()),
       _opts(std::move(opts)),
+      _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
+             _opts.collectionToShardMap()),
       _stats{} {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
   _cursor = buildCursor();
@@ -164,7 +158,7 @@ void SingleServerProvider::addVertexToBuilder(Step::Vertex const& vertex,
 
 void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
                                                 arangodb::velocypack::Builder& builder) {
-  _cache.insertEdgeIntoResult(_stats, edge, builder);
+  _cache.insertEdgeIntoResult(edge, builder);
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {

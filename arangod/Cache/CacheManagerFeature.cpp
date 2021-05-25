@@ -66,7 +66,7 @@ CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer
 CacheManagerFeature::~CacheManagerFeature() = default;
 
 void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("cache", "Configure the hash cache");
+  options->addSection("cache", "in-memory hash cache");
 
   options->addOption("--cache.size", "size of cache in bytes",
                      new UInt64Parameter(&_cacheSize),

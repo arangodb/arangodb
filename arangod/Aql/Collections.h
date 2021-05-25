@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTIONS_H
-#define ARANGOD_AQL_COLLECTIONS_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Aql/Collection.h"
@@ -76,4 +75,3 @@ class Collections {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/DataProtector.h"
@@ -138,7 +137,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }
   bool upgrade() const { return _upgrade; }
-  bool useOldSystemCollections() const { return _useOldSystemCollections; }
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
@@ -198,7 +196,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _isInitiallyEmpty;
   bool _checkVersion;
   bool _upgrade;
-  bool _useOldSystemCollections;
 
   std::atomic<bool> _started;
 
@@ -220,4 +217,3 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

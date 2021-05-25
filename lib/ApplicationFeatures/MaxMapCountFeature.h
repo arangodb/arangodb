@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_MAX_MAP_COUNT_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_MAX_MAP_COUNT_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
@@ -49,4 +48,3 @@ class MaxMapCountFeature final : public application_features::ApplicationFeature
 
 }  // namespace arangodb
 
-#endif

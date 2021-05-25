@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_CALLSTACK_H
-#define ARANGOD_AQL_AQL_CALLSTACK_H 1
+#pragma once
 
 #include "Aql/AqlCallList.h"
 #include "Basics/ResultT.h"
@@ -57,10 +56,10 @@ class AqlCallStack {
   AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
   AqlCallStack(AqlCallStack const& other) = default;
-  AqlCallStack(AqlCallStack&& other) = default;
+  AqlCallStack(AqlCallStack&& other) noexcept = default;
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;
-  AqlCallStack& operator=(AqlCallStack&& other) = default;
+  AqlCallStack& operator=(AqlCallStack&& other) noexcept = default;
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallStack>;
 
@@ -174,7 +173,7 @@ class AqlCallStack {
   auto requestLessDataThan(AqlCallStack const& other) const noexcept -> bool;
 
  private:
-  explicit AqlCallStack(std::vector<AqlCallList>&& operations);
+  explicit AqlCallStack(std::vector<AqlCallList>&& operations) noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto validateNoCallHasSkippedRows() -> void;
@@ -189,4 +188,3 @@ class AqlCallStack {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

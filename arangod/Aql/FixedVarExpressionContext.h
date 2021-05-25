@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H
-#define ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Aql/QueryExpressionContext.h"
@@ -63,4 +62,3 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
 };
 }  // namespace aql
 }  // namespace arangodb
-#endif

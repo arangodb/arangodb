@@ -159,7 +159,7 @@ bool IndexIterator::nextImpl(LocalDocumentIdCallback const&, size_t /*limit*/) {
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
   return nextImpl(
       [this, &cb](LocalDocumentId const& token) {
-        return _collection->getPhysical()->read(_trx, token, cb);
+        return _collection->getPhysical()->read(_trx, token, cb).ok();
       },
       limit);
 }

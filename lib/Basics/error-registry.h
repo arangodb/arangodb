@@ -1,6 +1,5 @@
 
-#ifndef ARANGODB_BASICS_ERROR_REGISTRY_H
-#define ARANGODB_BASICS_ERROR_REGISTRY_H
+#pragma once
 
 #include "Basics/voc-errors.h"
 
@@ -16,7 +15,7 @@ struct elsa<ErrorCode> {
 #include <frozen/unordered_map.h>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 344> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -87,6 +86,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessage
       "disabled"},
     {TRI_ERROR_MALFORMED_JSON,  // 37
       "malformed json"},
+    {TRI_ERROR_STARTING_UP,  // 38
+      "startup ongoing"},
     {TRI_ERROR_HTTP_BAD_PARAMETER,  // 400
       "bad parameter"},
     {TRI_ERROR_HTTP_UNAUTHORIZED,  // 401
@@ -342,7 +343,7 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessage
     {TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION,  // 1489
       "a shard leader refuses to perform a replication operation"},
     {TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,  // 1490
-      "a shard follower refuses to perform an operation that is not a replication"},
+      "a shard follower refuses to perform an operation"},
     {TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED,  // 1491
       "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime"},
     {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,  // 1492
@@ -401,6 +402,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessage
       "division by zero"},
     {TRI_ERROR_QUERY_ARRAY_EXPECTED,  // 1563
       "array expected"},
+    {TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,  // 1568
+      "collection '%s' used as expression operand"},
     {TRI_ERROR_QUERY_FAIL_CALLED,  // 1569
       "FAIL(%s) called"},
     {TRI_ERROR_QUERY_GEO_INDEX_MISSING,  // 1570
@@ -553,6 +556,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessage
       "no valid initial collection found"},
     {TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,  // 1947
       "referenced vertex collection is not part of the graph"},
+    {TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,  // 1948
+      "negative edge weight found"},
     {TRI_ERROR_SESSION_UNKNOWN,  // 1950
       "unknown session"},
     {TRI_ERROR_SESSION_EXPIRED,  // 1951
@@ -637,28 +642,6 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessage
       "must not change the value of the smartJoinAttribute"},
     {TRI_ERROR_INVALID_DISJOINT_SMART_EDGE,  // 4010
       "non disjoint edge found"},
-    {TRI_ERROR_CLUSTER_REPAIRS_FAILED,  // 5000
-      "error during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY,  // 5001
-      "not enough (healthy) db servers"},
-    {TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,  // 5002
-      "replication factor violated during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS,  // 5003
-      "no dbservers during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS,  // 5004
-      "mismatching leaders during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS,  // 5005
-      "mismatching followers during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES,  // 5006
-      "inconsistent attributes during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS,  // 5007
-      "mismatching shards during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED,  // 5008
-      "move shard job failed during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED,  // 5009
-      "move shard job disappeared during cluster repairs"},
-    {TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED,  // 5010
-      "agency transaction failed during cluster repairs"},
     {TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,  // 20001
       "malformed gossip message"},
     {TRI_ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,  // 20002
@@ -723,5 +706,3 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessage
       "error during AIR execution"},
 };
 }
-
-#endif  // ARANGODB_BASICS_ERROR_REGISTRY_H

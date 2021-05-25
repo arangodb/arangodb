@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IMPORT_IMPORT_HELPER_H
-#define ARANGODB_IMPORT_IMPORT_HELPER_H 1
+#pragma once
 
 #include <atomic>
 #include <unordered_map>
@@ -94,7 +93,9 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   bool importDelimited(std::string const& collectionName,
-                       std::string const& fileName, DelimitedImportType typeImport);
+                       std::string const& fileName, 
+                       std::string const& headersFile, 
+                       DelimitedImportType typeImport);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief imports a file with JSON objects
@@ -274,6 +275,11 @@ class ImportHelper {
   static unsigned const MaxBatchSize;
 
  private:
+  // read headers from separate file
+  bool readHeadersFile(std::string const& headersFile, 
+                       DelimitedImportType typeImport,
+                       char separator);
+
   static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
   static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
   static void ProcessCsvEnd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
@@ -340,10 +346,10 @@ class ImportHelper {
   std::unordered_set<std::string> _removeAttributes;
 
   bool _hasError;
+  bool _headersSeen;
   std::vector<std::string> _errorMessages;
 
   static double const ProgressStep;
 };
 }  // namespace import
 }  // namespace arangodb
-#endif

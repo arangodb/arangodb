@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_NODE_H
-#define ARANGOD_CONSENSUS_NODE_H 1
+#pragma once
 
 #include "AgencyCommon.h"
 #include "Basics/ResultT.h"
@@ -103,16 +102,18 @@ class SmallBuffer {
     other._size = 0;
   }
   SmallBuffer& operator=(SmallBuffer const& other) {
-    if (!empty()) {
-      delete[] _start;
-    }
-    if (other.empty()) {
-      _start = nullptr;
-      _size = 0;
-    } else {
-      _start = new uint8_t[other._size];
-      _size = other._size;
-      memcpy(_start, other._start, other._size);
+    if (this != &other) {
+      if (!empty()) {
+        delete[] _start;
+      }
+      if (other.empty()) {
+        _start = nullptr;
+        _size = 0;
+      } else {
+        _start = new uint8_t[other._size];
+        _size = other._size;
+        memcpy(_start, other._start, other._size);
+      }
     }
     return *this;
   }
@@ -438,4 +439,3 @@ inline std::ostream& operator<<(std::ostream& o, Node const& n) {
 
 }  // namespace arangodb::consensus
 
-#endif

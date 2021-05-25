@@ -31,6 +31,7 @@
 
 (function () {
   let internal = require('internal');
+  let ArangoError = require('@arangodb').ArangoError;
 
   // check if --server.rest-server is disabled
   // in this case we do not (and should not) initialize and start Foxx
@@ -38,14 +39,6 @@
   let restServer = true;
   if (options.hasOwnProperty("server.rest-server")) {
     restServer = options["server.rest-server"];
-  }
-
-  // autoload all modules
-  // this functionality is deprecated and will be removed in 3.9
-  if (global.USE_OLD_SYSTEM_COLLECTIONS) {
-    // check and load all modules in all databases from _modules
-    // this can be expensive, so it is guarded by a flag
-    internal.loadStartup('server/bootstrap/autoload.js').startup();
   }
 
   // reload routing information
@@ -69,8 +62,12 @@
       try {
         require('@arangodb/foxx/queues/manager').run();
       } catch (err) {
-        require("console").warn("unable to start Foxx queues manager: " + String(err));
-        // continue with the startup!
+        // ignore any shutdown errors
+        if (!(err instanceof ArangoError) ||
+            err.errorNum !== internal.errors.ERROR_SHUTTING_DOWN.code) {
+          require("console").warn("unable to start Foxx queues manager: " + String(err));
+        }
+        // continue with the startup anyway!
       }
     }
 

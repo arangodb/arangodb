@@ -1,4 +1,5 @@
 name: arangodb_agency_term
+introducedIn: "3.7.1"
 help: |
   Agency's term.
 unit: number
@@ -8,7 +9,7 @@ complexity: medium
 exposedBy:
   - agent
 description: |
-  Agency's term.
+  The Agency's current term.
 threshold: |
   This number should usually not grow. If it does, the agency is doing
   repeated reelections, which suggests overload or bad network latency

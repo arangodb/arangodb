@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_REST_HANDLERS_H
-#define ARANGOD_ROCKSDB_ROCKSDB_REST_HANDLERS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -37,4 +36,3 @@ struct RocksDBRestHandlers {
 
 }  // namespace arangodb
 
-#endif

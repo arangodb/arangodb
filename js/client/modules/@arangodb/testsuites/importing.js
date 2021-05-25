@@ -152,6 +152,15 @@ const impTodos = [{
   separator: ',',
   ignoreMissing: true
 }, {
+  id: 'csvconvert',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noconvert.csv')),
+  coll: 'UnitTestsImportCsvConvert',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  backslash: true
+}, {
   id: 'csvnoconvert',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noconvert.csv')),
   coll: 'UnitTestsImportCsvNoConvert',
@@ -168,6 +177,20 @@ const impTodos = [{
   create: 'true',
   separator: ',',
   backslash: true
+}, {
+  id: 'csvheaders',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
+  coll: 'UnitTestsImportCsvHeaders',
+  type: 'csv',
+  create: 'true',
+}, {
+  id: 'csvbrokenheaders',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-broken-headers.csv')),
+  coll: 'UnitTestsImportCsvBrokenHeaders',
+  type: 'csv',
+  create: 'true',
 }, {
   id: 'tsv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.tsv')),

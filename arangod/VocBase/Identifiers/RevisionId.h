@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_REVISION_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_REVISION_ID_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
@@ -82,6 +81,9 @@ class RevisionId : public arangodb::basics::Identifier {
     return RevisionId{std::numeric_limits<std::uint64_t>::max()};
   }
 
+  /// @brief create a revision id with a lower-bound HLC value
+  static RevisionId lowerBound();
+
   /// @brief create a revision id using an HLC value
   static RevisionId create();
 
@@ -115,4 +117,3 @@ static_assert(sizeof(RevisionId) == sizeof(RevisionId::BaseType),
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::RevisionId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::RevisionId)
 
-#endif

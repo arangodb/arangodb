@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window, _ */
+/* global arangoHelper, Backbone, templateEngine, $, window, frontendConfig _ */
 (function () {
   'use strict';
 
@@ -149,7 +149,8 @@
     continueRender: function (maintenanceMode, error) {
       this.$el.html(this.template.render({
         maintenanceMode: (maintenanceMode !== 'Normal'),
-        error: error
+        error: error,
+        canChange: frontendConfig.clusterApiJwtPolicy === 'jwt-compat'
       }));
     }
   });

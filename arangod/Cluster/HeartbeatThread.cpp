@@ -219,6 +219,7 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _lastPlanVersionNoticed(0),
       _lastCurrentVersionNoticed(0),
       _updateCounter(0),
+      _updateDBServers(false),
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(_server, this),
       _heartbeat_send_time_ms(
@@ -249,6 +250,49 @@ HeartbeatThread::~HeartbeatThread() {
 void HeartbeatThread::run() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
+  std::unordered_map<std::string, std::shared_ptr<AgencyCallback>> serverCallbacks{};
+  if (ServerState::instance()->isCoordinator(role) ||
+      ServerState::instance()->isDBServer(role) ||
+      (ServerState::instance()->isSingleServer(role) &&
+       _server.getFeature<ReplicationFeature>().isActiveFailoverEnabled())) {
+    std::function<bool(VPackSlice const& result)> updbs = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("fe092", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current db servers";
+      self->updateDBServers();
+      return true;
+    };
+    std::vector<std::string> const dbServerAgencyPaths{
+      "Current/DBServers", "Target/FailedServers", "Target/CleanedServers", "Target/ToBeCleanedServers"};
+    for (auto const& path : dbServerAgencyPaths) {
+      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, updbs, true, false));
+    }
+    std::function<bool(VPackSlice const& result)> upsrv = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("2e09f", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current servers and rebootIds";
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadServers();
+      return true;
+    };
+    std::vector<std::string> const serverAgencyPaths{
+      "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown",
+      "Current/ServersKnown/" + ServerState::instance()->getId()};
+    for (auto const& path : serverAgencyPaths) {
+      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
+    }
+    std::function<bool(VPackSlice const& result)> upcrd = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("2f09e", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current coordinators";
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadCurrentCoordinators();
+      return true;
+    };
+    std::string const path = "Current/Coordinators";
+    serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upcrd, true, false));
+
+    for (auto const& cb : serverCallbacks) {
+      auto res = _agencyCallbackRegistry->registerCallback(cb.second);
+      if (!res.ok()) {
+        LOG_TOPIC("97aa8", WARN, Logger::HEARTBEAT)
+          << "Failed to register agency cache callback to " << cb.first << " degrading performance";
+      }
+    }
+  }
+
   // mop: the heartbeat thread itself is now ready
   setReady();
   // mop: however we need to wait for the rest server here to come up
@@ -267,7 +311,7 @@ void HeartbeatThread::run() {
     }
   }
 
-  LOG_TOPIC("9788a", TRACE, Logger::HEARTBEAT)
+  LOG_TOPIC("978a8", TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
   if (ServerState::instance()->isCoordinator(role)) {
@@ -284,6 +328,10 @@ void HeartbeatThread::run() {
     LOG_TOPIC("8291e", ERR, Logger::HEARTBEAT)
         << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
+  }
+
+  for (auto const& acb : serverCallbacks) {
+    _agencyCallbackRegistry->unregisterCallback(acb.second);
   }
 
   LOG_TOPIC("eab40", TRACE, Logger::HEARTBEAT)
@@ -374,15 +422,20 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
     }
   }
 
-  // Periodically update the list of DBServers and prune agency comm
-  // connection pool:
-  if (++_updateCounter >= 60) {
+  // Periodical or event-based update of DBServers and pruning of
+  // agency comm connection pool:
+  auto updateDBServers = _updateDBServers.exchange(false);
+  if (updateDBServers || ++_updateCounter >= 60) {
     auto& clusterFeature = server().getFeature<ClusterFeature>();
     auto& ci = clusterFeature.clusterInfo();
     ci.loadCurrentDBServers();
     _updateCounter = 0;
     clusterFeature.pruneAsyncAgencyConnectionPool();
   }
+}
+
+void HeartbeatThread::updateDBServers() {
+  _updateDBServers.store(true);
 }
 
 DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
@@ -394,8 +447,6 @@ DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
 void HeartbeatThread::runDBServer() {
 
   using namespace std::chrono_literals;
-
-  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
 
   while (!isStopping() && !server().getFeature<DatabaseFeature>().started()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -630,14 +681,13 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
 
-      std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
-      if (prgl) {
-        pregel::RecoveryManager* mngr = prgl->recoveryManager();
+      if (_server.hasFeature<pregel::PregelFeature>()) {
+        auto& pregel = _server.getFeature<pregel::PregelFeature>();
+        pregel::RecoveryManager* mngr = pregel.recoveryManager();
         if (mngr != nullptr) {
           mngr->updatedFailedServers(failedServers);
         }
       }
-
     } else {
       LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
@@ -1088,7 +1138,14 @@ bool HeartbeatThread::init() {
   if (ServerState::instance()->isClusterRole() && !sendServerState()) {
     return false;
   }
-
+  if (ServerState::instance()->isDBServer()) {
+    // the maintenanceThread is only required by DB server instances, but we deliberately
+    // initialize it here instead of in runDBServer because the ClusterInfo::SyncerThread
+    // uses HeartbeatThread::notify to notify this thread, but that SyncerThread is started
+    // before runDBServer is called. So in order to prevent a data race we should initialize
+    // _maintenanceThread before that SyncerThread is started.
+    _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+  }
   return true;
 }
 

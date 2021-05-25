@@ -6040,8 +6040,8 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     node.setVarsValid({arangodb::aql::VarSet{&outVariable}});
     singleton.setVarUsageValid();
     node.setVarUsageValid();
-    singleton.planRegisters(nullptr);
-    node.planRegisters(nullptr);
+    singleton.planRegisters();
+    node.planRegisters();
     auto singletonBlock = singleton.createBlock(*query.rootEngine(), cache);
     auto execBlock = node.createBlock(*query.rootEngine(), cache);
     ASSERT_TRUE(nullptr != execBlock);

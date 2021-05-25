@@ -42,7 +42,7 @@ RandomFeature::RandomFeature(application_features::ApplicationServer& server)
 }
 
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("random", "Configure the random generator");
+  options->addSection("random", "random generator");
 
 #ifdef _WIN32
   std::unordered_set<uint32_t> generators = {1, 5};

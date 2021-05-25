@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_DOCUMENT_CACHE_H
-#define ARANGOD_GRAPH_TRAVERSER_DOCUMENT_CACHE_H 1
+#pragma once
 
 #include "Graph/TraverserCache.h"
 
@@ -85,4 +84,3 @@ class TraverserDocumentCache final : public TraverserCache {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_SHORTEST_PATH_RESULT_H
-#define ARANGOD_GRAPH_SHORTEST_PATH_RESULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -100,4 +99,3 @@ class ShortestPathResult {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

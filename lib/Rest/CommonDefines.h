@@ -126,6 +126,7 @@ enum class ResponseCode {
   REQUESTED_RANGE_NOT_SATISFIABLE = 416,
   EXPECTATION_FAILED = 417,
   I_AM_A_TEAPOT = 418,
+  MISDIRECTED_REQUEST = 421,
   UNPROCESSABLE_ENTITY = 422,
   LOCKED = 423,
   PRECONDITION_REQUIRED = 428,
@@ -213,6 +214,8 @@ inline const char* responseToString(ResponseCode responseCode) {
       return "417 EXPECTATION_FAILED";
     case ResponseCode::I_AM_A_TEAPOT:
       return "418 I_AM_A_TEAPOT";
+    case ResponseCode::MISDIRECTED_REQUEST:
+      return "421_MISDIRECTED_REQUEST";
     case ResponseCode::UNPROCESSABLE_ENTITY:
       return "422 UNPROCESSABLE_ENTITY";
     case ResponseCode::LOCKED:

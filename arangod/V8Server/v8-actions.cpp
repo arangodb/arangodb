@@ -34,6 +34,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
@@ -920,14 +921,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       break;
 
       case Endpoint::TransportType::VST: {
-        VPackBuffer<uint8_t> buffer;
-        VPackBuilder builder(buffer);
-        builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
+        response->addRawPayload(velocypack::StringRef(content, length));
         TRI_FreeString(content);
-
-        // create vpack from file
-        response->setContentType(rest::ContentType::VPACK);
-        response->setPayload(std::move(buffer));
       }
       break;
 
@@ -1544,7 +1539,7 @@ static ErrorCode clusterSendToAllServers(v8::Isolate* isolate, std::string const
   for (auto const& sid : DBServers) {
     VPackBuffer<uint8_t> buffer(body.size());
     buffer.append(body);
-    auto f = network::sendRequest(pool, "server:" + sid, verb, path,
+    auto f = network::sendRequestRetry(pool, "server:" + sid, verb, path,
                                   std::move(buffer), reqOpts, headers);
     futures.emplace_back(std::move(f));
   }
@@ -1751,6 +1746,19 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_ClusterApiJwtPolicy(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+    
+  ClusterFeature const& cf = v8g->_server.getFeature<ClusterFeature>();
+  std::string const& policy = cf.apiJwtPolicy();
+  TRI_V8_RETURN_STD_STRING(policy);
+
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -1844,6 +1852,8 @@ static void JS_CreateHotbackup(v8::FunctionCallbackInfo<v8::Value> const& args) 
 }
 
 void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_API_JWT_POLICY"), JS_ClusterApiJwtPolicy, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,

@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REST_AQL_HANDLER_H
-#define ARANGOD_AQL_REST_AQL_HANDLER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -53,11 +52,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
    public:
     static auto execute() -> const char* { return "/_api/aql/execute"; }
   };
-
- public:
-  // DELETE method for /_api/aql/kill/<queryId>, (internal)
-  bool killQuery(std::string const& idString);
-
+  
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "execute", "getSome", "skipSome" "initializeCursor" or
@@ -150,4 +145,3 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

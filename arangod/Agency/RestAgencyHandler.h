@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AGENCY_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AGENCY_HANDLER_H 1
+#pragma once
 
 #include "Agency/Agent.h"
 #include "Futures/Future.h"
@@ -78,4 +77,3 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

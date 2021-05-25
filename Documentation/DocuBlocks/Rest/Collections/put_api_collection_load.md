@@ -6,6 +6,10 @@
 
 @HINTS
 {% hint 'warning' %}
+The load function is deprecated from version 3.8.0 onwards and should no longer be used.
+{% endhint %}
+
+{% hint 'warning' %}
 Accessing collections by their numeric ID is deprecated from version 3.4.0 on.
 You should reference them via their names instead.
 {% endhint %}

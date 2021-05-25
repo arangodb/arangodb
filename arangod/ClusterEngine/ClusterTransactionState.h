@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_STATE_H
-#define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_STATE_H 1
+#pragma once
 
 #include "StorageEngine/TransactionState.h"
 
@@ -52,4 +51,3 @@ class ClusterTransactionState final : public TransactionState {
 
 }  // namespace arangodb
 
-#endif

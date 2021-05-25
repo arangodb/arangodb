@@ -719,15 +719,22 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
   // always stop initial synchronization
   _state._stopInitialSynchronization = true;
 
-  if (!_state.isActive() || _state.isShuttingDown()) {
-    // not active or somebody else is shutting us down
+  if (!_state.isActive() && !joinThread) {
+    // not active
+    return;
+  }
+
+  if (_state.isShuttingDown() && !joinThread) {
+    // somebody else is shutting us down
     return;
   }
 
   LOG_TOPIC("73c1a", DEBUG, Logger::REPLICATION)
       << "requesting replication applier stop for " << _databaseName;
 
-  _state._phase = ReplicationApplierState::ActivityPhase::SHUTDOWN;
+  if (_state.isActive()) {
+    _state._phase = ReplicationApplierState::ActivityPhase::SHUTDOWN;
+  }
   _state.setError(r.errorNumber(), r.errorMessage());
 
   if (_thread != nullptr) {
@@ -748,19 +755,21 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
       writeLocker.lock();
     }
 
-    TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());
-    // wipe aborted flag. this will be passed on to the syncer
-    static_cast<ApplierThread*>(_thread.get())->setAborted(false);
+    if (_thread != nullptr) {
+      TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());
+      // wipe aborted flag. this will be passed on to the syncer
+      static_cast<ApplierThread*>(_thread.get())->setAborted(false);
 
-    // steal thread
-    std::unique_ptr<Thread> t = std::move(_thread);
-    TRI_ASSERT(_thread == nullptr);
-    // now _thread is empty
-    // and release the write lock so when "thread" goes
-    // out of scope, it actually can call the thread
-    // deleter without holding the write lock (which would
-    // deadlock)
-    writeLocker.unlock();
+      // steal thread
+      std::unique_ptr<Thread> t = std::move(_thread);
+      TRI_ASSERT(_thread == nullptr);
+      // now _thread is empty
+      // and release the write lock so when "thread" goes
+      // out of scope, it actually can call the thread
+      // deleter without holding the write lock (which would
+      // deadlock)
+      writeLocker.unlock();
+    }
   }
 }
 

@@ -61,10 +61,6 @@
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
 
-extern "C" {
-unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
-}
-
 using namespace arangodb;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 

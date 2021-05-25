@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_INDEX_EXECUTOR_H
-#define ARANGOD_AQL_INDEX_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -276,4 +275,3 @@ class IndexExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

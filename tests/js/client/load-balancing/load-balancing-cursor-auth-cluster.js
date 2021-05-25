@@ -144,7 +144,7 @@ function CursorSyncAuthSuite () {
       coordinators = [];
     },
 
-    testCursorForwardingSameUserBasic: function() {
+    testCursorForwardingSameUserBasicPut: function() {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -181,8 +181,46 @@ function CursorSyncAuthSuite () {
       assertTrue(result.error);
       assertEqual(result.code, 404);
     },
+    
+    testCursorForwardingSameUserBasicPost: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest(users[0], 'POST', url, query, true);
 
-    testCursorForwardingSameUserDeletion: function() {
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'POST', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 200);
+      assertFalse(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'POST', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+    },
+
+    testCursorForwardingSameUserDeletionPut: function() {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -216,8 +254,43 @@ function CursorSyncAuthSuite () {
       assertTrue(result.error);
       assertEqual(result.code, 404);
     },
+    
+    testCursorForwardingSameUserDeletionPost: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest(users[0], 'POST', url, query, true);
 
-    testCursorForwardingDifferentUser: function() {
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'DELETE', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 202);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'POST', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+    },
+
+    testCursorForwardingDifferentUserPut: function() {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -239,6 +312,41 @@ function CursorSyncAuthSuite () {
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[1], 'PUT', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[0], 'DELETE', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 202);
+    },
+    
+    testCursorForwardingDifferentUserPost: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest(users[0], 'POST', url, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest(users[1], 'POST', url, {}, false);
 
       assertFalse(result === undefined || result === {});
       assertTrue(result.error);

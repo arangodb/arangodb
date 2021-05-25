@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
-#define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
+#pragma once
 
 #include <set>
 
@@ -174,7 +173,7 @@ class PhysicalCollection {
                       IndexIterator::DocumentCallback const& cb) const = 0;
   
   /// @brief read a documument referenced by token (internal method)
-  virtual bool read(transaction::Methods* trx,
+  virtual Result read(transaction::Methods* trx,
                     LocalDocumentId const& token,
                     IndexIterator::DocumentCallback const& cb) const = 0;
 
@@ -266,4 +265,3 @@ class PhysicalCollection {
 
 }  // namespace arangodb
 
-#endif

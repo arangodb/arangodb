@@ -30,15 +30,15 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 DECLARE_COUNTER(arangodb_replication_dump_requests_total,
-                "Number of replication dump requests");
+                "Number of requests used in initial asynchronous replication phase.");
 DECLARE_COUNTER(arangodb_replication_dump_bytes_received_total,
-                "Number of bytes received in replication dump requests");
+                "Total number of bytes replicated in initial asynchronous phase.");
 DECLARE_COUNTER(arangodb_replication_dump_documents_total,
-                "Number of documents received in replication dump requests");
+                "Total number of documents replicated in initial asynchronous phase.");
 DECLARE_COUNTER(arangodb_replication_dump_request_time_total,
-                "Wait time for replication requests [ms]");
+                "Accumulated wait time for replication requests in initial asynchronous phase. [ms]");
 DECLARE_COUNTER(arangodb_replication_dump_apply_time_total,
-                "Accumulated time needed to apply replication dump data [ms]");
+                "Accumulated time needed to apply asynchronously replicated data on initial synchronization of shards. [ms]");
 DECLARE_COUNTER(arangodb_replication_initial_sync_keys_requests_total,
                 "Number of replication initial sync keys requests");
 DECLARE_COUNTER(arangodb_replication_initial_sync_docs_requests_total,
@@ -61,8 +61,6 @@ DECLARE_COUNTER(arangodb_replication_initial_insert_apply_time_total,
                 "Time needed to apply replication initial sync insertions [ms]");
 DECLARE_COUNTER(arangodb_replication_initial_remove_apply_time_total,
                 "Time needed to apply replication initial sync removals [ms]");
-DECLARE_COUNTER(arangodb_replication_initial_lookup_time_total,
-                "Time needed for replication initial sync key lookups [ms]");
 DECLARE_COUNTER(arangodb_replication_tailing_requests_total,
                 "Number of replication tailing requests");
 DECLARE_COUNTER(arangodb_replication_tailing_follow_tick_failures_total,
@@ -77,7 +75,7 @@ DECLARE_COUNTER(arangodb_replication_tailing_bytes_received_total,
                 "Number of bytes received for replication tailing requests");
 DECLARE_COUNTER(arangodb_replication_failed_connects_total,
                 "Number of failed connection attempts and response errors "
-                "during replication");
+                "during initial asynchronous replication");
 DECLARE_COUNTER(arangodb_replication_tailing_request_time_total,
                 "Wait time for replication tailing requests [ms]");
 DECLARE_COUNTER(arangodb_replication_tailing_apply_time_total,
@@ -122,8 +120,6 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
           arangodb_replication_initial_insert_apply_time_total{})),
       _waitedForSyncRemovals(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_initial_remove_apply_time_total{})),
-      _waitedForSyncKeyLookups(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_replication_initial_lookup_time_total{})),
       _numTailingRequests(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_tailing_requests_total{})),
       _numTailingFollowTickNotPresent(
@@ -178,7 +174,6 @@ void ReplicationMetricsFeature::InitialSyncStats::publish() {
   feature._waitedForSyncDocs += static_cast<uint64_t>(waitedForDocs * 1000);
   feature._waitedForSyncInsertions += static_cast<uint64_t>(waitedForInsertions * 1000);
   feature._waitedForSyncRemovals += static_cast<uint64_t>(waitedForRemovals * 1000);
-  feature._waitedForSyncKeyLookups += static_cast<uint64_t>(waitedForKeyLookups * 1000);
 
   reset();
 }
@@ -202,7 +197,6 @@ void ReplicationMetricsFeature::InitialSyncStats::reset() noexcept {
   waitedForDocs = 0.0;
   waitedForInsertions = 0.0;
   waitedForRemovals = 0.0;
-  waitedForKeyLookups = 0.0;
 }
 
 ReplicationMetricsFeature::InitialSyncStats& ReplicationMetricsFeature::InitialSyncStats::operator+=(ReplicationMetricsFeature::InitialSyncStats const& other) noexcept {
@@ -224,7 +218,6 @@ ReplicationMetricsFeature::InitialSyncStats& ReplicationMetricsFeature::InitialS
   waitedForDocs += other.waitedForDocs;
   waitedForInsertions += other.waitedForInsertions;
   waitedForRemovals += other.waitedForRemovals;
-  waitedForKeyLookups += other.waitedForKeyLookups;
 
   return *this;
 }

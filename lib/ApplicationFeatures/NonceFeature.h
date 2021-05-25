@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_NONCE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_NONCE_FEATURE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -37,11 +36,7 @@ class NonceFeature : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
-
- private:
-  uint64_t _size;
 };
 
 }  // namespace arangodb
 
-#endif

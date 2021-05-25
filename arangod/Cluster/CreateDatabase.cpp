@@ -57,7 +57,7 @@ CreateDatabase::CreateDatabase(MaintenanceFeature& feature, ActionDescription co
 
   if (!error.str().empty()) {
     LOG_TOPIC("751ce", ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -72,10 +72,12 @@ bool CreateDatabase::first() {
 
   TRI_IF_FAILURE("CreateDatabase::first") {
     // simulate DB creation failure
-    _result.reset(TRI_ERROR_DEBUG);
-    _feature.storeDBError(database, _result);
+    result(TRI_ERROR_DEBUG);
+    _feature.storeDBError(database, result());
     return false;
   }
+
+  Result res;
 
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
@@ -83,13 +85,14 @@ bool CreateDatabase::first() {
 
     // Assertion in constructor makes sure that we have DATABASE.
     auto& server = _feature.server();
-    _result = Databases::create(server, ExecContext::current(),
-                                _description.get(DATABASE), users, properties());
-    if (!_result.ok() && _result.errorNumber() != TRI_ERROR_ARANGO_DUPLICATE_NAME) {
+    res = Databases::create(server, ExecContext::current(),
+                                    _description.get(DATABASE), users, properties());
+    result(res);
+    if (!res.ok() && res.errorNumber() != TRI_ERROR_ARANGO_DUPLICATE_NAME) {
       LOG_TOPIC("5fb67", ERR, Logger::MAINTENANCE)
-          << "CreateDatabase: failed to create database " << database << ": " << _result;
+          << "CreateDatabase: failed to create database " << database << ": " << res;
 
-      _feature.storeDBError(database, _result);
+      _feature.storeDBError(database, res);
     } else {
       LOG_TOPIC("997c8", INFO, Logger::MAINTENANCE)
           << "CreateDatabase: database  " << database << " created";
@@ -98,8 +101,8 @@ bool CreateDatabase::first() {
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("fa073", ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
-    _feature.storeDBError(database, _result);
+    result(TRI_ERROR_INTERNAL, error.str());
+    _feature.storeDBError(database, res);
   }
 
   return false;

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_UTILS_H
-#define ARANGODB_PREGEL_UTILS_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -142,4 +141,3 @@ class Utils {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

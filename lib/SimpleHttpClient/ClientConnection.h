@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H 1
+#pragma once
 
 #include <stddef.h>
 #include <memory>
@@ -95,4 +94,3 @@ class ClientConnection final : public GeneralClientConnection {
 }  // namespace httpclient
 }  // namespace arangodb
 
-#endif

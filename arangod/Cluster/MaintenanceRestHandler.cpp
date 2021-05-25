@@ -173,11 +173,10 @@ void MaintenanceRestHandler::putAction() {
   }    // if
 
   if (good) {
-    Result result;
-
     // build the action
+    TRI_ASSERT(_actionDesc != nullptr);
     auto& maintenance = server().getFeature<MaintenanceFeature>();
-    result = maintenance.addAction(_actionDesc);
+    Result result = maintenance.addAction(_actionDesc);
 
     if (!result.ok()) {
       // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID

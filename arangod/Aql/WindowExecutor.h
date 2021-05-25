@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_WINDOW_EXECUTOR_H
-#define ARANGOD_AQL_WINDOW_EXECUTOR_H
+#pragma once
 
 #include "Aql/Aggregator.h"
 #include "Aql/AqlValueGroup.h"
@@ -227,4 +226,3 @@ class WindowExecutor : public BaseWindowExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

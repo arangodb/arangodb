@@ -231,6 +231,7 @@ function multiCollectionTestSuite() {
             assertEqual(500, stats.gss);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+            assertEqual(parallelism, stats.parallelism);
 
             let mySet = new Set();
             for (let j = 0; j < cn; ++j) {
@@ -264,6 +265,7 @@ function multiCollectionTestSuite() {
             assertEqual(500, stats.gss);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+            assertEqual(parallelism, stats.parallelism);
 
             let mySet = new Set();
             for (let j = 0; j < cn; ++j) {

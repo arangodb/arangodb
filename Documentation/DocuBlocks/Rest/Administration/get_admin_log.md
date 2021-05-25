@@ -70,7 +70,14 @@ is returned if there are insufficient privileges to access the logs.
 @startDocuBlock get_admin_log
 @brief returns the server logs
 
-@RESTHEADER{GET /_admin/log, Read global logs from the server, setLogLevel:read}
+@RESTHEADER{GET /_admin/log, Read global logs from the server (deprecated), setLogLevel:read}
+
+@HINTS
+{% hint 'warning' %}
+This endpoint should no longer be used. It is deprecated from version 3.8.0 on.
+Use `/_admin/log/entries` instead, which provides the same data in a more
+intuitive and easier to process format.
+{% endhint %}
 
 @RESTQUERYPARAMETERS
 
@@ -119,9 +126,6 @@ This API can be turned off via the startup option `--log.api-enabled`. In case
 the API is disabled, all requests will be responded to with HTTP 403. If the
 API is enabled, accessing it requires admin privileges, or even superuser
 privileges, depending on the value of the `--log.api-enabled` startup option.
-
-This API is **deprecated** in favor of the `/_admin/log/entries` REST API, which 
-provides the same data in a more intuitive and easier to process format.
 
 @RESTRETURNCODES
 

@@ -43,7 +43,7 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   bool hasSelectivityEstimate() const override { return false; /* TODO */ }
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 const LocalDocumentId& documentId, arangodb::velocypack::Slice doc,
-                const OperationOptions& options) override;
+                const OperationOptions& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 const LocalDocumentId& documentId, arangodb::velocypack::Slice doc) override;
 
@@ -70,7 +70,7 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 const LocalDocumentId& documentId, arangodb::velocypack::Slice doc,
-                const OperationOptions& options) override;
+                const OperationOptions& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 const LocalDocumentId& documentId, arangodb::velocypack::Slice doc) override;
 

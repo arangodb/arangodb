@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_H
-#define ARANGOD_AQL_QUERY_H 1
+#pragma once
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/BindParameters.h"
@@ -206,6 +205,13 @@ class Query : public QueryContext {
   aql::SnippetList& snippets() { return _snippets; }
   aql::ServerQueryIdList& serverQueryIds() { return _serverQueryIds; }
   aql::ExecutionStats& executionStats() { return _execStats; }
+
+
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  void debugKillQuery() override;
   
  protected:
   /// @brief initializes the query
@@ -326,16 +332,24 @@ class Query : public QueryContext {
   bool _registeredInV8Context;
   
   /// @brief was this query killed
-  bool _queryKilled;
+  std::atomic<bool> _queryKilled;
   
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
 
   /// @brief user that started the query
   std::string _user;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // Intentionally initialized here to not
+  // be present in production constructors
+  // Indicator if a query was already killed
+  // via a debug failure. This should not
+  // retrigger a kill.
+  bool _wasDebugKilled{false};
+#endif
 };
 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

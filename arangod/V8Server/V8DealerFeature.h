@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_V8_DEALER_FEATURE_H
-#define APPLICATION_FEATURES_V8_DEALER_FEATURE_H 1
+#pragma once
 
 #include <atomic>
 
@@ -215,4 +214,3 @@ class V8ConditionalContextGuard {
 
 }  // namespace arangodb
 
-#endif

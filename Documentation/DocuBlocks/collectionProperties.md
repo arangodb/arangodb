@@ -9,7 +9,7 @@ Returns an object containing all collection properties.
   after the data was synced to disk.
 
 * *keyOptions* (optional) additional options for key generation. This is
-  a JSON array containing the following attributes (note: some of the
+  a JSON object containing the following attributes (note: some of the
   attributes are optional):
   * *type*: the type of the key generator used for the collection.
   * *allowUserKeys*: if set to *true*, then it is allowed to supply

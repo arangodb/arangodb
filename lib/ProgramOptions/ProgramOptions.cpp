@@ -94,7 +94,6 @@ void ProgramOptions::printUsage() const {
 }
 
 // prints a help for all options, or the options of a section
-// the special search string "*" will show help for all sections
 // the special search string "." will show help for all sections, even if
 // hidden
 void ProgramOptions::printHelp(std::string const& search) const {
@@ -106,7 +105,8 @@ void ProgramOptions::printHelp(std::string const& search) const {
   size_t const ow = optionsWidth();
 
   for (auto const& it : _sections) {
-    if (search == "*" || search == "." || search == it.second.name) {
+    if (search == it.second.name ||
+        ((search == "*" || search == ".") && !it.second.obsolete)) {
       it.second.printHelp(search, tw, ow, colors);
     }
   }
@@ -129,7 +129,7 @@ void ProgramOptions::printSectionsHelp() const {
   // print names of sections
   std::cout << _more;
   for (auto const& it : _sections) {
-    if (!it.second.name.empty() && it.second.hasOptions()) {
+    if (!it.second.name.empty() && it.second.hasOptions() && !it.second.obsolete) {
       std::cout << "  " << colorStart << "--help-" << it.second.name << colorEnd;
     }
   }

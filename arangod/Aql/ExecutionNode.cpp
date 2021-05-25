@@ -59,7 +59,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/SubqueryEndExecutionNode.h"
-#include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
@@ -126,26 +125,6 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
 };
 
-void propagateConstVariables(RegisterPlan& from, RegisterPlan& to) {
-  for (auto const& [id, info] : from.varInfo) {
-    if (info.registerId.isConstRegister()) {
-      to.varInfo.try_emplace(id, info);
-    }
-  }
-}
-
-// we have to ensure that all const variables are available in the
-// register plans of all subqueries. this can be removed once the
-// old-subqueries are fully removed in 3.9.
-void propagateConstVariablesToSubqueries(RegisterPlan& plan) {
-  for (auto& s : plan.subqueryNodes) {
-    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
-    subqueryPlan.nrConstRegs = plan.nrConstRegs;
-    propagateConstVariables(plan, subqueryPlan);
-    propagateConstVariablesToSubqueries(subqueryPlan);
-  }
-}
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -311,13 +290,11 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
         }
       }
 
-      // TODO - this can be removed in 3.9
-      bool count = slice.get("count").getBoolean();
       bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
 
       auto node = new CollectNode(plan, slice, expressionVariable, outVariable, keepVariables,
                                   plan->getAst()->variables()->variables(false), groupVariables,
-                                  aggregateVariables, isDistinctCommand, count);
+                                  aggregateVariables, isDistinctCommand);
 
       // specialize the node if required
       bool specialized = slice.get("specialized").getBoolean();
@@ -525,6 +502,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
+      
+  _isAsyncPrefetchEnabled =
+      VelocyPackHelper::getBooleanValue(slice, "isAsyncPrefetchEnabled", false);
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
@@ -649,6 +629,12 @@ void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
   setVarsUsedLater(dependency->getVarsUsedLaterStack());
   setVarsValid(dependency->getVarsValidStack());
   setVarUsageValid();
+}
+  
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void ExecutionNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& /*replacements*/) {
+  // default implementation does nothing
 }
 
 bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
@@ -959,6 +945,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     }
 
     nodes.add("isInSplicedSubquery", VPackValue(_isInSplicedSubquery));
+    nodes.add("isAsyncPrefetchEnabled", VPackValue(_isAsyncPrefetchEnabled));
   }
   TRI_ASSERT(nodes.isOpenObject());
 }
@@ -1011,47 +998,23 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, Walke
 #endif
 
 /// @brief planRegisters
-void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan explainRegisterPlan) {
-  // The super is only for the case of subqueries.
-  std::shared_ptr<RegisterPlan> v;
-
-  if (super == nullptr) {
-    v = std::make_shared<RegisterPlan>();
-  } else {
-    v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
-  }
-
+void ExecutionNode::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
+  auto v = std::make_shared<RegisterPlan>();
   auto walker = RegisterPlanWalker{v, explainRegisterPlan};
   walk(walker);
 
-  if (v->subqueryNodes.empty() && super == nullptr) {
-    // shrink RegisterPlan by cutting off all unused rightmost registers
-    // from each depth. this is a completely optional performance
-    // optimization. turning it off should not affect correctness,
-    // only performance.
-    // note: we are intentionally not performing this optimization
-    // in case the query still contains old style subqueries. 
-    // in that case, the register planning optimization would be slightly
-    // more complex to perform. 99.99% of queries should not be affected
-    // by this optimization being turned off, because old-style subqueries
-    // are only around in case except someone intentionally turned off
-    // subquery optimizations. 
-    v->shrink(this);
-  }
-
-  // Now handle old-style subqueries:
-  for (auto& s : v->subqueryNodes) {
-    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-    sq->getSubquery()->planRegisters(s, explainRegisterPlan);
-    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
-    // we only want to create a single const block for all queries, so we have to
-    // ensure that nrConstRegs in the RegisterPlan of the root node contains the
-    // sum of all const regs in all (sub)queries.
-    v->nrConstRegs = subqueryPlan.nrConstRegs;
-    propagateConstVariables(subqueryPlan, *v);
-  }
-
-  propagateConstVariablesToSubqueries(*v);
+  // shrink RegisterPlan by cutting off all unused rightmost registers
+  // from each depth. this is a completely optional performance
+  // optimization. turning it off should not affect correctness,
+  // only performance.
+  // note: we are intentionally not performing this optimization
+  // in case the query still contains old style subqueries. 
+  // in that case, the register planning optimization would be slightly
+  // more complex to perform. 99.99% of queries should not be affected
+  // by this optimization being turned off, because old-style subqueries
+  // are only around in case except someone intentionally turned off
+  // subquery optimizations. 
+  v->shrink(this);
 }
 
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
@@ -1782,6 +1745,12 @@ ExecutionNode::NodeType EnumerateListNode::getType() const {
   return ENUMERATE_LIST;
 }
 
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void EnumerateListNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
+
 void EnumerateListNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
@@ -2054,6 +2023,23 @@ Expression* CalculationNode::expression() const {
   return _expression.get(); 
 }
 
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void CalculationNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  VarSet variables;
+  expression()->variables(variables);
+
+  // check if the calculation uses any of the variables that we want to
+  // replace
+  for (auto const& it : variables) {
+    if (replacements.find(it->id) != replacements.end()) {
+      // calculation uses a to-be-replaced variable
+      expression()->replaceVariables(replacements);
+      return;
+    }
+  }
+}
+
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {
   _expression->variables(vars);
 }
@@ -2171,33 +2157,8 @@ bool SubqueryNode::mayAccessCollections() {
 std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  auto const it = cache.find(getSubquery());
-  TRI_ASSERT(it != cache.end());
-  auto subquery = it->second;
-  TRI_ASSERT(subquery != nullptr);
-
-  ExecutionNode const* previousNode = getFirstDependency();
-  TRI_ASSERT(previousNode != nullptr);
-
-  auto outputRegisters = RegIdSet{};
-
-  auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
-  TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
-  RegisterId outReg = outVar->second.registerId;
-  outputRegisters.emplace(outReg);
-
-  auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
-
-  // The const_cast has been taken from previous implementation.
-  auto executorInfos =
-      SubqueryExecutorInfos(*subquery, engine.getQuery(), outReg, const_cast<SubqueryNode*>(this)->isConst());
-  if (isModificationNode()) {
-    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  } else {
-    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<false>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot instantiate SubqueryExecutor");
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -2418,6 +2379,12 @@ FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* 
 
 ExecutionNode::NodeType FilterNode::getType() const { return FILTER; }
 
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void FilterNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
+
 void FilterNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
@@ -2520,6 +2487,12 @@ ReturnNode::ReturnNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* 
 ExecutionNode::NodeType ReturnNode::getType() const { return RETURN; }
 
 void ReturnNode::setCount() { _count = true; }
+
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void ReturnNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
 
 void ReturnNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);

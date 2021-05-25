@@ -189,13 +189,16 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Cache/RefactoredTraverserCache.cpp
   Graph/Cache/RefactoredClusterTraverserCache.cpp
+  Graph/Enumerators/OneSidedEnumerator.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
   Graph/Helpers/TraceEntry.cpp
   Graph/Queues/QueueTracer.cpp
   Graph/PathManagement/PathResult.cpp
+  Graph/PathManagement/SingleProviderPathResult.cpp
   Graph/PathManagement/PathStore.cpp
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
+  Graph/Options/OneSidedEnumeratorOptions.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp
   Graph/Providers/ClusterProvider.cpp
   Graph/Providers/SingleServerProvider.cpp
@@ -250,8 +253,6 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Reports.cpp
   Pregel/Reports.h
   Pregel/Utils.cpp
-  Pregel/Worker-templates-algorithms.cpp
-  Pregel/Worker-templates-native-types.cpp
   Pregel/Worker.cpp
   Pregel/WorkerConfig.cpp
   RestHandler/RestControlPregelHandler.cpp
@@ -414,7 +415,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortingGatherExecutor.cpp
   Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryEndExecutor.cpp
-  Aql/SubqueryExecutor.cpp
   Aql/SubqueryStartExecutionNode.cpp
   Aql/SubqueryStartExecutor.cpp
   Aql/Timing.cpp
@@ -635,8 +635,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterFeature.cpp
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
-  Cluster/ClusterRepairDistributeShardsLike.cpp
-  Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
@@ -717,7 +715,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestRedirectHandler.cpp
-  RestHandler/RestRepairHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
@@ -808,6 +805,9 @@ include(RocksDBEngine/CMakeLists.txt)
 
 add_library(arango_zkd STATIC Zkd/ZkdHelper.cpp)
 
+add_library(arango_restart_action STATIC
+  RestServer/RestartAction.cpp
+)
 
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
@@ -886,7 +886,7 @@ add_library(arango_rocksdb STATIC
 )
 target_link_libraries(arango_rocksdb arango_zkd)
 
-add_dependencies(arango_rocksdb snappy-static)
+add_dependencies(arango_rocksdb snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
@@ -999,6 +999,8 @@ target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb arango::validation)
+target_link_libraries(arango_rocksdb arango_restart_action)
+
 target_link_libraries(arango_storage_engine_common arango::validation)
 
 if (USE_ENTERPRISE)

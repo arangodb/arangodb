@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CLUSTER_BLOCKS_H
-#define ARANGOD_AQL_CLUSTER_BLOCKS_H 1
+#pragma once
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
@@ -121,7 +120,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
       -> std::pair<ExecutionState, Result> override;
 
   /// @brief execute: shouldn't be used, use executeForClient
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) override;
 
   /**
    * @brief Execute for client.
@@ -198,4 +197,3 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

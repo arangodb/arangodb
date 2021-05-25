@@ -368,8 +368,8 @@ _Enterprise Edition only_
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.1
-* Date: 2019-08-05 20:41:17Z
+* Version: 5.2.1-dev, commit 12cd13cd418512d9e7596921ccdb62e25a103f87
+* Date: 2021-03-30 15:20:30 -0700
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -467,8 +467,8 @@ _Enterprise Edition only_
 ### snappy
 
 * Name: snappy
-* Version: 1.1.8
-* Date: 2020-10-29 23:00:50Z
+* Version: 1.1.9
+* Date: 2021-05-04 22:28:33Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -494,11 +494,21 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### wyhash
+
+* Name: wyhash
+* Version: commit 896d7c57f68d96938f718c0695c44866d14b48d6
+* Date: 2021-04-02 20:34:24 +08:00
+* GitHub: https://github.com/wangyi-fudan/wyhash/
+* License: https://github.com/wangyi-fudan/wyhash/blob/master/LICENSE
+* License Name: Unlicense
+* License Id: Unlicense
+
 ### xxHash
 
 * Name: xxHash
-* Version: 0.7.3 (unreleased)
-* Date: 2019-10-28 12:52:58Z
+* Version: 0.8.0
+* Date: 2021-03-17 17:51:40 +01:00
 * GitHub: https://github.com/Cyan4973/xxHash/
 * License: https://raw.githubusercontent.com/Cyan4973/xxHash/master/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License

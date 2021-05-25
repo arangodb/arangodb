@@ -172,11 +172,14 @@ size_t ConnectionPool::cancelConnections(std::string const& endpoint) {
   WRITE_LOCKER(guard, _lock);
   auto const& it = _connections.find(endpoint);
   if (it != _connections.end()) {
-    Bucket& buck = *(it->second);
-    std::lock_guard<std::mutex> lock(buck.mutex);
-    size_t n = buck.list.size();
-    for (std::shared_ptr<Context>& c : buck.list) {
-      c->fuerte->cancel();
+    size_t n;
+    {
+      Bucket& buck = *(it->second);
+      std::lock_guard<std::mutex> lock(buck.mutex);
+      n = buck.list.size();
+      for (std::shared_ptr<Context>& c : buck.list) {
+        c->fuerte->cancel();
+      }
     }
     _connections.erase(it);
     return n;
@@ -259,20 +262,20 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         if (c->fuerte->requestsLeft() <= limit &&
             c->fuerte->state() != fuerte::Connection::State::Closed) {
           c->lastLeased = std::chrono::steady_clock::now();
-          _successSelect++;
+          ++_successSelect;
           _leaseHistMSec.count(
               duration<float, std::micro>(c->lastLeased - start).count());
           return {c};
         } else {  // too many requests,
           c->leases.fetch_sub(1, std::memory_order_relaxed);
-          _noSuccessSelect++;
+          ++_noSuccessSelect;
           break;
         }
       }
     }
   }
   
-  _connectionsCreated++;
+  ++_connectionsCreated;
   isFromPool = false;
   
   // no free connection found, so we add one

@@ -31,6 +31,7 @@
 
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
@@ -116,6 +117,7 @@ class MockServer {
   StorageEngineMock _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
   std::string _testFilesystemPath;
+  arangodb::RebootId _oldRebootId;
 
  private:
   bool _started;

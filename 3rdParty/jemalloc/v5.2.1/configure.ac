@@ -250,6 +250,14 @@ if test "x$GCC" = "xyes" ; then
   JE_CFLAGS_ADD([-Wsign-compare])
   JE_CFLAGS_ADD([-Wundef])
   JE_CFLAGS_ADD([-Wno-format-zero-length])
+  JE_CFLAGS_ADD([-Wpointer-arith])
+  dnl This warning triggers on the use of the universal zero initializer, which
+  dnl is a very handy idiom for things like the tcache static initializer (which
+  dnl has lots of nested structs).  See the discussion at.
+  dnl https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53119
+  JE_CFLAGS_ADD([-Wno-missing-braces])
+  dnl This one too.
+  JE_CFLAGS_ADD([-Wno-missing-field-initializers])
   JE_CFLAGS_ADD([-pipe])
   JE_CFLAGS_ADD([-g3])
 elif test "x$je_cv_msvc" = "xyes" ; then
@@ -290,8 +298,11 @@ if test "x$enable_cxx" = "x1" ; then
   dnl Require at least c++14, which is the first version to support sized
   dnl deallocation.  C++ support is not compiled otherwise.
   m4_include([m4/ax_cxx_compile_stdcxx.m4])
-  AX_CXX_COMPILE_STDCXX([14], [noext], [optional])
-  if test "x${HAVE_CXX14}" = "x1" ; then
+  AX_CXX_COMPILE_STDCXX([17], [noext], [optional])
+  if test "x${HAVE_CXX17}" != "x1"; then
+    AX_CXX_COMPILE_STDCXX([14], [noext], [optional])
+  fi
+  if test "x${HAVE_CXX14}" = "x1" -o "x${HAVE_CXX17}" = "x1"; then
     JE_CXXFLAGS_ADD([-Wall])
     JE_CXXFLAGS_ADD([-Wextra])
     JE_CXXFLAGS_ADD([-g3])
@@ -407,6 +418,16 @@ case "${host_cpu}" in
 	    fi
 	fi
 	;;
+  aarch64|arm*)
+	HAVE_CPU_SPINWAIT=1
+    AC_CACHE_VAL([je_cv_yield],
+      [JE_COMPILABLE([yield instruction], [],
+                    [[__asm__ volatile("yield"); return 0;]],
+                    [je_cv_yield])])
+	if test "x${je_cv_yield}" = "xyes" ; then
+	CPU_SPINWAIT='__asm__ volatile("yield")'
+	fi
+    ;;
   *)
 	HAVE_CPU_SPINWAIT=0
 	;;
@@ -583,7 +604,7 @@ if test ! -e "${objroot}VERSION" ; then
   if test ! -e "${srcroot}VERSION" ; then
     AC_MSG_RESULT(
       [Missing VERSION file, and unable to generate it; creating bogus VERSION])
-    echo "0.0.0-0-g0000000000000000000000000000000000000000" > "${objroot}VERSION"
+    echo "0.0.0-0-g000000missing_version_try_git_fetch_tags" > "${objroot}VERSION"
   else
     cp ${srcroot}VERSION ${objroot}VERSION
   fi
@@ -640,10 +661,11 @@ case "${host}" in
   *-*-bitrig*)
 	abi="elf"
 	;;
-  *-*-linux-android)
+  *-*-linux-android*)
 	dnl syscall(2) and secure_getenv(3) are exposed by _GNU_SOURCE.
 	JE_APPEND_VS(CPPFLAGS, -D_GNU_SOURCE)
 	abi="elf"
+	glibc="0"
 	AC_DEFINE([JEMALLOC_PURGE_MADVISE_DONTNEED_ZEROS], [ ])
 	AC_DEFINE([JEMALLOC_HAS_ALLOCA_H])
 	AC_DEFINE([JEMALLOC_PROC_SYS_VM_OVERCOMMIT_MEMORY], [ ])
@@ -658,6 +680,7 @@ case "${host}" in
 	dnl syscall(2) and secure_getenv(3) are exposed by _GNU_SOURCE.
 	JE_APPEND_VS(CPPFLAGS, -D_GNU_SOURCE)
 	abi="elf"
+	glibc="1"
 	AC_DEFINE([JEMALLOC_PURGE_MADVISE_DONTNEED_ZEROS], [ ])
 	AC_DEFINE([JEMALLOC_HAS_ALLOCA_H])
 	AC_DEFINE([JEMALLOC_PROC_SYS_VM_OVERCOMMIT_MEMORY], [ ])
@@ -741,6 +764,11 @@ case "${host}" in
 	if test "${LG_SIZEOF_PTR}" = "3"; then
 	  default_retain="1"
 	fi
+	;;
+  *-*-nto-qnx)
+	abi="elf"
+  force_tls="0"
+  AC_DEFINE([JEMALLOC_HAS_ALLOCA_H])
 	;;
   *)
 	AC_MSG_RESULT([Unsupported operating system: ${host}])
@@ -866,6 +894,50 @@ if test "x${je_cv_format_arg}" = "xyes" ; then
   AC_DEFINE([JEMALLOC_HAVE_ATTR_FORMAT_ARG], [ ])
 fi
 
+dnl Check for fallthrough attribute support.
+JE_CFLAGS_SAVE()
+JE_CFLAGS_ADD([-Wimplicit-fallthrough])
+JE_COMPILABLE([fallthrough attribute],
+              [#if !__has_attribute(fallthrough)
+               #error "foo"
+               #endif],
+              [int x = 0;
+               switch (x) {
+               case 0: __attribute__((__fallthrough__));
+               case 1: return 1;
+               }],
+              [je_cv_fallthrough])
+JE_CFLAGS_RESTORE()
+if test "x${je_cv_fallthrough}" = "xyes" ; then
+  AC_DEFINE([JEMALLOC_HAVE_ATTR_FALLTHROUGH], [ ])
+  JE_CFLAGS_ADD([-Wimplicit-fallthrough])
+  JE_CXXFLAGS_ADD([-Wimplicit-fallthrough])
+fi
+
+dnl Check for cold attribute support.
+JE_CFLAGS_SAVE()
+JE_CFLAGS_ADD([-Werror])
+JE_CFLAGS_ADD([-herror_on_warning])
+JE_COMPILABLE([cold attribute], [],
+              [__attribute__((__cold__)) void foo();],
+              [je_cv_cold])
+JE_CFLAGS_RESTORE()
+if test "x${je_cv_cold}" = "xyes" ; then
+  AC_DEFINE([JEMALLOC_HAVE_ATTR_COLD], [ ])
+fi
+
+dnl Check for VM_MAKE_TAG for mmap support.
+JE_COMPILABLE([vm_make_tag],
+	      [#include <sys/mman.h>
+	       #include <mach/vm_statistics.h>],
+	      [void *p;
+	       p = mmap(0, 16, PROT_READ, MAP_ANON|MAP_PRIVATE, VM_MAKE_TAG(1), 0);
+	       munmap(p, 16);],
+	      [je_cv_vm_make_tag])
+if test "x${je_cv_vm_make_tag}" = "xyes" ; then
+  AC_DEFINE([JEMALLOC_HAVE_VM_MAKE_TAG], [ ])
+fi
+
 dnl Support optional additions to rpath.
 AC_ARG_WITH([rpath],
   [AS_HELP_STRING([--with-rpath=<rpath>], [Colon-separated rpath (ELF systems only)])],
@@ -971,7 +1043,7 @@ AC_ARG_WITH([export],
 fi]
 )
 
-public_syms="aligned_alloc calloc dallocx free mallctl mallctlbymib mallctlnametomib malloc malloc_conf malloc_message malloc_stats_print malloc_usable_size mallocx smallocx_${jemalloc_version_gid} nallocx posix_memalign rallocx realloc sallocx sdallocx xallocx"
+public_syms="aligned_alloc calloc dallocx free mallctl mallctlbymib mallctlnametomib malloc malloc_conf malloc_conf_2_conf_harder malloc_message malloc_stats_print malloc_usable_size mallocx smallocx_${jemalloc_version_gid} nallocx posix_memalign rallocx realloc sallocx sdallocx xallocx"
 dnl Check for additional platform-specific public API functions.
 AC_CHECK_FUNC([memalign],
 	      [AC_DEFINE([JEMALLOC_OVERRIDE_MEMALIGN], [ ])
@@ -1128,9 +1200,6 @@ fi
 ],
 [enable_debug="0"]
 )
-if test "x$enable_debug" = "x1" ; then
-  AC_DEFINE([JEMALLOC_DEBUG], [ ])
-fi
 if test "x$enable_debug" = "x1" ; then
   AC_DEFINE([JEMALLOC_DEBUG], [ ])
 fi
@@ -1362,10 +1431,25 @@ JE_COMPILABLE([utrace(2)], [
 	utrace((void *)0, 0);
 ], [je_cv_utrace])
 if test "x${je_cv_utrace}" = "xno" ; then
-  enable_utrace="0"
-fi
-if test "x$enable_utrace" = "x1" ; then
-  AC_DEFINE([JEMALLOC_UTRACE], [ ])
+  JE_COMPILABLE([utrace(2) with label], [
+  #include <sys/types.h>
+  #include <sys/param.h>
+  #include <sys/time.h>
+  #include <sys/uio.h>
+  #include <sys/ktrace.h>
+  ], [
+	  utrace((void *)0, (void *)0, 0);
+  ], [je_cv_utrace_label])
+  if test "x${je_cv_utrace_label}" = "xno"; then
+    enable_utrace="0"
+  fi
+  if test "x$enable_utrace" = "x1" ; then
+    AC_DEFINE([JEMALLOC_UTRACE_LABEL], [ ])
+  fi
+else
+  if test "x$enable_utrace" = "x1" ; then
+    AC_DEFINE([JEMALLOC_UTRACE], [ ])
+  fi
 fi
 AC_SUBST([enable_utrace])
 
@@ -1451,6 +1535,23 @@ if test "x$enable_opt_safety_checks" = "x1" ; then
 fi
 AC_SUBST([enable_opt_safety_checks])
 
+dnl Look for sized-deallocation bugs while otherwise being in opt mode.
+AC_ARG_ENABLE([opt-size-checks],
+  [AS_HELP_STRING([--enable-opt-size-checks],
+  [Perform sized-deallocation argument checks, even in opt mode])],
+[if test "x$enable_opt_size_checks" = "xno" ; then
+  enable_opt_size_checks="0"
+else
+  enable_opt_size_checks="1"
+fi
+],
+[enable_opt_size_checks="0"]
+)
+if test "x$enable_opt_size_checks" = "x1" ; then
+  AC_DEFINE([JEMALLOC_OPT_SIZE_CHECKS], [ ])
+fi
+AC_SUBST([enable_opt_size_checks])
+
 JE_COMPILABLE([a program using __builtin_unreachable], [
 void foo (void) {
   __builtin_unreachable();
@@ -1519,15 +1620,23 @@ JE_COMPILABLE([a program using __builtin_popcountl], [
 if test "x${je_cv_gcc_builtin_popcountl}" = "xyes" ; then
   AC_DEFINE([JEMALLOC_INTERNAL_POPCOUNT], [__builtin_popcount])
   AC_DEFINE([JEMALLOC_INTERNAL_POPCOUNTL], [__builtin_popcountl])
+  AC_DEFINE([JEMALLOC_INTERNAL_POPCOUNTLL], [__builtin_popcountll])
 fi
 
 AC_ARG_WITH([lg_quantum],
   [AS_HELP_STRING([--with-lg-quantum=<lg-quantum>],
-   [Base 2 log of minimum allocation alignment])],
-  [LG_QUANTA="$with_lg_quantum"],
-  [LG_QUANTA="3 4"])
+   [Base 2 log of minimum allocation alignment])])
 if test "x$with_lg_quantum" != "x" ; then
   AC_DEFINE_UNQUOTED([LG_QUANTUM], [$with_lg_quantum])
+fi
+
+AC_ARG_WITH([lg_slab_maxregs],
+  [AS_HELP_STRING([--with-lg-slab-maxregs=<lg-slab-maxregs>],
+   [Base 2 log of maximum number of regions in a slab (used with malloc_conf slab_sizes)])],
+  [CONFIG_LG_SLAB_MAXREGS="with_lg_slab_maxregs"],
+  [CONFIG_LG_SLAB_MAXREGS=""])
+if test "x$with_lg_slab_maxregs" != "x" ; then
+  AC_DEFINE_UNQUOTED([CONFIG_LG_SLAB_MAXREGS], [$with_lg_slab_maxregs])
 fi
 
 AC_ARG_WITH([lg_page],
@@ -1678,6 +1787,37 @@ dnl Check if we have dlsym support.
   if test "x${je_cv_pthread_setname_np}" = "xyes" ; then
     AC_DEFINE([JEMALLOC_HAVE_PTHREAD_SETNAME_NP], [ ])
   fi
+  dnl Check if pthread_getname_np is not necessarily present despite
+  dnl the pthread_setname_np counterpart
+  JE_COMPILABLE([pthread_getname_np(3)], [
+#include <pthread.h>
+#include <stdlib.h>
+], [
+  {
+  	char *name = malloc(16);
+  	pthread_getname_np(pthread_self(), name, 16);
+	free(name);
+  }
+], [je_cv_pthread_getname_np])
+  if test "x${je_cv_pthread_getname_np}" = "xyes" ; then
+    AC_DEFINE([JEMALLOC_HAVE_PTHREAD_GETNAME_NP], [ ])
+  fi
+  dnl Check if pthread_get_name_np is not necessarily present despite
+  dnl the pthread_set_name_np counterpart
+  JE_COMPILABLE([pthread_get_name_np(3)], [
+#include <pthread.h>
+#include <pthread_np.h>
+#include <stdlib.h>
+], [
+  {
+  	char *name = malloc(16);
+  	pthread_get_name_np(pthread_self(), name, 16);
+	free(name);
+  }
+], [je_cv_pthread_get_name_np])
+  if test "x${je_cv_pthread_get_name_np}" = "xyes" ; then
+    AC_DEFINE([JEMALLOC_HAVE_PTHREAD_GET_NAME_NP], [ ])
+  fi
 fi
 
 JE_APPEND_VS(CPPFLAGS, -D_REENTRANT)
@@ -1735,6 +1875,18 @@ JE_COMPILABLE([mach_absolute_time()], [
 ], [je_cv_mach_absolute_time])
 if test "x${je_cv_mach_absolute_time}" = "xyes" ; then
   AC_DEFINE([JEMALLOC_HAVE_MACH_ABSOLUTE_TIME])
+fi
+
+dnl check for CLOCK_REALTIME (always should be available on Linux)
+JE_COMPILABLE([clock_gettime(CLOCK_REALTIME, ...)], [
+#include <time.h>
+], [
+	struct timespec ts;
+
+	clock_gettime(CLOCK_REALTIME, &ts);
+], [je_cv_clock_realtime])
+if test "x${je_cv_clock_realtime}" = "xyes" ; then
+  AC_DEFINE([JEMALLOC_HAVE_CLOCK_REALTIME])
 fi
 
 dnl Use syscall(2) (if available) by default.
@@ -1826,6 +1978,14 @@ AC_CHECK_FUNC([_pthread_mutex_init_calloc_cb],
 if test "x$have__pthread_mutex_init_calloc_cb" = "x1" ; then
   AC_DEFINE([JEMALLOC_MUTEX_INIT_CB])
   wrap_syms="${wrap_syms} _malloc_prefork _malloc_postfork"
+fi
+
+AC_CHECK_FUNC([memcntl],
+	      [have_memcntl="1"],
+	      [have_memcntl="0"],
+	      )
+if test "x$have_memcntl" = "x1" ; then
+  AC_DEFINE([JEMALLOC_HAVE_MEMCNTL], [ ])
 fi
 
 dnl Disable lazy locking by default.
@@ -2047,6 +2207,16 @@ if test "x${je_cv_madvise}" = "xyes" ; then
 	madvise((void *)0, 0, MADV_HUGEPAGE);
 	madvise((void *)0, 0, MADV_NOHUGEPAGE);
 ], [je_cv_thp])
+  dnl Check for madvise(..., MADV_[NO]CORE).
+  JE_COMPILABLE([madvise(..., MADV_[[NO]]CORE)], [
+#include <sys/mman.h>
+], [
+	madvise((void *)0, 0, MADV_NOCORE);
+	madvise((void *)0, 0, MADV_CORE);
+], [je_cv_madv_nocore])
+  if test "x${je_cv_madv_nocore}" = "xyes" ; then
+    AC_DEFINE([JEMALLOC_MADVISE_NOCORE], [ ])
+  fi
 case "${host_cpu}" in
   arm*)
     ;;
@@ -2056,10 +2226,30 @@ case "${host_cpu}" in
   fi
   ;;
 esac
+else
+  dnl Check for posix_madvise.
+  JE_COMPILABLE([posix_madvise], [
+  #include <sys/mman.h>
+  ], [
+    posix_madvise((void *)0, 0, 0);
+  ], [je_cv_posix_madvise])
+  if test "x${je_cv_posix_madvise}" = "xyes" ; then
+    AC_DEFINE([JEMALLOC_HAVE_POSIX_MADVISE], [ ])
+
+    dnl Check for posix_madvise(..., POSIX_MADV_DONTNEED).
+    JE_COMPILABLE([posix_madvise(..., POSIX_MADV_DONTNEED)], [
+  #include <sys/mman.h>
+  ], [
+    posix_madvise((void *)0, 0, POSIX_MADV_DONTNEED);
+  ], [je_cv_posix_madv_dontneed])
+    if test "x${je_cv_posix_madv_dontneed}" = "xyes" ; then
+      AC_DEFINE([JEMALLOC_PURGE_POSIX_MADVISE_DONTNEED], [ ])
+    fi
+  fi
 fi
 
 dnl ============================================================================
-dnl Check for __builtin_clz() and __builtin_clzl().
+dnl Check for __builtin_clz(), __builtin_clzl(), and __builtin_clzll().
 
 AC_CACHE_CHECK([for __builtin_clz],
                [je_cv_builtin_clz],
@@ -2072,6 +2262,10 @@ AC_CACHE_CHECK([for __builtin_clz],
                                                 {
                                                         unsigned long x = 0;
                                                         int y = __builtin_clzl(x);
+                                                }
+                                                {
+                                                        unsigned long long x = 0;
+                                                        int y = __builtin_clzll(x);
                                                 }
                                                 ])],
                                [je_cv_builtin_clz=yes],
@@ -2159,37 +2353,39 @@ fi
 dnl ============================================================================
 dnl Check for glibc malloc hooks
 
-JE_COMPILABLE([glibc malloc hook], [
-#include <stddef.h>
+if test "x$glibc" = "x1" ; then
+  JE_COMPILABLE([glibc malloc hook], [
+  #include <stddef.h>
 
-extern void (* __free_hook)(void *ptr);
-extern void *(* __malloc_hook)(size_t size);
-extern void *(* __realloc_hook)(void *ptr, size_t size);
+  extern void (* __free_hook)(void *ptr);
+  extern void *(* __malloc_hook)(size_t size);
+  extern void *(* __realloc_hook)(void *ptr, size_t size);
 ], [
-  void *ptr = 0L;
-  if (__malloc_hook) ptr = __malloc_hook(1);
-  if (__realloc_hook) ptr = __realloc_hook(ptr, 2);
-  if (__free_hook && ptr) __free_hook(ptr);
+    void *ptr = 0L;
+    if (__malloc_hook) ptr = __malloc_hook(1);
+    if (__realloc_hook) ptr = __realloc_hook(ptr, 2);
+    if (__free_hook && ptr) __free_hook(ptr);
 ], [je_cv_glibc_malloc_hook])
-if test "x${je_cv_glibc_malloc_hook}" = "xyes" ; then
-  if test "x${JEMALLOC_PREFIX}" = "x" ; then
-    AC_DEFINE([JEMALLOC_GLIBC_MALLOC_HOOK], [ ])
-    wrap_syms="${wrap_syms} __free_hook __malloc_hook __realloc_hook"
+  if test "x${je_cv_glibc_malloc_hook}" = "xyes" ; then
+    if test "x${JEMALLOC_PREFIX}" = "x" ; then
+      AC_DEFINE([JEMALLOC_GLIBC_MALLOC_HOOK], [ ])
+      wrap_syms="${wrap_syms} __free_hook __malloc_hook __realloc_hook"
+    fi
   fi
-fi
 
-JE_COMPILABLE([glibc memalign hook], [
-#include <stddef.h>
+  JE_COMPILABLE([glibc memalign hook], [
+  #include <stddef.h>
 
-extern void *(* __memalign_hook)(size_t alignment, size_t size);
+  extern void *(* __memalign_hook)(size_t alignment, size_t size);
 ], [
-  void *ptr = 0L;
-  if (__memalign_hook) ptr = __memalign_hook(16, 7);
+    void *ptr = 0L;
+    if (__memalign_hook) ptr = __memalign_hook(16, 7);
 ], [je_cv_glibc_memalign_hook])
-if test "x${je_cv_glibc_memalign_hook}" = "xyes" ; then
-  if test "x${JEMALLOC_PREFIX}" = "x" ; then
-    AC_DEFINE([JEMALLOC_GLIBC_MEMALIGN_HOOK], [ ])
-    wrap_syms="${wrap_syms} __memalign_hook"
+  if test "x${je_cv_glibc_memalign_hook}" = "xyes" ; then
+    if test "x${JEMALLOC_PREFIX}" = "x" ; then
+      AC_DEFINE([JEMALLOC_GLIBC_MEMALIGN_HOOK], [ ])
+      wrap_syms="${wrap_syms} __memalign_hook"
+    fi
   fi
 fi
 

@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GRAPH_SERIALIZER_H
-#define ARANGODB_PREGEL_GRAPH_SERIALIZER_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -56,4 +55,3 @@ struct VertexSerializer<int64_t> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

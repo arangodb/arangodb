@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_CONTEXT_H
-#define ARANGOD_AQL_QUERY_CONTEXT_H 1
+#pragma once
 
 #include "Aql/Collections.h"
 #include "Aql/Graphs.h"
@@ -118,6 +117,12 @@ class QueryContext {
     
   virtual bool killed() const = 0;
 
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  virtual void debugKillQuery() = 0;
+
   /// @brief whether or not a query is a modification query
   virtual bool isModificationQuery() const noexcept = 0;
   virtual bool isAsyncQuery() const noexcept = 0;
@@ -163,7 +168,7 @@ class QueryContext {
   std::unordered_map<std::string, std::string> _queryDataSources;
   
   /// @brief current state the query is in (used for profiling and error messages)
-  QueryExecutionState::ValueType _execState;
+  std::atomic<QueryExecutionState::ValueType> _execState;
   
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
@@ -175,4 +180,3 @@ class QueryContext {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

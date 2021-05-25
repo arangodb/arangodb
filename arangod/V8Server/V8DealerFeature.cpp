@@ -155,7 +155,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the JavaScript engine");
+  options->addSection("javascript", "JavaScript engine and execution");
 
   options->addOption(
       "--javascript.gc-frequency",

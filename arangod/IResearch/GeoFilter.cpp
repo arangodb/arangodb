@@ -34,6 +34,7 @@
 #include "search/collectors.hpp"
 #include "search/disjunction.hpp"
 #include "search/multiterm_query.hpp"
+#include "utils/memory.hpp"
 
 #include "Basics/voc-errors.h"
 #include "Geo/GeoParams.h"
@@ -157,7 +158,7 @@ class GeoIterator : public irs::doc_iterator {
 
  private:
   bool accept() {
-    TRI_ASSERT(_columnIt->value() < _doc->value)
+    TRI_ASSERT(_columnIt->value() < _doc->value);
 
     if (_doc->value != _columnIt->seek(_doc->value) ||
         _storedValue->value.empty()) {

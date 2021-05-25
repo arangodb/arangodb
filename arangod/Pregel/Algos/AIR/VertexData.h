@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXDATA_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXDATA_H 1
+#pragma once
 
 #include "Pregel/Algos/AIR/AbstractAccumulator.h"
 #include "Pregel/Algos/AIR/AccumulatorOptions.h"
@@ -64,4 +63,3 @@ std::ostream& operator<<(std::ostream&, VertexData const&);
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

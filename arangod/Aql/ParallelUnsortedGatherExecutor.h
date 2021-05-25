@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H
-#define ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
@@ -99,4 +98,3 @@ class ParallelUnsortedGatherExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H

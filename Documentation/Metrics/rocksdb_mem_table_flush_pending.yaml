@@ -1,6 +1,7 @@
 name: rocksdb_mem_table_flush_pending
+introducedIn: "3.6.1"
 help: |
-  rocksdb_mem_table_flush_pending
+  RocksDB metric "mem_table_flush_pending", sum over column families
 unit: number
 type: gauge
 category: RocksDB
@@ -10,4 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  rocksdb_mem_table_flush_pending
+  This metric exhibits the RocksDB metric "mem-table-flush-pending". It
+  shows the number of column families for which a memtable flush is
+  pending.

@@ -270,7 +270,7 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
 
 // add the storage engine's specific options to the global list of options
 void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("rocksdb", "RocksDB engine specific configuration");
+  options->addSection("rocksdb", "RocksDB engine");
   
   /// @brief minimum required percentage of free disk space for considering the
   /// server "healthy". this is expressed as a floating point value between 0 and 1!
@@ -921,7 +921,12 @@ void RocksDBEngine::stop() {
     _backgroundThread->beginShutdown();
 
     if (_settingsManager) {
-      _settingsManager->sync(true);
+      try {
+        _settingsManager->sync(true);
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("0582f", WARN, Logger::ENGINES)
+          << "caught exception while shutting down RocksDB engine: " << ex.what();
+      }
     }
 
     // wait until background thread stops
@@ -2392,7 +2397,7 @@ DECLARE_GAUGE(rocksdb_size_all_mem_tables, uint64_t, "rocksdb_size_all_mem_table
 DECLARE_GAUGE(rocksdb_total_disk_space, uint64_t, "rocksdb_total_disk_space");
 DECLARE_GAUGE(rocksdb_total_inodes, uint64_t, "rocksdb_total_inodes");
 DECLARE_GAUGE(rocksdb_total_sst_files_size, uint64_t, "rocksdb_total_sst_files_size");
-DECLARE_GAUGE(rocksdbengine_throttle_bps, uint64_t, "rocksdbengine_throttle_bps");
+DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t, "rocksdb_engine_throttle_bps");
 
 void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
   VPackBuilder stats;

@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_AGENCY_STRINGS_H
-#define ARANGOD_AGENCY_AGENCY_STRINGS_H
+#pragma once
 
 #include <string>
 
@@ -68,4 +67,3 @@ constexpr char const* OP_CMP = "cmp";
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

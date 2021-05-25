@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H
-#define ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include <string>
@@ -35,4 +34,3 @@ std::string EnvironmentTranslator(std::string const& value, char const* binaryPa
 }  // namespace options
 }  // namespace arangodb
 
-#endif

@@ -43,8 +43,8 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const console = require('console');
 const internal = require('internal');
 const arango = internal.arango;
-const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
+const leaderEndpoint = arango.getEndpoint();
+const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
@@ -54,12 +54,12 @@ const systemCn = '_UnitTestsReplicationSys';
 const replicatorUser = 'replicator-user';
 const replicatorPassword = 'replicator-password';
 
-const connectToMaster = function () {
-  reconnectRetry(masterEndpoint, db._name(), replicatorUser, replicatorPassword);
+const connectToLeader = function () {
+  reconnectRetry(leaderEndpoint, db._name(), replicatorUser, replicatorPassword);
 };
 
-const connectToSlave = function () {
-  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
+const connectToFollower = function () {
+  reconnectRetry(followerEndpoint, db._name(), 'root', '');
 };
 
 const collectionChecksum = function (name) {
@@ -71,13 +71,13 @@ const collectionCount = function (name) {
   return db._collection(name).count();
 };
 
-const compare = function (masterFunc, slaveFunc, applierConfiguration) {
+const compare = function (leaderFunc, followerFunc, applierConfiguration) {
   var state = {};
 
   db._flushCache();
-  masterFunc(state);
+  leaderFunc(state);
 
-  connectToSlave();
+  connectToFollower();
   replication.applier.stop();
 
   while (replication.applier.state().state.running) {
@@ -101,7 +101,7 @@ const compare = function (masterFunc, slaveFunc, applierConfiguration) {
   }
 
   var syncResult = replication.sync({
-    endpoint: masterEndpoint,
+    endpoint: leaderEndpoint,
     username: replicatorUser,
     password: replicatorPassword,
     verbose: true,
@@ -113,12 +113,12 @@ const compare = function (masterFunc, slaveFunc, applierConfiguration) {
   });
 
   db._flushCache();
-  slaveFunc(state);
+  followerFunc(state);
 
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
   applierConfiguration = applierConfiguration || {};
-  applierConfiguration.endpoint = masterEndpoint;
+  applierConfiguration.endpoint = leaderEndpoint;
   applierConfiguration.username = replicatorUser;
   applierConfiguration.password = replicatorPassword;
   applierConfiguration.includeSystem = includeSystem;
@@ -134,33 +134,33 @@ const compare = function (masterFunc, slaveFunc, applierConfiguration) {
   var printed = false;
 
   while (true) {
-    var slaveState = replication.applier.state();
+    var followerState = replication.applier.state();
 
-    if (slaveState.state.lastError.errorNum > 0) {
-      console.warn('slave has errored:', JSON.stringify(slaveState.state.lastError));
+    if (followerState.state.lastError.errorNum > 0) {
+      console.warn('follower has errored:', JSON.stringify(followerState.state.lastError));
       break;
     }
 
-    if (!slaveState.state.running) {
-      console.warn('slave is not running');
+    if (!followerState.state.running) {
+      console.warn('follower is not running');
       break;
     }
 
-    if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
-        compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) {
-      console.debug('slave has caught up. syncResult.lastLogTick:', syncResult.lastLogTick, 'slaveState.lastAppliedContinuousTick:', slaveState.state.lastAppliedContinuousTick, 'slaveState.lastProcessedContinuousTick:', slaveState.state.lastProcessedContinuousTick, 'slaveState:', slaveState);
+    if (compareTicks(followerState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
+        compareTicks(followerState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) {
+      console.debug('follower has caught up. syncResult.lastLogTick:', syncResult.lastLogTick, 'followerState.lastAppliedContinuousTick:', followerState.state.lastAppliedContinuousTick, 'followerState.lastProcessedContinuousTick:', followerState.state.lastProcessedContinuousTick, 'followerState:', followerState);
       break;
     }
 
     if (!printed) {
-      console.debug('waiting for slave to catch up');
+      console.debug('waiting for follower to catch up');
       printed = true;
     }
     internal.wait(0.5, false);
   }
 
   db._flushCache();
-  slaveFunc(state);
+  followerFunc(state);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -178,7 +178,7 @@ function BaseTestConfig () {
 
     testInvalidCredentials1: function () {
       var configuration = {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         username: replicatorUser,
         password: replicatorPassword + 'xx' // invalid
       };
@@ -196,7 +196,7 @@ function BaseTestConfig () {
 
     testInvalidCredentials2: function () {
       var configuration = {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         username: replicatorUser + 'xx', // invalid
         password: replicatorPassword
       };
@@ -214,7 +214,7 @@ function BaseTestConfig () {
 
     testInvalidCredentials3: function () {
       var configuration = {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         username: 'root',
         password: 'abc'
       };
@@ -231,7 +231,7 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testTrxMultiCollections: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function () {
@@ -294,7 +294,7 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testFew: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -322,7 +322,7 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testMany: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -353,7 +353,7 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testManyMore: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -386,7 +386,7 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testBigMarkersObject: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -423,7 +423,7 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testBigMarkersArray: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -460,7 +460,7 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testHeterogenousMarkers: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -495,7 +495,7 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testEmptyMarkers: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1966,7 +1966,7 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testWalRetain: function () {
-      connectToMaster();
+      connectToLeader();
 
       const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();
       const http = {
@@ -2058,12 +2058,12 @@ function ReplicationSuite () {
     // /////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      connectToSlave();
+      connectToFollower();
       try {
         replication.applier.stop();
         replication.applier.forget();
       } catch (err) { }
-      connectToMaster();
+      connectToLeader();
 
       db._drop(cn);
       db._drop(cn2);
@@ -2075,14 +2075,14 @@ function ReplicationSuite () {
     // /////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      connectToMaster();
+      connectToLeader();
 
       db._drop(cn);
       db._drop(cn2);
       db._drop(systemCn, { isSystem: true });
       db._dropView("UnitTestsSyncView");
 
-      connectToSlave();
+      connectToFollower();
       replication.applier.stop();
       replication.applier.forget();
       db._drop(cn);
@@ -2109,8 +2109,8 @@ function ReplicationOtherDBSuite () {
 
     setUp: function () {
       db._useDatabase('_system');
-      // Slave side code
-      connectToSlave();
+      // Follower side code
+      connectToFollower();
       try {
         replication.applier.stop();
         replication.applier.forget();
@@ -2122,8 +2122,8 @@ function ReplicationOtherDBSuite () {
       db._createDatabase(testDB);
       assertNotEqual(-1, db._databases().indexOf(testDB));
 
-      // Master side code
-      connectToMaster();
+      // Leader side code
+      connectToLeader();
 
       try {
         db._dropDatabase(testDB);
@@ -2143,7 +2143,7 @@ function ReplicationOtherDBSuite () {
 
     tearDown: function () {
       // Just drop the databases
-      connectToMaster();
+      connectToLeader();
       db._useDatabase('_system');
       try {
         db._dropDatabase(testDB);
@@ -2151,7 +2151,7 @@ function ReplicationOtherDBSuite () {
 
       assertEqual(-1, db._databases().indexOf(testDB));
 
-      connectToSlave();
+      connectToFollower();
       // We need to stop applier in testDB
       db._useDatabase(testDB);
       replication.applier.stop();

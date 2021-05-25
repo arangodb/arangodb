@@ -120,6 +120,11 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--create-database",
                      "create the target database if it does not exist",
                      new BooleanParameter(&_createDatabase));
+  
+  options->addOption("--headers-file",
+                     "filename to read CSV or TSV headers from. if specified will not try to read headers from regular input file",
+                     new StringParameter(&_headersFile))
+                     .setIntroducedIn(30800);
 
   options->addOption("--skip-lines",
                      "number of lines to skip for formats (csv and tsv only)",
@@ -355,6 +360,7 @@ void ImportFeature::start() {
     }
     if (_typeImport == "csv" || _typeImport == "tsv") {
       std::cout << "separator:              " << _separator << std::endl;
+      std::cout << "headers file:           " << _headersFile << std::endl;
     }
     std::cout << "threads:                " << _threadCount << std::endl;
     std::cout << "on duplicate:           " << _onDuplicateAction << std::endl;
@@ -501,23 +507,17 @@ void ImportFeature::start() {
     // import type
     if (_typeImport == "csv") {
       std::cout << "Starting CSV import..." << std::endl;
-      ok = ih.importDelimited(_collectionName, _filename,
+      ok = ih.importDelimited(_collectionName, _filename, _headersFile,
                               arangodb::import::ImportHelper::CSV);
-    }
-
-    else if (_typeImport == "tsv") {
+    } else if (_typeImport == "tsv") {
       std::cout << "Starting TSV import..." << std::endl;
       ih.setQuote("");
-      ok = ih.importDelimited(_collectionName, _filename,
+      ok = ih.importDelimited(_collectionName, _filename, _headersFile,
                               arangodb::import::ImportHelper::TSV);
-    }
-
-    else if (_typeImport == "json" || _typeImport == "jsonl") {
+    } else if (_typeImport == "json" || _typeImport == "jsonl") {
       std::cout << "Starting JSON import..." << std::endl;
       ok = ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
-    }
-
-    else {
+    } else {
       LOG_TOPIC("8941e", FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport << "'.";
       FATAL_ERROR_EXIT();
     }

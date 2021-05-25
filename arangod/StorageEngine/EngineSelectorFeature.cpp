@@ -73,8 +73,6 @@ EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationSe
 }
 
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOption("--server.storage-engine",
                      "storage engine type "
                      "(note that the mmfiles engine is unavailable since "

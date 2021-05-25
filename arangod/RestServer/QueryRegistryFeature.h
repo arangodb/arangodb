@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_QUERY_REGISTRY_FEATUREx_H
-#define APPLICATION_FEATURES_QUERY_REGISTRY_FEATUREx_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
@@ -65,10 +64,12 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
     return _slowStreamingQueryThreshold;
   }
   bool failOnWarning() const { return _failOnWarning; }
+  bool requireWith() const { return _requireWith; }
 #ifdef USE_ENTERPRISE
   bool smartJoins() const { return _smartJoins; }
   bool parallelizeTraversals() const { return _parallelizeTraversals; }
 #endif
+  bool allowCollectionsInExpressions() const { return _allowCollectionsInExpressions; }
   uint64_t queryGlobalMemoryLimit() const { return _queryGlobalMemoryLimit; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   double queryMaxRuntime() const { return _queryMaxRuntime; }
@@ -83,12 +84,14 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool _trackBindVars;
   bool _trackDataSources;
   bool _failOnWarning;
+  bool _requireWith;
   bool _queryCacheIncludeSystem;
   bool _queryMemoryLimitOverride;
 #ifdef USE_ENTERPRISE
   bool _smartJoins;
   bool _parallelizeTraversals;
 #endif
+  bool _allowCollectionsInExpressions;
   uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
   double _queryMaxRuntime;
@@ -115,8 +118,9 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   Gauge<uint64_t>& _runningQueries;
   Gauge<uint64_t>& _globalQueryMemoryUsage;
   Gauge<uint64_t>& _globalQueryMemoryLimit;
+  Counter& _globalQueryMemoryLimitReached; 
+  Counter& _localQueryMemoryLimitReached; 
 };
 
 }  // namespace arangodb
 
-#endif

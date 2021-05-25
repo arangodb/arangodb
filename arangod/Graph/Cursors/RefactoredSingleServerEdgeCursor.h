@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_CURSORS_REFACTOREDSINGLESERVEREDGECURSOR_H
-#define ARANGOD_GRAPH_CURSORS_REFACTOREDSINGLESERVEREDGECURSOR_H 1
+#pragma once
 
 #include "Aql/Expression.h"
 #include "Aql/QueryContext.h"
@@ -110,4 +109,3 @@ class RefactoredSingleServerEdgeCursor {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H
-#define ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -48,6 +47,9 @@ class AqlItemBlockInputRange {
                          arangodb::aql::SharedAqlItemBlockPtr&&,
                          std::size_t startIndex) noexcept;
 
+  void reset() noexcept { _block.reset(nullptr); }
+  bool hasBlock() const noexcept { return _block.get() != nullptr; }
+  
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
   ExecutorState upstreamState() const noexcept;
@@ -130,4 +132,3 @@ class AqlItemBlockInputRange {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H

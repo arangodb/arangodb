@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHORTEST_PATH_NODE_H
-#define ARANGOD_AQL_SHORTEST_PATH_NODE_H 1
+#pragma once
 
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
@@ -42,7 +41,6 @@ namespace aql {
 /// @brief class ShortestPathNode
 class ShortestPathNode : public virtual GraphNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  protected:
@@ -105,28 +103,14 @@ class ShortestPathNode : public virtual GraphNode {
   Variable const* targetInVariable() const { return _inTargetVariable; }
 
   std::string const getTargetVertex() const { return _targetVertexId; }
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> vars;
-    if (isVertexOutVariableUsedLater()) {
-      vars.emplace_back(vertexOutVariable());
-    }
-    if (isEdgeOutVariableUsedLater()) {
-      vars.emplace_back(edgeOutVariable());
-    }
-    return vars;
-  }
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const override {
-    if (_inStartVariable != nullptr) {
-      vars.emplace(_inStartVariable);
-    }
-    if (_inTargetVariable != nullptr) {
-      vars.emplace(_inTargetVariable);
-    }
-  }
+  void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief Compute the shortest path options containing the expressions
   ///        MUST! be called after optimization and before creation
@@ -164,4 +148,3 @@ class ShortestPathNode : public virtual GraphNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

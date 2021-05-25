@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_H
-#define ARANGOD_GRAPH_TRAVERSER_CACHE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/StringHeap.h"
@@ -157,9 +156,12 @@ class TraverserCache {
   std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
 
   BaseOptions const* _baseOptions;
+
+  /// @brief whether or not to allow adding of previously unknown collections
+  /// during the traversal
+  bool const _allowImplicitCollections;
 };
 
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

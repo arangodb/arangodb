@@ -34,7 +34,11 @@
 #    define LG_QUANTUM		3
 #  endif
 #  ifdef __mips__
-#    define LG_QUANTUM		3
+#    if defined(__mips_n32) || defined(__mips_n64)
+#      define LG_QUANTUM		4
+#    else
+#      define LG_QUANTUM		3
+#    endif
 #  endif
 #  ifdef __nios2__
 #    define LG_QUANTUM		3

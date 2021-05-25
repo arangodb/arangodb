@@ -144,9 +144,6 @@ void ReplicationApplierConfiguration::reset() {
   _verbose = false;
   _restrictType = RestrictType::None;
   _restrictCollections.clear();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _force32mode = false;
-#endif
     
   if (_server.hasFeature<ReplicationFeature>()) {
     auto& feature = _server.getFeature<ReplicationFeature>();
@@ -213,9 +210,6 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
               VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
   builder.add("idleMaxWaitTime",
               VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  builder.add("force32mode", VPackValue(_force32mode));
-#endif
 }
 
 /// @brief create a configuration object from velocypack
@@ -430,13 +424,6 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
       configuration._endpoint = value.copyString();
     }
   }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  value = slice.get("force32mode");
-  if (value.isBool()) {
-    configuration._force32mode = value.getBool();
-  }
-#endif
 
   return configuration;
 }

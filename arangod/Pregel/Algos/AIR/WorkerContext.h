@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_WORKERCONTEXT_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_WORKERCONTEXT_H 1
+#pragma once
 
 #include <Pregel/WorkerContext.h>
 
@@ -79,4 +78,3 @@ private:
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

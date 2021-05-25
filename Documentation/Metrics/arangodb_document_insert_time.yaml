@@ -1,4 +1,5 @@
 name: arangodb_document_insert_time
+introducedIn: "3.8.0"
 help: |
   Total time spent in document insert operations.
 unit: s

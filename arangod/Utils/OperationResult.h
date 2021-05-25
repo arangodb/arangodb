@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_OPERATION_RESULT_H
-#define ARANGOD_UTILS_OPERATION_RESULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -112,4 +111,3 @@ struct OperationResult final {
 
 }  // namespace arangodb
 
-#endif

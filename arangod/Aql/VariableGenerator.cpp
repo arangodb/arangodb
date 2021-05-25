@@ -63,6 +63,10 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(b
 
 /// @brief generate a variable
 Variable* VariableGenerator::createVariable(std::string name, bool isUserDefined) {
+  if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) { 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, arangodb::basics::Exception::FillExceptionString(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name.c_str()));
+  }
+
   auto variable = std::make_unique<Variable>(std::move(name), nextId(), false);
 
   TRI_ASSERT(!isUserDefined || variable->isUserDefined());
@@ -167,6 +171,36 @@ void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
   for (auto const& var : VPackArrayIterator(allVariablesList)) {
     createVariable(var);
   }
+}
+
+bool VariableGenerator::isValidName(char const* p, char const* end) noexcept {
+  // ($?|_+)
+  if (p != end) {
+    if (*p == '$') {
+      ++p;
+    } else {
+      while (*p == '_' && p != end) {
+        ++p;
+      }
+    }
+  }
+
+  // [a-zA-Z]+
+  char const* begin = p;
+  while (p != end && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z'))) {
+    ++p;
+  }
+
+  if (begin == p) {
+    return false;
+  }
+
+  // [a-zA-Z0-9_]*
+  while (p != end && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' || *p <= '9') || *p == '_')) {
+    ++p;
+  }
+
+  return (p == end);
 }
   
 VariableId VariableGenerator::nextId() noexcept {

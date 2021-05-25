@@ -1,4 +1,5 @@
 name: arangodb_aql_query_time
+introducedIn: "3.6.10"
 help: |
   Execution time histogram for all AQL queries.
 unit: s
@@ -9,5 +10,7 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Execution time histogram for all AQL queries.
+  Execution time histogram for all AQL queries, in seconds.
+  The histogram includes all slow queries.

@@ -144,14 +144,20 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 }  // namespace arangodb
 
-DECLARE_GAUGE(arangodb_scheduler_awake_threads, uint64_t,
+DECLARE_GAUGE(arangodb_scheduler_num_awake_threads, uint64_t,
               "Number of awake worker threads");
-DECLARE_GAUGE(arangodb_scheduler_jobs_dequeued, uint64_t,
+DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_dequeued, uint64_t,
               "Total number of jobs dequeued");
-DECLARE_GAUGE(arangodb_scheduler_jobs_done, uint64_t,
+DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_done, uint64_t,
               "Total number of queue jobs done");
-DECLARE_GAUGE(arangodb_scheduler_jobs_submitted, uint64_t,
-              "Total number of jobs submitted to the queue");
+DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_submitted, uint64_t,
+              "Total number of jobs submitted to the scheduler");
+DECLARE_COUNTER(arangodb_scheduler_jobs_done_total,
+              "Total number of queue jobs done");
+DECLARE_COUNTER(arangodb_scheduler_jobs_submitted_total,
+              "Total number of jobs submitted to the scheduler");
+DECLARE_COUNTER(arangodb_scheduler_jobs_dequeued_total,
+              "Total number of jobs dequeued");
 DECLARE_GAUGE(
     arangodb_scheduler_high_prio_queue_length, uint64_t,
     "Current queue length of the high priority queue in the scheduler");
@@ -212,8 +218,14 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           arangodb_scheduler_jobs_submitted{})),
       _metricsJobsDequeued(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_jobs_dequeued{})),
-      _metricsAwakeThreads(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_scheduler_awake_threads{})),
+      _metricsJobsDoneTotal(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_jobs_done_total{})),
+      _metricsJobsSubmittedTotal(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_jobs_submitted_total{})),
+      _metricsJobsDequeuedTotal(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_jobs_dequeued_total{})),
+      _metricsNumAwakeThreads(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_num_awake_threads{})),
       _metricsNumWorkingThreads(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_num_working_threads{})),
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().add(
@@ -542,7 +554,10 @@ void SupervisedScheduler::runSupervisor() {
       _metricsJobsDone.operator=(jobsDone);
       _metricsJobsSubmitted.operator=(jobsSubmitted);
       _metricsJobsDequeued.operator=(jobsDequeued);
-      _metricsAwakeThreads.operator=(numAwake);
+      _metricsJobsDoneTotal.operator=(jobsDone);
+      _metricsJobsSubmittedTotal.operator=(jobsSubmitted);
+      _metricsJobsDequeuedTotal.operator=(jobsDequeued);
+      _metricsNumAwakeThreads.operator=(numAwake);
       _metricsNumWorkingThreads.operator=(numWorking);
       _metricsNumWorkerThreads.operator=(numWorkers);
       roundCount = 0;

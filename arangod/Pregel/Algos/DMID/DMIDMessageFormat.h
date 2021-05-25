@@ -25,8 +25,7 @@
 // in the
 // cpp files to do template specialization
 
-#ifndef ARANGODB_PREGEL_ALGO_DMID_MESSAGE_F_H
-#define ARANGODB_PREGEL_ALGO_DMID_MESSAGE_F_H 1
+#pragma once
 
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
@@ -61,4 +60,3 @@ struct DMIDMessageFormat : public MessageFormat<DMIDMessage> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

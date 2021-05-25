@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SINGLE_SERVER_TRAVERSER_H
-#define ARANGOD_SINGLE_SERVER_TRAVERSER_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Graph/Traverser.h"
@@ -92,4 +91,3 @@ class SingleServerTraverser final : public Traverser {
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

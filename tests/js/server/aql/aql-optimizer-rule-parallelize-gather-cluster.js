@@ -81,7 +81,6 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..1000 INSERT {} IN " + cn,
         "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FILTER doc1._key == doc2._key RETURN doc1",
         "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FOR doc3 IN " + cn + " FILTER doc1._key == doc2._key FILTER doc2._key == doc3._key RETURN doc1",
-        "FOR i IN 1..1000 IN " + cn + " FOR doc IN " + cn + " FILTER doc.value == i RETURN doc",
         "FOR i IN 1..100 LET sub = (FOR doc IN " + cn + " FILTER doc.value == i RETURN doc) RETURN sub",
         "LET sub = (FOR doc IN " + cn + " FILTER doc.value == 12 LIMIT 10 RETURN doc) FOR doc IN sub RETURN doc",
         "FOR v, e, p IN 1..1 OUTBOUND '" + cn + "/1' " + en + " RETURN p",
@@ -106,6 +105,7 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " SORT doc.value1 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000, 1000 RETURN doc",
+        "FOR i IN 1..1000 FOR doc IN " + cn + " FILTER doc.value == i RETURN doc",
       ];
 
       if (require("internal").options()["query.parallelize-gather-writes"]) {

@@ -286,7 +286,8 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             velocypack::Slice oldDoc,
                             LocalDocumentId const& newDocumentId,
                             velocypack::Slice newDoc,
-                            OperationOptions const& options) {
+                            OperationOptions const& options,
+                            bool performChecks) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
@@ -300,7 +301,7 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
   if (!res.ok()) {
     return res;
   }
-  return insert(trx, mthd, newDocumentId, newDoc, options);
+  return insert(trx, mthd, newDocumentId, newDoc, options, performChecks);
 }
 
 /// @brief return the memory usage of the index

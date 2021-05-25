@@ -65,7 +65,7 @@
 
     render: function () {
       $(this.subEl).html(this.templateSub.render({
-        frontendConfig: this.frontendConfig,
+        frontendConfig: window.frontendConfig,
         currentDB: this.currentDB.toJSON()
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));

@@ -42,6 +42,8 @@ namespace arangodb {
 struct CpuUsageFeature::SnapshotProvider {
   SnapshotProvider();
   ~SnapshotProvider();
+  SnapshotProvider(SnapshotProvider const&) = delete;
+  SnapshotProvider& operator=(SnapshotProvider const&) = delete;
 
   bool canTakeSnapshot() const noexcept { return _statFile != nullptr; }
 

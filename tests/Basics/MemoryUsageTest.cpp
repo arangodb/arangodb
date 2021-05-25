@@ -265,6 +265,132 @@ TEST(ResourceUsageTest, testConcurrencyUnrestricted) {
   ASSERT_GE(monitor.peak(), ::bucketize(::numOpsPerThread * amount));
 }
 
+TEST(ResourceUsageTest, testMemoryLocalLimitViolationCounter) {
+  GlobalResourceMonitor global;
+  ResourceMonitor monitor(global);
+  
+  monitor.memoryLimit(65535);
+  
+  auto stats = global.stats();
+  ASSERT_EQ(0, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+
+  ResourceUsageScope scope(monitor);
+  scope.increase(32768);
+  scope.increase(32767);
+
+  stats = global.stats();
+  ASSERT_EQ(0, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+        
+  try {
+    scope.increase(1);
+    throw "fail!";
+  } catch (basics::Exception const& ex) {
+    ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+  }
+
+  stats = global.stats();
+  ASSERT_EQ(0, stats.globalLimitReached);
+  ASSERT_EQ(1, stats.localLimitReached);
+  
+  try {
+    scope.increase(1);
+    throw "fail!";
+  } catch (basics::Exception const& ex) {
+    ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+  }
+
+  stats = global.stats();
+  ASSERT_EQ(0, stats.globalLimitReached);
+  ASSERT_EQ(2, stats.localLimitReached);
+}
+
+TEST(ResourceUsageTest, testGlobalMemoryLimitViolationCounter) {
+  GlobalResourceMonitor global;
+  global.memoryLimit(65535);
+
+  ResourceMonitor monitor(global);
+  
+  auto stats = global.stats();
+  ASSERT_EQ(0, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+
+  ResourceUsageScope scope(monitor);
+  scope.increase(32768);
+  scope.increase(32767);
+
+  stats = global.stats();
+  ASSERT_EQ(0, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+        
+  try {
+    scope.increase(1);
+    throw "fail!";
+  } catch (basics::Exception const& ex) {
+    ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+  }
+
+  stats = global.stats();
+  ASSERT_EQ(1, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+  
+  try {
+    scope.increase(1);
+    throw "fail!";
+  } catch (basics::Exception const& ex) {
+    ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+  }
+
+  stats = global.stats();
+  ASSERT_EQ(2, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+}
+
+TEST(ResourceUsageTest, testGlobalMemoryLimitViolationCounterHitByMultiple) {
+  GlobalResourceMonitor global;
+  global.memoryLimit(65535);
+
+  ResourceMonitor monitor1(global);
+  ResourceMonitor monitor2(global);
+  
+  auto stats = global.stats();
+  ASSERT_EQ(0, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+
+  ResourceUsageScope scope1(monitor1);
+  ResourceUsageScope scope2(monitor2);
+  scope1.increase(16384);
+  scope2.increase(16384);
+  scope1.increase(16384);
+
+  stats = global.stats();
+  ASSERT_EQ(0, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+        
+  try {
+    scope2.increase(16384);
+    throw "fail!";
+  } catch (basics::Exception const& ex) {
+    ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+  }
+
+  stats = global.stats();
+  ASSERT_EQ(1, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+  
+  try {
+    scope1.increase(163841);
+    throw "fail!";
+  } catch (basics::Exception const& ex) {
+    ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
+  }
+
+  stats = global.stats();
+  ASSERT_EQ(2, stats.globalLimitReached);
+  ASSERT_EQ(0, stats.localLimitReached);
+}
+
 TEST(GlobalResourceMonitorTest, testEmpty) {
   GlobalResourceMonitor monitor;
   

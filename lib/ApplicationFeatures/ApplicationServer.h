@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H
-#define ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H 1
+#pragma once
 
 #include <atomic>
 #include <functional>
@@ -406,4 +405,3 @@ class ApplicationServer {
 }  // namespace application_features
 }  // namespace arangodb
 
-#endif

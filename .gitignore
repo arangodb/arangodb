@@ -115,3 +115,5 @@ last_compiled_version.sha
 scripts/perfanalysis
 perf*
 callgrind*
+
+Documentation/Metrics/allMetrics.yaml

@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
+#pragma once
 
 #include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
@@ -110,8 +109,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
               IndexIterator::DocumentCallback const& cb) const override;
   
   /// @brief lookup with callback, not thread-safe on same transaction::Context
-  bool read(transaction::Methods* trx, LocalDocumentId const& token,
-            IndexIterator::DocumentCallback const& cb) const override;
+  Result read(transaction::Methods* trx, LocalDocumentId const& token,
+              IndexIterator::DocumentCallback const& cb) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
@@ -163,6 +162,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                   OperationOptions const& options) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice doc,
                                   OperationOptions const& options) const;
@@ -183,11 +183,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                        rocksdb::PinnableSlice& ps,
                                        bool readCache,
                                        bool fillCache) const;
-  
-  bool lookupDocumentVPack(transaction::Methods*,
-                           LocalDocumentId const& documentId,
-                           IndexIterator::DocumentCallback const& cb,
-                           bool withCache) const;
+  Result lookupDocumentVPack(transaction::Methods*, LocalDocumentId const& documentId,
+                             IndexIterator::DocumentCallback const& cb, bool withCache) const;
 
   /// @brief create hash-cache
   void createCache() const;
@@ -212,7 +209,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  bool _cacheEnabled;
+  std::atomic<bool> _cacheEnabled;
   /// @brief number of index creations in progress
   std::atomic<int> _numIndexCreations;
   arangodb::TransactionStatistics& _statistics;
@@ -232,4 +229,3 @@ inline RocksDBCollection* toRocksDBCollection(LogicalCollection& logical) {
 
 }  // namespace arangodb
 
-#endif

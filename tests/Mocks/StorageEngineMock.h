@@ -99,7 +99,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual arangodb::Result read(arangodb::transaction::Methods*,
                                 arangodb::velocypack::StringRef const& key,
                                 arangodb::IndexIterator::DocumentCallback const& cb) const override;
-  virtual bool read(arangodb::transaction::Methods* trx,
+  virtual arangodb::Result read(arangodb::transaction::Methods* trx,
                     arangodb::LocalDocumentId const& token,
                     arangodb::IndexIterator::DocumentCallback const& cb) const override;
   virtual bool readDocument(arangodb::transaction::Methods* trx,

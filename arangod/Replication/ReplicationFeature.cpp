@@ -36,6 +36,8 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
@@ -76,7 +78,7 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 } // namespace
 
 
-DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "Number of cluster replication inventory requests received");
+DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "(DC-2-DC only) Number of times the database and collection overviews have been requested.");
 
 namespace arangodb {
 
@@ -89,6 +91,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
       _syncByRevision(true),
+      _connectionCache{server, httpclient::ConnectionCache::Options{5}},
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
@@ -98,6 +101,8 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
   startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<DatabaseFeature>();
+  startsAfter<RocksDBEngine>();
+  startsAfter<RocksDBRecoveryManager>();
   startsAfter<ServerIdFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
@@ -106,14 +111,13 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
 ReplicationFeature::~ReplicationFeature() = default;
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("replication", "Configure the replication");
+  options->addSection("replication", "replication");
   options->addOption("--replication.auto-start",
                      "switch to enable or disable the automatic start "
                      "of replication appliers",
                      new BooleanParameter(&_replicationApplierAutoStart),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
@@ -187,8 +191,8 @@ void ReplicationFeature::prepare() {
 }
 
 void ReplicationFeature::start() {
-  _globalReplicationApplier.reset(new GlobalReplicationApplier(
-      GlobalReplicationApplier::loadConfiguration(server())));
+  _globalReplicationApplier = std::make_unique<GlobalReplicationApplier>(
+      GlobalReplicationApplier::loadConfiguration(server()));
 
   try {
     _globalReplicationApplier->loadState();
@@ -221,6 +225,7 @@ void ReplicationFeature::stop() {
   try {
     if (_globalReplicationApplier != nullptr) {
       _globalReplicationApplier->stop();
+      _globalReplicationApplier->stopAndJoin();
     }
   } catch (...) {
     // ignore any error
@@ -232,6 +237,10 @@ void ReplicationFeature::unprepare() {
     _globalReplicationApplier->stopAndJoin();
   }
   _globalReplicationApplier.reset();
+}
+
+httpclient::ConnectionCache& ReplicationFeature::connectionCache() {
+  return _connectionCache;
 }
   
 /// @brief track the number of (parallel) tailing operations

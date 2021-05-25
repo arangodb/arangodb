@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_OPTIONS_H
-#define ARANGOD_AQL_QUERY_OPTIONS_H 1
+#pragma once
 
 #include <string>
 #include <unordered_set>
@@ -92,10 +91,6 @@ struct QueryOptions {
   bool skipAudit; // skips audit logging - used only internally
   ExplainRegisterPlan explainRegisters;
 
-  /// @brief hack to be used only for /_api/export, contains the name of
-  /// the target collection
-  std::string exportCollection;
-  
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
   
@@ -120,4 +115,3 @@ struct QueryOptions {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

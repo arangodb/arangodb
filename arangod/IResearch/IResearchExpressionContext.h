@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H
-#define ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
@@ -117,4 +116,3 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H 1

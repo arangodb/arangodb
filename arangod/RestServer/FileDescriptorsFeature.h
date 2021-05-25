@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_SERVER_FILE_DESCRIPTORS_FEATURE_H
-#define ARANGOD_REST_SERVER_FILE_DESCRIPTORS_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/operating-system.h"
@@ -48,4 +47,3 @@ class FileDescriptorsFeature : public application_features::ApplicationFeature {
 }  // namespace arangodb
 #endif
 
-#endif

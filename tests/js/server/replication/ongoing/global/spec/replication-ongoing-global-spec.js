@@ -39,8 +39,8 @@ const db = arangodb.db;
 const internal = require("internal");
 const time = internal.time;
 
-const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
+const leaderEndpoint = arango.getEndpoint();
+const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const username = "root";
 const password = "";
@@ -50,7 +50,7 @@ const docColName = "UnitTestDocs";
 const edgeColName = "UnitTestEdges";
 
 const config = {
-  endpoint: masterEndpoint,
+  endpoint: leaderEndpoint,
   username: username,
   password: password,
   verbose: true,
@@ -61,7 +61,7 @@ const config = {
 const delay = 10;
 
 // Flag if we need to reconnect.
-let onMaster = true;
+let onLeader = true;
 
 const compareIndexes = function(l, r, eq) {
   // This can modify l and r and remove id and selectivityEstimate
@@ -84,13 +84,13 @@ const compareIndexes = function(l, r, eq) {
 
 
 const waitForReplication = function() {
-  const wasOnMaster = onMaster;
-  connectToMaster();
+  const wasOnLeader = onLeader;
+  connectToLeader();
   // use lastLogTick as of now
   const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
   // We only wait a defined time.
   const timeOut = time() + delay * 1000;
-  connectToSlave();
+  connectToFollower();
 
   internal.sleep(0.5);  
   while (true) {
@@ -98,8 +98,8 @@ const waitForReplication = function() {
     expect(time()).to.be.below(timeOut, `Replication did not succeed for ${delay} seconds`);
 
     const state = replication.globalApplier.state().state;
-    expect(state.lastError.errorNum).to.equal(0, `Error occured on slave: ${JSON.stringify(state.lastError)}`);
-    expect(state.running).to.equal(true, "Slave is not running");
+    expect(state.lastError.errorNum).to.equal(0, `Error occured on follower: ${JSON.stringify(state.lastError)}`);
+    expect(state.running).to.equal(true, "Follower is not running");
     
     if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
         compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
@@ -111,31 +111,31 @@ const waitForReplication = function() {
   //internal.print(state);
   //internal.print("lastLogTick: " + lastLogTick);
 
-  if (wasOnMaster) {
-    connectToMaster();
+  if (wasOnLeader) {
+    connectToLeader();
   } else {
     internal.wait(1.0, false);
-    connectToSlave();
+    connectToFollower();
   }
 };
 
 // We always connect to _system DB because it is always present.
 // You do not need to monitor any state.
-const connectToMaster = function() {
-  if (!onMaster) {
-    reconnectRetry(masterEndpoint, "_system", username, password);
+const connectToLeader = function() {
+  if (!onLeader) {
+    reconnectRetry(leaderEndpoint, "_system", username, password);
     db._flushCache();
-    onMaster = true;
+    onLeader = true;
   } else {
     db._useDatabase("_system");
   }
 };
 
-const connectToSlave = function() {
-  if (onMaster) {
-    reconnectRetry(slaveEndpoint, "_system", username, password);
+const connectToFollower = function() {
+  if (onLeader) {
+    reconnectRetry(followerEndpoint, "_system", username, password);
     db._flushCache();
-    onMaster = false;
+    onLeader = false;
   } else {
     db._useDatabase("_system");
   }
@@ -187,15 +187,15 @@ const cleanUpAllData = function () {
 
 const startReplication = function() {
   // Setup global replication
-  connectToSlave();
+  connectToFollower();
 
   replication.setupReplicationGlobal(config);
   waitForReplication();
 };
 
 const stopReplication = function () {
-  // Clear the slave
-  connectToSlave(); 
+  // Clear the follower
+  connectToFollower(); 
 
   // First stop replication
   try {
@@ -218,7 +218,7 @@ const cleanUp = function() {
   stopReplication();
   cleanUpAllData();
 
-  connectToMaster();
+  connectToLeader();
   cleanUpAllData();
 };
 
@@ -241,7 +241,7 @@ describe('Global Replication on a fresh boot', function () {
     });
 
     it("should create and drop an empty document collection", function () {
-      connectToMaster();
+      connectToLeader();
       // First Part Create Collection
       let mcol = db._create(docColName);
       let mProps = mcol.properties();
@@ -250,32 +250,32 @@ describe('Global Replication on a fresh boot', function () {
       // Validate it is created properly
       waitForReplication();
 
-      connectToSlave();
+      connectToFollower();
       testCollectionExists(docColName);
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
       compareIndexes(scol.getIndexes(), mIdxs, true);
 
-      connectToMaster();
+      connectToLeader();
       // Second Part Drop it again
       db._drop(docColName);
       testCollectionDoesNotExists(docColName);
 
-      connectToSlave();
+      connectToFollower();
       // Validate it is created properly
       waitForReplication();
       testCollectionDoesNotExists(docColName);
     });
     
     it("should create and drop an empty edge collection", function () {
-      connectToMaster();
+      connectToLeader();
       // First Part Create Collection
       let mcol = db._createEdgeCollection(edgeColName);
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
 
-      connectToSlave();
+      connectToFollower();
       // Validate it is created properly
       waitForReplication();
       testCollectionExists(edgeColName);
@@ -284,12 +284,12 @@ describe('Global Replication on a fresh boot', function () {
       expect(scol.properties()).to.deep.equal(mProps);
       compareIndexes(scol.getIndexes(), mIdxs, true);
 
-      connectToMaster();
+      connectToLeader();
       // Second Part Drop it again
       db._drop(edgeColName);
       testCollectionDoesNotExists(edgeColName);
 
-      connectToSlave();
+      connectToFollower();
       // Validate it is created properly
       waitForReplication();
       testCollectionDoesNotExists(edgeColName);
@@ -297,10 +297,10 @@ describe('Global Replication on a fresh boot', function () {
 
     it("should replicate database creation and dropping", function () {
       // First validate that there are no leftovers.
-      connectToSlave();
+      connectToFollower();
       testDBDoesNotExist(dbName);
 
-      connectToMaster();
+      connectToLeader();
 
       testDBDoesNotExist(dbName);
 
@@ -309,38 +309,38 @@ describe('Global Replication on a fresh boot', function () {
       testDBDoesExist(dbName);
 
       waitForReplication();
-      connectToSlave();
+      connectToFollower();
 
       // Validate it exists.
       testDBDoesExist(dbName);
 
       // Now delete it again.
-      connectToMaster();
+      connectToLeader();
       db._dropDatabase(dbName);
       testDBDoesNotExist(dbName);
 
       waitForReplication();
-      connectToSlave();
+      connectToFollower();
       testDBDoesNotExist(dbName);
     });
 
     describe("modify an existing collection", function () {
 
       before(function() {
-        connectToMaster();
+        connectToLeader();
         db._create(docColName);
 
-        connectToSlave();
+        connectToFollower();
         // Validate it is created properly
         waitForReplication();
         testCollectionExists(docColName);
       });
 
       after(function() {
-        connectToMaster();
+        connectToLeader();
         db._drop(docColName);
 
-        connectToSlave();
+        connectToFollower();
         // Validate it is created properly
         waitForReplication();
         testCollectionDoesNotExists(docColName);
@@ -352,12 +352,12 @@ describe('Global Replication on a fresh boot', function () {
           docs.push({value: i});
         }
 
-        connectToMaster();
+        connectToLeader();
         db._collection(docColName).save(docs);
 
         waitForReplication();
 
-        connectToSlave();
+        connectToFollower();
         expect(db._collection(docColName).count()).to.equal(100);
       });
 
@@ -369,14 +369,14 @@ describe('Global Replication on a fresh boot', function () {
           foo: "bar"
         };
 
-        connectToMaster();
+        connectToLeader();
         db._collection(docColName).save(doc);
 
         let original = db._collection(docColName).document(key);
 
         waitForReplication();
 
-        connectToSlave();
+        connectToFollower();
         let replica = db._collection(docColName).document(key);
         expect(replica).to.deep.equal(original);
       });
@@ -389,17 +389,17 @@ describe('Global Replication on a fresh boot', function () {
           value: 123
         };
 
-        connectToMaster();
+        connectToLeader();
         db._collection(docColName).save(doc);
 
         waitForReplication();
 
-        connectToMaster();
+        connectToLeader();
         db._collection(docColName).update(key, {foo: "bar"});
 
         let original = db._collection(docColName).document(key);
 
-        connectToSlave();
+        connectToFollower();
         waitForReplication();
 
         let replica = db._collection(docColName).document(key);
@@ -414,22 +414,22 @@ describe('Global Replication on a fresh boot', function () {
           value: 123
         };
 
-        connectToMaster();
+        connectToLeader();
         db._collection(docColName).save(doc);
 
         waitForReplication();
 
-        connectToMaster();
+        connectToLeader();
         db._collection(docColName).remove(key);
 
         waitForReplication();
 
-        connectToSlave();
+        connectToFollower();
         expect(db._collection(docColName).exists(key)).to.equal(false);
       });
 
       it("should replicate index creation", function () {
-        connectToMaster();
+        connectToLeader();
 
         let oIdx = db._collection(docColName).getIndexes();
 
@@ -438,7 +438,7 @@ describe('Global Replication on a fresh boot', function () {
         let mIdx = db._collection(docColName).getIndexes();
 
         waitForReplication();
-        connectToSlave();
+        connectToFollower();
 
         internal.sleep(5); // makes test more reliable
         let sIdx = db._collection(docColName).getIndexes();
@@ -447,7 +447,7 @@ describe('Global Replication on a fresh boot', function () {
       });
 
       it("should replicate index creation with data", function () {
-        connectToMaster();
+        connectToLeader();
 
         let c = db._collection(docColName);
         let oIdx = c.getIndexes();
@@ -466,7 +466,7 @@ describe('Global Replication on a fresh boot', function () {
         let mIdx = c.getIndexes();
 
         waitForReplication();
-        connectToSlave();
+        connectToFollower();
 
         internal.sleep(5); // makes test more reliable
         let sIdx = db._collection(docColName).getIndexes();
@@ -481,7 +481,7 @@ describe('Global Replication on a fresh boot', function () {
   describe(`In ${dbName} database`, function () {
 
     before(function() {
-      connectToMaster();
+      connectToLeader();
       testDBDoesNotExist(dbName);
 
       db._createDatabase(dbName);
@@ -489,27 +489,27 @@ describe('Global Replication on a fresh boot', function () {
 
       waitForReplication();
 
-      connectToSlave();
+      connectToFollower();
       testDBDoesExist(dbName);
     });
 
     after(function() {
-      connectToSlave();
+      connectToFollower();
       testDBDoesExist(dbName);
 
-      connectToMaster();
+      connectToLeader();
       // Flip always uses _system
       testDBDoesExist(dbName);
       db._dropDatabase(dbName);
       testDBDoesNotExist(dbName);
 
       waitForReplication();
-      connectToSlave();
+      connectToFollower();
       testDBDoesNotExist(dbName); 
     });
 
     it("should create and drop an empty document collection", function () {
-      connectToMaster();
+      connectToLeader();
       db._useDatabase(dbName);
       // First Part Create Collection
       let mcol = db._create(docColName);
@@ -517,7 +517,7 @@ describe('Global Replication on a fresh boot', function () {
       let mIdxs = mcol.getIndexes();
       testCollectionExists(docColName); 
 
-      connectToSlave();
+      connectToFollower();
       // Validate it is created properly
       waitForReplication();
       db._useDatabase(dbName);
@@ -527,13 +527,13 @@ describe('Global Replication on a fresh boot', function () {
       expect(scol.properties()).to.deep.equal(mProps);
       compareIndexes(scol.getIndexes(), mIdxs, true);
 
-      connectToMaster();
+      connectToLeader();
       db._useDatabase(dbName);
       // Second Part Drop it again
       db._drop(docColName);
       testCollectionDoesNotExists(docColName);
 
-      connectToSlave();
+      connectToFollower();
       db._useDatabase(dbName);
       // Validate it is created properly
       waitForReplication();
@@ -541,14 +541,14 @@ describe('Global Replication on a fresh boot', function () {
     });
 
     it("should create and drop an empty edge collection", function () {
-      connectToMaster();
+      connectToLeader();
       db._useDatabase(dbName);
       // First Part Create Collection
       let mcol = db._createEdgeCollection(edgeColName);
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
 
-      connectToSlave();
+      connectToFollower();
       // Validate it is created properly
       waitForReplication();
       db._useDatabase(dbName);
@@ -558,13 +558,13 @@ describe('Global Replication on a fresh boot', function () {
       expect(scol.properties()).to.deep.equal(mProps);
       compareIndexes(scol.getIndexes(), mIdxs, true);
 
-      connectToMaster();
+      connectToLeader();
       db._useDatabase(dbName);
       // Second Part Drop it again
       db._drop(edgeColName);
       testCollectionDoesNotExists(edgeColName);
 
-      connectToSlave();
+      connectToFollower();
       // Validate it is deleted properly
       waitForReplication();
       db._useDatabase(dbName);
@@ -574,11 +574,11 @@ describe('Global Replication on a fresh boot', function () {
     describe("modify an existing collection", function () {
 
       before(function() {
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
         db._create(docColName);
 
-        connectToSlave();
+        connectToFollower();
         // Validate it is created properly
         waitForReplication();
         db._useDatabase(dbName);
@@ -586,11 +586,11 @@ describe('Global Replication on a fresh boot', function () {
       });
 
       after(function() {
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
         db._drop(docColName);
 
-        connectToSlave();
+        connectToFollower();
         // Validate it is created properly
         waitForReplication();
         db._useDatabase(dbName);
@@ -603,13 +603,13 @@ describe('Global Replication on a fresh boot', function () {
           docs.push({value: i});
         }
 
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
         db._collection(docColName).save(docs);
 
         waitForReplication();
 
-        connectToSlave();
+        connectToFollower();
         db._useDatabase(dbName);
         expect(db._collection(docColName).count()).to.equal(100);
       });
@@ -622,7 +622,7 @@ describe('Global Replication on a fresh boot', function () {
           foo: "bar"
         };
 
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
         db._collection(docColName).save(doc);
 
@@ -630,7 +630,7 @@ describe('Global Replication on a fresh boot', function () {
 
         waitForReplication();
 
-        connectToSlave();
+        connectToFollower();
         db._useDatabase(dbName);
         let replica = db._collection(docColName).document(key);
         expect(replica).to.deep.equal(original);
@@ -644,19 +644,19 @@ describe('Global Replication on a fresh boot', function () {
           value: 123
         };
 
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
         db._collection(docColName).save(doc);
 
         waitForReplication();
 
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
         db._collection(docColName).update(key, {foo: "bar"});
 
         let original = db._collection(docColName).document(key);
 
-        connectToSlave();
+        connectToFollower();
         waitForReplication();
 
         db._useDatabase(dbName);
@@ -672,25 +672,25 @@ describe('Global Replication on a fresh boot', function () {
           value: 123
         };
 
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
         db._collection(docColName).save(doc);
 
         waitForReplication();
 
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
         db._collection(docColName).remove(key);
 
         waitForReplication();
 
-        connectToSlave();
+        connectToFollower();
         db._useDatabase(dbName);
         expect(db._collection(docColName).exists(key)).to.equal(false);
       });
 
       it("should replicate index creation", function () {
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
         let oIdx = db._collection(docColName).getIndexes();
 
@@ -699,7 +699,7 @@ describe('Global Replication on a fresh boot', function () {
         let mIdx = db._collection(docColName).getIndexes();
 
         waitForReplication();
-        connectToSlave();
+        connectToFollower();
         db._useDatabase(dbName);
 
         internal.sleep(5); // makes test more reliable
@@ -710,7 +710,7 @@ describe('Global Replication on a fresh boot', function () {
       });
 
       it("should replicate index creation with data", function () {
-        connectToMaster();
+        connectToLeader();
         db._useDatabase(dbName);
 
         let c = db._collection(docColName);
@@ -730,7 +730,7 @@ describe('Global Replication on a fresh boot', function () {
         let mIdx = c.getIndexes();
 
         waitForReplication();
-        connectToSlave();
+        connectToFollower();
         db._useDatabase(dbName);
 
         internal.sleep(5); // makes test more reliable
@@ -745,8 +745,8 @@ describe('Global Replication on a fresh boot', function () {
   });
 });
 
-const fillMasterWithInitialData = function () {
-  connectToMaster();
+const fillLeaderWithInitialData = function () {
+  connectToLeader();
   testDBDoesNotExist(dbName);
   testCollectionDoesNotExists(docColName);
   testCollectionDoesNotExists(edgeColName);
@@ -773,16 +773,16 @@ const fillMasterWithInitialData = function () {
   db._useDatabase("_system");
 };
 
-describe('Setup global replication on empty slave and master has some data', function () {
+describe('Setup global replication on empty follower and leader has some data', function () {
   
   before(function() {
     cleanUp();
 
-    fillMasterWithInitialData();
+    fillLeaderWithInitialData();
 
-    connectToSlave();
+    connectToFollower();
 
-    // Validate slave is empty!
+    // Validate follower is empty!
     testDBDoesNotExist(dbName);
     testCollectionDoesNotExists(docColName);
     testCollectionDoesNotExists(edgeColName);
@@ -800,13 +800,13 @@ describe('Setup global replication on empty slave and master has some data', fun
     });
     
     it("should have synced the document collection", function () {
-      connectToMaster();
+      connectToLeader();
       // First Part Create Collection
       let mcol = db._collection(docColName);
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
 
-      connectToSlave();
+      connectToFollower();
       testCollectionExists(docColName);
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
@@ -815,13 +815,13 @@ describe('Setup global replication on empty slave and master has some data', fun
     });
 
     it("should have synced the edge collection", function () {
-      connectToMaster();
+      connectToLeader();
       // First Part Create Collection
       let mcol = db._collection(edgeColName);
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
 
-      connectToSlave();
+      connectToFollower();
 
       // Validate it is created properly
       testCollectionExists(edgeColName);
@@ -833,14 +833,14 @@ describe('Setup global replication on empty slave and master has some data', fun
 
     it("should have synced the database", function () {
       // First validate that there are no leftovers.
-      connectToSlave();
+      connectToFollower();
       testDBDoesExist(dbName);
     });
 
     describe("content of an existing collection", function () {
 
       it("should have replicated the documents", function () {
-        connectToSlave();
+        connectToFollower();
         expect(db._collection(docColName).count()).to.equal(100);
       });
 
@@ -850,14 +850,14 @@ describe('Setup global replication on empty slave and master has some data', fun
   describe(`In ${dbName} database`, function () {
 
     it("should have synced the document collection", function () {
-      connectToMaster();
+      connectToLeader();
       db._useDatabase(dbName);
       // First Part Create Collection
       let mcol = db._collection(docColName);
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
 
-      connectToSlave();
+      connectToFollower();
       db._useDatabase(dbName);
       testCollectionExists(docColName);
       let scol = db._collection(docColName);
@@ -867,7 +867,7 @@ describe('Setup global replication on empty slave and master has some data', fun
     });
 
     it("should have synced the edge collection", function () {
-      connectToMaster();
+      connectToLeader();
       db._useDatabase(dbName);
 
       // First Part Create Collection
@@ -875,7 +875,7 @@ describe('Setup global replication on empty slave and master has some data', fun
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
 
-      connectToSlave();
+      connectToFollower();
       db._useDatabase(dbName);
 
       // Validate it is created properly
@@ -889,7 +889,7 @@ describe('Setup global replication on empty slave and master has some data', fun
     describe("content of an existing collection", function () {
 
       it("should have replicated the documents", function () {
-        connectToSlave();
+        connectToFollower();
         db._useDatabase(dbName);
         expect(db._collection(docColName).count()).to.equal(100);
       });
@@ -905,7 +905,7 @@ describe('Test switch off and restart replication', function() {
 
     startReplication();
 
-    fillMasterWithInitialData();
+    fillLeaderWithInitialData();
   });
 
   after(cleanUp);
@@ -913,15 +913,15 @@ describe('Test switch off and restart replication', function() {
   describe('in _system database', function() {
 
     beforeEach(function() {
-      connectToSlave();
+      connectToFollower();
       if (!replication.globalApplier.state().state.running) {
         startReplication();
       }
-      connectToMaster();
+      connectToLeader();
     });
 
     after(function() {
-      connectToSlave();
+      connectToFollower();
       stopReplication();
       try {
         db._drop("UnittestOtherCollection");
@@ -931,7 +931,7 @@ describe('Test switch off and restart replication', function() {
         db._drop("UnittestOtherCollectionIdx");
       } catch (e) {}
 
-      connectToMaster();
+      connectToLeader();
       try {
         db._drop("UnittestOtherCollection");
       } catch (e) {}
@@ -946,7 +946,7 @@ describe('Test switch off and restart replication', function() {
 
       stopReplication();
 
-      connectToMaster();
+      connectToLeader();
 
       let mcol = db._create(col);
       let mProps = mcol.properties();
@@ -954,7 +954,7 @@ describe('Test switch off and restart replication', function() {
 
       startReplication();
 
-      connectToSlave();
+      connectToFollower();
       testCollectionExists(col);
       let scol = db._collection(col);
       expect(scol.type()).to.equal(2);
@@ -965,27 +965,27 @@ describe('Test switch off and restart replication', function() {
 
       stopReplication();
 
-      connectToMaster();
+      connectToLeader();
       db._drop(col);
       testCollectionDoesNotExists(col);
 
       startReplication();
 
-      connectToSlave();
+      connectToFollower();
       testCollectionDoesNotExists(col);
     });
 
     it('should replicate offline creation of an index', function () {
       const col = "UnittestOtherCollectionIdx";
 
-      connectToMaster();
+      connectToLeader();
 
       db._create(col);
 
       waitForReplication();
       stopReplication();
 
-      connectToMaster();
+      connectToLeader();
       let mcol = db._collection(col);
       let omidx = mcol.getIndexes();
       mcol.ensureHashIndex('value');
@@ -994,20 +994,20 @@ describe('Test switch off and restart replication', function() {
 
       startReplication();
 
-      connectToSlave();
+      connectToFollower();
       let scol = db._collection(col);
       let sidxs = scol.getIndexes();
       compareIndexes(sidxs, midxs, true);
       compareIndexes(sidxs, omidx, false);
 
-      connectToMaster();
+      connectToLeader();
       db._drop(col);
     });
 
     it('should replicate offline insert of documents', function () {
       stopReplication();
 
-      connectToMaster();
+      connectToLeader();
 
       testCollectionExists(docColName);
 
@@ -1024,7 +1024,7 @@ describe('Test switch off and restart replication', function() {
 
       startReplication();
 
-      connectToSlave();
+      connectToFollower();
 
       let scol = db._collection(docColName);
       let scount = scol.count();

@@ -5,8 +5,8 @@
 add_custom_target(frontend
   COMMENT "create frontend build"
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/react
-  COMMAND npm install
-  COMMAND npm run build
+  COMMAND yarn install
+  COMMAND yarn run build
   )
 
 add_custom_target(frontend_clean

@@ -291,16 +291,18 @@ function printStats(stats) {
   var maxSFLen = String('Scan Full').length;
   var maxSILen = String('Scan Index').length;
   var maxFLen = String('Filtered').length;
+  var maxMem = String('Peak Mem [b]').length;
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
+    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
     pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
     pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
     pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
+    pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
     pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
 }
@@ -1899,7 +1901,7 @@ function processQuery(query, explain, planIndex) {
         if (node.rangeVariable) {
           window += variableName(node.rangeVariable) + ' ' + keyword("WITH") + ' ';
         }
-        window += `{ preceding: ${JSON.stringify(node.preceding)}, following: ${JSON.stringify(node.following)}} `;
+        window += `{ preceding: ${JSON.stringify(node.preceding)}, following: ${JSON.stringify(node.following)} } `;
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
           window += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
@@ -2128,7 +2130,9 @@ function profileQuery(data, shouldPrint) {
     throw 'ArangoStatement needs initial data';
   }
   let options = data.options || {};
-  options.silent = true;
+  if (!options.hasOwnProperty('silent')) {
+    options.silent = true;
+  }
   options.allPlans = false; // always turn this off, as it will not work with profiling
   setColors(options.colors === undefined ? true : options.colors);
 
@@ -2415,7 +2419,7 @@ function inspectDump(filename, outfile) {
     let details = data.collections[collection];
     if (details.examples) {
       details.examples.forEach(function (example) {
-        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ", {isRestore: true});");
+        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ");");
       });
     }
     let missing = details.count;

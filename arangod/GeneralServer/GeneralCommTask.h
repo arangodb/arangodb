@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
+#pragma once
 
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/CommTask.h"
@@ -70,7 +69,6 @@ class GeneralCommTask : public CommTask {
   
   bool _reading;
   bool _writing;
-  std::string _url;
   
  private:
   
@@ -79,4 +77,3 @@ class GeneralCommTask : public CommTask {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

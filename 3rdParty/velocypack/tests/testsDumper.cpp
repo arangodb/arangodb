@@ -778,7 +778,6 @@ TEST(StringDumperTest, CustomWithCallbackDefaultHandler) {
   ASSERT_VELOCYPACK_EXCEPTION(handler.toString(b.slice(), nullptr, b.slice()), Exception::NotImplemented);
 }
 
-#if __cplusplus >= 201300
 TEST(StringDumperTest, CustomWithHeapCallbackDefaultHandler) {
   Builder b;
   b.openObject();
@@ -802,7 +801,6 @@ TEST(StringDumperTest, CustomWithHeapCallbackDefaultHandler) {
   ASSERT_VELOCYPACK_EXCEPTION(handler->dump(b.slice(), &dumper, b.slice()), Exception::NotImplemented);
   ASSERT_VELOCYPACK_EXCEPTION(handler->toString(b.slice(), nullptr, b.slice()), Exception::NotImplemented);
 }
-#endif
 
 TEST(StringDumperTest, CustomWithCallback) {
   Builder b;

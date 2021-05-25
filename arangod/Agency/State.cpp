@@ -123,8 +123,11 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   }
 
   TRI_ASSERT(_vocbase != nullptr);
-  auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
-  SingleCollectionTransaction trx(ctx, "log", AccessMode::Type::WRITE);
+  transaction::StandaloneContext ctx(*_vocbase);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(), &ctx),
+    "log", AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -209,8 +212,11 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
   // Multi docment transaction for log entry and configuration replacement -----
   TRI_ASSERT(_vocbase != nullptr);
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
-  transaction::Methods trx(ctx, {}, {"log", "configuration"}, {}, transaction::Options());
+  transaction::StandaloneContext ctx(*_vocbase);
+  transaction::Methods trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(), &ctx),
+    {}, {"log", "configuration"}, {}, transaction::Options());
 
   Result res = trx.begin();
   if (!res.ok()) {
@@ -1049,9 +1055,13 @@ bool State::loadOrPersistConfiguration() {
       }
     }
     _agent->id(uuid);
+    ServerState::instance()->setId(uuid);
 
-    auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
-    SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
+    transaction::StandaloneContext ctx(*_vocbase);
+    SingleCollectionTransaction trx(
+      std::shared_ptr<transaction::Context>(
+        std::shared_ptr<transaction::Context>(), &ctx),
+      "configuration", AccessMode::Type::WRITE);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1382,8 +1392,11 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
     }
 
     TRI_ASSERT(_vocbase != nullptr);
-    auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
-    SingleCollectionTransaction trx(ctx, "compact", AccessMode::Type::WRITE);
+    transaction::StandaloneContext ctx(*_vocbase);
+    SingleCollectionTransaction trx(
+      std::shared_ptr<transaction::Context>(
+        std::shared_ptr<transaction::Context>(), &ctx),
+      "compact", AccessMode::Type::WRITE);
   
     Result res = trx.begin();
 
@@ -1479,10 +1492,14 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
     }
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
+  transaction::StandaloneContext ctx(*_vocbase);
 
   MUTEX_LOCKER(guard, _configurationWriteLock);
-  SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &ctx),
+    "configuration", AccessMode::Type::WRITE);
   Result res = trx.begin();
 
   if (!res.ok()) {

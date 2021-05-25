@@ -1,4 +1,5 @@
 name: arangodb_aql_slow_query_time
+introducedIn: "3.6.10"
 help: |
   Execution time histogram for slow AQL queries.
 unit: s
@@ -9,5 +10,9 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Execution time histogram for slow AQL queries.
+  Execution time histogram for slow AQL queries, in seconds.
+  Queries are considered "slow" if their execution time is above the
+  threshold configured in the startup options `--query.slow-threshold`
+  or `--query.slow-streaming-threshold`, resp.

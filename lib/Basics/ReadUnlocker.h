@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_READ_UNLOCKER_H
-#define ARANGODB_BASICS_READ_UNLOCKER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Locking.h"
@@ -88,4 +87,3 @@ class ReadUnlocker {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

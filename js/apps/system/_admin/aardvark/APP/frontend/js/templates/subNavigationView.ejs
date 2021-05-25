@@ -5,7 +5,11 @@
     </li>
     <li id="healthStatus" class="infoEntry subMenuEntry pull-right positive">
       <a class="info health-info">HEALTH: </a>
-      <a class="state health-state">GOOD</a>
+      <% if (frontendConfig.clusterApiJwtPolicy !== 'jwt-all') { %>
+        <a class="state health-state">GOOD</a>
+      <% } else { %>
+        <a class="state health-state" title="cluster API is inaccessible due to missing permissions">n/a</a>
+      <% } %>
       <a class="icon health-icon">
         <i class="fa fa-check-circle"></i>
       </a>

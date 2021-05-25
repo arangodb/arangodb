@@ -21,6 +21,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 namespace arangodb::iresearch::pdd40{
 constexpr size_t PDD_RAW_LEN = 1774873;
 constexpr size_t PDD_COMPRESSED_LEN = 158424;

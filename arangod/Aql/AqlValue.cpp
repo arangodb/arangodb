@@ -1730,13 +1730,13 @@ size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue co
   auto const type = x.type();
   switch (type) {
     case arangodb::aql::AqlValue::VPACK_INLINE:
-      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.inlineSliceMeta.slice).hash());
+      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.inlineSliceMeta.slice).volatileHash());
     case arangodb::aql::AqlValue::VPACK_INLINE_INT48:
-      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.shortNumberMeta.data.slice.slice).hash());
+      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.shortNumberMeta.data.slice.slice).volatileHash());
     case arangodb::aql::AqlValue::VPACK_INLINE_INT64:
     case arangodb::aql::AqlValue::VPACK_INLINE_UINT64:
     case arangodb::aql::AqlValue::VPACK_INLINE_DOUBLE:
-      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.longNumberMeta.data.slice.slice).hash());
+      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.longNumberMeta.data.slice.slice).volatileHash());
     case arangodb::aql::AqlValue::VPACK_SLICE_POINTER:
       return std::hash<void const*>()(x._data.pointerMeta.pointer);
     case arangodb::aql::AqlValue::VPACK_MANAGED_SLICE:

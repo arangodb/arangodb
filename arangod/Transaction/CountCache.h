@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_COUNT_CACHE_H
-#define ARANGOD_TRANSACTION_COUNT_CACHE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -76,4 +75,3 @@ struct CountCache {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

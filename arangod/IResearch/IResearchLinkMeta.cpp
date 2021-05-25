@@ -770,8 +770,8 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
     }
   }
 
-  if (slice.hasKey(StaticStrings::CollectionNameField)) {
-    TRI_ASSERT(ServerState::instance()->isClusterRole());
+  if (slice.hasKey(StaticStrings::CollectionNameField) &&
+      ServerState::instance()->isClusterRole()) {
     auto const field = slice.get(StaticStrings::CollectionNameField);
     if (!field.isString()) {
       return false;

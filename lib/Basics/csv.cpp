@@ -52,15 +52,17 @@ void TRI_InitCsvParser(
 
   parser->_begin = static_cast<char*>(TRI_Allocate(length));
 
-  if (parser->_begin == nullptr) {
-    length = 0;
-  }
-
   parser->_start = parser->_begin;
   parser->_written = parser->_begin;
   parser->_current = parser->_begin;
   parser->_stop = parser->_begin;
-  parser->_end = parser->_begin + length;
+
+  if (parser->_begin == nullptr) {
+    length = 0;
+    parser->_end = nullptr;
+  } else {
+    parser->_end = parser->_begin + length;
+  }
 
   parser->_dataBegin = nullptr;
   parser->_dataAdd = nullptr;

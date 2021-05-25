@@ -118,6 +118,36 @@ TEST(StringRefTest, EmptyStringRef) {
   ASSERT_EQ(0, s.compare(StringRef()));
 }
 
+TEST(StringRefTest, StringRefFromStringEmptyView) {
+  std::string_view value;
+  StringRef s(value);
+
+  ASSERT_TRUE(s.empty());
+  ASSERT_EQ(0U, s.size());
+  ASSERT_EQ("", s.toString());
+  ASSERT_EQ(value.data(), s.data());
+
+  ASSERT_TRUE(s.equals(StringRef(value)));
+  ASSERT_TRUE(s.equals(s));
+  ASSERT_EQ(0, s.compare(s));
+  ASSERT_EQ(0, s.compare(StringRef(value)));
+}
+
+TEST(StringRefTest, StringRefFromStringView) {
+  std::string_view const value("the-quick-brown-foxx");
+  StringRef s(value);
+
+  ASSERT_TRUE(!s.empty());
+  ASSERT_EQ(20U, s.size());
+  ASSERT_EQ("the-quick-brown-foxx", s.toString());
+  ASSERT_EQ(value.data(), s.data());
+
+  ASSERT_TRUE(s.equals(StringRef(value)));
+  ASSERT_TRUE(s.equals(s));
+  ASSERT_EQ(0, s.compare(s));
+  ASSERT_EQ(0, s.compare(StringRef(value)));
+}
+
 TEST(StringRefTest, StringRefFromEmptyString) {
   std::string const value;
   StringRef s(value);
@@ -313,6 +343,16 @@ TEST(StringRefTest, StringRefAssignFromHashedStringRef) {
   ASSERT_EQ(0, s.compare(s));
   ASSERT_EQ(0, s.compare(StringRef(value)));
   ASSERT_EQ(0, s.compare(h));
+}
+
+TEST(StringRefTest, StringRefToStringView) {
+  StringRef s("the-quick-brown-foxx");
+  
+  std::string_view value = s;
+
+  ASSERT_TRUE(!value.empty());
+  ASSERT_EQ(20U, value.size());
+  ASSERT_EQ("the-quick-brown-foxx", value);
 }
 
 TEST(StringRefTest, CharacterAccess) {

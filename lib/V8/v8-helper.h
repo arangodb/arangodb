@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__HELPER_H
-#define ARANGODB_V8_V8__HELPER_H 1
+#pragma once
 
 #include <v8.h>
 #include "Basics/Common.h"
@@ -220,4 +219,3 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
   return rv;
 }
 }  // namespace arangodb
-#endif

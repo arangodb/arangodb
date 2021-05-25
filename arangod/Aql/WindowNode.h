@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_WINDOW_NODE_H
-#define ARANGOD_AQL_WINDOW_NODE_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Aql/CollectOptions.h"
@@ -99,7 +98,6 @@ class WindowBounds final {
 class WindowNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;  // TODO: remove
 
  public:
   WindowNode(ExecutionPlan* plan, ExecutionNodeId id, WindowBounds&& b,
@@ -139,6 +137,8 @@ class WindowNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   void setAggregateVariables(std::vector<AggregateVarInfo> const& aggregateVariables);
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -161,4 +161,3 @@ class WindowNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

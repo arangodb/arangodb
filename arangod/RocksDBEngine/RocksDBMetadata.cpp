@@ -282,6 +282,7 @@ void RocksDBMetadata::adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber se
       _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj + old->second.adjustment});
       _bufferedAdjs.erase(old);
     }
+    TRI_ASSERT(_bufferedAdjs.size() == 1);
   }
   LOG_TOPIC("1587f", TRACE, Logger::ENGINES)
       << "[" << this << "] buffered adjustment (" << seq << ", " << adj << ", "
@@ -415,11 +416,13 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
   // Step 4. store the revision tree
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
+    output.clear();
+      
+    rocksdb::SequenceNumber seq =
+        rcoll->serializeRevisionTree(output, maxCommitSeq, force);
+    appliedSeq = std::min(appliedSeq, seq);
+
     if (coll.useSyncByRevision()) {
-      output.clear();
-      rocksdb::SequenceNumber seq =
-          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
-      appliedSeq = std::min(appliedSeq, seq);
       if (!output.empty()) {
         rocksutils::uint64ToPersistent(output, seq);
 
@@ -443,10 +446,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
             << "collection with objectId '" << rcoll->objectId() << "'";
       }
     } else {
-      output.clear();
-      rocksdb::SequenceNumber seq =
-          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
-      appliedSeq = std::min(appliedSeq, seq);
       TRI_ASSERT(output.empty());
       key.constructRevisionTreeValue(rcoll->objectId());
       rocksdb::Status s = batch.Delete(cf, key.string());
@@ -467,6 +466,12 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
         << "collection with objectId '" << rcoll->objectId() << "'";
     rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
     appliedSeq = std::min(appliedSeq, seq);
+        
+    if (coll.useSyncByRevision()) {
+      // set the tree to sleep (note: hibernation requests may be ignored if there
+      // is not yet a need to hibernate)
+      rcoll->hibernateRevisionTree();
+    }
   }
 
   return res;
@@ -576,38 +581,38 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   }
 
   // Step 4. load the revision tree
-  if (coll.useSyncByRevision()) {
-    key.constructRevisionTreeValue(rcoll->objectId());
-    s = db->Get(ro, cf, key.string(), &value);
-    if (!s.ok() && !s.IsNotFound()) {
-      LOG_TOPIC("92caa", TRACE, Logger::ENGINES)
-          << "[" << this << "] error while recovering revision tree for "
-          << "collection with objectId '" << rcoll->objectId()
-          << "': " << rocksutils::convertStatus(s).errorMessage();
-      return rocksutils::convertStatus(s);
-    } else if (s.IsNotFound()) {
-      // no tree, check if collection is non-empty
-      auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
-      auto cmp = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
-                     ->GetComparator();
-      std::unique_ptr<rocksdb::Iterator> it{
-          db->NewIterator(ro, RocksDBColumnFamilyManager::get(
-                                  RocksDBColumnFamilyManager::Family::Documents))};
-      it->Seek(bounds.start());
-      if (it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0) {
-        LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
-            << "no revision tree found for collection with id '"
-            << coll.id().id() << "', rebuilding";
-        rcoll->rebuildRevisionTree(it);
-      } else {
-        LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
-            << "no revision tree found for collection with id '"
-            << coll.id().id() << "', but collection appears empty";
-      }
-    } else {
+  if (!coll.useSyncByRevision()) {
+    LOG_TOPIC("92ca9", TRACE, Logger::ENGINES)
+        << "[" << this << "] no need to recover revision tree for "
+        << "collection with objectId '" << rcoll->objectId() << "', "
+        << "it is not configured to sync by revision";
+    // nothing to do
+    return {};
+  }
+
+  // look for a persisted Merkle tree in RocksDB
+  key.constructRevisionTreeValue(rcoll->objectId());
+  s = db->Get(ro, cf, key.string(), &value);
+  if (!s.ok() && !s.IsNotFound()) {
+    LOG_TOPIC("92caa", TRACE, Logger::ENGINES)
+        << "[" << this << "] error while recovering revision tree for "
+        << "collection with objectId '" << rcoll->objectId()
+        << "': " << rocksutils::convertStatus(s).errorMessage();
+    return rocksutils::convertStatus(s);
+  } 
+
+  if (!s.IsNotFound()) {
+    // we do have a persisted tree.
+    TRI_ASSERT(value.size() > sizeof(uint64_t));
+
+    try {
       auto tree = containers::RevisionTree::fromBuffer(
           std::string_view(value.data(), value.size() - sizeof(uint64_t)));
+
       if (tree) {
+        // may throw
+        tree->checkConsistency();
+
         uint64_t seq = rocksutils::uint64FromPersistent(
             value.data() + value.size() - sizeof(uint64_t));
         // we may have skipped writing out the tree because it hadn't changed,
@@ -615,28 +620,50 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         // seq anyway, so take the max
         rocksdb::SequenceNumber useSeq = std::max(globalSeq, seq);
         rcoll->setRevisionTree(std::move(tree), useSeq);
+
         LOG_TOPIC("92cab", TRACE, Logger::ENGINES)
             << "[" << this << "] recovered revision tree for "
             << "collection with objectId '" << rcoll->objectId() << "', "
             << "valid through " << useSeq;
-      } else {
-        LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
-            << "unsupported revision tree format in collection "
-            << "with id '" << coll.id().id() << "', rebuilding";
-        std::unique_ptr<rocksdb::Iterator> it{
-            db->NewIterator(ro, RocksDBColumnFamilyManager::get(
-                                    RocksDBColumnFamilyManager::Family::Documents))};
-        rcoll->rebuildRevisionTree(it);
+
+        return {};
       }
+      
+      LOG_TOPIC("dcd99", WARN, Logger::ENGINES)
+          << "unsupported revision tree format for collection " << coll.name();
+
+      // we intentionally fall through to the tree rebuild process
+    } catch (std::exception const& ex) {
+      // error during tree processing.
+      // the tree is either invalid or some other exception happened
+      LOG_TOPIC("84247", WARN, Logger::ENGINES)
+          << "caught exception while loading revision tree in collection "
+          << coll.name() << ": " << ex.what();
     }
-  } else {
-    LOG_TOPIC("92ca9", TRACE, Logger::ENGINES)
-        << "[" << this << "] no need to recover revision tree for "
-        << "collection with objectId '" << rcoll->objectId() << "', "
-        << "it is not configured to sync by revision";
   }
 
-  return Result();
+  // no tree, or we read an invalid tree from persistence
+
+  // no tree, check if collection is non-empty
+  auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+  auto cmp = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                 ->GetComparator();
+  std::unique_ptr<rocksdb::Iterator> it{
+      db->NewIterator(ro, RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents))};
+  it->Seek(bounds.start());
+  if (it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0) {
+    LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
+        << "no or invalid revision tree found for collection " << coll.name() 
+        << ", rebuilding from collection data";
+    rcoll->rebuildRevisionTree(it);
+  } else {
+    LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
+        << "no revision tree found for collection " << coll.name()
+        << ", but collection appears empty";
+  }
+
+  return {};
 }
 
 void RocksDBMetadata::loadInitialNumberDocuments() {

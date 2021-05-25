@@ -51,7 +51,7 @@ fi
 [ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
 if "${ARANGOSH}" --version | grep -q "^enterprise-version: enterprise$"; then
-    ALLPROGRAMS="arangobackup arangobench arangod arangodump arangoexport arangoimport arangoinspect arangorestore arangosh"
+    ALLPROGRAMS="arangobackup arangobench arangod arangodump arangoexport arangoimport arangoinspect arangorestore arangosh arangovpack"
     for HELPPROGRAM in ${ALLPROGRAMS}; do
         echo "Dumping program options of ${HELPPROGRAM}"
         "${BIN_PATH}/${HELPPROGRAM}${EXT}" --dump-options > "Documentation/Examples/${HELPPROGRAM}.json"

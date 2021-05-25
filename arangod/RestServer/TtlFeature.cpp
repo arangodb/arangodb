@@ -401,7 +401,7 @@ TtlFeature::~TtlFeature() {
 }
 
 void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("ttl", "TTL options");
+  options->addSection("ttl", "TTL index options");
 
   options->addOption("ttl.frequency", "frequency (in milliseconds) for the TTL background thread invocation. "
                      "a value of 0 turns the TTL background thread off entirely",

@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FILES_H
-#define ARANGODB_BASICS_FILES_H 1
+#pragma once
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -437,4 +436,3 @@ struct TRI_SHA256Functor {
   EVP_MD_CTX* _context;
 };// struct TRI_SHA256Functor
 
-#endif

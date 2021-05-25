@@ -275,7 +275,28 @@ std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
 
 RestStatus RestAdminClusterHandler::execute() {
-  // No more check for admin rights here, since we handle this in every individual
+  // here we first do a glboal check, which is based on the setting in startup option
+  // `--cluster.api-jwt-policy`:
+  // - "jwt-all"    = JWT required to access all operations
+  // - "jwt-write"  = JWT required to access post/put/delete operations
+  // - "jwt-compat" = compatibility mode = same permissions as in 3.7 (default)
+  // this is a convenient way to lock the entire /_admin/cluster API for users w/o JWT.
+  if (!ExecContext::current().isSuperuser()) {
+    // no superuser... now check if the API policy is set to jwt-all or jwt-write.
+    // in this case only requests with valid JWT will have access to the operations
+    // (jwt-all = all operations require the JWT, jwt-write = POST/PUT/DELETE operations
+    // require the JWT, GET operations are handled as before).
+    bool const isWriteOperation =  (request()->requestType() != rest::RequestType::GET);
+    std::string const& apiJwtPolicy = server().getFeature<ClusterFeature>().apiJwtPolicy();
+
+    if (apiJwtPolicy == "jwt-all" || 
+        (apiJwtPolicy == "jwt-write" && isWriteOperation)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      return RestStatus::DONE;
+    }
+  }
+
+  // No further check for admin rights here, since we handle this in every individual
   // method below. Some of them do no longer require admin access
   // (e.g. /_admin/cluster/health). If you add a new API below here, please
   // make sure to check for permissions!
@@ -708,18 +729,13 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
       .thenValue([this, ctx = std::move(ctx),
                   jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
         if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-          VPackBuffer<uint8_t> payload;
+          VPackBuilder builder;;
           {
-            VPackBuilder builder(payload);
             VPackObjectBuilder ob(&builder);
-            builder.add(StaticStrings::Error, VPackValue(false));
-            builder.add("code", VPackValue(int(ResponseCode::ACCEPTED)));
             builder.add("id", VPackValue(jobId));
           }
 
-          resetResponse(rest::ResponseCode::ACCEPTED);
-          response()->setPayload(std::move(payload));
-
+          generateOk(rest::ResponseCode::ACCEPTED, builder);
         } else {
           generateError(result.asResult());
         }
@@ -924,17 +940,13 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
           .setValue(20s, jobToDoPath, builder.slice())
           .thenValue([this, jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == 200) {
-              VPackBuffer<uint8_t> payload;
+              VPackBuilder builder;
               {
-                VPackBuilder builder(payload);
                 VPackObjectBuilder ob(&builder);
-                builder.add("error", VPackValue(false));
-                builder.add("code", VPackValue(int(ResponseCode::ACCEPTED)));
                 builder.add("id", VPackValue(jobId));
               }
 
-              resetResponse(rest::ResponseCode::ACCEPTED);
-              response()->setPayload(std::move(payload));
+              generateOk(arangodb::rest::ResponseCode::ACCEPTED, builder);
             } else {
               generateError(result.asResult());
             }
@@ -1043,17 +1055,14 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
   }
 
   auto reporter = cluster::ShardDistributionReporter::instance(server());
-  VPackBuffer<uint8_t> resultBody;
+
+  VPackBuilder builder;
   {
-    VPackBuilder result(resultBody);
-    VPackObjectBuilder body(&result);
-    result.add(VPackValue("results"));
-    reporter->getDistributionForDatabase(_vocbase.name(), result);
-    result.add(StaticStrings::Error, VPackValue(false));
-    result.add(StaticStrings::Code, VPackValue(200));
+    VPackObjectBuilder obj(&builder);
+    builder.add(VPackValue("results"));
+    reporter->getDistributionForDatabase(_vocbase.name(), builder);
   }
-  resetResponse(rest::ResponseCode::OK);
-  response()->setPayload(std::move(resultBody));
+  generateOk(rest::ResponseCode::OK, builder); 
   return RestStatus::DONE;
 }
 
@@ -1065,17 +1074,14 @@ RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(std::st
   }
 
   auto reporter = cluster::ShardDistributionReporter::instance(server());
-  VPackBuffer<uint8_t> resultBody;
+
+  VPackBuilder builder;
   {
-    VPackBuilder result(resultBody);
-    VPackObjectBuilder body(&result);
-    result.add(VPackValue("results"));
-    reporter->getCollectionDistributionForDatabase(_vocbase.name(), collection, result);
-    result.add(StaticStrings::Error, VPackValue(false));
-    result.add(StaticStrings::Code, VPackValue(200));
+    VPackObjectBuilder obj(&builder);
+    builder.add(VPackValue("results"));
+    reporter->getCollectionDistributionForDatabase(_vocbase.name(), collection, builder);
   }
-  resetResponse(rest::ResponseCode::OK);
-  response()->setPayload(std::move(resultBody));
+  generateOk(rest::ResponseCode::OK, builder); 
   return RestStatus::DONE;
 }
 
@@ -1135,16 +1141,7 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
           .getValues(maintenancePath)
           .thenValue([this](AgencyReadResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              VPackBuffer<uint8_t> body;
-              {
-                VPackBuilder bodyBuilder(body);
-                VPackObjectBuilder ob(&bodyBuilder);
-                bodyBuilder.add(StaticStrings::Error, VPackValue(false));
-                bodyBuilder.add("result", result.value());
-              }  // use generateOk instead
-
-              resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(body));
+              generateOk(rest::ResponseCode::OK, result.value());
             } else {
               generateError(result.asResult());
             }
@@ -1185,16 +1182,12 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionS
                                "reactivated automatically in 60 minutes unless "
                                "this call is repeated until then."
                              : "Cluster supervision reactivated.";
-            VPackBuffer<uint8_t> body;
+            VPackBuilder builder;
             {
-              VPackBuilder bodyBuilder(body);
-              VPackObjectBuilder ob(&bodyBuilder);
-              bodyBuilder.add(StaticStrings::Error, VPackValue(false));
-              bodyBuilder.add("warning", VPackValue(msg));
+              VPackObjectBuilder obj(&builder);
+              builder.add("warning", VPackValue(msg));
             }
-
-            resetResponse(rest::ResponseCode::OK);
-            response()->setPayload(std::move(body));
+            generateOk(rest::ResponseCode::OK, builder);
           }
         } else {
           generateError(result.asResult());
@@ -1325,9 +1318,8 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
             auto targetPath = arangodb::cluster::paths::root()->arango()->target();
 
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              VPackBuffer<uint8_t> body;
+              VPackBuilder builder;
               {
-                VPackBuilder builder(body);
                 VPackObjectBuilder ob(&builder);
                 builder.add("numberOfDBServers",
                             result.slice().at(0).get(
@@ -1337,12 +1329,9 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
                                 targetPath->numberOfCoordinators()->vec()));
                 builder.add("cleanedServers", result.slice().at(0).get(
                                                   targetPath->cleanedServers()->vec()));
-                builder.add(StaticStrings::Error, VPackValue(false));
-                builder.add(StaticStrings::Code, VPackValue(200));
               }
 
-              resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(body));
+              generateOk(rest::ResponseCode::OK, builder); 
             } else {
               generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                             "agency communication failed");
@@ -1454,15 +1443,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
           .sendWriteTransaction(20s, std::move(trx))
           .thenValue([this](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              VPackBuffer<uint8_t> responseBody;
-              {
-                VPackBuilder builder(responseBody);
-                VPackObjectBuilder ob(&builder);
-                builder.add(StaticStrings::Error, VPackValue(false));
-                builder.add("code", VPackValue(200));
-              }
-              response()->setPayload(std::move(responseBody));
-              resetResponse(rest::ResponseCode::OK);
+              generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
             } else {
               generateError(result.asResult());
             }
@@ -1556,7 +1537,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
               std::string memberName = member.key.copyString();
 
               auto future =
-                  network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
+                  network::sendRequestRetry(pool, endpoint, fuerte::RestVerb::Get,
                                        "/_api/agency/config", VPackBuffer<uint8_t>())
                       .then([endpoint = std::move(endpoint), memberName = std::move(memberName)](
                                 futures::Try<network::Response>&& resp) mutable {
@@ -1593,16 +1574,12 @@ RestStatus RestAdminClusterHandler::handleHealth() {
             auto rootPath = arangodb::cluster::paths::root()->arango();
             auto& [configResult, storeResult] = result;
             if (storeResult.ok() && storeResult.statusCode() == fuerte::StatusOK) {
-              VPackBuffer<uint8_t> responseBody;
+              VPackBuilder builder;
               {
-                VPackBuilder builder(responseBody);
                 VPackObjectBuilder ob(&builder);
                 ::buildHealthResult(builder, configResult, storeResult.slice().at(0));
-                builder.add(StaticStrings::Error, VPackValue(false));
-                builder.add(StaticStrings::Code, VPackValue(200));
               }
-              resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(responseBody));
+              generateOk(rest::ResponseCode::OK, builder);
             } else {
               generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                             "agency communication failed");
@@ -1762,16 +1739,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
 
   return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue([this](AsyncAgencyCommResult&& result) {
     if (result.ok() && result.statusCode() == 200) {
-      VPackBuffer<uint8_t> responseBody;
-      {
-        VPackBuilder builder(responseBody);
-        VPackObjectBuilder ob(&builder);
-        builder.add(StaticStrings::Error, VPackValue(false));
-        builder.add("code", VPackValue(202));
-      }
-      resetResponse(rest::ResponseCode::ACCEPTED);
-      response()->setPayload(std::move(responseBody));
-
+      generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
     } else {
       generateError(result.asResult());
     }

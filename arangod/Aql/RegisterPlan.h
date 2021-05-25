@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGISTER_PLAN_H
-#define ARANGOD_AQL_REGISTER_PLAN_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -121,9 +120,6 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   RegisterCount nrConstRegs = 0;
 
-  // We collect the subquery nodes to deal with them at the end:
-  std::vector<T*> subqueryNodes;
-
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = RegisterId(RegisterId::maxRegisterId);
@@ -137,8 +133,6 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
  public:
   RegisterPlanT();
   RegisterPlanT(arangodb::velocypack::Slice slice, unsigned int depth);
-  // Copy constructor used for a subquery:
-  RegisterPlanT(RegisterPlan const& v, unsigned int newdepth);
   ~RegisterPlanT() = default;
 
   std::shared_ptr<RegisterPlanT> clone();
@@ -146,7 +140,6 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   RegisterId registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
   void increaseDepth();
   auto addRegister() -> RegisterId;
-  void addSubqueryNode(T* subquery);
   void shrink(T* start);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -167,4 +160,3 @@ std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r);
 
 }  // namespace arangodb::aql
 
-#endif

@@ -205,6 +205,8 @@ Output type:
    --svg               Generate SVG to stdout
    --gif               Generate GIF to stdout
    --raw               Generate symbolized jeprof data (useful with remote fetch)
+   --collapsed         Generate collapsed stacks for building flame graphs
+                       (see http://www.brendangregg.com/flamegraphs.html)
 
 Heap-Profile Options:
    --inuse_space       Display in-use (mega)bytes [default]
@@ -332,6 +334,7 @@ sub Init() {
   $main::opt_gif = 0;
   $main::opt_svg = 0;
   $main::opt_raw = 0;
+  $main::opt_collapsed = 0;
 
   $main::opt_nodecount = 80;
   $main::opt_nodefraction = 0.005;
@@ -405,6 +408,7 @@ sub Init() {
              "svg!"           => \$main::opt_svg,
              "gif!"           => \$main::opt_gif,
              "raw!"           => \$main::opt_raw,
+             "collapsed!"     => \$main::opt_collapsed,
              "interactive!"   => \$main::opt_interactive,
              "nodecount=i"    => \$main::opt_nodecount,
              "nodefraction=f" => \$main::opt_nodefraction,
@@ -490,6 +494,7 @@ sub Init() {
       $main::opt_svg +
       $main::opt_gif +
       $main::opt_raw +
+      $main::opt_collapsed +
       $main::opt_interactive +
       0;
   if ($modes > 1) {
@@ -621,6 +626,8 @@ sub FilterAndPrint {
       PrintText($symbols, $flat, $cumulative, -1);
     } elsif ($main::opt_raw) {
       PrintSymbolizedProfile($symbols, $profile, $main::prog);
+    } elsif ($main::opt_collapsed) {
+      PrintCollapsedStacks($symbols, $profile);
     } elsif ($main::opt_callgrind) {
       PrintCallgrind($calls);
     } else {
@@ -2810,6 +2817,40 @@ sub IsSecondPcAlwaysTheSame {
   return $second_pc;
 }
 
+sub ExtractSymbolNameInlineStack {
+  my $symbols = shift;
+  my $address = shift;
+
+  my @stack = ();
+
+  if (exists $symbols->{$address}) {
+    my @localinlinestack = @{$symbols->{$address}};
+    for (my $i = $#localinlinestack; $i > 0; $i-=3) {
+      my $file = $localinlinestack[$i-1];
+      my $fn = $localinlinestack[$i-0];
+
+      if ($file eq "?" || $file eq ":0") {
+        $file = "??:0";
+      }
+      if ($fn eq '??') {
+        # If we can't get the symbol name, at least use the file information.
+        $fn = $file;
+      }
+      my $suffix = "[inline]";
+      if ($i == 2) {
+        $suffix = "";
+      }
+      push (@stack, $fn.$suffix);
+    }
+  }
+  else {
+    # If we can't get a symbol name, at least fill in the address.
+    push (@stack, $address);
+  }
+
+  return @stack;
+}
+
 sub ExtractSymbolLocation {
   my $symbols = shift;
   my $address = shift;
@@ -2882,6 +2923,17 @@ sub FilterFrames {
   }
 
   return $result;
+}
+
+sub PrintCollapsedStacks {
+  my $symbols = shift;
+  my $profile = shift;
+
+  while (my ($stack_trace, $count) = each %$profile) {
+    my @address = split(/\n/, $stack_trace);
+    my @names = reverse ( map { ExtractSymbolNameInlineStack($symbols, $_) } @address );
+    printf("%s %d\n", join(";", @names), $count);
+  }
 }
 
 sub RemoveUninterestingFrames {

@@ -34,20 +34,19 @@ using namespace arangodb::options;
 namespace arangodb {
 
 NonceFeature::NonceFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Nonce"), _size(4 * 1024 * 1024) {
+    : ApplicationFeature(server, "Nonce") {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("nonce", "Configure the nonces");
-
-  options->addOption("--nonce.size", "the size of the hash array for nonces",
-                     new UInt64Parameter(&_size));
+  options->addSection("nonce", "nonces", "", true, true);
+  options->addObsoleteOption("--nonce.size", "the size of the hash array for nonces", true);
 }
 
 void NonceFeature::prepare() {
-  Nonce::setInitialSize(static_cast<size_t>(_size));
+  constexpr uint64_t initialSize = 2 * 1024 * 1024;
+  Nonce::setInitialSize(static_cast<size_t>(initialSize));
 }
 
 void NonceFeature::unprepare() { Nonce::destroy(); }

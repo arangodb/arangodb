@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_OPTIMIZER_RULE_H
-#define ARANGOD_AQL_AQL_OPTIMIZER_RULE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -323,6 +322,10 @@ struct OptimizerRule {
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
+    // allows execution nodes to asynchronously prefetch the next batch from their
+    // upstream node.
+    asyncPrefetch,
+    
     // reduce a sorted gather to an unsorted gather if only a single shard is affected
     decayUnnecessarySortedGatherRule,
 
@@ -390,4 +393,3 @@ struct OptimizerRule {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

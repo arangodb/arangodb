@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
+#pragma once
 
 #include "GeneralServer/GeneralCommTask.h"
 
@@ -70,11 +69,12 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void checkVSTPrefix();
 
   void processRequest();
+  void doProcessRequest();
 
   // called on IO context thread
   void writeResponse(RequestStatistics::Item stat);
 
-  std::string const& url();
+  std::string url() const;
 
   /// the node http-parser
   llhttp_t _parser;
@@ -97,4 +97,3 @@ class HttpCommTask final : public GeneralCommTask<T> {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

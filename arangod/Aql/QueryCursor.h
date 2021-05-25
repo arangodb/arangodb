@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_CURSOR_H
-#define ARANGOD_AQL_QUERY_CURSOR_H 1
+#pragma once
 
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -90,6 +89,12 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   void kill() override;
 
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  void debugKillQuery() override;
+
   size_t count() const override final { return 0; }
 
   std::pair<ExecutionState, Result> dump(velocypack::Builder& result) override final;
@@ -122,7 +127,6 @@ class QueryStreamCursor final : public arangodb::Cursor {
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
   
-  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// used when cursor is owned by V8 transaction
   transaction::Methods::StatusChangeCallback _stateChangeCb;
   
@@ -132,4 +136,3 @@ class QueryStreamCursor final : public arangodb::Cursor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

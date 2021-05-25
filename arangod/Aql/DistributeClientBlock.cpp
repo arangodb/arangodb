@@ -161,10 +161,10 @@ auto DistributeClientBlock::popJoinedBlock()
       output.advanceRow();
     }
     // All required rows copied.
-    // Drop block form queue.
+    // Drop block from queue.
     _queue.pop_front();
   }
-  return {newBlock, skipRes};
+  return {std::move(newBlock), skipRes};
 }
 
 auto DistributeClientBlock::execute(AqlCallStack callStack, ExecutionState upstreamState)

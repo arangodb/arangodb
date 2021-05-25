@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_INDEX_NODE_H
-#define ARANGOD_AQL_INDEX_NODE_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -179,4 +178,3 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

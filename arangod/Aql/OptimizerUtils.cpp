@@ -80,6 +80,7 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
     AstNode* sub = root->getMemberUnchecked(i);
 
     TRI_ASSERT(sub != nullptr && sub->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+    // cppcheck-suppress nullPointerRedundantCheck
     size_t const nAnd = sub->numMembers();
 
     if (nAnd != 1) {

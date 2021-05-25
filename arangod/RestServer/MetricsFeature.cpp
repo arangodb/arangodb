@@ -131,9 +131,6 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
       "arangodb_replication_initial_remove_apply_time_total",
       "arangodb_replication_initial_remove_apply_time");
     nameVersionTable.try_emplace(
-      "arangodb_replication_initial_lookup_time_total",
-      "arangodb_replication_initial_lookup_time");
-    nameVersionTable.try_emplace(
       "arangodb_replication_tailing_requests_total",
       "arangodb_replication_tailing_requests");
     nameVersionTable.try_emplace(
@@ -319,6 +316,9 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_scheduler_threads_stopped_total",
       "arangodb_scheduler_threads_stopped");
+    nameVersionTable.try_emplace(
+      "arangodb_scheduler_num_awake_threads",
+      "arangodb_scheduler_awake_threads");
     // For the sake of completeness, we add the renamings from v1 to v2 from the
     // statistics feature:
     nameVersionTable.try_emplace(
@@ -370,6 +370,32 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "rocksdb_engine_throttle_bps",
       "rocksdbengine_throttle_bps");
+
+    v2suppressions = {
+      // Note that if we ever need to suppress a metric which is
+      // coming from the statistics feature further code is needed
+      // there. This list is only considered for the normally registered
+      // metrics in the MetricsFeature.
+        "arangodb_maintenance_phase1_accum_runtime_msec_total",
+        "arangodb_maintenance_phase2_accum_runtime_msec_total",
+        "arangodb_maintenance_agency_sync_accum_runtime_msec_total",
+        "arangodb_maintenance_action_accum_runtime_msec_total",
+        "arangodb_maintenance_action_accum_queue_time_msec_total",
+        "arangodb_agency_supervision_accum_runtime_msec_total",
+        "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total",
+        "arangodb_load_current_accum_runtime_msec_total",
+        "arangodb_load_plan_accum_runtime_msec_total",
+        "arangodb_aql_slow_query_total",
+        "arangodb_scheduler_jobs_dequeued",
+        "arangodb_scheduler_jobs_submitted",
+        "arangodb_scheduler_jobs_done",
+    };
+    
+    v1suppressions = {
+        "arangodb_scheduler_jobs_dequeued_total",
+        "arangodb_scheduler_jobs_submitted_total",
+        "arangodb_scheduler_jobs_done_total",
+    };
   } catch (std::exception const& e) {
     LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
       "failed to allocate and populate the metrics v1/v2 translation table " << e.what();
@@ -439,8 +465,15 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
     
     std::lock_guard<std::recursive_mutex> guard(_lock);
     if (_globalLabels.find("shortname") == _globalLabels.end()) {
-      _globalLabels.try_emplace("shortname", ServerState::instance()->getShortName());
-      changed = true;
+      std::string shortName = ServerState::instance()->getShortName();
+      // Very early after a server start it is possible that the
+      // short name is not yet known. This check here is to prevent
+      // that the label is permanently empty if metrics are requested
+      // too early.
+      if (!shortName.empty()) {
+        _globalLabels.try_emplace("shortname", shortName);
+        changed = true;
+      }
     }
     if (_globalLabels.find("role") == _globalLabels.end() &&
         ServerState::instance() != nullptr &&
@@ -466,7 +499,10 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
       std::string name = i.second->name();
       std::string alternativeName;
       if (!v2) {
-        // In v1 we do a nameing conversion. Note that we set 
+        if (v1suppressions.find(name) != v1suppressions.end()) {
+          continue;
+        }
+        // In v1 we do a name conversion. Note that we set 
         // alternativeName == name in the end, in v2 though,
         // alternativeName is empty and no conversion happens.
         auto it = nameVersionTable.find(name);
@@ -489,6 +525,8 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
           }
         }
         alternativeName = name;
+      } else if(auto iter = v2suppressions.find(name); iter != v2suppressions.end()) {
+        continue;
       }
       if (lastType != name) {
         result += "# HELP " + name + " " + i.second->help() + "\n";
