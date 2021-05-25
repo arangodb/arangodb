@@ -383,7 +383,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                     LOG_TOPIC("9dbfb", TRACE, Logger::AGENCY) << "Successfully sent callback to " << url;
                   }
                 }
-              });
+              }).finally([](auto&&) noexcept { /* ignore all exceptions */ });
         } catch (std::exception const& ex) {
           LOG_TOPIC("c4612", DEBUG, Logger::AGENCY)
             << "Failed to deliver callback to endpoint " << endpoint << ": " << ex.what();

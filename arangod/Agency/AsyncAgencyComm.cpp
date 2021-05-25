@@ -151,6 +151,8 @@ void agencyAsyncInquiryHandleResponse(AsyncAgencyCommManager& man,
                                       VPackBuffer<uint8_t>&& body,
                                       futures::Try<network::Response>&& tryResult,
                                       std::string const& endpoint) noexcept {
+
+  TRI_ASSERT(!meta->promise.empty());
   try {
     auto& result = tryResult.unwrap();
     switch (result.error) {
@@ -210,6 +212,8 @@ void agencyAsyncInquiry(AsyncAgencyCommManager& man, std::shared_ptr<RequestMeta
                         VPackBuffer<uint8_t>&& body) {
   using namespace arangodb;
 
+  TRI_ASSERT(!meta->promise.empty());
+
   // check for conditions to abort
   auto waitTime = agencyAsyncWaitTime(*meta);
   if (agencyAsyncShouldCancel(man, *meta)) {
@@ -230,7 +234,7 @@ void agencyAsyncInquiry(AsyncAgencyCommManager& man, std::shared_ptr<RequestMeta
       << std::chrono::duration_cast<std::chrono::milliseconds>(waitTime).count() << "ms"
       << " timeout: " << meta->timeout.count() << "s";
 
-  agencyAsyncWait(*meta, waitTime).then([meta, &man, body = std::move(body)]() mutable {
+  agencyAsyncWait(*meta, waitTime).finally([meta, &man, body = std::move(body)](auto&&) mutable noexcept {
     try {
       // build inquire request
       VPackBuffer<uint8_t> query;
@@ -268,6 +272,8 @@ void agencyAsyncSendHandleResponse(AsyncAgencyCommManager& man,
                                    std::shared_ptr<RequestMeta> meta,
                                    futures::Try<network::Response>&& tryResult,
                                    std::string const& endpoint) noexcept {
+
+  TRI_ASSERT(!meta->promise.empty());
   try {
     auto& result = tryResult.unwrap();
     LOG_TOPIC("aac83", TRACE, Logger::AGENCYCOMM)
@@ -374,6 +380,8 @@ void agencyAsyncSendHandleResponse(AsyncAgencyCommManager& man,
 void agencyAsyncSend(AsyncAgencyCommManager& man, std::shared_ptr<RequestMeta> meta,
                      VPackBuffer<uint8_t>&& body) {
   using namespace arangodb;
+
+  TRI_ASSERT(!meta->promise.empty());
 
   // check for conditions to abort
   auto waitTime = agencyAsyncWaitTime(*meta);

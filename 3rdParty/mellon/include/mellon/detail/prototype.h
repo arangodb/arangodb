@@ -40,7 +40,7 @@ struct FUTURES_EMPTY_BASE future_prototype {
    *
    * @return Returns the result value of type T.
    */
-  T await() && {
+  [[nodiscard]] T await() && {
     struct data {
       detail::box<T> box;
       bool is_waiting = false, has_value = false;
@@ -81,7 +81,7 @@ struct FUTURES_EMPTY_BASE future_prototype {
    * @return
    */
   template <typename Rep, typename Period>
-  std::optional<T> await_with_timeout(std::chrono::duration<Rep, Period> const& duration) && {
+  [[nodiscard]] std::optional<T> await_with_timeout(std::chrono::duration<Rep, Period> const& duration) && {
     struct await_context {
       detail::box<T> box;
       bool is_waiting = false, has_value = false, abandoned = false;
@@ -125,7 +125,7 @@ struct FUTURES_EMPTY_BASE future_prototype {
    */
   template <typename F, std::enable_if_t<std::is_invocable_v<F, T&&>, int> = 0,
             typename R = std::invoke_result_t<F, T&&>>
-  auto and_capture(F&& f) && noexcept {
+  [[nodiscard]] auto and_capture(F&& f) && noexcept {
     return move_self().and_then([f = std::forward<F>(f)](T&& v) noexcept {
       return expect::captured_invoke(f, std::move(v));
     });
@@ -137,7 +137,7 @@ struct FUTURES_EMPTY_BASE future_prototype {
    * @return
    */
   template <typename U, std::enable_if_t<std::is_convertible_v<T, U>, int> = 0>
-  auto as() && {
+  [[nodiscard]] auto as() && {
     static_assert(!expect::is_expected_v<T>);
     if constexpr (std::is_same_v<T, U>) {
       return move_self();
@@ -155,7 +155,7 @@ struct FUTURES_EMPTY_BASE future_prototype {
   template <typename G, std::enable_if_t<std::is_nothrow_invocable_v<G, T&&>, int> = 0,
             typename ReturnValue = std::invoke_result_t<G, T&&>,
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>
-  auto bind(G&& g) {
+  [[nodiscard]] auto bind(G&& g) && {
     using future_tag = typename future_trait<ReturnValue>::tag_type;
     using future_value_type = typename future_trait<ReturnValue>::value_type;
     auto&& [f, p] = make_promise<future_value_type, future_tag>();
@@ -176,7 +176,7 @@ struct FUTURES_EMPTY_BASE future_prototype {
   template <typename G, std::enable_if_t<std::is_invocable_v<G, T&&>, int> = 0,
             typename ReturnValue = std::invoke_result_t<G, T&&>,
             std::enable_if_t<is_future_like_v<ReturnValue>, int> = 0>
-  auto bind_capture(G&& g) {
+  [[nodiscard]] auto bind_capture(G&& g) && {
     using future_tag = typename future_trait<ReturnValue>::tag_type;
     using future_value_type = typename future_trait<ReturnValue>::value_type;
     auto&& [f, p] = make_promise<expect::expected<future_value_type>, future_tag>();

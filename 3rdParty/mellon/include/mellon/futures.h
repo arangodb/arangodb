@@ -242,7 +242,7 @@ struct future
    */
   template <typename F, std::enable_if_t<std::is_nothrow_invocable_v<F, T&&>, int> = 0,
             typename R = std::invoke_result_t<F, T&&>>
-  auto and_then(F&& f) && noexcept;
+  [[nodiscard]] auto and_then(F&& f) && noexcept;
 
   /**
    * (fmap) Enqueues a callback to the init_future chain and returns a new init_future that awaits
@@ -257,7 +257,7 @@ struct future
    */
   template <typename F, std::enable_if_t<std::is_nothrow_invocable_v<F, T&&>, int> = 0,
             typename R = std::invoke_result_t<F, T&&>>
-  auto and_then_direct(F&& f) && noexcept -> future<R, Tag>;
+  [[nodiscard]] auto and_then_direct(F&& f) && noexcept -> future<R, Tag>;
 
   /**
    * Enqueues a final callback and ends the future chain.

@@ -54,7 +54,8 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
             std::enable_if_t<is_future_like_v<ReturnType>, int> = 0,
             typename ValueType = typename future_trait<ReturnType>::value_type,
             std::enable_if_t<!expect::is_expected_v<ValueType>, int> = 0>
-  auto then_bind(G&& g) && noexcept -> future<expect::expected<ValueType>, Tag> {
+  [[nodiscard]] auto then_bind(G&& g) && noexcept
+      -> future<expect::expected<ValueType>, Tag> {
     auto&& [f, p] = make_promise<expect::expected<ValueType>, Tag>();
     move_self().finally([g = std::forward<G>(g),
                          p = std::move(p)](expect::expected<T>&& t) mutable noexcept {
@@ -80,7 +81,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
             std::enable_if_t<is_future_like_v<ReturnType>, int> = 0,
             typename ValueType = typename future_trait<ReturnType>::value_type,
             std::enable_if_t<expect::is_expected_v<ValueType>, int> = 0>
-  auto then_bind(G&& g) && noexcept -> future<ValueType, Tag> {
+  [[nodiscard]] auto then_bind(G&& g) && noexcept -> future<ValueType, Tag> {
     auto&& [f, p] = make_promise<ValueType, Tag>();
     move_self().finally([g = std::forward<G>(g),
                          p = std::move(p)](expect::expected<T>&& t) mutable noexcept {
@@ -126,7 +127,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
    * contained exception.
    */
   template <typename U = T, std::enable_if_t<!std::is_void_v<U>, int> = 0>
-  T await_unwrap() && {
+  [[nodiscard]] T await_unwrap() && {
     return std::move(self()).await().unwrap();
   }
 
@@ -146,7 +147,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
    * @return
    */
   template <typename... Args>
-  auto unwrap_or(Args&&... args) {
+  [[nodiscard]] auto unwrap_or(Args&&... args) {
     return std::move(self()).and_then(
         [args_tuple = std::make_tuple(std::forward<Args>(args)...)](
             expect::expected<T>&& e) noexcept {
@@ -164,7 +165,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
    * @return Future containing just a `expected<T>`.
    */
   template <typename U = T, std::enable_if_t<expect::is_expected_v<U>, int> = 0>
-  auto flatten() {
+  [[nodiscard]] auto flatten() {
     return std::move(self()).and_then(
         [](expect::expected<T>&& e) noexcept { return std::move(e).flatten(); });
   }
@@ -179,7 +180,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
    * @return
    */
   template <typename E, typename... Args>
-  auto rethrow_nested(Args&&... args) noexcept {
+  [[nodiscard]] auto rethrow_nested(Args&&... args) noexcept {
     return std::move(self()).and_then(
         [args_tuple = std::make_tuple(std::forward<Args>(args)...)](
             expect::expected<T>&& e) mutable noexcept -> expect::expected<T> {
@@ -208,7 +209,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
    * @return
    */
   template <typename W, typename E, typename... Args>
-  auto rethrow_nested_if(Args&&... args) noexcept {
+  [[nodiscard]] auto rethrow_nested_if(Args&&... args) noexcept {
     return std::move(self()).and_then(
         [args_tuple = std::make_tuple(std::forward<Args>(args)...)](
             expect::expected<T>&& e) mutable noexcept -> expect::expected<T> {
@@ -232,7 +233,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
    * @return
    */
   template <typename U, std::enable_if_t<expect::is_expected_v<U>, int> = 0, typename R = typename U::value_type>
-  auto as() {
+  [[nodiscard]] auto as() {
     return std::move(self()).and_then(
         [](expect::expected<T>&& e) noexcept -> expect::expected<R> {
           return std::move(e).template as<R>();

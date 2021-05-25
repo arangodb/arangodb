@@ -147,7 +147,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   struct user_defined_additions<arangodb::futures::Try<T>, Fut>
       : arangodb::futures::scheduler_addition<T, Fut, arangodb::futures::arangodb_tag> {
     template <typename F>
-    auto thenValue(F&& f) && noexcept {
+    [[nodiscard]] auto thenValue(F&& f) && noexcept {
       return std::move(self()).then(std::forward<F>(f));
     }
 
@@ -157,7 +157,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
     }
 
     template<typename E, typename F>
-    auto thenError(F&& f) && noexcept {
+    [[nodiscard]] auto thenError(F&& f) && noexcept {
       return std::move(self()).template catch_error<E>(std::forward<F>(f));
     }
 
