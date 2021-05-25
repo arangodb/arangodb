@@ -184,6 +184,7 @@ if DUMPMETRICS:
                     S.write(prefix)
                     prefix = "  "
                     S.write(l)
+                S.write("\n")
 
 if MISSING:
     sys.exit(17)
