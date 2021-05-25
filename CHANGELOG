@@ -1,6 +1,13 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
+  documentation about the long deprecated features Simple Queries and
+	JavaScript-based graph traversal. Also removed the descriptions of the
+	JS API methods `collection.range()`, `collection.closedRange()`,
+	`cursor.setBatchSize()` and `cursor.getBatchSize()`. All the functionality
+	is superceded by AQL.
+
 * Added 2 options to allow HTTP redirection customization for root ("/") call of
   HTTP API:
 
