@@ -5846,10 +5846,13 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     if (outVariable != nullptr) {
       if (!n->isVarUsedLater(outVariable)) {
         // traversal path outVariable not used later
-        options->setProducePaths(/*vertices*/ false, /*edges*/ false, /*weights*/ false);
         if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
             pruneVars.end()) {
+          options->setProducePaths(/*vertices*/ false, /*edges*/ false, /*weights*/ false);
           traversal->setPathOutput(nullptr);
+        } else {
+          // we still need to build the path because PRUNE relies on it
+          options->setProducePaths(/*vertices*/ true, /*edges*/ true, /*weights*/ true);
         }
         modified = true;
       } else {
