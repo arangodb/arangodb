@@ -138,7 +138,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   };
 
   static constexpr auto finally_prealloc_size = 32;
-  static constexpr auto small_value_size = 64;
+  static constexpr auto small_value_size = 0;
   static constexpr bool disable_temporaries = true;
 
   template<typename T, template<typename> typename Fut>
