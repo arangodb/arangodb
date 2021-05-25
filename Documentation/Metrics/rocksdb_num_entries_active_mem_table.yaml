@@ -15,4 +15,3 @@ description: |
   "rocksdb-num-entries-active-mem-table".
   It shows the total number of entries in the active memtable,
   summed over all column families.
-
