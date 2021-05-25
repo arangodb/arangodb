@@ -10,10 +10,10 @@ exposedBy:
   - coordinator
   - dbserver
 description: |
-  This histogram shows how long requests to the agency took.
+  This histogram shows how long requests to the Agency took.
 threshold: |
   Usually, such requests should be relatively quick, mostly clearly
-  sub-second. 
+  sub-second.
 troubleshoot: |
-  If the network or the agents are overloaded, it can help to move
-  agent instances to separate machines.
+  If the network or the Agents are overloaded, it can help to move
+  Agent instances to separate machines.
