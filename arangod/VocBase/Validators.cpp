@@ -21,7 +21,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Validators.h"
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
@@ -149,10 +148,7 @@ void ValidatorBool::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidationParameterRule, VPackValue(_result));
 }
 
-std::string const& ValidatorBool::type() const {
-  static std::string const rv = std::string("bool");
-  return rv;
-}
+char const* ValidatorBool::type() const { return "bool"; }
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -187,9 +183,7 @@ void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
   TRI_ASSERT(!_builder.slice().isNone());
   b.add(StaticStrings::ValidationParameterRule, _builder.slice());
 }
-std::string const& ValidatorJsonSchema::type() const {
-  static std::string const rv = std::string("json");
-  return rv;
-}
+
+char const* ValidatorJsonSchema::type() const { return "json"; }
 
 }  // namespace arangodb

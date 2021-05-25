@@ -65,7 +65,7 @@ struct ValidatorBase {
   virtual Result validateOne(VPackSlice slice, VPackOptions const*) const = 0;
 
   void toVelocyPack(VPackBuilder&) const;
-  virtual std::string const& type() const = 0;
+  virtual char const* type() const = 0;
   std::string const& message() const { return this->_message; }
   std::string const& specialProperties() const;
   void setLevel(ValidationLevel level) { _level = level; }
@@ -83,7 +83,7 @@ struct ValidatorJsonSchema : public ValidatorBase {
   explicit ValidatorJsonSchema(VPackSlice params);
   Result validateOne(VPackSlice slice, VPackOptions const*) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
-  std::string const& type() const override;
+  char const* type() const override;
 
  private:
   std::shared_ptr<tao::json::basic_schema<tao::json::traits>> _schema;
@@ -94,7 +94,7 @@ struct ValidatorBool : public ValidatorBase {
   explicit ValidatorBool(VPackSlice params);
   Result validateOne(VPackSlice slice, VPackOptions const*) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
-  std::string const& type() const override;
+  char const* type() const override;
 
  private:
   bool _result;
