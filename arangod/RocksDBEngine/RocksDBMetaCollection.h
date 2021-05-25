@@ -38,6 +38,7 @@
 #include <functional>
 
 namespace arangodb {
+class RevisionReplicationIterator;
 
 class RocksDBMetaCollection : public PhysicalCollection {
  public:
@@ -79,6 +80,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree, uint64_t seq);
   std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
+  std::unique_ptr<containers::RevisionTree> computeRevisionTree(uint64_t batchId) override;
 
   bool needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const;
   rocksdb::SequenceNumber lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq);
@@ -118,7 +120,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
   virtual RocksDBKeyBounds bounds() const = 0;
   
   /// @brief produce a revision tree from the documents in the collection
-  ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> revisionTreeFromCollection();
+  ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> revisionTreeFromCollection(bool checkForBlockers);
+
+  std::unique_ptr<containers::RevisionTree> buildTreeFromIterator(RevisionReplicationIterator& it) const;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
@@ -129,10 +133,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
+ private:
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;
 
- private:
   ErrorCode doLock(double timeout, AccessMode::Type mode);
   bool haveBufferedOperations() const;
   std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree(std::size_t depth) const;
@@ -177,7 +181,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
     std::unique_ptr<containers::RevisionTree> clone() const;
     std::uint64_t count() const;
     std::uint64_t rootValue() const;
-    std::uint64_t maxDepth() const;
+    std::uint64_t depth() const;
 
     // potentially expensive! only call when necessary
     std::uint64_t compressedSize() const;
@@ -210,8 +214,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
     /// @brief collecion object, used only for context in log messages
     LogicalCollection const& _logicalCollection;
 
-    /// @brief maxDepth of tree. supposed to never change
-    std::uint64_t const _maxDepth;
+    /// @brief depth of tree. supposed to never change
+    std::uint64_t const _depth;
   
     /// @brief number of hibernation requests received (we may ignore the
     /// first few ones)
@@ -232,8 +236,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   // if the types of these containers are changed to some other type, please check the new
   // type's iterator invalidation rules first and if iterators are invalidated when new 
   // elements get inserted
-  std::multimap<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionInsertBuffers;
-  std::multimap<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionRemovalBuffers;
+  std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionInsertBuffers;
+  std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
   mutable std::mutex _revisionBufferLock;
 };

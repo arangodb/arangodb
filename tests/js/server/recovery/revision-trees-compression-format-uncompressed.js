@@ -132,7 +132,7 @@ function recoverySuite () {
   
       [colName1, colName2, colName3, colName4].forEach((cn) => {
         let summary = db[cn]._revisionTreeSummary();
-        assertEqual(4793554, summary.byteSize, summary);
+        assertEqual(4194370, summary.byteSize, summary);
       });
     },
 

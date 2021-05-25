@@ -7,6 +7,28 @@ devel
   Setting the option to off allows not storing data in RocksDB's block cache
   for queries that are known to read only semi-relevant or unimportant data.
 
+* Improve Merkle tree memory usage and allow left-growth of trees, too. This
+  can help with insertions of arbitrarily old data.
+
+* Added metric `arangodb_sync_rebuilds_total` to track the full rebuild of a
+  shard follower after too many subsequent shard synchronization failures. This
+  metric should always have a value of 0. Everything else indicates a serious
+  problem.
+
+* Fixed BTS-422: SingleRemoteModification in AQL behaves different.
+
+  This disables the optimizer rule `optimize-cluster-single-document-operations`
+  for array inputs, e.g.
+  
+      INSERT [...] INTO collection
+      REMOVE [...] IN collection
+
+  For the cases, the optimization is not pulled off, and the normal insert/
+  update/replace/remove behavior is executed, which will fail because of an
+  array being used as input.
+
+* Fixed issue BTS-424: fix invalid input row handling in WINDOW execution.
+
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
 
