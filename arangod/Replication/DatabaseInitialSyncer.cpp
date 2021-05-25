@@ -93,45 +93,6 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
 std::string const kTypeString = "type";
 std::string const kDataString = "data";
 
-arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
-                                 arangodb::LogicalCollection& collection,
-                                 std::vector<std::size_t>& toRemove,
-                                 arangodb::InitialSyncerIncrementalSyncStats& stats) {
-  using arangodb::PhysicalCollection;
-  using arangodb::Result;
-
-  if (toRemove.empty()) {
-    // no need to do anything
-    return Result();
-  }
-
-  PhysicalCollection* physical = collection.getPhysical();
-
-  arangodb::ManagedDocumentResult mdr;
-  arangodb::OperationOptions options;
-  options.silent = true;
-  options.ignoreRevs = true;
-  options.isRestore = true;
-  options.waitForSync = false;
-
-  for (std::size_t rid : toRemove) {
-    double t = TRI_microtime();
-    auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr, options);
-
-    stats.waitedForRemovals += TRI_microtime() - t;
-    if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-      // ignore not found, we remove conflicting docs ahead of time
-      return r;
-    }
-
-    if (r.ok()) {
-      ++stats.numDocsRemoved;
-    }
-  }
-
-  return Result();
-}
-
 }  // namespace
 
 namespace arangodb {
