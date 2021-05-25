@@ -759,7 +759,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   // This is basically used to simulate a Database Upgrade
   // as the value is not modifyable by the user.
   auto changeInternalCollectionTypePlan(std::string const& dbName, std::string const& planId,
-                                        LogicalCollection::InternalCollectionType type,
+                                        LogicalCollection::InternalValidatorType type,
                                         Node& plan) -> void {
     auto path = arangodb::cluster::paths::aliases::plan()
                     ->collections()
@@ -772,20 +772,20 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& props = plan(vec);
     VPackBuilder v;
     v.add(VPackValue((int)type));
-    props(StaticStrings::InternalCollectionType) = v.slice();
+    props(StaticStrings::InternalValidatorTypes) = v.slice();
   }
 
   auto assertIsChangeInternalCollectionTypeAction(ActionDescription const& action,
                                                   std::string const& dbName,
-                                                  LogicalCollection::InternalCollectionType type) {
+                                                  LogicalCollection::InternalValidatorType type) {
     ASSERT_EQ(action.name(), "UpdateCollection");
     ASSERT_EQ(action.get("database"), dbName);
     auto const props = action.properties()->slice();
     ASSERT_TRUE(props.isObject());
     ASSERT_EQ(props.length(), 1);
-    ASSERT_TRUE(props.hasKey(StaticStrings::InternalCollectionType));
-    ASSERT_EQ(props.get(StaticStrings::InternalCollectionType)
-                  .getNumericValue<LogicalCollection::InternalCollectionType>(),
+    ASSERT_TRUE(props.hasKey(StaticStrings::InternalValidatorTypes));
+    ASSERT_EQ(props.get(StaticStrings::InternalValidatorTypes)
+                  .getNumericValue<LogicalCollection::InternalValidatorType>(),
               type);
   }
 };
@@ -1131,7 +1131,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 TEST_F(MaintenanceTestActionPhaseOne,
        modify_internal_collection_type_in_plan_should_update_the_according_collection) {
   plan = originalPlan;
-  auto type = LogicalCollection::InternalCollectionType::LocalSmartEdge;
+  auto type = LogicalCollection::InternalValidatorType::LocalSmartEdge;
   changeInternalCollectionTypePlan(dbName(), planId(), type, plan);
   std::unordered_set<std::string> dirty{dbName()};
   bool callNotify = false;

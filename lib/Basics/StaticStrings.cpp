@@ -256,8 +256,8 @@ std::string const StaticStrings::SyncByRevision("syncByRevision");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Schema("schema");
-std::string const StaticStrings::InternalCollectionType(
-    "internalCollectionType");
+std::string const StaticStrings::InternalValidatorTypes(
+    "internalValidatorType");
 std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
