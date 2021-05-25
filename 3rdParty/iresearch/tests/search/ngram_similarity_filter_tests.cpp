@@ -1068,7 +1068,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
-  docs_t expected{13, 11, 12, 2, 1, 8, 5};
+  docs_t expected{ 11, 12, 13, 8, 1, 5, 2};
   irs::order order;
   order.add<irs::bm25_sort>(false);
 
@@ -1087,9 +1087,9 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
-  docs_t expected{ 13, 11, 12, 2, 1, 8, 5};
+  docs_t expected{ 11, 12, 13, 1, 2, 8, 5};
   irs::order order;
-  order.add<irs::bm25_sort>(false).b(1); // set to BM15 mode
+  order.add<irs::bm25_sort>(false).b(0.f); // set to BM15 mode
 
   check_query(filter, order, expected, rdr);
 }

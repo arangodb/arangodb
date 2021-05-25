@@ -75,7 +75,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   };
 
   struct debug_assertion_handler {
-    void operator()(bool condition, const char*) const noexcept { TRI_ASSERT(condition) }
+    void operator()(bool condition, const char*) const noexcept { TRI_ASSERT(condition); }
   };
 
   template <typename T>

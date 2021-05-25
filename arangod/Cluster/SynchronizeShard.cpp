@@ -192,8 +192,11 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
 static arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
                                         uint64_t& c) {
   std::string collectionName(collection.name());
-  auto ctx = std::make_shared<transaction::StandaloneContext>(collection.vocbase());
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
+  transaction::StandaloneContext ctx(collection.vocbase());
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(), &ctx),
+    collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
   if (res.fail()) {
@@ -665,6 +668,72 @@ bool SynchronizeShard::first() {
   std::string planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
   std::string leader = _description.get(THE_LEADER);
+ 
+  size_t failuresInRow = feature().replicationErrors(database, shard);
+  
+  // from this many number of failures in a row, we will step on the brake
+  constexpr size_t delayThreshold = 4;
+
+  TRI_IF_FAILURE("SynchronizeShard::maxReplicationErrors") {
+    // simulate we have got lots of failures
+    failuresInRow = MaintenanceFeature::maxReplicationErrorsPerShard;
+  }
+  
+  TRI_IF_FAILURE("SynchronizeShard::someReplicationErrors") {
+    // simulate we have got some failures
+    failuresInRow = delayThreshold;
+  }
+
+  
+  if (failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) { 
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
+    auto vocbase = &guard.database();
+    
+    auto collection = vocbase->lookupCollection(shard);
+    if (collection != nullptr) {
+      LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
+          << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
+          << "' for central '" << database << "/" << planId << "' encountered "
+          << failuresInRow << " failures in a row. now dropping follower shard for "
+          << "a full rebuild";
+
+      // remove all recorded failures, so in next run we can start with a clean state
+      _feature.removeReplicationError(getDatabase(), getShard());
+
+      // drop shard (💥)
+      methods::Collections::drop(*collection, false, 3.0); 
+      result(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
+      return false;
+    }
+  }
+
+  if (failuresInRow >= delayThreshold) {
+    // shard synchronization has failed several times in a row.
+    // now step on the brake a bit. this blocks our maintenance thread, but currently
+    // there seems to be no better way to delay the execution of maintenance tasks.
+    double sleepTime = 2.0 + 0.1 * (failuresInRow * (failuresInRow + 1) / 2);
+
+    sleepTime = std::min<double>(sleepTime, 15.0);
+    
+    LOG_TOPIC("40376", INFO, Logger::MAINTENANCE)
+        << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
+        << "' for central '" << database << "/" << planId << "' encountered "
+        << failuresInRow << " failures in a row. delaying next sync by " 
+        << sleepTime << " s";
+
+    while (sleepTime > 0.0) {
+      if (feature().server().isStopping()) {
+        result(TRI_ERROR_SHUTTING_DOWN);
+        return false;
+      }
+       
+      constexpr double sleepPerRound = 0.5;
+      // sleep only for up to 0.5 seconds at a time so we can react quickly to shutdown
+      std::this_thread::sleep_for(std::chrono::duration<double>(std::min(sleepTime, sleepPerRound)));
+      sleepTime -= sleepPerRound;
+    }
+  }
 
   LOG_TOPIC("fa651", DEBUG, Logger::MAINTENANCE)
       << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
@@ -1169,9 +1238,9 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     if (oldCount == docCount) {
       // no change happened due to recalculation. now try recounting on leader too.
       // this is last resort and should not happen often!
-      LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE)
-         << "recalculating collection count on leader for "
-         << getDatabase() << "/" << getShard();
+      LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
+          << "recalculating collection count on leader for "
+          << getDatabase() << "/" << getShard();
 
       VPackBuffer<uint8_t> buffer;
       VPackBuilder tmp(buffer);
@@ -1179,15 +1248,40 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
       network::RequestOptions options;
       options.database = getDatabase();
-      options.timeout = network::Timeout(600.0);  // this can be slow!!!
+      options.timeout = network::Timeout(900.0);  // this can be slow!!!
       options.skipScheduler = true;  // hack to speed up future.get()
 
       std::string const url = "/_api/collection/" + collection.name() + "/recalculateCount";
 
-      auto response = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
-                                           url, std::move(buffer), options)
-                          .await_unwrap();
-      auto result = response.combinedResult();
+      // send out the request
+      auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
+                                         url, std::move(buffer), options);
+        
+      // while the request is pending, rebuild the revision tree for our local collection
+      {
+        LOG_TOPIC("04c25", INFO, Logger::MAINTENANCE) 
+            << "rebuilding revision tree on follower for shard " 
+            << getDatabase() << "/" << getShard();
+    
+        double start = TRI_microtime();
+        Result result = collection.getPhysical()->rebuildRevisionTree();
+        
+        if (result.fail()) {
+          LOG_TOPIC("92233", WARN, Logger::MAINTENANCE) 
+              << "unable to rebuild revision tree on follower for shard " 
+              << getDatabase() << "/" << getShard() << ": " << result.errorMessage();
+          // still go on...
+        }
+
+        LOG_TOPIC("1c9e7", INFO, Logger::MAINTENANCE) 
+            << "rebuilt revision tree on follower for shard " 
+            << getDatabase() << "/" << getShard() << ": " << result.errorMessage() 
+            << ", took: " << (TRI_microtime() - start) << "s";
+      }
+
+      network::Response const& r = std::move(future).await_unwrap();
+
+      Result result = r.combinedResult();
 
       if (result.fail()) {
         auto const errorMessage = StringUtils::concatT(
@@ -1198,7 +1292,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
         LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
         return arangodb::Result(result.errorNumber(), std::move(errorMessage));
       } else {
-        auto const resultSlice = response.slice();
+        auto const resultSlice = r.slice();
         if (VPackSlice c = resultSlice.get("count"); c.isNumber()) {
           LOG_TOPIC("bc26d", DEBUG, Logger::MAINTENANCE) << "leader's shard count response is " << c.getNumber<uint64_t>();
         }
@@ -1239,6 +1333,13 @@ void SynchronizeShard::setState(ActionState state) {
     if (COMPLETE == state) {
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
         << "SynchronizeShard: synchronization completed for shard " << getDatabase() << "/" << getShard();
+    
+      // because we succeeded now, we can wipe out all past failures
+      _feature.removeReplicationError(getDatabase(), getShard());
+    } else {
+      TRI_ASSERT(FAILED == state);
+      // increase failure counter for this shard
+      _feature.storeReplicationError(getDatabase(), getShard());
     }
 
     // Acquire current version from agency and wait for it to have been dealt

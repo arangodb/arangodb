@@ -987,18 +987,6 @@ std::multimap<TimePoint, std::string> const& Store::timeTable() const {
   return _timeTable;
 }
 
-/// Observer table
-std::unordered_multimap<std::string, std::string>& Store::observerTable() {
-  _storeLock.assertLockedByCurrentThread();
-  return _observerTable;
-}
-
-/// Observer table
-std::unordered_multimap<std::string, std::string> const& Store::observerTable() const {
-  _storeLock.assertLockedByCurrentThread();
-  return _observerTable;
-}
-
 /// Observed table
 std::unordered_multimap<std::string, std::string>& Store::observedTable() {
   _storeLock.assertLockedByCurrentThread();

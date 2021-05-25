@@ -253,8 +253,6 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Reports.cpp
   Pregel/Reports.h
   Pregel/Utils.cpp
-  Pregel/Worker-templates-algorithms.cpp
-  Pregel/Worker-templates-native-types.cpp
   Pregel/Worker.cpp
   Pregel/WorkerConfig.cpp
   RestHandler/RestControlPregelHandler.cpp
@@ -805,6 +803,10 @@ endif()
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 
+add_library(arango_restart_action STATIC
+  RestServer/RestartAction.cpp
+)
+
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_GRAPH_SOURCES}
@@ -998,6 +1000,9 @@ target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb arango::validation)
+target_link_libraries(arango_rocksdb arango_restart_action)
+
+target_link_libraries(arango_storage_engine_common arango::validation)
 
 if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
