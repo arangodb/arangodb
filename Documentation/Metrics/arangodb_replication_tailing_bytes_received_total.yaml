@@ -12,9 +12,9 @@ exposedBy:
 description:
   The accumulated number of bytes received from a leader for replication
   tailing requests. The higher the amount of bytes is, the more data
-  is being processed afterwards on the follower dbserver.
+  is being processed afterwards on the follower DB-Server.
 troubleshoot:
   Compare this metric with all other related participating follower
-  dbservers. If the given value on a dbserver is considerable higher,
+  DB-Servers. If the given value on a DB-Server is considerable higher,
   you might want to think about rebalancing your data as the overall
   work might not be evenly distributed.
