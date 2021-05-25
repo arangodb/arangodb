@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue BTS-424: fix invalid input row handling in WINDOW execution.
+
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
 
