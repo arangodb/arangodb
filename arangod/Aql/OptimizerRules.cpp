@@ -5846,11 +5846,9 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     if (outVariable != nullptr) {
       if (!n->isVarUsedLater(outVariable)) {
         // traversal path outVariable not used later
-        LOG_DEVEL << "VARIABLE NOT USED LATER";
         options->setProducePaths(/*vertices*/ false, /*edges*/ false, /*weights*/ false);
         if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
             pruneVars.end()) {
-        LOG_DEVEL << "COMPLETELY REMOVED";
           traversal->setPathOutput(nullptr);
         }
         modified = true;
