@@ -35,6 +35,7 @@ const {
   createSuite
 } = require('@arangodb/testutils/ldap-generic-failover.js');
 
+// username, password, database, result
 const dualLdapResults = {
   User1NoPwLdap1: ["user1", "", "test", FORBIDDEN],
   User1PwLdap1: ["user1", "abc", "test", FORBIDDEN],
