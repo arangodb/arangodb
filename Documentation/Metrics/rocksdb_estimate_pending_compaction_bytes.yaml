@@ -17,4 +17,3 @@ description: |
   rewrite to get all levels down to under target size. Not valid for
   other compactions than level-based. This value is summed over all
   column families.
-

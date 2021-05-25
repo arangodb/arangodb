@@ -13,7 +13,13 @@ devel
   update/replace/remove behavior is executed, which will fail because of an
   array being used as input.
 
-* Fixes SEARCH-7: inconsistent BM25 scoring for LEVENSHTEIN_MATCH function.
+* Fixed issue BTS-424: fix invalid input row handling in WINDOW execution.
+
+* Fixed ES-881: ensure that LDAP options for async, referrals and restart set
+  the off value correctly. Otherwise, this can result in an "operations error".
+
+* Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
+  function.
 
 * Return error 1948 when a negative edge was detected during a
   weighted traversal or was used as default weight.
