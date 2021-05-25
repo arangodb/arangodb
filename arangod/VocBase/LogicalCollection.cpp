@@ -1246,7 +1246,7 @@ void LogicalCollection::setInternalCollectionType(InternalCollectionType type) {
 }
 
 void LogicalCollection::setInternalValidator(std::unique_ptr<arangodb::ValidatorBase> validator) {
-  // We can only set the InteralSchema once.
+  // We can only set the internalValidator once.
   // We cannot override it
   TRI_ASSERT(!_internalValidator);
   TRI_ASSERT(validator);
