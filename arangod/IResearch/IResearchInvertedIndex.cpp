@@ -23,9 +23,9 @@
 
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/AqlHelper.h"
-#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "Basics/AttributeNameParser.h"
+#include "Cluster/ServerState.h"
 
 
 namespace {
@@ -139,7 +139,52 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
 
 aql::AstNode* IResearchInvertedIndex::specializeCondition(aql::AstNode* node,
                                                           aql::Variable const* reference) const {
-  return nullptr;
+  return node;
+}
+
+IResearchInvertedIndexFactory::IResearchInvertedIndexFactory(application_features::ApplicationServer& server)
+    : IndexTypeFactory(server) {
+}
+
+bool IResearchInvertedIndexFactory::equal(velocypack::Slice const& lhs,
+                                          velocypack::Slice const& rhs,
+                                          std::string const& dbname) const {
+  return false;
+}
+
+std::shared_ptr<Index> IResearchInvertedIndexFactory::instantiate(LogicalCollection& collection,
+                                                                  velocypack::Slice const& definition,
+                                                                  IndexId id,
+                                                                  bool isClusterConstructor) const {
+  return std::shared_ptr<Index>();
+}
+
+Result IResearchInvertedIndexFactory::normalize(velocypack::Builder& normalized, velocypack::Slice definition,
+                                                bool isCreation, TRI_vocbase_t const& vocbase) const {
+  TRI_ASSERT(normalized.isOpenObject());
+  // FIXME: We need separate handling in case of non-identity analyzers
+  Result res = IndexFactory::processIndexFields(definition, normalized, 1, SIZE_MAX, isCreation, false);
+  if (res.ok()) {
+    normalized.add(arangodb::StaticStrings::IndexType,
+                   arangodb::velocypack::Value(arangodb::Index::oldtypeName(
+                   arangodb::Index::TRI_IDX_TYPE_SEARCH_INDEX)));
+
+    if (isCreation && !arangodb::ServerState::instance()->isCoordinator() &&
+        !definition.hasKey("objectId")) {
+        normalized.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+    }
+    normalized.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
+    normalized.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
+
+    // FIXME: make indexing true background?
+    bool bck = basics::VelocyPackHelper::getBooleanValue(
+        definition, arangodb::StaticStrings::IndexInBackground, false);
+    normalized.add(arangodb::StaticStrings::IndexInBackground, VPackValue(bck));
+
+    
+
+  }
+  return res;
 }
 
 } // namespace iresearch

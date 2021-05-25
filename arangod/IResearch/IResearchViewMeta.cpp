@@ -365,7 +365,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName("cleanupIntervalStep");
+    static const std::string fieldName(StaticStrings::CleanupIntervalStep);
 
     mask->_cleanupIntervalStep = slice.hasKey(fieldName);
 
@@ -384,7 +384,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName("commitIntervalMsec");
+    static const std::string fieldName(StaticStrings::CommitIntervalMsec);
 
     mask->_commitIntervalMsec = slice.hasKey(fieldName);
 
@@ -403,7 +403,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName("consolidationIntervalMsec");
+    static const std::string fieldName(StaticStrings::ConsolidationIntervalMsec);
 
     mask->_consolidationIntervalMsec = slice.hasKey(fieldName);
 
@@ -422,7 +422,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional object
-    static const std::string fieldName("consolidationPolicy");
+    static const std::string fieldName(StaticStrings::ConsolidationPolicy);
     std::string errorSubField;
 
     mask->_consolidationPolicy = slice.hasKey(fieldName);
@@ -516,7 +516,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName("writebufferActive");
+    static const std::string fieldName(StaticStrings::WritebufferActive);
 
     mask->_writebufferActive = slice.hasKey(fieldName);
 
@@ -535,7 +535,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName("writebufferIdle");
+    static const std::string fieldName(StaticStrings::WritebufferIdle);
 
     mask->_writebufferIdle = slice.hasKey(fieldName);
 
@@ -554,7 +554,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName("writebufferSizeMax");
+    static const std::string fieldName(StaticStrings::WritebufferSizeMax);
 
     mask->_writebufferSizeMax = slice.hasKey(fieldName);
 
@@ -638,19 +638,19 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
 
   if ((!ignoreEqual || _cleanupIntervalStep != ignoreEqual->_cleanupIntervalStep) &&
       (!mask || mask->_cleanupIntervalStep)) {
-    builder.add("cleanupIntervalStep", arangodb::velocypack::Value(_cleanupIntervalStep));
+    builder.add(StaticStrings::CleanupIntervalStep, arangodb::velocypack::Value(_cleanupIntervalStep));
   }
 
   if ((!ignoreEqual || _commitIntervalMsec != ignoreEqual->_commitIntervalMsec) // if requested or different
       && (!mask || mask->_commitIntervalMsec)) {
     builder.add( // add value
-      "commitIntervalMsec", arangodb::velocypack::Value(_commitIntervalMsec) // args
+      StaticStrings::CommitIntervalMsec, arangodb::velocypack::Value(_commitIntervalMsec) // args
     );
   }
 
   if ((!ignoreEqual || _consolidationIntervalMsec != ignoreEqual->_consolidationIntervalMsec) &&
       (!mask || mask->_consolidationIntervalMsec)) {
-    builder.add("consolidationIntervalMsec",
+    builder.add(StaticStrings::ConsolidationIntervalMsec,
                 arangodb::velocypack::Value(_consolidationIntervalMsec));
   }
 
@@ -658,7 +658,7 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
           _consolidationPolicy.properties(),
           ignoreEqual->_consolidationPolicy.properties(), false)) &&
       (!mask || mask->_consolidationPolicy)) {
-    builder.add("consolidationPolicy", _consolidationPolicy.properties());
+    builder.add(StaticStrings::ConsolidationPolicy, _consolidationPolicy.properties());
   }
   /* FIXME TODO temporarily disable, eventually used for ordering internal data
     structures if ((!ignoreEqual || _locale != ignoreEqual->_locale) && (!mask
@@ -673,17 +673,17 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
 
   if ((!ignoreEqual || _writebufferActive != ignoreEqual->_writebufferActive) &&
       (!mask || mask->_writebufferActive)) {
-    builder.add("writebufferActive", arangodb::velocypack::Value(_writebufferActive));
+    builder.add(StaticStrings::WritebufferActive, arangodb::velocypack::Value(_writebufferActive));
   }
 
   if ((!ignoreEqual || _writebufferIdle != ignoreEqual->_writebufferIdle) &&
       (!mask || mask->_writebufferIdle)) {
-    builder.add("writebufferIdle", arangodb::velocypack::Value(_writebufferIdle));
+    builder.add(StaticStrings::WritebufferIdle, arangodb::velocypack::Value(_writebufferIdle));
   }
 
   if ((!ignoreEqual || _writebufferSizeMax != ignoreEqual->_writebufferSizeMax) &&
       (!mask || mask->_writebufferSizeMax)) {
-    builder.add("writebufferSizeMax", arangodb::velocypack::Value(_writebufferSizeMax));
+    builder.add(StaticStrings::WritebufferSizeMax, arangodb::velocypack::Value(_writebufferSizeMax));
   }
 
   if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) && (!mask || mask->_primarySort)) {

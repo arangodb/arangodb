@@ -26,6 +26,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchInvertedIndex.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
@@ -353,6 +354,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer
       server);
   static const TtlIndexFactory ttlIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
+  static const iresearch::IResearchInvertedIndexFactory iresearchInvertedIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -365,6 +367,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer
   emplace("rocksdb", persistentIndexFactory);
   emplace("skiplist", skiplistIndexFactory);
   emplace("ttl", ttlIndexFactory);
+  emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
+          iresearchInvertedIndexFactory);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>

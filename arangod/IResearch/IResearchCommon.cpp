@@ -59,6 +59,13 @@ arangodb::LogTopic& logTopic() { return TOPIC; }
 /*static*/ std::string const StaticStrings::PrimarySortField("primarySort");
 /*static*/ std::string const StaticStrings::StoredValuesField("storedValues");
 /*static*/ std::string const StaticStrings::CollectionNameField("collectionName");
+/*static*/ std::string const StaticStrings::ConsolidationIntervalMsec("consolidationIntervalMsec");
+/*static*/ std::string const StaticStrings::CommitIntervalMsec("commitIntervalMsec");
+/*static*/ std::string const StaticStrings::CleanupIntervalStep("cleanupIntervalStep");
+/*static*/ std::string const StaticStrings::ConsolidationPolicy("consolidationPolicy");
+/*static*/ std::string const StaticStrings::WritebufferActive("writebufferActive");
+/*static*/ std::string const StaticStrings::WritebufferIdle("writebufferIdle");
+/*static*/ std::string const StaticStrings::WritebufferSizeMax("writebufferSizeMax");
 
 }  // namespace iresearch
 }  // namespace arangodb
