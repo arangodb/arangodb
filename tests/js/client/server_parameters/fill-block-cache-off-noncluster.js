@@ -26,7 +26,7 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const db = require('@arangodb').db;
+const helper = require('@arangodb/testutils/block-cache-test-helper');
 const cn = 'UnitTestsCollection';
 
 if (getOptions === true) {
@@ -37,16 +37,7 @@ if (getOptions === true) {
   };
 }
 if (runSetup === true) {
-  let payload = Array(1024).join("x"); 
-  let c = db._create(cn);
-  let docs = [];
-  for (let i = 0; i < 250 * 1000; ++i) {
-    docs.push({ _key: "test" + i, value1: i, value2: "test" + i, payload });
-    if (docs.length === 1000) {
-      c.insert(docs);
-      docs = [];
-    }
-  }
+  helper.setup(cn);
   return true;
 }
 
@@ -56,39 +47,13 @@ function FillBlockCacheSuite() {
   'use strict';
 
   return {
-    
     testDbQuery: function() {
-      const oldValue = db._engineStats()["rocksdb.block-cache-usage"];
-      let result = db._query("FOR doc IN @@collection RETURN doc.value1", { "@collection": cn }, { fillBlockCache: false }).toArray();
-      assertEqual(250 * 1000, result.length);
-      
-      const newValue = db._engineStats()["rocksdb.block-cache-usage"];
-      // allow for some other background things to be run, thus add 1MB of leeway
-      assertTrue(newValue <= oldValue + 1000 * 1000, { oldValue, newValue });
-      
-      result = db._query("FOR doc IN @@collection RETURN doc.value1", { "@collection": cn }, { fillBlockCache: false }).toArray();
-      assertEqual(250 * 1000, result.length);
-      
-      const newValue2 = db._engineStats()["rocksdb.block-cache-usage"];
-      // allow for some other background things to be run, thus add 1MB of leeway
-      assertTrue(newValue2 <= newValue + 1000 * 1000, { newValue, newValue2 });
+      helper.testDbQuery(cn, false);
     },
     
     testHttpApi: function() {
-      const oldValue = db._engineStats()["rocksdb.block-cache-usage"];
-      arango.POST("/_api/cursor", { query: "FOR doc IN @@collection RETURN doc.value1", bindVars: { "@collection": cn }, options: { fillBlockCache: false } });
-      
-      const newValue = db._engineStats()["rocksdb.block-cache-usage"];
-      // allow for some other background things to be run, thus add 1MB of leeway
-      assertTrue(newValue <= oldValue + 1000 * 1000, { oldValue, newValue });
-      
-      arango.POST("/_api/cursor", { query: "FOR doc IN @@collection RETURN doc.value1", bindVars: { "@collection": cn }, options: { fillBlockCache: false } });
-      
-      const newValue2 = db._engineStats()["rocksdb.block-cache-usage"];
-      // allow for some other background things to be run, thus add 1MB of leeway
-      assertTrue(newValue2 <= newValue + 1000 * 1000, { newValue, newValue2 });
+      helper.testHttpApi(cn, false);
     },
-
   };
 }
 
