@@ -670,18 +670,7 @@ bool SynchronizeShard::first() {
   
   // from this many number of failures in a row, we will step on the brake
   constexpr size_t delayThreshold = 4;
-
-  TRI_IF_FAILURE("SynchronizeShard::maxReplicationErrors") {
-    // simulate we have got lots of failures
-    failuresInRow = MaintenanceFeature::maxReplicationErrorsPerShard;
-  }
-  
-  TRI_IF_FAILURE("SynchronizeShard::someReplicationErrors") {
-    // simulate we have got some failures
-    failuresInRow = delayThreshold;
-  }
-
-  
+    
   if (failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) { 
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
@@ -695,8 +684,14 @@ bool SynchronizeShard::first() {
           << failuresInRow << " failures in a row. now dropping follower shard for "
           << "a full rebuild";
 
+      // remove these failure points for testing
+      TRI_RemoveFailurePointDebugging("SynchronizeShard::wrongChecksum");
+      TRI_RemoveFailurePointDebugging("disableCountAdjustment");
+
       // remove all recorded failures, so in next run we can start with a clean state
       _feature.removeReplicationError(getDatabase(), getShard());
+    
+      ++feature().server().getFeature<ClusterFeature>().followersTotalRebuildCounter();
 
       // drop shard (💥)
       methods::Collections::drop(*collection, false, 3.0); 
@@ -718,6 +713,10 @@ bool SynchronizeShard::first() {
         << "' for central '" << database << "/" << planId << "' encountered "
         << failuresInRow << " failures in a row. delaying next sync by " 
         << sleepTime << " s";
+  
+    TRI_IF_FAILURE("SynchronizeShard::noSleepOnSyncError") {
+      sleepTime = 0.0;
+    }
 
     while (sleepTime > 0.0) {
       if (feature().server().isStopping()) {
@@ -1195,6 +1194,10 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   res = addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId, clientId,
                          syncerId, _clientInfoString, 60.0);
 
+  TRI_IF_FAILURE("SynchronizeShard::wrongChecksum") {
+    res.reset(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
+  }
+
   // if we get a checksum mismatch, it means that we got different counts of
   // documents on the leader and the follower, which can happen if collection
   // counts are off for whatever reason. 
@@ -1206,7 +1209,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     // on the leader while we are recalculating the counts
     readLockGuard.fire();
     
-    collection.vocbase().server().getFeature<ClusterFeature>().followersWrongChecksumCounter()++;
+    ++collection.vocbase().server().getFeature<ClusterFeature>().followersWrongChecksumCounter();
 
     // recalculate collection count on follower
     LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
@@ -1254,28 +1257,6 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
                                          url, std::move(buffer), options);
         
-      // while the request is pending, rebuild the revision tree for our local collection
-      {
-        LOG_TOPIC("04c25", INFO, Logger::MAINTENANCE) 
-            << "rebuilding revision tree on follower for shard " 
-            << getDatabase() << "/" << getShard();
-    
-        double start = TRI_microtime();
-        Result result = collection.getPhysical()->rebuildRevisionTree();
-        
-        if (result.fail()) {
-          LOG_TOPIC("92233", WARN, Logger::MAINTENANCE) 
-              << "unable to rebuild revision tree on follower for shard " 
-              << getDatabase() << "/" << getShard() << ": " << result.errorMessage();
-          // still go on...
-        }
-
-        LOG_TOPIC("1c9e7", INFO, Logger::MAINTENANCE) 
-            << "rebuilt revision tree on follower for shard " 
-            << getDatabase() << "/" << getShard() << ": " << result.errorMessage() 
-            << ", took: " << (TRI_microtime() - start) << "s";
-      }
-
       network::Response const& r = future.get();
 
       Result result = r.combinedResult();

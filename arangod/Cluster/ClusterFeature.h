@@ -100,6 +100,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   Counter& followersDroppedCounter() { return _followersDroppedCounter->get(); }
   Counter& followersRefusedCounter() { return _followersRefusedCounter->get(); }
   Counter& followersWrongChecksumCounter() { return _followersWrongChecksumCounter->get(); }
+  Counter& followersTotalRebuildCounter() { return _followersTotalRebuildCounter->get(); }
 
   /**
    * @brief Add databases to dirty list
@@ -180,6 +181,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
+  std::optional<std::reference_wrapper<Counter>> _followersTotalRebuildCounter;
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
 
   /// @brief lock for dirty database list
