@@ -1,7 +1,7 @@
 name: arangodb_agency_local_commit_index
 introducedIn: "3.7.1"
 help: |
-  This agent's commit index.
+  This Agent's commit index.
 unit: number
 type: gauge
 category: Agency
@@ -9,5 +9,5 @@ complexity: simple
 exposedBy:
   - agent
 description: |
-  This agent's commit index (i.e. the index until it has advanced in 
-  the agency's RAFT protocol).
+  This Agent's commit index (i.e. the index until it has advanced in
+  the Agency's RAFT protocol).
