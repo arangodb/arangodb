@@ -20,6 +20,6 @@ description: |
 threshold: Normally this time should be clearly sub-second.
 troubleshoot: If you see larger values here, in particular over a longer period
   of time, you should consider reducing the load of the server (if possible),
-  scaling up (bigger machine) or scaling out (more coordinators). Otherwise
+  scaling up (bigger machine) or scaling out (more Coordinators). Otherwise
   requests cannot be processed in a timely manner and you run the risk that the
   queue becomes full and requests are declined.
