@@ -24,7 +24,7 @@ attribute(s)
 
 - *schema*: Object that specifies the collection level schema 
   for documents. The attribute keys `rule`, `level` and `message` must follow
-  the rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+  the rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/document-schema-validation.html)
 
 On success an object with the following attributes is returned:
 
@@ -55,7 +55,7 @@ On success an object with the following attributes is returned:
 * *schema* (optional, default is *null*):
   Object that specifies the collection level schema for documents.
   The attribute keys `rule`, `level` and `message` must follow the rules
-  documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+  documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/document-schema-validation.html)
 
 **Note**: except for *waitForSync* and *name*, collection
 properties **cannot be changed** once a collection is created. To rename
