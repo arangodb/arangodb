@@ -416,6 +416,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_conn_canceled) {
 
   // the default behaviour should be to retry after 200 ms
   std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  ASSERT_FALSE(f.is_ready());
   ASSERT_EQ(pool->_conn->_sendRequestNum, 1);
 
   // Step 2: Now respond with no error

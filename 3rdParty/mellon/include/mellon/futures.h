@@ -281,6 +281,11 @@ struct future
   // TODO move _base pointer to future_prototype.
   [[nodiscard]] bool empty() const noexcept { return _base == nullptr; }
 
+  [[nodiscard]] bool is_ready() const noexcept {
+    return holds_inline_value() ||
+           (_base != nullptr && _base->_next.load(std::memory_order_relaxed) ==
+                                FUTURES_INVALID_POINTER_PROMISE_FULFILLED(T));
+  }
   /**
    * Abandons a future chain. If the promise is abandoned as well, nothing happens.
    * If, however, the promise is fulfilled it depends on the `abandoned_future_handler`

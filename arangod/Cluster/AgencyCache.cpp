@@ -446,7 +446,7 @@ void AgencyCache::run() {
                 "Failed to get poll result from agency: " << e.what();
               increaseWaitTime();
             });
-        std::move(ret).await_unwrap();
+        std::move(ret).await_unwrap(); // ignore other exceptions
       } else {
         increaseWaitTime();
         LOG_TOPIC("9393e", DEBUG, Logger::CLUSTER) <<
