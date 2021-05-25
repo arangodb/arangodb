@@ -13,7 +13,7 @@
     initialize: function (models, options) {
       var self = this;
 
-      $.ajax('whoAmI?_=' + Date.now(), {async: true}).done(
+      $.ajax('whoAmI?_=' + encodeURIComponent(Date.now()), {async: true}).done(
         function (data) {
           if (this.activeUser === false || this.activeUser === null) {
             self.activeUser = 'root';

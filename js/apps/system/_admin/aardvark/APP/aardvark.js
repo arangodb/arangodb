@@ -47,8 +47,6 @@ const fs = require('fs');
 const _ = require('lodash');
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
-const API_DOCS = require(module.context.fileName('api-docs.json'));
-API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
 const router = createRouter();
 module.exports = router;
@@ -127,6 +125,8 @@ authRouter.use((req, res, next) => {
 
 router.get('/api/*', module.context.apiDocumentation({
   swaggerJson (req, res) {
+    const API_DOCS = require(module.context.fileName('api-docs.json'));
+    API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
     res.json(API_DOCS);
   }
 }))
@@ -294,6 +294,7 @@ authRouter.get('/query/download/:user', function (req, res) {
     res.throw('not found');
   }
 
+  // TODO: properly escape name here
   res.attachment(`queries-${db._name()}-${user.user}.json`);
   res.json(user.extra.queries || []);
 })
@@ -314,6 +315,7 @@ authRouter.get('/query/result/download/:query', function (req, res) {
   }
 
   const result = db._query(query.query, query.bindVars).toArray();
+  // TODO: needs proper escaping of filename 
   res.attachment(`results-${db._name()}.json`);
   res.json(result);
 })

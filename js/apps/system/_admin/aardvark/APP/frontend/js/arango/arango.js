@@ -160,11 +160,8 @@
         '_id': true,
         '_rev': true,
         '_key': true,
-        '_bidirectional': true,
-        '_vertices': true,
         '_from': true,
         '_to': true,
-        '$id': true
       };
     },
 
@@ -1043,6 +1040,7 @@
         a.style = 'display: none';
         a.href = blobUrl;
 
+        // TODO: needs proper escaping of filename 
         if (filename) {
           a.download = filename + '-' + window.frontendConfig.db + '.' + type;
         } else {

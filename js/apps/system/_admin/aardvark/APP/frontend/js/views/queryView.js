@@ -250,7 +250,7 @@
 
       $.ajax({
         type: 'GET',
-        url: 'whoAmI?_=' + Date.now(),
+        url: 'whoAmI?_=' + encodeURIComponent(Date.now()),
         success: function (data) {
           var name = data.user;
 

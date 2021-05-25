@@ -113,7 +113,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       type: 'GET',
       cache: false,
-      // url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
       url: url,
       contentType: 'application/json',
       processData: false,
@@ -170,7 +169,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       return;
     }
 
-    var url = 'whoAmI?_=' + Date.now();
+    var url = 'whoAmI?_=' + encodeURIComponent(Date.now());
     if (frontendConfig.react) {
       url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
     }
