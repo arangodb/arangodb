@@ -1382,7 +1382,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     });
     futures::Future<Result> commitResult = _trx->commitAsync();
     //static_assert(futures::Future<Result>::is_value_inlined);
-    TRI_ASSERT(commitResult.holds_inline_value());
+    //TRI_ASSERT(commitResult.holds_inline_value());
     if (auto res = std::move(commitResult).await_unwrap(); res.fail()) {
       THROW_ARANGO_EXCEPTION(std::move(res));
     }
