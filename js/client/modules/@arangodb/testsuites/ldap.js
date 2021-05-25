@@ -169,10 +169,10 @@ const tests = {
   },
 };
 
-function parseOptions (options) {
+function parseOptions(options) {
   let toReturn = tests;
 
-  _.each(toReturn, function (opt) {
+  _.each(toReturn, function(opt) {
     if (options.ldapHost) {
       opt.conf['ldap.server'] = options.ldapHost;
     }
@@ -189,7 +189,7 @@ function parseOptions (options) {
   return toReturn;
 }
 
-function authenticationLdapSearchModePrefixSuffix (options) {
+function authenticationLdapSearchModePrefixSuffix(options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -213,7 +213,7 @@ function authenticationLdapSearchModePrefixSuffix (options) {
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPrefixSuffix.conf);
 }
 
-function authenticationLdapSearchMode (options) {
+function authenticationLdapSearchMode(options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -237,7 +237,7 @@ function authenticationLdapSearchMode (options) {
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearch.conf);
 }
 
-function authenticationLdapSearchModePlaceholder (options) {
+function authenticationLdapSearchModePlaceholder(options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -261,7 +261,7 @@ function authenticationLdapSearchModePlaceholder (options) {
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPlaceholder.conf);
 }
 
-function authenticationLdapRolesModePrefixSuffix (options) {
+function authenticationLdapRolesModePrefixSuffix(options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -285,7 +285,7 @@ function authenticationLdapRolesModePrefixSuffix (options) {
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRolesPrefixSuffix.conf);
 }
 
-function authenticationLdapRolesMode (options) {
+function authenticationLdapRolesMode(options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -309,7 +309,7 @@ function authenticationLdapRolesMode (options) {
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRoles.conf);
 }
 
-function authenticationLdapTwoLdap (options) {
+function authenticationLdapTwoLdap(options) {
   // this will start a setup with two active LDAP servers
 
   if (options.skipLdap === true) {
@@ -335,7 +335,7 @@ function authenticationLdapTwoLdap (options) {
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapFailover.conf);
 }
 
-function authenticationLdapFirstLdap (options) {
+function authenticationLdapFirstLdap(options) {
   // this will start a setup with two active LDAP servers
 
   if (options.skipLdap === true) {
@@ -365,7 +365,7 @@ function authenticationLdapFirstLdap (options) {
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, conf);
 }
 
-function authenticationLdapSecondLdap (options) {
+function authenticationLdapSecondLdap(options) {
   // this will start a setup with two active LDAP servers
 
   if (options.skipLdap === true) {
@@ -395,10 +395,10 @@ function authenticationLdapSecondLdap (options) {
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, conf);
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   // just a convenience wrapper for the regular tests
-  testFns['ldap'] = [ 'ldaprole', 'ldapsearch', 'ldapsearchplaceholder', 'ldaprolesimple', 'ldapsearchsimple' ];
+  testFns['ldap'] = ['ldaprole', 'ldapsearch', 'ldapsearchplaceholder', 'ldaprolesimple', 'ldapsearchsimple'];
 
   testFns['ldaprole'] = authenticationLdapRolesMode;
   testFns['ldapsearch'] = authenticationLdapSearchMode;
@@ -421,6 +421,10 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
     }
   }
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+    fnDocs[attrname] = functionsDocumentation[attrname];
+  }
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+    optionsDoc.push(optionsDocumentation[i]);
+  }
 };

@@ -29,25 +29,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const { FORBIDDEN, OK, createSuite }
-  = require('@arangodb/testutils/ldap-generic-failover.js');
+const {
+  FORBIDDEN,
+  OK,
+  createSuite
+} = require('@arangodb/testutils/ldap-generic-failover.js');
 
-const dualLdapResults =
-{
-  User1NoPwLdap1:  [ "user1",                     "",    "test", FORBIDDEN ],
-  User1PwLdap1:    [ "user1",                     "abc", "test", FORBIDDEN ],
-  User1NoPwLdap2:  [ "user1,dc=arangodb",         "",    "test", FORBIDDEN ],
-  User1PwLdap2:    [ "user1,dc=arangodb",         "abc", "test", OK        ],
+const dualLdapResults = {
+  User1NoPwLdap1: ["user1", "", "test", FORBIDDEN],
+  User1PwLdap1: ["user1", "abc", "test", FORBIDDEN],
+  User1NoPwLdap2: ["user1,dc=arangodb", "", "test", FORBIDDEN],
+  User1PwLdap2: ["user1,dc=arangodb", "abc", "test", OK],
 
-  DonaldNoPwLdap1: [ "The Donald",                "",    "test", FORBIDDEN ],
-  DonaldPwLdap1:   [ "The Donald",                "abc", "test", FORBIDDEN ],
-  DonaldNoPwLdap2: [ "The Donald,dc=arangodb",    "",    "test", FORBIDDEN ],
-  DonaldPwLdap:    [ "The Donald,dc=arangodb",    "abc", "test", FORBIDDEN ],
+  DonaldNoPwLdap1: ["The Donald", "", "test", FORBIDDEN],
+  DonaldPwLdap1: ["The Donald", "abc", "test", FORBIDDEN],
+  DonaldNoPwLdap2: ["The Donald,dc=arangodb", "", "test", FORBIDDEN],
+  DonaldPwLdap: ["The Donald,dc=arangodb", "abc", "test", FORBIDDEN],
 
-  MerkelNoPwLdap1: [ "Angela Merkel",             "",    "test", FORBIDDEN ],
-  MerkelPwLdap1:   [ "Angela Merkel",             "abc", "test", FORBIDDEN ],
-  MerkelNoPwLdap2: [ "Angela Merkel,dc=arangodb", "",    "test", FORBIDDEN ],
-  MerkelPwLdap2:   [ "Angela Merkel,dc=arangodb", "abc", "test", OK        ]
+  MerkelNoPwLdap1: ["Angela Merkel", "", "test", FORBIDDEN],
+  MerkelPwLdap1: ["Angela Merkel", "abc", "test", FORBIDDEN],
+  MerkelNoPwLdap2: ["Angela Merkel,dc=arangodb", "", "test", FORBIDDEN],
+  MerkelPwLdap2: ["Angela Merkel,dc=arangodb", "abc", "test", OK]
 };
 
 const DualLdapSuite = createSuite(dualLdapResults);

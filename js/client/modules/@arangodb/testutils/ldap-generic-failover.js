@@ -40,112 +40,108 @@ const OK = exports.OK = 'OK';
 
 // generate a single test
 const buildTestFunction = function(value) {
-    const user = value[0];
-    const pw = value[1];
-    const dbname = value[2];
-    const result = value[3];
+  const user = value[0];
+  const pw = value[1];
+  const dbname = value[2];
+  const result = value[3];
 
-    if (result === FORBIDDEN) {
-	return function() {
-	    try {
-		arango.reconnect(arango.getEndpoint(), dbname, user, pw);
-		fail();
-	    } catch (e) {
-		assertEqual(10, e.errorNum);
-	    }
-	};
-    } else if (result === OK) {
-	return function() {
-	    try {
-		arango.reconnect(arango.getEndpoint(), dbname, user, pw);
-	    } catch (e) {
-		fail();
-	    }
-	};
-    } else {
-	return function() {
-	    fail();
-	};
-    }
+  if (result === FORBIDDEN) {
+    return function() {
+      try {
+        arango.reconnect(arango.getEndpoint(), dbname, user, pw);
+        fail();
+      } catch (e) {
+        assertEqual(10, e.errorNum);
+      }
+    };
+  } else if (result === OK) {
+    return function() {
+      try {
+        arango.reconnect(arango.getEndpoint(), dbname, user, pw);
+      } catch (e) {
+        fail();
+      }
+    };
+  } else {
+    return function() {
+      fail();
+    };
+  }
 };
 
 // generate a test suite
 exports.createSuite = function(definition) {
-    'use strict';
+  'use strict';
 
-    // hardcoded in testsuite
-    const jwtSecret = 'haxxmann';
-    const dbname = 'test';
-    const role1 = "role1";
-    const role2 = "adminrole";
-    const role3 = "bundeskanzlerin";
-    const roles = [role1, role2, role3];
+  // hardcoded in testsuite
+  const jwtSecret = 'haxxmann';
+  const dbname = 'test';
+  const role1 = "role1";
+  const role2 = "adminrole";
+  const role3 = "bundeskanzlerin";
+  const roles = [role1, role2, role3];
 
-    // standard functions first
-    const suite = {
-	setUpAll: function () {
-	    arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+  // standard functions first
+  const suite = {
+    setUpAll: function() {
+      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
 
-	    for (const role of roles) {
-		try {
-		    users.remove(":role:" + role);
-		}
-		catch (err) {
-		}
-	    }
+      for (const role of roles) {
+        try {
+          users.remove(":role:" + role);
+        } catch (err) {}
+      }
 
-	    try {
-		db._dropDatabase(dbname);
-	    } catch (err) {
-	    }
-	},
+      try {
+        db._dropDatabase(dbname);
+      } catch (err) {}
+    },
 
-	tearDownAll: function () {
-	    arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+    tearDownAll: function() {
+      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
 
-	    for (const role of roles) {
-		try {
-		    users.remove(":role:" + role);
-		}
-		catch (err) {
-		}
-	    }
-	    
-	    try {
-		db._dropDatabase(dbname);
-	    } catch (err) {
-	    }
-	},
-    
-	testCreateRoles: function () {
-	    for (const role of roles) {
-		const fr = ":role:" + role;
-		let r = users.save(fr, "password", true);
-		assertEqual(fr, r.user);
-	    }
-	    
-	    users.reload();
-	    
-	    for (const role of roles) {
-		const fr = ":role:" + role;
-		assertTrue(users.exists(fr));
-	    }
-	},
+      for (const role of roles) {
+        try {
+          users.remove(":role:" + role);
+        } catch (err) {}
+      }
 
-	testDatabases: function () {
-	    let r = db._createDatabase(dbname);
-	    assertTrue(r);
-	    
-	    users.grantDatabase(":role:" + role1, dbname, "rw");
-	    users.grantDatabase(":role:" + role2, dbname, "rw");
-	    users.grantDatabase(":role:" + role3, dbname, "rw");
-	}
-    };
+      try {
+        db._dropDatabase(dbname);
+      } catch (err) {}
+    },
+
+    testCreateRoles: function() {
+      for (const role of roles) {
+        const fr = ":role:" + role;
+        let r = users.save(fr, "password", true);
+        assertEqual(fr, r.user);
+      }
+
+      users.reload();
+
+      for (const role of roles) {
+        const fr = ":role:" + role;
+        assertTrue(users.exists(fr));
+      }
+    },
+
+    testDatabases: function() {
+      let r = db._createDatabase(dbname);
+      assertTrue(r);
+
+      users.grantDatabase(":role:" + role1, dbname, "rw");
+      users.grantDatabase(":role:" + role2, dbname, "rw");
+      users.grantDatabase(":role:" + role3, dbname, "rw");
+    }
+  };
 
 
-    Object.entries(definition).forEach(([key, value]) => {
-	suite["test" + key] = buildTestFunction(value);
-    });
-	
-    return function GenericLdap () { return suite; };
+  Object.entries(definition).forEach(([key, value]) => {
+    suite["test" + key] = buildTestFunction(value);
+  });
+
+  return function GenericLdap() {
+    return suite;
+  };
 };
