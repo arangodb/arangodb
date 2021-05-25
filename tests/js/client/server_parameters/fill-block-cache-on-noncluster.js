@@ -57,7 +57,7 @@ function FillBlockCacheSuite() {
 
   return {
     
-    testQuery: function() {
+    testDbQuery: function() {
       const oldValue = db._engineStats()["rocksdb.block-cache-usage"];
       let result = db._query("FOR doc IN @@collection RETURN doc.value1", { "@collection": cn }, { fillBlockCache: true }).toArray();
       assertEqual(250 * 1000, result.length);
