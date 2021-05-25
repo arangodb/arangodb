@@ -6,6 +6,7 @@ devel
  - two LDAP servers, each responsible for the same users. The second one
    is a fail-over for the first one.
  - two LDAP servers, responsbible for different users.
+ - two LDAP servers, but either the first or the second cannot be reached
 
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
