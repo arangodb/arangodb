@@ -109,7 +109,7 @@ const ldapModeSearchPlaceholderConf = Object.assign({}, sharedConf, {
 const ldapModeRolesSimpleConf = Object.assign({}, ldapModeRolesConf, prefixSuffix);
 const ldapModeSearchSimpleConf = Object.assign({}, ldapModeSearchConf, prefixSuffix);
 
-const ldapFailoverConf = {
+const dualLdapConf = {
   'server.authentication': true,
   'server.authentication-system-only': true,
   'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
@@ -165,7 +165,7 @@ const tests = {
   },
   ldapFailover: {
     name: 'ldapFailover',
-    conf: ldapFailoverConf
+    conf: dualLdapConf
   },
 };
 
@@ -208,7 +208,7 @@ function authenticationLdapSearchModePrefixSuffix(options) {
   print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
   let testCases = tu.scanTestPaths(testPaths.ldapsearchsimple, options);
 
-  print('Performing #4 Test: Search Mode - Simple Login Mode');
+  print('Performing #1 Test: Search Mode - Simple Login Mode');
   print(opts.ldapModeSearchPrefixSuffix.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPrefixSuffix.conf);
 }
@@ -256,7 +256,7 @@ function authenticationLdapSearchModePlaceholder(options) {
   print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
   let testCases = tu.scanTestPaths(testPaths.ldapsearchplaceholder, options);
 
-  print('Performing #2 Test: Search Mode');
+  print('Performing #3 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPlaceholder.conf);
 }
@@ -280,7 +280,7 @@ function authenticationLdapRolesModePrefixSuffix(options) {
   print(CYAN + 'Client LDAP Permission tests...' + RESET);
   let testCases = tu.scanTestPaths(testPaths.ldaprolesimple, options);
 
-  print('Performing #3 Test: Role Mode - Simple Login Mode');
+  print('Performing #4 Test: Role Mode - Simple Login Mode');
   print(opts.ldapModeRolesPrefixSuffix.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRolesPrefixSuffix.conf);
 }
@@ -304,7 +304,7 @@ function authenticationLdapRolesMode(options) {
   print(CYAN + 'Client LDAP Permission tests...' + RESET);
   let testCases = tu.scanTestPaths(testPaths.ldaprole, options);
 
-  print('Performing #1 Test: Role Mode');
+  print('Performing #5 Test: Role Mode');
   print(opts.ldapModeRoles.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRoles.conf);
 }
@@ -330,7 +330,7 @@ function authenticationLdapTwoLdap(options) {
   print(CYAN + 'Client LDAP Failover with two ldap servers...' + RESET);
   let testCases = [fs.join(testPaths.ldapfailover, "auth-dualldap.js")];
 
-  print('Performing #5 Test: Failover - Szenario two active LDAP servers');
+  print('Performing #6 Test: Failover - Szenario two active LDAP servers');
   print(opts.ldapFailover.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapFailover.conf);
 }
@@ -360,7 +360,7 @@ function authenticationLdapFirstLdap(options) {
   print(CYAN + 'Client LDAP Failover with first active and second unreachable...' + RESET);
   let testCases = [fs.join(testPaths.ldapfailover, "auth-firstldap.js")];
 
-  print('Performing #6 Test: Failover - Szenario two active LDAP servers');
+  print('Performing #7 Test: Failover - Szenario two active LDAP servers');
   print(opts.ldapFailover.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, conf);
 }
@@ -390,7 +390,7 @@ function authenticationLdapSecondLdap(options) {
   print(CYAN + 'Client LDAP Failover with second active and first unreachable...' + RESET);
   let testCases = [fs.join(testPaths.ldapfailover, "auth-secondldap.js")];
 
-  print('Performing #6 Test: Failover - Szenario two active LDAP servers');
+  print('Performing #8 Test: Failover - Szenario two active LDAP servers');
   print(opts.ldapFailover.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, conf);
 }
