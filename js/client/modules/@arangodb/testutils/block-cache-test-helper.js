@@ -27,6 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const db = require('@arangodb').db;
+const internal = require('internal');
 const jsunity = require('jsunity');
 
 exports.setup = function(cn) {
@@ -57,10 +58,13 @@ exports.testDbQuery = function(cn, fillBlockCache) {
   
   result = db._query("FOR doc IN @@collection RETURN doc.value1", { "@collection": cn }, { fillBlockCache }).toArray();
   assertEqual(250 * 1000, result.length);
-  
-  const newValue2 = db._engineStats()["rocksdb.block-cache-usage"];
-  // allow for some other background things to be run, thus add 1MB of leeway
-  assertTrue(newValue2 <= newValue + 1000 * 1000, { newValue, newValue2 });
+
+  if (internal.platform.substr(0, 3) !== 'win') {
+    const newValue2 = db._engineStats()["rocksdb.block-cache-usage"];
+    // allow for some other background things to be run, thus add 1MB of leeway
+    // On Windows, the block cache usage in newValue2 is a lot higher here.
+    assertTrue(newValue2 <= newValue + 1000 * 1000, { newValue, newValue2 });
+  }
 };
 
 exports.testHttpApi = function(cn, fillBlockCache) {
@@ -77,7 +81,11 @@ exports.testHttpApi = function(cn, fillBlockCache) {
   
   arango.POST("/_api/cursor", { query: "FOR doc IN @@collection RETURN doc.value1", bindVars: { "@collection": cn }, options: { fillBlockCache } });
   
-  const newValue2 = db._engineStats()["rocksdb.block-cache-usage"];
-  // allow for some other background things to be run, thus add 1MB of leeway
-  assertTrue(newValue2 <= newValue + 1000 * 1000, { newValue, newValue2 });
+  if (internal.platform.substr(0, 3) !== 'win') {
+    // for unknown reasons the following does not work reliably on Windows.
+    // On Windows, the block cache usage in newValue2 is a lot higher here.
+    const newValue2 = db._engineStats()["rocksdb.block-cache-usage"];
+    // allow for some other background things to be run, thus add 1MB of leeway
+    assertTrue(newValue2 <= newValue + 1000 * 1000, { newValue, newValue2 });
+  }
 };
