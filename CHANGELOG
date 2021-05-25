@@ -1,3 +1,10 @@
+v3.7.13 (XXXX-XX-XX)
+--------------------
+
+* Remove unused sync-by-revisions APIs, which will be introduced only with
+  ArangoDB 3.8.
+
+
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
