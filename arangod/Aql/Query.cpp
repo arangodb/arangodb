@@ -1381,7 +1381,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
     });
     futures::Future<Result> commitResult = _trx->commitAsync();
-    static_assert(futures::Future<Result>::is_value_inlined);
+    //static_assert(futures::Future<Result>::is_value_inlined);
     TRI_ASSERT(commitResult.holds_inline_value());
     if (auto res = std::move(commitResult).await_unwrap(); res.fail()) {
       THROW_ARANGO_EXCEPTION(std::move(res));
