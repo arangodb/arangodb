@@ -1,5 +1,5 @@
-v3.8.0 (XXXX-XX-XX)
--------------------
+v3.8.0-rc.1 (2021-05-26)
+------------------------
 
 * Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
   documentation about the long deprecated features Simple Queries and
