@@ -265,10 +265,10 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
   { 
     VPackObjectBuilder guard(&builder);
     if (storedTree != nullptr) {
-      builder.add(VPackValue("storedTree"));
+      builder.add(VPackValue("stored"));
       storedTree->serialize(builder);
     } else {
-      builder.add("storedTree", VPackValue(false));
+      builder.add("stored", VPackValue(false));
     }
     if (computedTree != nullptr) {
       builder.add(VPackValue("computed"));
