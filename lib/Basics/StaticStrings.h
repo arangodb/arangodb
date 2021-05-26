@@ -225,7 +225,6 @@ class StaticStrings {
   static std::string const IsSmart;
   static std::string const IsSmartChild;
   static std::string const MinReplicationFactor;
-  static std::string const MinRevision;
   static std::string const NumberOfShards;
   static std::string const ObjectId;
   static std::string const ReplicationFactor;
@@ -302,13 +301,13 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
-  static std::string const RevisionTreeBranchingFactor;
   static std::string const RevisionTreeCount;
   static std::string const RevisionTreeHash;
   static std::string const RevisionTreeMaxDepth;
   static std::string const RevisionTreeNodes;
   static std::string const RevisionTreeRangeMax;
   static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
