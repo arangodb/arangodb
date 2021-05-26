@@ -39,6 +39,8 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
+const request = require('@arangodb/request');
+const crypto = require('@arangodb/crypto');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -203,7 +205,7 @@ function parseOptions(options, ldap2) {
       opt.conf['ldap2.server'] = options.ldap2Host;
 
       if (ldap2) {
-        opt.conf['ldap.enabled'] = false;
+        opt.conf['ldap.enabled'] = true;
         opt.conf['ldap2.enabled'] = true;
       }
     }
@@ -217,6 +219,34 @@ function parseOptions(options, ldap2) {
   return toReturn;
 }
 
+const activateFailurePoint = function(options, server, instance, custom) {
+  let baseUrl = function(e) {
+    return e.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  };
+
+  const jwt = crypto.jwtEncode(server['server.jwt-secret'], {
+    "preferred_username": "root",
+    "iss": "arangodb",
+    "exp": Math.floor(Date.now() / 1000) + 3600
+  }, 'HS256');
+
+  const endpoints = instance.endpoints;
+  for (const endpoint of endpoints) {
+    let result = request({
+      method: "PUT",
+      url: baseUrl(endpoint) + "/_admin/debug/failat/LdapFlakyLdap",
+      auth: {
+        bearer: jwt,
+      },
+      body: {}
+    });
+  }
+
+  return {
+    state: true
+  };
+};
+
 function authenticationLdapSearchModePrefixSuffix(options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
@@ -227,7 +257,7 @@ function authenticationLdapSearchModePrefixSuffix(options) {
       }
     };
   }
-  const opts = parseOptions(options, false);
+  const opts = parseOptions(options, true);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -238,7 +268,10 @@ function authenticationLdapSearchModePrefixSuffix(options) {
 
   print('Performing #1 Test: Search Mode - Simple Login Mode');
   print(opts.ldapModeSearchPrefixSuffix.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPrefixSuffix.conf);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
+    opts.ldapModeSearchPrefixSuffix.conf, {
+      postStart: activateFailurePoint
+    });
 }
 
 function authenticationLdapSearchMode(options) {
@@ -251,7 +284,7 @@ function authenticationLdapSearchMode(options) {
       }
     };
   }
-  const opts = parseOptions(options, false);
+  const opts = parseOptions(options, true);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -262,7 +295,10 @@ function authenticationLdapSearchMode(options) {
 
   print('Performing #2 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearch.conf);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
+    opts.ldapModeSearch.conf, {
+      postStart: activateFailurePoint
+    });
 }
 
 function authenticationLdapSearchModePlaceholder(options) {
@@ -275,7 +311,7 @@ function authenticationLdapSearchModePlaceholder(options) {
       }
     };
   }
-  const opts = parseOptions(options, false);
+  const opts = parseOptions(options, true);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -286,7 +322,10 @@ function authenticationLdapSearchModePlaceholder(options) {
 
   print('Performing #3 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPlaceholder.conf);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
+    opts.ldapModeSearchPlaceholder.conf, {
+      postStart: activateFailurePoint
+    });
 }
 
 function authenticationLdapRolesModePrefixSuffix(options) {
@@ -299,7 +338,7 @@ function authenticationLdapRolesModePrefixSuffix(options) {
       }
     };
   }
-  const opts = parseOptions(options, false);
+  const opts = parseOptions(options, true);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -310,7 +349,10 @@ function authenticationLdapRolesModePrefixSuffix(options) {
 
   print('Performing #4 Test: Role Mode - Simple Login Mode');
   print(opts.ldapModeRolesPrefixSuffix.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRolesPrefixSuffix.conf);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
+    opts.ldapModeRolesPrefixSuffix.conf, {
+      postStart: activateFailurePoint
+    });
 }
 
 function authenticationLdapRolesMode(options) {
@@ -323,7 +365,7 @@ function authenticationLdapRolesMode(options) {
       }
     };
   }
-  const opts = parseOptions(options, false);
+  const opts = parseOptions(options, true);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -334,7 +376,10 @@ function authenticationLdapRolesMode(options) {
 
   print('Performing #5 Test: Role Mode');
   print(opts.ldapModeRoles.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRoles.conf);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
+    opts.ldapModeRoles.conf, {
+      postStart: activateFailurePoint
+    });
 }
 
 function authenticationLdapTwoLdap(options) {
