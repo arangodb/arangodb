@@ -121,7 +121,7 @@ const ldapModeSearchPlaceholderConf = Object.assign({}, sharedConf, {
   'ldap.search-filter': 'uid={USER}',
   'ldap.search-attribute': '',
   'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
-    'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/',
+  'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/',
 
   'ldap2.search-filter': 'uid={USER}',
   'ldap2.search-attribute': '',
@@ -204,7 +204,7 @@ function parseOptions(options, ldap2) {
 
       if (ldap2) {
         opt.conf['ldap.enabled'] = false;
-          opt.conf['ldap2.enabled'] = true;
+        opt.conf['ldap2.enabled'] = true;
       }
     }
     if (options.ldapPort) {
