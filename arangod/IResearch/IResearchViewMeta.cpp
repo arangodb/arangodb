@@ -346,17 +346,15 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional uint32_t
-    static const std::string fieldName(StaticStrings::VersionField);
-
-    mask->_version = slice.hasKey(fieldName);
+    mask->_version = slice.hasKey(StaticStrings::VersionField);
 
     if (!mask->_version) {
       _version = defaults._version;
     } else {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(StaticStrings::VersionField);
 
       if (!getNumber(_version, field)) {
-        errorField = fieldName;
+        errorField = StaticStrings::VersionField;
 
         return false;
       }
@@ -365,17 +363,15 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName(StaticStrings::CleanupIntervalStep);
-
-    mask->_cleanupIntervalStep = slice.hasKey(fieldName);
+    mask->_cleanupIntervalStep = slice.hasKey(StaticStrings::CleanupIntervalStep);
 
     if (!mask->_cleanupIntervalStep) {
       _cleanupIntervalStep = defaults._cleanupIntervalStep;
     } else {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(StaticStrings::CleanupIntervalStep);
 
       if (!getNumber(_cleanupIntervalStep, field)) {
-        errorField = fieldName;
+        errorField = StaticStrings::CleanupIntervalStep;
 
         return false;
       }
@@ -384,17 +380,15 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName(StaticStrings::CommitIntervalMsec);
-
-    mask->_commitIntervalMsec = slice.hasKey(fieldName);
+    mask->_commitIntervalMsec = slice.hasKey(StaticStrings::CommitIntervalMsec);
 
     if (!mask->_commitIntervalMsec) {
       _commitIntervalMsec = defaults._commitIntervalMsec;
     } else {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(StaticStrings::CommitIntervalMsec);
 
       if (!getNumber(_commitIntervalMsec, field)) {
-        errorField = fieldName;
+        errorField = StaticStrings::CommitIntervalMsec;
 
         return false;
       }
@@ -403,17 +397,15 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName(StaticStrings::ConsolidationIntervalMsec);
-
-    mask->_consolidationIntervalMsec = slice.hasKey(fieldName);
+    mask->_consolidationIntervalMsec = slice.hasKey(StaticStrings::ConsolidationIntervalMsec);
 
     if (!mask->_consolidationIntervalMsec) {
       _consolidationIntervalMsec = defaults._consolidationIntervalMsec;
     } else {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(StaticStrings::ConsolidationIntervalMsec);
 
       if (!getNumber(_consolidationIntervalMsec, field)) {
-        errorField = fieldName;
+        errorField = StaticStrings::ConsolidationIntervalMsec;
 
         return false;
       }
@@ -422,18 +414,17 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional object
-    static const std::string fieldName(StaticStrings::ConsolidationPolicy);
     std::string errorSubField;
 
-    mask->_consolidationPolicy = slice.hasKey(fieldName);
+    mask->_consolidationPolicy = slice.hasKey(StaticStrings::ConsolidationPolicy);
 
     if (!mask->_consolidationPolicy) {
       _consolidationPolicy = defaults._consolidationPolicy;
     } else {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(StaticStrings::ConsolidationPolicy);
 
       if (!field.isObject()) {
-        errorField = fieldName;
+        errorField = StaticStrings::ConsolidationPolicy;
 
         return false;
       }
@@ -442,7 +433,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       static const std::string typeFieldName("type");
 
       if (!field.hasKey(typeFieldName)) {
-        errorField = fieldName + "." + typeFieldName;
+        errorField = StaticStrings::ConsolidationPolicy + "." + typeFieldName;
 
         return false;
       }
@@ -450,7 +441,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       auto typeField = field.get(typeFieldName);
 
       if (!typeField.isString()) {
-        errorField = fieldName + "." + typeFieldName;
+        errorField = StaticStrings::ConsolidationPolicy + "." + typeFieldName;
 
         return false;
       }
@@ -464,16 +455,16 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
         _consolidationPolicy =
             createConsolidationPolicy<irs::index_utils::consolidate_tier>(field, errorSubField);
       } else {
-        errorField = fieldName + "." + typeFieldName;
+        errorField = StaticStrings::ConsolidationPolicy + "." + typeFieldName;
 
         return false;
       }
 
       if (!_consolidationPolicy.policy()) {
         if (errorSubField.empty()) {
-          errorField = fieldName;
+          errorField = StaticStrings::ConsolidationPolicy;
         } else {
-          errorField = fieldName + "." + errorSubField;
+          errorField = StaticStrings::ConsolidationPolicy + "." + errorSubField;
         }
 
         return false;
@@ -516,17 +507,15 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName(StaticStrings::WritebufferActive);
-
-    mask->_writebufferActive = slice.hasKey(fieldName);
+    mask->_writebufferActive = slice.hasKey(StaticStrings::WritebufferActive);
 
     if (!mask->_writebufferActive) {
       _writebufferActive = defaults._writebufferActive;
     } else {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(StaticStrings::WritebufferActive);
 
       if (!getNumber(_writebufferActive, field)) {
-        errorField = fieldName;
+        errorField = StaticStrings::WritebufferActive;
 
         return false;
       }
@@ -535,17 +524,15 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName(StaticStrings::WritebufferIdle);
-
-    mask->_writebufferIdle = slice.hasKey(fieldName);
+    mask->_writebufferIdle = slice.hasKey(StaticStrings::WritebufferIdle);
 
     if (!mask->_writebufferIdle) {
       _writebufferIdle = defaults._writebufferIdle;
     } else {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(StaticStrings::WritebufferIdle);
 
       if (!getNumber(_writebufferIdle, field)) {
-        errorField = fieldName;
+        errorField = StaticStrings::WritebufferIdle;
 
         return false;
       }
@@ -554,17 +541,15 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional size_t
-    static const std::string fieldName(StaticStrings::WritebufferSizeMax);
-
-    mask->_writebufferSizeMax = slice.hasKey(fieldName);
+    mask->_writebufferSizeMax = slice.hasKey(StaticStrings::WritebufferSizeMax);
 
     if (!mask->_writebufferSizeMax) {
       _writebufferSizeMax = defaults._writebufferSizeMax;
     } else {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(StaticStrings::WritebufferSizeMax);
 
       if (!getNumber(_writebufferSizeMax, field)) {
-        errorField = fieldName;
+        errorField = StaticStrings::WritebufferSizeMax;
 
         return false;
       }

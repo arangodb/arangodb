@@ -28,21 +28,28 @@
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexFactory.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchViewMeta.h"
+#include "IResearch/IResearchLinkMeta.h"
 
 namespace arangodb {
 namespace iresearch {
 
 class IResearchInvertedIndex : public Index {
  public:
-  struct IResearchInvertedIndexMeta : public IResearchViewMeta {
-    size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
-    size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
-    size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
-    ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
-    uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == latest)
-    size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
-    size_t _writebufferIdle; // maximum number of segments cached in the pool
-    size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
+  struct IResearchInvertedIndexMeta {
+    IResearchViewMeta _indexMeta;
+
+    std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
+   
+    std::unordered_map<char, UniqueHeapInstance<FieldMeta>> Fields;_fields;
+
+
+    /// @brief Indexed collection name. Stored here for cluster deployment only.
+    /// For sigle server collection could be renamed so can`t store it here or 
+    /// syncronisation will be needed. For cluster rename is not possible so 
+    /// there is no problem but solved recovery issue - we will be able to index
+    /// _id attribute without doing agency request for collection name
+    std::string _collectionName;
   };
 
   IResearchInvertedIndex(IndexId id, LogicalCollection& collection,
