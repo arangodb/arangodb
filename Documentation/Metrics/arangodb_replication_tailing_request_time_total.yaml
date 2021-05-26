@@ -15,6 +15,6 @@ troubleshoot:
   If you see unusual spikes here, please inspect potential
   network issues. It may help to increase network bandwidth
   and/or reduce network latency. In case there are no network
-  issues, also check the load of the serving leader dbserver,
-  as well as the follower dbserver, as they could potentially
+  issues, also check the load of the serving leader DB-Server,
+  as well as the follower DB-Server, as they could potentially
   be overloaded and reaching hardware-based limits.
