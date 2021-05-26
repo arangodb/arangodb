@@ -35,7 +35,7 @@
     "statuses": "1.5.0",
     "timezone": "1.0.22",
     "type-is": "1.6.16",
-    "underscore": "1.9.1",
+    "underscore": "1.13.1",
     "vary": "1.1.2",
     "xmldom": "0.1.27"
   }
