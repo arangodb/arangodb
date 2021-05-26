@@ -186,11 +186,11 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
-          .then_bind([=](OperationResult&& opres) {
+          .then_bind([=](OperationResult&& opres) mutable {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
-            return _activeTrx->finishAsync(opres.result).thenValue([=, opres(std::move(opres))](Result&& res) {
+            return _activeTrx->finishAsync(opres.result).thenValue([=, opres = std::move(opres)](Result&& res) {
               if (opres.fail()) {
                 generateTransactionError(cname, opres);
                 return;
@@ -292,7 +292,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   return waitForFuture(
       _activeTrx->documentAsync(collection, search, options)
-          .then_bind([=, buffer(std::move(buffer)), collection = collection, key = key](OperationResult opRes) {
+          .then_bind([=, buffer(std::move(buffer)), collection = collection, key = key](OperationResult opRes) mutable {
             return _activeTrx->finishAsync(opRes.result)
                 .thenValue([=, opRes(std::move(opRes))](Result&& res) {
                   if (!opRes.ok()) {
@@ -491,7 +491,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     }
   });
 
-  return waitForFuture(std::move(f).then_bind([=, buffer(std::move(buffer))](OperationResult opRes) {
+  return waitForFuture(std::move(f).then_bind([=, buffer(std::move(buffer))](OperationResult opRes) mutable {
     return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
       // ...........................................................................
       // outside write transaction
@@ -600,7 +600,7 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   return waitForFuture(
       _activeTrx->removeAsync(cname, search, opOptions)
-          .then_bind([=, buffer(std::move(buffer)), cname = cname, key = key](OperationResult opRes) {
+          .then_bind([=, buffer(std::move(buffer)), cname = cname, key = key](OperationResult opRes) mutable {
             return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
               // ...........................................................................
               // outside write transaction
@@ -663,7 +663,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   }
 
   return waitForFuture(
-      _activeTrx->documentAsync(cname, search, opOptions).then_bind([=, cname = cname](OperationResult opRes) {
+      _activeTrx->documentAsync(cname, search, opOptions).then_bind([=, cname = cname](OperationResult opRes) mutable {
         return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
           if (opRes.fail()) {
             generateTransactionError(cname, opRes);

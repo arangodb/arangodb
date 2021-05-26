@@ -49,7 +49,7 @@ struct OperationResult final {
   OperationResult& operator=(OperationResult const& other) = delete;
 
   // move
-  OperationResult(OperationResult&& other) = default;
+  OperationResult(OperationResult&& other) noexcept = default;
   OperationResult& operator=(OperationResult&& other) noexcept {
     if (this != &other) {
       result = std::move(other.result);
