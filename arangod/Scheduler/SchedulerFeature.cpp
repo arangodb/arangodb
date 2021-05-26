@@ -491,10 +491,16 @@ SoftShutdownTracker::SoftShutdownTracker(
 }
 
 void SoftShutdownTracker::initiateSoftShutdown() {
+  bool prev = _softShutdownOngoing.exchange(true, std::memory_order_relaxed);
+  if (prev) {
+    // Make behaviour idempotent!
+    LOG_TOPIC("cce32", INFO, Logger::STARTUP)
+        << "Received second soft shutdown request, ignoring it...";
+    return;
+  }
   for (size_t i = 0; i < NrCounters; ++i) {
     _counters[i].fetch_sub(HighBit);
   }
-  _softShutdownOngoing.store(true, std::memory_order_relaxed);
   LOG_TOPIC("fedd2", INFO, Logger::STARTUP)
       << "Initiating soft shutdown...";
   if (!::queueShutdownChecker(_workItemMutex, _workItem, _checkFunc)) {
@@ -509,11 +515,12 @@ void SoftShutdownTracker::initiateSoftShutdown() {
     
 void SoftShutdownTracker::check() const {
   for (size_t i = 0; i < NrCounters; ++i) {
-    if (_counters[i] != 0) {
+    uint64_t guck = _counters[i].load(std::memory_order_relaxed);
+    if (guck != 0) {
       // FIXME: Set to DEBUG level
       LOG_TOPIC("ffeec", INFO, Logger::STARTUP)
           << "Soft shutdown check said 'not ready', counter " << i
-          << " is not zero.";
+          << " is not zero but " << guck << ".";
       return;
     }
   }
