@@ -397,7 +397,6 @@ class Methods {
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
 
-  // SHOULD THE OPTIONS BE CONST?
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              velocypack::Builder& builder, DataSourceId cid,
                              arangodb::velocypack::StringRef const& key, RevisionId rid,

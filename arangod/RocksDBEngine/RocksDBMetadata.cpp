@@ -185,6 +185,20 @@ void RocksDBMetadata::removeBlocker(TransactionId trxId) {
   }
 }
 
+/// @brief check if there is blocker with a seq number lower or equal to
+/// the specified number
+bool RocksDBMetadata::hasBlockerUpTo(rocksdb::SequenceNumber seq) const {
+  READ_LOCKER(locker, _blockerLock);
+
+  auto it = _blockersBySeq.lower_bound(std::make_pair(seq, TransactionId(0)));
+  if (it == _blockersBySeq.end()) {
+    return false;
+  }
+  // here, it->first can only be greater or equal to seq, but anyway.
+  return it->first <= seq;
+}
+
+
 /// @brief returns the largest safe seq to squash updates against
 rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber maxCommitSeq) const {
   READ_LOCKER(locker, _blockerLock);

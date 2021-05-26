@@ -129,7 +129,7 @@
             shardProgress = percentify(value.progress.current / value.progress.total * 100);
           }
           if (shardProgress === '' || followersSyncing === '') {
-            shardProgress = 'waiting for slot...';
+            shardProgress = 'waiting for follower...';
           }
 
           shardProgress = '<span>' + arangoHelper.escapeHtml(shardProgress) + '</span>';

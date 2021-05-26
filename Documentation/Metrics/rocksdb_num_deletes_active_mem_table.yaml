@@ -15,4 +15,3 @@ description: |
   "rocksdb-num-deletes-active-mem-table".
   It shows the total number of delete entries in the active memtable,
   summed over all column families.
-
