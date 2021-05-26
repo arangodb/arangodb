@@ -91,6 +91,20 @@ RestStatus RestShutdownHandler::execute() {
     clusterFeature.setUnregisterOnShutdown(true);
   }
 
+  bool soft = false;
+  bool softFound = false;
+  std::string const& softString = _request->value("soft", softFound);
+  if (softFound && softString.compare("true") == 0) {
+    soft = true;
+  }
+
+  if (ServerState::instance()->isCoordinator() && soft) {
+    auto const& schedulerFeature{server().getFeature<SchedulerFeature>()};
+    auto& softShutdownTracker{schedulerFeature.softShutdownTracker()};
+    softShutdownTracker.initiateSoftShutdown();
+    return RestStatus::DONE;
+  }
+
   auto self = shared_from_this();
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback

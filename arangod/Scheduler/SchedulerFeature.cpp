@@ -33,6 +33,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/signals.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -67,6 +68,19 @@ size_t defaultNumberOfThreads() {
   return result;
 }
 
+bool queueShutdownChecker(std::mutex& mutex,
+    arangodb::Scheduler::WorkHandle& workItem,
+    std::function<void(bool)>& checkFunc) {
+
+  arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  bool queued = false;
+  std::lock_guard<std::mutex> guard(mutex);
+  std::tie(queued, workItem) =
+      scheduler->queueDelay(arangodb::RequestLane::CLUSTER_INTERNAL,
+                            std::chrono::seconds(2),
+                            checkFunc);
+  return queued;
+}
 }  // namespace
 
 namespace arangodb {
@@ -81,6 +95,9 @@ SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& serv
 #ifdef TRI_HAVE_GETRLIMIT
   startsAfter<FileDescriptorsFeature>();
 #endif
+  // We do not yet know if we are a coordinator, so just in case,
+  // create a SoftShutdownTracker, it will not hurt if it is not used:
+  _softShutdownTracker = std::make_shared<SoftShutdownTracker>(server);
 }
 
 SchedulerFeature::~SchedulerFeature() = default;
@@ -456,6 +473,69 @@ void SchedulerFeature::buildControlCHandler() {
         << "cannot initialize signal handlers for SIGINT/SIGQUIT/SIGTERM";
   }
 #endif
+}
+
+SoftShutdownTracker::SoftShutdownTracker(
+    application_features::ApplicationServer& server)
+  : _server(server), _softShutdownOngoing(false) {
+  for (size_t i = 0; i < NrCounters; ++i) {
+    _counters[i].store(HighBit);  // indicate no soft shutdown
+  }
+  _checkFunc = [this](bool cancelled) {
+    this->check();   // Initiates shutdown if counters are 0
+    if (!::queueShutdownChecker(this->_workItemMutex, this->_workItem,
+                                this->_checkFunc)) {
+      this->initiateActualShutdown();
+    }
+  };
+}
+
+void SoftShutdownTracker::initiateSoftShutdown() {
+  for (size_t i = 0; i < NrCounters; ++i) {
+    _counters[i].fetch_sub(HighBit);
+  }
+  _softShutdownOngoing.store(true, std::memory_order_relaxed);
+  LOG_TOPIC("fedd2", INFO, Logger::STARTUP)
+      << "Initiating soft shutdown...";
+  if (!::queueShutdownChecker(_workItemMutex, _workItem, _checkFunc)) {
+    // Make it hard in this case:
+    LOG_TOPIC("de425", INFO, Logger::STARTUP)
+        << "Failed to queue soft shutdown checker, doing hard shutdown "
+           "instead.";
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    _server.beginShutdown();
+  }
+}
+    
+void SoftShutdownTracker::check() const {
+  for (size_t i = 0; i < NrCounters; ++i) {
+    if (_counters[i] != 0) {
+      // FIXME: Set to DEBUG level
+      LOG_TOPIC("ffeec", INFO, Logger::STARTUP)
+          << "Soft shutdown check said 'not ready', counter " << i
+          << " is not zero.";
+      return;
+    }
+  }
+  LOG_TOPIC("ffeed", INFO, Logger::STARTUP)
+      << "Goal reached for soft shutdown, all ongoing tasks are terminated"
+         ", will now trigger the actual shutdown...";
+  initiateActualShutdown();
+}
+
+void SoftShutdownTracker::initiateActualShutdown() const {
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  auto self = shared_from_this();
+  bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
+    // Give the server 2 seconds to finish stuff
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    self->_server.beginShutdown();
+  });
+  if (queued) {
+    return;
+  }
+  std::this_thread::sleep_for(std::chrono::seconds(2));
+  _server.beginShutdown();
 }
 
 }  // namespace arangodb

@@ -26,10 +26,12 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
 #include "Basics/MutexLocker.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/ExecContext.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -56,8 +58,14 @@ size_t const CursorRepository::MaxCollectCount = 32;
 ////////////////////////////////////////////////////////////////////////////////
 
 CursorRepository::CursorRepository(TRI_vocbase_t& vocbase)
-    : _vocbase(vocbase), _lock(), _cursors() {
+    : _vocbase(vocbase), _lock(), _cursors(), _cursorCounter(nullptr) {
   _cursors.reserve(64);
+  if (ServerState::instance()->isCoordinator()) {
+    auto const& schedulerFeature{_vocbase.server().getFeature<SchedulerFeature>()};
+    auto& softShutdownTracker{schedulerFeature.softShutdownTracker()};
+    _cursorCounter = softShutdownTracker.getCounterPointer(SoftShutdownTracker::IndexAQLCursors);
+    _softShutdownOngoing = softShutdownTracker.getSoftShutdownFlag();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +105,10 @@ CursorRepository::~CursorRepository() {
       delete it.second.first;
     }
 
+    if (_cursorCounter != nullptr) {
+      _cursorCounter->fetch_sub(_cursors.size(), std::memory_order_relaxed);
+    }
+
     _cursors.clear();
   }
 }
@@ -118,6 +130,10 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
     _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
   }
 
+  if (_cursorCounter != nullptr) {
+    _cursorCounter->fetch_add(1, std::memory_order_relaxed);
+  }
+
   TRI_IF_FAILURE(
       "CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated") {
     cursor->debugKillQuery();
@@ -137,6 +153,12 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
                                                 double ttl, bool hasCount) {
   TRI_ASSERT(result.data != nullptr);
 
+  if (_softShutdownOngoing != nullptr && 
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
+    // Refuse to create the cursor:
+    return nullptr;   // this will lead to a 503 response
+  }
+
   auto cursor = std::make_unique<aql::QueryResultCursor>(
             _vocbase, std::move(result), batchSize, ttl, hasCount);
   cursor->use();
@@ -152,6 +174,12 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
 //////////////////////////////////////////////////////////////////////////////
 
 Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+  if (_softShutdownOngoing != nullptr && 
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
+    // Refuse to create the cursor:
+    return nullptr;   // this will lead to a 503 response
+  }
+
   auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
   cursor->use();
 
@@ -184,6 +212,10 @@ bool CursorRepository::remove(CursorId id) {
 
     // cursor not in use by someone else
     _cursors.erase(it);
+
+    if (_cursorCounter != nullptr) {
+      _cursorCounter->fetch_sub(1, std::memory_order_relaxed);
+    }
   }
 
   TRI_ASSERT(cursor != nullptr);
@@ -251,6 +283,10 @@ void CursorRepository::release(Cursor* cursor) {
 
     // remove from the list
     _cursors.erase(cursor->id());
+
+    if (_cursorCounter != nullptr) {
+      _cursorCounter->fetch_sub(1, std::memory_order_relaxed);
+    }
   }
 
   // and free the cursor
@@ -309,6 +345,9 @@ bool CursorRepository::garbageCollect(bool force) {
         try {
           found.emplace_back(cursor);
           it = _cursors.erase(it);
+          if (_cursorCounter != nullptr) {
+            _cursorCounter->fetch_sub(1, std::memory_order_relaxed);
+          }
         } catch (...) {
           // stop iteration
           break;
