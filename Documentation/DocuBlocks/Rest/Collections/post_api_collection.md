@@ -31,7 +31,7 @@ collections in very special occasions, but normally a regular collection will do
 @RESTBODYPARAM{schema,object,optional,}
 Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
-rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/document-schema-validation.html)
 
 @RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
 additional options for key generation. If specified, then *keyOptions*
