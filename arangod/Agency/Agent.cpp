@@ -50,6 +50,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 using namespace std::chrono;
 
+
 struct AppendScale {
   static log_scale_t<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
 };
@@ -67,7 +68,8 @@ DECLARE_HISTOGRAM(arangodb_agency_write_hist, AgentScale, "Agency write histogra
 DECLARE_COUNTER(arangodb_agency_write_no_leader_total, "Agency write no leader");
 DECLARE_COUNTER(arangodb_agency_write_ok_total, "Agency write ok");
 
-namespace arangodb::consensus {
+namespace arangodb {
+namespace consensus {
 
 // Instanciations of some declarations in AgencyCommon.h:
 
@@ -154,14 +156,6 @@ Agent::~Agent() {
   // created but never really started. Here, we exit with a fatal error
   // if the threads do not stop in time.
   shutdown();  // wait for the main Agent thread to terminate
-
-  {
-    // clean up all promises that are still waiting for completion
-    std::unique_lock guard(_promLock);
-    for (auto&& [tp, p] : _promises) {
-      THROW_ARANGO_EXCEPTION_INTO_PROMISE(p, TRI_ERROR_SHUTTING_DOWN);
-    }
-  }
 }
 
 /// Wait until threads are terminated:
@@ -440,7 +434,7 @@ void Agent::logsForTrigger() {
     TRI_ASSERT(!logs.empty());
     if (!logs.empty()) {
       builder->add(VPackValue("result"));
-      VPackObjectBuilder e2(builder.get());
+      VPackObjectBuilder e(builder.get());
       builder->add("firstIndex", VPackValue(logs.front().index));
       builder->add("commitIndex", VPackValue(logs.back().index));
       builder->add(VPackValue("log"));
@@ -763,7 +757,7 @@ void Agent::sendAppendEntriesRPC() {
       network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, "/_api/agency_priv/appendEntries",
                            std::move(buffer), reqOpts).thenValue([=](network::Response r) {
         ac->operator()(r);
-      }).finally([](auto&&) noexcept {}); // ignore exceptions, as before
+      }).finally([](auto&&) noexcept { /* ignore all exceptions */ });
 
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
@@ -837,7 +831,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, "/_api/agency_priv/appendEntries",
                        std::move(buffer), reqOpts).thenValue([=](network::Response r) {
     ac->operator()(r);
-  }).finally([](auto&&) noexcept {}); // ignore exceptions, as before
+  }).finally([](auto&&) noexcept { /* ignore all exceptions */ });
   double diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7c", DEBUG, Logger::AGENCY)
@@ -2170,7 +2164,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
               VPackObjectBuilder o(query.get());
               query->add(VPackValue(RECONFIGURE));
               {
-                VPackObjectBuilder o2(query.get());
+                VPackObjectBuilder o(query.get());
                 query->add("op", VPackValue("set"));
                 query->add(VPackValue("new"));
                 {
@@ -2190,7 +2184,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
         try {
           ret = write(query, WriteMode(false, true));
           arangodb::consensus::index_t max_index = 0;
-          if (!ret.indices.empty()) {
+          if (ret.indices.size() > 0) {
             max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
           }
           if (max_index > 0) {  // We have a RAFT index. Wait for the RAFT commit.
@@ -2458,4 +2452,5 @@ void Agent::syncActiveAndAcknowledged() {
   }
 }
 
+}  // namespace consensus
 }  // namespace arangodb

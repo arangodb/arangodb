@@ -147,14 +147,15 @@ void RestHandler::setStatistics(RequestStatistics::Item&& stat) {
   _statistics = std::move(stat);
 }
 
-std::optional<futures::Future<Result>> RestHandler::forwardRequest() {
+futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
+  forwarded = false;
   if (!ServerState::instance()->isCoordinator()) {
-    return std::nullopt;
+    return futures::makeFuture(Result());
   }
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
-    return std::nullopt;
+    return futures::makeFuture(forwardResult.result());
   }
 
   auto forwardContent = forwardResult.get();
@@ -168,16 +169,21 @@ std::optional<futures::Future<Result>> RestHandler::forwardRequest() {
 
   if (serverId.empty()) {
     // no need to actually forward
-    return std::nullopt;
+    return futures::makeFuture(Result());
   }
 
   NetworkFeature& nf = server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
-    return std::nullopt;
+    // nullptr happens only during controlled shutdown
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
+    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
   }
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
+
+  forwarded = true;
 
   bool useVst = false;
   if (_request->transportType() == Endpoint::TransportType::VST) {
@@ -244,13 +250,12 @@ std::optional<futures::Future<Result>> RestHandler::forwardRequest() {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_CLUSTER_SERVER_UNKNOWN,
                   std::string("cluster server ") + serverId + " unknown");
-    return futures::Future<Result>(std::in_place, TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
+    return futures::makeFuture(Result(TRI_ERROR_CLUSTER_SERVER_UNKNOWN));
   }
 
   auto future = network::sendRequestRetry(pool, "server:" + serverId, requestType,
                                           _request->requestPath(), std::move(payload),
                                           options, std::move(headers));
-
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
     auto res = network::fuerteToArangoErrorCode(response);
@@ -287,7 +292,7 @@ std::optional<futures::Future<Result>> RestHandler::forwardRequest() {
 
     return Result();
   };
-  return std::move(future).thenValue(cb);
+  return std::move(future).thenValue(std::move(cb));
 }
 
 void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {

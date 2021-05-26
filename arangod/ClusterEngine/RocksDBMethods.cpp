@@ -21,6 +21,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <mellon/collector.h>
+
 #include "RocksDBMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -34,7 +36,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
-namespace arangodb::rocksdb {
+namespace arangodb {
+namespace rocksdb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBServers
@@ -75,59 +78,33 @@ Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& 
   options.database = dbname;
   options.timeout = network::Timeout(600.0);
 
-  struct Collector {
-    explicit Collector(futures::Promise<Result> result) : result(std::move(result)) {}
-    futures::Promise<Result> result;
-    std::mutex mutex;
+  mellon::collector<expect::expected<network::Response>, futures::arangodb_tag> collector;
+  mellon::collect_guard guard(collector, [](auto idx, auto tryResponse) noexcept {
+    /* ignore all errors */
+  });
 
-    ~Collector() {
-      if (!result.empty()) {
-        std::move(result).fulfill(std::in_place);
-      }
+  // now we notify all leader and follower shards
+  std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+  for (auto const& shard : *shardList) {
+    for (ServerID const& serverId : shard.second) {
+      std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) +
+                        "/recalculateCount";
+      auto f = network::sendRequestRetry(pool, "server:" + serverId, fuerte::RestVerb::Put,
+                                    std::move(uri), body, options, headers);
+      collector.push_future(std::move(f));
     }
-
-    void onResult(futures::Try<network::Response> tryRes) noexcept {
-      std::unique_lock guard(mutex);
-      try {
-        if (!result.empty()) {
-          if (tryRes.has_error()) {
-            return std::move(result).fulfill(tryRes.error());
-          }
-          auto res = tryRes.unwrap().combinedResult();
-          if (res.fail()) {
-            std::move(result).fulfill(std::in_place, std::move(res));
-          }
-        }
-      } catch (...) {
-        std::move(result).fulfill(std::current_exception());
-      }
-    }
-  };
-
-  auto&& [f, p] = futures::makePromise<Result>();
-  auto collect = std::make_shared<Collector>(std::move(p));
-
-  try {
-    // now we notify all leader and follower shards
-    std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
-    for (auto const& shard : *shardList) {
-      for (ServerID const& serverId : shard.second) {
-        std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) +
-                          "/recalculateCount";
-        auto f = network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Put,
-                                      std::move(uri), body, options, headers);
-        std::move(f).finally([collect](futures::Try<network::Response>&& result) noexcept {
-          collect->onResult(std::move(result));
-        });
-      }
-    }
-  } catch (...) {
-    // ignore all responses
-    std::move(f).finally([](auto&&) noexcept {});
-    throw;
   }
 
-  return std::move(f).await_unwrap();
+  auto responses = std::move(collector).into_future().await();
+  for (auto const& r : responses) {
+    Result res = r.unwrap().combinedResult();
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  return {};
 }
 
+}  // namespace rocksdb
 }  // namespace arangodb

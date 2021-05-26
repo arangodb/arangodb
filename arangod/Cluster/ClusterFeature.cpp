@@ -68,13 +68,13 @@ ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
     // force shutdown of Plan/Current syncers. under normal circumstances they
     // have been shut down already when we get here, but there are rare cases in
-    // which ClusterFeature::stop() isn't called (e.g. during testing or if
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
     // something goes very wrong at startup)
     waitForSyncersToStop();
 
     // force shutdown of AgencyCache. under normal circumstances the cache will
     // have been shut down already when we get here, but there are rare cases in
-    // which ClusterFeature::stop() isn't called (e.g. during testing or if
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
     // something goes very wrong at startup)
     shutdownAgencyCache();
 
@@ -463,8 +463,8 @@ void ClusterFeature::prepare() {
   if (!_enableCluster) {
     reportRole(ServerState::instance()->getRole());
     return;
-  }
-
+  } 
+    
   reportRole(_requestedRole);
 
   network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());

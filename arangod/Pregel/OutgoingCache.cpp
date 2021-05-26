@@ -142,7 +142,8 @@ void ArrayOutCache<M>::flushMessages() {
                                                 std::move(buffer), reqOpts));
   }
 
-  std::ignore = futures::collectAll(responses).await();
+  std::ignore = futures::collectAll(responses).await_unwrap();
+
   this->_removeContainedMessages();
 }
 
@@ -253,7 +254,8 @@ void CombiningOutCache<M>::flushMessages() {
                                                 std::move(buffer), reqOpts));
   }
 
-  std::ignore = futures::collectAll(responses).await();
+  std::ignore = futures::collectAll(responses).await_unwrap();
+
   _removeContainedMessages();
 }
 

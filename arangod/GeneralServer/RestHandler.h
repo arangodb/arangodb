@@ -28,12 +28,12 @@
 #include "GeneralServer/RequestLane.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
+
 #include "Futures/Future.h"
 
 #include <atomic>
 #include <string_view>
 #include <thread>
-#include <optional>
 
 namespace arangodb {
 namespace application_features {
@@ -100,7 +100,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
-  std::optional<futures::Future<Result>> forwardRequest();
+  futures::Future<Result> forwardRequest(bool& forwarded);
 
   void handleExceptionPtr(std::exception_ptr) noexcept;
 
@@ -149,18 +149,26 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  template <typename F>
-  RestStatus waitForFuture(F&& f) {
+  template <typename T>
+  RestStatus waitForFuture(futures::Future<T>&& f) {
+    if (f.isReady()) {             // fast-path out
+      std::move(f).await().rethrow_error();  // just throw the error upwards
+      return RestStatus::DONE;
+    }
     bool done = false;
-    std::forward<F>(f).thenFinal([self = shared_from_this(), &done](auto&& t) noexcept -> void {
+    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>&& t) noexcept -> void {
       auto thisPtr = self.get();
       if (t.has_error()) {
-        thisPtr->handleExceptionPtr(std::forward<decltype(t)>(t).error());
+        thisPtr->handleExceptionPtr(std::move(t).error());
       }
-      if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
-        done = true;
-      } else {
-        thisPtr->wakeupHandler();
+      try {
+        if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
+          done = true;
+        } else {
+          thisPtr->wakeupHandler();
+        }
+      } catch (...) {
+        thisPtr->handleExceptionPtr(std::current_exception());
       }
     });
     return done ? RestStatus::DONE : RestStatus::WAITING;

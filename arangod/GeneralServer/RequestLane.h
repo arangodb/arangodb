@@ -20,8 +20,8 @@
 ///
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
-#include "Basics/debugging.h"
 
 namespace arangodb {
 enum class RequestLane {

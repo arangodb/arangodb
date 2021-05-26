@@ -715,7 +715,6 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
 
       return TRI_ERROR_NO_ERROR;
     } else {
-
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
@@ -729,21 +728,20 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
   }
 
   size_t nrGood = 0;
-  std::ignore =
-      futures::collectAll(responses)
-          .then([&nrGood](std::vector<futures::Try<network::Response>>&& results) {
-            for (auto const& tryRes : results) {
-              network::Response const& r = tryRes.unwrap();  // throws exceptions upwards
-              if (r.ok() && r.statusCode() < 400) {
-                nrGood++;
-              } else {
-                LOG_TOPIC("6ae67", ERR, Logger::PREGEL)
-                    << "received error from worker: '"
-                    << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
-              }
-            }
-          })
-          .await();
+  futures::collectAll(responses)
+      .thenValue([&nrGood](auto const& results) {
+        for (auto const& tryRes : results) {
+          network::Response const& r = tryRes.unwrap();  // throws exceptions upwards
+          if (r.ok() && r.statusCode() < 400) {
+            nrGood++;
+          } else {
+            LOG_TOPIC("6ae67", ERR, Logger::PREGEL)
+                << "received error from worker: '"
+                << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
+          }
+        }
+      })
+      .await_unwrap();
 
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
@@ -952,20 +950,20 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
   }
 
   size_t nrGood = 0;
-  std::ignore = futures::collectAll(responses)
-                    .thenValue([&](auto&& vec) {
-                      for (auto const& tryRes : vec) {
-                        network::Response const& res =
-                            tryRes.unwrap();  // throws exceptions upwards
-                        if (res.ok() && res.statusCode() < 400) {
-                          nrGood++;
-                          if (handle) {
-                            handle(res.slice());
-                          }
-                        }
-                      }
-                    })
-                    .await();
+
+  futures::collectAll(responses)
+      .thenValue([&](auto results) {
+        for (auto const& tryRes : results) {
+          network::Response const& res = tryRes.unwrap();  // throws exceptions upwards
+          if (res.ok() && res.statusCode() < 400) {
+            nrGood++;
+            if (handle) {
+              handle(res.slice());
+            }
+          }
+        }
+      })
+      .await_unwrap();
 
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }

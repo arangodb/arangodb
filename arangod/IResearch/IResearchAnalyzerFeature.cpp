@@ -891,7 +891,7 @@ arangodb::Result visitAnalyzers(
             buffer,
             reqOpts);
 
-      auto const& response = std::move(f).await_unwrap();
+      auto response = std::move(f).await_unwrap();
 
       if (response.error == arangodb::fuerte::Error::RequestTimeout) {
         // timeout, try another coordinator

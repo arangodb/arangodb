@@ -383,7 +383,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                     LOG_TOPIC("9dbfb", TRACE, Logger::AGENCY) << "Successfully sent callback to " << url;
                   }
                 }
-              }).finally([](auto&&) noexcept { /* ignore all exceptions */ });
+              }).finally([](auto&&) noexcept { /* ignore all errors */ });
         } catch (std::exception const& ex) {
           LOG_TOPIC("c4612", DEBUG, Logger::AGENCY)
             << "Failed to deliver callback to endpoint " << endpoint << ": " << ex.what();
@@ -661,7 +661,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   if (!query.isArray()) {
     return false;
   }
-
+  
   std::vector<std::string> query_strs;
   for (auto const& sub_query : VPackArrayIterator(query)) {
     query_strs.emplace_back(sub_query.copyString());

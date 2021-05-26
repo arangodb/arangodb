@@ -75,7 +75,7 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     _done = true;
     return;
   }
-
+ 
   arangodb::velocypack::HashedStringRef persId = traverserCache()->persistString(s);
   _vertexGetter->reset(persId.stringRef());
   _enumerator->setStartVertex(persId.stringRef());
@@ -202,7 +202,6 @@ void ClusterTraverser::destroyEngines() {
                                     "/_internal/traverser/" +
                                         arangodb::basics::StringUtils::itoa(it.second),
                                     body, options).await();
-
 
     if (!res.has_value() || res.unwrap().fail()) {
       // Note If there was an error on server side we do not have ok()

@@ -35,6 +35,8 @@
 
 #include "Transaction/Methods.h"
 
+#include "Futures/Future.h"
+
 #include <vector>
 
 namespace arangodb {

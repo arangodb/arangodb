@@ -126,7 +126,7 @@ class AgencyCache final : public arangodb::Thread {
    */
   change_set_t changedSince(
     std::string const& section, consensus::index_t const& last) const;
-
+  
   /**
    * @brief         Clean up planned/current changes up to including index
    *
@@ -193,7 +193,7 @@ class AgencyCache final : public arangodb::Thread {
 
   /// @brief snapshot note for client
   consensus::index_t _lastSnapshot;
-
+  
   /// @brief current number of entries in _callbacks
   Gauge<uint64_t>& _callbacksCount;
 };

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <queue>
-#include <utility>
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -287,7 +286,7 @@ static void ReportOffSync(LogicalCollection const* col, ShardMap const* shardIds
 }
 
 ShardDistributionReporter::ShardDistributionReporter(ClusterInfo* ci, network::Sender sender)
-    : _ci(ci), _send(std::move(sender)) {
+    : _ci(ci), _send(sender) {
   TRI_ASSERT(_ci != nullptr);
 }
 
@@ -324,7 +323,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
       // Send requests
       for (auto const& s : *(allShards.get())) {
         double timeleft = endtime - TRI_microtime();
-
+        
         serversToAsk.clear();
         auto curServers = cic->servers(s.first);
         auto& entry = counters[s.first];  // Emplaces a new SyncCountInfo
@@ -372,20 +371,17 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             // will not report the sync status. the code here is prepared for this.
             reqOpts.param("checkSyncStatus", "true");
             std::vector<network::FutureRes> futures;
-            futures.reserve(serversToAsk.size() + 1);
-            futures.emplace_back(std::move(leaderF));
+            futures.reserve(serversToAsk.size());
             for (auto const& server : serversToAsk) {
               auto f = _send("server:" + server, fuerte::RestVerb::Get, path,
                              body, reqOpts, headers);
               futures.emplace_back(std::move(f));
             }
 
-            auto responses = futures::collectAll(futures).await_unwrap();
-
             // Wait for responses
             // First wait for Leader
             {
-              auto const& res = responses.front().unwrap();
+              auto const& res = std::move(leaderF).await_unwrap();
               if (res.fail()) {
                 // We did not even get count for leader, use defaults
                 continue;
@@ -414,15 +410,15 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             }
 
             {
-
               // for in-sync followers, pretend that they have the correct number of docs
               TRI_ASSERT(!s.second.empty());
               TRI_ASSERT((s.second.size() - 1) >= serversToAsk.size());
               uint64_t followersInSync = (s.second.size() - 1) - serversToAsk.size();
               uint64_t followerResponses = followersInSync;
               uint64_t followerTotal = followersInSync * entry.total;
-              for (size_t i = 1; i < responses.size(); ++i) {
-                futures::Try<network::Response> const& response = responses[i];
+
+              auto responses = futures::collectAll(futures).await_unwrap();;
+              for (futures::Try<network::Response> const& response : responses) {
                 if (!response.has_value() || response.unwrap().fail()) {
                   // We do not care for errors of any kind.
                   // We can continue here because all other requests will be

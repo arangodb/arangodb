@@ -72,7 +72,6 @@
 
 #include <velocypack/Iterator.h>
 
-#include <Futures/Utilities.h>
 #include <optional>
 
 #ifndef USE_PLAN_CACHE
@@ -1322,7 +1321,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
           return Result{ErrorCode{val.getNumericValue<int>()}};
         }
         return Result();
-    }).thenError<std::exception>([](std::exception const&) {
+    }).thenError<std::exception>([](std::exception ptr) {
       return Result(TRI_ERROR_INTERNAL, "unhandled query shutdown exception");
     });
 
@@ -1332,8 +1331,8 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   return futures::collectAll(std::move(futures))
          .thenValue([](std::vector<futures::Try<Result>>&& results) -> Result{
            for (futures::Try<Result>& tryRes : results) {
-             if (auto&& res = std::move(tryRes).unwrap(); res.fail()) {
-               return std::move(res);
+             if (tryRes.unwrap().fail()) {
+               return std::move(tryRes).unwrap();
              }
            }
            return Result();
@@ -1380,11 +1379,9 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       // looping.
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
     });
-    futures::Future<Result> commitResult = _trx->commitAsync();
-    //static_assert(futures::Future<Result>::is_value_inlined);
-    //TRI_ASSERT(commitResult.holds_inline_value());
-    if (auto res = std::move(commitResult).await_unwrap(); res.fail()) {
-      THROW_ARANGO_EXCEPTION(std::move(res));
+    auto commitResult = _trx->commitAsync().await();
+    if (commitResult.unwrap().fail()) {
+      THROW_ARANGO_EXCEPTION(std::move(commitResult).unwrap());
     }
     TRI_IF_FAILURE("Query::finalize_before_done") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -1414,20 +1411,14 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     TRI_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
-    ::finishDBServerParts(*this, errorCode).finally([ss = _sharedState, this](futures::Try<Result> tryRes) noexcept {
-      try {
-        auto r = tryRes.unwrap();
-        LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
-            << "received error from DBServer on query finalization: " << r.errorNumber()
-            << ", '" << r.errorMessage() << "'";
-        _sharedState->executeAndWakeup([&] {
-          _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
-          return true;
-        });
-      } catch (...) {
-        /* ignore */
-      }
-    });
+    ::finishDBServerParts(*this, errorCode).thenValue([ss = _sharedState, this](Result r) {
+      LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
+        << "received error from DBServer on query finalization: " << r.errorNumber() << ", '" << r.errorMessage() << "'";
+      _sharedState->executeAndWakeup([&] {
+        _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+        return true;
+      });
+    }).finally([](auto&&) noexcept { /* ignore all errors */ });
 
     TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
       debugKillQuery();

@@ -71,6 +71,7 @@ auto future<T, Tag>::and_then(F&& f) && noexcept {
   static_assert(!std::is_void_v<R>, "the lambda object must return a value");
   detail::tag_trait_helper<Tag>::debug_assert_true(
       !empty(), "and_then called on empty future");
+  static_assert(std::is_nothrow_move_constructible_v<std::decay_t<F>>);
   if constexpr (detail::tag_trait_helper<Tag>::is_disable_temporaries()) {
     return std::move(*this).and_then_direct(std::forward<F>(f));
   } else {

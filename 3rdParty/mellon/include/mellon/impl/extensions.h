@@ -24,7 +24,7 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
   auto then(F&& f) && noexcept {
     // TODO what if `F` returns an `expected<U>`. Do we want to flatten automagically?
     // mpoeter - I think it would make sense!
-    static_assert(std::is_nothrow_constructible_v<F, F>,
+    static_assert(std::is_nothrow_move_constructible_v<std::decay_t<F>>,
                   "the lambda object must be nothrow constructible from "
                   "itself. You should pass it as rvalue reference and it "
                   "should be nothrow move constructible. If it's passed as "
@@ -76,15 +76,42 @@ struct FUTURES_EMPTY_BASE future_type_based_extensions<expect::expected<T>, Fut,
   }
 
   // mpoeter - documentation missing
-  template <typename G, typename U = T, std::enable_if_t<std::is_invocable_v<G, U&&>, int> = 0,
-            typename ReturnType = std::invoke_result_t<G, U&&>,
-            std::enable_if_t<is_future_like_v<ReturnType>, int> = 0,
-            typename ValueType = typename future_trait<ReturnType>::value_type,
-            std::enable_if_t<expect::is_expected_v<ValueType>, int> = 0>
+  template <typename G, typename U = T, std::enable_if_t<std::is_void_v<U>, int> = 0,
+      std::enable_if_t<std::is_invocable_v<G>, int> = 0,
+      typename ReturnType = std::invoke_result_t<G>,
+      std::enable_if_t<is_future_like_v<ReturnType>, int> = 0,
+  typename ValueType = typename future_trait<ReturnType>::value_type,
+      std::enable_if_t<expect::is_expected_v<ValueType>, int> = 0>
   [[nodiscard]] auto then_bind(G&& g) && noexcept -> future<ValueType, Tag> {
     auto&& [f, p] = make_promise<ValueType, Tag>();
     move_self().finally([g = std::forward<G>(g),
-                         p = std::move(p)](expect::expected<T>&& t) mutable noexcept {
+        p = std::move(p)](expect::expected<T>&& t) mutable noexcept {
+      if (t.has_error()) {
+        return std::move(p).fulfill(t.error());
+      } else {
+        expect::expected<ReturnType> result = expect::captured_invoke(g);
+        if (result.has_value()) {
+          std::move(result).unwrap().finally([p = std::move(p)](ValueType&& v) mutable noexcept {
+            std::move(p).fulfill(std::move(v));
+          });
+        } else {
+          std::move(p).fulfill(result.error());
+        }
+      }
+    });
+    return std::move(f);
+  }
+
+  // mpoeter - documentation missing
+  template <typename G, typename U = T, std::enable_if_t<std::is_invocable_v<G, U&&>, int> = 0,
+      typename ReturnType = std::invoke_result_t<G, U&&>,
+      std::enable_if_t<is_future_like_v<ReturnType>, int> = 0,
+  typename ValueType = typename future_trait<ReturnType>::value_type,
+      std::enable_if_t<expect::is_expected_v<ValueType>, int> = 0>
+                                                                [[nodiscard]] auto then_bind(G&& g) && noexcept -> future<ValueType, Tag> {
+    auto&& [f, p] = make_promise<ValueType, Tag>();
+    move_self().finally([g = std::forward<G>(g),
+        p = std::move(p)](expect::expected<T>&& t) mutable noexcept {
       if (t.has_error()) {
         return std::move(p).fulfill(t.error());
       } else {

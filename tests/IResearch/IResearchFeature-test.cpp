@@ -2192,9 +2192,9 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Current/Databases/" + name, st);
     st = ts.specialize(current_colls_string);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+    std::ignore = server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
       agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).await_unwrap();
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
+    std::ignore = server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
       agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).await_unwrap();
   }
 
@@ -2204,9 +2204,9 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Plan/Collections/" + name, st);
     agencyTrx("/arango/Current/Databases/" + name, st);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+    std::ignore = server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
       agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).await_unwrap();
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
+    std::ignore = server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
       agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).await_unwrap();
   }
 

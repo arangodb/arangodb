@@ -101,7 +101,7 @@ class Methods {
   Methods& operator=(Methods const&) = delete;
 
  public:
-
+  
   /// @brief create the transaction
   explicit Methods(std::shared_ptr<transaction::Context> const& transactionContext,
                    transaction::Options const& options = transaction::Options());
@@ -170,12 +170,12 @@ class Methods {
     TRI_ASSERT(_transactionContext != nullptr);
     return _transactionContext.get();
   }
-
+  
   // is this instance responsible for commit / abort
   bool isMainTransaction() const {
     return _mainTransaction;
   }
-
+  
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
 
@@ -189,7 +189,7 @@ class Methods {
   char const* statusString() const {
     return transaction::statusString(status());
   }
-
+  
   /// @brief options used, not dump options
   TEST_VIRTUAL velocypack::Options const& vpackOptions() const;
 
@@ -288,7 +288,7 @@ class Methods {
   Future<OperationResult> insertAsync(std::string const& collectionName,
                                       VPackSlice value,
                                       OperationOptions const& options);
-
+  
   /// @deprecated use async variant
   OperationResult update(std::string const& cname, VPackSlice updateValue,
                          OperationOptions const& options) {
@@ -300,7 +300,7 @@ class Methods {
   /// if it fails, clean up after itself
   Future<OperationResult> updateAsync(std::string const& collectionName, VPackSlice updateValue,
                                       OperationOptions const& options);
-
+  
   /// @deprecated use async variant
   OperationResult replace(std::string const& cname, VPackSlice replaceValue,
                          OperationOptions const& options) {
@@ -365,16 +365,16 @@ class Methods {
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
-
+  
   /// @brief fetch the LogicalCollection by CID
   arangodb::LogicalCollection* documentCollection(DataSourceId cid) const;
 
   /// @brief fetch the LogicalCollection by name
   arangodb::LogicalCollection* documentCollection(std::string const& name) const;
-
+  
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
-
+    
 #ifndef USE_ENTERPRISE
   bool skipInaccessible() const {
     return false;
@@ -477,18 +477,18 @@ class Methods {
 
   /// @brief add a collection by name
   Result addCollection(std::string const&, AccessMode::Type);
-
+  
  protected:
   /// @brief the state
   std::shared_ptr<TransactionState> _state;
 
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
-
+  
   bool _mainTransaction;
-
+  
  private:
-
+  
   Future<Result> replicateOperations(
       LogicalCollection* collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,

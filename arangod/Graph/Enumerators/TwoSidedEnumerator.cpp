@@ -164,7 +164,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     // Will throw all network errors here
     auto&& preparedEnds = std::move(futureEnds).await_unwrap();
 
-    TRI_ASSERT(!preparedEnds.empty());
+    TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.hasProcessableElement());
   }
 

@@ -43,8 +43,8 @@ AgencyCache::AgencyCache(application_features::ApplicationServer& server,
     _commitIndex(0), 
     _readDB(server, nullptr, "readDB"),
     _shutdownCode(shutdownCode),
-    _initialized(false),
-    _callbackRegistry(callbackRegistry),
+    _initialized(false), 
+    _callbackRegistry(callbackRegistry), 
     _lastSnapshot(0),
     _callbacksCount(
       _server.getFeature<MetricsFeature>().add(arangodb_agency_cache_callback_number{})) {
@@ -136,7 +136,7 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
     return futures::makeFuture(arangodb::Result());
   }
   // intentionally don't release _storeLock here until we have inserted the promise
-  auto&&[f, p] = futures::makePromise<arangodb::Result>();
+  auto&& [f, p] = arangodb::futures::makePromise<arangodb::Result>();
   std::lock_guard w(_waitLock);
   _waiting.emplace(index, std::move(p));
   return std::move(f);
@@ -265,7 +265,7 @@ void AgencyCache::handleCallbacksNoLock(
 
 void AgencyCache::run() {
   using namespace std::chrono;
-
+  
   TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
 
   {
@@ -342,14 +342,14 @@ void AgencyCache::run() {
 
       if (server().getFeature<NetworkFeature>().prepared()) {
         auto ret = sendTransaction()
-          .thenValue(
-            [&](AsyncAgencyCommResult&& rb) -> void {
+          .then_bind(
+            [&](AsyncAgencyCommResult&& rb) {
               if (!rb.ok() || rb.statusCode() != arangodb::fuerte::StatusOK) {
                 // Error response, this includes client timeout
                 increaseWaitTime();
                 LOG_TOPIC("9a93e", DEBUG, Logger::CLUSTER) <<
                   "Failed to get poll result from agency.";
-                  return;
+                  return futures::makeFuture();
               }
               // Correct response:
               index_t curIndex = 0;
@@ -367,7 +367,7 @@ void AgencyCache::run() {
               VPackSlice firstIndexSlice = rs.get("firstIndex");
               if (!firstIndexSlice.isNumber()) {
                 // Nothing happened at all, server timeout
-                return;
+                return futures::makeFuture();
               }
               index_t firstIndex = firstIndexSlice.getNumber<uint64_t>();
               if (firstIndex > 0) {
@@ -382,7 +382,7 @@ void AgencyCache::run() {
                   LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
                     << "Incoming: " << rs.toJson();
                   increaseWaitTime();
-                  return;
+                  return futures::makeFuture();
                 }
                 TRI_ASSERT(rs.hasKey("log"));
                 TRI_ASSERT(rs.get("log").isArray());
@@ -396,16 +396,16 @@ void AgencyCache::run() {
                     _readDB.applyTransaction(i); // apply logs
                     _commitIndex = i.get("index").getNumber<uint64_t>();
 
-                    {
-                      std::lock_guard g2(_callbacksLock);
+                   {
+                      std::lock_guard g(_callbacksLock);
                       handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
                     }
 
-                    for (auto const& j : pc) {
-                      _planChanges.emplace(_commitIndex, j);
+                    for (auto const& i : pc) {
+                      _planChanges.emplace(_commitIndex, i);
                     }
-                    for (auto const& j : cc) {
-                      _currentChanges.emplace(_commitIndex, j);
+                    for (auto const& i : cc) {
+                      _currentChanges.emplace(_commitIndex, i);
                     }
                   }
                 }
@@ -433,6 +433,7 @@ void AgencyCache::run() {
               } else {
                 invokeAllCallbacks();
               }
+              return futures::makeFuture();
             })
           .thenError<VPackException>(
             [&increaseWaitTime](VPackException const& e) {
@@ -446,7 +447,7 @@ void AgencyCache::run() {
                 "Failed to get poll result from agency: " << e.what();
               increaseWaitTime();
             });
-        std::move(ret).await_unwrap(); // ignore other exceptions
+        std::ignore = std::move(ret).await();
       } else {
         increaseWaitTime();
         LOG_TOPIC("9393e", DEBUG, Logger::CLUSTER) <<

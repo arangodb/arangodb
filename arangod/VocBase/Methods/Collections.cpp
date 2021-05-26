@@ -352,7 +352,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       case ServerState::ROLE_UNDEFINED:
         TRI_ASSERT(false);
     }
-
+    
     if (!isLocalCollection) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
@@ -366,10 +366,10 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         // the combination if "isSmart" and replicationFactor "satellite" does not make any sense.
         // note: replicationFactor "satellite" can also be expressed as replicationFactor 0.
         VPackSlice s = info.properties.get(StaticStrings::IsSmart);
-        if (s.isBoolean() && s.getBoolean() &&
-            ((replicationFactorSlice.isNumber() &&
-              replicationFactorSlice.getNumber<int>() == 0) ||
-             (replicationFactorSlice.isString() &&
+        if (s.isBoolean() && s.getBoolean() && 
+            ((replicationFactorSlice.isNumber() && 
+              replicationFactorSlice.getNumber<int>() == 0) || 
+             (replicationFactorSlice.isString() && 
               replicationFactorSlice.stringRef() == StaticStrings::Satellite))) {
           // check for the combination of "satellite" replication factor and "isSmart"
           events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_BAD_PARAMETER);
@@ -893,9 +893,9 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES,
-               res.fail() &&
-               res.isNot(TRI_ERROR_FORBIDDEN) &&
+  LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES, 
+               res.fail() && 
+               res.isNot(TRI_ERROR_FORBIDDEN) && 
                res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
                res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
     << "error while dropping collection: '" << collName

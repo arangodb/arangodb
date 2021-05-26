@@ -66,7 +66,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleNumberOfServers();
   RestStatus handleMaintenance();
 
-  RestStatus setMaintenance(bool wantToActivate);
+  RestStatus setMaintenance(bool state);
   RestStatus handlePutMaintenance();
   RestStatus handleGetMaintenance();
 
@@ -91,7 +91,30 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRebalanceShards();
 
  private:
+  struct MoveShardContext {
+    std::string database;
+    std::string collection;
+    std::string shard;
+    std::string fromServer;
+    std::string toServer;
+    std::string collectionID;
+    bool remainsFollower;
 
+    MoveShardContext(std::string database, std::string collection, std::string shard,
+                     std::string from, std::string to, std::string collectionID,
+                     bool remainsFollower)
+        : database(std::move(database)),
+          collection(std::move(collection)),
+          shard(std::move(shard)),
+          fromServer(std::move(from)),
+          toServer(std::move(to)),
+          collectionID(std::move(collectionID)),
+          remainsFollower(true) {}
+
+    static std::unique_ptr<MoveShardContext> fromVelocyPack(arangodb::velocypack::Slice slice);
+  };
+
+  RestStatus handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx);
 
   RestStatus handleSingleServerJob(std::string const& job);
   RestStatus handleCreateSingleServerJob(std::string const& job, std::string const& server);
@@ -99,6 +122,19 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   typedef std::chrono::steady_clock clock;
   typedef futures::Future<futures::Unit> FutureVoid;
 
+  FutureVoid waitForSupervisionState(bool state,
+                                     clock::time_point startTime = clock::time_point());
+
+  struct RemoveServerContext {
+    size_t tries;
+    std::string server;
+
+    explicit RemoveServerContext(std::string s) : tries(0), server(std::move(s)) {}
+  };
+
+  FutureVoid tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
+  FutureVoid retryTryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
+  FutureVoid createMoveShard(std::unique_ptr<MoveShardContext>&& ctx, velocypack::Slice plan);
 
   RestStatus handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter);
   RestStatus handleGetCollectionShardDistribution(std::string const& collection);

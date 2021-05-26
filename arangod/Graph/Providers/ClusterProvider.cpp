@@ -153,9 +153,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
-        if (!f.empty()) {
-          std::ignore = std::move(f).await_unwrap();
-        }
+        std::ignore = std::move(f).await_unwrap();
       } catch (...) {
       }
     }
@@ -194,7 +192,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
       if (!_opts.getCache()->isVertexCached(vertexKey)) {
         // Will be protected by the datalake.
         // We flag to retain the payload.
-        _opts.getCache()->cacheVertex(vertexKey, pair.value);
+        _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value);
         needToRetainPayload = true;
       }
     }
@@ -289,9 +287,7 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
-        if (!f.empty()) {
-          std::ignore = std::move(f).await_unwrap();
-        }
+        std::ignore = std::move(f).await_unwrap();
       } catch (...) {
       }
     }

@@ -1261,7 +1261,7 @@ static void JS_RenameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
 static void parseReplaceAndUpdateOptions(v8::Isolate* isolate,
                                          v8::FunctionCallbackInfo<v8::Value> const& args,
                                          OperationOptions& options,
-                                         TRI_voc_document_operation_e operation) {
+                                         TRI_voc_document_operation_e operation) { 
   TRI_ASSERT(args.Length() > 2);
   if (args[2]->IsObject()) {
     v8::Handle<v8::Object> optionsObject = args[2].As<v8::Object>();
@@ -1694,7 +1694,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (res.first.fail()) {
     TRI_V8_THROW_EXCEPTION(res.first);
   }
-
+    
   auto result = TRI_V8UInt64String<uint64_t>(isolate, res.second);
   TRI_V8_RETURN(result);
 
@@ -1920,7 +1920,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(OverwriteModeKey);
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
       auto mode = TRI_ObjectToString(isolate, optionsObject->Get(context, OverwriteModeKey).FromMaybe(v8::Local<v8::Value>()));
-
+      
       auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
       if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
         options.overwriteMode = overwriteMode;
@@ -1976,7 +1976,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
     TRI_V8ToVPack(isolate, builder, obj, true);
-
+    
     if (isEdgeCollection && oldEdgeSignature) {
       // Just insert from and to. Check is done later.
       std::string tmpId(ExtractIdString(isolate, args[0]));
@@ -2154,7 +2154,7 @@ static void JS_TruncateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
     getOperationOptionsFromObject(isolate, options, optionsObject);
   }
-
+  
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {

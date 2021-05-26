@@ -1535,7 +1535,7 @@ void ClusterInfo::loadCurrent() {
   // Current/Databases
   for (auto const& database : changeSet.dbs) {
 
-    auto databaseName = database.first;
+    auto const databaseName = database.first;
     if (databaseName.empty()) {
       continue;
     }
@@ -2429,6 +2429,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
     if (res.successful()) {
       break;
     }
+    
     if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
       auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
       auto [acb, index] = agencyCache.read(
@@ -2459,7 +2460,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
     if (tries == 1) {
       events::CreateDatabase(database.getName(), res.asResult(), ExecContext::current());
     }
-
+    
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
@@ -2467,7 +2468,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
     if (tries >= 5) {
       nextTimeout = 5.0;
     }
-
+      
     LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
       << "failed to cancel creation of database " << database.getName() << " with error "
       << res.errorMessage() << ". Retrying.";
@@ -3617,7 +3618,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
 
   AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
-
+  
   Result result;
 
   if (res.successful() && res.slice().get("results").length()) {
@@ -3899,7 +3900,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
         continue;
       } else if (restore) {
         break; // failed precondition means our revert is indirectly successful!
-      }
+      } 
       return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
                     "finish modifying analyzer precondition for database " +
                     databaseID + ": Revision " + revisionBuilder.toString() +
@@ -6007,7 +6008,7 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() co
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(_server, "Plan", std::bind(&ClusterInfo::loadPlan, this), _agencyCallbackRegistry);
   _curSyncer = std::make_unique<SyncerThread>(_server, "Current", std::bind(&ClusterInfo::loadCurrent, this), _agencyCallbackRegistry);
-
+  
   if (!_planSyncer->start() || !_curSyncer->start()) {
     LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)
       << "unable to start PlanSyncer/CurrentSYncer";
@@ -6052,7 +6053,7 @@ void ClusterInfo::waitForSyncersToStop() {
   drainSyncers();
 
   auto start = std::chrono::steady_clock::now();
-  while ((_planSyncer != nullptr && _planSyncer->isRunning()) ||
+  while ((_planSyncer != nullptr && _planSyncer->isRunning()) || 
          (_curSyncer != nullptr && _curSyncer->isRunning())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
@@ -6073,7 +6074,7 @@ VPackSlice PlanCollectionReader::indexes() {
     return res;
   }
 }
-
+  
 CollectionWatcher::CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
 
@@ -6267,7 +6268,7 @@ futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
   }
 
   // intentionally don't release _storeLock here until we have inserted the promise
-  auto&&[f, p] = futures::makePromise<arangodb::Result>();
+  auto&& [f, p] = futures::makePromise<arangodb::Result>();
   std::lock_guard w(_waitPlanVersionLock);
   _waitPlanVersion.emplace(planVersion, std::move(p));
   return std::move(f);
@@ -6275,31 +6276,19 @@ futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
 
 futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout timeout) {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
-  auto&& [f, p] = futures::makePromise<Result>();
-  cluster::fetchPlanVersion(timeout).finally(
-      [&applicationServer = server(), p = std::move(p)](auto maybePlanVersion) mutable noexcept {
-        if (maybePlanVersion.has_error()) {
-          std::move(p).fulfill(maybePlanVersion.error());
-        }
+  return cluster::fetchPlanVersion(timeout).then_bind(
+      [&applicationServer = server()](auto maybePlanVersion) {
+        if (maybePlanVersion.ok()) {
+          auto planVersion = maybePlanVersion.get();
 
-        auto& result = maybePlanVersion.unwrap();
+          auto& clusterInfo =
+              applicationServer.getFeature<ClusterFeature>().clusterInfo();
 
-        if (result.ok()) {
-          auto planVersion = result.get();
-
-          try {
-            auto& clusterInfo =
-                applicationServer.getFeature<ClusterFeature>().clusterInfo();
-            auto f = clusterInfo.waitForPlanVersion(planVersion);
-            std::move(f).fulfill(std::move(p));
-          } catch(...) {
-            std::move(p).capture_current_exception();
-          }
+          return clusterInfo.waitForPlanVersion(planVersion);
         } else {
-          std::move(p).fulfill(result.result());
+          return futures::Future<Result>{maybePlanVersion.result()};
         }
       });
-  return std::move(f);
 }
 
 
@@ -6543,7 +6532,7 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(std::shared_ptr<cluster::paths
 
   auto fAacResult = AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
 
-  futures::Future<ResultT<T>> fResult = std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
+  auto fResult = std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
     if (result.ok() && result.statusCode() == fuerte::StatusOK) {
       return ResultT<T>::success(
           result.slice().at(0).get(path->vec()).template getNumber<T>());

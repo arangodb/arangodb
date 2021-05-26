@@ -52,17 +52,17 @@ using namespace arangodb::fuerte;
 
 using PromiseRes = arangodb::futures::Promise<network::Response>;
 
-Response::Response() noexcept
+Response::Response() noexcept 
   : error(fuerte::Error::ConnectionCanceled) {}
-
+  
 Response::Response(DestinationId&& destination, fuerte::Error error,
                    std::unique_ptr<arangodb::fuerte::Request>&& request,
                    std::unique_ptr<arangodb::fuerte::Response>&& response) noexcept
-  : destination(std::move(destination)),
+  : destination(std::move(destination)), 
     error(error),
-    _request(std::move(request)),
+    _request(std::move(request)), 
     _response(std::move(response)) {
-  TRI_ASSERT(_request != nullptr || error == fuerte::Error::ConnectionCanceled);
+  TRI_ASSERT(_request != nullptr || error == fuerte::Error::ConnectionCanceled); 
 }
 
 arangodb::fuerte::Request& Response::request() const {
@@ -72,7 +72,7 @@ arangodb::fuerte::Request& Response::request() const {
   }
   return *_request;
 }
-
+  
 arangodb::fuerte::Response& Response::response() const {
   TRI_ASSERT(hasResponse());
   if (_response == nullptr) {
@@ -87,13 +87,13 @@ void Response::setResponse(std::unique_ptr<arangodb::fuerte::Response> response)
   _response = std::move(response);
 }
 #endif
-
+  
 /// @brief steal the response from here. this may return a unique_ptr
 /// containing a nullptr. it is the caller's responsibility to check that.
 std::unique_ptr<arangodb::fuerte::Response> Response::stealResponse() noexcept {
   return std::unique_ptr<arangodb::fuerte::Response>(_response.release());
 }
-
+  
 // returns a slice of the payload if there was no error
 velocypack::Slice Response::slice() const {
   if (error == fuerte::Error::NoError && _response) {
@@ -101,7 +101,7 @@ velocypack::Slice Response::slice() const {
   }
   return velocypack::Slice();  // none slice
 }
-
+  
 std::size_t Response::payloadSize() const noexcept {
   if (_response != nullptr) {
     return _response->payloadSize();
@@ -120,7 +120,7 @@ Result Response::combinedResult() const {
   if (fail()) {
     // fuerte connection failed
     return Result{fuerteToArangoErrorCode(*this), fuerteToArangoErrorMessage(*this)};
-  }
+  } 
   if (!statusIsSuccess(_response->statusCode())) {
     // HTTP status error. Try to extract a precise error from the body, and
     // fall back to the HTTP status.
@@ -212,12 +212,8 @@ struct Pack {
   fuerte::Error tmp_err;
   RequestLane continuationLane;
   bool skipScheduler;
-  Pack(DestinationId&& dest, RequestLane lane, bool skip,
-       futures::Promise<network::Response> promise)
-      : dest(std::move(dest)),
-        promise(std::move(promise)),
-        continuationLane(lane),
-        skipScheduler(skip) {}
+  Pack(DestinationId&& dest, futures::Promise<network::Response> promise, RequestLane lane, bool skip)
+      : dest(std::move(dest)), promise(std::move(promise)), continuationLane(lane), skipScheduler(skip) {}
 };
 
 void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
@@ -300,11 +296,11 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     // fits in SSO of std::function
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
 
-    auto&& [f, p] = futures::makePromise<network::Response>();
+    auto&& [f, prom] = futures::makePromise<network::Response>();
 
-    auto pack = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler, std::move(p));
-    actuallySendRequest(std::move(pack), pool, options, spec.endpoint, std::move(req));
+    auto p = std::make_shared<Pack>(std::move(dest), std::move(prom),
+                                    options.continuationLane, options.skipScheduler);
+    actuallySendRequest(std::move(p), pool, options, spec.endpoint, std::move(req));
     return std::move(f);
 
   } catch (std::exception const& e) {
@@ -322,9 +318,10 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
-  RequestsState(ConnectionPool* pool, futures::Promise<network::Response>&& promise, DestinationId&& destination, RestVerb type,
+  RequestsState(ConnectionPool* pool, DestinationId&& destination, RestVerb type,
                 std::string&& path, velocypack::Buffer<uint8_t>&& payload,
-                Headers&& headers, RequestOptions const& options)
+                futures::Promise<network::Response> promise, Headers&& headers,
+                RequestOptions const& options)
       : _destination(std::move(destination)),
         _options(options),
         _pool(pool),
@@ -355,7 +352,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   fuerte::Error _tmp_err;
 
  public:
-
   // scheduler requests that are due
   void startRequest() {
     TRI_ASSERT(_tmp_req != nullptr);
@@ -610,10 +606,10 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
         << "request to '" << destination << "' '" << fuerte::to_string(type)
         << " " << path << "'";
 
-    auto&&[f, p] = futures::makePromise<Response>();
-    auto rs = std::make_shared<RequestsState>(pool, std::move(p), std::move(destination), type,
+    auto&& [f, p] = futures::makePromise<network::Response>();
+    auto rs = std::make_shared<RequestsState>(pool, std::move(destination), type,
                                               std::move(path), std::move(payload),
-                                              std::move(headers), options);
+                                              std::move(p), std::move(headers), options);
     rs->startRequest();  // will auto reference itself
     return std::move(f);
 

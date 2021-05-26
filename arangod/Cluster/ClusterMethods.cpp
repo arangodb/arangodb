@@ -146,7 +146,7 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
   for (auto const& pair : shards) {
     auto const& it = shardMap->find(pair.first);
     if (it->second.empty()) {
-      return Future<Result>{std::in_place, TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};  // something is broken
+      return makeFuture<Result>(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);  // something is broken
     }
     // now we got the shard leader
     std::string const& leader = it->second[0];
@@ -350,7 +350,7 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
 
   VPackBuilder resultBody;
   resultBody.openArray();
-  for (auto const& pair : opCtx.reverseMapping) {
+  for (auto const& pair : opCtx->reverseMapping) {
     ShardID const& sId = pair.first;
     auto const& it = resultMap.find(sId);
     if (it == resultMap.end()) { // no answer from this shard
@@ -368,7 +368,7 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
   resultBody.close();
 
   return std::forward<F>(func)(code, resultBody.steal(),
-                               std::move(opCtx.options), std::move(errorCounter));
+                               std::move(opCtx->options), std::move(errorCounter));
 }
 
 /// @brief handle CRUD api shard responses, slow path
@@ -705,7 +705,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
       std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
   // We need to replace the distribute with the cid.
-  auto cidString = arangodb::basics::StringUtils::itoa(other->id().id());
+  auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id().id());
   col->distributeShardsLike(cidString, other->shardingInfo());
 
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
@@ -876,7 +876,7 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
                                                              {"engine", "documents"})));
     }
     // merge indexes together
-    std::map<uint64_t, std::pair<VPackSlice, VPackSlice>> innerIndexes;
+    std::map<uint64_t, std::pair<VPackSlice, VPackSlice>> indexes;
 
     updated.add("indexes", VPackValue(VPackValueType::Array));
     VPackSlice rocksDBValues = value.get("engine");
@@ -887,7 +887,7 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
         if (!idSlice.isNumber()) {
           continue;
         }
-        innerIndexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
+        indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
       }
     }
   
@@ -898,16 +898,16 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
         if (!idSlice.isNumber()) {
           continue;
         }
-        auto idx = innerIndexes.find(idSlice.getNumber<uint64_t>());
-        if (idx == innerIndexes.end()) {
-          innerIndexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
+        auto idx = indexes.find(idSlice.getNumber<uint64_t>());
+        if (idx == indexes.end()) {
+          indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
         } else {
           (*idx).second.second = it;
         }
       }
     }
 
-    for (auto const& it : innerIndexes) {
+    for (auto const& it : indexes) {
       updated.openObject();
       updated.add("type", it.second.first.get("type"));
       updated.add("id", it.second.first.get("id"));
@@ -1254,8 +1254,8 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   }
 
   auto cb = [options = options](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
-    auto handler = [](Result& result, VPackBuilder& builder, ShardID const& shardId,
-                      VPackSlice answer) mutable -> void {
+    auto handler = [](Result& result, VPackBuilder& builder,
+                      ShardID const& shardId, VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         // add to the total
         VPackArrayBuilder array(&builder);
@@ -1346,8 +1346,8 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   // }
 
   std::map<std::string, std::vector<double>> indexEstimates;
-  for (auto const& tryRes : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = tryRes.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
@@ -1435,18 +1435,16 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     }
   }
 
-  Future<Result> f = std::invoke([&] {
-    const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-    if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
-      return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
-    }
-    return makeFuture(Result());
-  });
+  Future<Result> f = makeFuture(Result());
+  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
+    f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
+  }
 
-  return std::move(f).then_bind([=, &trx, &coll, opCtx = std::move(opCtx), options = options]
-                                (Result&& r) mutable -> Future<OperationResult> {
+  return std::move(f).then_bind([=, &trx, &coll, opCtx(std::move(opCtx)), options = options](
+                                    Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
-      return Future<OperationResult>{std::in_place, std::move(r), options};
+      return makeFuture(OperationResult(std::move(r), options));
     }
 
     std::string const baseUrl = "/_api/document/";
@@ -1515,7 +1513,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     if (!useMultiple) {  // single-shard fast track
       TRI_ASSERT(futures.size() == 1);
 
-      auto cb = [options](network::Response&& res) -> OperationResult {
+      auto cb = [options = options](network::Response&& res) mutable -> OperationResult {
         if (res.error != fuerte::Error::NoError) {
           return OperationResult(network::fuerteToArangoErrorCode(res), std::move(options));
         }
@@ -1523,12 +1521,12 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
         return network::clusterResultInsert(res.statusCode(),
                                             res.response().stealPayload(), std::move(options), {});
       };
-      return std::move(futures[0]).thenValue(cb);
+      return std::move(futures[0]).thenValue(std::move(cb));
     }
 
     return futures::collectAll(std::move(futures))
-        .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) -> OperationResult {
-          return handleCRUDShardResponsesFast(network::clusterResultInsert, *opCtx, results);
+        .thenValue([opCtx(std::move(opCtx))](std::vector<Try<network::Response>>&& results) -> OperationResult {
+          return handleCRUDShardResponsesFast(network::clusterResultInsert, opCtx, results);
         });
   });
 }
@@ -1566,14 +1564,13 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   }
   // We sorted the shards correctly.
 
-  auto reqOpts = std::make_shared<network::RequestOptions>();
-  reqOpts->database = trx.vocbase().name();
-  reqOpts->timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
-  reqOpts->retryNotFound = true;
-  reqOpts
-      ->param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
-      .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
-      .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
+  network::RequestOptions reqOpts;
+  reqOpts.database = trx.vocbase().name();
+  reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
+  reqOpts.retryNotFound = true;
+  reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
+         .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
+         .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
@@ -1582,17 +1579,15 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     // Contact all shards directly with the correct information.
 
     // lazily begin transactions on leaders
-    Future<Result> f = std::invoke([&] {
-      if (isManaged && opCtx->shardMap.size() > 1) {
-        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
-      }
-      return makeFuture(Result());
-    });
+    Future<Result> f = makeFuture(Result());
+    if (isManaged && opCtx->shardMap.size() > 1) {
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
+    }
 
     return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
                                       Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {
-        return Future<OperationResult>{std::in_place, std::move(r), options};
+        return makeFuture(OperationResult(std::move(r), options));
       }
 
       // Now prepare the requests:
@@ -1619,25 +1614,25 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
         futures.emplace_back(network::sendRequestRetry(
             pool, "shard:" + it.first, fuerte::RestVerb::Delete,
             "/_api/document/" + StringUtils::urlEncode(it.first),
-            std::move(buffer), *reqOpts, std::move(headers)));
+            std::move(buffer), reqOpts, std::move(headers)));
       }
 
       // Now listen to the results:
       if (!useMultiple) {
         TRI_ASSERT(futures.size() == 1);
-        auto cb = [options](network::Response&& res) mutable -> OperationResult {
+        auto cb = [options = options](network::Response&& res) mutable -> OperationResult {
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
           return network::clusterResultRemove(res.statusCode(),
                                               res.response().stealPayload(), std::move(options), {});
         };
-        return std::move(futures[0]).thenValue(cb);
+        return std::move(futures[0]).thenValue(std::move(cb));
       }
 
       return futures::collectAll(std::move(futures))
           .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) -> OperationResult {
-            return handleCRUDShardResponsesFast(network::clusterResultRemove, *opCtx, results);
+            return handleCRUDShardResponsesFast(network::clusterResultRemove, opCtx, results);
           });
     });
 
@@ -1647,16 +1642,14 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   // lazily begin transactions on leaders
-  Future<Result> f = std::invoke([&] {
-    if (isManaged && shardIds->size() > 1) {
-      return ::beginTransactionOnAllLeaders(trx, *shardIds);
-    }
-    return makeFuture(Result());
-  });
+  Future<Result> f = makeFuture(Result());
+  if (isManaged && shardIds->size() > 1) {
+    f = ::beginTransactionOnAllLeaders(trx, *shardIds);
+  }
 
   return std::move(f).then_bind([=, &trx, options = options](Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
-      return Future<OperationResult>{std::in_place, r, options};
+      return makeFuture(OperationResult(r, options));
     }
 
     // We simply send the body to all shards and await their results.
@@ -1683,11 +1676,11 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
           network::sendRequestRetry(pool, "shard:" + shard, fuerte::RestVerb::Delete,
                                     "/_api/document/" + StringUtils::urlEncode(shard),
                                     /*cannot move*/ buffer,
-                                    *reqOpts, std::move(headers)));
+                                    reqOpts, std::move(headers)));
     }
 
     return futures::collectAll(std::move(futures))
-    .thenValue([=, options = options](std::vector<Try<network::Response>>&& responses) mutable -> OperationResult {
+    .thenValue([=](std::vector<Try<network::Response>>&& responses) mutable -> OperationResult {
       return ::handleCRUDShardResponsesSlow(network::clusterResultRemove, expectedLen,
                                             std::move(options), responses);
     });
@@ -1805,10 +1798,10 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
   // Some stuff to prepare cluster-internal requests:
 
-  auto reqOpts = std::make_shared<network::RequestOptions>();
-  reqOpts->database = trx.vocbase().name();
-  reqOpts->retryNotFound = true;
-  reqOpts->param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
+  network::RequestOptions reqOpts;
+  reqOpts.database = trx.vocbase().name();
+  reqOpts.retryNotFound = true;
+  reqOpts.param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
   fuerte::RestVerb restVerb;
   if (!useMultiple) {
@@ -1816,26 +1809,24 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   } else {
     restVerb = fuerte::RestVerb::Put;
     if (options.silent) {
-      reqOpts->param(StaticStrings::SilentString, "true");
+      reqOpts.param(StaticStrings::SilentString, "true");
     }
-    reqOpts->param("onlyget", "true");
+    reqOpts.param("onlyget", "true");
   }
 
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
 
-    Future<Result> f = std::invoke([&] {
-      if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin the transaction
-        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
-      }
-      return makeFuture(Result());
-    });
+    Future<Result> f = makeFuture(Result());
+    if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin the transaction
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
+    }
 
-    return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options]
-                                  (Result&& r) mutable -> Future<OperationResult> {
+    return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
+                                      Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {
-        return Future<OperationResult>{std::in_place, std::move(r), options};
+        return makeFuture(OperationResult(std::move(r), options));
       }
 
       // Now prepare the requests:
@@ -1876,14 +1867,14 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         }
         futures.emplace_back(
             network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
-                                      std::move(url), std::move(buffer), *reqOpts,
+                                      std::move(url), std::move(buffer), reqOpts,
                                       std::move(headers)));
       }
 
       // Now compute the result
       if (!useMultiple) {  // single-shard fast track
         TRI_ASSERT(futures.size() == 1);
-        return std::move(futures[0]).thenValue([options = options](network::Response res) -> OperationResult {
+        return std::move(futures[0]).thenValue([options](network::Response res) -> OperationResult {
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
@@ -1894,7 +1885,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
       return futures::collectAll(std::move(futures))
           .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) {
-            return handleCRUDShardResponsesFast(network::clusterResultDocument, *opCtx, results);
+            return handleCRUDShardResponsesFast(network::clusterResultDocument, opCtx, results);
           });
     });
 
@@ -1933,7 +1924,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           pool, "shard:" + shard, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
               StringUtils::urlEncode(key.data(), key.size()),
-          VPackBuffer<uint8_t>(), *reqOpts, std::move(headers)));
+          VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
     }
   } else {
     VPackBuffer<uint8_t> buffer;
@@ -1945,7 +1936,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       futures.emplace_back(
           network::sendRequestRetry(pool, "shard:" + shard, restVerb,
                                     "/_api/document/" + StringUtils::urlEncode(shard),
-                                    /*cannot move*/ buffer, *reqOpts, std::move(headers)));
+                                    /*cannot move*/ buffer, reqOpts, std::move(headers)));
     }
   }
 
@@ -2008,8 +1999,8 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
                                   leased->bufferRef(), reqOpts));
   }
 
-  for (auto const& tryRes : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = tryRes.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -2111,8 +2102,8 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
                                   leased->bufferRef(), reqOpts));
   }
 
-  for (auto const& tryRes : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = tryRes.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -2209,8 +2200,8 @@ void fetchVerticesFromEngines(
                                   leased->bufferRef(), reqOpts));
   }
 
-  for (auto const& res : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = res.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
@@ -2320,11 +2311,11 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
   // Some stuff to prepare cluster-internal requests:
 
-  auto reqOpts = std::make_shared<network::RequestOptions>();
-  reqOpts->database = trx.vocbase().name();
-  reqOpts->timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
-  reqOpts->retryNotFound = true;
-  reqOpts->param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
+  network::RequestOptions reqOpts;
+  reqOpts.database = trx.vocbase().name();
+  reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
+  reqOpts.retryNotFound = true;
+  reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
          .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
          .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"));
@@ -2333,17 +2324,17 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   if (isPatch) {
     restVerb = fuerte::RestVerb::Patch;
     if (!options.keepNull) {
-      reqOpts->param(StaticStrings::KeepNullString, "false");
+      reqOpts.param(StaticStrings::KeepNullString, "false");
     }
-    reqOpts->param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"));
+    reqOpts.param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"));
   } else {
     restVerb = fuerte::RestVerb::Put;
   }
   if (options.returnNew) {
-    reqOpts->param(StaticStrings::ReturnNewString, "true");
+    reqOpts.param(StaticStrings::ReturnNewString, "true");
   }
   if (options.returnOld) {
-    reqOpts->param(StaticStrings::ReturnOldString, "true");
+    reqOpts.param(StaticStrings::ReturnOldString, "true");
   }
 
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -2352,17 +2343,15 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
 
-    Future<Result> f = std::invoke([&] {
-      if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
-        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
-      }
-      return makeFuture(Result());
-    });
+    Future<Result> f = makeFuture(Result());
+    if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
+    }
 
     return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
                                       Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {  // bail out
-        return Future<OperationResult>{std::in_place, r, opCtx->options};
+        return makeFuture(OperationResult(r, opCtx->options));
       }
 
       // Now prepare the requests:
@@ -2401,37 +2390,36 @@ Future<OperationResult> modifyDocumentOnCoordinator(
         futures.emplace_back(
             network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
                                       std::move(url), std::move(buffer),
-                                      *reqOpts, std::move(headers)));
+                                      reqOpts, std::move(headers)));
       }
 
       // Now listen to the results:
       if (!useMultiple) {
         TRI_ASSERT(futures.size() == 1);
-        auto cb = [options](network::Response&& res) -> OperationResult {
+        auto cb = [options = options](network::Response&& res) -> OperationResult {
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
           return network::clusterResultModify(res.statusCode(),
                                               res.response().stealPayload(), std::move(options), {});
         };
-        return std::move(futures[0]).thenValue(cb);
+        return std::move(futures[0]).thenValue(std::move(cb));
       }
 
       return futures::collectAll(std::move(futures))
           .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) -> OperationResult {
-            return handleCRUDShardResponsesFast(network::clusterResultModify, *opCtx, results);
+            return handleCRUDShardResponsesFast(network::clusterResultModify, opCtx, results);
           });
     });
   }
 
   // Not all shard keys are known in all documents.
   // We contact all shards with the complete body and ignore NOT_FOUND
-  Future<Result> f = std::invoke([&] {
-    if (isManaged && shardIds->size() > 1) {  // lazily begin the transaction
-      return ::beginTransactionOnAllLeaders(trx, *shardIds);
-    }
-    return makeFuture(Result());
-  });
+
+  Future<Result> f = makeFuture(Result());
+  if (isManaged && shardIds->size() > 1) {  // lazily begin the transaction
+    f = ::beginTransactionOnAllLeaders(trx, *shardIds);
+  }
 
   return std::move(f).then_bind([=, &trx, options = options](Result&&) mutable -> Future<OperationResult> {
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
@@ -2458,11 +2446,11 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       futures.emplace_back(
           network::sendRequestRetry(pool, "shard:" + shard, restVerb,
                                     std::move(url), /*cannot move*/ buffer,
-                                    *reqOpts, std::move(headers)));
+                                    reqOpts, std::move(headers)));
     }
 
     return futures::collectAll(std::move(futures))
-    .thenValue([=, options = options](std::vector<Try<network::Response>>&& responses) mutable -> OperationResult {
+    .thenValue([=](std::vector<Try<network::Response>>&& responses) mutable -> OperationResult {
       return ::handleCRUDShardResponsesSlow(network::clusterResultModify, expectedLen,
                                             std::move(options), responses);
     });
@@ -2497,8 +2485,8 @@ Future<OperationResult> modifyDocumentOnCoordinator(
                                   "/_admin/wal/flush", buffer, reqOpts));
   }
 
-  for (auto const& res : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = res.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -2540,8 +2528,8 @@ Result compactOnAllDBServers(ClusterFeature& feature,
                                   "/_admin/compact", buffer, reqOpts));
   }
 
-  for (auto const& res : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = res.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
@@ -2763,7 +2751,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
   } else {
     for (auto const& i : infos) {
       auto c = ci.getCollection(dbName, i.collectionID);
-      TRI_ASSERT(c != nullptr);
+      TRI_ASSERT(c.get() != nullptr);
       // We never get a nullptr here because an exception is thrown if the
       // collection does not exist. Also, the create collection should have
       // failed before.
@@ -2806,8 +2794,8 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   }
 
   size_t nrGood = 0;
-  for (auto const& res : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = res.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
     if (!r.ok()) {
       continue;
     }
@@ -2830,8 +2818,8 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
       std::string("not all db servers could be reached for backup listing"));
   }
 
-  for (auto const& tryRes : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = tryRes.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
     if (!r.ok()) {
       continue;
     }
@@ -3021,8 +3009,8 @@ arangodb::Result controlMaintenanceFeature(network::ConnectionPool* pool,
       << backupId << " using " << builder.toJson();
 
   // Now listen to the results:
-  for (auto const& result : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = result.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return arangodb::Result(network::fuerteToArangoErrorCode(r),
@@ -3082,8 +3070,8 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
   LOG_TOPIC("37960", DEBUG, Logger::BACKUP) << "Restoring backup " << backupId;
 
   // Now listen to the results:
-  for (auto const& tryRes : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = tryRes.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       // oh-oh cluster is in a bad state
@@ -3416,8 +3404,8 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
       finalRes = arangodb::Result(c, StringUtils::concatT(finalRes.errorMessage(), ", ", m));
     }
   };
-  for (auto const& tryRes : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = tryRes.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
@@ -3560,8 +3548,8 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   std::vector<std::string> secretHashes;
   std::string version;
   bool sizeValid = true;
-  for (auto const& result : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = result.unwrap();
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return arangodb::Result(network::fuerteToArangoErrorCode(r),
@@ -3669,8 +3657,8 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
   size_t notFoundCount = 0;
 
   // Now listen to the results:
-  for (auto const& result : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = result.unwrap();
+  for (Future<network::Response>& f : futures) {
+     network::Response const& r = std::move(f).await_unwrap();
 
      if (r.fail()) {
       return arangodb::Result(network::fuerteToArangoErrorCode(r),
@@ -3761,8 +3749,8 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(network::ConnectionPool
   }
 
   // Perform the requests
-  for (auto const& result : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = result.unwrap();
+  for (Future<network::Response>& f : futures) {
+     network::Response const& r = std::move(f).await_unwrap();
 
      if (r.fail()) {
       return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
@@ -3813,8 +3801,8 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   }
 
   // Perform the requests
-  for (auto const& result : futures::collectAll(futures).await_unwrap()) {
-    network::Response const& r = result.unwrap();
+  for (Future<network::Response>& f : futures) {
+     network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,

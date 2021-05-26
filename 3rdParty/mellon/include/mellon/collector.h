@@ -10,17 +10,21 @@ struct collector {
         futures.empty(), "a collector was not finalized properly");
   }
 
+  using value_type = T;
   using result_type = std::vector<T>;
 
   template <typename F, typename... Args,
             std::enable_if_t<std::is_invocable_r_v<future<T, Tag>, F, Args...>, int> = 0>
-  void push_result(F&& f, Args&&... args) noexcept(
-      std::is_nothrow_invocable_r_v<future<T, Tag>, F, Args...>) {
+  void push_result(F&& f, Args&&... args) {
     if (futures.size() == futures.capacity()) {
       futures.reserve(futures.size() * 2);
     }
 
     auto fut = std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    futures.emplace_back(std::move(fut));
+  }
+
+  void push_future(future<T, Tag> fut) {
     futures.emplace_back(std::move(fut));
   }
 
@@ -79,6 +83,9 @@ struct collector {
 
 template <typename C, typename F>
 struct collect_guard : F {
+
+  static_assert(std::is_nothrow_invocable_r_v<void, F, std::size_t, typename C::value_type>);
+
   collect_guard(C& c, F f) : F(f), c(c) {}
   ~collect_guard() {
     if (!c.empty()) {

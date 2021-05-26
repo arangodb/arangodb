@@ -163,7 +163,7 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   options.database = database;
   options.timeout = network::Timeout(timeout);
   options.skipScheduler = true; // hack to speed up future.get()
-
+  
   auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                                   REPL_HOLD_READ_LOCK,
                                   VPackBuffer<uint8_t>(), options)
@@ -267,7 +267,7 @@ static arangodb::Result addShardFollower(
     if (res.fail()) {
        return res;
     }
-
+    
     VPackBuilder body;
     {
       VPackObjectBuilder b(&body);
@@ -308,7 +308,7 @@ static arangodb::Result addShardFollower(
     options.database = database;
     options.timeout = network::Timeout(timeout);
     options.skipScheduler = true; // hack to speed up future.get()
-
+    
     auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
                                     REPL_ADD_FOLLOWER,
                                     std::move(*body.steal()), options)
@@ -412,7 +412,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   // The POST request thus is answered immediately back to the caller.
   // The servers (<=3.3) with lower versions hold the POST request for as long
   // as the corresponding DELETE_REQ has not been successfully submitted.
-
+  
   // nullptr only happens during controlled shutdown
   if (pool == nullptr) {
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
@@ -420,19 +420,19 @@ arangodb::Result SynchronizeShard::getReadLock(
   }
 
   VPackBuilder body;
-  {
+  { 
     VPackObjectBuilder o(&body);
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
     body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft));
+    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); 
   }
   auto buf = body.steal();
 
   // Try to POST the lock body. If POST fails, we should just exit and retry
-  // SynchroShard anew.
+  // SynchroShard anew. 
   network::RequestOptions options;
   options.timeout = network::Timeout(timeout);
   options.database = getDatabase();
@@ -532,7 +532,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   try {
     std::string const context = "syncing shard " + database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
-
+  
     if (r.fail()) {
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
           << "initial sync failed for " << database << "/" << col->name()
@@ -629,7 +629,7 @@ static arangodb::Result replicationSynchronizeFinalize(SynchronizeShard const& j
   auto const collection = conf.get(COLLECTION).copyString();
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
-
+    
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
@@ -1200,7 +1200,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   // if we get a checksum mismatch, it means that we got different counts of
   // documents on the leader and the follower, which can happen if collection
-  // counts are off for whatever reason.
+  // counts are off for whatever reason. 
   // under many cicrumstances the counts will have been auto-healed by the initial
   // or the incremental replication before, so in many cases we will not even get
   // into this if case
@@ -1208,11 +1208,11 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     // give up the lock on the leader, so writes aren't stopped unncessarily
     // on the leader while we are recalculating the counts
     readLockGuard.fire();
-
+    
     collection.vocbase().server().getFeature<ClusterFeature>().followersWrongChecksumCounter()++;
 
     // recalculate collection count on follower
-    LOG_TOPIC("29384", INFO, Logger::MAINTENANCE)
+    LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
        << "recalculating collection count on follower for "
        << getDatabase() << "/" << getShard();
 
@@ -1230,7 +1230,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       return countRes;
     }
 
-    LOG_TOPIC("d2689", INFO, Logger::MAINTENANCE)
+    LOG_TOPIC("d2689", INFO, Logger::MAINTENANCE) 
        << "recalculated collection count on follower for "
        << getDatabase() << "/" << getShard() << ", old: " << oldCount << ", new: " << docCount;
 
@@ -1299,7 +1299,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       }
     }
 
-    // still let the operation fail here, because we gave up the lock
+    // still let the operation fail here, because we gave up the lock 
     // already and cannot be sure the data on the leader hasn't changed in
     // the meantime. we will sort this issue out during the next maintenance
     // run
@@ -1353,16 +1353,16 @@ void SynchronizeShard::setState(ActionState state) {
     auto stoppage = clock::now() + timeout;
     auto snooze = milliseconds(100);
     while (!_feature.server().isStopping() && clock::now() < stoppage) {
-      v = cluster::fetchCurrentVersion(0.1 * timeout)
-              .then([](ResultT<uint64_t>&& res) { return res.get(); })
-              .catch_error<std::exception>([this](std::exception const& e) -> uint64_t {
-                LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
-                    << "Failed to acquire current version from agency while "
-                       "increasing shard version"
-                    << " for shard " << getDatabase() << "/" << getShard() << e.what();
-                return 0;
-              })
-              .await_unwrap();
+      cluster::fetchCurrentVersion(0.1 * timeout)
+        .thenValue(
+          [&v] (auto&& res) { v = res.get(); })
+        .thenError<std::exception>(
+          [this] (std::exception const& e) {
+            LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
+              << "Failed to acquire current version from agency while increasing shard version"
+              << " for shard "  << getDatabase() << "/" << getShard() << e.what();
+          })
+        .await_unwrap();
       if (v > 0) {
         break;
       }
@@ -1374,14 +1374,13 @@ void SynchronizeShard::setState(ActionState state) {
 
     // We're here, cause we either ran out of time or have an actual version number.
     // In the former case, we tried our best and will safely continue some 10 min later.
-    // If however v is an actual positive integer, we'll wait for it to sync in out
-    // ClusterInfo cache through loadCurrent.
+    // If however v is an actual positive integer, we'll wait for it to sync in out ClusterInfo cache through loadCurrent.
     if (v > 0) {
       std::ignore = _feature.server()
-          .getFeature<ClusterFeature>()
-          .clusterInfo()
-          .waitForCurrentVersion(v)
-          .await();
+                        .getFeature<ClusterFeature>()
+                        .clusterInfo()
+                        .waitForCurrentVersion(v)
+                        .await_unwrap();
     }
     _feature.incShardVersion(getShard());
   }

@@ -230,7 +230,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                 // before, and we are now responsible for closing it again.
                 _builder.close();
               }
-              standardResponse();
+              standardResponse(); 
             }));
   } else if (sub == "properties") {
     // /_api/collection/<identifier>/properties
@@ -757,16 +757,14 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
   }
 
   OperationOptions options(_context);
-  futures::Future<OperationResult> figures = std::invoke([&]{
-    if (showFigures != FiguresType::None) {
-      return coll->figures(showFigures == FiguresType::Detailed, options);
-    }
-    return futures::makeFuture(OperationResult(Result(), options));
-  });
+  futures::Future<OperationResult> figures =
+      futures::makeFuture(OperationResult(Result(), options));
+  if (showFigures != FiguresType::None) {
+    figures = coll->figures(showFigures == FiguresType::Detailed, options);
+  }
 
-
-  futures::Future<OperationResult> fut = std::move(figures).then_bind(
-      [=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
+  return std::move(figures)
+      .then_bind([=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
         if (figures.fail()) {
           THROW_ARANGO_EXCEPTION(figures.result);
         }
@@ -784,26 +782,25 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
                                  options);
         }
         return futures::makeFuture(OperationResult(Result(), options));
+      })
+      .thenValue([=, &ctxt](OperationResult&& opRes) -> void {
+        if (opRes.fail()) {
+          if (showCount != CountType::None) {
+            auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+            TRI_ASSERT(trx != nullptr);
+            trx->finish(opRes.result);
+          }
+          THROW_ARANGO_EXCEPTION(opRes.result);
+        }
+
+        if (showCount != CountType::None) {
+          _builder.add("count", opRes.slice());
+        }
+
+        if (!wasOpen) {
+          _builder.close();
+        }
       });
-
-  return std::move(fut).thenValue([=, &ctxt](OperationResult&& opRes) -> void {
-    if (opRes.fail()) {
-      if (showCount != CountType::None) {
-        auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
-        TRI_ASSERT(trx != nullptr);
-        trx->finish(opRes.result);
-      }
-      THROW_ARANGO_EXCEPTION(opRes.result);
-    }
-
-    if (showCount != CountType::None) {
-      _builder.add("count", opRes.slice());
-    }
-
-    if (!wasOpen) {
-      _builder.close();
-    }
-  });
 }
 
 RestStatus RestCollectionHandler::standardResponse() {

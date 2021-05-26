@@ -23,7 +23,6 @@
 
 #include "v8-cluster.h"
 
-#include <Futures/Utilities.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -39,8 +38,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Methods.h"
 #include "Network/Utils.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralRequest.h"
@@ -132,7 +131,7 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -193,7 +192,7 @@ static void JS_CreateDirectoryAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -247,7 +246,7 @@ static void JS_IncreaseVersionAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -281,7 +280,7 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -330,7 +329,7 @@ static void JS_APIAgency(std::string const& envelope,
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -390,7 +389,7 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -429,7 +428,7 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -471,7 +470,7 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -510,7 +509,7 @@ static void JS_EndpointsAgency(v8::FunctionCallbackInfo<v8::Value> const& args) 
   auto context = TRI_IGETC;
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -562,7 +561,7 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -606,7 +605,7 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -686,7 +685,7 @@ static void JS_FlushClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -1143,7 +1142,7 @@ static void JS_GetCoordinators(v8::FunctionCallbackInfo<v8::Value> const& args) 
 static void JS_UniqidClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
@@ -1249,11 +1248,11 @@ static void JS_getFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
 static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(<value>)");
   }
-
+      
   bool value = TRI_ObjectToBoolean(isolate, args[0]);
 
   ServerState::instance()->setFoxxmasterQueueupdate(value);
@@ -1490,13 +1489,13 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
     network::RequestOptions options;
     options.timeout = network::Timeout(10.0);
     options.database = vocbase.name();
-
+    
     // send an empty body
     VPackBuffer<uint8_t> buffer;
     buffer.append(VPackSlice::emptyObjectSlice().begin(), 1);
 
     std::string const url("/_api/foxx/_local/heal");
-
+    
     network::Headers headers;
     auto auth = AuthenticationFeature::instance();
     if (auth != nullptr && auth->isActive()) {
@@ -1516,7 +1515,7 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
     }
 
     Result res;
-
+    
     if (!futures.empty()) {
       auto responses = futures::collectAll(futures).await_unwrap();
       for (auto const& it : responses) {
@@ -1538,7 +1537,7 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
       THROW_ARANGO_EXCEPTION(res);
     }
   }
-
+  
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -1711,7 +1710,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
       isolate,
       TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION"),
       JS_GetCollectionShardDistribution, true);
-
+  
   TRI_AddGlobalFunctionVocbase(
       isolate,
       TRI_V8_ASCII_STRING(isolate, "SYS_PROPAGATE_SELF_HEAL"),

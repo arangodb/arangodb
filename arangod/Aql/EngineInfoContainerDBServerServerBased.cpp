@@ -34,7 +34,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
-#include <Futures/Utilities.h>
 #include <set>
 #include <velocypack/Collection.h>
 
@@ -434,12 +433,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     _query.incHttpRequests(unsigned(1));
   }
 
-  futures::Future<Result> fastPathResultFuture =
+  auto fastPathResult =
       futures::collectAll(networkCalls)
           .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses) -> Result {
             // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
             // error as we need to abort after.
-            // Otherwise we need to report
+            // Otherwise we need to report 
             Result res{TRI_ERROR_NO_ERROR};
             for (auto const& tryRes : responses) {
               auto response = tryRes.unwrap();
@@ -458,19 +457,18 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // If will be LOCK_TIMEOUT if and only if the only error
             // we see was LOCK_TIMEOUT.
             return res;
-          });
-  auto fastPathResult = std::move(fastPathResultFuture).await_unwrap();
-  if (fastPathResult.fail()) {
-    if (fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-      return fastPathResult;
+          }).await();
+  if (fastPathResult.unwrap().fail()) {
+    if (fastPathResult.unwrap().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+      return fastPathResult.unwrap();
     }
     {
       // in case of fast path failure, we need to cleanup engines
-      auto requests = cleanupEngines(fastPathResult.errorNumber(), _query.vocbase().name(), serverToQueryId);
+      auto requests = cleanupEngines(fastPathResult.unwrap().errorNumber(), _query.vocbase().name(), serverToQueryId);
       // Wait for all requests to complete.
       // So we know that all Transactions are aborted.
       // We do NOT care for the actual result.
-      std::ignore = futures::collectAll(requests).await();
+      std::ignore = futures::collectAll(requests).await_unwrap();
       snippetIds.clear();
     }
 
@@ -514,10 +512,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
       auto request = buildSetupRequest(trx, std::move(server), newRequest.slice(),
                                        std::move(didCreateEngine), snippetIds, serverToQueryId,
-                                       serverToQueryIdLock, pool, options).await_unwrap();
+                                       serverToQueryIdLock, pool, options).await();
       _query.incHttpRequests(unsigned(1));
-      if (request.fail()) {
-        return request;
+      if (request.unwrap().fail()) {
+        return request.unwrap();
       }
     }
   }

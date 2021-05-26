@@ -136,9 +136,10 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
 
   updateStatus(transaction::Status::ABORTED);
   ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
+  
   return {};
 }
-
+  
 /// @brief return number of commits
 uint64_t ClusterTransactionState::numCommits() const {
   // there are no intermediate commits for a cluster transaction, so we can

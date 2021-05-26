@@ -549,9 +549,9 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   st = ts.specialize(current_dbs_string);
   agencyTrx("/arango/Current/Databases/" + name, st);
 
-  _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+  std::ignore = _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
     agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).await_unwrap();
-  _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
+  std::ignore = _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
     agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).await_unwrap();
 }
 
@@ -562,11 +562,11 @@ void MockClusterServer::agencyCreateCollections(std::string const& name) {
   st = ts.specialize(current_colls_string);
   agencyTrx("/arango/Current/Collections/" + name, st);
 
-  _server.getFeature<arangodb::ClusterFeature>()
+  std::ignore = _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
       .await_unwrap();
-  _server.getFeature<arangodb::ClusterFeature>()
+  std::ignore = _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
       .await_unwrap();
@@ -580,11 +580,11 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
   agencyTrx("/arango/Current/Databases/" + name, st);
   agencyTrx("/arango/Current/Collections/" + name, st);
 
-  _server.getFeature<arangodb::ClusterFeature>()
+  std::ignore = _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
       .await_unwrap();
-  _server.getFeature<arangodb::ClusterFeature>()
+  std::ignore = _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
       .await_unwrap();

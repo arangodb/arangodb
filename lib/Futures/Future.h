@@ -148,6 +148,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
       : arangodb::futures::scheduler_addition<T, Fut, arangodb::futures::arangodb_tag> {
     template <typename F>
     [[nodiscard]] auto thenValue(F&& f) && noexcept {
+      static_assert(std::is_nothrow_constructible_v<std::decay_t<F>, F>);
       return std::move(self()).then(std::forward<F>(f));
     }
 
@@ -161,9 +162,14 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
       return std::move(self()).template catch_error<E>(std::forward<F>(f));
     }
 
+    [[nodiscard]] auto isReady() const noexcept -> bool {
+      return self().is_ready();
+    }
+
    private:
     using future_type = Fut<arangodb::futures::Try<T>>;
     future_type& self() { return static_cast<future_type&>(*this); }
+    future_type const& self() const { return static_cast<future_type const&>(*this); }
   };
 
   template<typename T>

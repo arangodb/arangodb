@@ -454,7 +454,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     }
   }
 
-  return Future<Result>{std::in_place, TRI_ERROR_NO_ERROR};
+  return makeFuture(TRI_ERROR_NO_ERROR);
 }
 
 /// @brief commit a transaction on a subordinate
