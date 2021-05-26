@@ -479,16 +479,17 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
 
-  auto f = futures::makeFuture(OperationResult(Result(), opOptions));
-  if (isPatch) {
-    // patching an existing document
-    opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
-    opOptions.mergeObjects =
-        _request->parsedValue(StaticStrings::MergeObjectsString, true);
-    f = _activeTrx->updateAsync(cname, body, opOptions);
-  } else {
-    f = _activeTrx->replaceAsync(cname, body, opOptions);
-  }
+  auto f = std::invoke([&]{
+    if (isPatch) {
+      // patching an existing document
+      opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
+      opOptions.mergeObjects =
+          _request->parsedValue(StaticStrings::MergeObjectsString, true);
+      return _activeTrx->updateAsync(cname, body, opOptions);
+    } else {
+      return _activeTrx->replaceAsync(cname, body, opOptions);
+    }
+  });
 
   return waitForFuture(std::move(f).then_bind([=, buffer(std::move(buffer))](OperationResult opRes) {
     return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {

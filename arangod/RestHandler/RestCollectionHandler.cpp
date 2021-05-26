@@ -757,11 +757,12 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
   }
 
   OperationOptions options(_context);
-  futures::Future<OperationResult> figures =
-      futures::makeFuture(OperationResult(Result(), options));
-  if (showFigures != FiguresType::None) {
-    figures = coll->figures(showFigures == FiguresType::Detailed, options);
-  }
+  futures::Future<OperationResult> figures = std::invoke([&] {
+    if (showFigures != FiguresType::None) {
+      return coll->figures(showFigures == FiguresType::Detailed, options);
+    }
+    return futures::makeFuture(OperationResult(Result(), options));
+  });
 
   return std::move(figures)
       .then_bind([=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {

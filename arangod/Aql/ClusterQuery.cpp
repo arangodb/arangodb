@@ -188,17 +188,19 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) 
   }
 
   // Use async API, commit on followers sends a request
-  futures::Future<Result> finishResult(Result{});
-  if (_trx->status() == transaction::Status::RUNNING) {
-    if (errorCode == TRI_ERROR_NO_ERROR) {
-      // no error. we need to commit the transaction
-      finishResult = _trx->commitAsync();
-    } else {
-      // got an error. we need to abort the transaction
-      finishResult = _trx->abortAsync();
+  futures::Future<Result> finishResult = std::invoke([&] {
+    if (_trx->status() == transaction::Status::RUNNING) {
+      if (errorCode == TRI_ERROR_NO_ERROR) {
+        // no error. we need to commit the transaction
+        return _trx->commitAsync();
+      } else {
+        // got an error. we need to abort the transaction
+        return _trx->abortAsync();
+      }
     }
-  }
-  
+    return futures::makeFuture(Result());
+  });
+
   return std::move(finishResult).thenValue([this](Result res) -> Result {
     LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
           << elapsedSince(_startTime)

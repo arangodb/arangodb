@@ -1435,11 +1435,13 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     }
   }
 
-  Future<Result> f = makeFuture(Result());
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
-    f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
-  }
+  Future<Result> f = std::invoke([&] {
+    if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
+      return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
+    }
+    return makeFuture(Result());
+  });
 
   return std::move(f).then_bind([=, &trx, &coll, opCtx(std::move(opCtx)), options = options](
                                     Result&& r) mutable -> Future<OperationResult> {
@@ -1579,10 +1581,12 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     // Contact all shards directly with the correct information.
 
     // lazily begin transactions on leaders
-    Future<Result> f = makeFuture(Result());
-    if (isManaged && opCtx->shardMap.size() > 1) {
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
-    }
+    Future<Result> f = std::invoke([&]{
+      if (isManaged && opCtx->shardMap.size() > 1) {
+        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
+      }
+      return makeFuture(Result());
+    });
 
     return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
                                       Result&& r) mutable -> Future<OperationResult> {
@@ -1642,10 +1646,12 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   // lazily begin transactions on leaders
-  Future<Result> f = makeFuture(Result());
-  if (isManaged && shardIds->size() > 1) {
-    f = ::beginTransactionOnAllLeaders(trx, *shardIds);
-  }
+  Future<Result> f = std::invoke([&]{
+    if (isManaged && shardIds->size() > 1) {
+      return ::beginTransactionOnAllLeaders(trx, *shardIds);
+    }
+    return makeFuture(Result());
+  });
 
   return std::move(f).then_bind([=, &trx, options = options](Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
@@ -1818,10 +1824,12 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
 
-    Future<Result> f = makeFuture(Result());
-    if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin the transaction
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
-    }
+    Future<Result> f = std::invoke([&]{
+      if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin the transaction
+        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
+      }
+      return makeFuture(Result());
+    });
 
     return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
                                       Result&& r) mutable -> Future<OperationResult> {
@@ -2343,10 +2351,12 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
 
-    Future<Result> f = makeFuture(Result());
-    if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
-    }
+    Future<Result> f = std::invoke([&]{
+      if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
+        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
+      }
+      return makeFuture(Result());
+    });
 
     return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
                                       Result&& r) mutable -> Future<OperationResult> {
@@ -2415,11 +2425,12 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
   // Not all shard keys are known in all documents.
   // We contact all shards with the complete body and ignore NOT_FOUND
-
-  Future<Result> f = makeFuture(Result());
-  if (isManaged && shardIds->size() > 1) {  // lazily begin the transaction
-    f = ::beginTransactionOnAllLeaders(trx, *shardIds);
-  }
+  Future<Result> f = std::invoke([&]{
+    if (isManaged && shardIds->size() > 1) {  // lazily begin the transaction
+      return ::beginTransactionOnAllLeaders(trx, *shardIds);
+    }
+    return makeFuture(Result());
+  });
 
   return std::move(f).then_bind([=, &trx, options = options](Result&&) mutable -> Future<OperationResult> {
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();

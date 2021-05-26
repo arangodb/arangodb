@@ -519,11 +519,13 @@ Future<Result> transaction::Methods::commitAsync() {
     return futures::makeFuture(Result());
   }
 
-  auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::commitTransaction(*this);
-  }
+  auto f = std::invoke([&] {
+    if (_state->isRunningInCluster()) {
+      // first commit transaction on subordinate servers
+      return ClusterTrxMethods::commitTransaction(*this);
+    }
+    return futures::makeFuture(Result());
+  });
 
   return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
@@ -553,11 +555,13 @@ Future<Result> transaction::Methods::abortAsync() {
     return futures::makeFuture(Result());
   }
 
-  auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::abortTransaction(*this);
-  }
+  auto f = std::invoke([&] {
+    if (_state->isRunningInCluster()) {
+      // first commit transaction on subordinate servers
+      return ClusterTrxMethods::abortTransaction(*this);
+    }
+    return futures::makeFuture(Result());
+  });
 
   return std::move(f).thenValue([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
@@ -962,13 +966,14 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
     return futures::makeFuture(emptyResult(options));
   }
 
-  auto f = futures::makeFuture(emptyResult(options));
-  if (_state->isCoordinator()) {
-    f = insertCoordinator(cname, value, options);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = insertLocal(cname, value, optionsCopy);
-  }
+  auto f = std::invoke([&] {
+    if (_state->isCoordinator()) {
+      return insertCoordinator(cname, value, options);
+    } else {
+      OperationOptions optionsCopy = options;
+      return insertLocal(cname, value, optionsCopy);
+    }
+  });
 
   return addTracking(std::move(f), [=, options = options, cname = cname](OperationResult&& opRes) {
     events::CreateDocument(vocbase().name(), cname,
@@ -1261,13 +1266,14 @@ Future<OperationResult> transaction::Methods::updateAsync(std::string const& cna
     return futures::makeFuture(emptyResult(options));
   }
 
-  auto f = futures::makeFuture(emptyResult(options));
-  if (_state->isCoordinator()) {
-    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  }
+  auto f = std::invoke([&] {
+    if (_state->isCoordinator()) {
+      return modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    } else {
+      OperationOptions optionsCopy = options;
+      return modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    }
+  });
   return addTracking(std::move(f), [=, options = options, cname = cname](OperationResult&& opRes) {
     events::ModifyDocument(vocbase().name(), cname, newValue, opRes.options,
                            opRes.errorNumber());
@@ -1319,13 +1325,14 @@ Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cn
     return futures::makeFuture(emptyResult(options));
   }
 
-  auto f = futures::makeFuture(emptyResult(options));
-  if (_state->isCoordinator()) {
-    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-  }
+  auto f = std::invoke([&] {
+    if (_state->isCoordinator()) {
+      return modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+    } else {
+      OperationOptions optionsCopy = options;
+      return modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+    }
+  });
   return addTracking(std::move(f), [=, options = options, cname = cname](OperationResult&& opRes) {
     events::ReplaceDocument(vocbase().name(), cname, newValue, opRes.options,
                             opRes.errorNumber());
@@ -1537,13 +1544,14 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
     return futures::makeFuture(emptyResult(options));
   }
 
-  auto f = futures::makeFuture(emptyResult(options));
-  if (_state->isCoordinator()) {
-    f = removeCoordinator(cname, value, options);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = removeLocal(cname, value, optionsCopy);
-  }
+  auto f = std::invoke([&] {
+    if (_state->isCoordinator()) {
+      return removeCoordinator(cname, value, options);
+    } else {
+      OperationOptions optionsCopy = options;
+      return removeLocal(cname, value, optionsCopy);
+    }
+  });
   return addTracking(std::move(f), [=, options = options, cname = cname](OperationResult&& opRes) {
     events::DeleteDocument(vocbase().name(), cname, value, opRes.options,
                            opRes.errorNumber());
