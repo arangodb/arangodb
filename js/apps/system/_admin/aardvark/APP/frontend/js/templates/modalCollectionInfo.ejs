@@ -89,6 +89,17 @@ if (!figuresData.figures) {
         </th>
       </tr>
     <% } %>
+    
+    <% if (figuresData.hasOwnProperty('syncByRevision')) { %>
+      <tr>
+        <th class="collectionInfoTh2">Uses revision trees:</th>
+        <th class="collectionInfoTh">
+          <div class="modal-text"><%= figuresData.syncByRevision %></div>
+        </th>
+        <th class="collectionInfoTh">
+        </th>
+      </tr>
+    <% } %>
   </table>
 
   <% if (figuresData.hasOwnProperty('figures')) { %>

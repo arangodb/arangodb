@@ -13,8 +13,8 @@ exposedBy:
   - agent
   - single
 description: |
-  Total number of transactions aborted. In the cluster, this metric will 
-  be collected separately for transactions on coordinators and the
+  Total number of transactions aborted. In the cluster, this metric will
+  be collected separately for transactions on Coordinators and the
   transaction counterparts on leaders and followers.
   This metric was named `arangodb_transactions_aborted` in previous
   versions of ArangoDB.
