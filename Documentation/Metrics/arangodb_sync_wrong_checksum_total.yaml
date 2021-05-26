@@ -8,16 +8,15 @@ type: counter
 category: Replication
 complexity: medium
 exposedBy:
-  - coordinator
   - dbserver
-  - agent
+  - single
 description: |
   Number of times a mismatching shard checksum was detected when
   syncing shards. This is a very special metric which is rarely used.
   When followers of shards get in sync with their leaders, just when
   everything is completed a final checksum is taken as an additional
   precaution. If this checksum differs between leader an follower, the
-  resync process starts from scratch.
+  incremental resync process starts from scratch.
 troubleshoot: |
   Normally, this number will always be 0. If it is not, then usually
   something is wrong, please contact ArangoDB customer support in this
