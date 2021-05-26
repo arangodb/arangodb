@@ -372,11 +372,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             reqOpts.param("checkSyncStatus", "true");
             std::vector<network::FutureRes> futures;
             futures.reserve(serversToAsk.size());
-            for (auto const& server : serversToAsk) {
-              auto f = _send("server:" + server, fuerte::RestVerb::Get, path,
-                             body, reqOpts, headers);
-              futures.emplace_back(std::move(f));
-            }
+
 
             // Wait for responses
             // First wait for Leader
@@ -409,6 +405,12 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               entry.followersSyncing = 0;
             }
 
+            for (auto const& server : serversToAsk) {
+              auto f = _send("server:" + server, fuerte::RestVerb::Get, path,
+                             body, reqOpts, headers);
+              futures.emplace_back(std::move(f));
+            }
+
             {
               // for in-sync followers, pretend that they have the correct number of docs
               TRI_ASSERT(!s.second.empty());
@@ -417,7 +419,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               uint64_t followerResponses = followersInSync;
               uint64_t followerTotal = followersInSync * entry.total;
 
-              auto responses = futures::collectAll(futures).await_unwrap();;
+              auto responses = futures::collectAll(futures).await_unwrap();
               for (futures::Try<network::Response> const& response : responses) {
                 if (!response.has_value() || response.unwrap().fail()) {
                   // We do not care for errors of any kind.
