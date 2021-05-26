@@ -5852,6 +5852,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
           traversal->setPathOutput(nullptr);
         } else {
           // we still need to build the path because PRUNE relies on it
+          // TODO: this can potentially be optimized in the future.
           options->setProducePaths(/*vertices*/ true, /*edges*/ true, /*weights*/ true);
         }
         modified = true;
@@ -5861,16 +5862,6 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
         std::unordered_set<std::string> attributes;
         VarSet vars;
         bool canOptimize = true;
-
-        if (options->usesPrune()) {
-          std::vector<Variable const*> pruneVars;
-          traversal->getPruneVariables(pruneVars);
-          if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) != pruneVars.end()) {
-            // prune uses the path. we don't know if the optimization
-            // will be safe. better abort
-            canOptimize = false;
-          }
-        }
 
         ExecutionNode* current = traversal->getFirstParent();
         while (current != nullptr && canOptimize) {

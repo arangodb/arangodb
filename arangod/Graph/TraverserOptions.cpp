@@ -509,9 +509,9 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   }
 
   builder.add("produceVertices", VPackValue(_produceVertices));
-  builder.add("producePathsVertices", VPackValue(_producePathsVertices));
-  builder.add("producePathsEdges", VPackValue(_producePathsEdges));
-  builder.add("producePathsWeights", VPackValue(_producePathsWeights));
+  builder.add("producePathsVertices", VPackValue(producePathsVertices()));
+  builder.add("producePathsEdges", VPackValue(producePathsEdges()));
+  builder.add("producePathsWeights", VPackValue(producePathsWeights()));
   builder.add("type", VPackValue("traversal"));
 }
 
