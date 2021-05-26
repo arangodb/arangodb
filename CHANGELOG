@@ -6,7 +6,7 @@ devel
 	JavaScript-based graph traversal. Also removed the descriptions of the
 	JS API methods `collection.range()`, `collection.closedRange()`,
 	`cursor.setBatchSize()` and `cursor.getBatchSize()`. All the functionality
-	is superceded by AQL.
+	is superseded by AQL.
 
 * Implemented APM-86: add query option `fillBlockCache` to control population
   of RocksDB block cache with data read by the query. The default value for
