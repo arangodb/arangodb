@@ -87,7 +87,9 @@ function AuthSuite() {
         url: baseUrl() + "/_admin/debug/failat",
         auth: { bearer: jwt }
       });
-      if (res.statusCode !== 200) {
+
+      // in case of 404 we are running a release build
+      if (res.statusCode !== 200 && res.statusCode !== 404) {
         throw "Error removing failure points";
       }
       

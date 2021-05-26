@@ -54,7 +54,7 @@ const testPaths = {
   'ldapsearchplaceholder': [tu.pathForTesting('client/authentication')],
   'ldaprolesimple': [tu.pathForTesting('client/authentication')],
   'ldapsearchsimple': [tu.pathForTesting('client/authentication')],
-  'ldapfailover': tu.pathForTesting('client/ldap')
+  'dualldap': tu.pathForTesting('client/ldap')
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -65,6 +65,9 @@ const sharedConf = {
   'server.authentication': true,
   'server.authentication-system-only': true,
   'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
+  'server.local-authentication': 'true',
+  'javascript.allow-admin-execute': 'true',
+
   'ldap.enabled': true,
   'ldap.server': '127.0.0.1',
   'ldap.port': '389',
@@ -72,13 +75,22 @@ const sharedConf = {
   'ldap.bindpasswd': 'password',
   'ldap.basedn': 'dc=arangodb,dc=com',
   'ldap.superuser-role': 'adminrole',
-  'javascript.allow-admin-execute': 'true',
-  'server.local-authentication': 'true'
+
+  'ldap2.enabled': false,
+  'ldap2.server': '127.0.0.1',
+  'ldap2.port': '389',
+  'ldap2.binddn': 'cn=admin,dc=arangodb,dc=com',
+  'ldap2.bindpasswd': 'password',
+  'ldap2.basedn': 'dc=arangodb,dc=com',
+  'ldap2.superuser-role': 'adminrole'
 };
 
 const prefixSuffix = {
   'ldap.prefix': 'uid=',
   'ldap.suffix': ',dc=arangodb,dc=com',
+
+  'ldap2.prefix': 'uid=',
+  'ldap2.suffix': ',dc=arangodb,dc=com'
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -87,7 +99,8 @@ const prefixSuffix = {
 
 const ldapModeRolesConf = Object.assign({}, sharedConf, {
   // Use Roles Attribute Mode #1
-  'ldap.roles-attribute-name': 'sn'
+  'ldap.roles-attribute-name': 'sn',
+  'ldap2.roles-attribute-name': 'sn'
 });
 
 const ldapModeSearchConf = Object.assign({}, sharedConf, {
@@ -95,7 +108,12 @@ const ldapModeSearchConf = Object.assign({}, sharedConf, {
   'ldap.search-filter': 'objectClass=*',
   'ldap.search-attribute': 'uid',
   'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
-  'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/'
+  'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/',
+
+  'ldap2.search-filter': 'objectClass=*',
+  'ldap2.search-attribute': 'uid',
+  'ldap2.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
+  'ldap2.roles-transformation': '/^cn=([^,]*),.*$/$1/'
 });
 
 const ldapModeSearchPlaceholderConf = Object.assign({}, sharedConf, {
@@ -103,7 +121,12 @@ const ldapModeSearchPlaceholderConf = Object.assign({}, sharedConf, {
   'ldap.search-filter': 'uid={USER}',
   'ldap.search-attribute': '',
   'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
-  'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/'
+    'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/',
+
+  'ldap2.search-filter': 'uid={USER}',
+  'ldap2.search-attribute': '',
+  'ldap2.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
+  'ldap2.roles-transformation': '/^cn=([^,]*),.*$/$1/'
 });
 
 const ldapModeRolesSimpleConf = Object.assign({}, ldapModeRolesConf, prefixSuffix);
@@ -163,13 +186,13 @@ const tests = {
     name: 'ldapModeSearchPrefixSuffix',
     conf: ldapModeSearchSimpleConf
   },
-  ldapFailover: {
-    name: 'ldapFailover',
+  dualldap: {
+    name: 'dualldap',
     conf: dualLdapConf
   },
 };
 
-function parseOptions(options) {
+function parseOptions(options, ldap2) {
   let toReturn = tests;
 
   _.each(toReturn, function(opt) {
@@ -178,6 +201,11 @@ function parseOptions(options) {
     }
     if (options.ldap2Host) {
       opt.conf['ldap2.server'] = options.ldap2Host;
+
+      if (ldap2) {
+        opt.conf['ldap.enabled'] = false;
+          opt.conf['ldap2.enabled'] = true;
+      }
     }
     if (options.ldapPort) {
       opt.conf['ldap.port'] = options.ldapPort;
@@ -199,7 +227,7 @@ function authenticationLdapSearchModePrefixSuffix(options) {
       }
     };
   }
-  const opts = parseOptions(options);
+  const opts = parseOptions(options, false);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -223,7 +251,7 @@ function authenticationLdapSearchMode(options) {
       }
     };
   }
-  const opts = parseOptions(options);
+  const opts = parseOptions(options, false);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -247,7 +275,7 @@ function authenticationLdapSearchModePlaceholder(options) {
       }
     };
   }
-  const opts = parseOptions(options);
+  const opts = parseOptions(options, false);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -271,7 +299,7 @@ function authenticationLdapRolesModePrefixSuffix(options) {
       }
     };
   }
-  const opts = parseOptions(options);
+  const opts = parseOptions(options, false);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -295,7 +323,7 @@ function authenticationLdapRolesMode(options) {
       }
     };
   }
-  const opts = parseOptions(options);
+  const opts = parseOptions(options, false);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
@@ -321,22 +349,22 @@ function authenticationLdapTwoLdap(options) {
       }
     };
   }
-  const opts = parseOptions(options);
+  const opts = parseOptions(options, false);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
   }
 
   print(CYAN + 'Client LDAP Failover with two ldap servers...' + RESET);
-  let testCases = [fs.join(testPaths.ldapfailover, "auth-dualldap.js")];
+  let testCases = [fs.join(testPaths.dualldap, "auth-dualldap.js")];
 
   print('Performing #6 Test: Failover - Scenario 1: two active LDAP servers');
-  print(opts.ldapFailover.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapFailover.conf);
+  print(opts.dualldap.conf);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.dualldap.conf);
 }
 
 function authenticationLdapFirstLdap(options) {
-  // this will start a setup with two active LDAP servers
+  // this will start a setup with two LDAP servers configured, one active
 
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
@@ -347,26 +375,26 @@ function authenticationLdapFirstLdap(options) {
       }
     };
   }
-  const opts = parseOptions(options);
+  const opts = parseOptions(options, false);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
   }
 
-  const conf = Object.assign({}, opts.ldapFailover.conf, {
+  const conf = Object.assign({}, opts.dualldap.conf, {
     'ldap2.server': 'unreachable'
   });
 
   print(CYAN + 'Client LDAP Failover with first active and second unreachable...' + RESET);
-  let testCases = [fs.join(testPaths.ldapfailover, "auth-firstldap.js")];
+  let testCases = [fs.join(testPaths.dualldap, "auth-firstldap.js")];
 
   print('Performing #7 Test: Failover - Scenario 2: first LDAP server active, second LDAP inactive');
-  print(opts.ldapFailover.conf);
+  print(conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, conf);
 }
 
 function authenticationLdapSecondLdap(options) {
-  // this will start a setup with two active LDAP servers
+  // this will start a setup with two LDAP servers configured, one active
 
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
@@ -377,21 +405,21 @@ function authenticationLdapSecondLdap(options) {
       }
     };
   }
-  const opts = parseOptions(options);
+  const opts = parseOptions(options, false);
   if (options.cluster) {
     options.dbServers = 2;
     options.coordinators = 2;
   }
 
-  const conf = Object.assign({}, opts.ldapFailover.conf, {
+  const conf = Object.assign({}, opts.dualldap.conf, {
     'ldap.server': 'unreachable'
   });
 
   print(CYAN + 'Client LDAP Failover with second active and first unreachable...' + RESET);
-  let testCases = [fs.join(testPaths.ldapfailover, "auth-secondldap.js")];
+  let testCases = [fs.join(testPaths.dualldap, "auth-secondldap.js")];
 
   print('Performing #8 Test: Failover - Scenario 3: first LDAP server inactive, second LDAP server active');
-  print(opts.ldapFailover.conf);
+  print(conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, conf);
 }
 
@@ -405,7 +433,7 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc, allTestP
   testFns['ldapsearchplaceholder'] = authenticationLdapSearchModePlaceholder;
   testFns['ldaprolesimple'] = authenticationLdapRolesModePrefixSuffix;
   testFns['ldapsearchsimple'] = authenticationLdapSearchModePrefixSuffix;
-  testFns['ldaptwoldap'] = authenticationLdapTwoLdap;
+  testFns['ldapdualldap'] = authenticationLdapTwoLdap;
   testFns['ldapfirstldap'] = authenticationLdapFirstLdap;
   testFns['ldapsecondldap'] = authenticationLdapSecondLdap;
 
