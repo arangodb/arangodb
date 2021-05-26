@@ -55,7 +55,7 @@ The second argument of `unparse` accepts an options object:
 
 ```js
 const yargs = require('yargs');
-const unparse = require('yargs-unparse');
+const unparse = require('yargs-unparser');
 
 const argv = yargs
     .command('my-command <positional>', 'My awesome command', (yargs) =>

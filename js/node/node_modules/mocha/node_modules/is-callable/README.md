@@ -39,7 +39,16 @@ assert.ok(isCallable(function* () {}));
 assert.ok(isCallable(x => x * x));
 ```
 
+## Install
+
+Install with
+
+```
+npm install is-callable
+```
+
 ## Tests
+
 Simply clone the repo, `npm install`, and run `npm test`
 
 [1]: https://npmjs.org/package/is-callable
