@@ -187,8 +187,8 @@ constexpr auto TRI_ERROR_MALFORMED_JSON                                         
 
 /// 38: ERROR_STARTING_UP
 /// "startup ongoing"
-/// Will be raised when a call cannot succeed because the server startup phase is
-/// still in progress.
+/// Will be raised when a call cannot succeed because the server startup phase
+/// is still in progress.
 constexpr auto TRI_ERROR_STARTING_UP                                             = ErrorCode{38};
 
 /// 400: ERROR_HTTP_BAD_PARAMETER
@@ -1470,6 +1470,12 @@ constexpr auto TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION                            
 /// the _from or _to collection specified for the edge refers to a vertex
 /// collection which is not used in any edge definition of the graph.
 constexpr auto TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED             = ErrorCode{1947};
+
+/// 1948: ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT
+/// "negative edge weight found"
+/// a negative edge weight was found during a weighted graph traversal or
+/// shortest path query
+constexpr auto TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT                              = ErrorCode{1948};
 
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"

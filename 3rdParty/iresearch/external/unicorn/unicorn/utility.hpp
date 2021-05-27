@@ -54,6 +54,7 @@
 #include <istream>
 #include <iterator>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <new>
 #include <optional>

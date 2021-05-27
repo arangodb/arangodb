@@ -144,6 +144,10 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
 
   weightAttribute = VPackHelper::getStringValue(obj, "weightAttribute", "");
   defaultWeight = VPackHelper::getNumericValue<double>(obj, "defaultWeight", 1);
+  if (defaultWeight < 0.) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
+                                   "negative default weight not allowed");
+  }
 
   VPackSlice read = obj.get("vertexCollections");
   if (read.isString()) {
@@ -300,6 +304,10 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
 
   weightAttribute = VPackHelper::getStringValue(info, "weightAttribute", "");
   defaultWeight = VPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
+  if (defaultWeight < 0.) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
+                                   "negative default weight not allowed");
+  }
 
   read = info.get("vertexCollections");
   if (read.isString()) {
@@ -836,8 +844,14 @@ void TraverserOptions::activatePostFilter(std::vector<aql::Variable const*> vars
 
 double TraverserOptions::weightEdge(VPackSlice edge) const {
   TRI_ASSERT(mode == Order::WEIGHTED);
-  return arangodb::basics::VelocyPackHelper::getNumericValue<double>(edge, weightAttribute,
-                                                                     defaultWeight);
+  const auto weight =
+      arangodb::basics::VelocyPackHelper::getNumericValue<double>(edge, weightAttribute,
+                                                                  defaultWeight);
+  if (weight < 0.) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+  }
+
+  return weight;
 }
 
 bool TraverserOptions::hasWeightAttribute() const {

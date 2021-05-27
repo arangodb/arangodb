@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Graph/EdgeCursor.h"
+#include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
