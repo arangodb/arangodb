@@ -1,6 +1,10 @@
 devel
 -----
 
+
+* Fix BTS-409: return error 1948 when a negative edge was detected during or was
+  used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
+
 * Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
   documentation about the long deprecated features Simple Queries and
 	JavaScript-based graph traversal. Also removed the descriptions of the
