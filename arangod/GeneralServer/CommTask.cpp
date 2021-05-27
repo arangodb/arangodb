@@ -361,6 +361,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
       self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
     }).finally([](auto&&) noexcept { /* ignore exceptions */ });
     return;
+  } else {
+    std::move(res).finally([](auto&&) noexcept { /* ignore exceptions */ });
   }
 
   // asynchronous request
