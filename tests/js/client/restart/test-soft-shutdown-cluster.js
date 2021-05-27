@@ -135,6 +135,11 @@ function testSuite() {
       assertEqual(1, status.AQLcursors);
       assertEqual(0, status.transactions);
 
+      // It should fail to create a new cursor:
+      let respFailed = arango.POST("/_api/cursor", data);
+      assertTrue(respFailed.error);
+      assertEqual(503, respFailed.code);
+
       // Now slowly read the cursor through:
       for (i = 0; i < 8; ++i) {
         wait(2);
@@ -176,6 +181,11 @@ function testSuite() {
       assertTrue(status.softShutdownOngoing);
       assertEqual(1, status.AQLcursors);
       assertEqual(0, status.transactions);
+
+      // It should fail to create a new cursor:
+      let respFailed = arango.POST("/_api/cursor", data);
+      assertTrue(respFailed.error);
+      assertEqual(503, respFailed.code);
 
       // Now slowly read the cursor through:
       for (i = 0; i < 8; ++i) {
