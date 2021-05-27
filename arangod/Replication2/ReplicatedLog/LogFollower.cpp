@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/messages.h"
 #include "Replication2/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "RestServer/Metrics.h"
 
 #include <Basics/Exceptions.h>
@@ -230,6 +231,19 @@ auto replicated_log::LogFollower::GuardedFollowerData::waitFor(LogIndex index)
   TRI_ASSERT(future.valid());
   return std::move(future);
 }
+
+
+auto replicated_log::LogFollower::waitForIterator(LogIndex index)
+-> replicated_log::LogParticipantI::WaitForIteratorFuture {
+    TRI_ASSERT(index != LogIndex{0});
+    return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
+        // TODO what if the data was compacted after the commit index reached index?
+        return _guardedFollowerData.doUnderLock([&](GuardedFollowerData& followerData) {
+            return getLogIterator(index);
+        });
+    });
+}
+
 auto replicated_log::LogFollower::acquireMutex() -> replicated_log::LogFollower::Guard {
   return _guardedFollowerData.getLockedGuard();
 }
@@ -306,6 +320,17 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::LogParticipantI::WaitForFuture {
   auto self = acquireMutex();
   return self->waitFor(idx);
+}
+
+auto replicated_log::LogFollower::getLogIterator(LogIndex fromIdx) const
+    -> std::unique_ptr<LogIterator> {
+  return _guardedFollowerData.doUnderLock(
+      [&](GuardedFollowerData const& data) -> std::unique_ptr<LogIterator> {
+        auto const endIdx = data._inMemoryLog.getNextIndex();
+        TRI_ASSERT(fromIdx < endIdx);
+        auto log = data._inMemoryLog._log.drop(fromIdx.value);
+        return std::make_unique<ReplicatedLogIterator>(std::move(log));
+      });
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept

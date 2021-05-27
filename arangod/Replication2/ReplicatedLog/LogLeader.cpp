@@ -62,32 +62,11 @@
 #pragma warning(pop)
 #endif
 
+#include "ReplicatedLogIterator.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-namespace {
-class ReplicatedLogIterator : public LogIterator {
- public:
-  explicit ReplicatedLogIterator(immer::flex_vector<LogEntry> container)
-      : _container(std::move(container)),
-        _begin(_container.begin()),
-        _end(_container.end()) {}
-
-  auto next() -> std::optional<LogEntry> override {
-    if (_begin != _end) {
-      auto const& res = *_begin;
-      ++_begin;
-      return res;
-    }
-    return std::nullopt;
-  }
-
- private:
-  immer::flex_vector<LogEntry> _container;
-  immer::flex_vector<LogEntry>::const_iterator _begin;
-  immer::flex_vector<LogEntry>::const_iterator _end;
-};
-}  // namespace
 
 replicated_log::LogLeader::LogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics,
                                      TermData termData, InMemoryLog inMemoryLog)

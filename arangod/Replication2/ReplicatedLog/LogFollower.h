@@ -43,7 +43,9 @@ namespace arangodb::replication2::replicated_log {
 /**
  * @brief Follower isntance of a replicated log.
  */
-class LogFollower : public LogParticipantI, public AbstractFollower {
+class LogFollower : public LogParticipantI,
+                    public AbstractFollower,
+                    public std::enable_shared_from_this<LogFollower> {
  public:
   ~LogFollower() override = default;
   LogFollower(LogContext, ReplicatedLogMetrics& logMetrics, ParticipantId id,
@@ -58,7 +60,11 @@ class LogFollower : public LogParticipantI, public AbstractFollower {
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 
+  [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
+
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
+
+  [[nodiscard]] auto getLogIterator(LogIndex fromIndex) const -> std::unique_ptr<LogIterator>;
 
  private:
   struct GuardedFollowerData;
