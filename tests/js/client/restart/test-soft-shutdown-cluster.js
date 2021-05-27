@@ -103,7 +103,13 @@ function testSuite() {
       let instanceInfo = global.instanceInfo;
 
       // Now use soft shutdown API to shut coordinator down:
+      let status = arango.GET("/_admin/shutdown");
+      assertFalse(status.softShutdownOngoing);
       arango.DELETE("/_admin/shutdown?soft=true");
+      status = arango.GET("/_admin/shutdown");
+      assertTrue(status.softShutdownOngoing);
+      assertEqual(0, status.AQLcursors);
+      assertEqual(0, status.transactions);
       waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
@@ -124,6 +130,11 @@ function testSuite() {
       console.warn("Produced AQL cursor:", resp);
       // Now use soft shutdown API to shut coordinator down:
       arango.DELETE("/_admin/shutdown?soft=true");
+      status = arango.GET("/_admin/shutdown");
+      assertTrue(status.softShutdownOngoing);
+      assertEqual(1, status.AQLcursors);
+      assertEqual(0, status.transactions);
+
       // Now slowly read the cursor through:
       for (i = 0; i < 8; ++i) {
         wait(2);
@@ -156,8 +167,16 @@ function testSuite() {
 
       let resp = arango.POST("/_api/cursor", data);
       console.warn("Produced AQL cursor:", resp);
+      let status = arango.GET("/_admin/shutdown");
+      assertFalse(status.softShutdownOngoing);
+
       // Now use soft shutdown API to shut coordinator down:
       arango.DELETE("/_admin/shutdown?soft=true");
+      status = arango.GET("/_admin/shutdown");
+      assertTrue(status.softShutdownOngoing);
+      assertEqual(1, status.AQLcursors);
+      assertEqual(0, status.transactions);
+
       // Now slowly read the cursor through:
       for (i = 0; i < 8; ++i) {
         wait(2);
