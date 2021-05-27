@@ -45,12 +45,26 @@ function BaseTestConfig() {
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p[0]", [ true, true, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN LENGTH(p)", [ true, true, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN NOEVAL(p.edges)", [ false, true, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p[CONCAT('ver', 'tices')]", [ true, false, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN NOEVAL(p['edges'])", [ false, true, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p[NOEVAL('edges')]", [ true, true, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p[NOEVAL(CONCAT('ver', 'tices'))]", [ true, true, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.edges", [ false, true, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.`edges`", [ false, true, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p['edges']", [ false, true, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.edges[*]", [ false, true, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.edges[*].testi", [ false, true, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.edges[0]", [ false, true, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.edges[0].testi", [ false, true, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.vertices", [ true, false, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.`vertices`", [ true,false, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p['vertices']", [ true, false, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.vertices[*]", [ true, false, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.vertices[*].testi", [ true, false, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.vertices[0]", [ true, false, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN p.vertices[0].testi", [ true, false, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN [p.edges, p.vertices]", [ true, true, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN [p.`edges`, p.`vertices`]", [ true, true, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN [p['edges'], p['vertices']]", [ true, true, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN [p.edges, p]", [ true, true, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' RETURN [p['edges'], p]", [ true, true, false ]],
@@ -103,6 +117,7 @@ function BaseTestConfig() {
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p", [ true, true, true ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p[0]", [ true, true, true ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p.weights", [ false, false, true ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p.`weights`", [ false, false, true ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p['weights']", [ false, false, true ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p.edges", [ false, true, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p['edges']", [ false, true, false ]],
@@ -114,16 +129,26 @@ function BaseTestConfig() {
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN [p['edges'], p['weights']]", [ false, true, true ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p.testi", [ true, false, false ]],
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p['testi']", [ true, false, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p.weights[*]", [ false, false, true ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p.weights[*].testi", [ false, false, true ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p.weights[0]", [ false, false, true ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } RETURN p.weights[0].testi", [ false, false, true ]],
 
+        // traversal filters
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } FILTER p.edges[*].weight ALL >= 3 RETURN p.vertices", [ true, false, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } FILTER p.vertices[1].weight >= 3 RETURN p.vertices", [ true, false, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } FILTER p.edges[0].weight >= 3 RETURN p.vertices", [ true, false, false ]],
+        [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } FILTER p.vertices[*].weight ALL >= 3 RETURN p.edges", [ false, true, false ]],
+      
       ].forEach((query) => {
         let nodes = AQL_EXPLAIN(query[0]).plan.nodes;
         let traversal = nodes.filter((node) => node.type === 'TraversalNode')[0];
 
         assertEqual("p", traversal.pathOutVariable.name);
 
-        assertEqual(query[1][0], traversal.options.producePathsVertices);
-        assertEqual(query[1][1], traversal.options.producePathsEdges);
-        assertEqual(query[1][2], traversal.options.producePathsWeights);
+        assertEqual(query[1][0], traversal.options.producePathsVertices, query);
+        assertEqual(query[1][1], traversal.options.producePathsEdges, query);
+        assertEqual(query[1][2], traversal.options.producePathsWeights, query);
       });
     },
 
