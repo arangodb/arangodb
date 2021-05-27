@@ -257,9 +257,6 @@ ArangoCollection.prototype.removeByExample = function (example,
     limit = tmp_options.limit;
   }
 
-  var i;
-  var cluster = require('@arangodb/cluster');
-
   var query = buildExampleQuery(this, example, limit);
   var opts = { waitForSync };
   query.query += ' REMOVE doc IN @@collection OPTIONS ' + JSON.stringify(opts);

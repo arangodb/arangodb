@@ -15,10 +15,10 @@ description: |
   sent the time is measured and an event is put into the histogram.
   In the single server, this counter is only used in active failover mode.
 threshold: |
-  It is a bad sign for health if heartbeat transmissions are not fast. 
+  It is a bad sign for health if heartbeat transmissions are not fast.
   If there are heartbeats which frequently take longer than a few hundred
-  milliseconds, or even seconds, this can eventually lead to failover actions 
+  milliseconds, or even seconds, this can eventually lead to failover actions
   which are ultimately bad for the service.
 troubleshoot: |
-  High heartbeat send times can be a sign of overload or of bad network 
-  connectivity. Potentially move the agent instances to separate machines.
+  High heartbeat send times can be a sign of overload or of bad network
+  connectivity. Potentially move the Agent instances to separate machines.
