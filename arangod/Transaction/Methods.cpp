@@ -1291,7 +1291,7 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
   if (!newValue.isArray()) {
     arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(newValue));
     if (key.empty()) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
+      return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options));
     }
   }
 
