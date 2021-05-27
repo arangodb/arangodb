@@ -32,8 +32,10 @@ let jsunity = require('jsunity');
 //const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const request = require("@arangodb/request");
-const time = require("internal").time;
-const wait = require("internal").wait;
+const internal = require("internal");
+const time = internal.time;
+const wait = internal.wait;
+const statusExternal = internal.statusExternal;
 
 function testSuite() {
   let getServers = function (role) {
@@ -88,9 +90,13 @@ function testSuite() {
         }
         wait(0.5);
       }
-
+      wait(10);
+      coordinator.exitStatus = statusExternal(coordinator.pid, false);
+      delete coordinator.pid;
+      require("console").warn("Coordinator:", JSON.stringify(coordinator));
+      require("console").warn("instanceInfo:", JSON.stringify(instanceInfo));
       let options = global.testOptions;
-      pu.reStartInstance(options, instanceInfo, options);
+      pu.reStartInstance(options, instanceInfo, {});
         
       waitForAlive(30, coordinator.url, {});
     },
