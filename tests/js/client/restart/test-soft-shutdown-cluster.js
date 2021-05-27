@@ -38,8 +38,28 @@ const wait = internal.wait;
 const statusExternal = internal.statusExternal;
 
 function testSuite() {
+  let cn = "UnitTestSoftShutdown";
+
   let getServers = function (role) {
     return global.instanceInfo.arangods.filter((instance) => instance.role === role);
+  };
+
+  let waitForShutdown = function(arangod, timeout) {
+    let startTime = time();
+    while (true) {
+      if (time() > startTime + timeout) {
+        assertTrue(false, "Instance did not shutdown quickly enough!");
+        return;
+      }
+      let status = statusExternal(arangod.pid, false);
+      console.warn("External status:", status);
+      if (status.status === "TERMINATED") {
+        arangod.exitStatus = status;
+        delete arangod.pid;
+        break;
+      }
+      wait(0.5);
+    }
   };
 
   let waitForAlive = function (timeout, baseurl, data) {
@@ -52,53 +72,108 @@ function testSuite() {
         break;
       }
       console.warn("waiting for server response from url " + baseurl);
-      require('internal').sleep(0.5);
+      wait(0.5);
     }
     return res.status;
   };
 
-  let checkAvailability = function (server) {
-    require("console").warn("checking (un)availability of " + server + "...");
-    let res = request({ method: "get", url: server.url + "/_api/version", timeout: 3 });
-    require("console").warn("Got response:", res);
-    return res.status;
+  let restartInstance = function(arangod) {
+    let options = global.testOptions;
+    pu.reStartInstance(options, instanceInfo, {});
+    waitForAlive(30, arangod.url, {});
   };
 
   return {
+    setUp : function() {
+      db._drop(cn);
+      collection = db._create(cn, {numberOfShards:2, replicationFactor:2});
+      for (i = 0; i < 10; ++i) {
+        collection.insert({Hallo:i});
+      }
+    },
+
+    tearDown : function() {
+      db._drop(cn);
+    },
+
     testNormalSoftShutdownWithoutTraffic : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       let instanceInfo = global.instanceInfo;
 
-      let newInstanceInfo = {
-        arangods: [ coordinator ],
-        endpoint: instanceInfo.endpoint,
-      };
-
       // Now use soft shutdown API to shut coordinator down:
       arango.DELETE("/_admin/shutdown?soft=true");
-      let startTime = time();
-      while (true) {
-        if (time() > startTime + 30) {
-          assertTrue(false, "Coordinator did not shutdown quickly enough!");
-          return;
-        }
-        let status = checkAvailability(coordinator);
-        if (status === 500) {
-          break;
-        }
-        wait(0.5);
+      waitForShutdown(coordinator, 30);
+      restartInstance(coordinator);
+    },
+    
+    testNormalSoftShutdownWithAQLCursor : function() {
+      let coordinators = getServers('coordinator');
+      assertTrue(coordinators.length > 0);
+      let coordinator = coordinators[0];
+      let instanceInfo = global.instanceInfo;
+
+      // Create an AQL cursor:
+      let data = {
+        query: `FOR x in ${cn} RETURN x`,
+        batchSize: 1
+      };
+
+      let resp = arango.POST("/_api/cursor", data);
+      console.warn("Produced AQL cursor:", resp);
+      // Now use soft shutdown API to shut coordinator down:
+      arango.DELETE("/_admin/shutdown?soft=true");
+      // Now slowly read the cursor through:
+      for (i = 0; i < 8; ++i) {
+        wait(2);
+        let next = arango.PUT("/_api/cursor/" + resp.id,{});
+        console.warn("Read document:", next);
+        assertTrue(next.hasMore);
       }
-      wait(10);
-      coordinator.exitStatus = statusExternal(coordinator.pid, false);
-      delete coordinator.pid;
-      require("console").warn("Coordinator:", JSON.stringify(coordinator));
-      require("console").warn("instanceInfo:", JSON.stringify(instanceInfo));
-      let options = global.testOptions;
-      pu.reStartInstance(options, instanceInfo, {});
-        
-      waitForAlive(30, coordinator.url, {});
+      // And the last one:
+      wait(2);
+      let next = arango.PUT("/_api/cursor/" + resp.id,{});
+      console.warn("Read last document:", next, "awaiting shutdown...");
+      assertFalse(next.hasMore);
+
+      // And now it should shut down in due course...
+      waitForShutdown(coordinator, 30);
+      restartInstance(coordinator);
+    },
+    
+    testNormalSoftShutdownWithAQLCursorDeleted : function() {
+      let coordinators = getServers('coordinator');
+      assertTrue(coordinators.length > 0);
+      let coordinator = coordinators[0];
+      let instanceInfo = global.instanceInfo;
+
+      // Create an AQL cursor:
+      let data = {
+        query: `FOR x in ${cn} RETURN x`,
+        batchSize: 1
+      };
+
+      let resp = arango.POST("/_api/cursor", data);
+      console.warn("Produced AQL cursor:", resp);
+      // Now use soft shutdown API to shut coordinator down:
+      arango.DELETE("/_admin/shutdown?soft=true");
+      // Now slowly read the cursor through:
+      for (i = 0; i < 8; ++i) {
+        wait(2);
+        let next = arango.PUT("/_api/cursor/" + resp.id,{});
+        console.warn("Read document:", next);
+        assertTrue(next.hasMore);
+      }
+      // Instead of the last one, now delete the cursor:
+      wait(2);
+      let next = arango.DELETE("/_api/cursor/" + resp.id,{});
+      console.warn("Deleted cursor:", next, "awaiting shutdown...");
+      assertFalse(next.hasMore);
+
+      // And now it should shut down in due course...
+      waitForShutdown(coordinator, 30);
+      restartInstance(coordinator);
     },
     
   };
