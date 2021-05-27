@@ -122,5 +122,26 @@ exports.Examples = {
         db._drop("relations");
       } catch (e) {}
     }
+  },
+  'observationsSampleDataset': {
+    createDS: function() {
+      db._create("observations");
+      db.observations.save([
+        { "time": "2021-05-25 07:00:00", "subject": "st113", "val": 10 },
+        { "time": "2021-05-25 07:15:00", "subject": "st113", "val": 9 },
+        { "time": "2021-05-25 07:30:00", "subject": "st113", "val": 25 },
+        { "time": "2021-05-25 07:45:00", "subject": "st113", "val": 20 },
+        { "time": "2021-05-25 07:00:00", "subject": "xh458", "val": 0 },
+        { "time": "2021-05-25 07:15:00", "subject": "xh458", "val": 10 },
+        { "time": "2021-05-25 07:30:00", "subject": "xh458", "val": 5 },
+        { "time": "2021-05-25 07:45:00", "subject": "xh458", "val": 30 },
+        { "time": "2021-05-25 08:00:00", "subject": "xh458", "val": 25 },
+      ]);
+    },
+    removeDS: function() {
+      try {
+        db._drop("observations");
+      } catch (e) {}
+    }
   }
 };
