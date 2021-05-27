@@ -1,6 +1,12 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
+* Updated multiple packaged node modules:
+  - `lodash`: 4.17.13 -> 4.17.21
+  - `js-yaml`: 3.13.0 -> 3.14.1
+  - `underscore`: 1.9.1 -> 1.13.1
+  - `mocha`: 6.1.3 -> 6.2.2
+
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
 
