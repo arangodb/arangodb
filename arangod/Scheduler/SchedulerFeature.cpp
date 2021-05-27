@@ -545,4 +545,14 @@ void SoftShutdownTracker::initiateActualShutdown() const {
   _server.beginShutdown();
 }
 
+void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder) const {
+  VPackObjectBuilder guard(&builder);
+  bool ongoing = _softShutdownOngoing.load(std::memory_order_relaxed);
+  builder.add("softShutdownOngoing", VPackValue(ongoing));
+  if (!ongoing) {
+    return;
+  }
+  builder.add("AQLcursors", VPackValue(_counters[IndexAQLCursors].load(std::memory_order_relaxed)));
+  builder.add("transactions", VPackValue(_counters[IndexTransactions].load(std::memory_order_relaxed)));
+}
 }  // namespace arangodb

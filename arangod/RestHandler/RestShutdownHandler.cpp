@@ -47,7 +47,8 @@ RestShutdownHandler::RestShutdownHandler(application_features::ApplicationServer
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestShutdownHandler::execute() {
-  if (_request->requestType() != rest::RequestType::DELETE_REQ) {
+  if (_request->requestType() != rest::RequestType::DELETE_REQ &&
+      _request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
@@ -66,6 +67,16 @@ RestStatus RestShutdownHandler::execute() {
                     "you need admin rights to trigger shutdown");
       return RestStatus::DONE;
     }
+  }
+
+  auto const& schedulerFeature{server().getFeature<SchedulerFeature>()};
+  auto& softShutdownTracker{schedulerFeature.softShutdownTracker()};
+
+  if (_request->requestType() == rest::RequestType::GET) {
+    VPackBuilder builder;
+    softShutdownTracker.toVelocyPack(builder);
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
   }
 
   bool removeFromCluster;
@@ -99,8 +110,6 @@ RestStatus RestShutdownHandler::execute() {
   }
 
   if (ServerState::instance()->isCoordinator() && soft) {
-    auto const& schedulerFeature{server().getFeature<SchedulerFeature>()};
-    auto& softShutdownTracker{schedulerFeature.softShutdownTracker()};
     softShutdownTracker.initiateSoftShutdown();
     return RestStatus::DONE;
   }

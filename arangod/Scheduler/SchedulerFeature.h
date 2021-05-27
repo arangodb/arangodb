@@ -106,7 +106,8 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
   // Each customer has an index here:
   enum Indexes : size_t {
     IndexAQLCursors = 0,
-    NrCounters = 1,
+    IndexTransactions = 1,
+    NrCounters = 2,
   };
 
  private:
@@ -141,6 +142,8 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
       return nullptr;
     }
   }
+
+  void toVelocyPack(VPackBuilder& builder) const;
 
  private:
   // Need mutex to call all of the following:
