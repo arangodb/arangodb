@@ -1,6 +1,13 @@
 devel
 -----
 
+* Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
+  documentation about the long deprecated features Simple Queries and
+	JavaScript-based graph traversal. Also removed the descriptions of the
+	JS API methods `collection.range()`, `collection.closedRange()`,
+	`cursor.setBatchSize()` and `cursor.getBatchSize()`. All the functionality
+	is superseded by AQL.
+
 * Implemented APM-86: add query option `fillBlockCache` to control population
   of RocksDB block cache with data read by the query. The default value for
   this per-query option is `true`, which mimics the previous behavior.
