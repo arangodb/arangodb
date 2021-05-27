@@ -217,3 +217,62 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries_follower) {
     }
   }
 }
+
+TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_follower) {
+  auto const entries = {
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+
+  auto coreA = std::unique_ptr<LogCore>(nullptr);
+  {
+    auto leaderLog = makePersistedLog(LogId{1});
+    for (auto const& entry : entries) {
+      leaderLog->setEntry(entry);
+    }
+    coreA = std::make_unique<LogCore>(leaderLog);
+  }
+
+  auto followerLog = makeReplicatedLog(LogId{2});
+  auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
+
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+                                     std::move(coreA), LogTerm{3}, {follower}, 2);
+  leader->runAsyncStep();
+
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
+  auto fut = follower->waitForIterator(LogIndex{4});
+  ASSERT_FALSE(fut.isReady());
+
+  leader->insert(LogPayload{"fourth entry"});
+  leader->insert(LogPayload{"fifth entry"});
+  leader->runAsyncStep();
+
+  // replicate entries, not commit index
+  ASSERT_TRUE(follower->hasPendingAppendEntries());
+  follower->runAsyncAppendEntries();
+  ASSERT_FALSE(fut.isReady());
+
+  // replicated commit index
+  ASSERT_TRUE(follower->hasPendingAppendEntries());
+  follower->runAsyncAppendEntries();
+  ASSERT_TRUE(fut.isReady());
+  {
+    auto entry = std::optional<LogEntry>{};
+    auto iter = std::move(fut).get();
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(entry->logIndex(), LogIndex{4});
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(entry->logIndex(), LogIndex{5});
+
+    entry = iter->next();
+    ASSERT_FALSE(entry.has_value());
+  }
+}

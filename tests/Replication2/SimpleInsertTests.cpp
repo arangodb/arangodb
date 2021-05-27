@@ -49,8 +49,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
   auto countHistogramEntries = [](auto const& histogram) {
     auto [begin, end] =
-        makeIndexIterPair([&](std::size_t i) { return histogram.load(i); }, 0,
-                          histogram.size());
+        makeIndexIterPair([&](std::size_t i) { return histogram->load(i); }, 0,
+                          histogram->size());
 
     return std::accumulate(begin, end, 0);
   };

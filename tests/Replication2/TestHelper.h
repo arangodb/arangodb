@@ -209,7 +209,7 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
-  ReplicatedLogMetricsMock _logMetricsMock{{}};
+  ReplicatedLogMetricsMock _logMetricsMock{};
 };
 
 

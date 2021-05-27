@@ -238,9 +238,7 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
     TRI_ASSERT(index != LogIndex{0});
     return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
         // TODO what if the data was compacted after the commit index reached index?
-        return _guardedFollowerData.doUnderLock([&](GuardedFollowerData& followerData) {
-            return getLogIterator(index);
-        });
+        return getLogIterator(LogIndex{index.value - 1});
     });
 }
 
