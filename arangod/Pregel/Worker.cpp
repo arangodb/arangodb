@@ -786,8 +786,8 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     reqOpts.database = _config.database();
 
     network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
-                         fuerte::RestVerb::Post, baseUrl + path, std::move(buffer), reqOpts);
-
+                         fuerte::RestVerb::Post, baseUrl + path, std::move(buffer), reqOpts)
+        .finally([&](auto&&) noexcept { /* ignore all errors */ });
   }
 }
 

@@ -2335,7 +2335,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   // RequestOptions contains a fuerte::StringMap, which is an std::map, and
   // std::map is not nothrow_move_constructible, thus RequestOptions isn't either.
   // Which means we have to box it to capture it in the future-lambda later.
-  auto reqOpts = std::make_unique<network::RequestOptions>();
+  auto reqOpts = std::make_shared<network::RequestOptions>();
   reqOpts->database = trx.vocbase().name();
   reqOpts->timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts->retryNotFound = true;
