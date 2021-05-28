@@ -72,8 +72,8 @@ namespace arangodb {
 namespace iresearch {
 
 arangodb::iresearch::IResearchInvertedIndex::IResearchInvertedIndex(
-    IndexId id, LogicalCollection& collection, arangodb::velocypack::Slice const& info)
-  : Index(id, collection, info) {
+    IndexId id, LogicalCollection& collection, IResearchInvertedIndex::IResearchInvertedIndexMeta&& meta)
+  : Index(id, collection, meta._name, meta.fields(), false, true), _meta(meta) {
 }
 
 void arangodb::iresearch::IResearchInvertedIndex::toVelocyPack(
@@ -83,7 +83,7 @@ void arangodb::iresearch::IResearchInvertedIndex::toVelocyPack(
 std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iteratorForCondition(
     transaction::Methods* trx, aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
-  return std::unique_ptr<IndexIterator>();
+  return std::make_unique<EmptyIndexIterator>(&collection(), trx);
 }
 
 Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
@@ -156,14 +156,24 @@ std::shared_ptr<Index> IResearchInvertedIndexFactory::instantiate(LogicalCollect
                                                                   velocypack::Slice const& definition,
                                                                   IndexId id,
                                                                   bool isClusterConstructor) const {
-  return std::shared_ptr<Index>();
+
+  IResearchInvertedIndex::IResearchInvertedIndexMeta meta;
+  // FIXME: for cluster  - where to get actual collection name? Pre-store in definition I guess!
+  auto res = meta.init(_server, definition, isClusterConstructor);
+  if (res.fail()) {
+        LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
+             << "Filed to create index '" << id.id()
+             << "' error:" << res.errorMessage();
+    return nullptr;
+  }
+  return std::make_shared<IResearchInvertedIndex>(id, collection, std::move(meta));
 }
 
 Result IResearchInvertedIndexFactory::normalize(velocypack::Builder& normalized, velocypack::Slice definition,
                                                 bool isCreation, TRI_vocbase_t const& vocbase) const {
   TRI_ASSERT(normalized.isOpenObject());
   // FIXME: We need separate handling in case of non-identity analyzers
-  Result res = IndexFactory::processIndexFields(definition, normalized, 1, SIZE_MAX, isCreation, false);
+  Result res = IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(definition, normalized);
   if (res.ok()) {
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(arangodb::Index::oldtypeName(
@@ -185,6 +195,20 @@ Result IResearchInvertedIndexFactory::normalize(velocypack::Builder& normalized,
 
   }
   return res;
+}
+
+Result IResearchInvertedIndex::IResearchInvertedIndexMeta::init(
+    application_features::ApplicationServer& server, velocypack::Slice const info, bool isClusterConstructor) {
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+Result IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(
+    velocypack::Builder& normalized, velocypack::Slice definition) {
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::IResearchInvertedIndexMeta::fields() const {
+  return std::vector<std::vector<arangodb::basics::AttributeName>>();
 }
 
 } // namespace iresearch

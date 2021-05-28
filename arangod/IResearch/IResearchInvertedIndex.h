@@ -38,12 +38,20 @@ class IResearchInvertedIndex : public Index {
  public:
 
   struct IResearchInvertedIndexMeta {
+
+    Result  init(application_features::ApplicationServer& server,
+                 velocypack::Slice const info,
+                 bool isClusterConstructor);
+    static Result normalize(velocypack::Builder& normalized, velocypack::Slice definition);
+
+    std::vector<std::vector<arangodb::basics::AttributeName>> fields() const;
+
+    std::string _name;
     IResearchViewMeta _indexMeta;
     IResearchLinkMeta _fieldsMeta;
   };
 
-  IResearchInvertedIndex(IndexId id, LogicalCollection& collection,
-                         velocypack::Slice const& info);
+  IResearchInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta);
 
 
   void toVelocyPack(VPackBuilder& builder,
@@ -81,7 +89,7 @@ class IResearchInvertedIndex : public Index {
   bool inProgress() const override {
     // We will be in that state until we have chance to initialize analyzers
     // in case of usage  custom ones
-    // FIXME: implement leavin inProgress
+    // FIXME: implement leaving inProgress
     return true;
   }
 
