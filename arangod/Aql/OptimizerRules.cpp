@@ -7437,7 +7437,14 @@ struct ParallelizableFinder final
         _isParallelizable = false;
         return true;
       }
-      // node that we have seen a DISTRIBUTE node
+      // node that we have seen a DISTRIBUTE node.
+      // note that a single DISTRIBUTE node should be safe if it
+      // itself does not reach out to other snippets.
+      // The reason it should be safe is that the DISTRIBUTE will
+      // be executed under the snippet's mutex, so any real parallelism
+      // on the same DISTRIBUTE node is prevented. if multiple
+      // DB ervers are queuing for the same DISTRIBUTE node, this may
+      // lead to some contention, but should work eventually.
       _seenDistribute = true;
     }
     if (node->getType() == ExecutionNode::REMOTE) {
