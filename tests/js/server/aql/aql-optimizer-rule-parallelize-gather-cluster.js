@@ -77,8 +77,10 @@ function optimizerRuleTestSuite () {
 
     testRuleNoEffect : function () {
       let queries = [  
+        "FOR doc IN " + cn + " INSERT {} IN " + cn,
+        "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " INSERT {} IN " + cn,
         "FOR doc IN " + cn + " LIMIT 10 UPDATE doc WITH {} IN " + cn,
-        "FOR i IN 1..1000 INSERT {} IN " + cn,
+        "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " RETURN 1",
         "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FILTER doc1._key == doc2._key RETURN doc1",
         "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FOR doc3 IN " + cn + " FILTER doc1._key == doc2._key FILTER doc2._key == doc3._key RETURN doc1",
         "FOR i IN 1..100 LET sub = (FOR doc IN " + cn + " FILTER doc.value == i RETURN doc) RETURN sub",
@@ -99,6 +101,8 @@ function optimizerRuleTestSuite () {
 
     testRuleHasEffect : function () {
       let queries = [ 
+        "FOR i IN 1..1000 FOR j IN 1..100 INSERT {} IN " + cn,
+        "LET top = (FOR i IN 1..10 COLLECT AGGREGATE m = MAX(i) RETURN m)[0] FOR i IN 1..top INSERT {} IN " + cn,
         "FOR doc IN " + cn + " RETURN doc",
         "FOR doc IN " + cn + " LIMIT 1000 RETURN doc",
         "FOR doc IN " + cn + " LIMIT 1000, 1000 RETURN doc",
@@ -110,6 +114,7 @@ function optimizerRuleTestSuite () {
 
       if (require("internal").options()["query.parallelize-gather-writes"]) {
         queries.concat([
+          "FOR i IN 1..1000 INSERT {} IN " + cn,
           "FOR doc IN " + cn + " REMOVE doc IN " + cn,
           "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
           "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
