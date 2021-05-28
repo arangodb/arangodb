@@ -946,7 +946,8 @@ void TraversalNode::getPostFilterVariables(std::vector<Variable const*>& res) co
 }
 
 bool TraversalNode::isPathOutVariableUsedLater() const {
-  return _pathOutVariable != nullptr && options()->producePaths();
+  return _pathOutVariable != nullptr && 
+          (options()->producePathsVertices() || options()->producePathsEdges() || options()->producePathsWeights());
 }
 
 bool TraversalNode::isPathOutVariableAccessed() const {

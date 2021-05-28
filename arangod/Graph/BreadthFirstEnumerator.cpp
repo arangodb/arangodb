@@ -215,7 +215,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
   return _opts->cache()->fetchEdgeAqlResult(_schreier[index].edge);
 }
 
-VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index) {
+VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index, bool fromPrune) {
   _tempPathHelper.clear();
   while (index != 0) {
     // Walk backwards through the path and push everything found on the local
@@ -226,18 +226,22 @@ VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size
 
   result.clear();
   result.openObject();
-  result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
-  for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
-    _opts->cache()->insertEdgeIntoResult(_schreier[*it].edge, result);
+  if (fromPrune || _opts->producePathsEdges()) {
+    result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
+    for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
+      _opts->cache()->insertEdgeIntoResult(_schreier[*it].edge, result);
+    }
+    result.close();  // edges
   }
-  result.close();  // edges
-  result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
-  // Always add the start vertex
-  _traverser->addVertexToVelocyPack(_schreier[0].vertex, result);
-  for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
-    _traverser->addVertexToVelocyPack(_schreier[*it].vertex, result);
+  if (fromPrune || _opts->producePathsVertices()) {
+    result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
+    // Always add the start vertex
+    _traverser->addVertexToVelocyPack(_schreier[0].vertex, result);
+    for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
+      _traverser->addVertexToVelocyPack(_schreier[*it].vertex, result);
+    }
+    result.close();  // vertices
   }
-  result.close();  // vertices
   result.close();
   TRI_ASSERT(result.isClosed());
   return result.slice();
@@ -245,7 +249,7 @@ VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::pathToIndexToAqlValue(
     arangodb::velocypack::Builder& result, size_t index) {
-  return arangodb::aql::AqlValue(pathToIndexToSlice(result, index));
+  return arangodb::aql::AqlValue(pathToIndexToSlice(result, index, false));
 }
 
 bool BreadthFirstEnumerator::pathContainsVertex(size_t index,
@@ -329,7 +333,7 @@ bool BreadthFirstEnumerator::shouldPrune() {
     evaluator->injectEdge(edge.slice());
   }
   if (evaluator->needsPath()) {
-    VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex);
+    VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex, true);
     evaluator->injectPath(path);
   }
   return evaluator->evaluate();

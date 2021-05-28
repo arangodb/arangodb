@@ -43,7 +43,7 @@ const {getCompactStatsNodes, TraversalBlock } = require("@arangodb/testutils/aql
     - different traversal directions (that is, INBOUND and especially ANY)
     - graph modifications (see e.g. aqlModifySmartGraphSuite)
     - dump/restore (see e.g. dumpTestEnterpriseSuite)
-    - there aren't any tests yet for protoGraps.moreAdvancedPath
+    - there aren't any tests yet for protoGraphs.moreAdvancedPath
     - currently, there are no tests with loops (edges v->v)
  */
 

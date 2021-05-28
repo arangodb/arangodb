@@ -190,7 +190,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
                                    "be a string or array of strings");
   }
 
-  _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
+  readProduceInfo(obj);
 }
 
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
@@ -410,13 +410,16 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   TRI_ASSERT(uniqueVertices != TraverserOptions::UniquenessLevel::GLOBAL ||
              isUniqueGlobalVerticesAllowed());
 
-  _produceVertices = VPackHelper::getBooleanValue(info, "produceVertices", true);
+  readProduceInfo(info);
 }
 
 TraverserOptions::TraverserOptions(TraverserOptions const& other, bool const allowAlreadyBuiltCopy)
     : BaseOptions(static_cast<BaseOptions const&>(other), allowAlreadyBuiltCopy),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
+      _producePathsVertices(other._producePathsVertices),
+      _producePathsEdges(other._producePathsEdges),
+      _producePathsWeights(other._producePathsWeights),
       minDepth(other.minDepth),
       maxDepth(other.maxDepth),
       useNeighbors(other.useNeighbors),
@@ -510,6 +513,9 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   }
 
   builder.add("produceVertices", VPackValue(_produceVertices));
+  builder.add("producePathsVertices", VPackValue(producePathsVertices()));
+  builder.add("producePathsEdges", VPackValue(producePathsEdges()));
+  builder.add("producePathsWeights", VPackValue(producePathsWeights()));
   builder.add("type", VPackValue("traversal"));
 }
 
@@ -863,4 +869,11 @@ auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {
   // The depth will be used as a power for the estimates.
   // So having power 7 is evil enough...
   return std::min(maxDepth, static_cast<uint64_t>(7));
+}
+
+void TraverserOptions::readProduceInfo(VPackSlice obj) {
+  _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
+  _producePathsVertices = VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
+  _producePathsEdges = VPackHelper::getBooleanValue(obj, "producePathsEdges", true);
+  _producePathsWeights = VPackHelper::getBooleanValue(obj, "producePathsWeights", true);
 }

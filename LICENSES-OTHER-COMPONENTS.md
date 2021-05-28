@@ -443,11 +443,20 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### OpenLDAP
+
+* Name: OpenLDAP
+* Version: 2.4.58
+* Date: 2021-03-16
+* License: https://www.openldap.org/software/release/copyright.html
+* License Name: BSD Style License
+* License Id: OpenLDAP
+
 ### OpenSSL
 
 * Name: OpenSSL
 * Version: 1.1.1
-* Date: 2021-05-2021
+* Date: 2021-05-25
 * License: https://spdx.org/licenses/OpenSSL.html
 * License Name: Apache Style License
 * License Id: OpenSSL
