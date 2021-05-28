@@ -23,7 +23,6 @@
 #pragma once
 
 #include <Replication2/ReplicatedLogMetrics.h>
-#include <Replication2/ReplicatedLogMetricsDeclarations.h>
 
 struct ReplicatedLogMetricsMock
     : arangodb::replication2::replicated_log::ReplicatedLogMetrics {
