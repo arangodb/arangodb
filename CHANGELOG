@@ -1,6 +1,9 @@
 v3.8.0-rc.1 (2021-05-26)
 ------------------------
 
+* Fix BTS-442: a query with fullCount on a sharded collection hangs
+  indefinitely when LIMIT is less then number of available documents.
+  
 * Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
   documentation about the long deprecated features Simple Queries and
   JavaScript-based graph traversal. Also removed the descriptions of the JS API
