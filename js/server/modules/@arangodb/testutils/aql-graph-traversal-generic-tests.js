@@ -5675,6 +5675,41 @@ function testEmptyGraphKPathsOutbound(testGraph) {
   assertEqual(foundPaths.length, 0);
 }
 
+function testEmptyGraphShortestPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.emptyGraph.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.nonExistingVertex() + "0"} 
+        TO ${testGraph.nonExistingVertex() + "1"}  
+        GRAPH ${testGraph.name()} 
+        RETURN v.key
+      `;
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertEqual(actualPath.length, 0);
+}
+
+const testEmptyGraphBfsPath = (testGraph) => testEmptyGraphMode(testGraph, "bfs");
+const testEmptyGraphWeightedPath = (testGraph) => testEmptyGraphMode(testGraph, "weighted");
+const testEmptyGraphDfsPath = (testGraph) => testEmptyGraphMode(testGraph, "dfs");
+
+function testEmptyGraphMode(testGraph, mode) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.emptyGraph.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.nonExistingVertex()} GRAPH ${testGraph.name()} 
+    OPTIONS {order: ${mode}}
+    RETURN p.vertices
+  `;
+
+  const expectedPaths = [ [null] ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+  require('internal').print(actualPaths);
+  assertEqual(actualPaths, expectedPaths);
+}
+
 const testsByGraph = {
   openDiamond: {
     testOpenDiamondDfsUniqueVerticesPath,
@@ -5899,7 +5934,11 @@ const testsByGraph = {
     testUnconnectedGraphKPathsOutboundInvalidFromVertex
   },
   emptyGraph: {
-    testEmptyGraphKPathsOutbound
+    testEmptyGraphKPathsOutbound,
+    testEmptyGraphShortestPath,
+    testEmptyGraphBfsPath,
+    testEmptyGraphDfsPath,
+    testEmptyGraphWeightedPath,
   }
 };
 
