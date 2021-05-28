@@ -107,7 +107,8 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
           }
         }
 #endif
-        TRI_ASSERT(false);
+        //TRI_ASSERT(false);
+        LOG_TOPIC("4dba1", INFO, arangodb::Logger::THREADS) << "promise was abandoned";
         THROW_ARANGO_EXCEPTION(TRI_ERROR_PROMISE_ABANDONED);
       } catch (...) {
         return std::current_exception();
@@ -126,14 +127,19 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
         }
       }
 #endif
-      TRI_ASSERT(false);
+
       if constexpr (::expect::is_expected_v<T>) {
-        if (t.has_error()) {
-          // LOG UNCAUGHT EXCEPTION AND CRASH
-          std::terminate();
+        try {
+          t.rethrow_error();
+        } catch(std::exception const& err) {
+          LOG_TOPIC("5fc8b", ERR, arangodb::Logger::THREADS) << "future was abandoned containing an exception: " << err.what();
+          return;
+        } catch(...) {
+          LOG_TOPIC("5fc8e", ERR, arangodb::Logger::THREADS) << "future was abandoned containing an exception";
+          return;
         }
       }
-      // WARNING ??????
+      LOG_TOPIC("4dba1", INFO, arangodb::Logger::THREADS) << "future was abandoned";
     }
   };
 
