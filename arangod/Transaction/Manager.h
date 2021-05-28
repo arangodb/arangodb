@@ -268,7 +268,6 @@ class Manager final {
 
   double _streamingLockTimeout;
 
-  std::atomic<uint64_t>* _nrOngoing;   // for soft shutdown feature
   std::atomic<bool> const* _softShutdownOngoing;
 };
 }  // namespace transaction

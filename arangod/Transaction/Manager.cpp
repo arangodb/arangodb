@@ -40,6 +40,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -93,13 +94,16 @@ Manager::Manager(ManagerFeature& feature)
       _disallowInserts(false),
       _writeLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
-      _nrOngoing(nullptr),
       _softShutdownOngoing(nullptr) {
   if (ServerState::instance()->isCoordinator()) {
-    auto const& schedulerFeature{_feature.server().getFeature<SchedulerFeature>()};
-    auto& softShutdownTracker{schedulerFeature.softShutdownTracker()};
-    _nrOngoing = softShutdownTracker.getCounterPointer(SoftShutdownTracker::IndexTransactions);
-    _softShutdownOngoing = softShutdownTracker.getSoftShutdownFlag();
+    try {
+      auto const& softShutdownFeature{_feature.server().getFeature<SoftShutdownFeature>()};
+      auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
+      _softShutdownOngoing = softShutdownTracker.getSoftShutdownFlag();
+    } catch(...) {
+      // Ignore if the feature is not there, this might happen in unit test
+      // mocks. Then _softShutdownOngoing is simply nullptr and all is well.
+    }
   }
 }
 
@@ -120,9 +124,6 @@ void Manager::registerTransaction(TransactionId transactionId, bool isReadOnlyTr
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
-  if (_nrOngoing != nullptr) {
-    _nrOngoing->fetch_add(1, std::memory_order_relaxed);
-  }
 }
 
 // unregisters a transaction
@@ -142,9 +143,6 @@ void Manager::unregisterTransaction(TransactionId transactionId, bool isReadOnly
 
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
-  if (_nrOngoing != nullptr) {
-    _nrOngoing->fetch_sub(1, std::memory_order_relaxed);
-  }
 }
 
 uint64_t Manager::getActiveTransactionCount() {

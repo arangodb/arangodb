@@ -64,7 +64,7 @@ function testSuite() {
 
   let waitForAlive = function (timeout, baseurl, data) {
     let tries = 0, res;
-    let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" }); 
+    let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" });
     const end = time() + timeout;
     while (time() < end) {
       res = request(all);
@@ -113,7 +113,7 @@ function testSuite() {
       waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
-    
+
     testSoftShutdownWithAQLCursor : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -159,7 +159,7 @@ function testSuite() {
       waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
-    
+
     testSoftShutdownWithAQLCursorDeleted : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -208,7 +208,7 @@ function testSuite() {
       waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
-    
+
     testSoftShutdownWithStreamingTrx : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -247,7 +247,7 @@ function testSuite() {
       waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
-    
+
     testSoftShutdownWithAQLStreamingTrxAborted : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -287,7 +287,7 @@ function testSuite() {
       waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
-    
+
   };
 }
 jsunity.run(testSuite);

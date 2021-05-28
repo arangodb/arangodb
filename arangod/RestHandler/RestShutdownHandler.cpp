@@ -30,6 +30,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
@@ -69,12 +70,12 @@ RestStatus RestShutdownHandler::execute() {
     }
   }
 
-  auto const& schedulerFeature{server().getFeature<SchedulerFeature>()};
-  auto& softShutdownTracker{schedulerFeature.softShutdownTracker()};
+  auto const& softShutdownFeature{server().getFeature<SoftShutdownFeature>()};
+  auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
 
   if (_request->requestType() == rest::RequestType::GET) {
     VPackBuilder builder;
-    softShutdownTracker.toVelocyPack(builder);
+    softShutdownTracker.toVelocyPack(builder, softShutdownTracker.getStatus());
     generateResult(rest::ResponseCode::OK, builder.slice());
     return RestStatus::DONE;
   }

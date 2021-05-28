@@ -24,15 +24,11 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/asio_ns.h"
 #include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
 
 namespace arangodb {
-
-class SoftShutdownTracker;
 
 class SchedulerFeature final : public application_features::ApplicationFeature {
  public:
@@ -67,10 +63,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
  public:
   void buildControlCHandler();
   void buildHangupHandler();
-  SoftShutdownTracker& softShutdownTracker() const {
-    TRI_ASSERT(_softShutdownTracker != nullptr);
-    return *_softShutdownTracker;
-  }
 
  private:
   void signalStuffInit();
@@ -82,75 +74,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
   std::function<void(const asio_ns::error_code&, int)> _hangupHandler;
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
-
-  std::shared_ptr<SoftShutdownTracker> _softShutdownTracker;
-};
-
-class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTracker> {
-  // This is a class which tracks the proceedings in case of a soft shutdown.
-  // Soft shutdown is a means to shut down a coordinator gracefully. It
-  // means that certain things are allowed to run to completion but
-  // new instances are no longer allowed to start. This class tracks
-  // the number of these things in flight, so that the real shut down
-  // can be triggered, once all tracked activity has ceased.
-  // This class has customers, like the CursorRepositories of each vocbase,
-  // these customers can on creation get a reference to an atomic counter,
-  // which they can increase and decrease, the highest bit in the counter
-  // is initially set, soft shutdown state is indicated when the highest
-  // bit in each counter is reset. Then no new activity should be begun.
-
- public:
-
-  static constexpr uint64_t HighBit = 1ULL << 63;
-
-  // Each customer has an index here:
-  enum Indexes : size_t {
-    IndexAQLCursors = 0,
-    IndexTransactions = 1,
-    NrCounters = 2,
-  };
-
- private:
-  
-  application_features::ApplicationServer& _server;
-  std::atomic<bool> _softShutdownOngoing; // flag, if soft shutdown is ongoing
-  std::mutex _workItemMutex;
-  Scheduler::WorkHandle _workItem;    // used for soft shutdown checker
-  std::function<void(bool)> _checkFunc;
-  std::atomic<uint64_t> _counters[NrCounters];
-
- public:
-
-  SoftShutdownTracker(application_features::ApplicationServer& server);
-  ~SoftShutdownTracker() {};
-
-  void initiateSoftShutdown();
-
-  bool softShutdownOngoing() const {
-    return _softShutdownOngoing.load(std::memory_order_relaxed);
-  }
-
-  std::atomic<bool> const* getSoftShutdownFlag() const {
-    return &_softShutdownOngoing;
-  }
-
-  std::atomic<uint64_t>* getCounterPointer(size_t index) {
-    TRI_ASSERT(index < NrCounters);
-    if (index < NrCounters) {
-      return &_counters[index];
-    } else {
-      return nullptr;
-    }
-  }
-
-  void toVelocyPack(VPackBuilder& builder) const;
-
- private:
-  // Need mutex to call all of the following:
-
-  void check() const;
-  void initiateActualShutdown() const;
-
 };
 
 }  // namespace arangodb

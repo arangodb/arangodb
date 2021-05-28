@@ -144,14 +144,6 @@ class CursorRepository {
   static size_t const MaxCollectCount;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief currently active cursor counter, this is used for the soft
-  /// shutdown feature in coordinators, in all other instance types
-  /// this pointer is a nullptr and not used.
-  ////////////////////////////////////////////////////////////////////////////
-
-  std::atomic<uint64_t>* _cursorCounter;
-
-  ////////////////////////////////////////////////////////////////////////////
   /// @brief flag, if a soft shutdown is ongoing, this is used for the soft
   /// shutdown feature in coordinators, in all other instance types
   /// this pointer is a nullptr and not used.
