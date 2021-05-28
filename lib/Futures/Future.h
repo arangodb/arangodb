@@ -108,7 +108,7 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
         }
 #endif
         //TRI_ASSERT(false);
-        LOG_TOPIC("4dba1", INFO, arangodb::Logger::THREADS) << "promise was abandoned";
+        LOG_TOPIC("4dba2", INFO, arangodb::Logger::THREADS) << "promise was abandoned";
         THROW_ARANGO_EXCEPTION(TRI_ERROR_PROMISE_ABANDONED);
       } catch (...) {
         return std::current_exception();
