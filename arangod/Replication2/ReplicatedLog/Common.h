@@ -89,9 +89,9 @@ struct LogPayload {
   explicit LogPayload(std::string_view dummy) : dummy(dummy) {}
 
   [[nodiscard]] auto operator==(LogPayload const&) const -> bool;
-  [[nodiscard]] auto operator!=(LogPayload const& other) const -> bool {
-    return !operator==(other);
-  }
+  [[nodiscard]] auto operator!=(LogPayload const& other) const -> bool;
+
+  [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
 
   // just a placeholder for now
   std::string dummy;

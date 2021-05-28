@@ -70,8 +70,17 @@ auto LogEntry::operator==(LogEntry const& other) const noexcept -> bool {
 auto LogTerm::operator<=(LogTerm other) const -> bool {
   return value <= other.value;
 }
+
 auto LogPayload::operator==(LogPayload const& other) const -> bool {
   return dummy == other.dummy;
+}
+
+auto LogPayload::byteSize() const noexcept -> std::size_t {
+  return dummy.size();
+}
+
+auto LogPayload::operator!=(const LogPayload& other) const -> bool {
+  return !operator==(other);
 }
 
 auto LogId::fromShardName(std::string_view name) noexcept -> std::optional<LogId> {

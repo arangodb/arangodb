@@ -72,6 +72,9 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
               metricsFeature)),
       replicatedLogStartedFollowingNumber(
           createMetric<arangodb_replication2_replicated_log_started_following_number, mock>(
+              metricsFeature)),
+      replicatedLogInsertsBytes(
+          createMetric<arangodb_replication2_replicated_log_inserts_bytes, mock>(
               metricsFeature)) {
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   static_assert(!mock);

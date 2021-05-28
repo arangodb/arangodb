@@ -351,8 +351,10 @@ auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
     auto const index = leaderData._inMemoryLog.getNextIndex();
+    auto const payloadSize = payload.byteSize();
     leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(
         LogEntry{self->_termData.term, index, std::move(payload)});
+    self->_logMetrics.replicatedLogInsertsBytes->count(payloadSize);
     return index;
   });
 }

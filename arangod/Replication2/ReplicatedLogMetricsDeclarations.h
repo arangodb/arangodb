@@ -32,6 +32,13 @@ struct AppendEntriesRttScale {
   static log_scale_t<std::uint64_t> scale() { return {2, 1, 120000000, 16}; }
 };
 
+struct InsertBytesScale {
+  static log_scale_t<std::uint64_t> scale() {
+    // Up to 16GiB. 17 buckets (34/2) so they feat neatly into powers of 2.
+    return {2, 1, std::uint64_t(1) << 34, 17};
+  }
+};
+
 DECLARE_GAUGE(arangodb_replication2_replicated_log_number, std::uint64_t,
               "Number of replicated logs on this arangodb instance");
 
@@ -46,19 +53,28 @@ DECLARE_COUNTER(arangodb_replication2_replicated_log_creation_number,
 DECLARE_COUNTER(arangodb_replication2_replicated_log_deletion_number,
                 "Number of replicated logs deleted since server start");
 
-DECLARE_GAUGE(arangodb_replication2_replicated_log_leader_number, std::uint64_t,
-              "Number of replicated logs this server has, and is currently a leader of");
+DECLARE_GAUGE(
+    arangodb_replication2_replicated_log_leader_number, std::uint64_t,
+    "Number of replicated logs this server has, and is currently a leader of");
 
-DECLARE_GAUGE(arangodb_replication2_replicated_log_follower_number,
-              std::uint64_t, "Number of replicated logs this server has, and is currently a follower of");
+DECLARE_GAUGE(arangodb_replication2_replicated_log_follower_number, std::uint64_t,
+              "Number of replicated logs this server has, and is currently a "
+              "follower of");
 
-DECLARE_GAUGE(arangodb_replication2_replicated_log_inactive_number,
-              std::uint64_t, "Number of replicated logs this server has, and is currently neither leader nor follower of");
+DECLARE_GAUGE(arangodb_replication2_replicated_log_inactive_number, std::uint64_t,
+              "Number of replicated logs this server has, and is currently "
+              "neither leader nor follower of");
 
 DECLARE_COUNTER(arangodb_replication2_replicated_log_leader_took_over_number,
-                "Number of times a replicated log on this server took over as leader in a term");
+                "Number of times a replicated log on this server took over as "
+                "leader in a term");
 
 DECLARE_COUNTER(arangodb_replication2_replicated_log_started_following_number,
-                "Number of times a replicated log on this server started following a leader in a term");
+                "Number of times a replicated log on this server started "
+                "following a leader in a term");
+
+DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_bytes, InsertBytesScale,
+                  "Number of bytes per insert in replicated log leader "
+                  "instances on this server");
 
 }  // namespace arangodb

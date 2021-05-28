@@ -63,6 +63,7 @@ struct ReplicatedLogMetrics {
   std::shared_ptr<Gauge<std::uint64_t>> const replicatedLogInactiveNumber;
   std::shared_ptr<Counter> const replicatedLogLeaderTookOverNumber;
   std::shared_ptr<Counter> const replicatedLogStartedFollowingNumber;
+  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> const replicatedLogInsertsBytes;
 };
 
 }  // namespace arangodb::replication2::replicated_log
