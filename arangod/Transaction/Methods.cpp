@@ -2449,6 +2449,10 @@ Future<Result> Methods::replicateOperations(
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + f, requestType,
                                                    url, *(payload->buffer()), reqOpts,
                                                    std::move(headers)));
+
+    LOG_TOPIC("fecaf", TRACE, Logger::REPLICATION) 
+      << "replicating " << count << " " << opName << " operations for shard " <<
+      collection->vocbase().name() << "/" << collection->name() << ", server:" << f;
   }
 
   // If any would-be-follower refused to follow there are two possiblities:

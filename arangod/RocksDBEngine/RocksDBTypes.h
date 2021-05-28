@@ -54,7 +54,8 @@ enum class RocksDBEntryType : char {
   GeoIndexValue = '?',
   LogEntry = 'L',
   // RevisionTreeValue = '@', // pre-3.8 GA revision trees. do not use or reuse!
-  RevisionTreeValue = '/',
+  // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
+  RevisionTreeValue = '*',
   ReplicatedLog = 'l'
 };
 

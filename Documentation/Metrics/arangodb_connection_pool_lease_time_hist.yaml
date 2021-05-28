@@ -11,7 +11,7 @@ exposedBy:
   - dbserver
 description: |
   Time to lease a connection from the connection pool. There are two pools,
-  one for the agency communication with label `AgencyComm` and one for
+  one for the Agency communication with label `AgencyComm` and one for
   the other cluster internal communication with label `ClusterComm`.
 threshold: |
   Leasing connections from the pool should be fast, unless a new connection

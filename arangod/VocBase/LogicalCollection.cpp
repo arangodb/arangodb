@@ -170,11 +170,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _usesRevisionsAsDocumentIds(
           Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
-      // for info on how to determine the minRevisionId please refer to methods::Collections::create(),
-      // where there is a lengthier explanation.
-      _minRevision(isSmartChild() 
-                   ? RevisionId::none()
-                   : RevisionId::lowerBound()),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
@@ -517,8 +512,6 @@ void LogicalCollection::setUsesRevisionsAsDocumentIds(bool usesRevisions) {
   }
 }
 
-RevisionId LogicalCollection::minRevision() const { return _minRevision; }
-
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
@@ -820,7 +813,6 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
   result.add(StaticStrings::UsesRevisionsAsDocumentIds,
              VPackValue(usesRevisionsAsDocumentIds()));
-  result.add(StaticStrings::MinRevision, VPackValue(minRevision().toString()));
   result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
 
   if (hasSmartJoinAttribute()) {

@@ -263,6 +263,40 @@ function WindowMalarkeyTestSuite() {
       db._drop(cname1);
       db._drop(cname2);
     },
+
+    testNonNumericRowValues: function () {
+      // values in "time" attribute should be numeric, but we have strings...
+      let query = `
+      LET observations = [
+        { "time": "07:00:00", "subject": "st113", "val": 10 },
+        { "time": "07:15:00", "subject": "st113", "val": 9 }, 
+        { "time": "07:30:00", "subject": "st113", "val": 25 },
+        { "time": "07:45:00", "subject": "st113", "val": 20 }, 
+        { "time": "07:00:00", "subject": "xh458", "val": 0 },
+        { "time": "07:15:00", "subject": "xh458", "val": 10 },
+        { "time": "07:30:00", "subject": "xh458", "val": 5 },
+        { "time": "07:45:00", "subject": "xh458", "val": 30 },
+        { "time": "08:00:00", "subject": "xh458", "val": 25 },  
+      ] 
+      FOR t IN observations
+        WINDOW t.time WITH { preceding: 1000, following: 500 }
+        AGGREGATE rollingAverage = AVG(t.val), rollingSum = SUM(t.val)
+        RETURN { time: t.time, rollingAverage, rollingSum }`;
+
+      let results = db._query(query).toArray();
+      const expected = [
+        { "time" : "07:00:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:00:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:15:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:15:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:30:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:30:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:45:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:45:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "08:00:00", "rollingAverage" : null, "rollingSum" : null } 
+      ];
+      assertEqual(results, expected);
+    },
     
     testResultsInsertAfterRow: function () {
       const q = `
