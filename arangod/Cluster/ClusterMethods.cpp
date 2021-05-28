@@ -1566,13 +1566,17 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   }
   // We sorted the shards correctly.
 
-  network::RequestOptions reqOpts;
-  reqOpts.database = trx.vocbase().name();
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
-  reqOpts.retryNotFound = true;
-  reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
-         .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
-         .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
+  // RequestOptions contains a fuerte::StringMap, which is an std::map, and
+  // std::map is not nothrow_move_constructible, thus RequestOptions isn't either.
+  // Which means we have to box it to capture it in the future-lambda later.
+  auto reqOpts = std::make_unique<network::RequestOptions>();
+  reqOpts->database = trx.vocbase().name();
+  reqOpts->timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
+  reqOpts->retryNotFound = true;
+  reqOpts
+      ->param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
+      .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
+      .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
@@ -1588,7 +1592,9 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
       return makeFuture(Result());
     });
 
-    return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
+    return std::move(f).then_bind([&trx, opCtx(std::move(opCtx)), options = options,
+                                   useMultiple = useMultiple, slice = slice,
+                                   shardIds = shardIds, reqOpts = std::move(reqOpts)](
                                       Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {
         return makeFuture(OperationResult(std::move(r), options));
@@ -1618,7 +1624,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
         futures.emplace_back(network::sendRequestRetry(
             pool, "shard:" + it.first, fuerte::RestVerb::Delete,
             "/_api/document/" + StringUtils::urlEncode(it.first),
-            std::move(buffer), reqOpts, std::move(headers)));
+            std::move(buffer), *reqOpts, std::move(headers)));
       }
 
       // Now listen to the results:
@@ -1653,7 +1659,9 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     return makeFuture(Result());
   });
 
-  return std::move(f).then_bind([=, &trx, options = options](Result&& r) mutable -> Future<OperationResult> {
+  return std::move(f).then_bind([&trx, options = options, shardIds, useMultiple, slice,
+                                 reqOpts = std::move(reqOpts)](
+                                    Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
       return makeFuture(OperationResult(r, options));
     }
@@ -1682,7 +1690,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
           network::sendRequestRetry(pool, "shard:" + shard, fuerte::RestVerb::Delete,
                                     "/_api/document/" + StringUtils::urlEncode(shard),
                                     /*cannot move*/ buffer,
-                                    reqOpts, std::move(headers)));
+                                    *reqOpts, std::move(headers)));
     }
 
     return futures::collectAll(std::move(futures))
@@ -1804,10 +1812,13 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
   // Some stuff to prepare cluster-internal requests:
 
-  network::RequestOptions reqOpts;
-  reqOpts.database = trx.vocbase().name();
-  reqOpts.retryNotFound = true;
-  reqOpts.param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
+  // RequestOptions contains a fuerte::StringMap, which is an std::map, and
+  // std::map is not nothrow_move_constructible, thus RequestOptions isn't either.
+  // Which means we have to box it to capture it in the future-lambda later.
+  auto reqOpts = std::make_unique<network::RequestOptions>();
+  reqOpts->database = trx.vocbase().name();
+  reqOpts->retryNotFound = true;
+  reqOpts->param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
   fuerte::RestVerb restVerb;
   if (!useMultiple) {
@@ -1815,9 +1826,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   } else {
     restVerb = fuerte::RestVerb::Put;
     if (options.silent) {
-      reqOpts.param(StaticStrings::SilentString, "true");
+      reqOpts->param(StaticStrings::SilentString, "true");
     }
-    reqOpts.param("onlyget", "true");
+    reqOpts->param("onlyget", "true");
   }
 
   if (canUseFastPath) {
@@ -1831,7 +1842,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       return makeFuture(Result());
     });
 
-    return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
+    return std::move(f).then_bind([&trx, opCtx(std::move(opCtx)),
+                                   options = options, shardIds = shardIds, useMultiple = useMultiple,
+                                   slice = slice, restVerb = restVerb, reqOpts = std::move(reqOpts)](
                                       Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {
         return makeFuture(OperationResult(std::move(r), options));
@@ -1875,7 +1888,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         }
         futures.emplace_back(
             network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
-                                      std::move(url), std::move(buffer), reqOpts,
+                                      std::move(url), std::move(buffer), *reqOpts,
                                       std::move(headers)));
       }
 
@@ -1932,7 +1945,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           pool, "shard:" + shard, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
               StringUtils::urlEncode(key.data(), key.size()),
-          VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
+          VPackBuffer<uint8_t>(), *reqOpts, std::move(headers)));
     }
   } else {
     VPackBuffer<uint8_t> buffer;
@@ -1944,7 +1957,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       futures.emplace_back(
           network::sendRequestRetry(pool, "shard:" + shard, restVerb,
                                     "/_api/document/" + StringUtils::urlEncode(shard),
-                                    /*cannot move*/ buffer, reqOpts, std::move(headers)));
+                                    /*cannot move*/ buffer, *reqOpts, std::move(headers)));
     }
   }
 
@@ -2319,30 +2332,34 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
   // Some stuff to prepare cluster-internal requests:
 
-  network::RequestOptions reqOpts;
-  reqOpts.database = trx.vocbase().name();
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
-  reqOpts.retryNotFound = true;
-  reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
-         .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
-         .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
-         .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"));
+  // RequestOptions contains a fuerte::StringMap, which is an std::map, and
+  // std::map is not nothrow_move_constructible, thus RequestOptions isn't either.
+  // Which means we have to box it to capture it in the future-lambda later.
+  auto reqOpts = std::make_unique<network::RequestOptions>();
+  reqOpts->database = trx.vocbase().name();
+  reqOpts->timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
+  reqOpts->retryNotFound = true;
+  reqOpts
+      ->param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
+      .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
+      .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
+      .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"));
 
   fuerte::RestVerb restVerb;
   if (isPatch) {
     restVerb = fuerte::RestVerb::Patch;
     if (!options.keepNull) {
-      reqOpts.param(StaticStrings::KeepNullString, "false");
+      reqOpts->param(StaticStrings::KeepNullString, "false");
     }
-    reqOpts.param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"));
+    reqOpts->param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"));
   } else {
     restVerb = fuerte::RestVerb::Put;
   }
   if (options.returnNew) {
-    reqOpts.param(StaticStrings::ReturnNewString, "true");
+    reqOpts->param(StaticStrings::ReturnNewString, "true");
   }
   if (options.returnOld) {
-    reqOpts.param(StaticStrings::ReturnOldString, "true");
+    reqOpts->param(StaticStrings::ReturnOldString, "true");
   }
 
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -2358,7 +2375,10 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       return makeFuture(Result());
     });
 
-    return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
+    return std::move(f).then_bind([&trx, opCtx(std::move(opCtx)), options = options,
+                                   useMultiple = useMultiple, slice = slice,
+                                   shardIds = shardIds, restVerb = restVerb,
+                                   reqOpts = std::move(reqOpts)](
                                       Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {  // bail out
         return makeFuture(OperationResult(r, opCtx->options));
@@ -2400,7 +2420,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
         futures.emplace_back(
             network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
                                       std::move(url), std::move(buffer),
-                                      reqOpts, std::move(headers)));
+                                      *reqOpts, std::move(headers)));
       }
 
       // Now listen to the results:
@@ -2457,7 +2477,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       futures.emplace_back(
           network::sendRequestRetry(pool, "shard:" + shard, restVerb,
                                     std::move(url), /*cannot move*/ buffer,
-                                    reqOpts, std::move(headers)));
+                                    *reqOpts, std::move(headers)));
     }
 
     return futures::collectAll(std::move(futures))
