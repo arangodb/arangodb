@@ -133,7 +133,7 @@ function testSuite() {
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
       assertEqual(1, status.AQLcursors);
-      assertEqual(0, status.transactions);
+      assertEqual(1, status.transactions);
 
       // It should fail to create a new cursor:
       let respFailed = arango.POST("/_api/cursor", data);
@@ -180,7 +180,7 @@ function testSuite() {
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
       assertEqual(1, status.AQLcursors);
-      assertEqual(0, status.transactions);
+      assertEqual(1, status.transactions);
 
       // It should fail to create a new cursor:
       let respFailed = arango.POST("/_api/cursor", data);
@@ -261,8 +261,8 @@ function testSuite() {
       arango.DELETE("/_admin/shutdown?soft=true");
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
-      assertEqual(1, status.AQLcursors);
-      assertEqual(0, status.transactions);
+      assertEqual(0, status.AQLcursors);
+      assertEqual(1, status.transactions);
 
       // It should fail to create a new trx:
       let respFailed = arango.POST("/_api/transaction/begin", data);
