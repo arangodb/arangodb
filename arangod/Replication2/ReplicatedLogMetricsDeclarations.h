@@ -35,7 +35,7 @@ struct AppendEntriesRttScale {
 struct InsertBytesScale {
   static log_scale_t<std::uint64_t> scale() {
     // Up to 16GiB. 17 buckets (34/2) so they feat neatly into powers of 2.
-    return {2, 1, std::uint64_t(1) << 34, 17};
+    return {4, 1, std::uint64_t(1) << 34, 17};
   }
 };
 
@@ -76,5 +76,8 @@ DECLARE_COUNTER(arangodb_replication2_replicated_log_started_following_number,
 DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_bytes, InsertBytesScale,
                   "Number of bytes per insert in replicated log leader "
                   "instances on this server");
+
+DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_rtt, AppendEntriesRttScale,
+                  "Histogram of round-trip times of replicated log inserts");
 
 }  // namespace arangodb

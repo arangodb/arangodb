@@ -211,7 +211,7 @@ struct scale_t {
   /**
    * @brief number of buckets
    */
-  size_t n() const {
+  [[nodiscard]] size_t n() const {
     return _n;
   }
   /**
@@ -229,7 +229,7 @@ struct scale_t {
   /**
    * @brief number of buckets
    */
-  std::string const delim(size_t s) const {
+  [[nodiscard]] std::string delim(size_t s) const {
     return (s < _n - 1) ? std::to_string(_delim.at(s)) : "+Inf";
   }
   /**
