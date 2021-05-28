@@ -71,6 +71,11 @@ function aqlSkippingClusterTestsuite () {
       }
     },
 
+    /**
+     * Regression test for PR https://github.com/arangodb/arangodb/pull/14268
+     * A query with LIMIT and fullCount on a sharded collection would hang indefinitely
+     * if the LIMIT is less then number of available documents.
+     */
     testSkipWithFullCount: function () {
       const query = 'FOR doc IN @@col LIMIT 2 RETURN doc';
       const bind = {'@col': colName};
