@@ -141,35 +141,35 @@ auto agencyAsyncWait(RequestMeta const& meta, clock::duration d)
 }
 
 arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& man,
-                                                        RequestMeta&& meta,
+                                                        std::shared_ptr<RequestMeta>&& meta,
                                                         VPackBuffer<uint8_t>&& body);
 
 arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManager& man,
-                                                           RequestMeta&& meta,
+                                                           std::shared_ptr<RequestMeta>&& meta,
                                                            VPackBuffer<uint8_t>&& body) {
   using namespace arangodb;
 
   // check for conditions to abort
-  auto waitTime = agencyAsyncWaitTime(meta);
-  if (agencyAsyncShouldCancel(man, meta)) {
+  auto waitTime = agencyAsyncWaitTime(*meta);
+  if (agencyAsyncShouldCancel(man, *meta)) {
     LOG_TOPIC("aac82", TRACE, Logger::AGENCYCOMM)
-        << "agencyAsyncSend [" << meta.requestId << "] "
+        << "agencyAsyncSend [" << meta->requestId << "] "
         << "abort because cancelled";
     return futures::makeFuture(AsyncAgencyCommResult{Error::ConnectionCanceled, nullptr});
-  } else if (agencyAsyncShouldTimeout(meta)) {
+  } else if (agencyAsyncShouldTimeout(*meta)) {
     LOG_TOPIC("aac81", TRACE, Logger::AGENCYCOMM)
-        << "agencyAsyncSend [" << meta.requestId << "] "
+        << "agencyAsyncSend [" << meta->requestId << "] "
         << "abort because timeout";
     return futures::makeFuture(AsyncAgencyCommResult{Error::RequestTimeout, nullptr});
   }
 
   LOG_TOPIC("aac79", TRACE, Logger::AGENCYCOMM)
-      << "agencyAsyncInquiry [" << meta.requestId << "] " << to_string(meta.method)
-      << " " << meta.url << " body: " << VPackSlice(body.data()).toJson() << " delay: "
+      << "agencyAsyncInquiry [" << meta->requestId << "] " << to_string(meta->method)
+      << " " << meta->url << " body: " << VPackSlice(body.data()).toJson() << " delay: "
       << std::chrono::duration_cast<std::chrono::milliseconds>(waitTime).count() << "ms"
-      << " timeout: " << meta.timeout.count() << "s";
+      << " timeout: " << meta->timeout.count() << "s";
 
-  auto future = agencyAsyncWait(meta, waitTime);
+  auto future = agencyAsyncWait(*meta, waitTime);
   return std::move(future).then_bind([meta = std::move(meta), &man,
                                       body = std::move(body)]() mutable {
     // build inquire request
@@ -178,7 +178,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
       VPackBuilder b(query);
       {
         VPackArrayBuilder ab(&b);
-        for (auto const& i : meta.clientIds) {
+        for (auto const& i : meta->clientIds) {
           b.add(VPackValue(i));
         }
       }
@@ -186,14 +186,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
 
     std::string endpoint = man.getCurrentEndpoint();
     network::RequestOptions opts;
-    opts.timeout = meta.timeout;
-    opts.skipScheduler = meta.skipScheduler;
+    opts.timeout = meta->timeout;
+    opts.skipScheduler = meta->skipScheduler;
 
-    auto future = network::sendRequest(man.pool(), endpoint, meta.method,
+    auto future = network::sendRequest(man.pool(), endpoint, meta->method,
                                        "/_api/agency/inquire", std::move(query),
-                                       opts, meta.headers);
-    return std::move(future).then_bind(
-        [meta = std::move(meta), endpoint = std::move(endpoint), &man,
+                                       opts, meta->headers);
+    return std::move(future).then_bind([meta = std::move(meta), endpoint = std::move(endpoint), &man,
          body = std::move(body)](network::Response&& result) mutable {
           
            switch (result.error) {
@@ -250,53 +249,53 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
 }
 
 arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& man,
-                                                        RequestMeta&& meta,
+                                                        std::shared_ptr<RequestMeta>&& meta,
                                                         VPackBuffer<uint8_t>&& body) {
   using namespace arangodb;
 
   // check for conditions to abort
-  auto waitTime = agencyAsyncWaitTime(meta);
-  if (agencyAsyncShouldCancel(man, meta)) {
+  auto waitTime = agencyAsyncWaitTime(*meta);
+  if (agencyAsyncShouldCancel(man, *meta)) {
     LOG_TOPIC("aac84", TRACE, Logger::AGENCYCOMM)
-        << "agencyAsyncSend [" << meta.requestId << "] "
+        << "agencyAsyncSend [" << meta->requestId << "] "
         << "abort because cancelled";
     return futures::makeFuture(AsyncAgencyCommResult{Error::ConnectionCanceled, nullptr});
-  } else if (agencyAsyncShouldTimeout(meta)) {
+  } else if (agencyAsyncShouldTimeout(*meta)) {
     LOG_TOPIC("aac85", TRACE, Logger::AGENCYCOMM)
-        << "agencyAsyncSend [" << meta.requestId << "] "
+        << "agencyAsyncSend [" << meta->requestId << "] "
         << "abort because timeout";
     return futures::makeFuture(AsyncAgencyCommResult{Error::RequestTimeout, nullptr});
   }
 
   LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
-      << "agencyAsyncSend [" << meta.requestId << "] " << to_string(meta.method)
-      << " " << meta.url << " body: " << VPackSlice(body.data()).toJson() << " delay: "
+      << "agencyAsyncSend [" << meta->requestId << "] " << to_string(meta->method)
+      << " " << meta->url << " body: " << VPackSlice(body.data()).toJson() << " delay: "
       << std::chrono::duration_cast<std::chrono::milliseconds>(waitTime).count() << "ms"
-      << " timeout: " << meta.timeout.count() << "s";
+      << " timeout: " << meta->timeout.count() << "s";
   
   // after a possible small delay (if required)
-  return agencyAsyncWait(meta, waitTime).then_bind([meta = std::move(meta), &man,
+  return agencyAsyncWait(*meta, waitTime).then_bind([meta = std::move(meta), &man,
                                                     body = std::move(body)]() mutable {
     // acquire the current endpoint
     std::string endpoint = man.getCurrentEndpoint();
     network::RequestOptions opts;
-    opts.timeout = meta.timeout;
-    opts.skipScheduler = meta.skipScheduler;
-    opts.parameters = meta.params;
+    opts.timeout = meta->timeout;
+    opts.skipScheduler = meta->skipScheduler;
+    opts.parameters = meta->params;
 
-    auto requestId = meta.requestId;
+    auto requestId = meta->requestId;
 
     LOG_TOPIC("aac89", DEBUG, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << requestId << "] delay done, sending request";
 
     // and fire off the request
-    auto future = network::sendRequest(man.pool(), endpoint, meta.method, meta.url,
-                                       std::move(body), opts, meta.headers);
+    auto future = network::sendRequest(man.pool(), endpoint, meta->method, meta->url,
+                                       std::move(body), opts, meta->headers);
     return std::move(future)
         .then_bind([meta = std::move(meta), endpoint = std::move(endpoint),
                     &man](network::Response&& result) mutable {
           LOG_TOPIC("aac83", TRACE, Logger::AGENCYCOMM)
-              << "agencyAsyncSend [" << meta.requestId
+              << "agencyAsyncSend [" << meta->requestId
               << "] request done, result: " << to_string(result.error);
 
           switch (result.error) {
@@ -304,7 +303,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
               TRI_ASSERT(result.hasRequest());
 
               LOG_TOPIC("aac88", TRACE, Logger::AGENCYCOMM)
-                  << "agencyAsyncSend [" << meta.requestId
+                  << "agencyAsyncSend [" << meta->requestId
                   << "] communication successful, statusCode: " << result.statusCode();
 
               // success
@@ -330,7 +329,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
               }
 
               // if we only did reads return here
-              if (meta.type == RequestType::READ) {
+              if (meta->type == RequestType::READ) {
                 return futures::makeFuture(
                     AsyncAgencyCommResult{result.error, result.stealResponse()});
               }
@@ -358,10 +357,10 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
               // inquire the request
               man.reportError(endpoint);
               // in case of a write transaction we have to do inquiry
-              if (meta.isInquiryOnNoResponse()) {
+              if (meta->isInquiryOnNoResponse()) {
                 return ::agencyAsyncInquiry(man, std::move(meta),
                                             std::move(result.request()).moveBuffer());
-              } else if (!meta.isRetryOnNoResponse()) {
+              } else if (!meta->isRetryOnNoResponse()) {
                 // return error
                 return futures::makeFuture(
                     AsyncAgencyCommResult{result.error, result.stealResponse()});
@@ -372,7 +371,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
 
             case Error::CouldNotConnect: {
               LOG_TOPIC("aac90", TRACE, Logger::AGENCYCOMM)
-                  << "agencyAsyncSend [" << meta.requestId << "] retry request soon";
+                  << "agencyAsyncSend [" << meta->requestId << "] retry request soon";
               // retry to send the request
               man.reportError(endpoint);
             }
@@ -431,10 +430,14 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
   fuerte::StringMap params;
   std::string url = fuerte::extractPathParameters(urlIn, params);
 
+  // RequestMeta contains a fuerte::StringMap, which is an std::map, and
+  // std::map is not nothrow_move_constructible, thus RequestMeta isn't either.
+  // Which means we have to box it to capture it in the future-lambda later.
   return agencyAsyncSend(_manager,
-                         RequestMeta({timeout, method, type, url, std::move(clientIds),
-                                      network::Headers{}, std::move(params), clock::now(), requestId,
-                                      _skipScheduler || _manager.getSkipScheduler(), 0}),
+                         std::make_shared<RequestMeta>(RequestMeta{
+                             timeout, method, type, url, std::move(clientIds),
+                             network::Headers{}, std::move(params), clock::now(), requestId,
+                             _skipScheduler || _manager.getSkipScheduler(), 0}),
                          std::move(body))
       .then([requestId](futures::Try<AsyncAgencyCommResult>&& e) {
         if (e.has_error()) {
