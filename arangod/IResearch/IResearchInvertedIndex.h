@@ -36,20 +36,10 @@ namespace iresearch {
 
 class IResearchInvertedIndex : public Index {
  public:
+
   struct IResearchInvertedIndexMeta {
     IResearchViewMeta _indexMeta;
-
-    std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
-   
-    std::unordered_map<char, UniqueHeapInstance<FieldMeta>> Fields;_fields;
-
-
-    /// @brief Indexed collection name. Stored here for cluster deployment only.
-    /// For sigle server collection could be renamed so can`t store it here or 
-    /// syncronisation will be needed. For cluster rename is not possible so 
-    /// there is no problem but solved recovery issue - we will be able to index
-    /// _id attribute without doing agency request for collection name
-    std::string _collectionName;
+    IResearchLinkMeta _fieldsMeta;
   };
 
   IResearchInvertedIndex(IndexId id, LogicalCollection& collection,
@@ -88,6 +78,13 @@ class IResearchInvertedIndex : public Index {
     return false;
   }
 
+  bool inProgress() const override {
+    // We will be in that state until we have chance to initialize analyzers
+    // in case of usage  custom ones
+    // FIXME: implement leavin inProgress
+    return true;
+  }
+
   size_t memory() const override {
     // FIXME return in memory size
     //return stats().indexSize;
@@ -108,6 +105,8 @@ class IResearchInvertedIndex : public Index {
 
   aql::AstNode* specializeCondition(aql::AstNode* node,
                                     aql::Variable const* reference) const override;
+
+  IResearchInvertedIndexMeta _meta;
 };
 
 class IResearchInvertedIndexFactory : public IndexTypeFactory {
