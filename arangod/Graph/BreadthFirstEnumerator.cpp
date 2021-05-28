@@ -93,33 +93,36 @@ bool BreadthFirstEnumerator::next() {
       }
     }
   }
-  _lastReturned++;
-
-  if (_lastReturned < _schreierIndex) {
-    // We still have something on our stack.
-    // Paths have been read but not returned.
-
-    if (_opts->usesPostFilter()) {
-      auto evaluator = _opts->getPostFilterEvaluator();
-      if (!usePostFilter(evaluator)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   if (_opts->maxDepth == 0) {
     // Short circuit.
     // We cannot find any path of length 0 or less
     return false;
   }
+  _lastReturned++;
+
   // Avoid large call stacks.
   // Loop will be left if we are either finished
   // with searching.
   // Or we found vertices in the next depth for
   // a vertex.
   while (true) {
+    while (_lastReturned < _schreierIndex) {
+      LOG_DEVEL << "Testing " << _lastReturned << " of " << _schreierIndex;
+      // We still have something on our stack.
+      // Paths have been read but not returned.
+
+      if (_opts->usesPostFilter()) {
+        auto evaluator = _opts->getPostFilterEvaluator();
+        if (!usePostFilter(evaluator)) {
+          // Skip this path, the Filter does not allow it.
+          _lastReturned++;
+          continue;
+        }
+      }
+      // If we get here we now have a valid path to be returned
+      return true;
+    }
+
     if (_toSearchPos >= _toSearch.size()) {
       // This depth is done. GoTo next
       if (!prepareSearchOnNextDepth()) {
@@ -135,11 +138,9 @@ bool BreadthFirstEnumerator::next() {
     auto const nextVertex = _schreier[nextIdx].vertex;
 
     EdgeCursor* cursor = getCursor(nextVertex, _currentDepth);
-    bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
-    bool didInsert = false;
 
-    cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e,
-                         size_t cursorIdx) -> void {
+    TRI_ASSERT(cursor != nullptr);
+    cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e, size_t cursorIdx) -> void {
       if (!keepEdge(eid, e, nextVertex, _currentDepth, cursorIdx)) {
         return;
       }
@@ -171,39 +172,21 @@ bool BreadthFirstEnumerator::next() {
           }
         }
         _schreierIndex++;
-        didInsert = true;
       }
     });
-    
+
     incHttpRequests(cursor->httpRequests());
-    
+
     _opts->isQueryKilledCallback();
+    // If we found a valid path, the schreier index was moved forward
+    // Otherwise the searchPosition was moved forward.
 
-    if (_opts->usesPostFilter()) {
-      auto evaluator = _opts->getPostFilterEvaluator();
-      if (!usePostFilter(evaluator)) {
-        shouldReturnPath = false;
-      }
-    }
-
-    if (!shouldReturnPath) {
+    if (_currentDepth + 1 < _opts->minDepth) {
+      // The depth we are working on is not supposed to be returned.
+      // Move it fast-forward
       _lastReturned = _schreierIndex;
-      didInsert = false;
     }
-
-    if (didInsert) {
-      // We exit the loop here.
-      // _schreierIndex is moved forward
-      break;
-    }
-    // Nothing found for this vertex.
-    // _toSearchPos is increased so
-    // we are not stuck in an endless loop
   }
-
-  // _lastReturned points to the last used
-  // entry. We compute the path to it.
-  return true;
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
@@ -321,13 +304,13 @@ bool BreadthFirstEnumerator::shouldPrune() {
   if (!_opts->usesPrune()) {
     return false;
   }
-  
+
   transaction::BuilderLeaser pathBuilder(_opts->trx());
 
   // evaluator->evaluate() might access these, so they have to live long enough.
   aql::AqlValue vertex, edge;
   aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
-  
+
   auto* evaluator = _opts->getPruneEvaluator();
   TRI_ASSERT(evaluator != nullptr);
 
