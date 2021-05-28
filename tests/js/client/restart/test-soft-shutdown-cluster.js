@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertEqual, arango */
+/* global getOptions, assertTrue, assertFalse, assertEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for soft shutdown of a coordinator
@@ -29,10 +29,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
-//const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const request = require("@arangodb/request");
 const internal = require("internal");
+const db = require("internal");
 const time = internal.time;
 const wait = internal.wait;
 const statusExternal = internal.statusExternal;
@@ -79,15 +79,15 @@ function testSuite() {
 
   let restartInstance = function(arangod) {
     let options = global.testOptions;
-    pu.reStartInstance(options, instanceInfo, {});
+    pu.reStartInstance(options, global.instanceInfo, {});
     waitForAlive(30, arangod.url, {});
   };
 
   return {
     setUp : function() {
       db._drop(cn);
-      collection = db._create(cn, {numberOfShards:2, replicationFactor:2});
-      for (i = 0; i < 10; ++i) {
+      let collection = db._create(cn, {numberOfShards:2, replicationFactor:2});
+      for (let i = 0; i < 10; ++i) {
         collection.insert({Hallo:i});
       }
     },
@@ -130,7 +130,7 @@ function testSuite() {
       console.warn("Produced AQL cursor:", resp);
       // Now use soft shutdown API to shut coordinator down:
       arango.DELETE("/_admin/shutdown?soft=true");
-      status = arango.GET("/_admin/shutdown");
+      let status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
       assertEqual(1, status.AQLcursors);
       assertEqual(1, status.transactions);
@@ -141,7 +141,7 @@ function testSuite() {
       assertEqual(503, respFailed.code);
 
       // Now slowly read the cursor through:
-      for (i = 0; i < 8; ++i) {
+      for (let i = 0; i < 8; ++i) {
         wait(2);
         let next = arango.PUT("/_api/cursor/" + resp.id,{});
         console.warn("Read document:", next);
@@ -152,6 +152,8 @@ function testSuite() {
       let next = arango.PUT("/_api/cursor/" + resp.id,{});
       console.warn("Read last document:", next, "awaiting shutdown...");
       assertFalse(next.hasMore);
+      assertFalse(next.error);
+      assertEqual(200, next.code);
 
       // And now it should shut down in due course...
       waitForShutdown(coordinator, 30);
@@ -188,7 +190,7 @@ function testSuite() {
       assertEqual(503, respFailed.code);
 
       // Now slowly read the cursor through:
-      for (i = 0; i < 8; ++i) {
+      for (let i = 0; i < 8; ++i) {
         wait(2);
         let next = arango.PUT("/_api/cursor/" + resp.id,{});
         console.warn("Read document:", next);
@@ -199,6 +201,8 @@ function testSuite() {
       let next = arango.DELETE("/_api/cursor/" + resp.id,{});
       console.warn("Deleted cursor:", next, "awaiting shutdown...");
       assertFalse(next.hasMore);
+      assertFalse(next.error);
+      assertEqual(202, next.code);
 
       // And now it should shut down in due course...
       waitForShutdown(coordinator, 30);
@@ -235,7 +239,9 @@ function testSuite() {
       wait(10);
 
       // And commit the transaction:
-      arango.PUT(`/_api/transaction/${resp.result.id}`, {});
+      resp = arango.PUT(`/_api/transaction/${resp.result.id}`, {});
+      assertFalse(resp.error);
+      assertEqual(200, resp.code);
 
       // And now it should shut down in due course...
       waitForShutdown(coordinator, 30);
@@ -273,7 +279,9 @@ function testSuite() {
       wait(10);
 
       // And abort the transaction:
-      arango.DELETE(`/_api/transaction/${resp.result.id}`);
+      resp = arango.DELETE(`/_api/transaction/${resp.result.id}`);
+      assertFalse(resp.error);
+      assertEqual(200, resp.code);
 
       // And now it should shut down in due course...
       waitForShutdown(coordinator, 30);
