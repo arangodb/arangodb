@@ -20,10 +20,12 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <utility>
-
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/TestHelper.h"
+
+#include <Basics/Exceptions.h>
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
