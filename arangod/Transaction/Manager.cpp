@@ -40,6 +40,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -91,7 +92,16 @@ Manager::Manager(ManagerFeature& feature)
       _nrReadLocked(0),
       _disallowInserts(false),
       _writeLockHeld(false),
-      _streamingLockTimeout(feature.streamingLockTimeout()) {}
+      _streamingLockTimeout(feature.streamingLockTimeout()),
+      _nrOngoing(nullptr),
+      _softShutdownOngoing(nullptr) {
+  if (ServerState::instance()->isCoordinator()) {
+    auto const& schedulerFeature{_feature.server().getFeature<SchedulerFeature>()};
+    auto& softShutdownTracker{schedulerFeature.softShutdownTracker()};
+    _nrOngoing = softShutdownTracker.getCounterPointer(SoftShutdownTracker::IndexTransactions);
+    _softShutdownOngoing = softShutdownTracker.getSoftShutdownFlag();
+  }
+}
 
 void Manager::registerTransaction(TransactionId transactionId, bool isReadOnlyTransaction,
                                   bool isFollowerTransaction) {
@@ -110,6 +120,9 @@ void Manager::registerTransaction(TransactionId transactionId, bool isReadOnlyTr
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
+  if (_nrOngoing != nullptr) {
+    _nrOngoing->fetch_add(1, std::memory_order_relaxed);
+  }
 }
 
 // unregisters a transaction
@@ -129,6 +142,9 @@ void Manager::unregisterTransaction(TransactionId transactionId, bool isReadOnly
 
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
+  if (_nrOngoing != nullptr) {
+    _nrOngoing->fetch_sub(1, std::memory_order_relaxed);
+  }
 }
 
 uint64_t Manager::getActiveTransactionCount() {
@@ -338,6 +354,10 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 }
 
 ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSlice trxOpts) {
+  if (_softShutdownOngoing != nullptr &&
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
+    return {TRI_ERROR_SHUTTING_DOWN};
+  }
   transaction::Options options;
   std::vector<std::string> reads, writes, exclusives;
 

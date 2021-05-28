@@ -96,7 +96,7 @@ function testSuite() {
       db._drop(cn);
     },
 
-    testNormalSoftShutdownWithoutTraffic : function() {
+    testSoftShutdownWithoutTraffic : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
@@ -114,7 +114,7 @@ function testSuite() {
       restartInstance(coordinator);
     },
     
-    testNormalSoftShutdownWithAQLCursor : function() {
+    testSoftShutdownWithAQLCursor : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
@@ -158,7 +158,7 @@ function testSuite() {
       restartInstance(coordinator);
     },
     
-    testNormalSoftShutdownWithAQLCursorDeleted : function() {
+    testSoftShutdownWithAQLCursorDeleted : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
@@ -199,6 +199,81 @@ function testSuite() {
       let next = arango.DELETE("/_api/cursor/" + resp.id,{});
       console.warn("Deleted cursor:", next, "awaiting shutdown...");
       assertFalse(next.hasMore);
+
+      // And now it should shut down in due course...
+      waitForShutdown(coordinator, 30);
+      restartInstance(coordinator);
+    },
+    
+    testSoftShutdownWithStreamingTrx : function() {
+      let coordinators = getServers('coordinator');
+      assertTrue(coordinators.length > 0);
+      let coordinator = coordinators[0];
+      let instanceInfo = global.instanceInfo;
+
+      // Create a streaming transaction:
+      let data = { collections: {write: [cn]} };
+
+      let resp = arango.POST("/_api/transaction/begin", data);
+      console.warn("Produced transaction:", resp);
+
+      // Now use soft shutdown API to shut coordinator down:
+      let status = arango.GET("/_admin/shutdown");
+      assertFalse(status.softShutdownOngoing);
+      arango.DELETE("/_admin/shutdown?soft=true");
+      status = arango.GET("/_admin/shutdown");
+      assertTrue(status.softShutdownOngoing);
+      assertEqual(0, status.AQLcursors);
+      assertEqual(1, status.transactions);
+
+      // It should fail to create a new trx:
+      let respFailed = arango.POST("/_api/transaction/begin", data);
+      assertTrue(respFailed.error);
+      assertEqual(503, respFailed.code);
+
+      // Now wait for some seconds:
+      wait(10);
+
+      // And commit the transaction:
+      arango.PUT(`/_api/transaction/${resp.result.id}`, {});
+
+      // And now it should shut down in due course...
+      waitForShutdown(coordinator, 30);
+      restartInstance(coordinator);
+    },
+    
+    testSoftShutdownWithAQLStreamingTrxAborted : function() {
+      let coordinators = getServers('coordinator');
+      assertTrue(coordinators.length > 0);
+      let coordinator = coordinators[0];
+      let instanceInfo = global.instanceInfo;
+
+      // Create a streaming transaction:
+      let data = { collections: {write: [cn]} };
+
+      let resp = arango.POST("/_api/transaction/begin", data);
+      console.warn("Produced transaction:", resp);
+
+      let status = arango.GET("/_admin/shutdown");
+      assertFalse(status.softShutdownOngoing);
+
+      // Now use soft shutdown API to shut coordinator down:
+      arango.DELETE("/_admin/shutdown?soft=true");
+      status = arango.GET("/_admin/shutdown");
+      assertTrue(status.softShutdownOngoing);
+      assertEqual(1, status.AQLcursors);
+      assertEqual(0, status.transactions);
+
+      // It should fail to create a new trx:
+      let respFailed = arango.POST("/_api/transaction/begin", data);
+      assertTrue(respFailed.error);
+      assertEqual(503, respFailed.code);
+
+      // Now wait for some seconds:
+      wait(10);
+
+      // And abort the transaction:
+      arango.DELETE(`/_api/transaction/${resp.result.id}`);
 
       // And now it should shut down in due course...
       waitForShutdown(coordinator, 30);
