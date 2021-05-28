@@ -144,7 +144,7 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
   aql::AqlValue vertexToAqlValue(size_t index);
   aql::AqlValue edgeToAqlValue(size_t index);
   aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
-  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index, bool fromPrune);
 
   bool shouldPrune();
   double weightEdge(arangodb::velocypack::Slice edge) const;
