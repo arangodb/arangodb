@@ -338,28 +338,55 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  initOnce();
-  auto res = executeWithoutTrace(stack);
-  if (std::get<0>(res) != ExecutionState::WAITING) {
-    // if we have finished processing our input we reset _outputItemRow and
-    // _lastRange to release the SharedAqlItemBlockPtrs. This is necessary to
-    // avoid concurrent refCount updates in case of async prefetching because
-    // refCount is intentionally not atomic.
-    _outputItemRow.reset();
-    if constexpr (!isMultiDepExecutor<Executor>) {
-      if (!_lastRange.hasValidRow()) {
-        _lastRange.reset();
+  
+  // check if this block failed already.
+  if (_firstFailure.fail()) {
+    // if so, just return the stored error.
+    // we need to do this because if a block fails with
+    // an exception, it is in an invalid state, and all
+    // subsequent calls into it may behave badly.
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  }
+
+  try {
+    initOnce();
+    auto res = executeWithoutTrace(stack);
+
+    if (std::get<0>(res) != ExecutionState::WAITING) {
+      // if we have finished processing our input we reset _outputItemRow and
+      // _lastRange to release the SharedAqlItemBlockPtrs. This is necessary to
+      // avoid concurrent refCount updates in case of async prefetching because
+      // refCount is intentionally not atomic.
+      _outputItemRow.reset();
+      if constexpr (!isMultiDepExecutor<Executor>) {
+        if (!_lastRange.hasValidRow()) {
+          _lastRange.reset();
+        }
       }
     }
-  }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto const& [state, skipped, block] = res;
-  if (block != nullptr) {
-    block->validateShadowRowConsistency();
-  }
+    auto const& [state, skipped, block] = res;
+    if (block != nullptr) {
+      block->validateShadowRowConsistency();
+    }
 #endif
-  traceExecuteEnd(res);
-  return res;
+    traceExecuteEnd(res);
+    return res;
+  } catch (basics::Exception const& ex) {
+    if (_firstFailure.ok()) {
+      // store only the first failure we got
+      _firstFailure = {ex.code(), ex.what()};
+      LOG_QUERY("7289a", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
+    }
+    throw;
+  } catch (std::exception const& ex) {
+    if (_firstFailure.ok()) {
+      // store only the first failure we got
+      _firstFailure = {TRI_ERROR_INTERNAL, ex.what()};
+      LOG_QUERY("2bbd5", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
+    }
+    throw;
+  }
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
@@ -1204,7 +1231,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
   // We can only work on a Stack that has valid calls for all levels.  
   TRI_ASSERT(callStack.hasAllValidCalls());
   ExecutionContext ctx(*this, callStack);
-
+          
   ExecutorState localExecutorState = ExecutorState::DONE;
 
   // We can only have returned the following internal states

@@ -7433,7 +7433,8 @@ struct ParallelizableFinder final
     }
     if (node->getType() == ExecutionNode::DISTRIBUTE) {
       if (_seenDistribute) {
-        // if we find 2 DISTRIBUTE nodes in the plan, we give up
+        // if we find 2 DISTRIBUTE nodes in the plan, or a DISTRIBUTE
+        // at an unexpected place, we give up
         _isParallelizable = false;
         return true;
       }
@@ -7453,7 +7454,7 @@ struct ParallelizableFinder final
       // if we find another one, it is ok if that REMOTE node refers
       // to a DISTRIBUTE node (checked above). if it refers to another
       // GATHER node somewhere, we also abort above.
-      if (++_numRemotes > 2) {
+      if (++_numRemotes > 2 || _seenDistribute) {
         _isParallelizable = false;
         return true;
       }

@@ -129,7 +129,7 @@ function optimizerRuleTestSuite () {
       }
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query,);
+        let result = AQL_EXPLAIN(query);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },

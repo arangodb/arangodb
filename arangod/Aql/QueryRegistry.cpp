@@ -115,14 +115,14 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl,
 
 /// @brief open
 void* QueryRegistry::openEngine(EngineId id, EngineType type) {
-  LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "Opening engine with id " << id;
+  LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "trying to open engine with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(writeLocker, _lock);
   
   auto it = _engines.find(id);
   if (it == _engines.end()) {
     LOG_TOPIC("c3ae4", DEBUG, arangodb::Logger::AQL)
-    << "Found no engine with id " << id;
+      << "Found no engine with id " << id;
     return nullptr;
   }
   
@@ -130,7 +130,7 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   
   if (ei._type != type) {
     LOG_TOPIC("c3af5", DEBUG, arangodb::Logger::AQL)
-    << "Engine with id " << id << " has other type";
+      << "Engine with id " << id << " has other type";
     return nullptr;
   }
   
@@ -151,9 +151,11 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
     // now that we made it return the true value, the assertion is triggered.
     // TODO: need to sort this out.
     // TRI_ASSERT(ei._queryInfo->_numOpen == 1 || !ei._queryInfo->_query->isModificationQuery());
-    LOG_TOPIC("b1cfd", TRACE, arangodb::Logger::AQL) << "opening engine " << id << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
+    LOG_TOPIC("b1cfd", TRACE, arangodb::Logger::AQL) 
+      << "opening engine " << id << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
   } else {
-    LOG_TOPIC("50eff", TRACE, arangodb::Logger::AQL) << "opening engine " << id << ", no query";
+    LOG_TOPIC("50eff", TRACE, arangodb::Logger::AQL) 
+      << "opening engine " << id << ", no query";
   }
 
   return ei._engine;
