@@ -21,7 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogParticipantI.h"
-#include "LogCore.h"
+
+#include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLogMetrics.h"
+#include "RestServer/Metrics.h"
 
 #include <Basics/Exceptions.h>
 
@@ -32,11 +35,13 @@ auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus 
   return LogStatus{UnconfiguredStatus{}};
 }
 
-replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore)
-    : _logCore(std::move(logCore)) {}
+replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(
+    std::unique_ptr<LogCore> logCore, ReplicatedLogMetrics& logMetrics)
+    : _logCore(std::move(logCore)), _logMetrics(logMetrics) {
+  _logMetrics.replicatedLogInactiveNumber->fetch_add(1);
+}
 
-auto replicated_log::LogUnconfiguredParticipant::resign() &&
-    -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
+auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
   auto nop = DeferredAction{};
   return std::make_tuple(std::move(_logCore), std::move(nop));
 }
@@ -45,6 +50,11 @@ auto replicated_log::LogUnconfiguredParticipant::waitFor(LogIndex)
     -> replicated_log::LogParticipantI::WaitForFuture {
   // TODO how to resolve a future with an exception?
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+replicated_log::LogUnconfiguredParticipant::~LogUnconfiguredParticipant() {
+  // TODO It'd be more accurate to do this in resign(), and here only conditionally
+  //      depending on whether we still own the LogCore.
+  _logMetrics.replicatedLogInactiveNumber->fetch_sub(1);
 }
 
 auto replicated_log::LogParticipantI::waitForIterator(LogIndex index)

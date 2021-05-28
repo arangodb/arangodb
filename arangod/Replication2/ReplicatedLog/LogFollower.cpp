@@ -312,7 +312,9 @@ replicated_log::LogFollower::LogFollower(LogContext logContext,
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)),
       _logContext(logContext.with<logContextKeyLogComponent>("follower")
                       .with<logContextKeyLeaderId>(_leaderId)
-                      .with<logContextKeyTerm>(term)) {}
+                      .with<logContextKeyTerm>(term)) {
+  _logMetrics.replicatedLogFollowerNumber->fetch_add(1);
+}
 
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::LogParticipantI::WaitForFuture {
@@ -329,6 +331,12 @@ auto replicated_log::LogFollower::getLogIterator(LogIndex fromIdx) const
         auto log = data._inMemoryLog._log.drop(fromIdx.value);
         return std::make_unique<ReplicatedLogIterator>(std::move(log));
       });
+}
+
+replicated_log::LogFollower::~LogFollower() {
+  // TODO It'd be more accurate to do this in resign(), and here only conditionally
+  //      depending on whether we still own the LogCore.
+  _logMetrics.replicatedLogFollowerNumber->fetch_sub(1);
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept

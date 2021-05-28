@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <memory>
 
+class Counter;
 template <typename T>
 class Histogram;
 template <typename T>
@@ -55,6 +56,13 @@ struct ReplicatedLogMetrics {
   std::shared_ptr<Gauge<uint64_t>> const replicatedLogNumber;
   std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> const replicatedLogAppendEntriesRttUs;
   std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> const replicatedLogFollowerAppendEntriesRtUs;
+  std::shared_ptr<Counter> const replicatedLogCreationNumber;
+  std::shared_ptr<Counter> const replicatedLogDeletionNumber;
+  std::shared_ptr<Gauge<std::uint64_t>> const replicatedLogLeaderNumber;
+  std::shared_ptr<Gauge<std::uint64_t>> const replicatedLogFollowerNumber;
+  std::shared_ptr<Gauge<std::uint64_t>> const replicatedLogInactiveNumber;
+  std::shared_ptr<Counter> const replicatedLogLeaderTookOverNumber;
+  std::shared_ptr<Counter> const replicatedLogStartedFollowingNumber;
 };
 
 }  // namespace arangodb::replication2::replicated_log

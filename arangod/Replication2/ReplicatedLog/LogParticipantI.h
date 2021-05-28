@@ -29,6 +29,7 @@
 #include <Futures/Promise.h>
 
 #include <Replication2/DeferredExecution.h>
+#include <Replication2/ReplicatedLogMetrics.h>
 #include <map>
 #include <memory>
 
@@ -66,14 +67,16 @@ struct LogParticipantI {
 struct LogUnconfiguredParticipant
     : std::enable_shared_from_this<LogUnconfiguredParticipant>,
       LogParticipantI {
-  ~LogUnconfiguredParticipant() override = default;
-  explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore);
+  ~LogUnconfiguredParticipant() override;
+  explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore,
+                                      ReplicatedLogMetrics& logMetrics);
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   std::unique_ptr<LogCore> _logCore;
+  ReplicatedLogMetrics& _logMetrics;
 };
 
 }  // namespace arangodb::replication2::replicated_log

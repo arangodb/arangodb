@@ -73,9 +73,16 @@ replicated_log::LogLeader::LogLeader(LogContext logContext, ReplicatedLogMetrics
     : _logContext(std::move(logContext)),
       _logMetrics(logMetrics),
       _termData(std::move(termData)),
-      _guardedLeaderData(*this, std::move(inMemoryLog)) {}
+      _guardedLeaderData(*this, std::move(inMemoryLog)) {
+  _logMetrics.replicatedLogLeaderNumber->fetch_add(1);
+}
 
-replicated_log::LogLeader::~LogLeader() { tryHardToClearQueue(); }
+replicated_log::LogLeader::~LogLeader() {
+  // TODO It'd be more accurate to do this in resign(), and here only conditionally
+  //      depending on whether we still own the LogCore.
+  _logMetrics.replicatedLogLeaderNumber->fetch_sub(1);
+  tryHardToClearQueue();
+}
 
 auto replicated_log::LogLeader::tryHardToClearQueue() noexcept -> void {
   bool finished = false;

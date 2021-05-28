@@ -40,4 +40,25 @@ DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_rtt_us,
 DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_follower_append_entries_rt_us,
                   AppendEntriesRttScale, "RT for AppendEntries call [us]");
 
+DECLARE_COUNTER(arangodb_replication2_replicated_log_creation_number,
+                "Number of replicated logs created since server start");
+
+DECLARE_COUNTER(arangodb_replication2_replicated_log_deletion_number,
+                "Number of replicated logs deleted since server start");
+
+DECLARE_GAUGE(arangodb_replication2_replicated_log_leader_number, std::uint64_t,
+              "Number of replicated logs this server has, and is currently a leader of");
+
+DECLARE_GAUGE(arangodb_replication2_replicated_log_follower_number,
+              std::uint64_t, "Number of replicated logs this server has, and is currently a follower of");
+
+DECLARE_GAUGE(arangodb_replication2_replicated_log_inactive_number,
+              std::uint64_t, "Number of replicated logs this server has, and is currently neither leader nor follower of");
+
+DECLARE_COUNTER(arangodb_replication2_replicated_log_leader_took_over_number,
+                "Number of times a replicated log on this server took over as leader in a term");
+
+DECLARE_COUNTER(arangodb_replication2_replicated_log_started_following_number,
+                "Number of times a replicated log on this server started following a leader in a term");
+
 }  // namespace arangodb

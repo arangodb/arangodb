@@ -51,6 +51,27 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
               metricsFeature)),
       replicatedLogFollowerAppendEntriesRtUs(
           createMetric<arangodb_replication2_replicated_log_follower_append_entries_rt_us, mock>(
+              metricsFeature)),
+      replicatedLogCreationNumber(
+          createMetric<arangodb_replication2_replicated_log_creation_number, mock>(
+              metricsFeature)),
+      replicatedLogDeletionNumber(
+          createMetric<arangodb_replication2_replicated_log_deletion_number, mock>(
+              metricsFeature)),
+      replicatedLogLeaderNumber(
+          createMetric<arangodb_replication2_replicated_log_leader_number, mock>(
+              metricsFeature)),
+      replicatedLogFollowerNumber(
+          createMetric<arangodb_replication2_replicated_log_follower_number, mock>(
+              metricsFeature)),
+      replicatedLogInactiveNumber(
+          createMetric<arangodb_replication2_replicated_log_inactive_number, mock>(
+              metricsFeature)),
+      replicatedLogLeaderTookOverNumber(
+          createMetric<arangodb_replication2_replicated_log_leader_took_over_number, mock>(
+              metricsFeature)),
+      replicatedLogStartedFollowingNumber(
+          createMetric<arangodb_replication2_replicated_log_started_following_number, mock>(
               metricsFeature)) {
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   static_assert(!mock);

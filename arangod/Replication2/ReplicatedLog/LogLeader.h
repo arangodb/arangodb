@@ -212,7 +212,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   };
 
   LogContext const _logContext;
-  [[maybe_unused]] ReplicatedLogMetrics& _logMetrics;
+  ReplicatedLogMetrics& _logMetrics;
   TermData const _termData;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;

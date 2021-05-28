@@ -28,7 +28,7 @@
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
-
+#include "RestServer/Metrics.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
@@ -46,10 +46,10 @@ using namespace arangodb::replication2;
 
 replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core,
                                              ReplicatedLogMetrics& metrics,
-                                             LogContext logContext)
+                                             LogContext const& logContext)
     : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
-      _participant(std::make_shared<replicated_log::LogUnconfiguredParticipant>(
-          std::move(core))),
+      _participant(
+          std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(core), metrics)),
       _metrics(metrics) {}
 
 auto replicated_log::ReplicatedLog::becomeLeader(
@@ -57,7 +57,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
     -> std::shared_ptr<LogLeader> {
   auto leader = std::shared_ptr<LogLeader>{};
-  auto deferred = std::invoke([&]{
+  auto deferred = std::invoke([&] {
     std::unique_lock guard(_mutex);
     LOG_CTX("23d7b", DEBUG, _logContext)
         << "becoming leader in term " << termData.term;
@@ -67,6 +67,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     leader = LogLeader::construct(termData, std::move(logCore), follower,
                                   _logContext, _metrics);
     _participant = std::static_pointer_cast<LogParticipantI>(leader);
+    _metrics.replicatedLogLeaderTookOverNumber->count();
     return std::move(deferred);
   });
 
@@ -94,6 +95,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
                                                   std::move(id), std::move(logCore),
                                                   term, std::move(leaderId), log);
     _participant = std::static_pointer_cast<LogParticipantI>(follower);
+    _metrics.replicatedLogStartedFollowingNumber->count();
     return std::make_tuple(follower, std::move(deferred));
   });
   return follower;
@@ -132,7 +134,7 @@ auto replicated_log::ReplicatedLog::getFollower() const -> std::shared_ptr<LogFo
 }
 
 auto replicated_log::ReplicatedLog::drop() -> std::unique_ptr<LogCore> {
-  auto [core, deferred] = std::invoke([&]{
+  auto [core, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
     auto res = std::move(*_participant).resign();
     _participant = nullptr;
