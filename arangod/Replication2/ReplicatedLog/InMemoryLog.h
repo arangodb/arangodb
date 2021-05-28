@@ -51,6 +51,7 @@ struct InMemoryLog {
   [[nodiscard]] auto getLastIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept -> std::optional<LogEntry>;
+  [[nodiscard]] auto splice(LogIndex from, LogIndex to) const -> immer::flex_vector<LogEntry>;
 
   immer::flex_vector<LogEntry> _log{};
 };

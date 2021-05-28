@@ -27,6 +27,8 @@
 #include <velocypack/Value.h>
 
 #include <Basics/StringUtils.h>
+
+#include <chrono>
 #include <utility>
 
 using namespace arangodb;
@@ -65,6 +67,13 @@ auto LogEntry::fromVelocyPack(velocypack::Slice slice) -> LogEntry {
 auto LogEntry::operator==(LogEntry const& other) const noexcept -> bool {
   return other._logIndex == _logIndex && other._logTerm == _logTerm &&
          other._payload == _payload;
+}
+
+void LogEntry::setInsertTp(clock::time_point tp) noexcept {
+  _insertTp = tp;
+}
+auto LogEntry::insertTp() const noexcept -> clock::time_point {
+  return _insertTp;
 }
 
 auto LogTerm::operator<=(LogTerm other) const -> bool {

@@ -26,10 +26,11 @@
 #include <Basics/Identifier.h>
 #include <Basics/ResultT.h>
 
-#include <ostream>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -103,11 +104,15 @@ using ParticipantId = std::string;
 // TODO This should probably be moved into a separate file
 class LogEntry {
  public:
+  using clock = std::chrono::steady_clock;
+
   LogEntry(LogTerm, LogIndex, LogPayload);
 
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto logPayload() const noexcept -> LogPayload const&;
+  [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
+  void setInsertTp(clock::time_point) noexcept;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LogEntry;
@@ -118,6 +123,9 @@ class LogEntry {
   LogTerm _logTerm{};
   LogIndex _logIndex{};
   LogPayload _payload;
+  // Timepoint at which the insert was started (not the point in time where it
+  // was committed)
+  clock::time_point _insertTp{};
 };
 
 class LogId : public arangodb::basics::Identifier {

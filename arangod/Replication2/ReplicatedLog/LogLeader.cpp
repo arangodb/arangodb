@@ -148,7 +148,8 @@ auto replicated_log::LogLeader::instantiateFollowers(
 }
 
 void replicated_log::LogLeader::executeAppendEntriesRequests(
-    std::vector<std::optional<PreparedAppendEntryRequest>> requests) {
+    std::vector<std::optional<PreparedAppendEntryRequest>> requests,
+    ReplicatedLogMetrics const& logMetrics) {
   for (auto& it : requests) {
     if (it.has_value()) {
       // Capture self(shared_from_this()) instead of this
@@ -163,7 +164,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
           .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
                       lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
                       currentTerm = it->_currentTerm, messageId = messageId,
-                      startTime](futures::Try<AppendEntriesResult>&& res) {
+                      startTime, logMetrics = logMetrics](futures::Try<AppendEntriesResult>&& res) {
             auto const endTime = std::chrono::steady_clock::now();
 
             // TODO report (endTime - startTime) to
@@ -171,9 +172,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
             //      probably implicitly so tests can be done as well
             // TODO This has to be noexcept
             if (auto self = parentLog.lock()) {
-              auto const duration =
-                  std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-              self->_logMetrics.replicatedLogAppendEntriesRttUs->count(duration.count());
+              using namespace std::chrono_literals;
+              auto const duration = endTime - startTime;
+              self->_logMetrics.replicatedLogAppendEntriesRttUs->count(duration / 1us);
               LOG_CTX("8ff44", TRACE, follower.logContext)
                   << "received append entries response, messageId = " << messageId;
               auto [preparedRequests, resolvedPromises] = std::invoke([&] {
@@ -192,7 +193,14 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                 promise.second.setValue(resolvedPromises._quorum);
               }
 
-              executeAppendEntriesRequests(std::move(preparedRequests));
+              auto const commitTp = LogEntry::clock::now(); // TODO Take a more exact measurement
+              for (auto const& it : resolvedPromises._commitedLogEntries) {
+                using namespace std::chrono_literals;
+                auto const duration = commitTp - it.insertTp();
+                logMetrics.replicatedLogInsertsRtt->count(duration / 1us);
+              }
+
+              executeAppendEntriesRequests(std::move(preparedRequests), logMetrics);
             } else {
               LOG_TOPIC("de300", DEBUG, Logger::REPLICATION2)
                   << "parent log already gone, messageId = " << messageId;
@@ -343,18 +351,20 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
 
 // NOLINTNEXTLINE(performance-unnecessary-value-param)
 auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
+  auto const insertTp = LogEntry::clock::now();
   // TODO this has to be lock free
   // TODO investigate what order between insert-increaseTerm is required?
   // Currently we use a mutex. Is this the only valid semantic?
-  return _guardedLeaderData.doUnderLock([self = this, &payload](GuardedLeaderData& leaderData) {
+  return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leaderData) {
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
     auto const index = leaderData._inMemoryLog.getNextIndex();
     auto const payloadSize = payload.byteSize();
-    leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(
-        LogEntry{self->_termData.term, index, std::move(payload)});
-    self->_logMetrics.replicatedLogInsertsBytes->count(payloadSize);
+    auto logEntry = LogEntry{_termData.term, index, std::move(payload)};
+    logEntry.setInsertTp(insertTp);
+    leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(std::move(logEntry));
+    _logMetrics.replicatedLogInsertsBytes->count(payloadSize);
     return index;
   });
 }
@@ -392,7 +402,7 @@ auto replicated_log::LogLeader::runAsyncStep() -> void {
         }
         return leaderData.prepareAppendEntries(self);
       });
-  executeAppendEntriesRequests(std::move(preparedRequests));
+  executeAppendEntriesRequests(std::move(preparedRequests), _logMetrics);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
@@ -400,6 +410,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     std::shared_ptr<QuorumData> const& quorum) -> ResolvedPromiseSet {
   LOG_CTX("a9a7e", TRACE, _self._logContext)
       << "updating commit index to " << newIndex << "with quorum " << quorum->quorum;
+  auto oldIndex = _commitIndex;
 
   TRI_ASSERT(_commitIndex < newIndex);
   _commitIndex = newIndex;
@@ -413,7 +424,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
           << "resolving promise for index " << it->first;
       toBeResolved.insert(_waitForQueue.extract(it++));
     }
-    return ResolvedPromiseSet{std::move(toBeResolved), quorum};
+    return ResolvedPromiseSet{std::move(toBeResolved), quorum,
+                              _inMemoryLog.splice(oldIndex, newIndex + 1)};
   } catch (...) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.

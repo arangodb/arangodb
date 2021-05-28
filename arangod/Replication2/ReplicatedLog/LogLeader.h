@@ -166,6 +166,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   struct ResolvedPromiseSet {
     WaitForQueue _set;
     std::shared_ptr<QuorumData> _quorum;
+    immer::flex_vector<LogEntry> _commitedLogEntries;
   };
 
   struct alignas(128) GuardedLeaderData {
@@ -227,7 +228,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
 
-  static void executeAppendEntriesRequests(std::vector<std::optional<PreparedAppendEntryRequest>> requests);
+  static void executeAppendEntriesRequests(std::vector<std::optional<PreparedAppendEntryRequest>> requests,
+                                           ReplicatedLogMetrics const& logMetrics);
 
   auto tryHardToClearQueue() noexcept -> void;
 };
