@@ -53,7 +53,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
         makeIndexIterPair([&](std::size_t i) { return histogram->load(i); }, 0,
                           histogram->size());
 
-    return std::accumulate(begin, end, std::decay_t<decltype(*histogram)>::value_type(0));
+    return std::accumulate(begin, end, typename std::decay_t<decltype(*histogram)>::value_type(0));
   };
 
   {
