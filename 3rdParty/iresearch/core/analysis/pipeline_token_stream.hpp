@@ -71,10 +71,14 @@ class pipeline_token_stream final
   /// @return true if all visits returned true, false otherwise
   //////////////////////////////////////////////////////////////////////////////
   template<typename Visitor>
-  bool visit_members(const Visitor& visitor) const {
+  bool visit_members(Visitor&& visitor) const {
     for (const auto& sub : pipeline_) {
       if (sub.get_stream().type() == type()) { //pipe inside pipe - forward visiting
+#if IRESEARCH_DEBUG
+        const auto& sub_pipe = dynamic_cast<const pipeline_token_stream&>(sub.get_stream());
+#else
         const auto& sub_pipe = static_cast<const pipeline_token_stream&>(sub.get_stream());
+#endif
         if (!sub_pipe.visit_members(visitor)) {
           return false;
         }
