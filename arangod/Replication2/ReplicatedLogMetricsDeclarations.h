@@ -32,7 +32,7 @@ struct AppendEntriesRttScale {
   using scale_t = log_scale_t<std::uint64_t>;
   static scale_t scale() {
     // values in us, smallest bucket is up to 1ms, scales up to 2^16ms =~ 65s.
-    return {scale_t::supply_smallest_bucket, 1'000, 2, 0, 16};
+    return {scale_t::supply_smallest_bucket, 2, 0, 1'000, 16};
   }
 };
 
@@ -40,7 +40,7 @@ struct InsertBytesScale {
   using scale_t = log_scale_t<std::uint64_t>;
   static scale_t scale() {
     // 1 byte up to 16GiB (1 * 4^17 = 16 * 2^30).
-    return {scale_t::supply_smallest_bucket, 1, 4, 0, 17};
+    return {scale_t::supply_smallest_bucket, 4, 0, 1, 17};
   }
 };
 
