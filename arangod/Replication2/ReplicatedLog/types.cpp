@@ -184,6 +184,8 @@ std::string arangodb::replication2::replicated_log::to_string(replicated_log::Ap
       return "previous log index did not match";
     case AppendEntriesErrorReason::MESSAGE_OUTDATED:
       return "message was outdated";
+    case AppendEntriesErrorReason::PERSISTENCE_FAILURE:
+      return "persisting the log entries failed";
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
