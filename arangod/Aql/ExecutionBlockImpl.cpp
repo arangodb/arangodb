@@ -383,7 +383,8 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     // store only the first failure we got
     _firstFailure = {TRI_ERROR_INTERNAL, ex.what()};
     LOG_QUERY("2bbd5", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
-    throw;
+    // Rewire the error, to be consistent with potentially next caller.
+    THROW_ARANGO_EXCEPTION(_firstFailure);
   }
 }
 
