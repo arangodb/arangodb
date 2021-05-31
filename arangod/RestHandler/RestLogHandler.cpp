@@ -22,19 +22,24 @@
 
 #include "RestLogHandler.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <Cluster/ServerState.h>
 #include <Network/ConnectionPool.h>
 #include <Network/Methods.h>
 #include <Network/NetworkFeature.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
+
+#include <Agency/AsyncAgencyComm.h>
+#include <Agency/TransactionBuilder.h>
 
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/AgencyLogSpecification.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -53,6 +58,51 @@ RestStatus RestLogHandler::execute() {
   return RestStatus::DONE;
 }
 
+struct ReplicatedLogMethods {
+
+  auto createReplicatedLog(LogId id) -> futures::Future<Result> {
+    if (ServerState::instance()->isCoordinator()) {
+      return createReplicatedLogOnCoordinator(id);
+    } else {
+      return vocbase.createReplicatedLog(id).result();
+    }
+  }
+
+  explicit ReplicatedLogMethods(TRI_vocbase_t& vocbase) : vocbase(vocbase) {}
+ private:
+  auto createReplicatedLogOnCoordinator(LogId id) -> futures::Future<Result> {
+    AsyncAgencyComm ac;
+
+    replication2::agency::LogPlanSpecification spec;
+
+    VPackBufferUInt8 trx;
+    {
+      std::string path = "/arangod/Plan/ReplicatedLogs/" + vocbase.name() + "/" + std::to_string(id.id());
+
+      VPackBuilder builder(trx);
+      arangodb::agency::envelope::into_builder(builder)
+          .write()
+          .emplace_object(path,
+                          [&](VPackBuilder& builder) {
+                            spec.toVelocyPack(builder);
+                          })
+          .precs()
+          .isEmpty(path)
+          .end()
+          .done();
+    }
+
+    LOG_DEVEL << VPackSlice(trx.data()).toJson();
+
+    return ac.sendWriteTransaction(std::chrono::seconds(120), std::move(trx)).thenValue([](AsyncAgencyCommResult&& res) {
+      LOG_DEVEL << "agency result " << to_string(res.error) << " msg " << res.asResult().errorMessage();
+      return res.asResult(); // TODO
+    });
+  }
+
+  TRI_vocbase_t& vocbase;
+};
+
 RestStatus RestLogHandler::handlePostRequest() {
 
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -63,17 +113,19 @@ RestStatus RestLogHandler::handlePostRequest() {
     return RestStatus::DONE;
   }
 
+  ReplicatedLogMethods methods(_vocbase);
+
   if (suffixes.empty()) {
     // create a new log
     LogId id{body.get("id").getNumericValue<uint64_t>()};
 
-    auto result = _vocbase.createReplicatedLog(id);
-    if (result.ok()) {
-      generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
-    } else {
-      generateError(result.result());
-    }
-    return RestStatus::DONE;
+    return waitForFuture(methods.createReplicatedLog(id).thenValue([this](Result&& result) {
+      if (result.ok()) {
+        generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+      } else {
+        generateError(result);
+      }
+    }));
   }
 
   if (suffixes.size() != 2) {

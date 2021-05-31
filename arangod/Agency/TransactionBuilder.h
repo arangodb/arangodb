@@ -76,9 +76,9 @@ struct envelope {
       return envelope(_builder.release());
     }
     template <typename K>
-    read_trx& key(K&& k) {
+    read_trx key(K&& k) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
-      return *this;
+      return std::move(*this);
     }
     read_trx(read_trx&&) = default;
     read_trx& operator=(read_trx&&) = default;
@@ -97,7 +97,7 @@ struct envelope {
   struct write_trx;
   struct precs_trx {
     template <typename K, typename V>
-    precs_trx&& isEqual(K&& k, V&& v) && {
+    precs_trx isEqual(K&& k, V&& v) && {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       detail::add_to_builder(*_builder.get(), "old");
@@ -107,7 +107,7 @@ struct envelope {
     }
 
     template <typename K>
-    precs_trx&& isEmpty(K&& k) && {
+    precs_trx isEmpty(K&& k) && {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("oldEmpty", VPackValue(true));
@@ -147,22 +147,32 @@ struct envelope {
       return envelope(_builder.release());
     }
     template <typename K, typename V>
-    write_trx&& key(K&& k, V&& v) {
+    write_trx key(K&& k, V&& v) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       detail::add_to_builder(*_builder.get(), std::forward<V>(v));
       return std::move(*this);
     }
     template <typename K, typename F>
-    write_trx&& emplace(K&& k, F&& f) {
+    write_trx emplace(K&& k, F&& f) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       std::forward<F>(f)(*_builder);
       _builder->close();
       return std::move(*this);
     }
+    template <typename K, typename F>
+    write_trx emplace_object(K&& k, F&& f) {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("op", VPackValue("set"));
+      detail::add_to_builder(*_builder.get(), "new");
+      std::invoke(std::forward<F>(f), *_builder);
+      _builder->close();
+      return std::move(*this);
+    }
 
     template <typename K, typename V>
-    write_trx&& set(K&& k, V&& v) {
+    write_trx set(K&& k, V&& v) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("op", VPackValue("set"));
@@ -172,7 +182,7 @@ struct envelope {
     }
 
     template <typename K>
-    write_trx&& remove(K&& k) {
+    write_trx remove(K&& k) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("op", VPackValue("delete"));
@@ -181,7 +191,7 @@ struct envelope {
     }
 
     template <typename K>
-    write_trx&& inc(K&& k, uint64_t delta = 1) && {
+    write_trx inc(K&& k, uint64_t delta = 1) && {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       this->key("op", "increment");

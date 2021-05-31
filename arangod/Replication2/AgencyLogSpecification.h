@@ -57,6 +57,7 @@ struct LogPlanSpecification {
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanSpecification(from_velocypack_t, VPackSlice);
+  LogPlanSpecification() = default;
 };
 
 struct LogCurrentLocalState {
