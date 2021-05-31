@@ -4519,13 +4519,13 @@ function testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitGen(testGraph
 }
 
 const assertEarlyFilterOptimization = (testGraph, query, numAllowedResults) => {
-      assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
-      const profile = db._query(query, {profile: 2}).getExtra();
-      const result = getCompactStatsNodes(profile).filter(n => n.type == TraversalBlock)
-      // We only have one TraversalBlock
-      assertEqual(result.length, 1);
-      // The traversal block shall only output the numberOfAllowedResults
-      assertEqual(result[0].items, numAllowedResults);
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const profile = db._query(query, {profile: 2}).getExtra();
+  const result = getCompactStatsNodes(profile).filter(n => n.type === TraversalBlock);
+  // We only have one TraversalBlock
+  assertEqual(result.length, 1);
+  // The traversal block shall only output the numberOfAllowedResults
+  assertEqual(result[0].items, numAllowedResults);
 };
 
 const testCompleteGraphOptimizeVBFS = (testGraph) => assertEarlyFilterOptimization(testGraph,

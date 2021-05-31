@@ -498,7 +498,7 @@ describe('Rule optimize-traversals', () => {
       // expect(plan.plan.rules.indexOf(ruleName)).to.equal(-1, query);
 
       const profile = db._query(query, bindVars, {profile: 2}).getExtra();
-      const result = getCompactStatsNodes(profile).filter(n => n.type == TraversalBlock)
+      const result = getCompactStatsNodes(profile).filter(n => n.type === TraversalBlock);
       // We only have one TraversalBlock
       expect(result.length).to.equal(1);
       // The traversal shall only output a single Path.
@@ -540,7 +540,7 @@ describe('Rule optimize-traversals', () => {
       // expect(plan.plan.rules.indexOf(ruleName)).to.equal(-1, query);
 
       const profile = db._query(query, bindVars, {profile: 2}).getExtra();
-      const result = getCompactStatsNodes(profile).filter(n => n.type == TraversalBlock)
+      const result = getCompactStatsNodes(profile).filter(n => n.type === TraversalBlock);
       // We only have one TraversalBlock
       expect(result.length).to.equal(1);
       // The traversal shall only output a single Path.
