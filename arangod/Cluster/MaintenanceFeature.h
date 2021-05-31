@@ -424,11 +424,11 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief condition variable to motivate workers to find new action
   arangodb::basics::ConditionVariable _actionRegistryCond;
 
-  /// @brief list of background workers
-  std::vector<std::unique_ptr<maintenance::MaintenanceWorker>> _activeWorkers;
-
   /// @brief condition variable to indicate thread completion
   arangodb::basics::ConditionVariable _workerCompletion;
+
+  /// @brief list of background workers
+  std::vector<std::unique_ptr<maintenance::MaintenanceWorker>> _activeWorkers;
 
   /// Errors are managed through raiseIndexError / removeIndexError and
   /// raiseShardError / renoveShardError. According locks must be held in said
