@@ -33,6 +33,8 @@
 namespace iresearch {
 namespace analysis {
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class pipeline_token_stream
 /// @brief an analyser capable of chaining other analyzers
@@ -52,6 +54,14 @@ class pipeline_token_stream final
   }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief calls visitor on pipeline members in respective order. Visiting is 
+  /// interrupted on first visitor returning false.
+  /// @param visitor visitor to call
+  /// @return true if all visits returned true, false otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  bool visit_members(const std::function<bool(const irs::analysis::analyzer::ptr)>& visitor) const;
 
  private:
   struct sub_analyzer_t {
@@ -91,6 +101,10 @@ class pipeline_token_stream final
     uint32_t data_start{ 0 };
     uint32_t data_end{ 0 };
     uint32_t pos{ std::numeric_limits<uint32_t>::max() };
+
+    irs::analysis::analyzer::ptr get_stream() const noexcept {
+      return analyzer;
+    }
 
    private:
     // sub analyzer should be operated through provided next/release

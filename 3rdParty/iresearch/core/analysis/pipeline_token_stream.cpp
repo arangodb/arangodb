@@ -325,6 +325,22 @@ bool pipeline_token_stream::reset(const string_ref& data) {
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }
 
+bool pipeline_token_stream::visit_members(const std::function<bool(const irs::analysis::analyzer::ptr)>& visitor) const {
+  for (const auto& sub : pipeline_) {
+    if(sub.get_stream()->type() == type()) { //pipe inside pipe - forward visiting
+      auto sub_pipe = static_cast<pipeline_token_stream*>(sub.get_stream().get());
+      if(!sub_pipe->visit_members(visitor)) {
+        return false;
+      }
+    } else {
+      if (!visitor(sub.get_stream())) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 /*static*/ void pipeline_token_stream::init() {
   REGISTER_ANALYZER_JSON(pipeline_token_stream, make_json,
     normalize_json_config);  // match registration above

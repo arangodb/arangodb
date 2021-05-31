@@ -1672,12 +1672,27 @@ function iResearchFeatureAqlTestSuite () {
           try{analyzers.remove(analyzerName, true);} catch(e) {}
         }
       }
-      // incompatibel aql retval with identity
+      // incompatible aql retval with identity
       {
         try {
           analyzers.save(analyzerName, "pipeline", { pipeline:[
             {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
             {type:"identity", properties:{}}]});
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // incompatible pipeline inside the pipeline aql retval with identity
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"pipeline", properties:{pipeline:[
+              {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
+              {type:"identity", properties:{}}]}}]});
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
