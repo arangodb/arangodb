@@ -12,7 +12,7 @@ exposedBy:
 description: |
   Total number of drop-follower events. This metric is increased on leaders
   whenever a write operation cannot be replicated to a follower during
-  synchronous replication, and it would be unsafe in terms of data consistency 
+  synchronous replication, and it would be unsafe in terms of data consistency
   to keep that follower.
   This metric was named `arangodb_dropped_followers_count` in previous
   versions of ArangoDB.

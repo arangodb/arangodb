@@ -2977,15 +2977,37 @@ void RestReplicationHandler::handleCommandRevisionTree() {
     return;
   }
 
+  // shall we do a verification?
+  bool withVerification = _request->parsedValue("verification", false);
+
   auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
   if (!tree) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "could not generate revision tree");
     return;
   }
+  
   VPackBuffer<uint8_t> buffer;
   VPackBuilder result(buffer);
-  tree->serialize(result);
+
+  if (withVerification) {
+    auto tree2 = ctx.collection->getPhysical()->computeRevisionTree(ctx.batchId);
+    if (!tree2) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "could not generate revision tree from collection");
+      return;
+    }
+
+    VPackObjectBuilder guard(&result);
+    result.add(VPackValue("computed"));
+    tree2->serialize(result);
+    result.add(VPackValue("stored"));
+    tree->serialize(result);
+    auto diff = tree->diff(*tree2);
+    result.add("equal", VPackValue(diff.empty()));
+  } else {
+    tree->serialize(result);
+  }
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }

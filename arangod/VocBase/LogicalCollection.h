@@ -165,7 +165,6 @@ class LogicalCollection : public LogicalDataSource {
 #endif
   bool usesRevisionsAsDocumentIds() const;
   void setUsesRevisionsAsDocumentIds(bool);
-  RevisionId minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
 
@@ -417,8 +416,6 @@ class LogicalCollection : public LogicalDataSource {
   std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
-
-  RevisionId const _minRevision;
 
   std::string _smartJoinAttribute;
 

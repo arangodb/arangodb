@@ -90,8 +90,7 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
       _registerInfos(std::move(registerInfos)),
       _executorInfos(std::move(executorInfos)),
       _executor{_executorInfos},
-      _clientBlockData{},
-      _wasShutdown(false) {
+      _clientBlockData{} {
   _shardIdMap.reserve(_nrClients);
   auto const& shardIds = _executorInfos.clientIds();
   for (size_t i = 0; i < _nrClients; i++) {

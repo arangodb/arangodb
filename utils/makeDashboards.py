@@ -310,7 +310,7 @@ for c in CATEGORYNAMES:
                     if met["type"] == "counter":
                         panel["type"] = "graph"
                         panel["targets"] = [{"expr": "rate(" + met["name"] + \
-                                                     "[1m])", \
+                                                     "[3m])", \
                             "legendFormat": "{{instance}}:{{shortname}}"}]
                         POSX, POSY = incxy(POSX, POSY)
                         PANELS.append(panel)
