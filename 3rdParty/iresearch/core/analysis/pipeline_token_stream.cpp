@@ -229,7 +229,7 @@ bool all_have_offset(const std::vector<irs::analysis::analyzer::ptr>& pipeline) 
   });
 }
 
-}
+} // namespace
 
 namespace iresearch {
 namespace analysis {
@@ -325,11 +325,11 @@ bool pipeline_token_stream::reset(const string_ref& data) {
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }
 
-bool pipeline_token_stream::visit_members(const std::function<bool(const irs::analysis::analyzer::ptr)>& visitor) const {
+bool pipeline_token_stream::visit_members(const std::function<bool(const irs::analysis::analyzer&)>& visitor) const {
   for (const auto& sub : pipeline_) {
-    if(sub.get_stream()->type() == type()) { //pipe inside pipe - forward visiting
-      auto sub_pipe = static_cast<pipeline_token_stream*>(sub.get_stream().get());
-      if(!sub_pipe->visit_members(visitor)) {
+    if (sub.get_stream().type() == type()) { //pipe inside pipe - forward visiting
+      const auto& sub_pipe = static_cast<const pipeline_token_stream&>(sub.get_stream());
+      if (!sub_pipe.visit_members(visitor)) {
         return false;
       }
     } else {
@@ -361,5 +361,5 @@ pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
   : term(nullptr), inc(nullptr), offs(nullptr),
     analyzer(irs::analysis::analyzer::ptr(), &EMPTY_ANALYZER) { }
 
-}
-}
+} // namespace analysis
+} // namespace iresearch

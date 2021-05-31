@@ -1315,21 +1315,21 @@ bool AnalyzerPool::init(
       if (instance->type() == irs::type<irs::analysis::pipeline_token_stream>::id()) {
         // pipeline needs to validate members compatibility
         std::string error;
-        irs::analysis::analyzer* prev {nullptr};
+        irs::analysis::analyzer const* prev {nullptr};
         AnalyzerValueType prevType{ AnalyzerValueType::Undefined };
-        auto checker = [&error, &prev, &prevType](irs::analysis::analyzer::ptr analyzer) {
+        auto checker = [&error, &prev, &prevType](const irs::analysis::analyzer& analyzer) {
           AnalyzerValueType currInput;
           AnalyzerValueType currOutput;
-          std::tie(currInput, currOutput, std::ignore) = getAnalyzerMeta(analyzer.get());
+          std::tie(currInput, currOutput, std::ignore) = getAnalyzerMeta(&analyzer);
           if (prev) {
             if ((currInput & prevType) == AnalyzerValueType::Undefined) {
               error.append("Incompatible pipeline part found. Analyzer type '")
                    .append(prev->type()().name()).append("' emits output not acceptable by analyzer type '")
-                   .append(analyzer.get()->type()().name()).append("'");
+                   .append(analyzer.type()().name()).append("'");
               return false;
             }
           }
-          prev = analyzer.get();
+          prev = &analyzer;
           prevType = currOutput;
           return true;
         };

@@ -61,7 +61,7 @@ class pipeline_token_stream final
   /// @param visitor visitor to call
   /// @return true if all visits returned true, false otherwise
   //////////////////////////////////////////////////////////////////////////////
-  bool visit_members(const std::function<bool(const irs::analysis::analyzer::ptr)>& visitor) const;
+  bool visit_members(const std::function<bool(const irs::analysis::analyzer&)>& visitor) const;
 
  private:
   struct sub_analyzer_t {
@@ -102,8 +102,9 @@ class pipeline_token_stream final
     uint32_t data_end{ 0 };
     uint32_t pos{ std::numeric_limits<uint32_t>::max() };
 
-    irs::analysis::analyzer::ptr get_stream() const noexcept {
-      return analyzer;
+    const irs::analysis::analyzer& get_stream() const noexcept {
+      assert(analyzer);
+      return *analyzer;
     }
 
    private:
