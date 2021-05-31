@@ -153,7 +153,9 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
-        std::ignore = std::move(f).await_unwrap();
+        if (!f.empty()) {
+          std::ignore = std::move(f).await_unwrap();
+        }
       } catch (...) {
       }
     }
@@ -287,7 +289,9 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
-        std::ignore = std::move(f).await_unwrap();
+        if (!f.empty()) {
+          std::ignore = std::move(f).await_unwrap();
+        }
       } catch (...) {
       }
     }
