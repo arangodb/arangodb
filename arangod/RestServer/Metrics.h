@@ -317,6 +317,17 @@ struct log_scale_t : public scale_t<T> {
   using value_type = T;
   static constexpr ScaleType scale_type = Logarithmic;
 
+  static constexpr auto getHighFromSmallestBucket(T smallestBucketSize, T base, T low, size_t n) {
+    return (smallestBucketSize - low) * std::pow(base, n - 1) + low;
+  }
+  struct supply_smallest_bucket_t {};
+  static constexpr auto supply_smallest_bucket = supply_smallest_bucket_t{};
+
+  log_scale_t(supply_smallest_bucket_t, T const& base, T const& low,
+              T const& smallestBucketSize, size_t n)
+      : log_scale_t(base, low,
+                    getHighFromSmallestBucket(smallestBucketSize, base, low, n), n) {}
+
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
     TRI_ASSERT(base > T(0));

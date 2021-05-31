@@ -29,13 +29,18 @@
 namespace arangodb {
 
 struct AppendEntriesRttScale {
-  static log_scale_t<std::uint64_t> scale() { return {2, 1, 120000000, 16}; }
+  using scale_t = log_scale_t<std::uint64_t>;
+  static scale_t scale() {
+    // values in us, smallest bucket is up to 1ms, scales up to 2^16ms =~ 65s.
+    return {scale_t::supply_smallest_bucket, 1'000, 2, 0, 16};
+  }
 };
 
 struct InsertBytesScale {
-  static log_scale_t<std::uint64_t> scale() {
-    // Up to 16GiB. 17 buckets (34/2) so they feat neatly into powers of 2.
-    return {4, 1, std::uint64_t(1) << 34, 17};
+  using scale_t = log_scale_t<std::uint64_t>;
+  static scale_t scale() {
+    // 1 byte up to 16GiB (1 * 4^17 = 16 * 2^30).
+    return {scale_t::supply_smallest_bucket, 1, 4, 0, 17};
   }
 };
 
@@ -75,9 +80,10 @@ DECLARE_COUNTER(arangodb_replication2_replicated_log_started_following_number,
 
 DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_bytes, InsertBytesScale,
                   "Number of bytes per insert in replicated log leader "
-                  "instances on this server");
+                  "instances on this server [bytes]");
 
-DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_rtt, AppendEntriesRttScale,
-                  "Histogram of round-trip times of replicated log inserts");
+DECLARE_HISTOGRAM(
+    arangodb_replication2_replicated_log_inserts_rtt, AppendEntriesRttScale,
+    "Histogram of round-trip times of replicated log inserts [us]");
 
 }  // namespace arangodb
