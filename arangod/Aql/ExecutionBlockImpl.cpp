@@ -373,18 +373,16 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     traceExecuteEnd(res);
     return res;
   } catch (basics::Exception const& ex) {
-    if (_firstFailure.ok()) {
-      // store only the first failure we got
-      _firstFailure = {ex.code(), ex.what()};
-      LOG_QUERY("7289a", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
-    }
+    TRI_ASSERT(_firstFailure.ok());
+    // store only the first failure we got
+    _firstFailure = {ex.code(), ex.what()};
+    LOG_QUERY("7289a", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
     throw;
   } catch (std::exception const& ex) {
-    if (_firstFailure.ok()) {
-      // store only the first failure we got
-      _firstFailure = {TRI_ERROR_INTERNAL, ex.what()};
-      LOG_QUERY("2bbd5", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
-    }
+    TRI_ASSERT(_firstFailure.ok());
+    // store only the first failure we got
+    _firstFailure = {TRI_ERROR_INTERNAL, ex.what()};
+    LOG_QUERY("2bbd5", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
     throw;
   }
 }
