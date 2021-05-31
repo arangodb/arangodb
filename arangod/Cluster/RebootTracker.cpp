@@ -127,7 +127,7 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
     TRI_ASSERT(!inserted || _callbacks.find(serverId) == _callbacks.end());
   }
 }
-
+  
 CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peerState,
                                             RebootTracker::Callback callback,
                                             std::string callbackDescription) {
@@ -325,6 +325,16 @@ void RebootTracker::queueCallback(DescriptedCallback callback) {
   queueCallbacks({std::make_shared<std::unordered_map<CallbackId, DescriptedCallback>>(
       std::unordered_map<CallbackId, DescriptedCallback>{ { getNextCallbackId(), std::move(callback) } }
   )});
+}
+
+RebootId RebootTracker::rebootId(ServerID const& server) const {
+  MUTEX_LOCKER(guard, _mutex);
+        
+  auto const rebootIdIt = _rebootIds.find(server);
+  if (rebootIdIt == _rebootIds.end()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
+  }
+  return rebootIdIt->second;
 }
     
 void RebootTracker::PeerState::toVelocyPack(velocypack::Builder& builder) const {

@@ -109,8 +109,6 @@ class Query : public QueryContext {
 
   QueryString const& queryString() const { return _queryString; }
     
-  TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
-
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
 
@@ -172,7 +170,11 @@ class Query : public QueryContext {
     return _ast.get();
   }
   
-  virtual QueryOptions const& queryOptions() const override {
+  QueryOptions const& queryOptions() const override {
+    return _queryOptions;
+  }
+  
+  QueryOptions& queryOptions() override {
     return _queryOptions;
   }
   

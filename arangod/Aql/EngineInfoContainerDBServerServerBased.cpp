@@ -25,6 +25,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/GraphNode.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Graph/BaseOptions.h"
@@ -45,6 +46,9 @@ namespace {
 const double SETUP_TIMEOUT = 15.0;
 // Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
 const double FAST_PATH_LOCK_TIMEOUT = 2.0;
+  
+std::string const finishUrl("/_api/aql/finish/");
+std::string const traverserUrl("/_internal/traverser/");
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
                              std::string& shardId) {
@@ -400,6 +404,21 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
+  
+  double oldTtl = _query.queryOptions().ttl;
+  // we use a timeout of at least 3600 seconds for DB server snippets.
+  // we assume this is safe because the RebootTracker on the coordinator 
+  // will abort all snippets of failed coordinators eventually.
+  // the ttl on the coordinator is not that high, i.e. if an AQL query
+  // is abandoned by a client application or an end user, the coordinator
+  // ttl should kick in a lot earlier and also terminate the query on the
+  // DB server(s).
+  _query.queryOptions().ttl = std::max<double>(oldTtl, 3600.0);
+
+  auto ttlGuard = scopeGuard([this, oldTtl]() {
+    // restore previous TTL value
+    _query.queryOptions().ttl = oldTtl;
+  });
 
   transaction::Methods& trx = _query.trxForOptimization();
   std::vector<arangodb::futures::Future<Result>> networkCalls{};
@@ -408,7 +427,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(SETUP_TIMEOUT);
   options.skipScheduler = true;  // hack to speed up future.get()
-  options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
   // decreases lock timeout manually for fast path
   auto oldLockTimeout = _query.getLockTimeout();
@@ -638,29 +656,27 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   options.skipScheduler = true;              // hack to speed up future.get()
 
   // Shutdown query snippets
-  std::string url("/_api/aql/finish/");
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
   builder.openObject();
-  builder.add("code", VPackValue(to_string(errorCode)));
+  builder.add(StaticStrings::Code, VPackValue(to_string(errorCode)));
   builder.close();
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId] : serverQueryIds) {
     requests.emplace_back(network::sendRequestRetry(pool, server, fuerte::RestVerb::Delete,
-                                                          url + std::to_string(queryId),
+                                                          ::finishUrl + std::to_string(queryId),
                                                           /*copy*/ body, options));
   }
   _query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
 
   // Shutdown traverser engines
-  url = "/_internal/traverser/";
   VPackBuffer<uint8_t> noBody;
 
   for (auto& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
       requests.emplace_back(network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-                           url + basics::StringUtils::itoa(engine.second), noBody, options));
+                           ::traverserUrl + basics::StringUtils::itoa(engine.second), noBody, options));
     }
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
     gn->clearEngines();

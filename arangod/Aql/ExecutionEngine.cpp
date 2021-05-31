@@ -41,9 +41,13 @@
 #include "Aql/SkipResult.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "VocBase/Methods/Queries.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -490,6 +494,45 @@ struct DistributedQueryInstanciator final
     TRI_ASSERT(snippets.size() > 0);
     TRI_ASSERT(snippets[0]->engineId() == 0);
     
+   
+    {
+      // install reboot trackers for all participating DB servers.
+      // we do this so we have a quick shutdown of queries if one of the participating DB servers fails.
+      // while it is not necessary for correctness to fail quickly, it can be beneficial
+      // to avoid carrying out a lot of operations on other servers only to realize at
+      // query end that the query cannot be committed everywhere.
+      auto engine = snippets[0].get();
+      
+      ClusterInfo& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+      engine->rebootTrackers().reserve(srvrQryId.size());
+      for (auto const& srvr : srvrQryId) {
+        std::string comment = std::string("AQL query from coordinator ") + ServerState::instance()->getId();
+        // intentional copy, because we may modify the value later
+        auto server = srvr.first;
+        if (server.compare(0, 7, "server:") == 0) {
+          server = server.substr(7);
+        }
+        auto rebootId = ci.rebootTracker().rebootId(server);
+        
+        std::function<void(void)> f = [server, id = _query.id(), &vocbase = _query.vocbase()]() {
+          LOG_TOPIC("d2554", INFO, Logger::QUERIES) 
+            << "killing query " << id << " because participating DB server "
+            << server << " is unavailable";
+          try {
+            methods::Queries::kill(vocbase, id, false);
+          } catch (...) {
+            // it does not really matter if this fails.
+            // if the coordinator contacts the failed DB server next time, it will
+            // realize it has failed.
+          }
+        };
+
+        engine->rebootTrackers().emplace_back(
+          ci.rebootTracker().callMeOnChange(cluster::RebootTracker::PeerState(server, rebootId),
+                                            std::move(f), std::move(comment)));
+      }
+    }
+
     bool knowsAllQueryIds = snippetIds.empty() || !srvrQryId.empty();
     TRI_ASSERT(knowsAllQueryIds);
     for (auto const& [serverDst, queryId] : srvrQryId) {
@@ -808,3 +851,7 @@ bool ExecutionEngine::waitForSatellites(QueryContext& /*query*/, Collection cons
   return true;
 }
 #endif
+  
+std::vector<arangodb::cluster::CallbackGuard>& ExecutionEngine::rebootTrackers() {
+  return _rebootTrackers;
+}

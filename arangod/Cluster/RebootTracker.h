@@ -74,6 +74,11 @@ class RebootTracker {
 
   void updateServerState(std::unordered_map<ServerID, RebootId> const& state);
 
+
+  /// @brief determine the current reboot id for a server.
+  /// will throw if no reboot id is known for the server
+  RebootId rebootId(ServerID const& server) const;
+
  private:
   using CallbackId = uint64_t;
 
@@ -96,9 +101,9 @@ class RebootTracker {
 
   void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
   void queueCallback(DescriptedCallback callback);
-
+ 
  private:
-  Mutex _mutex;
+  mutable Mutex _mutex;
 
   CallbackId _nextCallbackId{1};
 

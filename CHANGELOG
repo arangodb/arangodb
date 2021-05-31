@@ -1,6 +1,16 @@
 devel
 -----
 
+* Increase internal AQL query and transaction timeout on DB servers to 1 hour.
+  Previously, queries and transactions on DB servers could expire quickly,
+  which led to spurious "query ID not found" or "transaction ID not found"
+  errors on DB servers for multi-server queries/transactions with unbalanced 
+  access patterns for the different participating DB servers.
+  The timeouts on coordinators remain unchanged, so any queries/transactions
+  that are abandoned will be aborted there, which will also be propagated to
+  DB servers. In addition, if a particpating server in an AQL query becomes
+  available, the coordinator is now notified of that and will terminate the
+  query more eagerly.
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
