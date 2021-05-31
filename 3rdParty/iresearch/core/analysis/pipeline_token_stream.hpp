@@ -50,7 +50,16 @@ class pipeline_token_stream final
 
   explicit pipeline_token_stream(options_t&& options);
   virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
-    return irs::get_mutable(attrs_, id);
+    auto atr = irs::get_mutable(attrs_, id);
+    if (!atr) {
+      for (auto it = rbegin(pipeline_); it != rend(pipeline_); ++it) {
+        atr = const_cast<analyzer&>(it->get_stream()).get_mutable(id);
+        if (atr) {
+          break;
+        }
+      }
+    }
+    return atr;
   }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
@@ -61,7 +70,22 @@ class pipeline_token_stream final
   /// @param visitor visitor to call
   /// @return true if all visits returned true, false otherwise
   //////////////////////////////////////////////////////////////////////////////
-  bool visit_members(const std::function<bool(const irs::analysis::analyzer&)>& visitor) const;
+  template<typename Visitor>
+  bool visit_members(const Visitor& visitor) const {
+    for (const auto& sub : pipeline_) {
+      if (sub.get_stream().type() == type()) { //pipe inside pipe - forward visiting
+        const auto& sub_pipe = static_cast<const pipeline_token_stream&>(sub.get_stream());
+        if (!sub_pipe.visit_members(visitor)) {
+          return false;
+        }
+      } else {
+        if (!visitor(sub.get_stream())) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
 
  private:
   struct sub_analyzer_t {

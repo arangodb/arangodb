@@ -248,7 +248,7 @@ pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& 
     } {
   const auto track_offset = irs::get<offset>(*this) != nullptr;
   pipeline_.reserve(options.size());
-  for (const auto& p : options) {
+  for (auto& p : options) {
     assert(p);
     pipeline_.emplace_back(std::move(p), track_offset);
   }
@@ -325,21 +325,6 @@ bool pipeline_token_stream::reset(const string_ref& data) {
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }
 
-bool pipeline_token_stream::visit_members(const std::function<bool(const irs::analysis::analyzer&)>& visitor) const {
-  for (const auto& sub : pipeline_) {
-    if (sub.get_stream().type() == type()) { //pipe inside pipe - forward visiting
-      const auto& sub_pipe = static_cast<const pipeline_token_stream&>(sub.get_stream());
-      if (!sub_pipe.visit_members(visitor)) {
-        return false;
-      }
-    } else {
-      if (!visitor(sub.get_stream())) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
 
 /*static*/ void pipeline_token_stream::init() {
   REGISTER_ANALYZER_JSON(pipeline_token_stream, make_json,
