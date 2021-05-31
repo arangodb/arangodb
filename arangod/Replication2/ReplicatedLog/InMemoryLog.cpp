@@ -58,9 +58,11 @@ auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noex
   TRI_ASSERT(e.logIndex() == idx);
   return e;
 }
+
 auto replicated_log::InMemoryLog::splice(LogIndex from, LogIndex to) const
     -> immer::flex_vector<LogEntry> {
-  auto res = _log.take(to.value).drop(from.value);
+  from = LogIndex{std::max<decltype(from.value)>(from.value, 1)};
+  auto res = _log.take(to.value - 1).drop(from.value - 1);
   TRI_ASSERT(res.size() == to.value - from.value);
   return res;
 }

@@ -156,8 +156,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     return transient.persistent();
   });
 
-  auto iter = std::make_unique<ContainerIterator<immer::flex_vector<LogEntry>::const_iterator>>(
-      req.entries.begin(), req.entries.end());
+  auto iter = std::make_unique<ReplicatedLogIterator>(req.entries);
   auto core = self->_logCore.get();
   return core->insertAsync(std::move(iter), req.waitForSync)
       .thenValue([self = std::move(self), req = std::move(req),
@@ -165,12 +164,12 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
                   toBeResolved = std::move(toBeResolved)](Result&& res) mutable {
         if (!res.ok()) {
           LOG_CTX("216d8", ERR, self->_self._logContext)
-              << "failed to insert log entries";
+              << "failed to insert log entries: " << res.errorMessage();
           return std::make_pair(
               AppendEntriesResult{
                   self->_self._currentTerm,
                   res.errorNumber(),
-                  AppendEntriesErrorReason::NONE,
+                  AppendEntriesErrorReason::PERSISTENCE_FAILURE,
                   req.messageId,
               },
               DeferredAction{});

@@ -50,7 +50,8 @@ enum class AppendEntriesErrorReason {
   LOST_LOG_CORE,
   MESSAGE_OUTDATED,
   WRONG_TERM,
-  NO_PREV_LOG_MATCH
+  NO_PREV_LOG_MATCH,
+  PERSISTENCE_FAILURE
 };
 
 
