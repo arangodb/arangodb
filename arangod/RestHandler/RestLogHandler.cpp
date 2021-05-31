@@ -74,6 +74,7 @@ struct ReplicatedLogMethods {
     AsyncAgencyComm ac;
 
     replication2::agency::LogPlanSpecification spec;
+    spec.id = id;
 
     VPackBufferUInt8 trx;
     {
@@ -95,7 +96,6 @@ struct ReplicatedLogMethods {
     LOG_DEVEL << VPackSlice(trx.data()).toJson();
 
     return ac.sendWriteTransaction(std::chrono::seconds(120), std::move(trx)).thenValue([](AsyncAgencyCommResult&& res) {
-      LOG_DEVEL << "agency result " << to_string(res.error) << " msg " << res.asResult().errorMessage();
       return res.asResult(); // TODO
     });
   }

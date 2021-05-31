@@ -89,9 +89,7 @@ struct AsyncAgencyCommResult {
     if (!ok()) {
       return Result{fuerteToArangoErrorCode(error), to_string(error)};
     } else {
-      auto code = statusCode();
-      return Result{fuerteStatusToArangoErrorCode(code),
-                    fuerteStatusToArangoErrorMessage(code)};
+      return Result{fuerteStatusToArangoErrorCode(statusCode())};
     }
   }
 };
