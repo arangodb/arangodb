@@ -197,7 +197,7 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
       // For MacOs there is an upper bound on open file-handles
       // in addition to the user defined hard limit.
       // The bad news is that the user-defined hard limit can be larger
-      // then the upper bound, in this case the below setting of soft limit
+      // than the upper bound, in this case the below setting of soft limit
       // to hard limit will always fail. With the below line we only set
       // to at most the upper bound given by the System (OPEN_MAX).
       recommended = std::min((rlim_t)OPEN_MAX, recommended);
