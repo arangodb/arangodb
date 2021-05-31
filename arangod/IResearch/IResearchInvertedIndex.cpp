@@ -216,9 +216,7 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(
         TRI_ERROR_BAD_PARAMETER,
         std::string("failed to initialize index from definition: ") + definition.toString());
   }
-  normalized.close();
-  std::cerr << normalized.toString();
-  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  return {};
 }
 
 std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::IResearchInvertedIndexMeta::fields() const {
