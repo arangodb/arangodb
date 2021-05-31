@@ -24,8 +24,8 @@
 #include "FileDescriptorsFeature.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Basics/exitcodes.h"
 #include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -36,10 +36,11 @@
 #include <sys/resource.h>
 #endif
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <string>
 #include <sstream>
+#include <string>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -53,7 +54,7 @@ struct FileDescriptors {
 
   rlim_t hard;
   rlim_t soft;
-  
+
   static FileDescriptors load() {
     struct rlimit rlim;
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
@@ -89,7 +90,7 @@ struct FileDescriptors {
     return 8192;
 #else
     // on Linux, we will also use 8192 for now. this should be low enough so that it
-    // doesn't cause too much trouble when upgrading. however, this is not a high 
+    // doesn't cause too much trouble when upgrading. however, this is not a high
     // enough value to operate with larger amounts of data! it is a MINIMUM!
     return 8192;
 #endif
