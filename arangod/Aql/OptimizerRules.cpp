@@ -7438,7 +7438,7 @@ struct ParallelizableFinder final
         _isParallelizable = false;
         return true;
       }
-      // node that we have seen a DISTRIBUTE node.
+      // note that we have seen a DISTRIBUTE node.
       // note that a single DISTRIBUTE node should be safe if it
       // itself does not reach out to other snippets.
       // The reason it should be safe is that the DISTRIBUTE will
