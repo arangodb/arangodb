@@ -2824,9 +2824,11 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
+  auto results = futures::collectAll(futures).await_unwrap();
+
   size_t nrGood = 0;
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = std::move(f).await_unwrap();
+  for (auto& res : results) {
+    network::Response const& r = res.unwrap();
     if (!r.ok()) {
       continue;
     }
@@ -2849,8 +2851,8 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
       std::string("not all db servers could be reached for backup listing"));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = std::move(f).await_unwrap();
+  for (auto& tryRes : results) {
+    network::Response const& r = tryRes.unwrap();
     if (!r.ok()) {
       continue;
     }
