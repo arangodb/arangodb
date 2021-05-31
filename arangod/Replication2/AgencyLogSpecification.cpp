@@ -1,0 +1,133 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
+////////////////////////////////////////////////////////////////////////////////
+
+#include <velocypack/Iterator.h>
+
+#include "AgencyLogSpecification.h"
+
+using namespace arangodb;
+using namespace arangodb::replication2;
+using namespace arangodb::replication2::agency;
+
+template <>
+struct std::tuple_size<velocypack::ObjectIteratorPair> {
+  static constexpr auto value = 2;
+};
+
+template <std::size_t idx>
+struct std::tuple_element<idx, velocypack::ObjectIteratorPair> {
+  static_assert(0 <= idx && idx <= 1);
+  using type = arangodb::velocypack::Slice;
+};
+
+namespace arangodb::velocypack {
+template <std::size_t idx>
+auto get(velocypack::ObjectIteratorPair pair) -> VPackSlice {
+  static_assert(0 <= idx && idx <= 1);
+  if constexpr (idx == 0) {
+    return pair.key;
+  } else if constexpr (idx == 1) {
+    return pair.value;
+  }
+}
+}  // namespace arangodb::velocypack
+
+template<>
+struct velocypack::Extractor<LogTerm> {
+  static auto extract(VPackSlice slice) -> LogTerm {
+    return LogTerm{slice.getNumericValue<std::size_t>()};
+  }
+};
+
+template<>
+struct velocypack::Extractor<LogIndex> {
+  static auto extract(VPackSlice slice) -> LogIndex {
+    return LogIndex{slice.getNumericValue<std::size_t>()};
+  }
+};
+
+template<>
+struct velocypack::Extractor<LogId> {
+  static auto extract(VPackSlice slice) -> LogId {
+    return LogId{slice.getNumericValue<std::size_t>()};
+  }
+};
+
+template<>
+struct velocypack::Extractor<RebootId> {
+  static auto extract(VPackSlice slice) -> RebootId {
+    return RebootId{slice.getNumericValue<std::size_t>()};
+  }
+};
+
+LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t, VPackSlice slice) {
+  term = slice.get("term").extract<LogTerm>();
+  for (auto const& [key, value] : VPackObjectIterator(slice.get("participants"))) {
+    TRI_ASSERT(value.isEmptyObject());
+    participants.emplace(ParticipantId{key.copyString()}, Participant{});
+  }
+  if (auto leaders = slice.get("leader"); !leaders.isNone()) {
+    leader = Leader{leaders.get("serverId").copyString(), leaders.get("rebootId").extract<RebootId>()};
+  }
+}
+
+auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add("id", VPackValue(id.id()));
+  if (term.has_value()) {
+    builder.add(VPackValue("term"));
+    term->toVelocyPack(builder);
+  }
+}
+
+LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice) {
+  id = slice.get("id").extract<LogId>();
+  if (auto terms = slice.get("term"); !terms.isNone()) {
+    term = LogPlanTermSpecification{from_velocypack, terms};
+  }
+}
+
+LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t, VPackSlice slice) {
+  spearhead = slice.get("spearhead").extract<LogIndex>();
+  term = slice.get("term").extract<LogTerm>();
+}
+
+auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add("spearhead", VPackValue(spearhead.value));
+  builder.add("term", VPackValue(term.value));
+}
+
+LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
+  for (auto const& [key, value] : VPackObjectIterator(slice)) {
+    localState.emplace(ParticipantId{key.copyString()},
+                       LogCurrentLocalState(from_velocypack, value));
+  }
+}
+
+auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  for (auto const& [key, value] : localState) {
+    builder.add(VPackValue(key));
+    value.toVelocyPack(builder);
+  }
+}
