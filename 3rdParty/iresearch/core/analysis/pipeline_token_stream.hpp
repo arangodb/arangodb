@@ -52,10 +52,15 @@ class pipeline_token_stream final
   virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     auto attr = irs::get_mutable(attrs_, id);
     if (!attr) {
-      for (auto it = rbegin(pipeline_); it != rend(pipeline_); ++it) {
-        attr = const_cast<analyzer&>(it->get_stream()).get_mutable(id);
-        if (attr) {
-          break;
+      // if attribute is not strictly pipeline-controlled let`s find nearest to end
+      // provider with desired attribute
+      if(irs::type<payload>::id() != id &&
+         irs::type<offset>::id() != id) {
+        for (auto it = rbegin(pipeline_); it != rend(pipeline_); ++it) {
+          attr = const_cast<analyzer&>(it->get_stream()).get_mutable(id);
+          if (attr) {
+            break;
+          }
         }
       }
     }
