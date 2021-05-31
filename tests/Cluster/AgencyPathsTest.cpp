@@ -88,6 +88,13 @@ static_assert(!std::is_default_constructible<Root::Arango::Current::Databases::D
 static_assert(!std::is_default_constructible<Root::Arango::Current::Databases::Database::Server::Id>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::Databases::Database::Server::Error>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::Databases::Database::Server::ErrorMessage>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Current::ReplicatedLogs>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Current::ReplicatedLogs::Database>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Current::ReplicatedLogs::Database::Log>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Current::ReplicatedLogs::Database::Log::LocalStatus>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Current::ReplicatedLogs::Database::Log::LocalStatus::Participant>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Current::ReplicatedLogs::Database::Log::LocalStatus::Participant::Term>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Current::ReplicatedLogs::Database::Log::LocalStatus::Participant::SpearHead>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Views>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Views::Database>::value, CONSTRUCTIBLE_MESSAGE);
@@ -110,6 +117,8 @@ static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Da
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::StatusString>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::ShardingStrategy>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::ShardKeys>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs::Shard>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::ReplicationFactor>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::NumberOfShards>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::KeyOptions>::value, CONSTRUCTIBLE_MESSAGE);
@@ -129,6 +138,21 @@ static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases>::val
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database::Name>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database::Id>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::LogId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Term>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config::WaitForSync>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config::WriteConcern>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config::ReplicationFactor>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants::Server>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader::ServerId>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader::RebootId>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Supervision>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Supervision::State>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Supervision::State::Timestamp>::value, CONSTRUCTIBLE_MESSAGE);
@@ -385,6 +409,8 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Plan", "Collections", "_system", "12345", "shards"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()},
       {{"arango", "Plan", "Collections", "_system", "12345", "shards", "s123"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()->shard("s123")},
       {{"arango", "Plan", "Collections", "_system", "12345", "shards", "s456"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shards()->shard("s456")},
+      {{"arango", "Plan", "Collections", "_system", "12345", "replicatedLogs"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->replicatedLogs()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "replicatedLogs", "s123"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->replicatedLogs()->shard("s123")},
       {{"arango", "Plan", "Collections", "_system", "12345", "statusString"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->statusString()},
       {{"arango", "Plan", "Collections", "_system", "12345", "shardingStrategy"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shardingStrategy()},
       {{"arango", "Plan", "Collections", "_system", "12345", "shardKeys"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->shardKeys()},
@@ -408,6 +434,24 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Plan", "Databases", "someDb"}, root()->arango()->plan()->databases()->database(DatabaseID{"someDb"})},
       {{"arango", "Plan", "Databases", "_system", "name"}, root()->arango()->plan()->databases()->database(DatabaseID{"_system"})->name()},
       {{"arango", "Plan", "Databases", "_system", "id"}, root()->arango()->plan()->databases()->database(DatabaseID{"_system"})->id()},
+      {{"arango", "Plan", "ReplicatedLogs"}, root()->arango()->plan()->replicatedLogs()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system"}, root()->arango()->plan()->replicatedLogs()->database("_system")},
+      {{"arango", "Plan", "ReplicatedLogs", "someDb"}, root()->arango()->plan()->replicatedLogs()->database("someDb")},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "12345"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("12345")},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "logId"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->logId()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "term"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->term()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "config"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->config()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "config", "waitForSync"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->config()->waitForSync()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "config", "writeConcern"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->config()->writeConcern()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "config", "replicationFactor"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->config()->replicationFactor()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "participants"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->participants()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "participants", "12345"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->participants()->server("12345")},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "participants", "98765"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->participants()->server("98765")},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "leader"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->leader()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "leader", "serverId"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->leader()->serverId()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "leader", "rebootId"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->leader()->rebootId()},
       {{"arango", "Current"}, root()->arango()->current()},
       {{"arango", "Current", "ServersKnown"}, root()->arango()->current()->serversKnown()},
       {{"arango", "Current", "ServersKnown", "PRMR-1234"}, root()->arango()->current()->serversKnown()->server("PRMR-1234")},
@@ -459,6 +503,15 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Current", "Databases", "_system", "PRMR-1234", "id"}, root()->arango()->current()->databases()->database("_system")->server("PRMR-1234")->id()},
       {{"arango", "Current", "Databases", "_system", "PRMR-1234", "error"}, root()->arango()->current()->databases()->database("_system")->server("PRMR-1234")->error()},
       {{"arango", "Current", "Databases", "_system", "PRMR-1234", "errorMessage"}, root()->arango()->current()->databases()->database("_system")->server("PRMR-1234")->errorMessage()},
+      {{"arango", "Current", "ReplicatedLogs"}, root()->arango()->current()->replicatedLogs()},
+      {{"arango", "Current", "ReplicatedLogs", "_system"}, root()->arango()->current()->replicatedLogs()->database("_system")},
+      {{"arango", "Current", "ReplicatedLogs", "myDb"}, root()->arango()->current()->replicatedLogs()->database("myDb")},
+      {{"arango", "Current", "ReplicatedLogs", "_system", "12345"}, root()->arango()->current()->replicatedLogs()->database("_system")->log("12345")},
+      {{"arango", "Current", "ReplicatedLogs", "_system", "12345", "localStatus"}, root()->arango()->current()->replicatedLogs()->database("_system")->log("12345")->localStatus()},
+      {{"arango", "Current", "ReplicatedLogs", "_system", "12345", "localStatus", "12345"}, root()->arango()->current()->replicatedLogs()->database("_system")->log("12345")->localStatus()->participant("12345")},
+      {{"arango", "Current", "ReplicatedLogs", "_system", "12345", "localStatus", "67890"}, root()->arango()->current()->replicatedLogs()->database("_system")->log("12345")->localStatus()->participant("67890")},
+      {{"arango", "Current", "ReplicatedLogs", "_system", "12345", "localStatus", "12345", "term"}, root()->arango()->current()->replicatedLogs()->database("_system")->log("12345")->localStatus()->participant("12345")->term()},
+      {{"arango", "Current", "ReplicatedLogs", "_system", "12345", "localStatus", "12345", "spearHead"}, root()->arango()->current()->replicatedLogs()->database("_system")->log("12345")->localStatus()->participant("12345")->spearHead()},
       {{"arango", "Supervision"}, root()->arango()->supervision()},
       {{"arango", "Supervision", "State"}, root()->arango()->supervision()->state()},
       {{"arango", "Supervision", "State", "Timestamp"}, root()->arango()->supervision()->state()->timestamp()},
