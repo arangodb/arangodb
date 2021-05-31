@@ -79,6 +79,23 @@ struct velocypack::Extractor<RebootId> {
   }
 };
 
+auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add("term", VPackValue(term.value));
+  {
+    VPackObjectBuilder ob2(&builder, "participants");
+    for (auto const& [p, l] : participants) {
+      builder.add(p, VPackSlice::emptyObjectSlice());
+    }
+  }
+
+  if (leader.has_value()) {
+    VPackObjectBuilder ob2(&builder, "leader");
+    builder.add("serverId", VPackValue(leader->serverId));
+    builder.add("rebootId", VPackValue(leader->rebootId.value()));
+  }
+}
+
 LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t, VPackSlice slice) {
   term = slice.get("term").extract<LogTerm>();
   for (auto const& [key, value] : VPackObjectIterator(slice.get("participants"))) {
