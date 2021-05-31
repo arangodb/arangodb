@@ -1,6 +1,20 @@
 devel
 -----
 
+* Implemented an optimization for Traversals. If you apply a POST filter on
+  the vertex and/or edge result this filter will now be applied during the
+	traversal to avoid generating the full output for AQL. This will have
+	positive effect if you filter on the vertex/edge but return the path,
+	this way the system does only need to Produce a path that is allowed to
+	be passed through.
+	e.g.
+  
+	  FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+		  FILTER v.isRelevant == true
+			RETURN p
+
+	can now be optimized, and the Traversal statement will only produce
+	paths where the last vertex has `isRelevant == true`.
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
