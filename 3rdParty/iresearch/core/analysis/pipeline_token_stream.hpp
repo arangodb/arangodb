@@ -50,16 +50,16 @@ class pipeline_token_stream final
 
   explicit pipeline_token_stream(options_t&& options);
   virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
-    auto atr = irs::get_mutable(attrs_, id);
-    if (!atr) {
+    auto attr = irs::get_mutable(attrs_, id);
+    if (!attr) {
       for (auto it = rbegin(pipeline_); it != rend(pipeline_); ++it) {
-        atr = const_cast<analyzer&>(it->get_stream()).get_mutable(id);
-        if (atr) {
+        attr = const_cast<analyzer&>(it->get_stream()).get_mutable(id);
+        if (attr) {
           break;
         }
       }
     }
-    return atr;
+    return attr;
   }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
