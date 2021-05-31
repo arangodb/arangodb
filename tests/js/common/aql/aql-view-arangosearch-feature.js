@@ -1623,7 +1623,70 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true);
         }
       }
-      // invalid properties
+      // with identity
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"aql", properties:{queryString:"RETURN '7'"}},
+            {type:"identity", properties:{}}]});
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "7"], result[0]);
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // incompatible pipeline members
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
+            {type:"norm", properties:{locale:"ru_RU.UTF8", "case":"upper"}}]});
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // incompatible pipeline members with geojson (non-primitive type acceptor)
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
+            {type:"geojson", properties:{}}]});
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // incompatibel aql retval with identity
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
+            {type:"identity", properties:{}}]});
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
+      // invalid pipeline properties
       {
         try {
           analyzers.save(analyzerName, "pipeline", { pipeline:2 } );
