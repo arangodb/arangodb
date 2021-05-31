@@ -528,7 +528,20 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
   if (jobId != nullptr) {
     auto& jobManager = _server.server().getFeature<GeneralServerFeature>().jobManager();
-    jobManager.initAsyncJob(handler);
+    try {
+      // This will throw if a soft shutdown is already going on on a
+      // coordinator. But this can also throw if we have an
+      // out of memory situation, so we better handle this anyway.
+      jobManager.initAsyncJob(handler);
+    } catch(arangodb::basics::Exception const& exc) {
+      LOG_TOPIC("fee33", INFO, Logger::STARTUP)
+        << "Async job rejected due to soft shutdown.";
+      return false;
+    } catch(std::exception const& exc) {
+      LOG_TOPIC("fee34", INFO, Logger::STARTUP)
+        << "Async job rejected due to out of memory.";
+      return false;
+    }
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager

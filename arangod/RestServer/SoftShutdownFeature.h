@@ -74,6 +74,8 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
   struct Status {
     uint64_t AQLcursors;
     uint64_t transactions;
+    uint64_t pendingJobs;
+    uint64_t doneJobs;
     bool allClear;
     bool softShutdownOngoing;
   };

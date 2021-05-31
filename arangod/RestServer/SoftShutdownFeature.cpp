@@ -23,6 +23,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "RestServer/ConsoleFeature.h"
@@ -93,8 +94,16 @@ void SoftShutdownTracker::initiateSoftShutdown() {
         << "Received second soft shutdown request, ignoring it...";
     return;
   }
+
   LOG_TOPIC("fedd2", INFO, Logger::STARTUP)
       << "Initiating soft shutdown...";
+
+  // Tell asynchronous job manager:
+  auto& generalServerFeature = _server.getFeature<GeneralServerFeature>();
+  auto& jobManager = generalServerFeature.jobManager();
+  jobManager.initiateSoftShutdown();
+
+  // And initiate our checker to watch numbers:
   if (!::queueShutdownChecker(_workItemMutex, _workItem, _checkFunc)) {
     // Make it hard in this case:
     LOG_TOPIC("de425", INFO, Logger::STARTUP)
@@ -144,6 +153,8 @@ void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,
   builder.add("softShutdownOngoing", VPackValue(status.softShutdownOngoing));
   builder.add("AQLcursors", VPackValue(status.AQLcursors));
   builder.add("transactions", VPackValue(status.transactions));
+  builder.add("pendingJobs", VPackValue(status.pendingJobs));
+  builder.add("doneJobs", VPackValue(status.doneJobs));
   builder.add("allClear", VPackValue(status.allClear));
 }
 
@@ -168,8 +179,16 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
     status.transactions = 0;
   }
 
+  // Get numbers of pending and done asynchronous jobs:
+  auto& generalServerFeature = _server.getFeature<GeneralServerFeature>();
+  auto& jobManager = generalServerFeature.jobManager();
+  std::tie(status.pendingJobs, status.doneJobs)
+      = jobManager.getNrPendingAndDone();
+
   status.allClear = status.AQLcursors == 0 &&
-                    status.transactions == 0;
+                    status.transactions == 0 &&
+                    status.pendingJobs == 0 &&
+                    status.doneJobs == 0;
   return status;
 }
 
