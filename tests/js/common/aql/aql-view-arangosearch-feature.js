@@ -1634,7 +1634,6 @@ function iResearchFeatureAqlTestSuite () {
             null,
             { }
           ).toArray();
-          print(result);
           assertEqual(1, result.length);
           assertEqual(1, result[0].length);
           assertEqual([["oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"]], result[0]);
