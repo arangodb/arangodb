@@ -206,7 +206,8 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 
   int64_t result = static_cast<int64_t>(left) + static_cast<int64_t>(r);
   TRI_ASSERT(result >= static_cast<int64_t>(left));
-  TRI_ASSERT(result < left + static_cast<int64_t>(range));
+  TRI_ASSERT(result < static_cast<int64_t>(left) + static_cast<int64_t>(range));
+  TRI_ASSERT(result <= static_cast<int64_t>(INT32_MAX));
   return static_cast<int32_t>(result);
 }
 
