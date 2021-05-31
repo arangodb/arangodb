@@ -394,6 +394,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   
   std::shared_ptr<PrefetchTask> _prefetchTask;
   
+  Result _firstFailure;
+  
   bool _hasMemoizedCall{false};
 
   // Only used in passthrough variant.
