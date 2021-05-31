@@ -173,7 +173,7 @@ Result IResearchInvertedIndexFactory::normalize(velocypack::Builder& normalized,
                                                 bool isCreation, TRI_vocbase_t const& vocbase) const {
   TRI_ASSERT(normalized.isOpenObject());
   // FIXME: We need separate handling in case of non-identity analyzers
-  Result res = IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(definition, normalized);
+  Result res = IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(normalized, definition);
   if (res.ok()) {
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(arangodb::Index::oldtypeName(
@@ -190,9 +190,6 @@ Result IResearchInvertedIndexFactory::normalize(velocypack::Builder& normalized,
     bool bck = basics::VelocyPackHelper::getBooleanValue(
         definition, arangodb::StaticStrings::IndexInBackground, false);
     normalized.add(arangodb::StaticStrings::IndexInBackground, VPackValue(bck));
-
-    
-
   }
   return res;
 }
@@ -204,6 +201,23 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::init(
 
 Result IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(
     velocypack::Builder& normalized, velocypack::Slice definition) {
+  IResearchViewMeta tmpMeta;
+  std::string errField; 
+  if (!tmpMeta.init(definition, errField)) {
+     return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        errField.empty()
+        ? (std::string("failed to initialize index from definition: ") + definition.toString())
+        : (std::string("failed to initialize index from definition, error in attribute '")
+          + errField + "': " + definition.toString()));
+  }
+  if (!tmpMeta.json(normalized)) {
+    return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failed to initialize index from definition: ") + definition.toString());
+  }
+  normalized.close();
+  std::cerr << normalized.toString();
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
