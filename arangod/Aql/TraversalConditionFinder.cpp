@@ -113,6 +113,7 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, As
 }
 
 static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
+  /*
   // do a quick first check for all comparisons
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
@@ -158,6 +159,7 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
       break;
     }
   }
+  */
 
   switch (node->type) {
     case NODE_TYPE_VARIABLE:
