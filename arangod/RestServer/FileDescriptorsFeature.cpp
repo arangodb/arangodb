@@ -192,33 +192,40 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
         TRI_ASSERT(current.hard >= recommended);
         recommended = current.hard;
       }
-    
+
+#ifdef __APPLE__
+      // For MacOs there is an upper bound on open file-handles
+      // in addition to the user defined hard limit.
+      // The bad news is that the user-defined hard limit can be larger
+      // then the upper bound, in this case the below setting of soft limit
+      // to hard limit will always fail. With the below line we only set
+      // to at most the upper bound given by the System (OPEN_MAX).
+      recommended = std::min((rlim_t)OPEN_MAX, recommended);
+#endif
       if (current.soft < recommended) {
         LOG_TOPIC("2940e", DEBUG, arangodb::Logger::SYSCALL)
-          << "soft limit " << current.soft << " is too small, trying to raise";
+            << "soft limit " << current.soft << " is too small, trying to raise";
 
         FileDescriptors copy = current;
         copy.soft = recommended;
         if (copy.store() != 0) {
           LOG_TOPIC("ba733", WARN, arangodb::Logger::SYSCALL)
-            << "cannot raise the file descriptors limit to " << recommended << ": "
-            << strerror(errno);
+              << "cannot raise the file descriptors limit to " << recommended
+              << ": " << strerror(errno);
         }
       }
     }
   };
 
-  // first try to raise file descriptors to at least the recommended minimum value.
-  // as the recommended minimum value is pretty low, there is a high chance that this
-  // actually succeeds and does not violate any hard limits
-  doAdjust(std::max<rlim_t>(
-    static_cast<rlim_t>(_descriptorsMinimum),
-    FileDescriptors::recommendedMinimum()
-  ));
+  // first try to raise file descriptors to at least the recommended minimum
+  // value. as the recommended minimum value is pretty low, there is a high
+  // chance that this actually succeeds and does not violate any hard limits
+  doAdjust(std::max<rlim_t>(static_cast<rlim_t>(_descriptorsMinimum),
+                            FileDescriptors::recommendedMinimum()));
 
-  // still, we are not satisfied and will now try to raise the file descriptors limit
-  // even further. if that fails, then it is at least likely that the small raise in
-  // step 1 has worked.
+  // still, we are not satisfied and will now try to raise the file descriptors
+  // limit even further. if that fails, then it is at least likely that the
+  // small raise in step 1 has worked.
   doAdjust(65535);
 }
 
