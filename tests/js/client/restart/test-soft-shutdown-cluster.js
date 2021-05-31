@@ -96,6 +96,7 @@ function testSuite() {
       db._drop(cn);
     },
 
+    /*
     testSoftShutdownWithoutTraffic : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -282,6 +283,58 @@ function testSuite() {
       resp = arango.DELETE(`/_api/transaction/${resp.result.id}`);
       assertFalse(resp.error);
       assertEqual(200, resp.code);
+
+      // And now it should shut down in due course...
+      waitForShutdown(coordinator, 30);
+      restartInstance(coordinator);
+    },
+*/
+    testSoftShutdownWithAsyncRequest : function() {
+      let coordinators = getServers('coordinator');
+      assertTrue(coordinators.length > 0);
+      let coordinator = coordinators[0];
+      let instanceInfo = global.instanceInfo;
+
+      // Create a streaming transaction:
+      let data = { query: `RETURN SLEEP(15)` };
+
+      let resp = arango.POST_RAW("/_api/cursor", data, {"x-arango-async":"store"});
+      console.warn("Produced cursor asynchronously:", resp);
+
+      // Now use soft shutdown API to shut coordinator down:
+      let status = arango.GET("/_admin/shutdown");
+      assertFalse(status.softShutdownOngoing);
+      arango.DELETE("/_admin/shutdown?soft=true");
+      status = arango.GET("/_admin/shutdown");
+      console.warn("status1:", status);
+      assertTrue(status.softShutdownOngoing);
+      assertEqual(0, status.AQLcursors);
+      assertEqual(1, status.transactions);
+      assertEqual(1, status.pendingJobs);
+      assertEqual(0, status.doneJobs);
+      assertFalse(status.allClear);
+
+      // It should fail to create a new cursor:
+      let respFailed = arango.POST_RAW("/_api/cursor", data, {"x-arango-async":"store"});
+      assertTrue(respFailed.error);
+      assertEqual(503, respFailed.code);
+
+      // Now wait for some seconds:
+      wait(20);   // Let query terminate, then the job should be done
+
+      status = arango.GET("/_admin/shutdown");
+      console.warn("status2:", status);
+      assertTrue(status.softShutdownOngoing);
+      assertEqual(0, status.AQLcursors);
+      assertEqual(0, status.transactions);
+      assertEqual(0, status.pendingJobs);
+      assertEqual(1, status.doneJobs);
+      assertFalse(status.allClear);
+
+      // And collect the job result:
+      resp = arango.PUT(`/_api/job/${resp.headers["x-arango-async-id"]}`, {});
+      assertFalse(resp.error);
+      assertEqual(201, resp.code);
 
       // And now it should shut down in due course...
       waitForShutdown(coordinator, 30);
