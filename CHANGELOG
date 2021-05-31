@@ -3,12 +3,12 @@ devel
 
 * Bug-Fix (MacOs): In MacOs there is an upper bound for descriptors defined by
   the system, which is independend of the settings in `ulimit -n`. If the
-	hard limit is set above this upper bound value ArangoDB tries to raise the
-	soft limit to the hard limit on boot. This will fail due to the system
-	limit. This could cause ArangoDB to not start, asking you to lower the
-	minimum of required file descriptors. The system set upper bound is now
-	honored and the soft limit will be set to either hard limit or system limit
-	whichever is lower.
+  hard limit is set above this upper bound value ArangoDB tries to raise the
+  soft limit to the hard limit on boot. This will fail due to the system
+  limit. This could cause ArangoDB to not start, asking you to lower the
+  minimum of required file descriptors. The system set upper bound is now
+  honored and the soft limit will be set to either hard limit or system limit
+  whichever is lower.
 
 * When writing to starting shard leader respond with specific
   503. Fixes BTS-390.
