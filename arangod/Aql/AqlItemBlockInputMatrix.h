@@ -37,13 +37,14 @@ class AqlItemBlockInputMatrix {
  public:
   explicit AqlItemBlockInputMatrix(ExecutorState state);
 
-  AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const&);
-
   AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix);
 
   std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
   ShadowAqlItemRow peekShadowRow() const;
 
+  void reset() noexcept { _lastRange.reset(); }
+  bool hasBlock() const noexcept { return _lastRange.hasBlock(); }
+  
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
   bool hasValidRow() const noexcept;
@@ -88,7 +89,6 @@ class AqlItemBlockInputMatrix {
   void advanceBlockIndexAndShadowRow() noexcept;
 
  private:
-  arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   ExecutorState _finalState{ExecutorState::HASMORE};
 
   // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and

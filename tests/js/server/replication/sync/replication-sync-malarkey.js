@@ -35,7 +35,7 @@ const replication = require('@arangodb/replication');
 const leaderEndpoint = arango.getEndpoint();
 const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 const errors = require("internal").errors;
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const { deriveTestSuite, compareStringIds } = require('@arangodb/test-helper');
 
 const cn = 'UnitTestsReplication';
 
@@ -146,6 +146,43 @@ function BaseTestConfig () {
       // clear all failure points
       clearFailurePoints();
       db._drop(cn);
+    },
+    
+    testInsertOldRevisions: function () {
+      let c = db._create(cn);
+      let rev1 = c.insert({ _key: "a" })._rev;
+      
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+      
+      connectToLeader();
+      db._flushCache();
+      
+      // insert an older revision
+      let rev2 = c.insert({ _key: "b", _rev: "_ZAAHwuy---" }, { isRestore: true })._rev;
+      assertEqual("_ZAAHwuy---", rev2);
+
+      assertEqual(1, compareStringIds(rev1, rev2));
+
+      connectToFollower();
+      db._flushCache();
+      
+      // sync again
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      c = db._collection(cn);
+     
+      checkCountConsistency(cn, 2);
     },
     
     testInsertRemoveInsertRemove: function () {

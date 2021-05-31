@@ -29,7 +29,6 @@ const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 
 const _ = require('lodash');
 const {db, aql} = require('@arangodb');
-const console = require('console');
 const { getResponsibleServers } = global.ArangoClusterInfo;
 const internal = require('internal');
 const jsunity = require('jsunity');

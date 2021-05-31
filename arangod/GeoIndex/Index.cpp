@@ -117,7 +117,7 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     if (!ll.is_valid()) {
       LOG_TOPIC("8173c", DEBUG, arangodb::Logger::FIXME)
           << "illegal geo-coordinates, ignoring entry";
-      return TRI_ERROR_NO_ERROR;
+      return TRI_ERROR_BAD_PARAMETER;
     }
     centroid = ll.ToPoint();
     cells.emplace_back(centroid);
