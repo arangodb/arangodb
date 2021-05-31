@@ -1,6 +1,7 @@
 devel
 -----
-
+* Added check for data type compatibility between members of pipeline
+  ArangoSearch analyzer.
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
