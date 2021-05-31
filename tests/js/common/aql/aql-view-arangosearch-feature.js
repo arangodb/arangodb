@@ -1623,6 +1623,24 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true);
         }
       }
+      // check preserving output type of last pipe member
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:[
+            {type:"identity", properties:{}},
+            {type:"aql", properties:{queryString:"RETURN @param", returnType:"number"}},]});
+          let result = db._query(
+            "RETURN TOKENS('1', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(4, result[0].length);
+          assertEqual(["oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"], result[0]);
+        } finally {
+          try{analyzers.remove(analyzerName, true);} catch(e) {}
+        }
+      }
       // with identity
       {
         try {
@@ -1637,9 +1655,6 @@ function iResearchFeatureAqlTestSuite () {
           assertEqual(1, result.length);
           assertEqual(1, result[0].length);
           assertEqual([ "7"], result[0]);
-        } catch (err) {
-          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
-                      err.errorNum);
         } finally {
           try{analyzers.remove(analyzerName, true);} catch(e) {}
         }

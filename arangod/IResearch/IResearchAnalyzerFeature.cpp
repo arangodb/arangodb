@@ -1339,9 +1339,11 @@ bool AnalyzerPool::init(
              << "Failed to validate pipeline analyzer: " << error;
           return false;
         }
+        std::tie(_inputType, std::ignore, _storeFunc) = getAnalyzerMeta(instance.get());
+        _returnType = prevType; // for pipeline we take last pipe member output type as whole pipe output type
+      } else {
+        std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance.get());
       }
-
-      std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance.get());
       _features = features;  // store only requested features
       _revision = revision;
       return true;
