@@ -4520,7 +4520,6 @@ function testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitGen(testGraph
 
 const assertEarlyFilterOptimization = (testGraph, query, numAllowedResults) => {
       assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
-  require("internal").print("Starting query");
       const profile = db._query(query, {profile: 2}).getExtra();
       const result = getCompactStatsNodes(profile).filter(n => n.type == TraversalBlock)
       // We only have one TraversalBlock
@@ -4576,6 +4575,55 @@ const testCompleteGraphOptimizeEWeighted = (testGraph) => assertEarlyFilterOptim
      FILTER e[${testGraph.weightAttribute()}] == 1
      RETURN v
   `, 1);
+
+const testCompleteGraphOptimizeVBFSD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs"}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVDFSD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "dfs"}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVNeighborsD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs", uniqueVertices: "global"}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVWeightedD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeEBFSD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v, e IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs"}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeEDFSD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v, e IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "dfs"}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeENeighborsD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v,e  IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs", uniqueVertices: "global"}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeEWeightedD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v, e IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
 
 
 function getExpectedBinTree() {
@@ -5901,6 +5949,14 @@ const testsByGraph = {
     testCompleteGraphOptimizeEDFS,
     testCompleteGraphOptimizeENeighbors,
     testCompleteGraphOptimizeEWeighted,
+    testCompleteGraphOptimizeVBFSD0,
+    testCompleteGraphOptimizeVDFSD0,
+    testCompleteGraphOptimizeVNeighborsD0,
+    testCompleteGraphOptimizeVWeightedD0,
+    testCompleteGraphOptimizeEBFSD0,
+    testCompleteGraphOptimizeEDFSD0,
+    testCompleteGraphOptimizeENeighborsD0,
+    testCompleteGraphOptimizeEWeightedD0,
   },
   easyPath: {
     testEasyPathAllCombinations,

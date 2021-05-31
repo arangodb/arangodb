@@ -272,6 +272,18 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     }
   }
 
+  list = base.get("postFilter");
+  if (list.isObject()) {
+    TRI_ASSERT(list.hasKey("expression"));
+    TRI_ASSERT(list.hasKey("variables"));
+    _postFilterExpression = std::make_unique<aql::Expression>(plan->getAst(), list);
+    list = list.get("variables");
+    TRI_ASSERT(list.isArray());
+    for (auto const& varinfo : VPackArrayIterator(list)) {
+      _postFilterVariables.emplace(plan->getAst()->variables()->createVariable(varinfo));
+    }
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
@@ -505,6 +517,25 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     }
     nodes.close();
   }
+
+  {
+    auto pFilter = postFilterExpression();
+    if (pFilter != nullptr) {
+      nodes.add(VPackValue("postFilter"));
+      VPackObjectBuilder postFilterGuard(&nodes);
+
+      // The Expression constructor expects only this name
+      nodes.add(VPackValue("expression"));
+      pFilter->toVelocyPack(nodes, flags);
+
+      nodes.add(VPackValue("variables"));
+      VPackArrayBuilder postFilterVariablesGuard(&nodes);
+      for (auto const& var : _postFilterVariables) {
+        var->toVelocyPack(nodes);
+      }
+    }
+  }
+
   // And close it:
   nodes.close();
 }
@@ -583,7 +614,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     opts->activatePrune(std::move(pruneVars), std::move(pruneRegs),
                         vertexRegIdx, edgeRegIdx, pathRegIdx, pruneExpression());
   }
-  if (!_postFilterConditions.empty()) {
+  if (postFilterExpression() != nullptr) {
     std::vector<Variable const*> postFilterVars;
     getPostFilterVariables(postFilterVars);
     std::vector<RegisterId> postFilterRegs;
@@ -724,6 +755,10 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
         c._pruneVariables.emplace(it);
       }
     }
+  }
+
+  for (auto const& it : _postFilterConditions) {
+    c.registerPostFilterCondition(it->clone(plan.getAst()));
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -946,8 +981,9 @@ void TraversalNode::getPostFilterVariables(std::vector<Variable const*>& res) co
 }
 
 bool TraversalNode::isPathOutVariableUsedLater() const {
-  return _pathOutVariable != nullptr && 
-          (options()->producePathsVertices() || options()->producePathsEdges() || options()->producePathsWeights());
+  return _pathOutVariable != nullptr &&
+         (options()->producePathsVertices() || options()->producePathsEdges() ||
+          options()->producePathsWeights());
 }
 
 bool TraversalNode::isPathOutVariableAccessed() const {
@@ -985,7 +1021,7 @@ auto TraversalNode::options() const -> TraverserOptions* {
 }
 
 Expression* TraversalNode::postFilterExpression() const {
-  if (!_postFilterExpression) {
+  if (!_postFilterExpression && !_postFilterConditions.empty()) {
     auto ast = _plan->getAst();
     AstNode* ands = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     for (auto it : _postFilterConditions) {

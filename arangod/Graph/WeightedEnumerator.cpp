@@ -177,8 +177,8 @@ bool WeightedEnumerator::next() {
     if (_opts->minDepth == 0) {
       if (_opts->usesPostFilter()) {
         auto evaluator = _opts->getPostFilterEvaluator();
-        if (!usePostFilter(evaluator)) {
-          return false;
+        if (usePostFilter(evaluator)) {
+          return true;
         }
       } else {
         return true;
