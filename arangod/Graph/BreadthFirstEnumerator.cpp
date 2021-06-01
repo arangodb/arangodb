@@ -107,7 +107,6 @@ bool BreadthFirstEnumerator::next() {
   // a vertex.
   while (true) {
     while (_lastReturned < _schreierIndex) {
-      LOG_DEVEL << "Testing " << _lastReturned << " of " << _schreierIndex;
       // We still have something on our stack.
       // Paths have been read but not returned.
 
