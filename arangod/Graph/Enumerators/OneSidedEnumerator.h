@@ -28,6 +28,7 @@
 
 #include "Basics/ResourceUsage.h"
 
+#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Transaction/Methods.h"
@@ -50,7 +51,7 @@ namespace graph {
 struct OneSidedEnumeratorOptions;
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidatorType>
-class OneSidedEnumerator {
+class OneSidedEnumerator : public TraversalEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access
   using ResultPathType = SingleProviderPathResult<ProviderType, PathStoreType, Step>;
@@ -70,7 +71,7 @@ class OneSidedEnumerator {
 
   ~OneSidedEnumerator();
 
-  void clear();
+  void clear() override;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.
@@ -78,7 +79,7 @@ class OneSidedEnumerator {
    * @return true There will be no further path.
    * @return false There is a chance that there is more data available.
    */
-  [[nodiscard]] bool isDone() const;
+  [[nodiscard]] bool isDone() const override;
 
   /**
    * @brief Reset to new source and target vertices.
@@ -90,7 +91,7 @@ class OneSidedEnumerator {
    * @param source The source vertex to start the paths
    * @param depth The depth we're starting the search at
    */
-  void reset(VertexRef source, size_t depth = 0);
+  void reset(VertexRef source, size_t depth = 0) override;
 
   /**
    * @brief Get the next path, if available written into the result build.
@@ -105,7 +106,7 @@ class OneSidedEnumerator {
    * @return true Found and written a path, result is modified.
    * @return false No path found, result has not been changed.
    */
-  auto getNextPath() -> std::optional<ResultPathType>;
+  auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
 
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
@@ -114,14 +115,14 @@ class OneSidedEnumerator {
    * @return false No path found.
    */
 
-  bool skipPath();
-  auto destroyEngines() -> void;
+  bool skipPath() override;
+  auto destroyEngines() -> void override;
 
   /**
    * @brief Return statistics generated since
    * the last time this method was called.
    */
-  auto stealStats() -> aql::TraversalStats;
+  auto stealStats() -> aql::TraversalStats override;
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;
