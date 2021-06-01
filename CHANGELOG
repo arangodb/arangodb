@@ -1,5 +1,10 @@
 devel
 -----
+
+* Added check to utils/generateAllMetricsDocumentation.py to check that
+  the file name and the value of the name attribute are the same in the
+  metrics documentation snippets. Correct a few such names.
+
 * Added check for data type compatibility between members of pipeline
   ArangoSearch analyzer.
 
