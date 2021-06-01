@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS
+
 * Fix BTS-450: RandomGenerator caught assertion during a value generation within
   `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
 
