@@ -2,7 +2,7 @@ devel
 -----
 
 * Fix BTS-442: a query with fullCount on a sharded collection hangs
-  indefinitely when LIMIT is less then number of available documents.
+  indefinitely when LIMIT is less than number of available documents.
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
