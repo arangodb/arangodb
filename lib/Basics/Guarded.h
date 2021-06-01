@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <stdexcept>
@@ -84,42 +85,35 @@ class MutexGuard {
   explicit MutexGuard(T& value, L mutexLock);
   ~MutexGuard() = default;
 
-  auto get() noexcept -> T&;
-  auto get() const noexcept -> T const&;
+  MutexGuard(MutexGuard&&) noexcept = default;
+  MutexGuard& operator=(MutexGuard&&) noexcept = default;
 
-  auto operator->() noexcept -> T*;
-  auto operator->() const noexcept -> T const*;
+  auto get() const noexcept -> T&;
+  auto operator->() const noexcept -> T*;
 
  private:
-  T& _value;
+  struct nop {
+    void operator()(T*) {}
+  };
+  std::unique_ptr<T, nop> _value;
   L _mutexLock;
 };
 
 template <class T, class L>
 MutexGuard<T, L>::MutexGuard(T& value, L mutexLock)
-    : _value(value), _mutexLock(std::move(mutexLock)) {
+    : _value(&value), _mutexLock(std::move(mutexLock)) {
   if (ADB_UNLIKELY(!_mutexLock.owns_lock())) {
     throw std::invalid_argument("Lock not owned");
   }
 }
 
 template <class T, class L>
-auto MutexGuard<T, L>::get() noexcept -> T& {
-  return _value;
+auto MutexGuard<T, L>::get() const noexcept -> T& {
+  return *_value;
 }
 
 template <class T, class L>
-auto MutexGuard<T, L>::get() const noexcept -> T const& {
-  return _value;
-}
-
-template <class T, class L>
-auto MutexGuard<T, L>::operator->() noexcept -> T* {
-  return std::addressof(get());
-}
-
-template <class T, class L>
-auto MutexGuard<T, L>::operator->() const noexcept -> T const* {
+auto MutexGuard<T, L>::operator->() const noexcept -> T* {
   return std::addressof(get());
 }
 
@@ -160,8 +154,11 @@ class Guarded {
   template <class U, std::enable_if_t<std::is_assignable_v<T, U>, int> = 0>
   void assign(U&&);
 
-  auto getLockedGuard() -> MutexGuard<value_type, lock_type>;
-  auto getLockedGuard() const -> MutexGuard<value_type const, lock_type>;
+  using mutex_guard_type = MutexGuard<value_type, lock_type>;
+  using const_mutex_guard_type = MutexGuard<value_type const, lock_type>;
+
+  auto getLockedGuard() -> mutex_guard_type;
+  auto getLockedGuard() const -> const_mutex_guard_type;
 
   auto tryLockedGuard() -> std::optional<MutexGuard<value_type, lock_type>>;
   auto tryLockedGuard() const -> std::optional<MutexGuard<value_type const, lock_type>>;
@@ -183,26 +180,14 @@ template <class T, class M, template <class> class L>
 template <class F, class R>
 auto Guarded<T, M, L>::doUnderLock(F&& callback) -> R {
   auto guard = lock_type(_mutex);
-
-  if constexpr (!std::is_void_v<R>) {
-    return std::forward<F>(callback)(_value);
-  } else {
-    std::forward<F>(callback)(_value);
-    return;
-  }
+  return std::invoke(std::forward<F>(callback), _value);
 }
 
 template <class T, class M, template <class> class L>
 template <class F, class R>
 auto Guarded<T, M, L>::doUnderLock(F&& callback) const -> R {
   auto guard = lock_type(_mutex);
-
-  if constexpr (!std::is_void_v<R>) {
-    return std::forward<F>(callback)(_value);
-  } else {
-    std::forward<F>(callback)(_value);
-    return;
-  }
+  return std::invoke(std::forward<F>(callback), _value);
 }
 
 template <class T, class M, template <class> class L>
