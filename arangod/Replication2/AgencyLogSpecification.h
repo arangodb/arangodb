@@ -62,7 +62,7 @@ struct LogPlanTermSpecification {
 
 struct LogPlanSpecification {
   LogId id;
-  std::optional<LogPlanTermSpecification> term;
+  std::optional<LogPlanTermSpecification> currentTerm;
 
   LogPlanConfig targetConfig;
 

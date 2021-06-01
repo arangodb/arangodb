@@ -256,8 +256,8 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
     // create a new log
     replication2::agency::LogPlanSpecification spec(replication2::agency::from_velocypack, body);
 
-    if (spec.term.has_value()) {
-      spec.term.reset();
+    if (spec.currentTerm.has_value()) {
+      spec.currentTerm.reset();
     }
 
     return waitForFuture(methods.createReplicatedLog(spec).thenValue([this](Result&& result) {

@@ -128,9 +128,9 @@ auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
   builder.add("id", VPackValue(id.id()));
   builder.add(VPackValue("targetConfig"));
   targetConfig.toVelocyPack(builder);
-  if (term.has_value()) {
-    builder.add(VPackValue("term"));
-    term->toVelocyPack(builder);
+  if (currentTerm.has_value()) {
+    builder.add(VPackValue("currentTerm"));
+    currentTerm->toVelocyPack(builder);
   }
 }
 
@@ -138,7 +138,7 @@ LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice) 
   id = slice.get("id").extract<LogId>();
   targetConfig = LogPlanConfig(from_velocypack, slice.get("targetConfig"));
   if (auto terms = slice.get("term"); !terms.isNone()) {
-    term = LogPlanTermSpecification{from_velocypack, terms};
+    currentTerm = LogPlanTermSpecification{from_velocypack, terms};
   }
 }
 

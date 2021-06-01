@@ -675,17 +675,55 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             using BaseType::DynamicComponent;
 
-            class LogId : public StaticComponent<LogId, Log> {
+            class Id : public StaticComponent<Id, Log> {
              public:
-              constexpr char const* component() const noexcept {
-                return "logId";
-              }
+              constexpr char const* component() const noexcept { return "id"; }
 
               using BaseType::StaticComponent;
             };
 
-            std::shared_ptr<LogId const> logId() const {
-              return LogId::make_shared(shared_from_this());
+            std::shared_ptr<Id const> id() const {
+              return Id::make_shared(shared_from_this());
+            }
+
+            class TargetConfig : public StaticComponent<TargetConfig, Log> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "targetConfig";
+              }
+
+              using BaseType::StaticComponent;
+
+              class WriteConcern : public StaticComponent<WriteConcern, TargetConfig> {
+               public:
+                constexpr char const* component() const noexcept {
+                  return "writeConcern";
+                }
+
+                using BaseType::StaticComponent;
+              };
+
+              std::shared_ptr<WriteConcern const> writeConcern() const {
+                return WriteConcern::make_shared(shared_from_this());
+              }
+
+              class ReplicationFactor
+                  : public StaticComponent<ReplicationFactor, TargetConfig> {
+               public:
+                constexpr char const* component() const noexcept {
+                  return "replicationFactor";
+                }
+
+                using BaseType::StaticComponent;
+              };
+
+              std::shared_ptr<ReplicationFactor const> replicationFactor() const {
+                return ReplicationFactor::make_shared(shared_from_this());
+              }
+            };
+
+            std::shared_ptr<TargetConfig const> targetConfig() const {
+              return TargetConfig::make_shared(shared_from_this());
             }
 
             class CurrentTerm : public StaticComponent<CurrentTerm, Log> {
@@ -1409,7 +1447,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
               using BaseType::StaticComponent;
 
-              class Participant : public DynamicComponent<Participant, LocalStatus, std::string> { // TODO use another class than std::string
+              class Participant : public DynamicComponent<Participant, LocalStatus, ServerID> {
                public:
                 char const* component() const noexcept { return value().c_str(); }
 
