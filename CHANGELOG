@@ -5,7 +5,7 @@ devel
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
 
-* Fix BTS-446: When finding not yet fully initialised agency, do not
+* Fix BTS-446: When finding a not yet fully initialized agency, do not
   immediately fatal exit. Keep trying for (very generous) 5
   minutes.
 
