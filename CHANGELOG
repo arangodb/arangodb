@@ -16,6 +16,13 @@ devel
 	can now be optimized, and the Traversal statement will only produce
 	paths where the last vertex has `isRelevant == true`.
 
+* Fix BTS-450: RandomGenerator caught assertion during a value generation within
+  `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
+
+* Fix BTS-442: a query with fullCount on a sharded collection hangs
+  indefinitely when LIMIT is less than number of available documents.
+
+
 * Bug-Fix (MacOs): In MacOs there is an upper bound for descriptors defined by
   the system, which is independend of the settings in `ulimit -n`. If the
   hard limit is set above this upper bound value ArangoDB tries to raise the
