@@ -163,7 +163,6 @@ class LogicalCollection : public LogicalDataSource {
 #endif
   bool usesRevisionsAsDocumentIds() const;
   void setUsesRevisionsAsDocumentIds(bool);
-  RevisionId minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
 
@@ -392,7 +391,7 @@ class LogicalCollection : public LogicalDataSource {
   TRI_col_type_e const _type;
 
   // @brief Current state of this colletion
-  TRI_vocbase_col_status_e _status;
+  std::atomic<TRI_vocbase_col_status_e> _status;
 
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
@@ -408,15 +407,13 @@ class LogicalCollection : public LogicalDataSource {
 #endif
 
   // SECTION: Properties
-  bool _waitForSync;
+  std::atomic<bool> _waitForSync;
 
   bool const _allowUserKeys;
 
   std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
-
-  RevisionId const _minRevision;
 
   std::string _smartJoinAttribute;
 

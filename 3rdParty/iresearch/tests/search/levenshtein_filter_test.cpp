@@ -26,6 +26,7 @@
 #include "search/prefix_filter.hpp"
 #include "search/term_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
+#include "utils/misc.hpp"
 
 namespace {
 
@@ -386,6 +387,176 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   check_query(make_filter("title", "", 4, 0, true), docs_t{}, costs_t{0}, rdr);
   check_query(make_filter("title", "", 5, 1024, true), docs_t{}, costs_t{0}, rdr);
   check_query(make_filter("title", "", 5, 0, true), docs_t{}, costs_t{0}, rdr);
+}
+
+TEST_P(by_edit_distance_test_case, bm25) {
+  using tests::json_doc_generator;
+  using tests::field_base;
+
+  auto analyzer = irs::analysis::analyzers::get(
+    "text", irs::type<irs::text_format::json>::get(),
+    R"({"locale":"en.UTF-8", "stem":false, "accent":false, "case":"lower", "stopwords":[]})");
+  ASSERT_NE(nullptr, analyzer);
+
+  struct text_field : field_base {
+   public:
+    text_field(irs::analysis::analyzer& analyzer, std::string value)
+      : value_(std::move(value)), analyzer_(&analyzer) {
+      this->name("id");
+      this->features().add<irs::frequency>();
+      this->features().add<irs::norm>();
+    }
+
+    bool write(data_output&) const noexcept {
+      return true;
+    }
+
+    irs::token_stream& get_tokens() const {
+      const bool res = analyzer_->reset(value_);
+      EXPECT_TRUE(res);
+      return *analyzer_;
+    }
+
+   private:
+    std::string value_;
+    irs::analysis::analyzer* analyzer_;
+  };
+
+  {
+    json_doc_generator gen(
+      resource("v_DSS_Entity_id.json"),
+      [&analyzer](tests::document& doc,
+         const std::string& name,
+         const json_doc_generator::json_value& data) {
+        if (json_doc_generator::ValueType::STRING == data.vt && name == "id") {
+          auto field = std::make_shared<text_field>(
+            *analyzer, std::string{data.str.data, data.str.size});
+          doc.insert(field);
+        }
+      });
+
+    add_segment(gen);
+  }
+
+  irs::order ord;
+  auto scorer = irs::scorers::get(
+    "bm25",
+    irs::type<irs::text_format::json>::get(),
+    irs::string_ref::NIL);
+  ASSERT_NE(nullptr, scorer);
+  ord.add(false, std::move(scorer));
+  auto prepared_order = ord.prepare();
+
+  auto index = open_reader();
+  ASSERT_NE(nullptr, index);
+  ASSERT_EQ(1, index->size());
+
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("end202"));
+    opts.max_distance = 2;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 6.21361256f, 261 },
+      { 9.32042027f, 272 },
+      { 7.76701689f, 273 },
+      { 6.21361256f, 289 },
+    };
+
+    auto expected_doc = std::begin(expected_docs);
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      ASSERT_EQ(expected_doc->second, docs->value());
+      ++expected_doc;
+    }
+
+    ASSERT_FALSE(docs->next());
+  }
+
+  {
+    irs::by_edit_distance filter;
+    *filter.mutable_field() = "id";
+    auto& opts = *filter.mutable_options();
+    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("asm212"));
+    opts.max_distance = 2;
+    opts.provider = irs::default_pdp;
+    opts.with_transpositions = true;
+
+    auto prepared = filter.prepare(*index, prepared_order);
+    ASSERT_NE(nullptr, prepared);
+
+    auto docs = prepared->execute(index[0], prepared_order);
+    ASSERT_NE(nullptr, docs);
+
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->is_default());
+
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
+      { 8.1443901f, 265   },
+      { 6.9717164f, 46355 },
+      { 6.9717164f, 46356 },
+      { 6.9717164f, 46357 },
+      { 6.7869916f, 264   },
+      { 6.7869916f, 3054  },
+      { 6.7869916f, 3069  },
+      { 5.8097634f, 46353 },
+      { 5.8097634f, 46354 },
+      { 5.4295926f, 263   },
+      { 5.4295926f, 3062  },
+      { 4.6478105f, 46350 },
+      { 4.6478105f, 46351 },
+      { 4.6478105f, 46352 },
+    };
+
+    std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
+    while (docs->next()) {
+      const auto* scr = score->evaluate();
+      ASSERT_NE(nullptr, scr);
+      const float_t* value = reinterpret_cast<const float_t*>(scr);
+      actual_docs.emplace_back(*value, docs->value());
+    }
+    ASSERT_FALSE(docs->next());
+    ASSERT_EQ(IRESEARCH_COUNTOF(expected_docs), actual_docs.size());
+
+    std::sort(
+      std::begin(actual_docs), std::end(actual_docs),
+      [](const auto& lhs, const auto& rhs) {
+        if (lhs.first < rhs.first) {
+          return false;
+        }
+
+        if (lhs.first > rhs.first) {
+          return true;
+        }
+
+        return lhs.second < rhs.second;
+    });
+
+    auto expected_doc = std::begin(expected_docs);
+    for (auto& actual_doc : actual_docs) {
+      ASSERT_FLOAT_EQ(expected_doc->first, actual_doc.first);
+      ASSERT_EQ(expected_doc->second, actual_doc.second);
+      ++expected_doc;
+    }
+  }
 }
 
 TEST_P(by_edit_distance_test_case, visit) {

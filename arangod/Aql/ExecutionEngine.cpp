@@ -728,7 +728,7 @@ void arangodb::aql::ExecutionEngine::initFromPlanForCalculation(ExecutionPlan& p
   //plan.findCollectionAccessVariables();
   SingleServerQueryInstanciator inst(*this);
   plan.root()->walk(inst);
-  TRI_ASSERT(inst.root)
+  TRI_ASSERT(inst.root);
   setupEngineRoot(*inst.root);
 }
 

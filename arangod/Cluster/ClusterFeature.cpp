@@ -539,6 +539,7 @@ void ClusterFeature::prepare() {
 DECLARE_COUNTER(arangodb_dropped_followers_total, "Number of drop-follower events");
 DECLARE_COUNTER(arangodb_refused_followers_total, "Number of refusal answers from a follower during synchronous replication");
 DECLARE_COUNTER(arangodb_sync_wrong_checksum_total, "Number of times a mismatching shard checksum was detected when syncing shards");
+DECLARE_COUNTER(arangodb_sync_rebuilds_total, "Number of times a follower shard needed to be completely rebuilt because of too many synchronization failures");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -613,6 +614,8 @@ void ClusterFeature::start() {
       server().getFeature<arangodb::MetricsFeature>().add(arangodb_refused_followers_total{});
     _followersWrongChecksumCounter =
       server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
+    _followersTotalRebuildCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_rebuilds_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -851,10 +854,9 @@ AgencyCache& ClusterFeature::agencyCache() {
 
 
 void ClusterFeature::allocateMembers() {
-  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
+  _agencyCallbackRegistry = std::make_unique<AgencyCallbackRegistry>(server(), agencyCallbacksPath());
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
-  _agencyCache =
-    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry, _syncerShutdownCode);
+  _agencyCache = std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry, _syncerShutdownCode);
 }
 
 void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
@@ -872,7 +874,7 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, 
   }
 }
 
-void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
+void ClusterFeature::addDirty(std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& databases) {
   if (databases.size() > 0) {
     MUTEX_LOCKER(guard, _dirtyLock);
     bool addedAny = false;

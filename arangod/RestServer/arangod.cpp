@@ -97,6 +97,7 @@
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/RestartAction.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -328,29 +329,6 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 
 #endif
 
-// The following is a global pointer which can be set from within the process
-// to configure a restart action which happens directly before main()
-// terminates. This is used for our hotbackup restore functionality.
-// See below in main() for details.
-
-namespace arangodb {
-  std::function<int()>* restartAction = nullptr;
-}
-
-// Here is a sample of how to use this:
-//
-// extern std::function<int()>* restartAction;
-//
-// static int myRestartAction() {
-//   std::cout << "Executing restart action..." << std::endl;
-//   return 0;
-// }
-//
-// And then in some function:
-//
-// restartAction = new std::function<int()>();
-// *restartAction = myRestartAction;
-// arangodb::ApplicationServer::server->beginShutdown();
 
 #ifdef __linux__
 
