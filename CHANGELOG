@@ -4,12 +4,12 @@ v3.8.0 (XXXX-XX-XX)
 * Fix BTS-450: RandomGenerator caught assertion during a value generation within
   `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
 
+* Added check for data type compatibility between members of pipeline
+  ArangoSearch analyzer.
+
 
 v3.8.0-rc.1 (2021-05-26)
 ------------------------
-
-* Added check for data type compatibility between members of pipeline
-  ArangoSearch analyzer.
 
 * Fix BTS-442: a query with fullCount on a sharded collection hangs indefinitely
   when LIMIT is less then number of available documents.
