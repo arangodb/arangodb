@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_GRAPHMANAGER_H
-#define ARANGOD_GRAPH_GRAPHMANAGER_H
+#pragma once
 
 #include <velocypack/Buffer.h>
 #include <chrono>
@@ -204,4 +203,3 @@ class GraphManager {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif  // ARANGOD_GRAPH_GRAPHMANAGER_H

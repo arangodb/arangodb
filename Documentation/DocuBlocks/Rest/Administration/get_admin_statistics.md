@@ -4,6 +4,13 @@
 
 @RESTHEADER{GET /_admin/statistics, Read the statistics, getStatistics}
 
+@HINTS
+{% hint 'warning' %}
+This endpoint should no longer be used. It is deprecated from version 3.8.0 on.
+Use `/_admin/metrics/v2` instead, which provides the data exposed by this API
+and a lot more.
+{% endhint %}
+
 @RESTDESCRIPTION
 Returns the statistics information. The returned object contains the
 statistics figures grouped together according to the description returned by

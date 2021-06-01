@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_LDAP_URL_PARSER_H
-#define ARANGODB_BASICS_LDAP_URL_PARSER_H 1
+#pragma once
 
 #include <string>
 
@@ -72,4 +71,3 @@ class LdapUrlParser {
 
 }  // namespace arangodb
 
-#endif

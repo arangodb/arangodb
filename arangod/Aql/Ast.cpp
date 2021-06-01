@@ -687,10 +687,6 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (isUserDefined && *name == '_') {
-    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
-  }
-
   if (_scopes.existsVariable(name, nameLength)) {
     if (!isUserDefined && (strcmp(name, Variable::NAME_OLD) == 0 ||
                            strcmp(name, Variable::NAME_NEW) == 0)) {

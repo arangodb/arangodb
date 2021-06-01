@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDERS_CLUSTER_PROVIDER_H
-#define ARANGOD_GRAPH_PROVIDERS_CLUSTER_PROVIDER_H 1
+#pragma once
 
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseProviderOptions.h"
@@ -184,4 +183,3 @@ class ClusterProvider {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

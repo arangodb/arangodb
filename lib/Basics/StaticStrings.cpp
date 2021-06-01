@@ -66,7 +66,6 @@ std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
-std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
 std::string const StaticStrings::Compact("compact");
 
 // replication headers
@@ -234,6 +233,9 @@ std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 std::string const StaticStrings::EncodingIdentity("identity");
 std::string const StaticStrings::EncodingDeflate("deflate");
 
+std::string const StaticStrings::Body("body");
+std::string const StaticStrings::ParsedBody("parsedBody");
+
 // collection attributes
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
@@ -242,7 +244,6 @@ std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
-std::string const StaticStrings::MinRevision("minRevision");
 std::string const StaticStrings::ObjectId("objectId");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::Satellite("satellite");
@@ -322,13 +323,13 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
-std::string const StaticStrings::RevisionTreeBranchingFactor("branchingFactor");
 std::string const StaticStrings::RevisionTreeCount("count");
 std::string const StaticStrings::RevisionTreeHash("hash");
 std::string const StaticStrings::RevisionTreeMaxDepth("maxDepth");
 std::string const StaticStrings::RevisionTreeNodes("nodes");
 std::string const StaticStrings::RevisionTreeRangeMax("rangeMax");
 std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
+std::string const StaticStrings::RevisionTreeInitialRangeMin("initialRangeMin");
 std::string const StaticStrings::RevisionTreeRanges("ranges");
 std::string const StaticStrings::RevisionTreeResume("resume");
 std::string const StaticStrings::RevisionTreeVersion("version");

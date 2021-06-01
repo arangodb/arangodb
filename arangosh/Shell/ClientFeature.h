@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_CLIENT_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_CLIENT_FEATURE_H 1
+#pragma once
 
 #include <functional>
 
@@ -143,4 +142,3 @@ class ClientFeature final : public HttpEndpointProvider {
 
 }  // namespace arangodb
 
-#endif

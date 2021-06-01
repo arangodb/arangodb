@@ -126,17 +126,15 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 
     VPackSlice responseBody = response->slice();
 
+    if (!responseBody.hasKey("data")) {
+      return {ExecutionState::DONE, nullptr};
+    }
+
     ExecutionState state = ExecutionState::HASMORE;
     if (VelocyPackHelper::getBooleanValue(responseBody, "done", true)) {
       state = ExecutionState::DONE;
     }
-    if (responseBody.hasKey("data")) {
-      SharedAqlItemBlockPtr r =
-          _engine->itemBlockManager().requestAndInitBlock(responseBody);
-
-      return {state, std::move(r)};
-    }
-    return {ExecutionState::DONE, nullptr};
+    return {state, _engine->itemBlockManager().requestAndInitBlock(responseBody) };
   }
 
   // We need to send a request here

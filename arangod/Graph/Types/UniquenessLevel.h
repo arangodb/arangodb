@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_UNIQUENESSLEVEL_H
-#define ARANGOD_GRAPH_UNIQUENESSLEVEL_H 1
+#pragma once
 
 #include <iosfwd>
 
@@ -43,4 +42,3 @@ std::ostream& operator<<(std::ostream& stream, EdgeUniquenessLevel const& level)
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

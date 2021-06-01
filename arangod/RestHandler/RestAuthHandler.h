@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AUTH_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AUTH_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -52,4 +51,3 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

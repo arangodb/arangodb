@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ADMIN_SERVER_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ADMIN_SERVER_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
@@ -58,4 +57,3 @@ class RestAdminServerHandler : public RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

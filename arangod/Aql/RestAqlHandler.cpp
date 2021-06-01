@@ -166,6 +166,9 @@ void RestAqlHandler::setupClusterQuery() {
     return;
   }
 
+  LOG_TOPIC("f9e30", DEBUG, arangodb::Logger::AQL)
+    << "Setting up cluster AQL with " << querySlice.toJson();
+
   VPackSlice coordinatorRebootIdSlice = querySlice.get(StaticStrings::AttrCoordinatorRebootId);
   VPackSlice coordinatorIdSlice = querySlice.get(StaticStrings::AttrCoordinatorId);
   RebootId rebootId(0);
@@ -244,7 +247,7 @@ void RestAqlHandler::setupClusterQuery() {
     }
   }
   collectionBuilder.close();
-  
+
   // simon: making this write breaks queries where DOCUMENT function
   // is used in a coordinator-snippet above a DBServer-snippet
   AccessMode::Type access = AccessMode::Type::READ;
@@ -252,7 +255,7 @@ void RestAqlHandler::setupClusterQuery() {
   // creates a StandaloneContext or a leased context
   auto q = std::make_unique<ClusterQuery>(createTransactionContext(access),
                                           std::move(options));
-  
+
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
   answerBuilder.openObject();
@@ -406,7 +409,7 @@ RestStatus RestAqlHandler::execute() {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
                       "query with id " + suffixes[1] + " not found");
       }
-      
+
       break;
     }
 
@@ -656,7 +659,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       std::tie(state, skipped, items) =
           _engine->executeForClient(executeCall.callStack(), shardId);
     }
-      
+
     if (state == ExecutionState::WAITING) {
       return RestStatus::WAITING;
     }
@@ -701,7 +704,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     } else {
       items->toVelocyPack(&_engine->getQuery().vpackOptions(), answerBuilder);
     }
-    
+
   } else if (operation == "skipSome") {
     auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
                                                             ExecutionBlock::DefaultBatchSize);
@@ -756,12 +759,12 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   }
 
   answerBuilder.close();
-  
+
   VPackOptions const* opts = &VPackOptions::Defaults;
   if (_engine) { // might be destroyed on shutdown
     opts = &_engine->getQuery().vpackOptions();
   }
-  
+
   generateResult(rest::ResponseCode::OK, std::move(answerBuffer), opts);
 
   return RestStatus::DONE;
@@ -787,7 +790,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;
   }
-  
+
   auto f = query->finalizeClusterQuery(errorCode);
 
   return waitForFuture(std::move(f)
@@ -802,7 +805,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
     answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
     answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
     answerBuilder.close();
-    
+
     generateResult(rest::ResponseCode::OK, std::move(buffer));
   }));
 }

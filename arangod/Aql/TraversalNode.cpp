@@ -329,6 +329,66 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
   }
   return -1;
 }
+  
+void TraversalNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  // this is an important assertion: if options are already built,
+  // we would need to carry out the replacements in several other
+  // places as well
+  TRI_ASSERT(!_optionsBuilt);
+
+  _inVariable = Variable::replace(_inVariable, replacements);
+
+  if (_pruneExpression != nullptr) {
+    // need to replace variables in the prune expression
+    VarSet variables;
+    _pruneExpression->variables(variables);
+    for (auto const& it : variables) {
+      if (replacements.find(it->id) != replacements.end()) {
+        _pruneExpression->replaceVariables(replacements);
+
+        // and need to recalculate the set of variables used
+        // by the prune expression
+        variables.clear();
+        _pruneExpression->variables(variables);
+        _pruneVariables = variables;
+        break;
+      }
+    }
+  }
+}
+
+/// @brief getVariablesUsedHere
+void TraversalNode::getVariablesUsedHere(VarSet& result) const {
+  for (auto const& condVar : _conditionVariables) {
+    if (condVar != getTemporaryVariable()) {
+      result.emplace(condVar);
+    }
+  }
+  for (auto const& pruneVar : _pruneVariables) {
+    if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
+        pruneVar != pathOutVariable()) {
+      result.emplace(pruneVar);
+    }
+  }
+  if (usesInVariable()) {
+    result.emplace(_inVariable);
+  }
+}
+
+/// @brief getVariablesSetHere
+std::vector<Variable const*> TraversalNode::getVariablesSetHere() const {
+  std::vector<Variable const*> vars;
+  if (isVertexOutVariableUsedLater()) {
+    vars.emplace_back(vertexOutVariable());
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    vars.emplace_back(edgeOutVariable());
+  }
+  if (isPathOutVariableUsedLater()) {
+    vars.emplace_back(pathOutVariable());
+  }
+  return vars;
+}
 
 /// @brief check whether an access is inside the specified range
 bool TraversalNode::isInRange(uint64_t depth, bool isEdge) const {
@@ -845,7 +905,8 @@ void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
 }
 
 bool TraversalNode::isPathOutVariableUsedLater() const {
-  return _pathOutVariable != nullptr && options()->producePaths();
+  return _pathOutVariable != nullptr && 
+          (options()->producePathsVertices() || options()->producePathsEdges() || options()->producePathsWeights());
 }
 
 bool TraversalNode::isPathOutVariableAccessed() const {

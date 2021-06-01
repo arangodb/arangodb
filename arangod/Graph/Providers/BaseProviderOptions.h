@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDER_BASEPROVIDEROPTIONS_H
-#define ARANGOD_GRAPH_PROVIDER_BASEPROVIDEROPTIONS_H 1
+#pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Cluster/ClusterInfo.h"
@@ -98,4 +97,3 @@ struct ClusterBaseProviderOptions {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

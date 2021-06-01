@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H
-#define ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H 1
+#pragma once
 
 #include <memory>
 #include "Graph/BaseOptions.h"
@@ -47,8 +46,6 @@ struct ShortestPathOptions : public BaseOptions {
   uint64_t maxDepth;
   std::string start;
   std::string end;
-  std::string weightAttribute;
-  double defaultWeight;
   bool bidirectional;
   bool multiThreaded;
 
@@ -101,12 +98,18 @@ struct ShortestPathOptions : public BaseOptions {
 
   auto estimateDepth() const noexcept -> uint64_t override;
 
+  auto setWeightAttribute(std::string attribute) -> void;
+  auto getWeightAttribute() const& -> std::string;
+  auto setDefaultWeight(double weight) -> void;
+  auto getDefaultWeight() const -> double;
+
  private:
   /// @brief Lookup info to find all reverse edges.
   std::vector<LookupInfo> _reverseLookupInfos;
+  std::string _weightAttribute;
+  double _defaultWeight;
 };
 
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

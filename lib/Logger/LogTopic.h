@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_TOPIC_H
-#define ARANGODB_LOGGER_LOG_TOPIC_H 1
+#pragma once
 
 #include <stddef.h>
 #include <atomic>
@@ -81,4 +80,3 @@ class LogTopic {
 };
 }  // namespace arangodb
 
-#endif

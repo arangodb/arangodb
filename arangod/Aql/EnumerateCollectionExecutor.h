@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
-#define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
+#pragma once
 
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
@@ -168,4 +167,3 @@ class EnumerateCollectionExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

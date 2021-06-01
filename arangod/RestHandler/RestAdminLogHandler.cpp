@@ -161,7 +161,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       options.database = _request->databaseName();
       options.parameters = _request->parameters();
 
-      auto f = network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Get,
+      auto f = network::sendRequestRetry(pool, "server:" + serverId, fuerte::RestVerb::Get,
                                     _request->requestPath(), VPackBuffer<uint8_t>{},
                                     options, buildHeaders(_request->headers()));
       return waitForFuture(std::move(f).thenValue(

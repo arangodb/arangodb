@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_IP_H
-#define ARANGODB_ENDPOINT_ENDPOINT_IP_H 1
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -67,4 +66,3 @@ class EndpointIp : public Endpoint {
 };
 }  // namespace arangodb
 
-#endif

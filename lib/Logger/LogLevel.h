@@ -22,8 +22,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_LEVEL_H
-#define ARANGODB_LOGGER_LOG_LEVEL_H 1
+#pragma once
 
 #include <iosfwd>
 
@@ -47,4 +46,3 @@ enum class LogLevel {
 
 std::ostream& operator<<(std::ostream&, arangodb::LogLevel);
 
-#endif

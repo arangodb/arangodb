@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_METHODS_TRANSACTIONS_HANDLER_H
-#define ARANGOD_VOCBASE_METHODS_TRANSACTIONS_HANDLER_H 1
+#pragma once
 
 #include <v8.h>
 #include <velocypack/Builder.h>
@@ -41,4 +40,3 @@ Result executeTransactionJS(v8::Isolate*, v8::Handle<v8::Value> const& arg,
                             v8::Handle<v8::Value>& result, v8::TryCatch&);
 
 }  // namespace arangodb
-#endif

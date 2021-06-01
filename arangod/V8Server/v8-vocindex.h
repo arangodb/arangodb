@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_VOCINDEX_H
-#define ARANGOD_V8_SERVER_V8_VOCINDEX_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -38,4 +37,3 @@ void TRI_InitV8IndexArangoDB(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate
 
 void TRI_InitV8IndexCollection(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> rt);
 
-#endif

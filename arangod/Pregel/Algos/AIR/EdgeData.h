@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_EDGEDATA_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_EDEGDATA_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -32,12 +31,12 @@
 
 #include <string>
 
-using namespace arangodb::velocypack;
-
 namespace arangodb {
 namespace pregel {
 namespace algos {
 namespace accumulators {
+
+using namespace arangodb::velocypack;
 
 struct EdgeData {
   void reset(VPackSlice const& doc);
@@ -56,4 +55,3 @@ struct EdgeData {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

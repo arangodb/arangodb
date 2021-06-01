@@ -368,8 +368,8 @@ _Enterprise Edition only_
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.1
-* Date: 2019-08-05 20:41:17Z
+* Version: 5.2.1-dev, commit 12cd13cd418512d9e7596921ccdb62e25a103f87
+* Date: 2021-03-30 15:20:30 -0700
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -424,6 +424,15 @@ _Enterprise Edition only_
 * License Name: BSD 2-clause "Simplified" License
 * License Id: BSD-2-Clause
 
+### libmusl
+
+* Name: libmusl
+* Version: Alpine 3.13
+* Project Home: https://git.musl-libc.org/
+* License: https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT
+* License Name: MIT License
+* License Id: MIT
+
 ### nghttp2
 
 * Name: nghttp2
@@ -433,6 +442,24 @@ _Enterprise Edition only_
 * License: https://raw.githubusercontent.com/nghttp2/nghttp2/master/COPYING
 * License Name: MIT License
 * License Id: MIT
+
+### OpenLDAP
+
+* Name: OpenLDAP
+* Version: 2.4.58
+* Date: 2021-03-16
+* License: https://www.openldap.org/software/release/copyright.html
+* License Name: BSD Style License
+* License Id: OpenLDAP
+
+### OpenSSL
+
+* Name: OpenSSL
+* Version: 1.1.1
+* Date: 2021-05-25
+* License: https://spdx.org/licenses/OpenSSL.html
+* License Name: Apache Style License
+* License Id: OpenSSL
 
 ### RocksDB
 
@@ -467,8 +494,8 @@ _Enterprise Edition only_
 ### snappy
 
 * Name: snappy
-* Version: 1.1.8
-* Date: 2020-10-29 23:00:50Z
+* Version: 1.1.9
+* Date: 2021-05-04 22:28:33Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License

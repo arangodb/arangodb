@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
+#pragma once
 
 #include "GeneralServer/RestHandler.h"
 
@@ -40,4 +39,3 @@ class RestPleaseUpgradeHandler : public rest::RestHandler {
 };
 }  // namespace arangodb
 
-#endif

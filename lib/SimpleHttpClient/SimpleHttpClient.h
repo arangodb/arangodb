@@ -23,8 +23,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#pragma once
 
 #include <string.h>
 #include <atomic>
@@ -91,6 +90,10 @@ struct SimpleHttpClientParams {
   uint64_t getRetryWaitTime() { return _retryWaitTime; }
 
   void setRetryMessage(std::string const& m) { _retryMessage = m; }
+  
+  double getRequestTimeout() const { return _requestTimeout; }
+  
+  void setRequestTimeout(double value) { _requestTimeout = value; }
 
   void setMaxPacketSize(size_t ms) { _maxPacketSize = ms; }
 
@@ -200,6 +203,8 @@ class SimpleHttpClient {
 
  public:
   void setInterrupted(bool value);
+
+  request_state state() const { return _state; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates the connection used by the client
@@ -324,7 +329,7 @@ class SimpleHttpClient {
   std::string getHttpErrorMessage(SimpleHttpResult const* result,
                                   ErrorCode* errorCode = nullptr);
 
-  SimpleHttpClientParams& params() { return _params; };
+  SimpleHttpClientParams& params() { return _params; }
 
   /// @brief Thread-safe check abortion status
   bool isAborted() const noexcept {
@@ -500,4 +505,3 @@ class SimpleHttpClient {
 }  // namespace httpclient
 }  // namespace arangodb
 
-#endif

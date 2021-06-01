@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_WALKER_WORKER_H
-#define ARANGOD_AQL_WALKER_WORKER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -104,4 +103,3 @@ class WalkerWorker : public WalkerWorkerBase<T> {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

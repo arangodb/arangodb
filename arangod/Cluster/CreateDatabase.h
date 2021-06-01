@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_CREATE_DATABASE_H
-#define ARANGODB_MAINTENANCE_CREATE_DATABASE_H
+#pragma once
 
 #include "ActionBase.h"
 
@@ -43,4 +42,3 @@ class CreateDatabase : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

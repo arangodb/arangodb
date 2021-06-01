@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_WEIGHTEDENUMERATOR_H
-#define ARANGODB_GRAPH_WEIGHTEDENUMERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/PathEnumerator.h"
@@ -145,7 +144,7 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
   aql::AqlValue vertexToAqlValue(size_t index);
   aql::AqlValue edgeToAqlValue(size_t index);
   aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
-  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index, bool fromPrune);
 
   bool shouldPrune();
   double weightEdge(arangodb::velocypack::Slice edge) const;
@@ -159,4 +158,3 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

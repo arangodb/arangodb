@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_COMMON_H
-#define ARANGOD_IRESEARCH__IRESEARCH_COMMON_H 1
+#pragma once
 
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
@@ -120,4 +119,3 @@ struct StaticStrings {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FUNCTION_H
-#define ARANGOD_AQL_FUNCTION_H 1
+#pragma once
 
 #include "Aql/Functions.h"
 
@@ -156,4 +155,3 @@ struct Function {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

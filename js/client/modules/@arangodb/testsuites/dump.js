@@ -122,6 +122,9 @@ class DumpRestoreHelper {
     if (this.dumpOptions.encrypted) {
       this.dumpConfig.activateEncryption();
     }
+    if (this.dumpOptions.hasOwnProperty("threads")) {
+      this.dumpConfig.setThreads(this.dumpOptions.threads);
+    }
     if (this.dumpOptions.jwtSecret) {
       let keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
       if (!fs.exists(keyDir)) {  // needed on win32
@@ -148,6 +151,9 @@ class DumpRestoreHelper {
       this.restoreOldConfig.setRootDir(pu.TOP_DIR);
     } else {
       this.restoreOldConfig.setEndpoint(this.instanceInfo.endpoint);
+    }
+    if (this.restoreOptions.hasOwnProperty("threads")) {
+      this.restoreConfig.setThreads(this.restoreOptions.threads);
     }
     if (this.restoreOptions.jwtSecret) {
       let keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
@@ -707,7 +713,8 @@ function dumpWithCrashes (options) {
   let dumpOptions = {
     allDatabases: true,
     deactivateCompression: true,
-    activateFailurePoint: true
+    activateFailurePoint: true,
+    threads: 1,
   };
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
@@ -870,6 +877,10 @@ function dumpMaskings (options) {
 
 function hotBackup (options) {
   let c = getClusterStrings(options);
+  console.warn(options);
+  if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
+    options.dbServers = 3;
+  }
   if (!require("internal").isEnterprise()) {
     return {
       'hotbackup is only enterprise': {
@@ -882,6 +893,7 @@ function hotBackup (options) {
     dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCheck: 'dump' + c.cluster + '.js',
     dumpModify: 'dump-modify.js',
+    dumpMoveShard: 'dump-move-shard.js',
     dumpRecheck: 'dump-modified.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     // do we need this? dumpCheckGraph: 'check-graph.js',
@@ -915,6 +927,7 @@ function hotBackup (options) {
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const dumpCheck = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheck));
   const dumpModify = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpModify));
+  const dumpMoveShard = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpMoveShard));
   const dumpRecheck  = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpRecheck));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
   if (!helper.runSetupSuite(setupFile) ||
@@ -925,6 +938,8 @@ function hotBackup (options) {
       !helper.createHotBackup() ||
       !helper.isAlive() ||
       !helper.runTests(dumpModify,'UnitTestsDumpDst') ||
+      !helper.isAlive() ||
+      !helper.runTests(dumpMoveShard,'UnitTestsDumpDst') ||
       !helper.isAlive() ||
       !helper.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
       !helper.isAlive() ||

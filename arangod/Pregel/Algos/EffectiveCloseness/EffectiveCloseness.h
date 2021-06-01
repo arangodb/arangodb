@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_EFFECTIVE_CLSNESS_H
-#define ARANGODB_PREGEL_ALGOS_EFFECTIVE_CLSNESS_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -46,4 +45,3 @@ struct EffectiveCloseness : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> 
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

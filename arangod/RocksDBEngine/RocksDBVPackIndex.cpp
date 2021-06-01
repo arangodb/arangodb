@@ -710,12 +710,18 @@ Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods*
         return addErrorMsg(res, r);
       }
     }
+    
+    bool const lock = !RocksDBTransactionState::toState(&trx)->isOnlyExclusiveTransaction();
 
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
 
     for (RocksDBKey const& key : elements) {
-      s = mthds->Get(_cf, key.string(), &existing); /* TODO: lock */
+      if (lock) {
+        s = mthds->GetForUpdate(_cf, key.string(), &existing);
+      } else {
+        s = mthds->Get(_cf, key.string(), &existing);
+      }
 
       if (s.ok()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
@@ -742,7 +748,7 @@ Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods*
         break;
       } else if (!s.IsNotFound()) {
         res.reset(rocksutils::convertStatus(s));
-        addErrorMsg(res);
+        addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
       }
     }
   }
@@ -752,9 +758,11 @@ Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods*
 
 /// @brief returns whether the document can be replaced into the index
 /// (or if there will be a conflict)
-Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, RocksDBMethods* mthds,
+Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, 
+                                       RocksDBMethods* mthds,
                                        LocalDocumentId const& documentId,
-                                       velocypack::Slice doc, OperationOptions const& options) {
+                                       velocypack::Slice doc, 
+                                       OperationOptions const& options) {
   Result res;
     
   // non-unique indexes will not cause any constraint violation
@@ -780,9 +788,15 @@ Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, RocksDBMethods
 
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
+    
+    bool const lock = !RocksDBTransactionState::toState(&trx)->isOnlyExclusiveTransaction();
 
     for (RocksDBKey const& key : elements) {
-      s = mthds->Get(_cf, key.string(), &existing); /* TODO: lock */
+      if (lock) {
+        s = mthds->GetForUpdate(_cf, key.string(), &existing); 
+      } else {
+        s = mthds->Get(_cf, key.string(), &existing); 
+      }
 
       if (s.ok()) {  // detected conflicting index entry
         LocalDocumentId docId = RocksDBValue::documentId(existing);
@@ -813,7 +827,7 @@ Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, RocksDBMethods
         break;
       } else if (!s.IsNotFound()) {
         res.reset(rocksutils::convertStatus(s));
-        addErrorMsg(res);
+        addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
       }
     }
   }
@@ -824,7 +838,8 @@ Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, RocksDBMethods
 /// @brief inserts a document into the index
 Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice doc, OperationOptions const& options) {
+                                 velocypack::Slice doc, OperationOptions const& options,
+                                 bool performChecks) {
   IndexOperationMode mode = options.indexOperationMode;
   Result res;
   rocksdb::Status s;
@@ -850,8 +865,9 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
 
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
+
     for (RocksDBKey const& key : elements) {
-      if (!options.checkUniqueConstraintsInPreflight) {
+      if (performChecks) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
         if (s.ok()) {  // detected conflicting index entry
           res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
@@ -890,7 +906,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
           THROW_ARANGO_EXCEPTION(readResult);
         }
       } else {
-        addErrorMsg(res);
+        addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
       }
     }
 
@@ -909,7 +925,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     }
 
     if (res.fail()) {
-      addErrorMsg(res);
+      addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
     } else if (_estimates) {
       auto* state = RocksDBTransactionState::toState(&trx);
       auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
@@ -979,24 +995,27 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
                                  velocypack::Slice oldDoc,
                                  LocalDocumentId const& newDocumentId,
                                  velocypack::Slice newDoc,
-                                 OperationOptions const& options) {
+                                 OperationOptions const& options,
+                                 bool performChecks) {
   if (!_unique) {
     // only unique index supports in-place updates
     // lets also not handle the complex case of expanded arrays
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
-                                newDocumentId, newDoc, options);
+                                newDocumentId, newDoc, options, performChecks);
   }
 
   if (!std::all_of(_fields.cbegin(), _fields.cend(), [&](auto const& path) {
     return ::attributesEqual(oldDoc, newDoc, path.begin(), path.end());
   })) {
+    // change detected in some index attribute value.
     // we can only use in-place updates if no indexed attributes changed
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
-                                newDocumentId, newDoc, options);
+                                newDocumentId, newDoc, options, performChecks);
   }
 
+  // update-in-place following...
+  
   Result res;
-  // more expensive method to
   ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
   ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
   ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
@@ -1012,12 +1031,11 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
   }
 
   RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
-  size_t const count = elements.size();
-  for (size_t i = 0; i < count; ++i) {
-    RocksDBKey& key = elements[i];
+  for (auto const& key : elements) {
     rocksdb::Status s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/false);
     if (!s.ok()) {
       res = rocksutils::convertStatus(s, rocksutils::index);
+      addErrorMsg(res, newDoc.get(StaticStrings::KeyString).copyString());
       break;
     }
   }
@@ -1028,7 +1046,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
 /// @brief removes a document from the index
 Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice const doc) {
+                                 velocypack::Slice doc) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
     if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       // intentionally  break index removal
@@ -1065,7 +1083,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
       }
     }
     if (res.fail()) {
-      addErrorMsg(res);
+      TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
+      addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
     }
   } else {
     // non-unique index contain the unique objectID written exactly once
@@ -1078,7 +1097,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
     }
 
     if (res.fail()) {
-      addErrorMsg(res);
+      TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
+      addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
     } else if (_estimates) {
       auto* state = RocksDBTransactionState::toState(&trx);
       auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));

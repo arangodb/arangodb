@@ -20,13 +20,14 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_FIELD_VALUE_DEPENDENT_H
-#define VELOCYPACK_FIELD_VALUE_DEPENDENT_H
+
+#pragma once
+
 #include "plan-executor.h"
 #include "values.h"
+
 namespace arangodb {
 namespace velocypack {
-
 namespace deserializer {
 
 /*
@@ -184,4 +185,3 @@ struct deserialize_plan_executor<field_value_dependent<N>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_FIELD_VALUE_DEPENDENT_H

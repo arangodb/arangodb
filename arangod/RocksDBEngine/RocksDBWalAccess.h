@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_WAL_ACCESS_H
-#define ARANGOD_ROCKSDB_ENGINE_WAL_ACCESS_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/WalAccess.h"
@@ -62,4 +61,3 @@ class RocksDBWalAccess final : public WalAccess {
 };
 }  // namespace arangodb
 
-#endif

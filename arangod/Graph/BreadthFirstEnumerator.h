@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_BREADTHFIRSTENUMERATOR_H
-#define ARANGODB_GRAPH_BREADTHFIRSTENUMERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/PathEnumerator.h"
@@ -153,7 +152,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
 
-  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index, bool fromPrune);
 
   bool shouldPrune();
 
@@ -164,4 +163,3 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

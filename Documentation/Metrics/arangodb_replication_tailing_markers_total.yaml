@@ -11,7 +11,7 @@ exposedBy:
   - dbserver
 description: |
   The number of replication tailing markers processed on a follower
-  dbserver. Markers are specific operations which are part of the
+  DB-Server. Markers are specific operations which are part of the
   write-ahead log (WAL). Example actions which are being used in
   markers: Create or drop a database. Create, drop, rename, change
   or truncate a collection. Create or drop an index. Create, drop,

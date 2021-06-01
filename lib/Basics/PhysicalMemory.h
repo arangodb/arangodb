@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PHYSICAL_MEMORY_H
-#define ARANGODB_BASICS_PHYSICAL_MEMORY_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -36,4 +35,3 @@ bool overridden();
 } 
 }  // namespace arangodb
 
-#endif

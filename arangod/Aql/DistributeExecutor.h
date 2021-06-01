@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H
-#define ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H
+#pragma once
 
 #include "Aql/BlocksWithClients.h"
 #include "Aql/DistributeClientBlock.h"
@@ -131,4 +130,3 @@ class ExecutionBlockImpl<DistributeExecutor>
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H

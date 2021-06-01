@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_STATIC_STRINGS_H
-#define ARANGODB_BASICS_STATIC_STRINGS_H 1
+#pragma once
 
 #include <string>
 
@@ -70,7 +69,6 @@ class StaticStrings {
   static std::string const Prefix;
   static std::string const Overwrite;
   static std::string const OverwriteMode;
-  static std::string const PreserveRevisionIds;
   static std::string const Compact;
 
   // replication headers
@@ -216,6 +214,10 @@ class StaticStrings {
   static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
 
+  // arangosh result body
+  static std::string const Body;
+  static std::string const ParsedBody;
+
   // collection attributes
   static std::string const CacheEnabled;
   static std::string const DistributeShardsLike;
@@ -223,7 +225,6 @@ class StaticStrings {
   static std::string const IsSmart;
   static std::string const IsSmartChild;
   static std::string const MinReplicationFactor;
-  static std::string const MinRevision;
   static std::string const NumberOfShards;
   static std::string const ObjectId;
   static std::string const ReplicationFactor;
@@ -300,13 +301,13 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
-  static std::string const RevisionTreeBranchingFactor;
   static std::string const RevisionTreeCount;
   static std::string const RevisionTreeHash;
   static std::string const RevisionTreeMaxDepth;
   static std::string const RevisionTreeNodes;
   static std::string const RevisionTreeRangeMax;
   static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
@@ -368,4 +369,3 @@ class StaticStrings {
 };
 }  // namespace arangodb
 
-#endif

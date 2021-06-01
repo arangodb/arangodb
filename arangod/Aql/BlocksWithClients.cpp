@@ -90,8 +90,7 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
       _registerInfos(std::move(registerInfos)),
       _executorInfos(std::move(executorInfos)),
       _executor{_executorInfos},
-      _clientBlockData{},
-      _wasShutdown(false) {
+      _clientBlockData{} {
   _shardIdMap.reserve(_nrClients);
   auto const& shardIds = _executorInfos.clientIds();
   for (size_t i = 0; i < _nrClients; i++) {
@@ -242,8 +241,7 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
   // NOTE: We do not handle limits / skip here
   // They can differ between different calls to this executor.
   // We may need to revisit this for performance reasons.
-  AqlCall call{};
-  stack.pushCall(AqlCallList{std::move(call)});
+  stack.pushCall(AqlCallList{AqlCall{}});
 
   TRI_ASSERT(_dependencies.size() == 1);
   auto [state, skipped, block] = _dependencies[0]->execute(stack);

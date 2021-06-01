@@ -21,8 +21,7 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AQL_USER_FUNCTIONS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AQL_USER_FUNCTIONS_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -41,4 +40,3 @@ class RestAqlUserFunctionsHandler : public arangodb::RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

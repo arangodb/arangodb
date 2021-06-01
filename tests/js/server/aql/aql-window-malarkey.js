@@ -25,11 +25,222 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const explainer = require("@arangodb/aql/explainer");
 const internal = require("internal");
 const errors = internal.errors;
-
-const isCoordinator = require('@arangodb/cluster').isCoordinator();
+const cluster = require('@arangodb/cluster');
+const isCoordinator = cluster.isCoordinator();
 const isEnterprise = require("internal").isEnterprise();
+
+function checkQueryError(query, message, errorCode) {
+  if (errorCode === undefined) {
+    errorCode = errors.ERROR_QUERY_PARSE.code;
+  }
+  try {
+    db._explain(query);
+    fail();
+  } catch (e) {
+    assertFalse(e === "fail", "no exception thrown by query");
+    assertEqual(e.errorNum, errorCode,
+      "unexpected error - code: " + e.errorNum + "; message: " + e.errorMessage);
+    assertTrue(e.errorMessage.includes(message),
+      "unexpected error - code: " + e.errorNum + "; message: " + e.errorMessage);
+  }
+}
+
+function checkQueryExplainOutput(query, part) {
+  const output = explainer.explain(query, {colors: false}, false);
+  assertTrue(output.includes(part),
+    "query explain output did not contain expected part \"" + part + "\". Output:\n" + output);
+}
+
+function WindowTestSuite() {
+
+  const collection = "WindowTestCollection";
+  return {
+    setUpAll: function () {
+      db._create(collection, { numberOfShards: 4 });
+    },
+    
+    tearDownAll: function () {
+      db._drop(collection);
+    },
+
+    testExplainRowBased: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW {preceding: 1, following: 1} AGGREGATE av = AVG(doc.value)
+        RETURN av
+      `;
+      checkQueryExplainOutput(query, "WINDOW { preceding: 1, following: 1 }");
+      
+      query = `
+      FOR doc IN ${collection}
+        WINDOW {preceding: 1} AGGREGATE av = AVG(doc.value)
+        RETURN av
+      `;
+      checkQueryExplainOutput(query, "WINDOW { preceding: 1, following: 0 }");
+      
+      query = `
+      FOR doc IN ${collection}
+        WINDOW {following: 1} AGGREGATE av = AVG(doc.value)
+        RETURN av
+      `;
+      checkQueryExplainOutput(query, "WINDOW { preceding: 0, following: 1 }");
+      
+      query = `
+      FOR doc IN ${collection}
+        WINDOW {preceding: "unbounded", following: 1} AGGREGATE av = AVG(doc.value)
+        RETURN av
+      `;
+      checkQueryExplainOutput(query, "WINDOW { preceding: \"unbounded\", following: 1 }");
+    },
+    
+    testVerifyRowBasedBoundAttributesOnlySpecifiedOnce: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW {preceding: 1, following: 1, following: 2} AGGREGATE av = AVG(doc.value)
+        RETURN av
+      `;
+      checkQueryError(query, "WINDOW attribute 'following' is specified multiple times");
+    }, 
+    
+    testVerifyRowBasedInvalidBoundAttributes: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW {preceding: 1, folowing: 2} AGGREGATE av = AVG(doc.value)
+        RETURN av
+      `;
+      checkQueryError(query, `Invalid WINDOW attribute 'folowing'; only "preceding" and "following" are supported`);
+    },
+    
+    testVerifyRowBasedAtLeastOneBoundAttributeSpecified: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW {} AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryError(query, "At least one WINDOW bound must be specified ('preceding'/'following')");
+    },
+    
+    testVerifyRowBasedBoundAttributeMustBeIntegerOrUnbounded: function () {
+      let queries = [
+        `FOR doc IN ${collection}
+          WINDOW {preceding: "blubb"} AGGREGATE av = AVG(doc.value)
+          RETURN av`,
+        `FOR doc IN ${collection}
+          WINDOW {preceding: -1} AGGREGATE av = AVG(doc.value)
+          RETURN av`
+      ];
+      for (const query of queries) {
+        checkQueryError(query,
+          "WINDOW row spec is invalid; bounds must be positive integers or \"unbounded\"",
+          errors.ERROR_BAD_PARAMETER.code);
+      }
+    },
+    
+    testExplainRangeBased: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH {preceding: 1, following: 1} AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: 1, following: 1 }");
+      
+      query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH {preceding: 1} AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: 1, following: 0 }");
+      
+      query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH {following: 1} AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: 0, following: 1 }");
+      
+      query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH {preceding: "P1Y2DT3H4.05S", following: "P1M2WT3M"} AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: \"P1Y2DT3H4.050S\", following: \"P1M2WT3M\" }");
+      
+      query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH {preceding: "P0Y0M0DT0H0M5.0S" } AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: \"PT5S\", following: \"P0D\" }");
+    },
+    
+    testVerifyRangeBasedBoundAttributesOnlySpecifiedOnce: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH {preceding: 1, following: 1, following: 2} AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryError(query, "WINDOW attribute 'following' is specified multiple times");
+    }, 
+    
+    testVerifyRangeBasedInvalidBoundAttributes: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH {preceding: 1, folowing: 2} AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryError(query, `Invalid WINDOW attribute 'folowing'; only "preceding" and "following" are supported`);
+    },
+    
+    testVerifyRangeBasedAtLeastOneBoundAttributeSpecified: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH {} AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryError(query, "At least one WINDOW bound must be specified ('preceding'/'following')");
+    },
+    
+    testVerifyRangeBasedBoundAttributesHaveSameType: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH { preceding: 1, following: "P1D" } AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryError(query,
+        "WINDOW range spec is invalid; bounds must be of the same type - " +
+        "either both are numeric values, or both are ISO 8601 duration strings",
+        errors.ERROR_BAD_PARAMETER.code);
+    },
+    
+    testVerifyRangeBasedBoundAttributeInvalidISO8601: function () {
+      let query = `
+      FOR doc IN ${collection}
+        WINDOW doc.value WITH { preceding: "P1S" } AGGREGATE av = AVG(doc.value)
+        RETURN av`;
+      checkQueryError(query,
+        "WINDOW range spec is invalid; 'preceding' is not a valid ISO 8601 duration string",
+        errors.ERROR_BAD_PARAMETER.code);
+    },
+    
+    testFilterNotMovedBeyondWindow: function () {
+      let query = `
+      FOR t IN ${collection}
+        SORT t.time
+        WINDOW { preceding: 2, following: 2} AGGREGATE observations2 = SUM(t.val)
+        FILTER t.val > 2
+        SORT t.val
+        WINDOW { preceding: 2, following: 2} AGGREGATE observations = SUM(t.val)
+        FILTER t.val > 5 AND t.val < 20
+        RETURN { time: t.time, val: t.val, observations, observations2 }
+      `;
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      if (cluster.isCluster()) {
+        assertEqual(nodes[8].type, "WindowNode");
+        assertEqual(nodes[9].type, "FilterNode");
+        assertEqual(nodes[12].type, "WindowNode");
+        assertEqual(nodes[13].type, "FilterNode");
+      } else {
+        assertEqual(nodes[6].type, "WindowNode");
+        assertEqual(nodes[7].type, "FilterNode");
+        assertEqual(nodes[10].type, "WindowNode");
+        assertEqual(nodes[11].type, "FilterNode");
+      }
+    },
+  };
+}
 
 function WindowMalarkeyTestSuite() {
 
@@ -47,12 +258,46 @@ function WindowMalarkeyTestSuite() {
       }
       c1.insert(docs);
     },
-
+    
     tearDown: function () {
       db._drop(cname1);
       db._drop(cname2);
     },
 
+    testNonNumericRowValues: function () {
+      // values in "time" attribute should be numeric, but we have strings...
+      let query = `
+      LET observations = [
+        { "time": "07:00:00", "subject": "st113", "val": 10 },
+        { "time": "07:15:00", "subject": "st113", "val": 9 }, 
+        { "time": "07:30:00", "subject": "st113", "val": 25 },
+        { "time": "07:45:00", "subject": "st113", "val": 20 }, 
+        { "time": "07:00:00", "subject": "xh458", "val": 0 },
+        { "time": "07:15:00", "subject": "xh458", "val": 10 },
+        { "time": "07:30:00", "subject": "xh458", "val": 5 },
+        { "time": "07:45:00", "subject": "xh458", "val": 30 },
+        { "time": "08:00:00", "subject": "xh458", "val": 25 },  
+      ] 
+      FOR t IN observations
+        WINDOW t.time WITH { preceding: 1000, following: 500 }
+        AGGREGATE rollingAverage = AVG(t.val), rollingSum = SUM(t.val)
+        RETURN { time: t.time, rollingAverage, rollingSum }`;
+
+      let results = db._query(query).toArray();
+      const expected = [
+        { "time" : "07:00:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:00:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:15:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:15:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:30:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:30:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:45:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "07:45:00", "rollingAverage" : null, "rollingSum" : null }, 
+        { "time" : "08:00:00", "rollingAverage" : null, "rollingSum" : null } 
+      ];
+      assertEqual(results, expected);
+    },
+    
     testResultsInsertAfterRow: function () {
       const q = `
       FOR doc IN @@input 
@@ -465,6 +710,7 @@ function WindowHappyTestSuite() {
   };
 };
 
+jsunity.run(WindowTestSuite);
 jsunity.run(WindowMalarkeyTestSuite);
 jsunity.run(WindowDateRangeTestSuite);
 jsunity.run(WindowHappyTestSuite);

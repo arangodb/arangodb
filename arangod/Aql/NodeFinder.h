@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_NODE_FINDER_H
-#define ARANGOD_AQL_NODE_FINDER_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -75,4 +74,3 @@ class EndNodeFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness:
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

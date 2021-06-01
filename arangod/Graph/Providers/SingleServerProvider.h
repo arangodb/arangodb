@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PROVIDERS_SINGLESERVERPROVIDER_H
-#define ARANGOD_GRAPH_PROVIDERS_SINGLESERVERPROVIDER_H 1
+#pragma once
 
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
@@ -98,6 +97,7 @@ struct SingleServerProvider {
 
     Step(VertexType v);
     Step(VertexType v, EdgeDocumentToken edge, size_t prev);
+    Step(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth);
     ~Step();
 
     bool operator<(Step const& other) const noexcept {
@@ -169,4 +169,3 @@ struct SingleServerProvider {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

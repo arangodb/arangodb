@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_SHARED_STATE_H
-#define ARANGOD_FUTURES_SHARED_STATE_H 1
+#pragma once
 
 #include <atomic>
 #include <function2.hpp>
@@ -281,4 +280,3 @@ class SharedState {
 }  // namespace futures
 }  // namespace arangodb
 
-#endif  // ARANGOD_FUTURES_SHARED_STATE_H

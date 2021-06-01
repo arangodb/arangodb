@@ -11,5 +11,5 @@ exposedBy:
   - agent
   - single
 description: |
-    This metric reports the number of files at level 6 in the log structured
-    merge tree of RocksDB.
+  This metric reports the number of files at level 6 in the log structured
+  merge tree of RocksDB.

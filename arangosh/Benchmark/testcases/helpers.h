@@ -21,8 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_TESTCASES_HELPERS_H
-#define ARANGODB_BENCHMARK_TESTCASES_HELPERS_H
+#pragma once
 
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
@@ -42,4 +41,3 @@ bool CreateDocument(arangodb::httpclient::SimpleHttpClient*, std::string const&,
 bool CreateIndex(arangodb::httpclient::SimpleHttpClient*, std::string const&,
                  std::string const&, std::string const&);
 }  // namespace arangodb::arangobench
-#endif

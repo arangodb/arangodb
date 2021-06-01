@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, getOptions, fail, assertFalse */
+/*global assertEqual, assertTrue, getOptions, fail, assertFalse, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the deadlock detection
@@ -116,9 +116,9 @@ function OptionsTestSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
         assertEqual(409, err.code); // conflict
-        assertTrue( // it is possible to get two different errors messages here (two different internal states can appear)
-          (("precondition failed" === err.errorMessage) || ("timeout waiting to lock key Operation timed out: Timeout waiting to lock key" === err.errorMessage))
-        );
+        assertMatch( // it is possible to get two different errors messages here (two different internal states can appear)
+          /(precondition failed|timeout waiting to lock key.*Operation timed out)/, err.errorMessage);
+        assertMatch(/XXX/, err.errorMessage);
       }
 
       while (true) {

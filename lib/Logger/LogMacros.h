@@ -51,8 +51,7 @@
 /// Author: Ray Sidney
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_MACROS_H
-#define ARANGODB_LOGGER_LOG_MACROS_H 1
+#pragma once
 
 #include "Logger/LogVoidify.h"
 #include "Logger/Logger.h"
@@ -113,5 +112,3 @@
 
 #define LOG_DEVEL_IF(cond) \
   LOG_TOPIC_IF("xxxxx", LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME, (cond)) << "###### "
-
-#endif

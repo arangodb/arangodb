@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_ADMIN_DATABASE_HANDLER_H
-#define ARANGOD_REST_HANDLER_ADMIN_DATABASE_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -39,4 +38,3 @@ class RestAdminDatabaseHandler : public arangodb::RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

@@ -1942,8 +1942,8 @@
               " OPTIONS { waitForSync : true} SORT BM25(d) DESC RETURN d").toArray();
             assertEqual(3, res.length);  
             assertEqual('1', res[0].value1);
-            assertEqual('3', res[1].value1);
-            assertEqual('2', res[2].value1);
+            assertEqual('2', res[1].value1);
+            assertEqual('3', res[2].value1);
           }
           {
             let res = db._query("FOR d IN " + queryView  + 

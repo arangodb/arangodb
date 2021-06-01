@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_RANDOM_RANDOM_GENERATOR_H
-#define ARANGODB_RANDOM_RANDOM_GENERATOR_H 1
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -96,4 +95,3 @@ class RandomGenerator {
 };
 }  // namespace arangodb
 
-#endif

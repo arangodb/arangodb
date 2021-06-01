@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AUTH_RELOAD_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AUTH_RELOAD_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -39,4 +38,3 @@ class RestAuthReloadHandler : public arangodb::RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

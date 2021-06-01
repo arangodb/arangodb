@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_IP_V4_H
-#define ARANGODB_ENDPOINT_ENDPOINT_IP_V4_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/StringUtils.h"
@@ -45,4 +44,3 @@ class EndpointIpV4 final : public EndpointIp {
 };
 }  // namespace arangodb
 
-#endif

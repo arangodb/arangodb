@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_STATS_H
-#define ARANGOD_AQL_EXECUTION_STATS_H 1
+#pragma once
 
 #include "Aql/ExecutionNodeId.h"
 
@@ -110,4 +109,3 @@ struct ExecutionStats {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

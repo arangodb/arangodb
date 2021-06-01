@@ -209,6 +209,12 @@ void Version::initialize() {
   Values["sse42"] = "false";
 #endif
 
+#ifdef __AVX__
+  Values["avx"] = "true";
+#else
+  Values["avx"] = "false";
+#endif
+
 #ifdef __AVX2__
   Values["avx2"] = "true";
 #else

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_ASYNC_JOB_MANAGER_H
-#define ARANGOD_HTTP_SERVER_ASYNC_JOB_MANAGER_H 1
+#pragma once
 
 #include <unordered_map>
 #include <vector>
@@ -103,4 +102,3 @@ class AsyncJobManager {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

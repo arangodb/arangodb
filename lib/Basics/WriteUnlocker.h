@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_WRITE_UNLOCKER_H
-#define ARANGODB_BASICS_WRITE_UNLOCKER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Locking.h"
@@ -81,4 +80,3 @@ class WriteUnlocker {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

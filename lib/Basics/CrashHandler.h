@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CRASH_HANDLER_H
-#define ARANGODB_BASICS_CRASH_HANDLER_H 1
+#pragma once
 
 namespace arangodb {
 class CrashHandler {
@@ -53,4 +52,3 @@ class CrashHandler {
 
 }  // namespace arangodb
 
-#endif

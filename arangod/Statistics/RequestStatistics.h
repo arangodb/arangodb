@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_REQUEST_STATISTICS_H
-#define ARANGOD_STATISTICS_REQUEST_STATISTICS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -237,4 +236,3 @@ class RequestStatistics {
 };
 }  // namespace arangodb
 
-#endif

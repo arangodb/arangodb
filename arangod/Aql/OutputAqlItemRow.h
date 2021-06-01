@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
-#define ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/InputAqlItemRow.h"
@@ -342,4 +341,3 @@ class OutputAqlItemRow {
 };
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H

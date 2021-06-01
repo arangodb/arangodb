@@ -21,8 +21,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_SHA_CALCULATOR_H
-#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_SHA_CALCULATOR_H 1
+#pragma once
 
 #include <atomic>
 #include <queue>
@@ -99,4 +98,3 @@ class RocksDBShaCalculator : public rocksdb::EventListener {
 
 }  // namespace arangodb
 
-#endif

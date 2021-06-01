@@ -1,6 +1,5 @@
 
-#ifndef ARANGODB_BASICS_VOC_ERRORS_H
-#define ARANGODB_BASICS_VOC_ERRORS_H 1
+#pragma once
 
 #include "Basics/ErrorCode.h"
 
@@ -185,6 +184,12 @@ constexpr auto TRI_ERROR_DISABLED                                               
 /// "malformed json"
 /// Will be raised when a JSON string could not be parsed.
 constexpr auto TRI_ERROR_MALFORMED_JSON                                          = ErrorCode{37};
+
+/// 38: ERROR_STARTING_UP
+/// "startup ongoing"
+/// Will be raised when a call cannot succeed because the server startup phase
+/// is still in progress.
+constexpr auto TRI_ERROR_STARTING_UP                                             = ErrorCode{38};
 
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
@@ -895,9 +900,9 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER                        
 constexpr auto TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION                = ErrorCode{1489};
 
 /// 1490: ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
-/// "a shard follower refuses to perform an operation that is not a replication"
-/// Will be raised if a non-replication operation is refused by a shard
-/// follower.
+/// "a shard follower refuses to perform an operation"
+/// Will be raised if a replication operation is refused by a shard follower
+/// because it is coming from the wrong leader.
 constexpr auto TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION                = ErrorCode{1490};
 
 /// 1491: ERROR_CLUSTER_SHARD_LEADER_RESIGNED
@@ -1466,6 +1471,12 @@ constexpr auto TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION                            
 /// collection which is not used in any edge definition of the graph.
 constexpr auto TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED             = ErrorCode{1947};
 
+/// 1948: ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT
+/// "negative edge weight found"
+/// a negative edge weight was found during a weighted graph traversal or
+/// shortest path query
+constexpr auto TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT                              = ErrorCode{1948};
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.
@@ -1841,4 +1852,3 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN             
 /// During the execution of an AIR program an error occurred
 constexpr auto TRI_ERROR_AIR_EXECUTION_ERROR                                     = ErrorCode{8001};
 
-#endif

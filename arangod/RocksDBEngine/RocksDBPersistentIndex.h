@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_PERSISTENT_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_PERSISTENT_INDEX_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -48,4 +47,3 @@ class RocksDBPersistentIndex final : public RocksDBVPackIndex {
 
 }  // namespace arangodb
 
-#endif

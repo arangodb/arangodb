@@ -71,25 +71,20 @@ std::string stripServerPrefix(std::string const& destination) {
 
 TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
                                                  ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
-
-  if (!desc.has(DATABASE)) {
-    error << "database must be specified";
-  }
-  TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(COLLECTION)) {
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
-
-  if (!desc.has(SHARD)) {
-    error << "shard must be specified";
+  
+  if (!ShardDefinition::isValid()) {
+    error << "database and shard must be specified. ";
   }
-  TRI_ASSERT(desc.has(SHARD));
 
   if (!desc.has(THE_LEADER)) {
     error << "leader must be specified. ";
@@ -106,7 +101,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
   if (!error.str().empty()) {
     LOG_TOPIC("2aa85", ERR, Logger::MAINTENANCE)
         << "TakeoverLeadership: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -191,7 +186,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
           ci.getCollectionCurrent(databaseName,
                                   std::to_string(collection.planId().id()));
       if (currentInfo == nullptr) {
-        // Collection has been dropped we cannot continue here.
+        // Collection has been dropped. we cannot continue here.
         return;
       }
       TRI_ASSERT(currentInfo != nullptr);
@@ -246,13 +241,14 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
 }
 
 bool TakeoverShardLeadership::first() {
-  std::string const& database = _description.get(DATABASE);
+  std::string const& database = getDatabase();
   std::string const& collection = _description.get(COLLECTION);
-  std::string const& shard = _description.get(SHARD);
+  std::string const& shard = getShard();
   std::string const& plannedLeader = _description.get(THE_LEADER);
   std::string const& localLeader = _description.get(LOCAL_LEADER);
   std::string const& planRaftIndex = _description.get(PLAN_RAFT_INDEX);
   uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
+  Result res;
 
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
@@ -276,7 +272,8 @@ bool TakeoverShardLeadership::first() {
       error << "TakeoverShardLeadership: failed to lookup local collection "
             << shard << "in database " + database;
       LOG_TOPIC("65342", ERR, Logger::MAINTENANCE) << error.str();
-      _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      result(res);
     }
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -284,12 +281,13 @@ bool TakeoverShardLeadership::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("79443", WARN, Logger::MAINTENANCE)
         << "TakeoverShardLeadership: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    res.reset(TRI_ERROR_INTERNAL, error.str());
+    result(res);
   }
 
-  if (_result.fail()) {
+  if (res.fail()) {
     _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), _result);
+                             _description.get(SERVER_ID), res);
   }
 
   return false;
@@ -297,7 +295,7 @@ bool TakeoverShardLeadership::first() {
 
 void TakeoverShardLeadership::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    _feature.unlockShard(_description.get(SHARD));
+    _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
 }

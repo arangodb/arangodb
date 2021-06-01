@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_H
-#define ARANGOD_GRAPH_TRAVERSER_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
@@ -75,17 +74,6 @@ class TraversalPath {
   TraversalPath() : _readDocuments(0) {}
 
   virtual ~TraversalPath() = default;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds the complete path as VelocyPack
-  ///        Has the format:
-  ///        {
-  ///           vertices: [<vertex-as-velocypack>],
-  ///           edges: [<edge-as-velocypack>]
-  ///        }
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void pathToVelocyPack(transaction::Methods*, arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge on the path as VelocyPack
@@ -334,4 +322,3 @@ class Traverser {
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

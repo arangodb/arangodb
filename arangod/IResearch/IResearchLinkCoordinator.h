@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H
-#define ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H 1
+#pragma once
 
 #include "ClusterEngine/ClusterIndex.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -142,4 +141,3 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGODB_IRESEARCH__IRESEARCH_VIEW_LINK_COORDINATOR_H

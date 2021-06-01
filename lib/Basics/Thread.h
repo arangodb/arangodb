@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREAD_H
-#define ARANGODB_BASICS_THREAD_H 1
+#pragma once
 
 #include <atomic>
 
@@ -187,4 +186,3 @@ class Thread {
 };
 }  // namespace arangodb
 
-#endif

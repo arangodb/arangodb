@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_DATABASE_REPLICATION_APPLIER_H
-#define ARANGOD_REPLICATION_DATABASE_REPLICATION_APPLIER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplier.h"
@@ -80,4 +79,3 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
 
 }  // namespace arangodb
 
-#endif

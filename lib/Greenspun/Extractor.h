@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GREENSPUN_EXTRACTOR_H
-#define ARANGODB_GREENSPUN_EXTRACTOR_H 1
+#pragma once
 
 #include "EvalResult.h"
 #include "Interpreter.h"
@@ -143,4 +142,3 @@ auto extract(VPackSlice values) -> EvalResultT<std::tuple<Ts...>> {
 
 }
 
-#endif  // ARANGODB3_EXTRACTOR_H

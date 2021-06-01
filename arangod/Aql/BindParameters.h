@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BIND_PARAMETERS_H
-#define ARANGOD_AQL_BIND_PARAMETERS_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 
@@ -97,4 +96,3 @@ class BindParameters {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

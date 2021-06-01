@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_CLIENTS_H
-#define ARANGOD_REPLICATION_REPLICATION_CLIENTS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -189,4 +188,3 @@ class ReplicationClientsProgressTracker {
 
 }  // namespace arangodb
 
-#endif

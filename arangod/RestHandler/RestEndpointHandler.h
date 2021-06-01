@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ENDPOINT_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ENDPOINT_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -43,4 +42,3 @@ class RestEndpointHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

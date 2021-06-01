@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_FEATURE_H
-#define ARANGODB_LOGGER_LOGGER_FEATURE_H 1
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -94,4 +93,3 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

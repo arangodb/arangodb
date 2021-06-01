@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_OPTIONS_H
-#define ARANGOD_TRANSACTION_OPTIONS_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -74,6 +73,7 @@ struct Options {
   bool skipInaccessibleCollections;
 #endif
   bool waitForSync;
+  bool fillBlockCache;
   bool isFollowerTransaction;
 
   /// @brief originating server of this transaction. will be populated
@@ -107,4 +107,3 @@ struct AllowImplicitCollectionsSwitcher {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

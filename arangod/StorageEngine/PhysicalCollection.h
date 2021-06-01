@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
-#define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
+#pragma once
 
 #include <set>
 
@@ -216,6 +215,7 @@ class PhysicalCollection {
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId);
+  virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(uint64_t batchId);
 
   virtual Result rebuildRevisionTree();
 
@@ -266,4 +266,3 @@ class PhysicalCollection {
 
 }  // namespace arangodb
 
-#endif

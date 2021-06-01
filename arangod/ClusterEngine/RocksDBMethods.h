@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_ROCKSDB_METHODS_H
-#define ARANGOD_CLUSTER_ENGINE_ROCKSDB_METHODS_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -47,4 +46,3 @@ Result waitForEstimatorSync();
 }  // namespace rocksdb
 }  // namespace arangodb
 
-#endif

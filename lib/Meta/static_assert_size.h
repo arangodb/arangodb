@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_META_STATIC_ASSERT_SIZE_H
-#define ARANGODB_META_STATIC_ASSERT_SIZE_H 1
+#pragma once
 
 namespace arangodb {
 namespace meta {
@@ -42,4 +41,3 @@ void static_assert_size() {
 }  // namespace meta
 }  // namespace arangodb
 
-#endif

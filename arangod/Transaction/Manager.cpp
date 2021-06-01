@@ -184,9 +184,11 @@ Manager::ManagedTrx::~ManagedTrx() {
 
   try {
     transaction::Options opts;
-    auto ctx = std::make_shared<transaction::ManagedContext>(TransactionId{2}, state,
-                                                             /*responsibleForCommit*/ true);
-    MGMethods trx(ctx, opts);  // own state now
+    transaction::ManagedContext ctx(TransactionId{2}, state,
+                                    /*responsibleForCommit*/ true);
+    MGMethods trx(
+      std::shared_ptr<transaction::Context>(
+        std::shared_ptr<transaction::Context>(), &ctx), opts);  // own state now
     TRI_ASSERT(trx.state()->status() == transaction::Status::RUNNING);
     TRI_ASSERT(trx.isMainTransaction());
     trx.abort();
@@ -1218,7 +1220,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
         }
       }
 
-      auto f = network::sendRequest(pool, "server:" + coordinator,
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
                                     fuerte::RestVerb::Get, "/_api/transaction",
                                     body, options, std::move(headers));
       futures.emplace_back(std::move(f));
@@ -1309,7 +1311,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
         }
       }
 
-      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
                                     "_api/transaction/write", body, reqOpts,
                                     std::move(headers));
       futures.emplace_back(std::move(f));

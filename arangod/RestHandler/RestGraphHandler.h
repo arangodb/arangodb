@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_GRAPH_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_GRAPH_HANDLER_H
+#pragma once
 
 #include <optional>
 
@@ -222,4 +221,3 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif  // ARANGOD_REST_HANDLER_REST_GRAPH_HANDLER_H

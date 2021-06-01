@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_COLLECTION_HANDLER_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_COLLECTION_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestCollectionHandler.h"
 
@@ -40,4 +39,3 @@ class ClusterRestCollectionHandler : public arangodb::RestCollectionHandler {
 
 }  // namespace arangodb
 
-#endif

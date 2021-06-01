@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_CLUSTER_UTILS_H
-#define ARANGOD_TRANSACTION_CLUSTER_UTILS_H 1
+#pragma once
 
 #include "VocBase/Identifiers/DataSourceId.h"
 
@@ -42,4 +41,3 @@ void abortTransactionsWithFailedServers(ClusterInfo&);
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

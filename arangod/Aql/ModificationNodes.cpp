@@ -286,6 +286,10 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+  
+void InsertNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
@@ -318,6 +322,15 @@ void UpdateReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 
 UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : UpdateReplaceNode(plan, base) {}
+
+void UpdateReplaceNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inDocVariable != nullptr) {
+    _inDocVariable = Variable::replace(_inDocVariable, replacements);
+  }
+  if (_inKeyVariable != nullptr) {
+    _inKeyVariable = Variable::replace(_inKeyVariable, replacements);
+  }
+}
 
 /// @brief toVelocyPack
 void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -373,6 +386,10 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
     return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
+}
+
+void RemoveNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -597,5 +614,18 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+
+void UpsertNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inDocVariable != nullptr) {
+    _inDocVariable = Variable::replace(_inDocVariable, replacements);
+  }
+  if (_insertVariable != nullptr) {
+    _insertVariable = Variable::replace(_insertVariable, replacements);
+  }
+  if (_updateVariable != nullptr) {
+    _updateVariable = Variable::replace(_updateVariable, replacements);
+  }
+}
+
 }  // namespace aql
 }  // namespace arangodb

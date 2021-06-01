@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_FORTUNE_FEATURE_H
-#define APPLICATION_FEATURES_FORTUNE_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -40,4 +39,3 @@ class FortuneFeature final : public application_features::ApplicationFeature {
 };
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOCBASE_PATHENUMERATOR_H
-#define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -182,9 +181,8 @@ class DepthFirstEnumerator final : public PathEnumerator {
  private:
   bool shouldPrune();
 
-  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result);
+  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result, bool fromPrune);
 };
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

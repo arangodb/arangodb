@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H 1
+#pragma once
 
 #include <chrono>
 #include <functional>
@@ -438,4 +437,3 @@ class IResearchAnalyzerFeature final
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

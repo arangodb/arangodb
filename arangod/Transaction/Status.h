@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_STATUS_H
-#define ARANGOD_TRANSACTION_STATUS_H 1
+#pragma once
 
 #include <cstdint>
 #include <iosfwd>
@@ -63,9 +62,9 @@ static inline char const* statusString(Status status) {
 
 Status statusFromString(char const* str, size_t len);
 
+std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
+
 }  // namespace transaction
 }  // namespace arangodb
 
-std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
 
-#endif

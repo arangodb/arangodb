@@ -368,7 +368,7 @@ endif()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
+  "${CMAKE_CURRENT_SOURCE_DIR}/ARANGO-VERSION"
   NEWLINE_STYLE UNIX
 )
 
@@ -1238,7 +1238,7 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb snappy-static)
+add_dependencies(rocksdb snappy)
 
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc_build)

@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_EVALUATOR_H
-#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_EVALUATOR_H 1
+#pragma once
 
 #include <functional>
 #include <map>
@@ -142,4 +141,3 @@ std::string paramsToString(VPackSlice params);
 
 }  // namespace arangodb::greenspun
 
-#endif

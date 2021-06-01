@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_DESERIALIZER_H
-#define VELOCYPACK_DESERIALIZER_H
+
+#pragma once
 
 #include <unordered_set>
 
@@ -43,4 +43,3 @@
 #include "value-reader.h"
 #include "values.h"
 
-#endif  // VELOCYPACK_DESERIALIZER_H

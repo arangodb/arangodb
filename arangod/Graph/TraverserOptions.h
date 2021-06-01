@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H
-#define ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H 1
+#pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
@@ -78,7 +77,9 @@ struct TraverserOptions : public graph::BaseOptions {
   ///        The Node keeps responsibility
   std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
 
-  bool _producePaths{true};
+  bool _producePathsVertices{true};
+  bool _producePathsEdges{true};
+  bool _producePathsWeights{true}; // only used by WeightedEnumerator
 
  public:
   uint64_t minDepth;
@@ -179,12 +180,20 @@ struct TraverserOptions : public graph::BaseOptions {
 
   auto estimateDepth() const noexcept -> uint64_t override;
 
-  auto setProducePaths(bool value) -> void { _producePaths = value; }
+  auto setProducePaths(bool vertices, bool edges, bool weights) noexcept -> void { 
+    _producePathsVertices = vertices;
+    _producePathsEdges = edges;
+    _producePathsWeights = weights;
+  }
 
-  auto producePaths() -> bool { return _producePaths; }
+  auto producePathsVertices() const noexcept -> bool { return _producePathsVertices; }
+  auto producePathsEdges() const noexcept -> bool { return _producePathsEdges; }
+  auto producePathsWeights() const noexcept -> bool { return _producePathsWeights && mode == Order::WEIGHTED; }
 
   auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
+
+ private:
+  void readProduceInfo(VPackSlice obj);
 };
 }  // namespace traverser
 }  // namespace arangodb
-#endif

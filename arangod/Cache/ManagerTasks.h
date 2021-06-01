@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_MANAGER_TASKS_H
-#define ARANGODB_CACHE_MANAGER_TASKS_H
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -82,4 +81,3 @@ class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

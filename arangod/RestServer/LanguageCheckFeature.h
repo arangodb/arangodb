@@ -21,8 +21,7 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_LANGUAGE_CHECK_FEATURE_H
-#define ARANGODB_REST_SERVER_LANGUAGE_CHECK_FEATURE_H 1
+#pragma once
 
 #include <unicode/locid.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -34,10 +33,8 @@ class LanguageCheckFeature final : public application_features::ApplicationFeatu
   explicit LanguageCheckFeature(application_features::ApplicationServer& server);
   ~LanguageCheckFeature();
 
-  static std::string const& name() noexcept;
   void start() override final;
 };
 
 }  // namespace arangodb
 
-#endif

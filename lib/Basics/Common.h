@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_COMMON_H
-#define ARANGODB_BASICS_COMMON_H 1
+#pragma once
 
 #ifdef _WIN32
 
@@ -56,4 +55,3 @@
 #endif
 #define sleep ERROR_USE_std_this_thread_sleep_for
 
-#endif

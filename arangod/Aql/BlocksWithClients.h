@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CLUSTER_BLOCKS_H
-#define ARANGOD_AQL_CLUSTER_BLOCKS_H 1
+#pragma once
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
@@ -191,11 +190,8 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   /// @brief A map of clientId to the data this client should receive.
   ///        This map will be filled as the execution progresses.
   std::unordered_map<std::string, typename Executor::ClientBlockData> _clientBlockData;
-
-  bool _wasShutdown;
 };
 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

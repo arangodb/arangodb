@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REPLACE_MODIFIER_H
-#define ARANGOD_AQL_REPLACE_MODIFIER_H
+#pragma once
 
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
@@ -53,4 +52,3 @@ class UpdateReplaceModifierCompletion {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

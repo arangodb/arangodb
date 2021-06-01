@@ -13,11 +13,11 @@ exposedBy:
   - single
 description: |
   Total amount of time it took to acquire collection/shard locks for
-  write operations, summed up for all collections/shards. Will not be increased 
+  write operations, summed up for all collections/shards. Will not be increased
   for any read operations.
   The value is measured in microseconds.
 troubleshoot: |
   In case this value is considered too high, check if there are AQL queries
-  or transactions that use exclusive locks on collections, and try to reduce them. 
-  Operations using exclusive locks may lock out other queries/transactions temporarily, 
+  or transactions that use exclusive locks on collections, and try to reduce them.
+  Operations using exclusive locks may lock out other queries/transactions temporarily,
   which will lead to an increase in lock acquisition time.

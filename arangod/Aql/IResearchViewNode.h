@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
+#pragma once
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -70,8 +69,6 @@ ENABLE_BITMASK_ENUM(MaterializeType);
 
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
-  friend class arangodb::aql::RedundantCalculationsReplacer;
-
  public:
   /// @brief node options
   struct Options {
@@ -121,6 +118,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief the cost of an enumerate view node
   aql::CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<arangodb::aql::VariableId, arangodb::aql::Variable const*> const& replacements) override;
 
   /// @brief getVariablesSetHere
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final;
@@ -327,4 +326,3 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__ENUMERATE_VIEW_NODE_H

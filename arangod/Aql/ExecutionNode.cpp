@@ -502,6 +502,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
+      
+  _isAsyncPrefetchEnabled =
+      VelocyPackHelper::getBooleanValue(slice, "isAsyncPrefetchEnabled", false);
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
@@ -626,6 +629,12 @@ void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
   setVarsUsedLater(dependency->getVarsUsedLaterStack());
   setVarsValid(dependency->getVarsValidStack());
   setVarUsageValid();
+}
+  
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void ExecutionNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& /*replacements*/) {
+  // default implementation does nothing
 }
 
 bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
@@ -936,6 +945,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     }
 
     nodes.add("isInSplicedSubquery", VPackValue(_isInSplicedSubquery));
+    nodes.add("isAsyncPrefetchEnabled", VPackValue(_isAsyncPrefetchEnabled));
   }
   TRI_ASSERT(nodes.isOpenObject());
 }
@@ -1735,6 +1745,12 @@ ExecutionNode::NodeType EnumerateListNode::getType() const {
   return ENUMERATE_LIST;
 }
 
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void EnumerateListNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
+
 void EnumerateListNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
@@ -2005,6 +2021,23 @@ Variable const* CalculationNode::outVariable() const { return _outVariable; }
 Expression* CalculationNode::expression() const { 
   TRI_ASSERT(_expression != nullptr);
   return _expression.get(); 
+}
+
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void CalculationNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  VarSet variables;
+  expression()->variables(variables);
+
+  // check if the calculation uses any of the variables that we want to
+  // replace
+  for (auto const& it : variables) {
+    if (replacements.find(it->id) != replacements.end()) {
+      // calculation uses a to-be-replaced variable
+      expression()->replaceVariables(replacements);
+      return;
+    }
+  }
 }
 
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {
@@ -2346,6 +2379,12 @@ FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* 
 
 ExecutionNode::NodeType FilterNode::getType() const { return FILTER; }
 
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void FilterNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
+
 void FilterNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
@@ -2448,6 +2487,12 @@ ReturnNode::ReturnNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* 
 ExecutionNode::NodeType ReturnNode::getType() const { return RETURN; }
 
 void ReturnNode::setCount() { _count = true; }
+
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void ReturnNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
 
 void ReturnNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);

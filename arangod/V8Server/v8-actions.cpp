@@ -921,14 +921,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       break;
 
       case Endpoint::TransportType::VST: {
-        VPackBuffer<uint8_t> buffer;
-        VPackBuilder builder(buffer);
-        builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
+        response->addRawPayload(velocypack::StringRef(content, length));
         TRI_FreeString(content);
-
-        // create vpack from file
-        response->setContentType(rest::ContentType::VPACK);
-        response->setPayload(std::move(buffer));
       }
       break;
 
@@ -1545,7 +1539,7 @@ static ErrorCode clusterSendToAllServers(v8::Isolate* isolate, std::string const
   for (auto const& sid : DBServers) {
     VPackBuffer<uint8_t> buffer(body.size());
     buffer.append(body);
-    auto f = network::sendRequest(pool, "server:" + sid, verb, path,
+    auto f = network::sendRequestRetry(pool, "server:" + sid, verb, path,
                                   std::move(buffer), reqOpts, headers);
     futures.emplace_back(std::move(f));
   }

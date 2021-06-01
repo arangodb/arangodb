@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_IDENTIFIER_H
-#define ARANGODB_BASICS_IDENTIFIER_H 1
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -78,9 +77,11 @@ class Identifier {
 // Identifier should not be bigger than the BaseType
 static_assert(sizeof(Identifier) == sizeof(Identifier::BaseType),
               "invalid size of Identifier");
-}  // namespace arangodb::basics
 
 std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i);
+
+}  // namespace arangodb::basics
+
 
 #define DECLARE_HASH_FOR_IDENTIFIER(T)                        \
   namespace std {                                             \
@@ -102,4 +103,3 @@ DECLARE_HASH_FOR_IDENTIFIER(arangodb::basics::Identifier)
   }  // namespace std
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::basics::Identifier)
 
-#endif

@@ -34,7 +34,6 @@ const db = require('@arangodb').db;
 const actions = require('@arangodb/actions');
 const errors = require('@arangodb').errors;
 const ArangoError = require('@arangodb').ArangoError;
-const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');

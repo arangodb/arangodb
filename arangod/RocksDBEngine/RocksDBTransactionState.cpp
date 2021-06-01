@@ -137,6 +137,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   rocksdb::TransactionDB* db = engine.db();
   _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
+  _rocksReadOptions.fill_cache = options().fillBlockCache; 
+
   TRI_ASSERT(_readSnapshot == nullptr);
   if (isReadOnlyTransaction()) {
     // no need to acquire a snapshot for a single op
@@ -145,7 +147,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       TRI_ASSERT(_readSnapshot != nullptr);
       _rocksReadOptions.snapshot = _readSnapshot;
     }
-    _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
+    _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this);
   } else {
     createTransaction();
     TRI_ASSERT(_rocksTransaction != nullptr);
@@ -158,7 +160,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       TRI_ASSERT(_readSnapshot != nullptr);
     }
 
-    _rocksMethods.reset(new RocksDBTrxMethods(this));
+    _rocksMethods = std::make_unique<RocksDBTrxMethods>(this);
     if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
       // do not track our own writes... we can only use this in very
       // specific scenarios, i.e. when we are sure that we will have a
@@ -210,6 +212,10 @@ void RocksDBTransactionState::createTransaction() {
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
+
+  // when trying to lock the same keys, we want to return quickly and not 
+  // spend the default 1000ms before giving up
+  trxOpts.lock_timeout = 1; 
 
   // unclear performance implications do not use for now
   // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);

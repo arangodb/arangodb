@@ -17,5 +17,5 @@ troubleshoot: |
   If you see unusual spikes here, the follower might not have enough
   IO bandwidth or might be overloaded. Try to provision more IOPS or
   more CPU capacity. Additionally, it could make sense to compare the
-  value with all other available follower dbservers to detect potential
+  value with all other available follower DB-Servers to detect potential
   differences.

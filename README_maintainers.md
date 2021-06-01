@@ -137,7 +137,8 @@ For building the ArangoDB starter checkout the
 
 ### Building the Web Interface
 
-To build Web UI, also known as frontend or *Aardvark*, use CMake in the
+To build Web UI, also known as frontend or *Aardvark*, [Node.js](https://nodejs.org/)
+and [Yarn](https://yarnpkg.com/) need to be installed. You can then use CMake in the
 build directory:
 
     cmake --build . --target frontend

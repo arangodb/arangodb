@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_INDEX_H
-#define ARANGOD_INDEXES_INDEX_H 1
+#pragma once
 
 #include <iosfwd>
 
@@ -498,4 +497,3 @@ struct AttributeAccessParts {
 std::ostream& operator<<(std::ostream&, arangodb::Index const*);
 std::ostream& operator<<(std::ostream&, arangodb::Index const&);
 
-#endif

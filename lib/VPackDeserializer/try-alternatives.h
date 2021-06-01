@@ -20,8 +20,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_TRY_ALTERNATIVES_H
-#define VELOCYPACK_TRY_ALTERNATIVES_H
+
+#pragma once
+
 #include "utilities.h"
 
 namespace arangodb {
@@ -124,4 +125,3 @@ struct deserialize_plan_executor<try_alternatives::try_alternatives_deserializer
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_TRY_ALTERNATIVES_H

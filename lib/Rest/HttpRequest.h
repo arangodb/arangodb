@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HTTP_REQUEST_H
-#define ARANGODB_REST_HTTP_REQUEST_H 1
+#pragma once
 
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/GeneralRequest.h"
@@ -108,4 +107,3 @@ class HttpRequest final : public GeneralRequest {
 };
 }  // namespace arangodb
 
-#endif
