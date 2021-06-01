@@ -725,10 +725,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     // check all plan log entries
     for (auto const& [key, value] : VPackObjectIterator(plans)) {
       replication2::agency::LogPlanSpecification spec(replication2::agency::from_velocypack, value);
-      if (!spec.term) {
+      if (!spec.currentTerm) {
         continue;
       }
-      if (spec.term->participants.find(serverId) == spec.term->participants.end()) {
+      if (spec.currentTerm->participants.find(serverId) == spec.currentTerm->participants.end()) {
         continue;
       }
 
@@ -739,15 +739,15 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       } else {
         // check if the term is the same
         bool const requiresUpdate = std::invoke([&, &status = localIt->second] {
-          if (spec.term.has_value()) {
+          if (spec.currentTerm.has_value()) {
             return std::visit(overload{[&](replicated_log::UnconfiguredStatus) {
                                          return true;
                                        },
                                        [&](replicated_log::LeaderStatus const& s) {
-                                         return s.term != spec.term->term;
+                                         return s.term != spec.currentTerm->term;
                                        },
                                        [&](replicated_log::FollowerStatus const& s) {
-                                         return s.term != spec.term->term;
+                                         return s.term != spec.currentTerm->term;
                                        }},
                               status);
           }
@@ -756,7 +756,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
         // Create UpdateLogAction
         if (requiresUpdate) {
-          LOG_DEVEL << "update replicated log to term " << spec.term->term;
+          LOG_DEVEL << "update replicated log to term " << spec.currentTerm->term;
         }
       }
     }
@@ -770,10 +770,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
         replication2::agency::LogPlanSpecification spec(replication2::agency::from_velocypack,
                                                         planSlice);
-        return !spec.term.has_value() || (spec.term->participants.find(serverId) ==
-                                          spec.term->participants.end());
+        return !spec.currentTerm.has_value() ||
+               (spec.currentTerm->participants.find(serverId) ==
+                spec.currentTerm->participants.end());
       });
-
 
       if (dropLog) {
         LOG_DEVEL << "dropping replicated log " << idx;
