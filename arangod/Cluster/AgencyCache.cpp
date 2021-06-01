@@ -665,7 +665,8 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
       AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
       AgencyCommHelper::path(PLAN_DATABASES) + "/",
-      AgencyCommHelper::path(PLAN_VIEWS) + "/"});
+      AgencyCommHelper::path(PLAN_VIEWS) + "/",
+      AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/"});
   static std::vector<std::string> const currentGoodies ({
       AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
       AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
@@ -730,7 +731,9 @@ AgencyCache::change_set_t AgencyCache::changedSince(
           }}
         auto [entry,created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
         if (created) {
+          LOG_DEVEL << query->toJson();
           _readDB.read(query, entry->second);
+          LOG_DEVEL << "result = " << entry->second->toJson();
         } else {
           LOG_TOPIC("31ae3", ERR, Logger::CLUSTER)
             << "Failed to communicate updated database " << i
@@ -744,7 +747,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
 
   if (get_rest) { // All the rest, i.e. All keys excluding the usual suspects
     static std::vector<std::string> const exc {
-      "Analyzers", "Collections", "Databases", "Views"};
+      "Analyzers", "Collections", "Databases", "Views", "ReplicatedLogs"};
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what))->keys();
     keys.erase(
       std::remove_if(
