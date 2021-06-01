@@ -1,14 +1,14 @@
 /*jshint globalstrict:false, strict:false */
 /* global getOptions, assertTrue, assertFalse, assertEqual, arango */
 
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// @brief test for soft shutdown of a coordinator
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2021 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Copyright 2021, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
 const pu = require('@arangodb/testutils/process-utils');
@@ -37,51 +37,74 @@ const time = internal.time;
 const wait = internal.wait;
 const statusExternal = internal.statusExternal;
 
+var graph_module = require("@arangodb/general-graph");
+var EPS = 0.0001;
+let pregel = require("@arangodb/pregel");
+
+const graphName = "UnitTest_pregel";
+const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
+
+function testAlgoStart(a, p) {
+  let pid = pregel.start(a, graphName, p);
+  assertTrue(typeof pid === "string");
+  return pid;
+}
+
+function testAlgoCheck(pid) {
+  let stats = pregel.status(pid);
+  console.warn("Pregel status:", stats);
+  return stats.state !== "running" && stats.state !== "storing";
+}
+
+function testAlgoCancel(pid) {
+  pregel.cancel(pid);
+}
+
+function getServers(role) {
+  return global.instanceInfo.arangods.filter((instance) => instance.role === role);
+};
+
+function waitForShutdown(arangod, timeout) {
+  let startTime = time();
+  while (true) {
+    if (time() > startTime + timeout) {
+      assertTrue(false, "Instance did not shutdown quickly enough!");
+      return;
+    }
+    let status = statusExternal(arangod.pid, false);
+    console.warn("External status:", status);
+    if (status.status === "TERMINATED") {
+      arangod.exitStatus = status;
+      delete arangod.pid;
+      break;
+    }
+    wait(0.5);
+  }
+};
+
+function waitForAlive(timeout, baseurl, data) {
+  let tries = 0, res;
+  let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" });
+  const end = time() + timeout;
+  while (time() < end) {
+    res = request(all);
+    if (res.status === 200 || res.status === 401 || res.status === 403) {
+      break;
+    }
+    console.warn("waiting for server response from url " + baseurl);
+    wait(0.5);
+  }
+  return res.status;
+};
+
+function restartInstance(arangod) {
+  let options = global.testOptions;
+  pu.reStartInstance(options, global.instanceInfo, {});
+  waitForAlive(30, arangod.url, {});
+};
+
 function testSuite() {
   let cn = "UnitTestSoftShutdown";
-
-  let getServers = function (role) {
-    return global.instanceInfo.arangods.filter((instance) => instance.role === role);
-  };
-
-  let waitForShutdown = function(arangod, timeout) {
-    let startTime = time();
-    while (true) {
-      if (time() > startTime + timeout) {
-        assertTrue(false, "Instance did not shutdown quickly enough!");
-        return;
-      }
-      let status = statusExternal(arangod.pid, false);
-      console.warn("External status:", status);
-      if (status.status === "TERMINATED") {
-        arangod.exitStatus = status;
-        delete arangod.pid;
-        break;
-      }
-      wait(0.5);
-    }
-  };
-
-  let waitForAlive = function (timeout, baseurl, data) {
-    let tries = 0, res;
-    let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" });
-    const end = time() + timeout;
-    while (time() < end) {
-      res = request(all);
-      if (res.status === 200 || res.status === 401 || res.status === 403) {
-        break;
-      }
-      console.warn("waiting for server response from url " + baseurl);
-      wait(0.5);
-    }
-    return res.status;
-  };
-
-  let restartInstance = function(arangod) {
-    let options = global.testOptions;
-    pu.reStartInstance(options, global.instanceInfo, {});
-    waitForAlive(30, arangod.url, {});
-  };
 
   return {
     setUp : function() {
@@ -96,7 +119,6 @@ function testSuite() {
       db._drop(cn);
     },
 
-    /*
     testSoftShutdownWithoutTraffic : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -288,7 +310,7 @@ function testSuite() {
       waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
-*/
+
     testSoftShutdownWithAsyncRequest : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -343,5 +365,127 @@ function testSuite() {
 
   };
 }
+
+function testSuitePregel() {
+  'use strict';
+  return {
+
+    /////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    /////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+
+      var exists = graph_module._list().indexOf("demo") !== -1;
+      if (exists || db.demo_v) {
+        return;
+      }
+      var graph = graph_module._create(graphName);
+      db._create(vColl, { numberOfShards: 4 });
+      graph._addVertexCollection(vColl);
+      db._createEdgeCollection(eColl, {
+        numberOfShards: 4,
+        replicationFactor: 1,
+        shardKeys: ["vertex"],
+        distributeShardsLike: vColl
+      });
+
+      var rel = graph_module._relation(eColl, [vColl], [vColl]);
+      graph._extendEdgeDefinitions(rel);
+
+      var vertices = db[vColl];
+      var edges = db[eColl];
+
+
+      vertices.insert([{ _key: 'A', sssp: 3, pagerank: 0.027645934 },
+                       { _key: 'B', sssp: 2, pagerank: 0.3241496 },
+                       { _key: 'C', sssp: 3, pagerank: 0.289220 },
+                       { _key: 'D', sssp: 2, pagerank: 0.0329636 },
+                       { _key: 'E', sssp: 1, pagerank: 0.0682141 },
+                       { _key: 'F', sssp: 2, pagerank: 0.0329636 },
+                       { _key: 'G', sssp: -1, pagerank: 0.0136363 },
+                       { _key: 'H', sssp: -1, pagerank: 0.01363636 },
+                       { _key: 'I', sssp: -1, pagerank: 0.01363636 },
+                       { _key: 'J', sssp: -1, pagerank: 0.01363636 },
+                       { _key: 'K', sssp: 0, pagerank: 0.013636363 }]);
+
+      edges.insert([{ _from: vColl + '/B', _to: vColl + '/C', vertex: 'B' },
+                    { _from: vColl + '/C', _to: vColl + '/B', vertex: 'C' },
+                    { _from: vColl + '/D', _to: vColl + '/A', vertex: 'D' },
+                    { _from: vColl + '/D', _to: vColl + '/B', vertex: 'D' },
+                    { _from: vColl + '/E', _to: vColl + '/B', vertex: 'E' },
+                    { _from: vColl + '/E', _to: vColl + '/D', vertex: 'E' },
+                    { _from: vColl + '/E', _to: vColl + '/F', vertex: 'E' },
+                    { _from: vColl + '/F', _to: vColl + '/B', vertex: 'F' },
+                    { _from: vColl + '/F', _to: vColl + '/E', vertex: 'F' },
+                    { _from: vColl + '/G', _to: vColl + '/B', vertex: 'G' },
+                    { _from: vColl + '/G', _to: vColl + '/E', vertex: 'G' },
+                    { _from: vColl + '/H', _to: vColl + '/B', vertex: 'H' },
+                    { _from: vColl + '/H', _to: vColl + '/E', vertex: 'H' },
+                    { _from: vColl + '/I', _to: vColl + '/B', vertex: 'I' },
+                    { _from: vColl + '/I', _to: vColl + '/E', vertex: 'I' },
+                    { _from: vColl + '/J', _to: vColl + '/E', vertex: 'J' },
+                    { _from: vColl + '/K', _to: vColl + '/E', vertex: 'K' }]);
+    },
+
+    //////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    //////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      graph_module._drop(graphName, true);
+    },
+
+    testPageRank: function () {
+      let coordinators = getServers('coordinator');
+      assertTrue(coordinators.length > 0);
+      let coordinator = coordinators[0];
+      let instanceInfo = global.instanceInfo;
+
+      // Start a pregel run:
+      let pid = testAlgoStart("pagerank", { threshold: EPS / 1000, resultField: "result", store: true });
+
+      console.warn("Started pregel run:", pid);
+
+      // Now use soft shutdown API to shut coordinator down:
+      arango.DELETE("/_admin/shutdown?soft=true");
+      let status = arango.GET("/_admin/shutdown");
+      console.warn("Hugo:", status);
+      assertTrue(status.softShutdownOngoing);
+      assertEqual(1, status.pregelConductors);
+
+      // It should fail to create a new pregel run:
+      let gotException = false;
+      try {
+        let pid2 = testAlgoStart("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
+      } catch(e) {
+        console.warn("Got exception for new run, good!", JSON.stringify(e));
+        gotException = true;
+      }
+      assertTrue(gotException);
+
+      status = arango.GET("/_admin/shutdown");
+      console.warn("Honk:", status);
+      assertTrue(status.softShutdownOngoing);
+      //assertEqual(1, status.pregelConductors);
+
+      while (!testAlgoCheck(pid)) {
+        console.warn("Pregel still running...");
+        wait(0.2);
+      }
+
+      status = arango.GET("/_admin/shutdown");
+      console.warn("Honk:", status);
+      assertTrue(status.softShutdownOngoing);
+      //assertEqual(1, status.pregelConductors);
+
+      // And now it should shut down in due course...
+      waitForShutdown(coordinator, 30);
+      restartInstance(coordinator);
+    },
+  };
+}
+
 jsunity.run(testSuite);
+jsunity.run(testSuitePregel);
 return jsunity.done();

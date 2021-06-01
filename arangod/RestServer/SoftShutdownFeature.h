@@ -76,6 +76,7 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
     uint64_t transactions;
     uint64_t pendingJobs;
     uint64_t doneJobs;
+    uint64_t pregelConductors;
     bool allClear;
     bool softShutdownOngoing;
   };

@@ -81,7 +81,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     std::vector<std::string> const& edgeCollections, 
     std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
     VPackSlice const& params) {
-  if (isStopping()) {
+  if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     return std::make_pair(Result{TRI_ERROR_SHUTTING_DOWN,
                                  "pregel system not available"}, 0);
   }
@@ -218,7 +218,8 @@ uint64_t PregelFeature::createExecutionNumber() {
 }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "Pregel") {
+    : application_features::ApplicationFeature(server, "Pregel"),
+      _softShutdownOngoing(false) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
 }
@@ -284,7 +285,7 @@ bool PregelFeature::isStopping() const noexcept {
 }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c, uint64_t executionNumber) {
-  if (isStopping()) {
+  if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   
@@ -442,3 +443,16 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     w->aqlResult(outBuilder, withId);
   }
 }
+
+uint64_t PregelFeature::numberOfActiveConductors() const {
+  MUTEX_LOCKER(guard, _mutex);
+  uint64_t nr{0};
+  for (auto const& p : _conductors) {
+    std::shared_ptr<Conductor> c = p.second.second;
+    if (c->_state == ExecutionState::RUNNING ||
+        c->_state == ExecutionState::STORING) {
+      ++nr;
+    }
+  }
+  return nr;
+ }

@@ -26,6 +26,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Pregel/PregelFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ScriptFeature.h"
@@ -75,6 +76,10 @@ SoftShutdownTracker::SoftShutdownTracker(
     application_features::ApplicationServer& server)
   : _server(server), _softShutdownOngoing(false) {
   _checkFunc = [this](bool cancelled) {
+    if (_server.isStopping()) {
+      return;   // already stopping, do nothing, and in particular
+                // let's not schedule ourselves again!
+    }
     if (!this->check()) {   // Initiates shutdown if counters are 0
       // Rearm ourselves:
       if (!::queueShutdownChecker(this->_workItemMutex, this->_workItem,
@@ -102,6 +107,10 @@ void SoftShutdownTracker::initiateSoftShutdown() {
   auto& generalServerFeature = _server.getFeature<GeneralServerFeature>();
   auto& jobManager = generalServerFeature.jobManager();
   jobManager.initiateSoftShutdown();
+
+  // Tell Pregel subsystem:
+  auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
+  pregelFeature.initiateSoftShutdown();
 
   // And initiate our checker to watch numbers:
   if (!::queueShutdownChecker(_workItemMutex, _workItem, _checkFunc)) {
@@ -155,6 +164,7 @@ void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,
   builder.add("transactions", VPackValue(status.transactions));
   builder.add("pendingJobs", VPackValue(status.pendingJobs));
   builder.add("doneJobs", VPackValue(status.doneJobs));
+  builder.add("pregelConductors", VPackValue(status.pregelConductors));
   builder.add("allClear", VPackValue(status.allClear));
 }
 
@@ -185,10 +195,14 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   std::tie(status.pendingJobs, status.doneJobs)
       = jobManager.getNrPendingAndDone();
 
+  // Get number of active Pregel conductors on this coordinator:
+  auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
+  status.pregelConductors = pregelFeature.numberOfActiveConductors();
   status.allClear = status.AQLcursors == 0 &&
                     status.transactions == 0 &&
                     status.pendingJobs == 0 &&
-                    status.doneJobs == 0;
+                    status.doneJobs == 0 &&
+                    status.pregelConductors == 0;
   return status;
 }
 
