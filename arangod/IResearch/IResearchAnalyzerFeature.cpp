@@ -106,6 +106,7 @@ static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZ
   {"text_pt", "pt"}, {"text_ru", "ru"}, {"text_sv", "sv"}, {"text_zh", "zh"} };
 
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
+REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make_json, IdentityAnalyzer::normalize_json);
 REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make, GeoJSONAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make, GeoPointAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack, AqlAnalyzer::normalize_vpack);
@@ -1302,10 +1303,8 @@ bool AnalyzerPool::init(
     auto instance = _cache.emplace(type, iresearch::slice(_config));
 
     if (instance) {
-      _properties = VPackSlice::noneSlice();
       _type = irs::string_ref::NIL;
       _key = irs::string_ref::NIL;
-
       _properties = iresearch::slice(_config);
 
       if (!type.null()) {
@@ -1313,7 +1312,38 @@ bool AnalyzerPool::init(
         _type = irs::string_ref(_config.c_str() + _properties.byteSize() , type.size());
       }
 
-      std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance.get());
+      if (instance->type() == irs::type<irs::analysis::pipeline_token_stream>::id()) {
+        // pipeline needs to validate members compatibility
+        std::string error;
+        irs::analysis::analyzer const* prev {nullptr};
+        AnalyzerValueType prevType{ AnalyzerValueType::Undefined };
+        auto checker = [&error, &prev, &prevType](const irs::analysis::analyzer& analyzer) {
+          AnalyzerValueType currInput;
+          AnalyzerValueType currOutput;
+          std::tie(currInput, currOutput, std::ignore) = getAnalyzerMeta(&analyzer);
+          if (prev) {
+            if ((currInput & prevType) == AnalyzerValueType::Undefined) {
+              error.append("Incompatible pipeline part found. Analyzer type '")
+                   .append(prev->type()().name()).append("' emits output not acceptable by analyzer type '")
+                   .append(analyzer.type()().name()).append("'");
+              return false;
+            }
+          }
+          prev = &analyzer;
+          prevType = currOutput;
+          return true;
+        };
+        auto pipeline = static_cast<irs::analysis::pipeline_token_stream*>(instance.get());
+        if (!pipeline->visit_members(checker)) {
+          LOG_TOPIC("753ff", WARN, iresearch::TOPIC)
+             << "Failed to validate pipeline analyzer: " << error;
+          return false;
+        }
+        std::tie(_inputType, std::ignore, _storeFunc) = getAnalyzerMeta(instance.get());
+        _returnType = prevType; // for pipeline we take last pipe member output type as whole pipe output type
+      } else {
+        std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance.get());
+      }
       _features = features;  // store only requested features
       _revision = revision;
       return true;
@@ -1755,7 +1785,7 @@ Result IResearchAnalyzerFeature::emplace(
         if (res.fail()) {
           return res;
         }
-        auto cached = _lastLoad.find(static_cast<std::string>(split.first)); // FIXME: remove cast after C++20 
+        auto cached = _lastLoad.find(static_cast<std::string>(split.first)); // FIXME: remove cast after C++20
         TRI_ASSERT(cached != _lastLoad.end());
         if (ADB_LIKELY(cached != _lastLoad.end())) {
           cached->second = transaction->buildingRevision(); // as we already "updated cache" to this revision
@@ -2288,7 +2318,6 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
                   "failure to restore dangling analyzers from '", database,
                   "' Aql error: (", updateResult.errorNumber(), " ) ",
                   updateResult.errorMessage())
-
       };
     }
 
@@ -3195,7 +3224,7 @@ void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   WRITE_LOCKER(lock, _mutex);
   auto database = irs::string_ref(vocbase.name());
   auto itr = _lastLoad.find(static_cast<std::string>( // FIXME: after C++20 remove cast and use heterogeneous lookup
-      irs::make_hashed_ref(database, std::hash<irs::string_ref>()))); 
+      irs::make_hashed_ref(database, std::hash<irs::string_ref>())));
   if (itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);
