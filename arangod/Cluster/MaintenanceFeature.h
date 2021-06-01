@@ -57,7 +57,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   explicit MaintenanceFeature(application_features::ApplicationServer&);
 
-  virtual ~MaintenanceFeature() = default;
+  virtual ~MaintenanceFeature();
 
   struct errors_t {
     std::map<std::string, std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>> indexes;
@@ -451,11 +451,11 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief condition variable to motivate workers to find new action
   arangodb::basics::ConditionVariable _actionRegistryCond;
 
-  /// @brief list of background workers
-  std::vector<std::unique_ptr<maintenance::MaintenanceWorker>> _activeWorkers;
-
   /// @brief condition variable to indicate thread completion
   arangodb::basics::ConditionVariable _workerCompletion;
+
+  /// @brief list of background workers
+  std::vector<std::unique_ptr<maintenance::MaintenanceWorker>> _activeWorkers;
 
   /// Errors are managed through raiseIndexError / removeIndexError and
   /// raiseShardError / renoveShardError. According locks must be held in said
