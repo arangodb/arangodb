@@ -41,6 +41,10 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   static bool normalize(const irs::string_ref& /*args*/, std::string& out);
 
   static ptr make(irs::string_ref const& /*args*/);
+  
+  static bool normalize_json(const irs::string_ref& /*args*/, std::string& out);
+
+  static ptr make_json(irs::string_ref const& /*args*/);
 
   IdentityAnalyzer() noexcept;
 
