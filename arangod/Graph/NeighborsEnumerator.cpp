@@ -76,8 +76,8 @@ bool NeighborsEnumerator::next() {
     }
   }
   if (_iterator != _currentDepth.end()) {
-    // We returned this iterator last time,
-    // Move on
+    // We returned this iterator for the last time,
+    // move on.
     _iterator++;
   }
   while (true) {
@@ -90,7 +90,7 @@ bool NeighborsEnumerator::next() {
           if (usePostFilter(evaluator)) {
             return true;
           } else {
-            // Skip this result. does not pass PostFilter
+            // Skip this result. Does not pass the PostFilter.
             _iterator++;
           }
         } else {
@@ -109,7 +109,7 @@ bool NeighborsEnumerator::next() {
     }
     swapLastAndCurrentDepth();
     // Now fetch data.
-    // Do the full depth in one Go.
+    // Do the full depth in one go.
     for (auto const& nextVertex : _lastDepth) {
       EdgeCursor* cursor = getCursor(nextVertex, _searchDepth);
       cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice vertex, size_t cursorId) {

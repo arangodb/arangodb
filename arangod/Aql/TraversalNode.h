@@ -180,7 +180,7 @@ class TraversalNode : public virtual GraphNode {
   ///        The condition will contain the local variable for it's accesses.
   void registerGlobalCondition(bool, AstNode const*);
 
-  /// @brief register a filter condition to be applied before the Result is returned.
+  /// @brief register a filter condition to be applied before the result is returned.
   ///        This condition validates the edge
   void registerPostFilterCondition(AstNode const* condition);
 
@@ -212,6 +212,8 @@ class TraversalNode : public virtual GraphNode {
   //        You are not responsible for it!
   Expression* pruneExpression() const { return _pruneExpression.get(); }
 
+  // @brief Get reference to the postFilter expression.
+  //        You are not responsible for it!
   Expression* postFilterExpression() const;
 
  private:
@@ -267,4 +269,3 @@ class TraversalNode : public virtual GraphNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

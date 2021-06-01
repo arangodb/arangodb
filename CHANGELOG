@@ -5,7 +5,7 @@ devel
   the vertex and/or edge result this filter will now be applied during the
 	traversal to avoid generating the full output for AQL. This will have
 	positive effect if you filter on the vertex/edge but return the path,
-	this way the system does only need to Produce a path that is allowed to
+	this way the system does only need to produce a path that is allowed to
 	be passed through.
 	e.g.
   
@@ -13,7 +13,7 @@ devel
 		  FILTER v.isRelevant == true
 			RETURN p
 
-	can now be optimized, and the Traversal statement will only produce
+	can now be optimized, and the traversal statement will only produce
 	paths where the last vertex has `isRelevant == true`.
 
 * Fix BTS-450: RandomGenerator caught assertion during a value generation within
@@ -21,7 +21,6 @@ devel
 
 * Fix BTS-442: a query with fullCount on a sharded collection hangs
   indefinitely when LIMIT is less than number of available documents.
-
 
 * Bug-Fix (MacOs): In MacOs there is an upper bound for descriptors defined by
   the system, which is independend of the settings in `ulimit -n`. If the

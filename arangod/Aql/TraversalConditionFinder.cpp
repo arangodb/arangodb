@@ -605,13 +605,13 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
       auto coveredCondition = std::make_unique<Condition>(_plan->getAst());
 
-      // Method to identify which optimization case we need to take.
-      // We can only optimize if we have a single Variable (vertex / edge / path) per condition.
+      // Method to identify which optimization case we need to take care of.
+      // We can only optimize if we have a single variable (vertex / edge / path) per condition.
       auto identifyCase = [&]() -> OptimizationCase {
         OptimizationCase result = OptimizationCase::NON_OPTIMIZABLE;
         for (auto const& var : varsUsedByCondition) {
           if (varsValidInTraversal.find(var) == varsValidInTraversal.end()) {
-            // Found a variable that is not in Scope
+            // Found a variable that is not in the scope
             return OptimizationCase::NON_OPTIMIZABLE;
           }
           if (var == edgeVar) {
@@ -680,7 +680,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
                 if ((int64_t)options->minDepth < indexedAccessDepth &&
                     !isTrueOnNull(cloned, pathVar)) {
                   // do not return paths shorter than the deepest path access
-                  // Unless the condition evaluates to true on `null`.
+                  // unless the condition evaluates to true on `null`.
                   options->minDepth = indexedAccessDepth;
                 }
               }  // otherwise do not remove the filter statement
