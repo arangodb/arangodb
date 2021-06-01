@@ -53,14 +53,6 @@ bool authorized(std::string const& user) {
   return (user == exec.user());
 }
 
-bool authorized(std::pair<std::string, std::shared_ptr<arangodb::pregel::Conductor>> const& conductor) {
-  return ::authorized(conductor.first);
-}
-
-bool authorized(std::pair<std::string, std::shared_ptr<arangodb::pregel::IWorker>> const& worker) {
-  return ::authorized(worker.first);
-}
-
 /// @brief custom deleter for the PregelFeature.
 /// it does nothing, i.e. doesn't delete it. This is because the ApplicationServer
 /// is managing the PregelFeature, but we need a shared_ptr to it here as well. The
@@ -201,7 +193,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
       return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
     }
   }
-
+   
   uint64_t en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(en, vocbase, vertexCollections,
                                                edgeColls, edgeCollectionRestrictions,
@@ -233,25 +225,49 @@ size_t PregelFeature::availableParallelism() {
   return procNum < 1 ? 1 : procNum;
 }
 
-void PregelFeature::start() {
-  if (ServerState::instance()->isAgent()) {
+void PregelFeature::scheduleGarbageCollection() {
+  if (isStopping()) {
     return;
   }
 
+  std::chrono::seconds offset = std::chrono::seconds(10);
+
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  auto [queued, handle] = scheduler->queueDelay(RequestLane::INTERNAL_LOW, offset, [this](bool canceled) {
+    if (!canceled) {
+      garbageCollectConductors();
+      scheduleGarbageCollection();
+    }
+  });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                   "No thread available to queue Pregel garbage collection");
+  }
+
+  _gcHandle = std::move(handle);
+}
+
+void PregelFeature::start() {
   if (ServerState::instance()->isCoordinator()) {
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     _recoveryManager = std::make_unique<RecoveryManager>(ci);
     _recoveryManagerPtr.store(_recoveryManager.get(), std::memory_order_release);
   }
+  
+  if (!ServerState::instance()->isAgent()) {
+    scheduleGarbageCollection();
+  }
 }
 
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
+  _gcHandle.reset();
   
   MUTEX_LOCKER(guard, _mutex);
   // cancel all conductors and workers
   for (auto& it : _conductors) {
-    it.second.second->cancel();
+    it.second.conductor->cancel();
   }
   for (auto it : _workers) {
     it.second.second->cancelGlobalStep(VPackSlice());
@@ -270,7 +286,7 @@ void PregelFeature::unprepare() {
   // to conductors and workers been dropped!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (auto& it : cs) {
-    TRI_ASSERT(it.second.second.use_count() == 1);
+    TRI_ASSERT(it.second.conductor.use_count() == 1);
   }
   
   for (auto it : _workers) {
@@ -290,14 +306,25 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c, uint64_t execut
   
   std::string user = ExecContext::current().user();
   MUTEX_LOCKER(guard, _mutex);
-  _conductors.try_emplace(executionNumber,
-                      std::move(user), std::move(c));
+  _conductors.try_emplace(executionNumber, ConductorEntry{ std::move(user), std::chrono::steady_clock::time_point{}, std::move(c) });
 }
 
 std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _conductors.find(executionNumber);
-  return (it != _conductors.end() && ::authorized(it->second)) ? it->second.second : nullptr;
+  return (it != _conductors.end() && ::authorized(it->second.user)) ? it->second.conductor : nullptr;
+}
+
+void PregelFeature::garbageCollectConductors() {
+  // iterate over all conductors and remove the ones which can be garbage-collected
+  MUTEX_LOCKER(guard, _mutex);
+  for (auto it = _conductors.begin(); it != _conductors.end(); /*no hoisting*/) {
+    if (it->second.conductor->canBeGarbageCollected()) {
+      it = _conductors.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w, uint64_t executionNumber) {
@@ -314,7 +341,7 @@ void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w, uint64_t executionNu
 std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _workers.find(executionNumber);
-  return (it != _workers.end() && ::authorized(it->second)) ? it->second.second : nullptr;
+  return (it != _workers.end() && ::authorized(it->second.first)) ? it->second.second : nullptr;
 }
 
 void PregelFeature::cleanupConductor(uint64_t executionNumber) {

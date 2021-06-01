@@ -1,5 +1,13 @@
 devel
 -----
+
+* Added garbage collection for finished and failed Pregel conductors.
+  Previously, Pregel executions that finished successfully or unsuccessfully
+  remained in memory until being explicitly canceled. This prevented a 
+  cleanup of abandoned jobs. Such jobs are now automatically cleaned
+  about 10 minutes after finalization. The time-to-live values can be
+  overriden per Pregel job by passing a "ttl" value.
+
 * Added check for data type compatibility between members of pipeline
   ArangoSearch analyzer.
 

@@ -116,6 +116,11 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (!_storeResults) {
     LOG_TOPIC("f3817", DEBUG, Logger::PREGEL) << "Will keep results in-memory";
   }
+  
+  // time-to-live for finished/failed Pregel jobs before garbage collection.
+  // default timeout is 10 minutes for each conductor
+  uint64_t ttl = 600;
+  _ttl = std::chrono::seconds(VelocyPackHelper::getNumericValue(config, "ttl", ttl));
 }
 
 Conductor::~Conductor() {
@@ -136,13 +141,13 @@ void Conductor::start() {
   _endTimeSecs = _startTimeSecs;
 
   _globalSuperstep = 0;
-  _state = ExecutionState::RUNNING;
+  updateState(ExecutionState::RUNNING);
 
   LOG_TOPIC("3a255", DEBUG, Logger::PREGEL)
       << "Telling workers to load the data";
   auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
-    _state = ExecutionState::CANCELED;
+    updateState(ExecutionState::CANCELED);
     LOG_TOPIC("30171", ERR, Logger::PREGEL)
         << "Not all DBServers started the execution";
   }
@@ -187,7 +192,7 @@ bool Conductor::_startGlobalStep() {
     });
 
     if (res != TRI_ERROR_NO_ERROR) {
-      _state = ExecutionState::IN_ERROR;
+      updateState(ExecutionState::IN_ERROR);
       LOG_TOPIC("04189", ERR, Logger::PREGEL)
           << "Seems there is at least one worker out of order";
       // the recovery mechanisms should take care of this
@@ -235,10 +240,10 @@ bool Conductor::_startGlobalStep() {
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
     // tells workers to store / discard results
     if (_storeResults) {
-      _state = ExecutionState::STORING;
+      updateState(ExecutionState::STORING);
       _finalizeWorkers();
     } else {  // just stop the timer
-      _state = _inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE;
+      updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE);
       _endTimeSecs = TRI_microtime();
       LOG_TOPIC("9e82c", INFO, Logger::PREGEL)
           << "Done, execution took: " << totalRuntimeSecs() << " s";
@@ -253,7 +258,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_edgeCount = _totalEdgesCount;
     _masterContext->_reports = &_reports;
     if (!_masterContext->preGlobalSuperstepWithResult()) {
-      _state = ExecutionState::FATAL_ERROR;
+      updateState(ExecutionState::FATAL_ERROR);
       _endTimeSecs = TRI_microtime();
       return false;
     }
@@ -282,7 +287,7 @@ bool Conductor::_startGlobalStep() {
   // start vertex level operations, does not get a response
   auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
-    _state = ExecutionState::IN_ERROR;
+    updateState(ExecutionState::IN_ERROR);
     LOG_TOPIC("f34bb", ERR, Logger::PREGEL)
         << "Conductor could not start GSS " << _globalSuperstep;
     // the recovery mechanisms should take care od this
@@ -449,7 +454,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     b.close();
     res = _sendToAllDBServers(Utils::finalizeRecoveryPath, b);
     if (res == TRI_ERROR_NO_ERROR) {
-      _state = ExecutionState::RUNNING;
+      updateState(ExecutionState::RUNNING);
       _startGlobalStep();
     }
   }
@@ -466,7 +471,7 @@ void Conductor::cancel() {
 
 void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
-  _state = ExecutionState::CANCELED;
+  updateState(ExecutionState::CANCELED);
   bool ok = basics::function_utils::retryUntilTimeout(
       [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
       Logger::PREGEL, "cancel worker execution");
@@ -490,7 +495,7 @@ void Conductor::startRecovery() {
 
   // we lost a DBServer, we need to reconfigure all remainging servers
   // so they load the data for the lost machine
-  _state = ExecutionState::RECOVERING;
+  updateState(ExecutionState::RECOVERING);
   _statistics.reset();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
@@ -788,7 +793,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   // do not swap an error state to done
   bool didStore = false;
   if (_state == ExecutionState::STORING) {
-    _state = _inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE;
+    updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE);
     didStore = true;
   }
   _endTimeSecs = TRI_microtime();  // offically done
@@ -835,6 +840,25 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
       }
     }
   }
+}
+
+bool Conductor::canBeGarbageCollected() const {
+  // we don't want to block other operations for longer, so if we can't immediately
+  // acuqire the mutex here, we assume a conductor cannot be garbage-collected.
+  // the same conductor will be probed later anyway, so we should be fine
+  TRY_MUTEX_LOCKER(guard, _callbackMutex);
+
+  if (guard.isLocked()) {
+    if (_state == ExecutionState::CANCELED || 
+        _state == ExecutionState::DONE || 
+        _state == ExecutionState::IN_ERROR || 
+        _state == ExecutionState::FATAL_ERROR) {
+      return (_expires != std::chrono::steady_clock::time_point{} &&
+              _expires <= std::chrono::steady_clock::now());
+    }
+  }
+
+  return false;
 }
 
 void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
@@ -998,4 +1022,14 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   }
 
   return result;
+}
+
+void Conductor::updateState(ExecutionState state) {
+  _state = state;
+  if (_state == ExecutionState::CANCELED || 
+      _state == ExecutionState::DONE || 
+      _state == ExecutionState::IN_ERROR || 
+      _state == ExecutionState::FATAL_ERROR) {
+    _expires = std::chrono::steady_clock::now() + _ttl;
+  }
 }
