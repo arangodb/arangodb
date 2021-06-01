@@ -1,6 +1,9 @@
 v3.6.14 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-450: RandomGenerator caught assertion during a value generation within
+  `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
+
 * Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied, it
   may rename some variables in the query. The variable renaming was however not
   carried out for traversal PRUNE conditions, so the PRUNE conditions could
