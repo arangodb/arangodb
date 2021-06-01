@@ -29,9 +29,11 @@
 #include "Pregel/PregelFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/SupervisedScheduler.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Utils/CursorRepository.h"
@@ -165,6 +167,8 @@ void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,
   builder.add("pendingJobs", VPackValue(status.pendingJobs));
   builder.add("doneJobs", VPackValue(status.doneJobs));
   builder.add("pregelConductors", VPackValue(status.pregelConductors));
+  builder.add("lowPrioOngoingRequests", VPackValue(status.lowPrioOngoingRequests));
+  builder.add("lowPrioQueuedRequests", VPackValue(status.lowPrioQueuedRequests));
   builder.add("allClear", VPackValue(status.allClear));
 }
 
@@ -198,10 +202,18 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   // Get number of active Pregel conductors on this coordinator:
   auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
   status.pregelConductors = pregelFeature.numberOfActiveConductors();
+
+  // Get number of ongoing and queued requests from scheduler:
+  std::tie(status.lowPrioOngoingRequests,
+           status.lowPrioQueuedRequests)
+      = SchedulerFeature::SCHEDULER->getNumberLowPrioOngoingAndQueued();
+
   status.allClear = status.AQLcursors == 0 &&
                     status.transactions == 0 &&
                     status.pendingJobs == 0 &&
                     status.doneJobs == 0 &&
+                    status.lowPrioOngoingRequests == 0 &&
+                    status.lowPrioQueuedRequests == 0 &&
                     status.pregelConductors == 0;
   return status;
 }

@@ -56,10 +56,6 @@ function testAlgoCheck(pid) {
   return stats.state !== "running" && stats.state !== "storing";
 }
 
-function testAlgoCancel(pid) {
-  pregel.cancel(pid);
-}
-
 function getServers(role) {
   return global.instanceInfo.arangods.filter((instance) => instance.role === role);
 };
@@ -83,7 +79,7 @@ function waitForShutdown(arangod, timeout) {
 };
 
 function waitForAlive(timeout, baseurl, data) {
-  let tries = 0, res;
+  let res;
   let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" });
   const end = time() + timeout;
   while (time() < end) {
@@ -123,7 +119,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
 
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
@@ -141,7 +136,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
 
       // Create an AQL cursor:
       let data = {
@@ -187,7 +181,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
 
       // Create an AQL cursor:
       let data = {
@@ -236,7 +229,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
 
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
@@ -275,7 +267,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
 
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
@@ -315,7 +306,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
 
       // Create a streaming transaction:
       let data = { query: `RETURN SLEEP(15)` };
@@ -357,6 +347,74 @@ function testSuite() {
       resp = arango.PUT(`/_api/job/${resp.headers["x-arango-async-id"]}`, {});
       assertFalse(resp.error);
       assertEqual(201, resp.code);
+
+      // And now it should shut down in due course...
+      waitForShutdown(coordinator, 30);
+      restartInstance(coordinator);
+    },
+
+    testSoftShutdownWithQueuedLowPrio : function() {
+      let coordinators = getServers('coordinator');
+      assertTrue(coordinators.length > 0);
+      let coordinator = coordinators[0];
+
+      // Create a streaming transaction:
+      let op = `require("internal").wait(1); return 1;`;
+
+      let jobs = [];
+      for (let i = 0; i < 128; ++i) {
+        // that is more than we have threads, so there should be a queue
+        let resp = arango.POST_RAW("/_admin/execute", op, {"x-arango-async":"store"});
+        jobs.push(resp.headers["x-arango-async-id"]);
+      }
+      console.warn("Produced 128 jobs asynchronously:", jobs);
+
+      // Now use soft shutdown API to shut coordinator down:
+      let status = arango.GET("/_admin/shutdown");
+      console.warn("status0:", status);
+      assertFalse(status.softShutdownOngoing);
+      assertTrue(status.lowPrioOngoingRequests > 0);
+      assertTrue(status.lowPrioQueuedRequests > 0);
+
+      arango.DELETE("/_admin/shutdown?soft=true");
+      status = arango.GET("/_admin/shutdown");
+      console.warn("status1:", status);
+      assertTrue(status.softShutdownOngoing);
+      assertTrue(status.lowPrioOngoingRequests > 0);
+      assertTrue(status.lowPrioQueuedRequests > 0);
+      assertFalse(status.allClear);
+
+      // Now until all jobs are done:
+      let startTime = time();
+      while (true) {
+        status = arango.GET("/_admin/shutdown");
+        if (status.lowPrioQueuedRequests === 0 &&
+            status.lowPrioOngoingRequests === 0) {
+          break;   // all good!
+        }
+        if (time() - startTime > 90) {
+          // 45 seconds should be enough for at least 2 threads
+          // to execute 128 requests, usually, it will be much faster.
+          assertTrue(false, "finishing jobs took too long");
+        }
+        console.warn("status2:", status);
+        assertTrue(status.softShutdownOngoing);
+        assertEqual(128, status.pendingJobs + status.doneJobs);
+        assertFalse(status.allClear);
+        wait(0.5);
+      }
+
+      // Now collect the job results:
+      for (let j of jobs) {
+        assertEqual(1, arango.PUT(`/_api/job/${j}`, {}));
+      }
+
+      status = arango.GET("/_admin/shutdown");
+      console.warn("status3:", status);
+      assertTrue(status.softShutdownOngoing);
+      assertEqual(0, status.pendingJobs);
+      assertEqual(0, status.doneJobs);
+      assertTrue(status.allClear);
 
       // And now it should shut down in due course...
       waitForShutdown(coordinator, 30);
@@ -440,7 +498,6 @@ function testSuitePregel() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
 
       // Start a pregel run:
       let pid = testAlgoStart("pagerank", { threshold: EPS / 1000, resultField: "result", store: true });

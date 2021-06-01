@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
 #include "Scheduler/Scheduler.h"
+#include "RestServer/Metrics.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -77,6 +78,8 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
     uint64_t pendingJobs;
     uint64_t doneJobs;
     uint64_t pregelConductors;
+    uint64_t lowPrioOngoingRequests;
+    uint64_t lowPrioQueuedRequests;
     bool allClear;
     bool softShutdownOngoing;
   };
@@ -101,7 +104,6 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
  private:
   bool check() const;   // returns true if actual shutdown triggered
   void initiateActualShutdown() const;
-
 };
 
 }  // namespace arangodb
