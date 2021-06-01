@@ -468,7 +468,7 @@ function readAssertLogLines (logPath) {
           const line = buf.asciiSlice(lineStart, j);
           lineStart = j + 1;
 
-          // scan for asesrts from the crash dumper
+          // scan for asserts from the crash dumper
           if ((line.search('a7902') !== -1) ||
               (line.search('c962b') !== -1) ||
               (line.search('308c3') !== -1)) {
