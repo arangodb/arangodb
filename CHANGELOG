@@ -1,6 +1,9 @@
 v3.6.14 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
+  K_SHORTEST_PATHS and K_PATHS.
+
 * Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied, it
   may rename some variables in the query. The variable renaming was however not
   carried out for traversal PRUNE conditions, so the PRUNE conditions could
