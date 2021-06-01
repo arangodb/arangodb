@@ -81,19 +81,25 @@ bool NeighborsEnumerator::next() {
     _iterator++;
   }
   while (true) {
-    while (_iterator != _currentDepth.end()) {
-      //  We still have something to return
-      if (_opts->usesPostFilter()) {
-        auto evaluator = _opts->getPostFilterEvaluator();
-        if (usePostFilter(evaluator)) {
-          return true;
+    if (_searchDepth >= _opts->minDepth) {
+      // We only return after we reached the min allowed depth.
+      while (_iterator != _currentDepth.end()) {
+        //  We still have something to return
+        if (_opts->usesPostFilter()) {
+          auto evaluator = _opts->getPostFilterEvaluator();
+          if (usePostFilter(evaluator)) {
+            return true;
+          } else {
+            // Skip this result. does not pass PostFilter
+            _iterator++;
+          }
         } else {
-          // Skip this result. does not pass PostFilter
-          _iterator++;
+          return true;
         }
-      } else {
-        return true;
       }
+    } else {
+      // Make sure we skip everything here.
+      _iterator = _currentDepth.end();
     }
     // This depth is done. Get next
     TRI_ASSERT(_iterator == _currentDepth.end());
