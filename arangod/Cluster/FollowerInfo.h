@@ -84,6 +84,8 @@ class FollowerInfo {
     // This should also disable satellite tracking.
   }
 
+  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
   ////////////////////////////////////////////////////////////////////////////////
@@ -176,12 +178,12 @@ class FollowerInfo {
     return _theLeaderTouched;
   }
 
-  bool allowedToWrite() {
+  WriteState allowedToWrite() {
     {
       auto& engine =
           _docColl->vocbase().server().getFeature<EngineSelectorFeature>().engine();
       if (engine.inRecovery()) {
-        return true;
+        return WriteState::ALLOWED;
       }
       READ_LOCKER(readLocker, _canWriteLock);
       if (_canWrite) {
@@ -195,16 +197,17 @@ class FollowerInfo {
         // needs to be at least writeConcern.
         TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
 #endif
-        return _canWrite;
+        return WriteState::ALLOWED;
       }
       READ_LOCKER(readLockerData, _dataLock);
       TRI_ASSERT(_docColl != nullptr);
+
       if (!_theLeaderTouched) {
         // prevent writes before `TakeoverShardLeadership` has run
         LOG_TOPIC("7c1d4", INFO, Logger::REPLICATION)
             << "Shard "
             << _docColl->name() << " is temporarily in read-only mode, since we have not yet run TakeoverShardLeadership since the last restart.";
-        return false;
+        return WriteState::STARTUP;
       }
       if (_followers->size() + 1 < _docColl->writeConcern()) {
         // We know that we still do not have enough followers
@@ -212,7 +215,7 @@ class FollowerInfo {
             << "Shard " << _docColl->name() << " is temporarily in read-only mode, since we have less than writeConcern ("
             << basics::StringUtils::itoa(_docColl->writeConcern())
             << ") replicas in sync.";
-        return false;
+        return WriteState::FORBIDDEN;
       }
     }
     bool res = updateFailoverCandidates();
@@ -221,7 +224,7 @@ class FollowerInfo {
           << "Shard "
           << _docColl->name() << " is temporarily in read-only mode, since we could not update the failover candidates in the agency.";
     }
-    return res;
+    return res ? WriteState::ALLOWED : WriteState::FORBIDDEN;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -245,4 +248,3 @@ class FollowerInfo {
   arangodb::velocypack::Builder newShardEntry(arangodb::velocypack::Slice oldValue) const;
 };
 }  // end namespace arangodb
-

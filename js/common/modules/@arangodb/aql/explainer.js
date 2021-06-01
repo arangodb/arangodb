@@ -1260,7 +1260,23 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         if (node.hasOwnProperty('pathOutVariable')) {
-          parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* paths */'));
+          let pathParts = [];
+          if (node.options.producePathsVertices) {
+            pathParts.push("vertices");
+          }
+          if (node.options.producePathsEdges) {
+            pathParts.push("edges");
+          }
+          if (node.options.producePathsWeights) {
+            pathParts.push("weights");
+          }
+          if (pathParts.length === 3) {
+            pathParts = '';
+          } else {
+            pathParts = ': ' + pathParts.join(', ');
+          }
+
+          parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* paths' + pathParts + ' */'));
         }
 
         rc += parts.join(', ') + ' ' + keyword('IN') + ' ' +
@@ -1901,7 +1917,7 @@ function processQuery(query, explain, planIndex) {
         if (node.rangeVariable) {
           window += variableName(node.rangeVariable) + ' ' + keyword("WITH") + ' ';
         }
-        window += `{ preceding: ${JSON.stringify(node.preceding)}, following: ${JSON.stringify(node.following)}} `;
+        window += `{ preceding: ${JSON.stringify(node.preceding)}, following: ${JSON.stringify(node.following)} } `;
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
           window += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
@@ -2419,7 +2435,7 @@ function inspectDump(filename, outfile) {
     let details = data.collections[collection];
     if (details.examples) {
       details.examples.forEach(function (example) {
-        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ", {isRestore: true});");
+        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ");");
       });
     }
     let missing = details.count;

@@ -39,7 +39,7 @@ using namespace arangodb::pregel;
 
 RestPregelHandler::RestPregelHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response), _pregel(server.getFeature<PregelFeature>()) {}
 
 RestStatus RestPregelHandler::execute() {
   try {
@@ -61,10 +61,10 @@ RestStatus RestPregelHandler::execute() {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
-      PregelFeature::handleConductorRequest(_vocbase, suffix[1], body, response);
+      _pregel.handleConductorRequest(_vocbase, suffix[1], body, response);
       generateResult(rest::ResponseCode::OK, response.slice());
     } else if (suffix[0] == Utils::workerPrefix) {
-      PregelFeature::handleWorkerRequest(_vocbase, suffix[1], body, response);
+      _pregel.handleWorkerRequest(_vocbase, suffix[1], body, response);
 
       generateResult(rest::ResponseCode::OK, response.slice());
     } else {

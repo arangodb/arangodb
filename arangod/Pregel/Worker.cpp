@@ -23,29 +23,18 @@
 
 #include "Pregel/Worker.h"
 #include "Pregel/Aggregator.h"
+#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
-#include "Pregel/WorkerConfig.h"
 
-#include "Basics/MutexLocker.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/system-compiler.h"
-#include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
-#include "Network/NetworkFeature.h"
 #include "Network/Methods.h"
-#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "VocBase/ticks.h"
-#include "VocBase/vocbase.h"
 
-#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -61,8 +50,10 @@ using namespace arangodb::pregel;
                                  true, __FILE__, __LINE__)
 
 template <typename V, typename E, typename M>
-Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackSlice initConfig)
-    : _state(WorkerState::IDLE),
+Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
+                        VPackSlice initConfig, PregelFeature& feature)
+    : _feature(feature),
+      _state(WorkerState::IDLE),
       _config(&vocbase, initConfig),
       _algorithm(algo),
       _nextGSSSendMessageCount(0),
@@ -157,14 +148,16 @@ void Worker<V, E, M>::setupWorker() {
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, cb = std::move(cb)] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), cb = std::move(cb)] {
     try {
       _graphStore->loadShards(&_config, cb);
     } catch (std::exception const& ex) {
-      LOG_TOPIC("a47c4", WARN, Logger::PREGEL) << "caught exception in loadShards: " << ex.what();
+      LOG_TOPIC("a47c4", WARN, Logger::PREGEL)
+          << "caught exception in loadShards: " << ex.what();
       throw;
     } catch (...) {
-      LOG_TOPIC("e932d", WARN, Logger::PREGEL) << "caught unknown exception in loadShards";
+      LOG_TOPIC("e932d", WARN, Logger::PREGEL)
+          << "caught unknown exception in loadShards";
       throw;
     }
   });
@@ -182,7 +175,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data, VPackBuilder& re
   if (_state != WorkerState::IDLE) {
     LOG_TOPIC("b8506", ERR, Logger::PREGEL)
         << "Cannot prepare a gss when the worker is not idle";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
   }
   _state = WorkerState::PREPARING;  // stop any running step
   LOG_TOPIC("f16f2", DEBUG, Logger::PREGEL) << "Received prepare GSS: " << data.toJson();
@@ -344,7 +338,8 @@ void Worker<V, E, M>::_startProcessing() {
   for (size_t i = 0; i < numT; i++) {
     bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT, numSegments] {
       if (_state != WorkerState::COMPUTING) {
-        LOG_TOPIC("f0e3d", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
+        LOG_TOPIC("f0e3d", WARN, Logger::PREGEL)
+            << "Execution aborted prematurely.";
         return;
       }
       size_t dividend = numSegments / numT;
@@ -381,7 +376,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 // internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
 bool Worker<V, E, M>::_processVertices(size_t threadId,
-                                       RangeIterator<Vertex<V,E>>& vertexIterator) {
+                                       RangeIterator<Vertex<V, E>>& vertexIterator) {
   double start = TRI_microtime();
 
   // thread local caches
@@ -410,7 +405,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
 
   size_t activeCount = 0;
   for (; vertexIterator.hasMore(); ++vertexIterator) {
-    Vertex<V,E>* vertexEntry = *vertexIterator;
+    Vertex<V, E>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
 
@@ -428,7 +423,8 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    LOG_TOPIC("ee2ab", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
+    LOG_TOPIC("ee2ab", WARN, Logger::PREGEL)
+        << "Execution aborted prematurely.";
     return false;
   }
   if (vertexComputation->_enterNextGSS) {
@@ -556,7 +552,7 @@ void Worker<V, E, M>::_continueAsync() {
   // start next iteration in $milli mseconds.
   bool queued = false;
   std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli), [this](bool cancelled) {
+      RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli), [this, self = shared_from_this()](bool cancelled) {
         if (!cancelled) {
           {  // swap these pointers atomically
             MY_WRITE_LOCKER(guard, _cacheRWLock);
@@ -580,10 +576,9 @@ void Worker<V, E, M>::_continueAsync() {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
-                                        std::function<void()> cb) {
+void Worker<V, E, M>::finalizeExecution(VPackSlice const& body, std::function<void()> cb) {
   // Only expect serial calls from the conductor.
-  // Lock to prevent malicous activity
+  // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
     LOG_TOPIC("4067a", DEBUG, Logger::PREGEL) << "removing worker";
@@ -622,18 +617,18 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   MUTEX_LOCKER(guard, _commandMutex);
   TRI_ASSERT(b.isEmpty());
 
-//  std::vector<ShardID> const& shards = _config.globalShardIDs();
+  //  std::vector<ShardID> const& shards = _config.globalShardIDs();
   std::string tmp;
 
-  b.openArray(/*unindexed*/true);
+  b.openArray(/*unindexed*/ true);
   auto it = _graphStore->vertexIterator();
   for (; it.hasMore(); ++it) {
-    Vertex<V,E> const* vertexEntry = *it;
+    Vertex<V, E> const* vertexEntry = *it;
 
     TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
     ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
 
-    b.openObject(/*unindexed*/true);
+    b.openObject(/*unindexed*/ true);
 
     if (withId) {
       std::string const& cname = _config.shardIDToCollectionName(shardId);
@@ -646,14 +641,16 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
       }
     }
 
-    b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),
-                                                   vertexEntry->key().size(),
-                                                   VPackValueType::String));
+    b.add(StaticStrings::KeyString,
+          VPackValuePair(vertexEntry->key().data(), vertexEntry->key().size(),
+                         VPackValueType::String));
 
     V const& data = vertexEntry->data();
     // bool store =
-    if (auto res = _graphStore->graphFormat()->buildVertexDocumentWithResult(b, &data); res.fail()) {
-      LOG_TOPIC("37fde", ERR, Logger::PREGEL) << "failed to build vertex document: " << res.error().toString();
+    if (auto res = _graphStore->graphFormat()->buildVertexDocumentWithResult(b, &data);
+        res.fail()) {
+      LOG_TOPIC("37fde", ERR, Logger::PREGEL)
+          << "failed to build vertex document: " << res.error().toString();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR, res.error().toString());
     }
     b.close();
@@ -704,7 +701,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), this] {
     if (_state != WorkerState::RECOVERING) {
-      LOG_TOPIC("554e2", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      LOG_TOPIC("554e2", WARN, Logger::PREGEL)
+          << "Compensation aborted prematurely.";
       return;
     }
 
@@ -714,19 +712,21 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _initializeVertexContext(vCompensate.get());
     if (!vCompensate) {
       _state = WorkerState::DONE;
-      LOG_TOPIC("938d2", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      LOG_TOPIC("938d2", WARN, Logger::PREGEL)
+          << "Compensation aborted prematurely.";
       return;
     }
     vCompensate->_writeAggregators = _workerAggregators.get();
 
     size_t i = 0;
     for (; vertexIterator.hasMore(); ++vertexIterator) {
-      Vertex<V,E>* vertexEntry = *vertexIterator;
+      Vertex<V, E>* vertexEntry = *vertexIterator;
       vCompensate->_vertexEntry = vertexEntry;
       vCompensate->compensate(i > _preRecoveryTotal);
       i++;
       if (_state != WorkerState::RECOVERING) {
-        LOG_TOPIC("e9011", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
+        LOG_TOPIC("e9011", WARN, Logger::PREGEL)
+            << "Execution aborted prematurely.";
         break;
       }
     }
@@ -749,7 +749,8 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::RECOVERING) {
-    LOG_TOPIC("22e42", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+    LOG_TOPIC("22e42", WARN, Logger::PREGEL)
+        << "Compensation aborted prematurely.";
     return;
   }
 
@@ -761,19 +762,13 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const& message) {
-  application_features::ApplicationServer& server = _config.vocbase()->server();
-  if (server.isStopping()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-
   if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    auto self = shared_from_this();
-    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self, path, message] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), path, message] {
       VPackBuilder response;
-      PregelFeature::handleConductorRequest(*_config.vocbase(), path,
-                                            message.slice(), response);
+      _feature.handleConductorRequest(*_config.vocbase(), path,
+                                      message.slice(), response);
     });
     if (!queued) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
@@ -784,7 +779,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
 
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
-    auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+    auto const& nf = _config.vocbase()->server().template getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
 
     network::RequestOptions reqOpts;
@@ -803,7 +798,7 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
   LOG_TOPIC("6d349", TRACE, Logger::PREGEL) << "Calling the conductor";
   if (ServerState::instance()->isRunningInCluster() == false) {
     VPackBuilder response;
-    PregelFeature::handleConductorRequest(*_config.vocbase(), path, message.slice(), response);
+    _feature.handleConductorRequest(*_config.vocbase(), path, message.slice(), response);
     handle(response.slice());
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
@@ -814,7 +809,6 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
 
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
-
 
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
@@ -829,3 +823,21 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
     }
   }
 }
+
+// template types to create
+template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
+template class arangodb::pregel::Worker<uint64_t, uint8_t, uint64_t>;
+template class arangodb::pregel::Worker<float, float, float>;
+template class arangodb::pregel::Worker<double, float, double>;
+
+// custom algorithm types
+template class arangodb::pregel::Worker<uint64_t, uint64_t, SenderMessage<uint64_t>>;
+template class arangodb::pregel::Worker<SCCValue, int8_t, SenderMessage<uint64_t>>;
+template class arangodb::pregel::Worker<HITSValue, int8_t, SenderMessage<double>>;
+template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
+template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
+template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
+template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;
+
+using namespace arangodb::pregel::algos::accumulators;
+template class arangodb::pregel::Worker<VertexData, EdgeData, MessageData>;

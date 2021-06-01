@@ -37,7 +37,7 @@ class QueueTracer {
   using Step = typename QueueImpl::Step;
 
  public:
-  QueueTracer(arangodb::ResourceMonitor& resourceMonitor);
+  explicit QueueTracer(arangodb::ResourceMonitor& resourceMonitor);
   ~QueueTracer();
 
   void clear();

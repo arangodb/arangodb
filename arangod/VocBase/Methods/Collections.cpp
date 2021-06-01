@@ -290,16 +290,9 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
-    bool isSystem = vocbase.IsSystemName(info.name);
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
-      bool isSmartChild =
-          Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-      RevisionId minRev =
-          (isSystem || isSmartChild) ? RevisionId::none() : RevisionId::create();
-      helper.add(arangodb::StaticStrings::MinRevision,
-                 arangodb::velocypack::Value(minRev.toString()));
     }
 
     // If the PlanId is not set, we either are on a single server, or this is

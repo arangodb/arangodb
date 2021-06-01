@@ -826,6 +826,8 @@ arangodb::Result arangodb::maintenance::executePlan(
     if (!action->isRunEvenIfDuplicate()) {
       feature.addAction(std::move(action), false);
     } else {
+      TRI_ASSERT(action->has(SHARD));
+
       std::string shardName = action->get(SHARD);
       bool ok = feature.lockShard(shardName, action);
       TRI_ASSERT(ok);
@@ -1611,15 +1613,15 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         if (indexOf(cservers, serverId) > 0) {
           continue;
         }
-
-        auto const leader = pservers[0].copyString();
+       
+        std::string leader = pservers[0].copyString();
         std::shared_ptr<ActionDescription> description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
             {NAME, SYNCHRONIZE_SHARD},
             {DATABASE, dbname},
             {COLLECTION, colname.toString()},
             {SHARD, shname.toString()},
-            {THE_LEADER, leader},
+            {THE_LEADER, std::move(leader)},
             {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
           SYNCHRONIZE_PRIORITY, true);
         std::string shardName = description->get(SHARD);

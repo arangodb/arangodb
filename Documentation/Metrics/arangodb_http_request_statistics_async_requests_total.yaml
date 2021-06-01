@@ -17,7 +17,6 @@ description: |
   requests which have hit this particular instance of `arangod`. Asynchronous
   refers to the fact that the response is not sent with the HTTP response,
   but is rather queried separately using the `/_api/jobs` API.
-  See [this Section](async-results-management.html) for details.
   
   Note that this counter is ever growing during the lifetime of the
   `arangod` process. However, when the process is restarted, it starts
