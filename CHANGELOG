@@ -1,5 +1,7 @@
 devel
 -----
+* Added check for data type compatibility between members of pipeline
+  ArangoSearch analyzer.
 
 * Fix BTS-450: RandomGenerator caught assertion during a value generation within
   `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
