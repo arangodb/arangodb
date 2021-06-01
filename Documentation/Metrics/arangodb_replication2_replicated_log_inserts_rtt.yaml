@@ -1,32 +1,15 @@
 name: arangodb_replication2_replicated_log_inserts_rtt
-introducedIn: "3.8.0"
+introducedIn: "3.9.0"
 help: |
-  TODO arangodb_replication2_replicated_log_inserts_rtt
+  Round-trip time of inserts into replicated logs in us.
 unit: number
 type: histogram
 category: Replication
-complexity: simple
-  # Choose one of:
-  # simple
-  # medium
-  # advanced
+complexity: medium
 exposedBy:
-  # choose:
-  - coordinator
   - dbserver
-  - agent
   - single
 description: |
-  Description here. Can be multiline and use markdown.
-threshold: |
-  # optional
-  Optional text to describe thresholds and normal ranges for the metrics.
-  Can be multiline markdown.
-troubleshoot: |
-  # optional
-  If at all possible describe hints for troubleshooting and how to get
-  metrics in allowable range again.
-grafana:
-  # optional, whatever information might be useful for grafana
-  json: "{}"
-  query: "rate(arangodb_metric[1m]) by (instance)"
+  Inserts into replicated logs this server is a leader of are counted by this
+  histogram, plus their respective round-trip time. This includes the time for
+  replication, at least until the writeConcern is satisified.

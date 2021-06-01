@@ -5,8 +5,9 @@ help: |
 unit: number
 type: counter
 category: Replication
-complexity: advanced
+complexity: simple
 exposedBy:
   - dbserver
+  - single
 description: |
-  Number of replicated logs. TODO extend this description.
+  Number of replicated logs this server is a participant of.

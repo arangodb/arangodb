@@ -1,12 +1,18 @@
 name: arangodb_replication2_replicated_log_follower_append_entries_rt_us
 introducedIn: "3.9.0"
 help: |
-  Histogram of the duration of appendEntries calls in us. TODO make this more precise
+  Histogram of the duration of appendEntries calls in us.
 unit: number
 type: histogram
 category: Replication
 complexity: advanced
 exposedBy:
   - dbserver
+  - single
 description: |
-  Histogram of the duration of appendEntries calls in us. TODO extend this description.
+  Followers of a replicated log, including the local followers for persistence
+  each leader has, receive appendEntries requests. These contain log entries
+  to be replicated. Serving these requests means writing them to persistence.
+
+  This histogram counts the number of such requests server by this server,
+  plus their respective runtime in microseconds.

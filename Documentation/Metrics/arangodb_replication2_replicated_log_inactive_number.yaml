@@ -1,33 +1,17 @@
 name: arangodb_replication2_replicated_log_inactive_number
-introducedIn: "3.8.0"
+introducedIn: "3.9.0"
 help: |
-  TODO arangodb_replication2_replicated_log_inactive_number
+  Current number of inactive replicated logs.
 unit: number
 type: gauge
 category: Replication
 complexity: simple
-  # Choose one of:
-  # simple
-  # medium
-  # advanced
 exposedBy:
-  # choose:
-  - coordinator
   - dbserver
-  - agent
   - single
 description: |
-  Description here. Can be multiline and use markdown.
-threshold: |
-  # optional
-  Optional text to describe thresholds and normal ranges for the metrics.
-  Can be multiline markdown.
-troubleshoot: |
-  # optional
-  If at all possible describe hints for troubleshooting and how to get
-  metrics in allowable range again.
-grafana:
-  # optional, whatever information might be useful for grafana
-  json: "{}"
-  query: "rate(arangodb_metric[1m]) by (instance)"
-  
+  Current number of replicated logs this server is a participant of,
+  but is not yet configured to be either a leader or a follower. This
+  number should usually be zero, except during server startup until
+  the configuration from the Agency is fetched and applied, and for
+  a short time when a log is newly created.

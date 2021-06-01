@@ -1,33 +1,14 @@
 name: arangodb_replication2_replicated_log_leader_took_over_number
-introducedIn: "3.8.0"
+introducedIn: "3.9.0"
 help: |
-  TODO arangodb_replication2_replicated_log_leader_took_over_number
+  Number of leader takeovers.
 unit: number
 type: counter
 category: Replication
-complexity: simple
-  # Choose one of:
-  # simple
-  # medium
-  # advanced
+complexity: medium
 exposedBy:
-  # choose:
-  - coordinator
   - dbserver
-  - agent
   - single
 description: |
-  Description here. Can be multiline and use markdown.
-threshold: |
-  # optional
-  Optional text to describe thresholds and normal ranges for the metrics.
-  Can be multiline markdown.
-troubleshoot: |
-  # optional
-  If at all possible describe hints for troubleshooting and how to get
-  metrics in allowable range again.
-grafana:
-  # optional, whatever information might be useful for grafana
-  json: "{}"
-  query: "rate(arangodb_metric[1m]) by (instance)"
-  
+  Number of times this server took over the leadership of a replicated log
+  since server start.
