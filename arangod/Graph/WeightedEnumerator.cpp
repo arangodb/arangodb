@@ -147,7 +147,7 @@ bool WeightedEnumerator::expand() {
     bool shouldReturnPath = nextEdge.depth + 1 >= _opts->minDepth;
     bool const didInsert = expandEdge(std::move(nextEdge));
 
-    if (_opts->usesPostFilter()) {
+    if (didInsert && _opts->usesPostFilter()) {
       auto evaluator = _opts->getPostFilterEvaluator();
       if (!usePostFilter(evaluator)) {
         shouldReturnPath = false;
