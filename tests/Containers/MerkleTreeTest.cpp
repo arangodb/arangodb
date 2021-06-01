@@ -1312,7 +1312,7 @@ TEST(MerkleTreeTest, test_to_string) {
   std::string s = t1.toString(false);
   ASSERT_LE(1100, s.size());
   s = t1.toString(true);
-  ASSERT_LE(1300, s.size());
+  ASSERT_LE(1250, s.size());
 }
 
 TEST(MerkleTreeTest, test_diff_one_side_empty_random_data_shifted) {
