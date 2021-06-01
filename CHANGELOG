@@ -2,7 +2,7 @@ v3.7.12 (XXXX-XX-XX)
 --------------------
 
 * Fix BTS-442: a query with fullCount on a sharded collection hangs
-  indefinitely when LIMIT is less then number of available documents.
+  indefinitely when LIMIT is less than number of available documents.
   
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
