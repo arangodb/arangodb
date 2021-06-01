@@ -28,6 +28,8 @@
 
 namespace arangodb {
 
+struct ReplicatedLogMethods;
+
 class RestLogHandler : public RestVocbaseBaseHandler {
  public:
   RestLogHandler(application_features::ApplicationServer&, GeneralRequest*,
@@ -42,9 +44,10 @@ class RestLogHandler : public RestVocbaseBaseHandler {
   }
 
  private:
-  RestStatus handleGetRequest();
-  RestStatus handlePostRequest();
-  RestStatus handleDeleteRequest();
+  RestStatus executeByMethod(ReplicatedLogMethods const& methods);
+  RestStatus handleGetRequest(ReplicatedLogMethods const& methods);
+  RestStatus handlePostRequest(ReplicatedLogMethods const& methods);
+  RestStatus handleDeleteRequest(ReplicatedLogMethods const& methods);
 
 };
 }  // namespace arangodb

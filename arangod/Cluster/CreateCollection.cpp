@@ -145,7 +145,7 @@ bool CreateCollection::first() {
             ? props.get(WAIT_FOR_SYNC_REPL).getBool()
             : cluster.createWaitsForSyncReplication();
 
-    bool enforceReplFact =
+    bool writeConcern =
         (props.get(ENF_REPL_FACT).isBool())
             ? props.get(ENF_REPL_FACT).getBool()
             : true;
@@ -173,7 +173,7 @@ bool CreateCollection::first() {
     std::shared_ptr<LogicalCollection> col;
     OperationOptions options(ExecContext::current());
     res.reset(Collections::create(vocbase, options, shard, type, docket.slice(),
-                                  waitForRepl, enforceReplFact, false, col));
+                                  waitForRepl, writeConcern, false, col));
     result(res);
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)

@@ -49,7 +49,19 @@ auto get(velocypack::ObjectIteratorPair pair) -> VPackSlice {
     return pair.value;
   }
 }
-}  // namespace arangodb::velocypack
+}
+// namespace arangodb::velocypack
+
+LogPlanConfig::LogPlanConfig(from_velocypack_t, VPackSlice slice) {
+  waitForSync = slice.get("waitForSync").extract<bool>();
+  writeConcern = slice.get("writeConcern").extract<std::size_t>();
+}
+
+auto LogPlanConfig::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add("waitForSync", VPackValue(waitForSync));
+  builder.add("writeConcern", VPackValue(writeConcern));
+}
 
 template<>
 struct velocypack::Extractor<LogTerm> {
@@ -89,6 +101,9 @@ auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const -> void
     }
   }
 
+  builder.add(VPackValue("config"));
+  config.toVelocyPack(builder);
+
   if (leader.has_value()) {
     VPackObjectBuilder ob2(&builder, "leader");
     builder.add("serverId", VPackValue(leader->serverId));
@@ -98,6 +113,7 @@ auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const -> void
 
 LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t, VPackSlice slice) {
   term = slice.get("term").extract<LogTerm>();
+  config = LogPlanConfig(from_velocypack, slice.get("config"));
   for (auto const& [key, value] : VPackObjectIterator(slice.get("participants"))) {
     TRI_ASSERT(value.isEmptyObject());
     participants.emplace(ParticipantId{key.copyString()}, Participant{});
@@ -110,6 +126,8 @@ LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t, VPackSlice
 auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add("id", VPackValue(id.id()));
+  builder.add(VPackValue("targetConfig"));
+  targetConfig.toVelocyPack(builder);
   if (term.has_value()) {
     builder.add(VPackValue("term"));
     term->toVelocyPack(builder);
@@ -118,6 +136,7 @@ auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
 
 LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice) {
   id = slice.get("id").extract<LogId>();
+  targetConfig = LogPlanConfig(from_velocypack, slice.get("targetConfig"));
   if (auto terms = slice.get("term"); !terms.isNone()) {
     term = LogPlanTermSpecification{from_velocypack, terms};
   }

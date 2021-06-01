@@ -64,9 +64,8 @@ void DBServerAgencySync::work() {
 }
 
 Result DBServerAgencySync::getLocalCollections(
-  std::unordered_set<std::string> const& dirty,
-  AgencyCache::databases_t& databases) {
-
+    std::unordered_set<std::string> const& dirty, AgencyCache::databases_t& databases,
+    LocalLogsMap& replLogs) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -79,6 +78,7 @@ Result DBServerAgencySync::getLocalCollections(
   DatabaseFeature& dbfeature = _server.getFeature<DatabaseFeature>();
 
   for (auto const& dbname : dirty) {
+    LOG_DEVEL << "database is dirty " << dbname;
     TRI_vocbase_t* tmp = dbfeature.useDatabase(dbname);
     if (tmp == nullptr) {
       continue;
@@ -94,10 +94,19 @@ Result DBServerAgencySync::getLocalCollections(
       return Result(TRI_ERROR_INTERNAL, "Failed to emplace new entry in local collection cache");
     }
 
+    {
+      auto [it, created] = replLogs.try_emplace(dbname, vocbase.getReplicatedLogs());
+      if (!created) {
+        LOG_TOPIC("0e9d7", ERR, Logger::MAINTENANCE)
+            << "Failed to emplace new entry in local collection cache";
+        return Result(TRI_ERROR_INTERNAL,
+                      "Failed to emplace new entry in local collection cache");
+      }
+    }
+
     auto& collections = *it->second;
     VPackObjectBuilder db(&collections);
     auto cols = vocbase.collections(false);
-
     for (auto const& collection : cols) {
       // note: system collections are ignored here, but the local parts of
       // smart edge collections are system collections, too. these are
@@ -121,7 +130,8 @@ Result DBServerAgencySync::getLocalCollections(
         // object was created, we believe it. Otherwise, we do not accept
         // that we are the leader. This is to circumvent the problem that
         // after a restart we would implicitly be assumed to be the leader.
-        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : maintenance::LEADER_NOT_YET_KNOWN));
+        collections.add("theLeader",
+                        VPackValue(theLeaderTouched ? theLeader : maintenance::LEADER_NOT_YET_KNOWN));
         collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
 
         if (theLeader.empty() && theLeaderTouched) {
@@ -210,8 +220,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   MaintenanceFeature::ShardActionMap currentShardLocks = mfeature.getShardLocks();
 
   AgencyCache::databases_t local;
+  LocalLogsMap localLogs;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
-  Result glc = getLocalCollections(dirty, local);
+  Result glc = getLocalCollections(dirty, local, localLogs);
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
@@ -233,8 +244,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
 
-    tmp = arangodb::maintenance::phaseOne(
-      plan, planIndex, dirty, moreDirt, local, serverId, mfeature, rb, currentShardLocks);
+    tmp = arangodb::maintenance::phaseOne(plan, planIndex, dirty, moreDirt, local, serverId,
+                                          mfeature, rb, currentShardLocks, localLogs);
 
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
@@ -266,7 +277,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     currentShardLocks = mfeature.getShardLocks();
 
     local.clear();
-    glc = getLocalCollections(dirty, local);
+    localLogs.clear();
+    glc = getLocalCollections(dirty, local, localLogs);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
@@ -282,8 +294,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("652ff", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo";
 
-    tmp = arangodb::maintenance::phaseTwo(
-      plan, current, currentIndex, dirty, local, serverId, mfeature, rb, currentShardLocks);
+    tmp = arangodb::maintenance::phaseTwo(plan, current, currentIndex, dirty,
+                                          local, serverId, mfeature, rb,
+                                          currentShardLocks, localLogs);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";

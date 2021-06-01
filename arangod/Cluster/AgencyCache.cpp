@@ -213,32 +213,35 @@ void AgencyCache::handleCallbacksNoLock(
       std::string_view r(k.c_str() + offset, k.size() - offset);
       auto rs = r.size();
       if (rs > strlen(PLAN) && r.compare(0, strlen(PLAN), PLAN) == 0) {
-        if (rs >= strlen(PLAN_VERSION) &&                 // Plan/Version -> ignore
+        if (rs >= strlen(PLAN_VERSION) &&  // Plan/Version -> ignore
             r.compare(0, strlen(PLAN_VERSION), PLAN_VERSION) == 0) {
           continue;
-        } else if (rs > strlen(PLAN_COLLECTIONS) &&       // Plan/Collections
+        } else if (rs > strlen(PLAN_COLLECTIONS) &&  // Plan/Collections
                    r.compare(0, strlen(PLAN_COLLECTIONS), PLAN_COLLECTIONS) == 0) {
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
-          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_REPLICATED_LOGS) &&  // Plan/ReplicatedLogs
+                   r.compare(0, strlen(PLAN_REPLICATED_LOGS), PLAN_REPLICATED_LOGS) == 0) {
+          auto tmp = r.substr(strlen(PLAN_REPLICATED_LOGS));
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_DATABASES) &&  // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
           auto tmp = r.substr(strlen(PLAN_DATABASES));
           planChanges.emplace(tmp);
-        } else if (rs > strlen(PLAN_VIEWS) &&             // Plan/Views
+        } else if (rs > strlen(PLAN_VIEWS) &&  // Plan/Views
                    r.compare(0, strlen(PLAN_VIEWS), (PLAN_VIEWS)) == 0) {
           auto tmp = r.substr(strlen(PLAN_VIEWS));
-          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_ANALYZERS) &&         // Plan/Analyzers
-                   r.compare(0, strlen(PLAN_ANALYZERS), PLAN_ANALYZERS)==0) {
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_ANALYZERS) &&  // Plan/Analyzers
+                   r.compare(0, strlen(PLAN_ANALYZERS), PLAN_ANALYZERS) == 0) {
           auto tmp = r.substr(strlen(PLAN_ANALYZERS));
-          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (r == "Plan/Databases" || r == "Plan/Collections" ||
-                   r == "Plan/Views" || r == "Plan/Analyzers" ||
-                   r == "Plan") {
+                   r == "Plan/Views" || r == "Plan/Analyzers" || r == "Plan") {
           // !! Check documentation of the function before making changes here !!
           planChanges = reInitPlan();
         } else {
-          planChanges.emplace();             // "" to indicate non database
+          planChanges.emplace();  // "" to indicate non database
         }
       } else if (rs > strlen(CURRENT) && r.compare(0, strlen(CURRENT), CURRENT) == 0) {
         if (rs >= strlen(CURRENT_VERSION) &&              // Current/Version is ignored

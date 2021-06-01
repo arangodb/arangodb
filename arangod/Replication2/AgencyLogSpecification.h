@@ -35,9 +35,18 @@ namespace arangodb::replication2::agency {
 struct from_velocypack_t {};
 inline constexpr auto from_velocypack = from_velocypack_t{};
 
+struct LogPlanConfig {
+  std::size_t writeConcern = 1;
+  bool waitForSync = false;
+
+  auto toVelocyPack(VPackBuilder&) const -> void;
+  LogPlanConfig(from_velocypack_t, VPackSlice);
+  LogPlanConfig() noexcept = default;
+};
+
 struct LogPlanTermSpecification {
   LogTerm term;
-
+  LogPlanConfig config;
   struct Leader {
     ParticipantId serverId;
     RebootId rebootId;
@@ -54,6 +63,8 @@ struct LogPlanTermSpecification {
 struct LogPlanSpecification {
   LogId id;
   std::optional<LogPlanTermSpecification> term;
+
+  LogPlanConfig targetConfig;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanSpecification(from_velocypack_t, VPackSlice);

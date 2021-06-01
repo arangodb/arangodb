@@ -548,7 +548,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
-    MaintenanceFeature::ShardActionMap const& shardActionMap) {
+    MaintenanceFeature::ShardActionMap const& shardActionMap,
+    LocalLogsMap const& localLogs) {
   // You are entering the functional sector.
   // Vous entrez dans le secteur fonctionel.
   // Sie betreten den funktionalen Sektor.
@@ -699,6 +700,23 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     }
   }
 
+  for (auto const& dbname : dirty) {
+    auto lit = localLogs.find(dbname);
+    if (lit == std::end(localLogs)) {
+      continue;
+    }
+
+    if (auto pit = plan.find(dbname); pit != std::end(plan)) {
+      LOG_DEVEL << "plan for database " << pit->second->toJson();
+    }
+
+    auto& logs = lit->second;
+    for (auto const& [idx, status] : logs) {
+      // Calculate actions
+      LOG_DEVEL << "idx = " << idx;
+    }
+  }
+
   // See if shard errors can be thrown out:
   // Check all shard errors in feature, if database or collection gone -> reset error
 
@@ -775,7 +793,8 @@ arangodb::Result arangodb::maintenance::executePlan(
   std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap) {
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  LocalLogsMap const& localLogs) {
 
   // Errors from maintenance feature
   MaintenanceFeature::errors_t errors;
@@ -799,7 +818,7 @@ arangodb::Result arangodb::maintenance::executePlan(
     bool callNotify = false;
     auto& engine = feature.server().getFeature<EngineSelectorFeature>().engine();
     diffPlanLocal(engine, plan, planIndex, dirty, local, serverId, errors,
-                  makeDirty, callNotify, actions, shardActionMap);
+                  makeDirty, callNotify, actions, shardActionMap, localLogs);
     feature.addDirty(makeDirty, callNotify);
   }
 
@@ -931,7 +950,8 @@ arangodb::Result arangodb::maintenance::phaseOne(
   std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap) {
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  LocalLogsMap const& localLogs) {
 
   auto start = std::chrono::steady_clock::now();
 
@@ -944,7 +964,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
     // Execute database changes
     try {
       result = executePlan(
-        plan, planIndex, dirty, moreDirt, local, serverId, feature, report, shardActionMap);
+        plan, planIndex, dirty, moreDirt, local, serverId, feature, report, shardActionMap, localLogs);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
           << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
@@ -1679,7 +1699,8 @@ arangodb::Result arangodb::maintenance::phaseTwo(
   uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap) {
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  LocalLogsMap const& localLogs) {
 
   auto start = std::chrono::steady_clock::now();
 

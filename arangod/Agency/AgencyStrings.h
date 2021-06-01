@@ -45,6 +45,7 @@ constexpr char const* CURRENT_DATABASES = "Current/Databases/";
 constexpr char const* PLAN = "Plan";
 constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
+constexpr char const* PLAN_REPLICATED_LOGS = "Plan/ReplicatedLogs/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 constexpr char const* PLAN_VIEWS = "Plan/Views/";
 constexpr char const* PLAN_ANALYZERS = "Plan/Analyzers/";

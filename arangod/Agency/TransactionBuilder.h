@@ -115,6 +115,15 @@ struct envelope {
       return std::move(*this);
     }
 
+    template <typename K>
+    precs_trx isNotEmpty(K&& k) && {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("oldEmpty", VPackValue(false));
+      _builder->close();
+      return std::move(*this);
+    }
+
     envelope end(std::string const& clientId = {}) {
       _builder->close();
       _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));

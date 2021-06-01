@@ -28,6 +28,7 @@
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
 
@@ -50,6 +51,7 @@ constexpr int INDEX_PRIORITY = 2;
 constexpr int SYNCHRONIZE_PRIORITY = 1;
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
+using LocalLogsMap = std::unordered_map<std::string, std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>>;
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -74,7 +76,8 @@ arangodb::Result diffPlanLocal(
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
-    MaintenanceFeature::ShardActionMap const& shardActionMap);
+    MaintenanceFeature::ShardActionMap const& shardActionMap,
+    LocalLogsMap const& localLogs);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -96,7 +99,8 @@ arangodb::Result executePlan(
   std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report,
-  arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap);
+  arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap,
+  LocalLogsMap const& localLogs);
 
 /**
  * @brief          Difference local and current states for phase 2 of
@@ -134,7 +138,8 @@ arangodb::Result phaseOne(
   std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap);
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  LocalLogsMap const& localLogs);
 
 /**
  * @brief          Phase two: Report in agency
@@ -154,7 +159,8 @@ arangodb::Result phaseTwo(
   uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap);
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  LocalLogsMap const& localLogs);
 
 /**
  * @brief          Report local changes to current
