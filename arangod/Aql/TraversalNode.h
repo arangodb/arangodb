@@ -125,37 +125,10 @@ class TraversalNode : public virtual GraphNode {
   bool usesInVariable() const { return _inVariable != nullptr; }
 
   /// @brief getVariablesUsedHere
-  void getVariablesUsedHere(VarSet& result) const override final {
-    for (auto const& condVar : _conditionVariables) {
-      if (condVar != getTemporaryVariable()) {
-        result.emplace(condVar);
-      }
-    }
-    for (auto const& pruneVar : _pruneVariables) {
-      if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
-          pruneVar != pathOutVariable()) {
-        result.emplace(pruneVar);
-      }
-    }
-    if (usesInVariable()) {
-      result.emplace(_inVariable);
-    }
-  }
+  void getVariablesUsedHere(VarSet& result) const override final;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> vars;
-    if (isVertexOutVariableUsedLater()) {
-      vars.emplace_back(vertexOutVariable());
-    }
-    if (isEdgeOutVariableUsedLater()) {
-      vars.emplace_back(edgeOutVariable());
-    }
-    if (isPathOutVariableUsedLater()) {
-      vars.emplace_back(pathOutVariable());
-    }
-    return vars;
-  }
+  std::vector<Variable const*> getVariablesSetHere() const override final; 
 
   /// @brief checks if the path out variable is used by other nodes
   bool isPathOutVariableUsedLater() const;
@@ -207,20 +180,22 @@ class TraversalNode : public virtual GraphNode {
   ///        The condition will contain the local variable for it's accesses.
   void registerGlobalCondition(bool, AstNode const*);
 
+  /// @brief register a filter condition to be applied before the result is returned.
+  ///        This condition validates the edge
+  void registerPostFilterCondition(AstNode const* condition);
+
   bool allDirectionsEqual() const;
 
   void getConditionVariables(std::vector<Variable const*>&) const override;
 
   void getPruneVariables(std::vector<Variable const*>&) const;
 
+  void getPostFilterVariables(std::vector<Variable const*>&) const;
+
   /// @brief Compute the traversal options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
-
-  // @brief Get reference to the Prune expression.
-  //        You are not responsible for it!
-  Expression* pruneExpression() const { return _pruneExpression.get(); }
 
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
@@ -232,6 +207,14 @@ class TraversalNode : public virtual GraphNode {
 #endif
 
   void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c, bool withProperties) const;
+
+  // @brief Get reference to the Prune expression.
+  //        You are not responsible for it!
+  Expression* pruneExpression() const { return _pruneExpression.get(); }
+
+  // @brief Get reference to the postFilter expression.
+  //        You are not responsible for it!
+  Expression* postFilterExpression() const;
 
  private:
   /// @brief vertex output variable
@@ -273,9 +256,17 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief the hashSet for variables used in pruning
   VarSet _pruneVariables;
+
+  /// @brief conditions to be applied before returning the result
+  std::vector<AstNode const*> _postFilterConditions;
+
+  /// @brief The condition used as PostFilter (might be empty)
+  mutable std::unique_ptr<Expression> _postFilterExpression;
+
+  /// @brief the hashSet for variables used in postFilter
+  VarSet _postFilterVariables;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
 #endif

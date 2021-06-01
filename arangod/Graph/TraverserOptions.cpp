@@ -76,8 +76,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
       mode(Order::DFS),
       defaultWeight(1.0) {}
 
-TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
-                                   VPackSlice obj)
+TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlice obj)
     : TraverserOptions(query) {
   TRI_ASSERT(obj.isObject());
 
@@ -93,7 +92,8 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   _refactor = VPackHelper::getBooleanValue(obj, StaticStrings::GraphRefactorFlag, false);
   TRI_ASSERT(minDepth <= maxDepth);
 
-  std::string tmp = VPackHelper::getStringValue(obj, StaticStrings::GraphQueryOrder, "");
+  std::string tmp =
+      VPackHelper::getStringValue(obj, StaticStrings::GraphQueryOrder, "");
   if (!tmp.empty()) {
     if (tmp == StaticStrings::GraphQueryOrderBFS) {
       mode = Order::BFS;
@@ -118,10 +118,11 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     uniqueVertices = TraverserOptions::UniquenessLevel::PATH;
   } else if (tmp == "global") {
     if (mode != Order::BFS && mode != Order::WEIGHTED) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "uniqueVertices: 'global' is only "
-                                     "supported, with mode: bfs|weighted due to "
-                                     "otherwise unpredictable results.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "uniqueVertices: 'global' is only "
+          "supported, with mode: bfs|weighted due to "
+          "otherwise unpredictable results.");
     }
     uniqueVertices = TraverserOptions::UniquenessLevel::GLOBAL;
   } else {
@@ -192,8 +193,8 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
 }
 
-TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlice info,
-                                   VPackSlice collections)
+TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
+                                   VPackSlice info, VPackSlice collections)
     : BaseOptions(query, info, collections),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
@@ -203,7 +204,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
       mode(Order::DFS) {
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
   TRI_ASSERT(type.isString());
@@ -229,7 +229,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
   if (!read.isNone()) {
     if (!read.isNumber<size_t>()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-          "The options require a order");
+                                     "The options require a order");
     }
 
     size_t i = read.getNumber<size_t>();
@@ -245,7 +245,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
         break;
       default:
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-            "Bad mode parameter value");
+                                       "Bad mode parameter value");
     }
   } else {
     read = info.get("bfs");
@@ -407,7 +407,8 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
   }
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
-  TRI_ASSERT(uniqueVertices != TraverserOptions::UniquenessLevel::GLOBAL || isUniqueGlobalVerticesAllowed());
+  TRI_ASSERT(uniqueVertices != TraverserOptions::UniquenessLevel::GLOBAL ||
+             isUniqueGlobalVerticesAllowed());
 
   _produceVertices = VPackHelper::getBooleanValue(info, "produceVertices", true);
 }
@@ -449,7 +450,7 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("parallelism", VPackValue(_parallelism));
   builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
-  
+
   builder.add("neighbors", VPackValue(useNeighbors));
 
   switch (uniqueVertices) {
@@ -478,13 +479,16 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
 
   switch (mode) {
     case TraverserOptions::Order::DFS:
-      builder.add(StaticStrings::GraphQueryOrder, VPackValue(StaticStrings::GraphQueryOrderDFS));
+      builder.add(StaticStrings::GraphQueryOrder,
+                  VPackValue(StaticStrings::GraphQueryOrderDFS));
       break;
     case TraverserOptions::Order::BFS:
-      builder.add(StaticStrings::GraphQueryOrder, VPackValue(StaticStrings::GraphQueryOrderBFS));
+      builder.add(StaticStrings::GraphQueryOrder,
+                  VPackValue(StaticStrings::GraphQueryOrderBFS));
       break;
     case TraverserOptions::Order::WEIGHTED:
-      builder.add(StaticStrings::GraphQueryOrder, VPackValue(StaticStrings::GraphQueryOrderWeighted));
+      builder.add(StaticStrings::GraphQueryOrder,
+                  VPackValue(StaticStrings::GraphQueryOrderWeighted));
       break;
   }
 
@@ -651,8 +655,8 @@ bool TraverserOptions::shouldExcludeEdgeCollection(std::string const& name) cons
 void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           std::string const& collectionName,
                                           std::string const& attributeName,
-                                          aql::AstNode* condition, uint64_t depth,
-                                          bool onlyEdgeIndexes) {
+                                          aql::AstNode* condition,
+                                          uint64_t depth, bool onlyEdgeIndexes) {
   auto& list = _depthLookupInfo[depth];
   injectLookupInfoInList(list, plan, collectionName, attributeName, condition, onlyEdgeIndexes);
 }
@@ -827,6 +831,15 @@ void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
   _pruneExpression = std::make_unique<aql::PruneExpressionEvaluator>(
       _trx, _query, _aqlFunctionsInternalCache, std::move(vars),
       std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx, expr);
+}
+
+void TraverserOptions::activatePostFilter(std::vector<aql::Variable const*> vars,
+                                          std::vector<aql::RegisterId> regs,
+                                          size_t vertexVarIdx, size_t edgeVarIdx,
+                                          aql::Expression* expr) {
+  _postFilterExpression = std::make_unique<aql::PruneExpressionEvaluator>(
+      _trx, _query, _aqlFunctionsInternalCache, std::move(vars), std::move(regs),
+      vertexVarIdx, edgeVarIdx, std::numeric_limits<std::size_t>::max(), expr);
 }
 
 double TraverserOptions::weightEdge(VPackSlice edge) const {

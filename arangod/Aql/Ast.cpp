@@ -1947,8 +1947,9 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
 
 /// @brief replace variables
 /*static*/ AstNode* Ast::replaceVariables(AstNode* node,
-                               std::unordered_map<VariableId, Variable const*> const& replacements) {
-  auto visitor = [&replacements](AstNode* node) -> AstNode* {
+                                          std::unordered_map<VariableId, Variable const*> const& replacements,
+                                          bool unlockNodes) {
+  auto visitor = [&replacements, &unlockNodes](AstNode* node) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
     }
@@ -1961,8 +1962,13 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
         auto it = replacements.find(variable->id);
 
         if (it != replacements.end()) {
-          // overwrite the node in place
-          node->setData((*it).second);
+          if (unlockNodes) {
+            TEMPORARILY_UNLOCK_NODE(node);
+            // overwrite the node in place
+            node->setData((*it).second);
+          } else {
+            node->setData((*it).second);
+          }
         }
       }
       // intentionally falls through

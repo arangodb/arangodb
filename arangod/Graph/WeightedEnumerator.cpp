@@ -144,8 +144,15 @@ bool WeightedEnumerator::expand() {
     TRI_ASSERT(!_queue.empty());
     NextEdge nextEdge = _queue.popTop();
 
-    bool const shouldReturnPath = nextEdge.depth + 1 >= _opts->minDepth;
+    bool shouldReturnPath = nextEdge.depth + 1 >= _opts->minDepth;
     bool const didInsert = expandEdge(std::move(nextEdge));
+
+    if (didInsert && _opts->usesPostFilter()) {
+      auto evaluator = _opts->getPostFilterEvaluator();
+      if (!usePostFilter(evaluator)) {
+        shouldReturnPath = false;
+      }
+    }
 
     if (!shouldReturnPath) {
       _lastReturned = _schreierIndex;
@@ -166,8 +173,16 @@ bool WeightedEnumerator::next() {
     }
     // We have faked the 0 position in schreier for pruning
     _schreierIndex++;
+
     if (_opts->minDepth == 0) {
-      return true;
+      if (_opts->usesPostFilter()) {
+        auto evaluator = _opts->getPostFilterEvaluator();
+        if (usePostFilter(evaluator)) {
+          return true;
+        }
+      } else {
+        return true;
+      }
     }
   }
   _lastReturned++;
@@ -175,6 +190,13 @@ bool WeightedEnumerator::next() {
   if (_lastReturned < _schreierIndex) {
     // We still have something on our stack.
     // Paths have been read but not returned.
+    if (_opts->usesPostFilter()) {
+      auto evaluator = _opts->getPostFilterEvaluator();
+      if (!usePostFilter(evaluator)) {
+        return false;
+      }
+    }
+
     return true;
   }
 

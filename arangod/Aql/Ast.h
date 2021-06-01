@@ -406,7 +406,12 @@ class Ast {
                             arangodb::CollectionNameResolver const& resolver);
 
   /// @brief replace variables
-  static AstNode* replaceVariables(AstNode*, std::unordered_map<VariableId, Variable const*> const&);
+  ///        the unlock parameter will unlock the variable node before it replaces the variable.
+  ///        This unlock is potentially dangerous if the Node is linked somewhere else, so use with care
+  ///        and only if you are sure that you hold the ONLY reference to this node.
+  static AstNode* replaceVariables(AstNode* node,
+                                   std::unordered_map<VariableId, Variable const*> const&,
+                                   bool unlockNodes = false);
 
   /// @brief replace a variable reference in the expression with another
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the

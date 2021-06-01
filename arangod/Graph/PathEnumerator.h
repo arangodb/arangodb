@@ -35,6 +35,7 @@ struct ResourceMonitor;
 
 namespace aql {
 struct AqlValue;
+class PruneExpressionEvaluator;
 }
 
 namespace velocypack {
@@ -135,6 +136,12 @@ class PathEnumerator {
   virtual aql::AqlValue lastVertexToAqlValue() = 0;
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
+
+
+  /// @brief validate post filter statement
+  /// returns true if the path should be returned
+  /// returns false if the path should not be returned
+  bool usePostFilter(aql::PruneExpressionEvaluator* evaluator);
 
   /// @brief return number of HTTP requests made, and reset it to 0
   size_t getAndResetHttpRequests() {

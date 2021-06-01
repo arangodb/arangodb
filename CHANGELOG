@@ -1,3 +1,21 @@
+v3.8.0-rc.2 (XXXX-XX-XX)
+------------------------
+
+* Implemented an optimization for Traversals. If you apply a POST filter on
+  the vertex and/or edge result this filter will now be applied during the
+	traversal to avoid generating the full output for AQL. This will have
+	positive effect if you filter on the vertex/edge but return the path,
+	this way the system does only need to produce a path that is allowed to
+	be passed through.
+	e.g.
+  
+	  FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+		  FILTER v.isRelevant == true
+			RETURN p
+
+	can now be optimized, and the traversal statement will only produce
+	paths where the last vertex has `isRelevant == true`.
+
 v3.8.0-rc.1 (2021-05-26)
 ------------------------
 
