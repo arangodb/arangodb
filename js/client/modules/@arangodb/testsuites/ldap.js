@@ -56,7 +56,7 @@ const testPaths = {
   'ldapsearchplaceholder': [tu.pathForTesting('client/authentication')],
   'ldaprolesimple': [tu.pathForTesting('client/authentication')],
   'ldapsearchsimple': [tu.pathForTesting('client/authentication')],
-  'dualldap': tu.pathForTesting('client/ldap')
+  'dualldap': [tu.pathForTesting('client/ldap')],
 };
 
 // //////////////////////////////////////////////////////////////////////////////
