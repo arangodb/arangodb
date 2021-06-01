@@ -695,24 +695,9 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             AstNode* conditionToOptimize = andNode->getMemberUnchecked(i - 1);
             // Create a clone before we modify the Condition
             AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
-            bool isSupported = true;
-            /*
-            Ast::traverseReadOnly(
-                conditionToOptimize,
-                [&usedVar, &isSupported](AstNode const* node) -> bool {
-                  if (!IsSupportedNode(usedVar, node)) {
-                    isSupported = false;
-                    return false;
-                  }
-                  return true;
-                },
-                [](AstNode const*) {});
-                */
-            if (isSupported) {
-              // Retain original condition, as covered by this Node
-              coveredCondition->andCombine(cloned);
-              node->registerPostFilterCondition(conditionToOptimize);
-            }
+            // Retain original condition, as covered by this Node
+            coveredCondition->andCombine(cloned);
+            node->registerPostFilterCondition(conditionToOptimize);
             break;
           }
         };
