@@ -37,15 +37,16 @@ using namespace arangodb::replication2::replicated_log;
 
 ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
     : ApplicationFeature(server, "ReplicatedLog"),
-      _replicatedLogMetrics(std::make_unique<ReplicatedLogMetrics>(
+      _replicatedLogMetrics(std::make_shared<ReplicatedLogMetrics>(
           server.getFeature<MetricsFeature>())) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
 }
 
-auto ReplicatedLogFeature::metrics() -> replication2::replicated_log::ReplicatedLogMetrics& {
-  return *_replicatedLogMetrics;
+auto ReplicatedLogFeature::metrics() const noexcept
+    -> std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> const& {
+  return _replicatedLogMetrics;
 }
 
 void ReplicatedLogFeature::prepare() {

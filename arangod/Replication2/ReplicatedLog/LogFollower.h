@@ -48,8 +48,8 @@ class LogFollower : public LogParticipantI,
                     public std::enable_shared_from_this<LogFollower> {
  public:
   ~LogFollower() override;
-  LogFollower(LogContext, ReplicatedLogMetrics& logMetrics, ParticipantId id,
-              std::unique_ptr<LogCore> logCore, LogTerm term,
+  LogFollower(LogContext const&, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+              ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
               ParticipantId leaderId, InMemoryLog inMemoryLog);
 
   // follower only
@@ -87,7 +87,7 @@ class LogFollower : public LogParticipantI,
     MessageId _lastRecvMessageId{0};
     Guarded<WaitForQueue> _waitForQueue;
   };
-  ReplicatedLogMetrics& _logMetrics;
+  std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   ParticipantId const _participantId;
   ParticipantId const _leaderId;
   LogTerm const _currentTerm;

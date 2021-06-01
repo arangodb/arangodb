@@ -36,12 +36,13 @@ class ReplicatedLogFeature final : public application_features::ApplicationFeatu
   explicit ReplicatedLogFeature(application_features::ApplicationServer& server);
   ~ReplicatedLogFeature() override;
 
-  auto metrics() -> replication2::replicated_log::ReplicatedLogMetrics&;
+  auto metrics() const noexcept
+      -> std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> const&;
 
   void prepare() override;
 
  private:
-  std::unique_ptr<replication2::replicated_log::ReplicatedLogMetrics> _replicatedLogMetrics;
+  std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> _replicatedLogMetrics;
 };
 
 }  // namespace arangodb

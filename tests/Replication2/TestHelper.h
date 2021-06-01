@@ -74,13 +74,14 @@ struct DelayedFollowerLog : AbstractFollower {
   explicit DelayedFollowerLog(std::shared_ptr<LogFollower> follower)
       : _follower(std::move(follower)) {}
 
-  DelayedFollowerLog(LogContext logContext, ReplicatedLogMetricsMock& logMetricsMock,
+  DelayedFollowerLog(LogContext const& logContext,
+                     std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock,
                      ParticipantId const& id, std::unique_ptr<LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
-      : DelayedFollowerLog(std::make_shared<LogFollower>(logContext, logMetricsMock,
-                                                         id, std::move(logCore),
-                                                         term, std::move(leaderId),
-                                                         InMemoryLog{})) {}
+      : DelayedFollowerLog(
+            std::make_shared<LogFollower>(logContext, std::move(logMetricsMock),
+                                          id, std::move(logCore), term,
+                                          std::move(leaderId), InMemoryLog{})) {}
 
   auto appendEntries(AppendEntriesRequest req)
       -> arangodb::futures::Future<AppendEntriesResult> override {
@@ -209,7 +210,7 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
-  ReplicatedLogMetricsMock _logMetricsMock{};
+  std::shared_ptr<ReplicatedLogMetricsMock> _logMetricsMock = std::make_shared<ReplicatedLogMetricsMock>();
 };
 
 

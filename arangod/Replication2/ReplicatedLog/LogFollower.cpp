@@ -62,11 +62,11 @@ using namespace arangodb::replication2;
 auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
   auto const startTime = std::chrono::steady_clock::now();
-  auto measureTime = DeferredAction{[startTime, &metrics = _logMetrics]() noexcept {
+  auto measureTime = DeferredAction{[startTime, metrics = _logMetrics]() noexcept {
     auto const endTime = std::chrono::steady_clock::now();
     auto const duration =
         std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-    metrics.replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
+    metrics->replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
   }};
 
   struct WaitForQueueResolve {
@@ -299,12 +299,12 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
   });
 }
 
-replicated_log::LogFollower::LogFollower(LogContext logContext,
-                                         ReplicatedLogMetrics& logMetrics,
+replicated_log::LogFollower::LogFollower(LogContext const& logContext,
+                                         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                                          ParticipantId id, std::unique_ptr<LogCore> logCore,
                                          LogTerm term, ParticipantId leaderId,
                                          replicated_log::InMemoryLog inMemoryLog)
-    : _logMetrics(logMetrics),
+    : _logMetrics(std::move(logMetrics)),
       _participantId(std::move(id)),
       _leaderId(std::move(leaderId)),
       _currentTerm(term),
@@ -312,7 +312,7 @@ replicated_log::LogFollower::LogFollower(LogContext logContext,
       _logContext(logContext.with<logContextKeyLogComponent>("follower")
                       .with<logContextKeyLeaderId>(_leaderId)
                       .with<logContextKeyTerm>(term)) {
-  _logMetrics.replicatedLogFollowerNumber->fetch_add(1);
+  _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
 }
 
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
@@ -335,7 +335,7 @@ auto replicated_log::LogFollower::getLogIterator(LogIndex fromIdx) const
 replicated_log::LogFollower::~LogFollower() {
   // TODO It'd be more accurate to do this in resign(), and here only conditionally
   //      depending on whether we still own the LogCore.
-  _logMetrics.replicatedLogFollowerNumber->fetch_sub(1);
+  _logMetrics->replicatedLogFollowerNumber->fetch_sub(1);
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept

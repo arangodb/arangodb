@@ -36,9 +36,9 @@ auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus 
 }
 
 replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(
-    std::unique_ptr<LogCore> logCore, ReplicatedLogMetrics& logMetrics)
-    : _logCore(std::move(logCore)), _logMetrics(logMetrics) {
-  _logMetrics.replicatedLogInactiveNumber->fetch_add(1);
+    std::unique_ptr<LogCore> logCore, std::shared_ptr<ReplicatedLogMetrics> logMetrics)
+    : _logCore(std::move(logCore)), _logMetrics(std::move(logMetrics)) {
+  _logMetrics->replicatedLogInactiveNumber->fetch_add(1);
 }
 
 auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
@@ -54,7 +54,7 @@ auto replicated_log::LogUnconfiguredParticipant::waitFor(LogIndex)
 replicated_log::LogUnconfiguredParticipant::~LogUnconfiguredParticipant() {
   // TODO It'd be more accurate to do this in resign(), and here only conditionally
   //      depending on whether we still own the LogCore.
-  _logMetrics.replicatedLogInactiveNumber->fetch_sub(1);
+  _logMetrics->replicatedLogInactiveNumber->fetch_sub(1);
 }
 
 auto replicated_log::LogParticipantI::waitForIterator(LogIndex index)

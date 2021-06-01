@@ -66,7 +66,8 @@ namespace arangodb::replication2::replicated_log {
  * atomically.
  */
 struct alignas(64) ReplicatedLog {
-  explicit ReplicatedLog(std::unique_ptr<LogCore> core, ReplicatedLogMetrics& metrics,
+  explicit ReplicatedLog(std::unique_ptr<LogCore> core,
+                         std::shared_ptr<ReplicatedLogMetrics> const& metrics,
                          LogContext const& logContext);
 
   ReplicatedLog() = delete;
@@ -109,7 +110,7 @@ struct alignas(64) ReplicatedLog {
   LogContext const _logContext = LogContext(Logger::REPLICATION2);
   mutable std::mutex _mutex;
   std::shared_ptr<LogParticipantI> _participant;
-  ReplicatedLogMetrics& _metrics;
+  std::shared_ptr<ReplicatedLogMetrics> const _metrics;
 };
 
 }  // namespace arangodb::replication2::replicated_log

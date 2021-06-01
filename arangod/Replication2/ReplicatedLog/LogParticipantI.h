@@ -69,14 +69,14 @@ struct LogUnconfiguredParticipant
       LogParticipantI {
   ~LogUnconfiguredParticipant() override;
   explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore,
-                                      ReplicatedLogMetrics& logMetrics);
+                                      std::shared_ptr<ReplicatedLogMetrics> logMetrics);
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   std::unique_ptr<LogCore> _logCore;
-  ReplicatedLogMetrics& _logMetrics;
+  std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
 };
 
 }  // namespace arangodb::replication2::replicated_log

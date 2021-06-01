@@ -67,20 +67,20 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-
-replicated_log::LogLeader::LogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics,
+replicated_log::LogLeader::LogLeader(LogContext logContext,
+                                     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                                      TermData termData, InMemoryLog inMemoryLog)
     : _logContext(std::move(logContext)),
-      _logMetrics(logMetrics),
+      _logMetrics(std::move(logMetrics)),
       _termData(std::move(termData)),
       _guardedLeaderData(*this, std::move(inMemoryLog)) {
-  _logMetrics.replicatedLogLeaderNumber->fetch_add(1);
+  _logMetrics->replicatedLogLeaderNumber->fetch_add(1);
 }
 
 replicated_log::LogLeader::~LogLeader() {
   // TODO It'd be more accurate to do this in resign(), and here only conditionally
   //      depending on whether we still own the LogCore.
-  _logMetrics.replicatedLogLeaderNumber->fetch_sub(1);
+  _logMetrics->replicatedLogLeaderNumber->fetch_sub(1);
   tryHardToClearQueue();
 }
 
@@ -149,7 +149,7 @@ auto replicated_log::LogLeader::instantiateFollowers(
 
 void replicated_log::LogLeader::executeAppendEntriesRequests(
     std::vector<std::optional<PreparedAppendEntryRequest>> requests,
-    ReplicatedLogMetrics const& logMetrics) {
+    std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
   for (auto& it : requests) {
     if (it.has_value()) {
       // Capture self(shared_from_this()) instead of this
@@ -174,7 +174,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
             if (auto self = parentLog.lock()) {
               using namespace std::chrono_literals;
               auto const duration = endTime - startTime;
-              self->_logMetrics.replicatedLogAppendEntriesRttUs->count(duration / 1us);
+              self->_logMetrics->replicatedLogAppendEntriesRttUs->count(duration / 1us);
               LOG_CTX("8ff44", TRACE, follower.logContext)
                   << "received append entries response, messageId = " << messageId;
               auto [preparedRequests, resolvedPromises] = std::invoke([&] {
@@ -197,7 +197,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
               for (auto const& it : resolvedPromises._commitedLogEntries) {
                 using namespace std::chrono_literals;
                 auto const duration = commitTp - it.insertTp();
-                logMetrics.replicatedLogInsertsRtt->count(duration / 1us);
+                logMetrics->replicatedLogInsertsRtt->count(duration / 1us);
               }
 
               executeAppendEntriesRequests(std::move(preparedRequests), logMetrics);
@@ -213,7 +213,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 auto replicated_log::LogLeader::construct(
     TermData const& termData, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    LogContext const& logContext, ReplicatedLogMetrics& logMetrics)
+    LogContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics)
     -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
@@ -232,10 +232,10 @@ auto replicated_log::LogLeader::construct(
   // is actually protected.
   struct MakeSharedLogLeader : LogLeader {
    public:
-    MakeSharedLogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics,
+    MakeSharedLogLeader(LogContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                         TermData termData, InMemoryLog inMemoryLog)
-        : LogLeader(std::move(logContext), logMetrics, std::move(termData),
-                    std::move(inMemoryLog)) {}
+        : LogLeader(std::move(logContext), std::move(logMetrics),
+                    std::move(termData), std::move(inMemoryLog)) {}
   };
 
   // TODO this is a cheap trick for now. Later we should be aware of the fact
@@ -252,7 +252,7 @@ auto replicated_log::LogLeader::construct(
 
   auto leader =
       std::make_shared<MakeSharedLogLeader>(commonLogContext.with<logContextKeyLogComponent>("leader"),
-                                            logMetrics, termData, log);
+                                            std::move(logMetrics), termData, log);
   auto localFollower = std::make_shared<LocalFollower>(
       *leader, commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore));
@@ -364,7 +364,7 @@ auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
     auto logEntry = LogEntry{_termData.term, index, std::move(payload)};
     logEntry.setInsertTp(insertTp);
     leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(std::move(logEntry));
-    _logMetrics.replicatedLogInsertsBytes->count(payloadSize);
+    _logMetrics->replicatedLogInsertsBytes->count(payloadSize);
     return index;
   });
 }
@@ -692,7 +692,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 }
 
 auto replicated_log::LogLeader::construct(
-    const LogContext& logContext, replicated_log::ReplicatedLogMetrics& logMetrics,
+    const LogContext& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     const std::vector<std::shared_ptr<AbstractFollower>>& followers,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
@@ -701,7 +701,7 @@ auto replicated_log::LogLeader::construct(
   termData.id = std::move(id);
   termData.writeConcern = writeConcern;
   termData.waitForSync = false;
-  return LogLeader::construct(termData, std::move(logCore), followers, logContext, logMetrics);
+  return LogLeader::construct(termData, std::move(logCore), followers, logContext, std::move(logMetrics));
 }
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(replicated_log::LogLeader& self,
@@ -723,7 +723,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
     auto const endTime = std::chrono::steady_clock::now();
     auto const duration =
         std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-    metrics.replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
+    metrics->replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
   }};
 
   auto logCoreGuard = _guardedLogCore.getLockedGuard();

@@ -79,14 +79,14 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     std::size_t writeConcern;
   };
 
-  static auto construct(LogContext const& logContext, ReplicatedLogMetrics& logMetrics,
+  static auto construct(LogContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                         ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
                         std::vector<std::shared_ptr<AbstractFollower>> const& followers,
                         std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
 
   static auto construct(TermData const& termData, std::unique_ptr<LogCore> logCore,
                         std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-                        LogContext const& logContext, ReplicatedLogMetrics& logMetrics)
+                        LogContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics)
       -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload) -> LogIndex;
@@ -110,7 +110,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
  protected:
   // Use the named constructor construct() to create a leader!
-  LogLeader(LogContext logContext, ReplicatedLogMetrics& logMetrics,
+  LogLeader(LogContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             TermData termData, InMemoryLog inMemoryLog);
 
  private:
@@ -213,7 +213,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   };
 
   LogContext const _logContext;
-  ReplicatedLogMetrics& _logMetrics;
+  std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   TermData const _termData;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;
@@ -229,7 +229,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   auto acquireMutex() const -> ConstGuard;
 
   static void executeAppendEntriesRequests(std::vector<std::optional<PreparedAppendEntryRequest>> requests,
-                                           ReplicatedLogMetrics const& logMetrics);
+                                           std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
 
   auto tryHardToClearQueue() noexcept -> void;
 };

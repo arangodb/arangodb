@@ -40,7 +40,7 @@ struct FollowerAppendEntriesTest : ReplicatedLogTest {
   }
 
   MessageId nextMessageId{0};
-  ReplicatedLogMetricsMock logMetricsMock{};
+  std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock{};
 };
 
 TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
