@@ -507,14 +507,13 @@ function testSuitePregel() {
       // Now use soft shutdown API to shut coordinator down:
       arango.DELETE("/_admin/shutdown?soft=true");
       let status = arango.GET("/_admin/shutdown");
-      console.warn("Hugo:", status);
       assertTrue(status.softShutdownOngoing);
       assertEqual(1, status.pregelConductors);
 
       // It should fail to create a new pregel run:
       let gotException = false;
       try {
-        let pid2 = testAlgoStart("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
+        testAlgoStart("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
       } catch(e) {
         console.warn("Got exception for new run, good!", JSON.stringify(e));
         gotException = true;
@@ -522,9 +521,7 @@ function testSuitePregel() {
       assertTrue(gotException);
 
       status = arango.GET("/_admin/shutdown");
-      console.warn("Honk:", status);
       assertTrue(status.softShutdownOngoing);
-      //assertEqual(1, status.pregelConductors);
 
       while (!testAlgoCheck(pid)) {
         console.warn("Pregel still running...");
@@ -532,9 +529,7 @@ function testSuitePregel() {
       }
 
       status = arango.GET("/_admin/shutdown");
-      console.warn("Honk:", status);
       assertTrue(status.softShutdownOngoing);
-      //assertEqual(1, status.pregelConductors);
 
       // And now it should shut down in due course...
       waitForShutdown(coordinator, 30);
