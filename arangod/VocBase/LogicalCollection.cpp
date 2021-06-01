@@ -1002,13 +1002,13 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
     auto nextType = Helper::getNumericValue<uint64_t>(slice, StaticStrings::InternalValidatorTypes,
                                                       _internalValidatorTypes);
     if (nextType != _internalValidatorTypes) {
-      // We can only apply this operation If we are write locked.
-      // The WriteLock is guaranteed by the maintenance.
-      // Otherwise someone may insert a document and perform an unprotected
-      // access to _internalValidators.
+      // This is a bit dangerous operation, if the internalValidators are NOT
+      // empty a concurrent writer could have one in it's hand while this thread deletes it.
+      // For now the situation cannot happen, but may happen in the future.
+      // As soon as it happens we need to make sure that we hold a write lock on this collection
+      // while we swap the validators. (Or apply some local locking for validators only, that would be fine too)
 
-      // TODO Check if we need to make sure we are write locked.
-      // TRI_ASSERT(statusLock().isLockedWrite());
+      TRI_ASSERT(_internalValidators.empty());
       _internalValidatorTypes = nextType;
       _internalValidators.clear();
       decorateWithInternalValidators();
