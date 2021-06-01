@@ -31,12 +31,14 @@ struct ReplicatedLogMetrics;
 }
 
 namespace arangodb {
-class ReplicatedLogFeature : public application_features::ApplicationFeature {
+class ReplicatedLogFeature final : public application_features::ApplicationFeature {
  public:
   explicit ReplicatedLogFeature(application_features::ApplicationServer& server);
   ~ReplicatedLogFeature() override;
 
   auto metrics() -> replication2::replicated_log::ReplicatedLogMetrics&;
+
+  void prepare() override;
 
  private:
   std::unique_ptr<replication2::replicated_log::ReplicatedLogMetrics> _replicatedLogMetrics;

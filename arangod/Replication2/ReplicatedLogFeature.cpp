@@ -39,12 +39,20 @@ ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
     : ApplicationFeature(server, "ReplicatedLog"),
       _replicatedLogMetrics(std::make_unique<ReplicatedLogMetrics>(
           server.getFeature<MetricsFeature>())) {
+  setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
 }
 
 auto ReplicatedLogFeature::metrics() -> replication2::replicated_log::ReplicatedLogMetrics& {
   return *_replicatedLogMetrics;
+}
+
+void ReplicatedLogFeature::prepare() {
+  if (ServerState::instance()->isCoordinator() || ServerState::instance()->isAgent()) {
+    setEnabled(false);
+    return;
+  }
 }
 
 ReplicatedLogFeature::~ReplicatedLogFeature() = default;
