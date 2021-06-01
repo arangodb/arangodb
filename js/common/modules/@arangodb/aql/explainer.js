@@ -1150,6 +1150,47 @@ function processQuery(query, explain, planIndex) {
     var filter = '';
     // index in this array gives the traversal direction
     const translate = ['ANY', 'INBOUND', 'OUTBOUND'];
+    // get all indexes of a graph node, i.e. traversal, shortest path, etc.
+    const getGraphNodeIndexes = (node) => {
+      const allIndexes = [];
+      for (i = 0; i < node.edgeCollections.length; ++i) {
+        d = node.directions[i];
+        // base indexes
+        var ix = node.indexes.base[i];
+        ix.collection = node.edgeCollections[i];
+        ix.condition = keyword("base " + translate[d]);
+        ix.level = -1;
+        ix.direction = d;
+        ix.node = node.id;
+        allIndexes.push(ix);
+
+        // level-specific indexes
+        for (var l in node.indexes.levels) {
+          ix = node.indexes.levels[l][i];
+          ix.collection = node.edgeCollections[i];
+          ix.condition = keyword("level " + parseInt(l, 10) + " " + translate[d]);
+          ix.level = parseInt(l, 10);
+          ix.direction = d;
+          ix.node = node.id;
+          allIndexes.push(ix);
+        }
+      }
+
+      allIndexes.sort(function (l, r) {
+        if (l.collection !== r.collection) {
+          return l.collection < r.collection ? -1 : 1;
+        }
+        if (l.level !== r.level) {
+          return l.level < r.level ? -1 : 1;
+        }
+        if (l.direction !== r.direction) {
+          return l.direction < r.direction ? -1 : 1;
+        }
+        return 0;
+      });
+
+      return allIndexes;
+    };
     switch (node.type) {
       case 'SingletonNode':
         return keyword('ROOT');
@@ -1278,42 +1319,6 @@ function processQuery(query, explain, planIndex) {
             directions.push({ collection: node.edgeCollections[i], direction: node.directions[i] });
           }
         }
-        var allIndexes = [];
-        for (i = 0; i < node.edgeCollections.length; ++i) {
-          d = node.directions[i];
-          // base indexes
-          var ix = node.indexes.base[i];
-          ix.collection = node.edgeCollections[i];
-          ix.condition = keyword("base " + translate[d]);
-          ix.level = -1;
-          ix.direction = d;
-          ix.node = node.id;
-          allIndexes.push(ix);
-
-          // level-specific indexes
-          for (var l in node.indexes.levels) {
-            ix = node.indexes.levels[l][i];
-            ix.collection = node.edgeCollections[i];
-            ix.condition = keyword("level " + parseInt(l, 10) + " " + translate[d]);
-            ix.level = parseInt(l, 10);
-            ix.direction = d;
-            ix.node = node.id;
-            allIndexes.push(ix);
-          }
-        }
-
-        allIndexes.sort(function (l, r) {
-          if (l.collection !== r.collection) {
-            return l.collection < r.collection ? -1 : 1;
-          }
-          if (l.level !== r.level) {
-            return l.level < r.level ? -1 : 1;
-          }
-          if (l.direction !== r.direction) {
-            return l.direction < r.direction ? -1 : 1;
-          }
-          return 0;
-        });
 
         rc += keyword(translate[node.defaultDirection]);
         if (node.hasOwnProperty('vertexId')) {
@@ -1403,9 +1408,7 @@ function processQuery(query, explain, planIndex) {
           }
         }
 
-        allIndexes.forEach(function (idx) {
-          indexes.push(idx);
-        });
+        indexes.push(...getGraphNodeIndexes(node));
 
         if (node.isLocalGraphNode) {
           if (node.isUsedAsSatellite) {
@@ -1525,6 +1528,9 @@ function processQuery(query, explain, planIndex) {
             node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
           }
         }
+
+        indexes.push(...getGraphNodeIndexes(node));
+
         return rc;
       }
       case 'KShortestPathsNode': {
@@ -1640,6 +1646,9 @@ function processQuery(query, explain, planIndex) {
             node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
           }
         }
+
+        indexes.push(...getGraphNodeIndexes(node));
+
         return rc;
       }
       case 'CalculationNode':
