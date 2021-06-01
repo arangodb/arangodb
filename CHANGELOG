@@ -1,6 +1,9 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-450: RandomGenerator caught assertion during a value generation within
+  `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
+
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
 
