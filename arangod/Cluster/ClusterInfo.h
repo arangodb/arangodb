@@ -895,8 +895,6 @@ class ClusterInfo final {
   /// @brief get current "Plan" structure
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> getPlan();
-  std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
     getPlan(uint64_t& planIndex, std::unordered_set<std::string> const&);
 
@@ -904,8 +902,6 @@ class ClusterInfo final {
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> getCurrent();
-  std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
     getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
 
