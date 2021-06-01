@@ -108,6 +108,7 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
                           [&](VPackBuilder& builder) {
                             spec.toVelocyPack(builder);
                           })
+          .inc("arango/Plan/Version")
           .precs()
           .isEmpty(path)
           .end()
@@ -137,6 +138,7 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
                           [&](VPackBuilder& builder) {
                             term.toVelocyPack(builder);
                           })
+          .inc("arango/Plan/Version")
           .precs()
           .isNotEmpty(path)
           .end()

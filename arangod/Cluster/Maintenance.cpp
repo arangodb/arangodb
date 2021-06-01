@@ -40,6 +40,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
 
+#include "Basics/overload.h"
+
+#include "Replication2/AgencyLogSpecification.h"
+
 #include "Cluster/ResignShardLeadership.h"
 
 #include <velocypack/Collection.h>
@@ -701,20 +705,82 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   }
 
   for (auto const& dbname : dirty) {
+    using namespace arangodb::replication2;
+
     auto lit = localLogs.find(dbname);
     if (lit == std::end(localLogs)) {
       continue;
     }
-
-    if (auto pit = plan.find(dbname); pit != std::end(plan)) {
-      LOG_DEVEL << "plan for database " << pit->second->toJson();
+    auto pit = plan.find(dbname);
+    if (pit == std::end(plan)) {
+      continue;
     }
 
     auto& logs = lit->second;
-    for (auto const& [idx, status] : logs) {
-      // Calculate actions
-      LOG_DEVEL << "idx = " << idx;
+    auto plans = pit->second->slice()[0].get(       // plan collections
+        std::vector<std::string>{AgencyCommHelper::path(), PLAN, REPLICATED_LOGS, dbname});
+    if (!plans.isObject()) {
+      continue;
     }
+    // check all plan log entries
+    for (auto const& [key, value] : VPackObjectIterator(plans)) {
+      replication2::agency::LogPlanSpecification spec(replication2::agency::from_velocypack, value);
+      if (!spec.term) {
+        continue;
+      }
+      if (spec.term->participants.find(serverId) == spec.term->participants.end()) {
+        continue;
+      }
+
+      // check if there are logs that do not exist locally
+      if (auto localIt = logs.find(spec.id); localIt == std::end(logs)) {
+        // Create replicated log
+        LOG_DEVEL << "Create replicated log " << spec.id;
+      } else {
+        // check if the term is the same
+        bool const requiresUpdate = std::invoke([&, &status = localIt->second] {
+          if (spec.term.has_value()) {
+            return std::visit(overload{[&](replicated_log::UnconfiguredStatus) {
+                                         return true;
+                                       },
+                                       [&](replicated_log::LeaderStatus const& s) {
+                                         return s.term != spec.term->term;
+                                       },
+                                       [&](replicated_log::FollowerStatus const& s) {
+                                         return s.term != spec.term->term;
+                                       }},
+                              status);
+          }
+          return false;
+        });
+
+        // Create UpdateLogAction
+        if (requiresUpdate) {
+          LOG_DEVEL << "update replicated log to term " << spec.term->term;
+        }
+      }
+    }
+
+    for (auto const& [idx, status] : logs) {
+      bool const dropLog = std::invoke([&, &idx = idx] {
+        auto planSlice = plans.get(std::to_string(idx.id()));
+        if (planSlice.isNone()) {
+          return true;
+        }      // TODO transform plan once to spec, and not twice
+
+        replication2::agency::LogPlanSpecification spec(replication2::agency::from_velocypack,
+                                                        planSlice);
+        return !spec.term.has_value() || (spec.term->participants.find(serverId) ==
+                                          spec.term->participants.end());
+      });
+
+
+      if (dropLog) {
+        LOG_DEVEL << "dropping replicated log " << idx;
+      }
+    }
+
+
   }
 
   // See if shard errors can be thrown out:

@@ -731,9 +731,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
           }}
         auto [entry,created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
         if (created) {
-          LOG_DEVEL << query->toJson();
           _readDB.read(query, entry->second);
-          LOG_DEVEL << "result = " << entry->second->toJson();
         } else {
           LOG_TOPIC("31ae3", ERR, Logger::CLUSTER)
             << "Failed to communicate updated database " << i

@@ -200,11 +200,11 @@ struct envelope {
     }
 
     template <typename K>
-    write_trx inc(K&& k, uint64_t delta = 1) && {
+    write_trx inc(K&& k, uint64_t delta = 1) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
-      this->key("op", "increment");
-      this->key("delta", delta);
+      _builder->add("op", VPackValue("increment"));
+      _builder->add("delta", VPackValue(delta));
       _builder->close();
       return std::move(*this);
     }
