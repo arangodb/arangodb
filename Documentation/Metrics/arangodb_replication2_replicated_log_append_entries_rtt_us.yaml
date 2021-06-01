@@ -2,7 +2,7 @@ name: arangodb_replication2_replicated_log_append_entries_rtt_us
 introducedIn: "3.9.0"
 help: |
   Histogram of the RTT of appendEntries requests in us.
-unit: number
+unit: us
 type: histogram
 category: Replication
 complexity: medium

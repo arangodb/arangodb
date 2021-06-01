@@ -1,7 +1,7 @@
 name: arangodb_replication2_replicated_log_started_following_number
 introducedIn: "3.9.0"
 help: |
-  Number of times following a replicated log.
+  Number of times started following a replicated log.
 unit: number
 type: counter
 category: Replication
