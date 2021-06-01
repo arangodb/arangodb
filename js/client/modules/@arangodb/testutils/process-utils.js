@@ -469,9 +469,7 @@ function readAssertLogLines (logPath) {
           lineStart = j + 1;
 
           // scan for asserts from the crash dumper
-          if ((line.search('a7902') !== -1) ||
-              (line.search('c962b') !== -1) ||
-              (line.search('308c3') !== -1)) {
+          if (line.search('{crash}') !== -1) {
             if (!IS_A_TTY) {
               // else the server has already printed these:
               print("ERROR: " + line);
