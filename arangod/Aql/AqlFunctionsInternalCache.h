@@ -23,14 +23,12 @@
 
 #pragma once
 
+#include <VocBase/Validators.h>
 #include "Aql/AqlValue.h"
 #include "Basics/Common.h"
-#include <VocBase/Validators.h>
 
 #include <unicode/regex.h>
 #include <memory>
-
-
 
 namespace arangodb {
 
@@ -48,6 +46,8 @@ class AqlFunctionsInternalCache final {
 
   AqlFunctionsInternalCache() = default;
   ~AqlFunctionsInternalCache();
+
+  AqlFunctionsInternalCache(AqlFunctionsInternalCache&&) = default;
 
   void clear() noexcept;
 

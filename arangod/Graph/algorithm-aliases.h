@@ -43,14 +43,14 @@ namespace graph {
 template <class Provider>
 using KPathEnumerator =
     TwoSidedEnumerator<FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>, Provider,
-                       PathValidator<PathStore<typename Provider::Step>, VertexUniquenessLevel::PATH>>;
+                       PathValidator<Provider, PathStore<typename Provider::Step>, VertexUniquenessLevel::PATH>>;
 
 // K_PATH implementation using Tracing
 template <class Provider>
 using TracedKPathEnumerator =
     TwoSidedEnumerator<QueueTracer<FifoQueue<typename Provider::Step>>,
                        PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>,
-                       PathValidator<PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
+                       PathValidator<Provider, PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
 
 template <class ProviderType, VertexUniquenessLevel vertexUniqueness, bool useTracing>
 struct BFSConfiguration {
@@ -61,7 +61,7 @@ struct BFSConfiguration {
       typename std::conditional<useTracing, QueueTracer<FifoQueue<Step>>, FifoQueue<Step>>::type;
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>, PathStore<Step>>::type;
-  using Validator = PathValidator<Store, vertexUniqueness>;
+  using Validator = PathValidator<Provider, Store, vertexUniqueness>;
 };
 
 template <class ProviderType, VertexUniquenessLevel vertexUniqueness, bool useTracing>
@@ -73,7 +73,7 @@ struct DFSConfiguration {
       typename std::conditional<useTracing, QueueTracer<LifoQueue<Step>>, FifoQueue<Step>>::type;
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>, PathStore<Step>>::type;
-  using Validator = PathValidator<Store, vertexUniqueness>;
+  using Validator = PathValidator<Provider, Store, vertexUniqueness>;
 };
 
 // BFS Traversal Enumerator implementation

@@ -31,6 +31,8 @@
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Types/UniquenessLevel.h"
 
+#include "./MockGraphProvider.h"
+
 using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::velocypack;
@@ -70,9 +72,9 @@ class Step : public arangodb::graph::BaseStep<Step> {
 };
 
 using TypesToTest =
-    ::testing::Types<PathValidator<PathStore<Step>, VertexUniquenessLevel::NONE>,
-                     PathValidator<PathStore<Step>, VertexUniquenessLevel::PATH>,
-                     PathValidator<PathStore<Step>, VertexUniquenessLevel::GLOBAL>>;
+    ::testing::Types<PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::NONE>,
+                     PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::PATH>,
+                     PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::GLOBAL>>;
 
 template <class ValidatorType>
 class PathValidatorTest : public ::testing::Test {
@@ -84,9 +86,9 @@ class PathValidatorTest : public ::testing::Test {
 
  protected:
   VertexUniquenessLevel getVertexUniquness() {
-    if constexpr (std::is_same_v<ValidatorType, PathValidator<PathStore<Step>, VertexUniquenessLevel::NONE>>) {
+    if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::NONE>>) {
       return VertexUniquenessLevel::NONE;
-    } else if constexpr (std::is_same_v<ValidatorType, PathValidator<PathStore<Step>, VertexUniquenessLevel::PATH>>) {
+    } else if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::PATH>>) {
       return VertexUniquenessLevel::PATH;
     } else {
       return VertexUniquenessLevel::GLOBAL;

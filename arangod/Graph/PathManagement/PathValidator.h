@@ -47,7 +47,7 @@ class ValidationResult;
  * - Path Conditions. Vertex, Edge maybe in LookupInfo
  *     (e.g. p.vertices[*].name ALL == "HANS")
  */
-template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+template <class Provider, class PathStore, VertexUniquenessLevel vertexUniqueness>
 class PathValidator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
@@ -57,7 +57,7 @@ class PathValidator {
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
-                    PathValidator<PathStore, vertexUniqueness> const& otherValidator)
+                    PathValidator<Provider, PathStore, vertexUniqueness> const& otherValidator)
       -> ValidationResult;
 
   void setPruneEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
@@ -79,8 +79,13 @@ class PathValidator {
   std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
 
  private:
+  auto evaluateEdgeCondition(typename PathStore::Step const&) const -> ValidationResult;
+
   auto exposeUniqueVertices() const
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const&;
+
+  auto evaluateExpression(arangodb::aql::Expression* expression,
+                          arangodb::velocypack::Slice value) const -> bool;
 };
 }  // namespace graph
 }  // namespace arangodb
