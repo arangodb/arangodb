@@ -151,9 +151,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateEdgeCondi
     auto prev = _store.get(step.getPrevious());
     auto vertexId = prev.getVertexIdentifier();
     idNode->setStringValue(vertexId.data(), vertexId.length());
-    VPackBuilder tmpBuilder;
-    _provider.addEdgeToBuilder(step.getEdge(), tmpBuilder);
-    bool satifiesCondition = evaluateExpression(expr, tmpBuilder.slice());
+    _tmpObjectBuilder.clear();
+    _provider.addEdgeToBuilder(step.getEdge(), _tmpObjectBuilder);
+    bool satifiesCondition = evaluateExpression(expr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
       return ValidationResult{ValidationResult::Type::FILTER};
     }
@@ -220,14 +220,5 @@ template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>, 
 template class PathValidator<ProviderTracer<ClusterProvider>,
                              PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>, VertexUniquenessLevel::GLOBAL>;
 
-/* TODO: The following instances somehow mix tracing and non-tracing, this seems to be a bit off, but required to compile
-template class PathValidator<SingleServerProvider, PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::NONE>;
-template class PathValidator<SingleServerProvider, PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>;
-template class PathValidator<SingleServerProvider, PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::GLOBAL>;
-
-template class PathValidator<ClusterProvider, PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::NONE>;
-template class PathValidator<ClusterProvider, PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH>;
-template class PathValidator<ClusterProvider, PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::GLOBAL>;
-*/
 }  // namespace graph
 }  // namespace arangodb

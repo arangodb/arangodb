@@ -28,6 +28,8 @@
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace aql {
 class PruneExpressionEvaluator;
@@ -78,6 +80,8 @@ class PathValidator {
   std::unique_ptr<aql::PruneExpressionEvaluator> _pruneEvaluator;
 
   std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
+
+  arangodb::velocypack::Builder _tmpObjectBuilder;
 
  private:
   auto evaluateEdgeCondition(typename PathStore::Step const&) -> ValidationResult;
