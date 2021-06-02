@@ -133,7 +133,10 @@ class LogId : public arangodb::basics::Identifier {
   using arangodb::basics::Identifier::Identifier;
 
   static auto fromShardName(std::string_view) noexcept -> std::optional<LogId>;
+  static auto fromString(std::string_view) noexcept -> std::optional<LogId>;
 };
+
+auto to_string(LogId logId) -> std::string;
 
 struct LogIterator {
   virtual ~LogIterator() = default;

@@ -27,21 +27,31 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <atomic>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
-#include <atomic>
 
 namespace arangodb {
 class LogicalCollection;
 class ShardingStrategy;
+}  // namespace arangodb
 
-namespace application_features {
+namespace arangodb::application_features {
 class ApplicationServer;
 }
+
+namespace arangodb::replication2 {
+class LogId;
+}
+
+namespace arangodb {
 
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
+using ReplicatedLogsMap = std::unordered_map<ShardID, replication2::LogId>;
 
 class ShardingInfo {
  public:
@@ -93,6 +103,10 @@ class ShardingInfo {
 
   std::shared_ptr<ShardMap> shardIds() const;
 
+  // Must only be called if the replication version of the collection's vocbase
+  // is 2, will throw otherwise.
+  auto replicatedLogs() const -> ReplicatedLogsMap const&;
+
   // return a sorted vector of ShardIDs
   std::shared_ptr<std::vector<ShardID>> shardListAsShardID() const;
 
@@ -137,6 +151,8 @@ class ShardingInfo {
 
   // @brief current shard ids
   std::shared_ptr<ShardMap> _shardIds;
+
+  std::optional<ReplicatedLogsMap> _replicatedLogs;
 
   // @brief vector of shard keys in use. this is immutable after initial setup
   std::unique_ptr<ShardingStrategy> _shardingStrategy;

@@ -107,3 +107,15 @@ auto LogId::fromShardName(std::string_view name) noexcept -> std::optional<LogId
   }
   return std::nullopt;
 }
+
+auto LogId::fromString(std::string_view name) noexcept -> std::optional<LogId> {
+  if (std::all_of(name.begin(), name.end(), [](char c) { return isdigit(c); })) {
+    using namespace basics::StringUtils;
+    return LogId{uint64(name)};
+  }
+  return std::nullopt;
+}
+
+auto replication2::to_string(LogId logId) -> std::string {
+  return std::to_string(logId.id());
+}

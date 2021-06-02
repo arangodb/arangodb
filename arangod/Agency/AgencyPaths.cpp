@@ -31,6 +31,8 @@ auto paths::root() -> std::shared_ptr<Root const> {
   return Root::make_shared();
 }
 
+auto paths::to_string(Path const& path) -> std::string { return path.str(); }
+
 auto aliases::arango() -> std::shared_ptr<Root::Arango const> {
   return root()->arango();
 }

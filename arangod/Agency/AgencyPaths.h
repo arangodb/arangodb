@@ -2195,6 +2195,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
   }
 };
 
+auto to_string(Path const& path) -> std::string;
+
 namespace aliases {
 
 auto arango() -> std::shared_ptr<Root::Arango const>;

@@ -203,23 +203,22 @@ void addToShardStatistics(std::unordered_map<arangodb::ServerID, arangodb::Shard
   }
 }
 
-static inline arangodb::AgencyOperation IncreaseVersion() {
+arangodb::AgencyOperation IncreaseVersion() {
   return arangodb::AgencyOperation{"Plan/Version",
                                    arangodb::AgencySimpleOperationType::INCREMENT_OP};
 }
 
-static inline std::string collectionPath(std::string const& dbName,
-                                         std::string const& collection) {
+std::string collectionPath(std::string const& dbName, std::string const& collection) {
   return "Plan/Collections/" + dbName + "/" + collection;
 }
 
-inline std::string analyzersPath(std::string const& dbName) {
+std::string analyzersPath(std::string const& dbName) {
   return "Plan/Analyzers/" + dbName;
 }
 
-static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
-                                                              std::string const& collection,
-                                                              VPackSlice const& info) {
+arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
+                                                std::string const& collection,
+                                                VPackSlice const& info) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!info.get("shards").isEmptyObject() &&
       !arangodb::basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IsSmart,
@@ -234,15 +233,17 @@ static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const&
   return op;
 }
 
-static inline arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(
-    std::string const& dbName, std::string const& collection, VPackSlice const& info) {
+arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(std::string const& dbName,
+                                                               std::string const& collection,
+                                                               VPackSlice const& info) {
   arangodb::AgencyPrecondition prec{collectionPath(dbName, collection),
                                     arangodb::AgencyPrecondition::Type::VALUE, info};
   return prec;
 }
 
-static inline arangodb::AgencyOperation CreateCollectionSuccess(
-    std::string const& dbName, std::string const& collection, VPackSlice const& info) {
+arangodb::AgencyOperation CreateCollectionSuccess(std::string const& dbName,
+                                                  std::string const& collection,
+                                                  VPackSlice const& info) {
   TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::AttrIsBuilding));
   return arangodb::AgencyOperation{collectionPath(dbName, collection),
                                    arangodb::AgencyValueOperationType::SET, info};

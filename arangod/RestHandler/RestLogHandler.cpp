@@ -221,6 +221,7 @@ RestStatus RestLogHandler::execute() {
     case ServerState::ROLE_SINGLE:
     case ServerState::ROLE_UNDEFINED:
     case ServerState::ROLE_AGENT:
+    default:
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "api only on coordinators or dbservers");
       return RestStatus::DONE;

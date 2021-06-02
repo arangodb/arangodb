@@ -240,6 +240,7 @@ class StaticStrings {
   static std::string const WriteConcern;
   static std::string const ShardingSingle;
   static std::string const ReplicationVersion;
+  static std::string const ReplicatedLogs;
 
   // graph attribute names
   static std::string const GraphCollection;
