@@ -4,8 +4,29 @@ devel
 * Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
   K_SHORTEST_PATHS and K_PATHS.
 
+* Updated arangosync to 2.3.0.
+
 * Added check for data type compatibility between members of pipeline
   ArangoSearch analyzer.
+
+* Implemented an optimization for Traversals. If you apply a POST filter on
+  the vertex and/or edge result this filter will now be applied during the
+	traversal to avoid generating the full output for AQL. This will have
+	positive effect if you filter on the vertex/edge but return the path,
+	this way the system does only need to produce a path that is allowed to
+	be passed through.
+	e.g.
+  
+	  FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+		  FILTER v.isRelevant == true
+			RETURN p
+
+	can now be optimized, and the traversal statement will only produce
+	paths where the last vertex has `isRelevant == true`.
+
+* Fixed ES-867: remove eslint from the package.json and package-lock.json files
+  exported in the packages. ESLINT itself was not part of these packages. However,
+  the package file mentioned it.
 
 * Fix BTS-450: RandomGenerator caught assertion during a value generation within
   `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
@@ -27,6 +48,10 @@ devel
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
+
+* Fix BTS-446: When finding a not yet fully initialized agency, do not
+  immediately fatal exit. Keep trying for (very generous) 5
+  minutes.
 
 * Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
   documentation about the long deprecated features Simple Queries and

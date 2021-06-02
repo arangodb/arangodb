@@ -61,6 +61,7 @@ function ValidationBasicsSuite () {
       } catch (ex) {}
       validatorJson = {
         "level": "strict",
+        "type": "json",
         "rule": {
           "type": "object",
           "properties": {

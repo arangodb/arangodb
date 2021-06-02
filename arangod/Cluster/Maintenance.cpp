@@ -58,7 +58,6 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
-static std::vector<std::string> const compareProperties{WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED};
 static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
 
 static VPackValue const VP_DELETE("delete");
@@ -88,12 +87,15 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& first,
                                                           VPackSlice const& second) {
+  static std::vector<std::string> const compareProperties{WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
+                                                          StaticStrings::InternalValidatorTypes};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
     for (auto const& property : compareProperties) {
       auto const& planned = first.get(property);
-      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false)) {  // Register any change
+      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false) &&
+          !planned.isNone()) {  // Register any change
         result->add(property, planned);
       }
     }
