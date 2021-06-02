@@ -1,6 +1,14 @@
 devel
 -----
 
+* Added experimental `[?]` array operator, which works as follows:
+  - `nonArray[?]`: returns `false`
+  - `nonArray[? FILTER CURRENT ...]`: returns `false`
+  - `array[?]`: returns `false` if array is empty, `true` otherwise
+  - `array[? FILTER CURRENT ...]`: returns `false` if no array member
+     satisfies the filter condition, returns `true` if at least one
+     member satistifies it.
+
 * Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
   symmetrical.
 

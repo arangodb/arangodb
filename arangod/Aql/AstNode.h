@@ -79,6 +79,8 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
   
   FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
+  
+  FLAG_BOOLEAN_EXPANSION = 0x0200000,  // make expansion result boolean
 };
 
 /// @brief enumeration of AST node value types
