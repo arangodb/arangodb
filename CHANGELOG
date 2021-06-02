@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
+  K_SHORTEST_PATHS and K_PATHS.
+
 * Updated arangosync to 2.3.0.
 
 * Added check for data type compatibility between members of pipeline
