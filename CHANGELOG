@@ -1,5 +1,8 @@
 devel
 -----
+
+* Fix BTS-457: Make geo intersection between point and rectangle symmetrical.
+
 * Added check for data type compatibility between members of pipeline
   ArangoSearch analyzer.
 
