@@ -163,10 +163,11 @@ class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEn
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> DFSFinder {
     arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth};
+    PathValidatorOptions validatorOpts{};
     return DFSFinder({*_query.get(),
                       MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
                       resourceMonitor},
-                     std::move(options), resourceMonitor);
+                     std::move(options), std::move(validatorOpts), resourceMonitor);
   }
 
   auto vId(size_t nr) -> std::string {

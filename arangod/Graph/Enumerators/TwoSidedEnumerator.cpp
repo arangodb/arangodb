@@ -59,7 +59,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball:
       _interior(resourceMonitor),
       _queue(resourceMonitor),
       _provider(std::move(provider)),
-      _validator(_interior),
+      _validator(_interior, PathValidatorOptions{}),
       _direction(dir),
       _minDepth(options.getMinDepth()) {}
 
@@ -67,7 +67,8 @@ template <class QueueType, class PathStoreType, class ProviderType, class PathVa
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::~Ball() = default;
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::reset(VertexRef center, size_t depth) {
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::reset(
+    VertexRef center, size_t depth) {
   clear();
   auto firstStep = _provider.startVertex(center, depth);
   _shell.emplace(std::move(firstStep));
@@ -144,9 +145,9 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     // Notes for the future:
     // Vertices are now fetched. Thnink about other less-blocking and batch-wise
     // fetching (e.g. re-fetch at some later point).
-    // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in fetch as fetched.
-    // This works, but we might create a batch limit here in the future.
-    // Also discuss: Do we want (re-)fetch logic here?
+    // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
+    // fetch as fetched. This works, but we might create a batch limit here in
+    // the future. Also discuss: Do we want (re-)fetch logic here?
     // TODO: maybe we can combine this with prefetching of paths
   }
 }

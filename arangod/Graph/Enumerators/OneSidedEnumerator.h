@@ -49,6 +49,7 @@ class HashedStringRef;
 namespace graph {
 
 struct OneSidedEnumeratorOptions;
+class PathValidatorOptions;
 
 template <class Configuration>
 class OneSidedEnumerator : public TraversalEnumerator {
@@ -67,6 +68,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
 
  public:
   OneSidedEnumerator(Provider&& provider, OneSidedEnumeratorOptions&& options,
+                     PathValidatorOptions pathValidatorOptions,
                      arangodb::ResourceMonitor& resourceMonitor);
   OneSidedEnumerator(OneSidedEnumerator const& other) = delete;
   OneSidedEnumerator(OneSidedEnumerator&& other) noexcept = default;

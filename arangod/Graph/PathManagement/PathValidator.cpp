@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathValidator.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -34,8 +35,12 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class PathStore, VertexUniquenessLevel vertexUniqueness>
-PathValidator<PathStore, vertexUniqueness>::PathValidator(PathStore const& store)
-    : _store(store) {}
+PathValidator<PathStore, vertexUniqueness>::PathValidator(PathStore const& store,
+                                                          PathValidatorOptions opts)
+    : _store(store), _options(opts) {}
+
+template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+PathValidator<PathStore, vertexUniqueness>::~PathValidator() = default;
 
 template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<PathStore, vertexUniqueness>::validatePath(typename PathStore::Step const& step)
@@ -110,6 +115,18 @@ template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<PathStore, vertexUniqueness>::exposeUniqueVertices() const
     -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const& {
   return _uniqueVertices;
+}
+
+template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+void PathValidator<PathStore, vertexUniqueness>::setPruneEvaluator(
+    std::unique_ptr<aql::PruneExpressionEvaluator> eval) {
+  _pruneEvaluator = std::move(eval);
+}
+
+template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+void PathValidator<PathStore, vertexUniqueness>::setPostFilterEvaluator(
+    std::unique_ptr<aql::PruneExpressionEvaluator> eval) {
+  _postFilterEvaluator = std::move(eval);
 }
 
 namespace arangodb {

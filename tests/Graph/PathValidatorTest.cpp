@@ -95,7 +95,9 @@ class PathValidatorTest : public ::testing::Test {
 
   PathStore<Step>& store() { return _pathStore; }
 
-  ValidatorType testee() { return ValidatorType{this->store()}; }
+  ValidatorType testee(PathValidatorOptions opts = PathValidatorOptions{}) {
+    return ValidatorType{this->store(), std::move(opts)};
+  }
   Step makeStep(size_t id, size_t previous) {
     std::string idStr = basics::StringUtils::itoa(id);
     HashedStringRef hStr(idStr.data(), static_cast<uint32_t>(idStr.length()));
