@@ -24,8 +24,19 @@
 #include <memory>
 #include <ostream>
 
+#if (_MSC_VER >= 1)
+// suppress warnings:
+#pragma warning(push)
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+#pragma warning(disable : 4267)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+#pragma warning(disable : 4334)
+#endif
 #include <immer/flex_vector.hpp>
 #include <immer/box.hpp>
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 #include "Logger/LogMacros.h"
 
