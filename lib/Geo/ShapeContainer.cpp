@@ -594,10 +594,13 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
 
 bool ShapeContainer::intersects(S2LatLngRect const* other) const {
   switch (_type) {
-    case ShapeContainer::Type::S2_POINT:
-    case ShapeContainer::Type::S2_POLYLINE: {
+    case ShapeContainer::Type::S2_POINT: {
       S2PointRegion const* self = static_cast<S2PointRegion const*>(_data);
       return other->Contains(self->point());  // same
+    }
+
+    case ShapeContainer::Type::S2_POLYLINE: {
+      return contains(other);
     }
 
     case ShapeContainer::Type::S2_LATLNGRECT: {
