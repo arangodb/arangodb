@@ -1,7 +1,8 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
-* Fix BTS-457: Make geo intersection between point and rectangle symmetrical.
+* Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
+  symmetrical.
 
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
