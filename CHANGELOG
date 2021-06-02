@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix BTS-457: Make geo intersection between point and rectangle symmetrical.
+
 * Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
   K_SHORTEST_PATHS and K_PATHS.
 
