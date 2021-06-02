@@ -39,6 +39,17 @@ namespace iresearch {
   return std::make_shared<IdentityAnalyzer>();
 }
 
+/*static*/ bool IdentityAnalyzer::normalize_json(const irs::string_ref& /*args*/,
+                                                 std::string& out) {
+  out = "{}";
+  return true;
+}
+
+/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make_json(
+    irs::string_ref const& /*args*/) {
+  return std::make_shared<IdentityAnalyzer>();
+}
+
 IdentityAnalyzer::IdentityAnalyzer() noexcept
   : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
     _empty(true) {
