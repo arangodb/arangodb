@@ -1,5 +1,8 @@
 devel
 -----
+
+* Updated arangosync to 2.3.0.
+
 * Added check for data type compatibility between members of pipeline
   ArangoSearch analyzer.
 
