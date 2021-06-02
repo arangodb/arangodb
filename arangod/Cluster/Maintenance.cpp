@@ -22,29 +22,27 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/Maintenance.h"
+#include "Maintenance.h"
+
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/overload.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/ResignShardLeadership.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
-
-#include "Basics/overload.h"
-
-#include "Replication2/AgencyLogSpecification.h"
-
-#include "Cluster/ResignShardLeadership.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Compare.h>

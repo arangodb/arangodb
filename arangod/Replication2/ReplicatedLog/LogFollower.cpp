@@ -24,9 +24,9 @@
 
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/messages.h"
-#include "Replication2/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/messages.h"
 #include "RestServer/Metrics.h"
 
 #include <Basics/Exceptions.h>

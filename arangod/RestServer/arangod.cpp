@@ -81,7 +81,7 @@
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/ReplicationMetricsFeature.h"
-#include "Replication2/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"

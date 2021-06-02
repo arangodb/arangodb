@@ -22,18 +22,18 @@
 
 #pragma once
 
+#include "Replication2/LogContext.h"
 #include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
-#include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/messages.h"
-#include "Replication2/LogContext.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
 
-#include <Replication2/ReplicatedLogMetrics.h>
 #include <map>
 #include <memory>
 #include <mutex>

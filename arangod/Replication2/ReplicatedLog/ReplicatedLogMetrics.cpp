@@ -22,7 +22,7 @@
 
 #include "ReplicatedLogMetrics.h"
 
-#include "Replication2/ReplicatedLogMetricsDeclarations.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetricsDeclarations.h"
 #include "RestServer/Metrics.h"
 #include "RestServer/MetricsFeature.h"
 

@@ -25,7 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "Replication2/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "RestServer/MetricsFeature.h"
 
 #include <memory>

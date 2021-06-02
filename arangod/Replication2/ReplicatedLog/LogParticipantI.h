@@ -22,14 +22,14 @@
 
 #pragma once
 
+#include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <Futures/Future.h>
 #include <Futures/Promise.h>
 
-#include <Replication2/DeferredExecution.h>
-#include <Replication2/ReplicatedLogMetrics.h>
 #include <map>
 #include <memory>
 

@@ -28,7 +28,7 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "Replication2/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 
 namespace arangodb {
 namespace application_features {
