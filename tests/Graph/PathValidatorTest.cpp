@@ -22,6 +22,9 @@
 
 #include "gtest/gtest.h"
 
+#include "../Mocks/Servers.h"
+
+#include "Aql/Query.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringHeap.h"
@@ -31,6 +34,7 @@
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Types/UniquenessLevel.h"
 
+#include "./MockGraph.h"
 #include "./MockGraphProvider.h"
 
 using namespace arangodb;
@@ -43,6 +47,7 @@ namespace graph_path_validator_test {
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
+/*
 class Step : public arangodb::graph::BaseStep<Step> {
  public:
   using Vertex = HashedStringRef;
@@ -70,16 +75,28 @@ class Step : public arangodb::graph::BaseStep<Step> {
     return getVertex();
   }
 };
+*/
 
-using TypesToTest =
-    ::testing::Types<PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::NONE>,
-                     PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::PATH>,
-                     PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::GLOBAL>>;
+using Step = typename graph::MockGraphProvider::Step;
+
+using TypesToTest = ::testing::Types<
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::NONE>,
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH>,
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::GLOBAL>>;
 
 template <class ValidatorType>
 class PathValidatorTest : public ::testing::Test {
+  graph::MockGraph mockGraph;
+  mocks::MockAqlServer _server{true};
+  std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
+
+  graph::MockGraphProvider _provider{
+      *_query.get(),
+      graph::MockGraphProviderOptions{mockGraph, graph::MockGraphProviderOptions::LooseEndBehaviour::NEVER,
+                                      false},
+      _resourceMonitor};
 
   PathStore<Step> _pathStore{_resourceMonitor};
   StringHeap _heap{_resourceMonitor, 4096};
@@ -98,7 +115,7 @@ class PathValidatorTest : public ::testing::Test {
   PathStore<Step>& store() { return _pathStore; }
 
   ValidatorType testee(PathValidatorOptions opts = PathValidatorOptions{}) {
-    return ValidatorType{this->store(), std::move(opts)};
+    return ValidatorType{this->_provider, this->store(), std::move(opts)};
   }
   Step makeStep(size_t id, size_t previous) {
     std::string idStr = basics::StringUtils::itoa(id);

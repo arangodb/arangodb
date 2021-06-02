@@ -52,7 +52,7 @@ class PathValidator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  PathValidator(PathStore const& store, PathValidatorOptions opts);
+  PathValidator(Provider& provider, PathStore const& store, PathValidatorOptions opts);
   ~PathValidator();
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
@@ -66,6 +66,7 @@ class PathValidator {
 
  private:
   PathStore const& _store;
+  Provider& _provider;
 
   // Only for applied vertex uniqueness
   // TODO: Figure out if we can make this Member template dependend
@@ -79,13 +80,13 @@ class PathValidator {
   std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
 
  private:
-  auto evaluateEdgeCondition(typename PathStore::Step const&) const -> ValidationResult;
+  auto evaluateEdgeCondition(typename PathStore::Step const&) -> ValidationResult;
 
   auto exposeUniqueVertices() const
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const&;
 
   auto evaluateExpression(arangodb::aql::Expression* expression,
-                          arangodb::velocypack::Slice value) const -> bool;
+                          arangodb::velocypack::Slice value) -> bool;
 };
 }  // namespace graph
 }  // namespace arangodb

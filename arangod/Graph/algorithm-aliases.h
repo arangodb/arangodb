@@ -50,7 +50,7 @@ template <class Provider>
 using TracedKPathEnumerator =
     TwoSidedEnumerator<QueueTracer<FifoQueue<typename Provider::Step>>,
                        PathStoreTracer<PathStore<typename Provider::Step>>, ProviderTracer<Provider>,
-                       PathValidator<Provider, PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
+                       PathValidator<ProviderTracer<Provider>, PathStoreTracer<PathStore<typename Provider::Step>>, VertexUniquenessLevel::PATH>>;
 
 template <class ProviderType, VertexUniquenessLevel vertexUniqueness, bool useTracing>
 struct BFSConfiguration {

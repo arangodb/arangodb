@@ -62,14 +62,14 @@ aql::Expression* PathValidatorOptions::getEdgeExpression(uint64_t depth) const {
   return _allEdgesExpression.get();
 }
 
-aql::Variable* PathValidatorOptions::getTempVar() const {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return nullptr;
+aql::Variable const* PathValidatorOptions::getTempVar() const {
+  return _tmpVar;
 }
 
-aql::ExpressionContext* PathValidatorOptions::getExpressionContext() const {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return nullptr;
+aql::ExpressionContext* PathValidatorOptions::getExpressionContext() {
+  // We can only call this if we have been called with QueryContext contructor.
+  // Otherwise this object could not be constructed.
+  // However it is also only necessary if we actually have expressions to check.
+  TRI_ASSERT(_expressionCtx.has_value());
+  return &_expressionCtx.value();
 }

@@ -59,7 +59,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball:
       _interior(resourceMonitor),
       _queue(resourceMonitor),
       _provider(std::move(provider)),
-      _validator(_interior, PathValidatorOptions{}),
+      _validator(_provider, _interior, PathValidatorOptions{}),
       _direction(dir),
       _minDepth(options.getMinDepth()) {}
 
@@ -435,8 +435,8 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>>,
     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
     ::arangodb::graph::ProviderTracer<SingleServerProvider>,
-    ::arangodb::graph::PathValidator<SingleServerProvider, ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
-                                     VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::PathValidator<::arangodb::graph::ProviderTracer<SingleServerProvider>,
+                                     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>>;
 
 /* ClusterProvider Section */
 
@@ -449,5 +449,5 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>>,
     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>,
     ::arangodb::graph::ProviderTracer<ClusterProvider>,
-    ::arangodb::graph::PathValidator<ClusterProvider, ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>,
-                                     VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::PathValidator<::arangodb::graph::ProviderTracer<ClusterProvider>,
+                                     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH>>;

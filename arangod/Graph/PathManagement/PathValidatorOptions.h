@@ -68,13 +68,15 @@ class PathValidatorOptions {
    */
   aql::Expression* getEdgeExpression(uint64_t depth) const;
 
-  aql::Variable* getTempVar() const;
+  aql::Variable const* getTempVar() const;
 
-  aql::ExpressionContext* getExpressionContext() const;
+  aql::ExpressionContext* getExpressionContext();
 
  private:
   std::unique_ptr<aql::Expression> _allEdgesExpression;
   std::unordered_map<uint64_t, std::unique_ptr<aql::Expression>> _edgeExpressionOnDepth;
+
+  aql::Variable const* _tmpVar;
 
   // Only needed for the fixed var expression context below. No real usage here.
   std::optional<transaction::Methods> _trx;

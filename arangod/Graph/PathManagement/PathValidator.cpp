@@ -37,27 +37,9 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateExpression(
-    arangodb::aql::Expression* expression, VPackSlice value) const -> bool {
-  if (expression == nullptr) {
-    return true;
-  }
-
-  TRI_ASSERT(value.isObject() || value.isNull());
-  auto tmpVar = _options.getTempVar();
-  expression->setVariable(tmpVar, value);
-  TRI_DEFER(expression->clearVariable(tmpVar));
-  bool mustDestroy = false;
-  aql::AqlValue res = expression->execute(_options.getExpressionContext(), mustDestroy);
-  aql::AqlValueGuard guard{res, mustDestroy};
-  TRI_ASSERT(res.isBoolean());
-  return res.toBoolean();
-}
-
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-PathValidator<ProviderType, PathStore, vertexUniqueness>::PathValidator(PathStore const& store,
-                                                                        PathValidatorOptions opts)
-    : _store(store), _options(std::move(opts)) {}
+PathValidator<ProviderType, PathStore, vertexUniqueness>::PathValidator(
+    ProviderType& provider, PathStore const& store, PathValidatorOptions opts)
+    : _store(store), _provider(provider), _options(std::move(opts)) {}
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 PathValidator<ProviderType, PathStore, vertexUniqueness>::~PathValidator() = default;
@@ -141,21 +123,16 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::exposeUniqueVerti
     -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const& {
   return _uniqueVertices;
 }
-/*
-      // Es gibt auf einer Tiefe D eine bedinung
-      (map: depth => Expression (maybe empty))
-      // ALL == bedingung
-      (general: Expression (optional))
-*/
+
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateEdgeCondition(
-    typename PathStore::Step const& step) const -> ValidationResult {
+    typename PathStore::Step const& step) -> ValidationResult {
   if (step.isFirst()) {
     // First step never has an edge, nothing to be checked here
     return ValidationResult{ValidationResult::Type::TAKE};
   }
   auto expr = _options.getEdgeExpression(step.getDepth());
-  if (expr) {
+  if (expr != nullptr) {
     // TODO: Maybe we want to replace this by ExpressionContext for simplicity
 
     // By Convention, the previous value has to be on the Last Member.
@@ -174,13 +151,32 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateEdgeCondi
     auto prev = _store.get(step.getPrevious());
     auto vertexId = prev.getVertexIdentifier();
     idNode->setStringValue(vertexId.data(), vertexId.length());
-    bool satifiesCondition = true;
-    // bool satifiesCondition = evaluateExpression(expr, step.getEdge());
+    VPackBuilder tmpBuilder;
+    _provider.addEdgeToBuilder(step.getEdge(), tmpBuilder);
+    bool satifiesCondition = evaluateExpression(expr, tmpBuilder.slice());
     if (!satifiesCondition) {
       return ValidationResult{ValidationResult::Type::FILTER};
     }
   }
   return ValidationResult{ValidationResult::Type::TAKE};
+}
+
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateExpression(
+    arangodb::aql::Expression* expression, VPackSlice value) -> bool {
+  if (expression == nullptr) {
+    return true;
+  }
+
+  TRI_ASSERT(value.isObject() || value.isNull());
+  auto tmpVar = _options.getTempVar();
+  expression->setVariable(tmpVar, value);
+  TRI_DEFER(expression->clearVariable(tmpVar));
+  bool mustDestroy = false;
+  aql::AqlValue res = expression->execute(_options.getExpressionContext(), mustDestroy);
+  aql::AqlValueGuard guard{res, mustDestroy};
+  TRI_ASSERT(res.isBoolean());
+  return res.toBoolean();
 }
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
@@ -224,7 +220,7 @@ template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>, 
 template class PathValidator<ProviderTracer<ClusterProvider>,
                              PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>, VertexUniquenessLevel::GLOBAL>;
 
-/* TODO: The following instances somehow mix tracing and non-tracing, this seems to be a bit off, but required to compile */
+/* TODO: The following instances somehow mix tracing and non-tracing, this seems to be a bit off, but required to compile
 template class PathValidator<SingleServerProvider, PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::NONE>;
 template class PathValidator<SingleServerProvider, PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>;
 template class PathValidator<SingleServerProvider, PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::GLOBAL>;
@@ -232,5 +228,6 @@ template class PathValidator<SingleServerProvider, PathStoreTracer<PathStore<Sin
 template class PathValidator<ClusterProvider, PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::NONE>;
 template class PathValidator<ClusterProvider, PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH>;
 template class PathValidator<ClusterProvider, PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::GLOBAL>;
+*/
 }  // namespace graph
 }  // namespace arangodb
