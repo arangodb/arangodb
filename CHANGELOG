@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 2.3.0.
+
 * Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
   symmetrical.
 
