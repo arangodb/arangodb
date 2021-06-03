@@ -146,16 +146,24 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
 
 TraversalExecutor::~TraversalExecutor() {
   auto opts = _traverser.options();
-  if (opts != nullptr && opts->usesPrune()) {
-    auto* evaluator = opts->getPruneEvaluator();
-    if (evaluator != nullptr) {
-      // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds
-      // an InputAqlItemRow. As the Plan holds the PruneExpressionEvaluator and
-      // is destroyed after the Engine, this must be deleted by
-      // unPrepareContext() - otherwise, the SharedAqlItemBlockPtr referenced by
-      // the row will return its AqlItemBlock to an already destroyed
-      // AqlItemBlockManager.
-      evaluator->unPrepareContext();
+  if (opts != nullptr) {
+    // The InAndOutRowExpressionContext in the PruneExpressionEvaluator
+    // holds an InputAqlItemRow. As the Plan holds the
+    // PruneExpressionEvaluator and is destroyed after the Engine, this must
+    // be deleted by unPrepareContext() - otherwise, the
+    // SharedAqlItemBlockPtr referenced by the row will return its
+    // AqlItemBlock to an already destroyed AqlItemBlockManager.
+    if (opts->usesPrune()) {
+      auto* evaluator = opts->getPruneEvaluator();
+      if (evaluator != nullptr) {
+        evaluator->unPrepareContext();
+      }
+    }
+    if (opts->usesPostFilter()) {
+      auto* evaluator = opts->getPostFilterEvaluator();
+      if (evaluator != nullptr) {
+        evaluator->unPrepareContext();
+      }
     }
   }
 };
@@ -278,7 +286,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
   //       to provide output for every input row
   while (input.hasDataRow()) {
     // Try to acquire a starting vertex
-    std::tie(std::ignore, _inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(std::ignore, _inputRow) =
+        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(_inputRow.isInitialized());
 
     for (auto const& pair : _infos.filterConditionVariables()) {
@@ -287,6 +296,13 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
 
     if (opts->usesPrune()) {
       auto* evaluator = opts->getPruneEvaluator();
+      // Replace by inputRow
+      evaluator->prepareContext(_inputRow);
+      TRI_ASSERT(_inputRow.isInitialized());
+    }
+
+    if (opts->usesPostFilter()) {
+      auto* evaluator = opts->getPostFilterEvaluator();
       // Replace by inputRow
       evaluator->prepareContext(_inputRow);
       TRI_ASSERT(_inputRow.isInitialized());
@@ -314,10 +330,10 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
 
     if (pos == std::string::npos) {
       _traverser.options()->query().warnings().registerWarning(
-        TRI_ERROR_BAD_PARAMETER,
-        "Invalid input for traversal: Only "
-        "id strings or objects with _id are "
-        "allowed");
+          TRI_ERROR_BAD_PARAMETER,
+          "Invalid input for traversal: Only "
+          "id strings or objects with _id are "
+          "allowed");
     } else {
       _traverser.setStartVertex(sourceString);
       TRI_ASSERT(_inputRow.isInitialized());

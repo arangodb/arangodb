@@ -131,6 +131,7 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
         // By guarantee we will only see data, if
         // we are past the offset phase.
         TRI_ASSERT(call.getOffset() == 0);
+        call.didSkip(range.countAndSkipAllRemainingDataRows());
       } else {
         if (call.getOffset() > 0) {
           call.didSkip(range.skip(call.getOffset()));
