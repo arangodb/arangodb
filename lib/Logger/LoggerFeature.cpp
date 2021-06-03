@@ -195,7 +195,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_file),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--log.line-number", "append line number and file name",
+  options->addOption("--log.line-number", "append source file name, line number and function name",
                      new BooleanParameter(&_lineNumber),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
