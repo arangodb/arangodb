@@ -144,7 +144,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
         curlState = CURL_STATE_CMD
       elif curlState == CURL_STATE_CMD and line.startswith("HTTP/"):
         curlState = CURL_STATE_HEADER
-      elif curlState == CURL_STATE_HEADER and len(line) == 0:
+      elif curlState == CURL_STATE_HEADER and len(line.strip()) == 0:
         curlState = CURL_STATE_BODY
 
       if curlState == CURL_STATE_CMD or curlState == CURL_STATE_HEADER:
