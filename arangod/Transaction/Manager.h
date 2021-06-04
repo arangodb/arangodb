@@ -268,6 +268,8 @@ class Manager final {
   bool _writeLockHeld;
 
   double _streamingLockTimeout;
+
+  std::atomic<bool> const* _softShutdownOngoing;
 };
 }  // namespace transaction
 }  // namespace arangodb

@@ -26,9 +26,11 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
 #include "Basics/MutexLocker.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -56,8 +58,18 @@ size_t const CursorRepository::MaxCollectCount = 32;
 ////////////////////////////////////////////////////////////////////////////////
 
 CursorRepository::CursorRepository(TRI_vocbase_t& vocbase)
-    : _vocbase(vocbase), _lock(), _cursors() {
+    : _vocbase(vocbase), _lock(), _cursors(), _softShutdownOngoing(nullptr) {
   _cursors.reserve(64);
+  if (ServerState::instance()->isCoordinator()) {
+    try {
+      auto const& softShutdownFeature{_vocbase.server().getFeature<SoftShutdownFeature>()};
+      auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
+      _softShutdownOngoing = softShutdownTracker.getSoftShutdownFlag();
+    } catch(...) {
+      // Ignore problem, happens only in unit tests and at worst, we do
+      // not have access to the flag.
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,6 +149,12 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
                                                 double ttl, bool hasCount) {
   TRI_ASSERT(result.data != nullptr);
 
+  if (_softShutdownOngoing != nullptr &&
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
+    // Refuse to create the cursor:
+    return nullptr;   // this will lead to a 503 response
+  }
+
   auto cursor = std::make_unique<aql::QueryResultCursor>(
             _vocbase, std::move(result), batchSize, ttl, hasCount);
   cursor->use();
@@ -152,6 +170,12 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
 //////////////////////////////////////////////////////////////////////////////
 
 Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+  if (_softShutdownOngoing != nullptr &&
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
+    // Refuse to create the cursor:
+    return nullptr;   // this will lead to a 503 response
+  }
+
   auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
   cursor->use();
 
