@@ -112,6 +112,9 @@ RestStatus RestShutdownHandler::execute() {
 
   if (ServerState::instance()->isCoordinator() && soft) {
     softShutdownTracker.initiateSoftShutdown();
+    VPackBuilder result;
+    result.add(VPackValue("OK"));
+    generateResult(rest::ResponseCode::OK, result.slice());
     return RestStatus::DONE;
   }
 
