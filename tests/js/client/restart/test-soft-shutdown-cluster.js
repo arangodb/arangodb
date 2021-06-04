@@ -123,7 +123,8 @@ function testSuite() {
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
       assertFalse(status.softShutdownOngoing);
-      arango.DELETE("/_admin/shutdown?soft=true");
+      let res = arango.DELETE("/_admin/shutdown?soft=true");
+      assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
       assertEqual(0, status.AQLcursors);
@@ -146,7 +147,8 @@ function testSuite() {
       let resp = arango.POST("/_api/cursor", data);
       console.warn("Produced AQL cursor:", resp);
       // Now use soft shutdown API to shut coordinator down:
-      arango.DELETE("/_admin/shutdown?soft=true");
+      let res = arango.DELETE("/_admin/shutdown?soft=true");
+      assertEqual("OK", res);
       let status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
       assertEqual(1, status.AQLcursors);
@@ -194,7 +196,8 @@ function testSuite() {
       assertFalse(status.softShutdownOngoing);
 
       // Now use soft shutdown API to shut coordinator down:
-      arango.DELETE("/_admin/shutdown?soft=true");
+      let res = arango.DELETE("/_admin/shutdown?soft=true");
+      assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
       assertEqual(1, status.AQLcursors);
@@ -239,7 +242,8 @@ function testSuite() {
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
       assertFalse(status.softShutdownOngoing);
-      arango.DELETE("/_admin/shutdown?soft=true");
+      let res = arango.DELETE("/_admin/shutdown?soft=true");
+      assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
       assertEqual(0, status.AQLcursors);
@@ -278,7 +282,8 @@ function testSuite() {
       assertFalse(status.softShutdownOngoing);
 
       // Now use soft shutdown API to shut coordinator down:
-      arango.DELETE("/_admin/shutdown?soft=true");
+      let res = arango.DELETE("/_admin/shutdown?soft=true");
+      assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
       assertEqual(0, status.AQLcursors);
@@ -316,7 +321,8 @@ function testSuite() {
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
       assertFalse(status.softShutdownOngoing);
-      arango.DELETE("/_admin/shutdown?soft=true");
+      let res = arango.DELETE("/_admin/shutdown?soft=true");
+      assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       console.warn("status1:", status);
       assertTrue(status.softShutdownOngoing);
@@ -376,7 +382,8 @@ function testSuite() {
       assertTrue(status.lowPrioOngoingRequests > 0);
       assertTrue(status.lowPrioQueuedRequests > 0);
 
-      arango.DELETE("/_admin/shutdown?soft=true");
+      let res = arango.DELETE("/_admin/shutdown?soft=true");
+      assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       console.warn("status1:", status);
       assertTrue(status.softShutdownOngoing);
@@ -434,8 +441,10 @@ function testSuitePregel() {
 
     setUp: function () {
 
-      var exists = graph_module._list().indexOf("demo") !== -1;
+      var guck = graph_module._list();
+      var exists = guck.indexOf("demo") !== -1;
       if (exists || db.demo_v) {
+        console.warn("Attention: graph_module gives:", guck, "or we have db.demo_v:", db.demo_v);
         return;
       }
       var graph = graph_module._create(graphName);
@@ -505,7 +514,9 @@ function testSuitePregel() {
       console.warn("Started pregel run:", pid);
 
       // Now use soft shutdown API to shut coordinator down:
-      arango.DELETE("/_admin/shutdown?soft=true");
+      let res = arango.DELETE("/_admin/shutdown?soft=true");
+      console.warn("Shutdown got:", res);
+      assertEqual("OK", res);
       let status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
       assertEqual(1, status.pregelConductors);
@@ -523,9 +534,13 @@ function testSuitePregel() {
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
 
+      let startTime = time();
       while (!testAlgoCheck(pid)) {
         console.warn("Pregel still running...");
         wait(0.2);
+        if (time() - startTime > 60) {
+          assertTrue(false, "Pregel did not finish in time.");
+        }
       }
 
       status = arango.GET("/_admin/shutdown");
@@ -538,6 +553,8 @@ function testSuitePregel() {
   };
 }
 
-jsunity.run(testSuite);
+//jsunity.run(testSuite);
+wait(15);  // wait until previous restarts have settled
+
 jsunity.run(testSuitePregel);
 return jsunity.done();
