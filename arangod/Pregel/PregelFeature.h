@@ -86,11 +86,19 @@ class PregelFeature final : public application_features::ApplicationFeature {
   static void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                                   VPackSlice const& body, VPackBuilder& outBuilder);
 
+  uint64_t numberOfActiveConductors() const;
+
+  void initiateSoftShutdown() {
+    _softShutdownOngoing.store(true, std::memory_order_relaxed);
+  }
+
  private:
-  Mutex _mutex;
+  mutable Mutex _mutex;
   std::unique_ptr<RecoveryManager> _recoveryManager;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<Conductor>>> _conductors;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>> _workers;
+
+  std::atomic<bool> _softShutdownOngoing;
 };
 
 }  // namespace pregel

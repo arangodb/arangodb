@@ -222,7 +222,8 @@ uint64_t PregelFeature::createExecutionNumber() {
 }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "Pregel") {
+    : application_features::ApplicationFeature(server, "Pregel"),
+      _softShutdownOngoing(false) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
 }
@@ -267,6 +268,10 @@ void PregelFeature::unprepare() {
 }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c, uint64_t executionNumber) {
+  if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
+     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+   }
+
   std::string user = ExecContext::current().user();
 
   MUTEX_LOCKER(guard, _mutex);
@@ -447,3 +452,16 @@ void PregelFeature::cleanupAll() {
     w->aqlResult(outBuilder, withId);
   }
 }
+
+uint64_t PregelFeature::numberOfActiveConductors() const {
+  MUTEX_LOCKER(guard, _mutex);
+  uint64_t nr{0};
+  for (auto const& p : _conductors) {
+    std::shared_ptr<Conductor> c = p.second.second;
+    if (c->_state == ExecutionState::RUNNING ||
+        c->_state == ExecutionState::STORING) {
+      ++nr;
+    }
+  }
+  return nr;
+ }

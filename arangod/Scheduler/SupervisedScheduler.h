@@ -61,6 +61,9 @@ class SupervisedScheduler final : public Scheduler {
   /// the server is considered unavailable (because of overload)
   double unavailabilityQueueFillGrade() const override;
  
+  /// @brief get information about low prio queue:
+  std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued() const;
+
  protected:
   bool isStopping() override { return _stopping; }
 

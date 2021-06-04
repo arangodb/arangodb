@@ -40,6 +40,8 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -91,7 +93,19 @@ Manager::Manager(ManagerFeature& feature)
       _nrReadLocked(0),
       _disallowInserts(false),
       _writeLockHeld(false),
-      _streamingLockTimeout(feature.streamingLockTimeout()) {}
+      _streamingLockTimeout(feature.streamingLockTimeout()),
+      _softShutdownOngoing(nullptr) {
+  if (ServerState::instance()->isCoordinator()) {
+    try {
+      auto const& softShutdownFeature{_feature.server().getFeature<SoftShutdownFeature>()};
+      auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
+      _softShutdownOngoing = softShutdownTracker.getSoftShutdownFlag();
+    } catch(...) {
+      // Ignore if the feature is not there, this might happen in unit test
+      // mocks. Then _softShutdownOngoing is simply nullptr and all is well.
+    }
+  }
+}
 
 void Manager::registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction,
                                   bool isFollowerTransaction) {
@@ -300,6 +314,12 @@ bool ExtractCollections(VPackSlice collections, std::vector<std::string>& reads,
 }  // namespace
 
 ResultT<TRI_voc_tid_t> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSlice trxOpts) {
+
+  if (_softShutdownOngoing != nullptr &&
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
+    return {TRI_ERROR_SHUTTING_DOWN};
+  }
+
   Result res;
   // parse the collections to register
   if (!trxOpts.isObject() || !trxOpts.get("collections").isObject()) {

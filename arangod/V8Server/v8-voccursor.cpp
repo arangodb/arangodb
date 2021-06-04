@@ -106,6 +106,10 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     arangodb::Cursor* cursor =
         cursors->createFromQueryResult(std::move(result),
                                        static_cast<size_t>(batchSize), ttl, true);
+    if (cursor == nullptr) {
+      TRI_V8_THROW_EXCEPTION_FULL(TRI_ERROR_SHUTTING_DOWN,
+           "coordinator soft shutdown, new cursors blocked");
+    }
 
     TRI_ASSERT(cursor != nullptr);
     TRI_DEFER(cursors->release(cursor));
@@ -353,6 +357,10 @@ struct V8Cursor final {
     
     // specify ID 0 so it uses the external V8 context
     auto cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
+    if (cc == nullptr) {   // soft shutdown, no longer allowed
+      TRI_V8_THROW_EXCEPTION_FULL(TRI_ERROR_SHUTTING_DOWN,
+           "coordinator soft shutdown, new cursors blocked");
+    }
     arangodb::ScopeGuard releaseCursorGuard([&]() {
       cc->release();
     });

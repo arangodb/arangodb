@@ -30,6 +30,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
@@ -47,7 +48,8 @@ RestShutdownHandler::RestShutdownHandler(application_features::ApplicationServer
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestShutdownHandler::execute() {
-  if (_request->requestType() != rest::RequestType::DELETE_REQ) {
+  if (_request->requestType() != rest::RequestType::DELETE_REQ &&
+      _request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
   }
@@ -66,6 +68,16 @@ RestStatus RestShutdownHandler::execute() {
                     "you need admin rights to trigger shutdown");
       return RestStatus::DONE;
     }
+  }
+
+  auto const& softShutdownFeature{server().getFeature<SoftShutdownFeature>()};
+  auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
+
+  if (_request->requestType() == rest::RequestType::GET) {
+    VPackBuilder builder;
+    softShutdownTracker.toVelocyPack(builder, softShutdownTracker.getStatus());
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
   }
 
   bool removeFromCluster;
@@ -89,6 +101,21 @@ RestStatus RestShutdownHandler::execute() {
   if (removeFromCluster) {
     ClusterFeature& clusterFeature = server().getFeature<ClusterFeature>();
     clusterFeature.setUnregisterOnShutdown(true);
+  }
+
+  bool soft = false;
+  bool softFound = false;
+  std::string const& softString = _request->value("soft", softFound);
+  if (softFound && softString.compare("true") == 0) {
+    soft = true;
+  }
+
+  if (ServerState::instance()->isCoordinator() && soft) {
+    softShutdownTracker.initiateSoftShutdown();
+    VPackBuilder result;
+    result.add(VPackValue("OK"));
+    generateResult(rest::ResponseCode::OK, result.slice());
+    return RestStatus::DONE;
   }
 
   auto self = shared_from_this();
