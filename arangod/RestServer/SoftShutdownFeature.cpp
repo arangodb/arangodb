@@ -74,6 +74,19 @@ SoftShutdownFeature::SoftShutdownFeature(application_features::ApplicationServer
   _softShutdownTracker = std::make_shared<SoftShutdownTracker>(server);
 }
 
+void SoftShutdownFeature::beginShutdown() {
+  _softShutdownTracker->cancelChecker();
+}
+
+void SoftShutdownTracker::cancelChecker() {
+  if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
+    // This is called when an actual shutdown happens. We then want to
+    // delete the WorkItem of the soft shutdown checker, such that the
+    // Scheduler does not have any cron jobs any more:
+    _workItem.reset();
+  }
+}
+
 SoftShutdownTracker::SoftShutdownTracker(
     application_features::ApplicationServer& server)
   : _server(server), _softShutdownOngoing(false) {

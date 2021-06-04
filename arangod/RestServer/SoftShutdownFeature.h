@@ -45,6 +45,8 @@ class SoftShutdownFeature final : public application_features::ApplicationFeatur
     return *_softShutdownTracker;
   }
 
+  void beginShutdown() override final;
+
  private:
   std::shared_ptr<SoftShutdownTracker> _softShutdownTracker;
 };
@@ -88,6 +90,8 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
   ~SoftShutdownTracker() {};
 
   void initiateSoftShutdown();
+
+  void cancelChecker();
 
   bool softShutdownOngoing() const {
     return _softShutdownOngoing.load(std::memory_order_relaxed);
