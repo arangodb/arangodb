@@ -119,9 +119,10 @@ void SoftShutdownTracker::initiateSoftShutdown() {
       << "Initiating soft shutdown...";
 
   // Tell asynchronous job manager:
-  auto& generalServerFeature = _server.getFeature<GeneralServerFeature>();
-  auto& jobManager = generalServerFeature.jobManager();
-  jobManager.initiateSoftShutdown();
+  auto* jobManager = GeneralServerFeature::JOB_MANAGER;
+  if (jobManager != nullptr) {
+    jobManager->initiateSoftShutdown();
+  }
 
   // Tell Pregel subsystem:
   auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
@@ -207,10 +208,14 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   }
 
   // Get numbers of pending and done asynchronous jobs:
-  auto& generalServerFeature = _server.getFeature<GeneralServerFeature>();
-  auto& jobManager = generalServerFeature.jobManager();
-  std::tie(status.pendingJobs, status.doneJobs)
-      = jobManager.getNrPendingAndDone();
+  auto* jobManager = GeneralServerFeature::JOB_MANAGER;
+  if (jobManager != nullptr) {
+    std::tie(status.pendingJobs, status.doneJobs)
+        = jobManager->getNrPendingAndDone();
+  } else {
+    status.pendingJobs = 0;
+    status.doneJobs = 0;
+  }
 
   // Get number of active Pregel conductors on this coordinator:
   auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
