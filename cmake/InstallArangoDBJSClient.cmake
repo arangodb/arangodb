@@ -38,7 +38,6 @@ install(
   REGEX "^.*/eslint"                                       EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
-  REGEX "^.*/package.*json"                                EXCLUDE
 )
 
 install(
