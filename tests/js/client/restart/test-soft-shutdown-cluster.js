@@ -550,11 +550,10 @@ function testSuitePregel() {
       waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
+
   };
 }
 
-//jsunity.run(testSuite);
-wait(15);  // wait until previous restarts have settled
-
+jsunity.run(testSuite);
 jsunity.run(testSuitePregel);
 return jsunity.done();
