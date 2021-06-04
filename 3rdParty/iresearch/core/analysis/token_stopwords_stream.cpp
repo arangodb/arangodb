@@ -54,7 +54,7 @@ bool hex_decode(std::string& buf, arangodb::velocypack::StringRef value) {
   if (value.length() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
-      value.data());
+      value.toString().c_str());
 
     return false;
   }
@@ -68,7 +68,7 @@ bool hex_decode(std::string& buf, arangodb::velocypack::StringRef value) {
     if (hi >= 16 || lo >= 16) {
       IR_FRMT_WARN(
       "Invalid character while HEX decoding masked token: %s",
-      value.data());
+      value.toString().c_str());
       return false;
     }
 
