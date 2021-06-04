@@ -41,13 +41,13 @@ install(
 )
 
 install(
-  FILES ${PROJECT_BINARY_DIR}/js/node/package.json-no-eslint
+  FILES ${ARANGODB_SOURCE_DIR}/js/node/package.json-no-eslint
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/node
   RENAME package.json
 )
 
 install(
-  FILES ${PROJECT_BINARY_DIR}/js/node/package-lock.json-no-eslint
+  FILES ${ARANGODB_SOURCE_DIR}/js/node/package-lock.json-no-eslint
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/node
   RENAME package-lock.json
 )

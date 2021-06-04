@@ -1383,8 +1383,8 @@ add_custom_target(arangodb
 
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/js/node/package.json PACKAGE_JSON)
 string(REGEX REPLACE "[ \t]*\"eslint\"[^,]*," "" OUT_PACKAGE_JSON ${PACKAGE_JSON})
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/js/node/package.json-no-eslint ${OUT_PACKAGE_JSON})
+file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/js/node/package.json-no-eslint ${OUT_PACKAGE_JSON})
 
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/js/node/package-lock.json PACKAGE_LOCK_JSON)
 string(REGEX REPLACE "\n    \"eslint\": {.*\n    },\n\    \"expect.js\"" "\n    \"expect.js\"" OUT_PACKAGE_LOCK_JSON ${PACKAGE_LOCK_JSON})
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/js/node/package-lock.json-no-eslint ${OUT_PACKAGE_LOCK_JSON})
+file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/js/node/package-lock.json-no-eslint ${OUT_PACKAGE_LOCK_JSON})
