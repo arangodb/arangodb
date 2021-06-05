@@ -31,13 +31,14 @@ if (USE_ENTERPRISE)
   )
 endif ()
 
-# For the node modules we need almost all files:
+# For the node modules we need all files:
 install(
   DIRECTORY ${ARANGODB_SOURCE_DIR}/js/node
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   REGEX "^.*/eslint"                                       EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
+  REGEX "^.*/.*-no-eslint"                                 EXCLUDE
 )
 
 install(
