@@ -612,7 +612,7 @@ void ClusterMethods::realNameFromSmartName(std::string&) { }
 /// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> DistributeShardsEvenly(
+static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> distributeShardsEvenly(
     ClusterInfo& ci, uint64_t numberOfShards, uint64_t replicationFactor,
     std::vector<std::string>& dbServers, bool warnAboutReplicationFactor) {
   auto shards =
@@ -683,7 +683,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 /// @brief Clone shard distribution from other collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> CloneShardDistribution(
+static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> cloneShardDistribution(
     ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
     std::shared_ptr<LogicalCollection> const& other) {
   TRI_ASSERT(col);
@@ -2625,7 +2625,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           }
         }
 
-        shards = CloneShardDistribution(ci, col, myColToDistributeLike);
+        shards = cloneShardDistribution(ci, col, myColToDistributeLike);
       } else {
         // system collections should never enforce replicationfactor
         // to allow them to come up with 1 dbserver
@@ -2674,8 +2674,8 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         std::random_device rd;
         std::mt19937 g(rd());
         std::shuffle(dbServers.begin(), dbServers.end(), g);
-        shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
-                                      dbServers, !col->system());
+        shards = distributeShardsEvenly(ci, numberOfShards, replicationFactor,
+                                        dbServers, !col->system());
       } // if - distributeShardsLike.empty()
 
 
