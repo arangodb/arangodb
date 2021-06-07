@@ -705,6 +705,22 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   for (auto const& dbname : dirty) {
     using namespace arangodb::replication2;
 
+    auto const createReplicatedLogAction = [&](LogId id, VPackSlice spec) {
+      auto specStr = StringUtils::encodeBase64(spec.startAs<char>(), spec.byteSize());
+      auto description = std::make_shared<ActionDescription>(
+          std::map<std::string, std::string>{
+              {std::string(NAME), std::string(UPDATE_REPLICATED_LOG)},
+              {std::string(DATABASE), dbname},
+              {COLLECTION, std::to_string(id.id())},
+              {FOLLOWERS_TO_DROP, specStr},
+          },
+          NORMAL_PRIORITY, false);
+
+      makeDirty.insert(dbname);
+      callNotify = true;
+      actions.emplace_back(std::move(description));
+    };
+
     auto lit = localLogs.find(dbname);
     if (lit == std::end(localLogs)) {
       continue;
@@ -732,8 +748,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
       // check if there are logs that do not exist locally
       if (auto localIt = logs.find(spec.id); localIt == std::end(logs)) {
-        // Create replicated log
-        LOG_DEVEL << "Create replicated log " << spec.id;
+        createReplicatedLogAction(spec.id, value);
       } else {
         // check if the term is the same
         bool const requiresUpdate = std::invoke([&, &status = localIt->second] {
@@ -754,14 +769,14 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
         // Create UpdateLogAction
         if (requiresUpdate) {
-          LOG_DEVEL << "update replicated log to term " << spec.currentTerm->term;
+          createReplicatedLogAction(spec.id, value);
         }
       }
     }
 
-    for (auto const& [idx, status] : logs) {
-      bool const dropLog = std::invoke([&, &idx = idx] {
-        auto planSlice = plans.get(std::to_string(idx.id()));
+    for (auto const& [id, status] : logs) {
+      bool const dropLog = std::invoke([&, &id = id] {
+        auto planSlice = plans.get(std::to_string(id.id()));
         if (planSlice.isNone()) {
           return true;
         }      // TODO transform plan once to spec, and not twice
@@ -774,11 +789,9 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       });
 
       if (dropLog) {
-        LOG_DEVEL << "dropping replicated log " << idx;
+        createReplicatedLogAction(id, VPackSlice::noneSlice());
       }
     }
-
-
   }
 
   // See if shard errors can be thrown out:

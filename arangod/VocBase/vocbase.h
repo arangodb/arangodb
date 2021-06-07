@@ -185,6 +185,8 @@ struct TRI_vocbase_t {
   auto createReplicatedLog(arangodb::replication2::LogId id)
       -> arangodb::ResultT<std::reference_wrapper<arangodb::replication2::replicated_log::ReplicatedLog>>;
   auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;
+  auto ensureReplicatedLog(arangodb::replication2::LogId id)
+      -> arangodb::replication2::replicated_log::ReplicatedLog&;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;

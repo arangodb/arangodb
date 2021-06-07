@@ -2029,6 +2029,19 @@ void TRI_vocbase_t::unregisterReplicatedLog(arangodb::replication2::LogId id) {
   server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_sub(1);
 }
 
+auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id)
+    -> arangodb::replication2::replicated_log::ReplicatedLog& {
+  if (auto iter = _logManager->_logs.find(id); iter != _logManager->_logs.end()) {
+    return iter->second;
+  }
+
+  auto res = createReplicatedLog(id);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res.result());
+  }
+  return res->get();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

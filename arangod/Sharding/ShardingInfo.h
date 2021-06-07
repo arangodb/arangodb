@@ -25,6 +25,8 @@
 
 #include "Basics/Result.h"
 
+#include "Replication2/ReplicatedLog/Common.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -40,10 +42,6 @@ class ShardingStrategy;
 
 namespace arangodb::application_features {
 class ApplicationServer;
-}
-
-namespace arangodb::replication2 {
-class LogId;
 }
 
 namespace arangodb {

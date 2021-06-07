@@ -37,6 +37,7 @@ constexpr char const* DROP_COLLECTION = "DropCollection";
 constexpr char const* DROP_DATABASE = "DropDatabase";
 constexpr char const* DROP_INDEX = "DropIndex";
 constexpr char const* ENSURE_INDEX = "EnsureIndex";
+constexpr char const* UPDATE_REPLICATED_LOG = "UpdateReplicatedLog";
 constexpr char const* FIELDS = "fields";
 constexpr char const* FOLLOWER_ID = "followerId";
 constexpr char const* FOLLOWERS_TO_DROP = "followersToDrop";

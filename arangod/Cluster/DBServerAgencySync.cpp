@@ -78,7 +78,6 @@ Result DBServerAgencySync::getLocalCollections(
   DatabaseFeature& dbfeature = _server.getFeature<DatabaseFeature>();
 
   for (auto const& dbname : dirty) {
-    LOG_DEVEL << "database is dirty " << dbname;
     TRI_vocbase_t* tmp = dbfeature.useDatabase(dbname);
     if (tmp == nullptr) {
       continue;

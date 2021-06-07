@@ -22,6 +22,8 @@
 
 #pragma once
 #include <utility>
+#include <cstddef>
+#include <functional>
 
 namespace arangodb {
 
@@ -97,7 +99,7 @@ struct DeferredAction {
     }
   }
 
-  std::aligned_storage_t<alloc_size, alignof(max_align_t)> storage{};
+  std::aligned_storage_t<alloc_size, alignof(std::max_align_t)> storage{};
   void (*invoke_func)(void*, action, void*) noexcept = nullptr;
 };
 

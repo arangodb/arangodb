@@ -2358,11 +2358,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     VPackSlice const slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    LOG_DEVEL << "slices: " << slice.toJson();
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a view that is still active
       TRI_ASSERT(!it.get("id").isNone());
-      LOG_DEVEL << "load replicated log " << it.toJson();
 
       auto logId = arangodb::replication2::LogId{
           it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
