@@ -151,7 +151,8 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
                      irs::string_ref const defaultVocbase,
                      FieldMeta const& defaults /*= DEFAULT()*/,
                      Mask* mask /*= nullptr*/,
-                     std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers /*= nullptr*/) {
+                     std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers /*= nullptr*/,
+                     bool forInvertedIndex /*= false*/) {
   if (!slice.isObject()) {
     return false;
   }
@@ -162,7 +163,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
     mask = &tmpMask;
   }
 
-  {
+  if (!forInvertedIndex) {
     // optional string list
     static const std::string fieldName("analyzers");
 
@@ -261,7 +262,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
     }
   }
 
-  {
+  if (!forInvertedIndex) {
     // optional bool
     static const std::string fieldName("includeAllFields");
 
@@ -282,7 +283,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
     }
   }
 
-  {
+  if (!forInvertedIndex) {
     // optional bool
     static const std::string fieldName("trackListPositions");
 
@@ -339,23 +340,71 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
     }
   }
 
+  static const std::string fieldsFieldName("fields");
+  mask->_fields = slice.hasKey(fieldsFieldName);
   // .............................................................................
   // process fields last since children inherit from parent
   // .............................................................................
+  if (forInvertedIndex) {
+    // for index there is no recursive struct and fields array is mandatory
+    if (!mask->_fields) {
+      auto field = slice.get(fieldsFieldName);
+      if (!field.isArray() || field.isEmptyArray()) {
+        errorField = fieldsFieldName;
+        return false;
+      }
+      
+      VPackBuilder surrogateFields;
+      for (VPackArrayIterator itr(field); itr.valid(); itr.next()) {
+        auto val = itr.value();
+        if (val.isString()) {
+          try {
+            std::vector<basics::AttributeName> fieldParts;
+            TRI_ParseAttributeString(val.stringView(), fieldParts, false);
+            VPackBuilder surrogateFields;
+            {
+              surrogateFields.openObject();
+              for (auto const& fieldPart : fieldParts) {
+                surrogateFields.add(fieldsFieldName, VPackValue())
+             
+              }
+              surrogateFields.close();
+            }
 
-  {
-    // optional string map<name, overrides>
-    static const std::string fieldName("fields");
+            }
 
-    mask->_fields = slice.hasKey(fieldName);
+            FieldMeta& lastSubField = *this;
+            for (auto const& fieldPart : fieldParts) {
+              if (!_fields[fieldPart.name]->init(server, value, childErrorField, defaultVocbase,
+                                 subDefaults, nullptr, referencedAnalyzers)) {
+              }
+            }
+            lastSubField
+          } catch (arangodb::basics::Exception const &err) {
+            LOG_TOPIC("1d04c", ERR, iresearch::TOPIC)
+              << "Error parsing attribute: " << err.what();
+            errorField = fieldsFieldName + "[" +
+                         basics::StringUtils::itoa(itr.index()) + "]";
+            return false;
+          }
 
+        } else if (val.isObject()) {
+
+        } else {
+          errorField = fieldsFieldName + "[" +
+                       basics::StringUtils::itoa(itr.index()) + "]";
+          return false;
+        }
+      }
+    }
+  } else {
     if (!mask->_fields) {
       _fields = defaults._fields;
     } else {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(fieldsFieldName);
 
       if (!field.isObject()) {
-        errorField = fieldName;
+        errorField = fieldsFieldName;
 
         return false;
       }
@@ -370,7 +419,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
         auto value = itr.value();
 
         if (!key.isString()) {
-          errorField = fieldName + "[" +
+          errorField = fieldsFieldName + "[" +
                        basics::StringUtils::itoa(itr.index()) + "]";
 
           return false;
@@ -379,7 +428,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
         auto name = key.copyString();
 
         if (!value.isObject()) {
-          errorField = fieldName + "." + name;
+          errorField = fieldsFieldName + "." + name;
 
           return false;
         }
@@ -388,7 +437,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
 
         if (!_fields[name]->init(server, value, childErrorField, defaultVocbase,
                                  subDefaults, nullptr, referencedAnalyzers)) {
-          errorField = fieldName + "." + name + "." + childErrorField;
+          errorField = fieldsFieldName + "." + name + "." + childErrorField;
 
           return false;
         }
@@ -403,7 +452,8 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
                      velocypack::Builder& builder,
                      FieldMeta const* ignoreEqual /*= nullptr*/,
                      TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
-                     Mask const* mask /*= nullptr*/) const {
+                     Mask const* mask /*= nullptr*/,
+                     bool forInvertedIndex /*= false*/) const {
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -477,7 +527,7 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
   }
 
   if ((!ignoreEqual || _includeAllFields != ignoreEqual->_includeAllFields) &&
-      (!mask || mask->_includeAllFields)) {
+      (!mask || mask->_includeAllFields) && !forInvertedIndex) {
     builder.add("includeAllFields", velocypack::Value(_includeAllFields));
   }
 
@@ -573,7 +623,8 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
                              std::string& errorField,
                              irs::string_ref const defaultVocbase /*= irs::string_ref::NIL*/,
                              IResearchLinkMeta const& defaults /*= DEFAULT()*/,
-                             Mask* mask /*= nullptr*/) {
+                             Mask* mask /*= nullptr*/,
+                             bool forInvertedIndex /*= false*/) {
   if (!slice.isObject()) {
     return false;
   }
@@ -779,7 +830,7 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
     _collectionName = field.copyString();
   }
 
-  return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults, mask, &_analyzerDefinitions);
+  return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults, mask, &_analyzerDefinitions, forInvertedIndex);
 }
 
 bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& server,
@@ -787,7 +838,8 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
                              bool writeAnalyzerDefinition,
                              IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
                              TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
-                             Mask const* mask /*= nullptr*/) const {
+                             Mask const* mask /*= nullptr*/,
+                             bool forInvertedIndex /*= false*/) const {
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -831,7 +883,7 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
      addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
   }
 
-  return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask);
+  return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask, forInvertedIndex);
 }
 
 size_t IResearchLinkMeta::memory() const noexcept {
