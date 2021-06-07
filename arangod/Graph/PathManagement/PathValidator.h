@@ -84,7 +84,7 @@ class PathValidator {
   arangodb::velocypack::Builder _tmpObjectBuilder;
 
  private:
-  auto evaluateEdgeCondition(typename PathStore::Step const&) -> ValidationResult;
+  auto evaluateVertexCondition(typename PathStore::Step const&) -> ValidationResult;
 
   auto exposeUniqueVertices() const
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const&;

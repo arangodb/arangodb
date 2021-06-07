@@ -50,31 +50,31 @@ class PathValidatorOptions {
   PathValidatorOptions(PathValidatorOptions&&);
 
   /**
-   * @brief Set the expression that needs to hold true for ALL edges on the path.
+   * @brief Set the expression that needs to hold true for ALL vertices on the path.
    */
-  void setAllEdgesExpression(std::unique_ptr<aql::Expression> expression);
+  void setAllVerticesExpression(std::unique_ptr<aql::Expression> expression);
 
   /**
-   * @brief Set the expression that needs to hold true for the edge on the given
-   * depth. NOTE: This will overrule the ALL edge expression, so make sure this
-   * expression contains everything the ALL expression covers.
+   * @brief Set the expression that needs to hold true for the vertex on the
+   * given depth. NOTE: This will overrule the ALL vertex expression, so make
+   * sure this expression contains everything the ALL expression covers.
    */
-  void setEdgeExpression(uint64_t depth, std::unique_ptr<aql::Expression> expression);
+  void setVertexExpression(uint64_t depth, std::unique_ptr<aql::Expression> expression);
 
   /**
-   * @brief Get the Expression an edge needs to hold if defined on the given
-   * depth. It may return a nullptr if all edges are valid.
+   * @brief Get the Expression a vertex needs to hold if defined on the given
+   * depth. It may return a nullptr if all vertices are valid.
    * Caller does NOT take responsibilty. Do not delete this pointer.
    */
-  aql::Expression* getEdgeExpression(uint64_t depth) const;
+  aql::Expression* getVertexExpression(uint64_t depth) const;
 
   aql::Variable const* getTempVar() const;
 
   aql::ExpressionContext* getExpressionContext();
 
  private:
-  std::unique_ptr<aql::Expression> _allEdgesExpression;
-  std::unordered_map<uint64_t, std::unique_ptr<aql::Expression>> _edgeExpressionOnDepth;
+  std::unique_ptr<aql::Expression> _allVerticesExpression;
+  std::unordered_map<uint64_t, std::unique_ptr<aql::Expression>> _vertexExpressionOnDepth;
 
   aql::Variable const* _tmpVar;
 

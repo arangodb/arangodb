@@ -41,25 +41,25 @@ PathValidatorOptions::~PathValidatorOptions() = default;
 
 PathValidatorOptions::PathValidatorOptions(PathValidatorOptions&&) = default;
 
-void PathValidatorOptions::setAllEdgesExpression(std::unique_ptr<aql::Expression> expression) {
+void PathValidatorOptions::setAllVerticesExpression(std::unique_ptr<aql::Expression> expression) {
   // All edge expression should not be set before
-  TRI_ASSERT(_allEdgesExpression == nullptr);
-  _allEdgesExpression = std::move(expression);
+  TRI_ASSERT(_allVerticesExpression == nullptr);
+  _allVerticesExpression = std::move(expression);
 }
 
-void PathValidatorOptions::setEdgeExpression(uint64_t depth,
-                                             std::unique_ptr<aql::Expression> expression) {
+void PathValidatorOptions::setVertexExpression(uint64_t depth,
+                                               std::unique_ptr<aql::Expression> expression) {
   // Should not respecifiy the condition on a certain depth
-  TRI_ASSERT(_edgeExpressionOnDepth.find(depth) == _edgeExpressionOnDepth.end());
-  _edgeExpressionOnDepth.emplace(depth, std::move(expression));
+  TRI_ASSERT(_vertexExpressionOnDepth.find(depth) == _vertexExpressionOnDepth.end());
+  _vertexExpressionOnDepth.emplace(depth, std::move(expression));
 }
 
-aql::Expression* PathValidatorOptions::getEdgeExpression(uint64_t depth) const {
-  auto const& it = _edgeExpressionOnDepth.find(depth);
-  if (it != _edgeExpressionOnDepth.end()) {
+aql::Expression* PathValidatorOptions::getVertexExpression(uint64_t depth) const {
+  auto const& it = _vertexExpressionOnDepth.find(depth);
+  if (it != _vertexExpressionOnDepth.end()) {
     return it->second.get();
   }
-  return _allEdgesExpression.get();
+  return _allVerticesExpression.get();
 }
 
 aql::Variable const* PathValidatorOptions::getTempVar() const {

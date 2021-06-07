@@ -47,7 +47,7 @@ PathValidator<ProviderType, PathStore, vertexUniqueness>::~PathValidator() = def
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness>::validatePath(
     typename PathStore::Step const& step) -> ValidationResult {
-  auto res = evaluateEdgeCondition(step);
+  auto res = evaluateVertexCondition(step);
   if (res.isFiltered() && res.isPruned()) {
     // Can give up here. This Value is not used
     return res;
@@ -125,34 +125,18 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::exposeUniqueVerti
 }
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateEdgeCondition(
+auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCondition(
     typename PathStore::Step const& step) -> ValidationResult {
   if (step.isFirst()) {
     // First step never has an edge, nothing to be checked here
     return ValidationResult{ValidationResult::Type::TAKE};
   }
-  auto expr = _options.getEdgeExpression(step.getDepth());
+  auto expr = _options.getVertexExpression(step.getDepth());
   if (expr != nullptr) {
     // TODO: Maybe we want to replace this by ExpressionContext for simplicity
 
-    // By Convention, the previous value has to be on the Last Member.
-    // And has to be on the Left Side as a String node
-    // Nowwe have to inject the vertex value.
-    auto node = expr->nodeForModification();
-
-    TRI_ASSERT(node->numMembers() > 0);
-    auto dirCmp = node->getMemberUnchecked(node->numMembers() - 1);
-    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-    TRI_ASSERT(dirCmp->numMembers() == 2);
-
-    auto idNode = dirCmp->getMemberUnchecked(1);
-    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-    auto prev = _store.get(step.getPrevious());
-    auto vertexId = prev.getVertexIdentifier();
-    idNode->setStringValue(vertexId.data(), vertexId.length());
     _tmpObjectBuilder.clear();
-    _provider.addEdgeToBuilder(step.getEdge(), _tmpObjectBuilder);
+    _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
     bool satifiesCondition = evaluateExpression(expr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
       return ValidationResult{ValidationResult::Type::FILTER};
