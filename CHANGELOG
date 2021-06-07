@@ -27,10 +27,6 @@ devel
 	can now be optimized, and the traversal statement will only produce
 	paths where the last vertex has `isRelevant == true`.
 
-* Fixed ES-867: remove eslint from the package.json and package-lock.json files
-  exported in the packages. ESLINT itself was not part of these packages. However,
-  the package file mentioned it.
-
 * Fix BTS-450: RandomGenerator caught assertion during a value generation within
   `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
 
