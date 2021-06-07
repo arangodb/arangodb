@@ -103,14 +103,15 @@ class ShardingInfo {
 
   // Must only be called if the replication version of the collection's vocbase
   // is 2, will throw otherwise.
-  auto replicatedLogs() const -> ReplicatedLogsMap const&;
+  auto replicatedLogs() const -> std::shared_ptr<ReplicatedLogsMap>;
 
   // return a sorted vector of ShardIDs
   std::shared_ptr<std::vector<ShardID>> shardListAsShardID() const;
 
   // return a filtered list of the collection's shards
   std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
-  void setShardMap(std::shared_ptr<ShardMap> const& map);
+  void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
+  void setReplicatedLogsMap(std::shared_ptr<ReplicatedLogsMap> map) noexcept;
 
   ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
                                 ShardID& shardID, bool& usesDefaultShardKeys,
@@ -150,7 +151,7 @@ class ShardingInfo {
   // @brief current shard ids
   std::shared_ptr<ShardMap> _shardIds;
 
-  std::optional<ReplicatedLogsMap> _replicatedLogs;
+  std::optional<std::shared_ptr<ReplicatedLogsMap>> _replicatedLogs;
 
   // @brief vector of shard keys in use. this is immutable after initial setup
   std::unique_ptr<ShardingStrategy> _shardingStrategy;

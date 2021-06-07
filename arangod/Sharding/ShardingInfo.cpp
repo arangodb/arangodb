@@ -245,14 +245,14 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     TRI_ASSERT(replicatedLogsSlice.isObject() ==
                (_collection->vocbase().replicationVersion() == replication::Version::TWO));
     try {
-      auto replicatedLogs = ReplicatedLogsMap{};
+      auto replicatedLogs = std::make_shared<ReplicatedLogsMap>();
       for (auto const& logSlice : VPackObjectIterator(replicatedLogsSlice)) {
         auto shardId = logSlice.key.stringView();
         auto logId = logSlice.value.stringView();
-        auto success = replicatedLogs
-                           .emplace(std::string{shardId},
-                                    replication2::LogId::fromString(logId).value())
-                           .second;
+        auto success =
+            replicatedLogs
+                ->emplace(shardId, replication2::LogId::fromString(logId).value())
+                .second;
         TRI_ASSERT(success);
       }
       _replicatedLogs = std::move(replicatedLogs);
@@ -341,7 +341,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
     result.add(VPackValue(StaticStrings::ReplicatedLogs));
     result.openObject();
     {
-      for (auto const& it : replicatedLogs()) {
+      for (auto const& it : *replicatedLogs()) {
         result.add(it.first, VPackValue(to_string(it.second)));
       }
     }
@@ -526,8 +526,12 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(std::unordered_set<std::string>
   return result;
 }
 
-void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
-  _shardIds = map;
+void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
+  _shardIds = std::move(map);
+}
+
+void ShardingInfo::setReplicatedLogsMap(std::shared_ptr<ReplicatedLogsMap> map) noexcept {
+  _replicatedLogs = std::move(map);
 }
 
 ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
@@ -650,7 +654,7 @@ void ShardingInfo::sortShardNamesNumerically(std::vector<ShardID>& list) {
   });
 }
 
-auto ShardingInfo::replicatedLogs() const -> ReplicatedLogsMap const& {
+auto ShardingInfo::replicatedLogs() const -> std::shared_ptr<ReplicatedLogsMap> {
   if (_replicatedLogs.has_value()) {
     return *_replicatedLogs;
   }

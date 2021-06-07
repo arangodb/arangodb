@@ -2601,9 +2601,10 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto serverState = ServerState::instance();
-  std::vector<ClusterCollectionCreationInfo> infos{ClusterCollectionCreationInfo{
-      collectionID, numberOfShards, replicationFactor, writeConcern, waitForReplication,
-      json, serverState->getId(), serverState->getRebootId()}};
+  std::vector<ClusterCollectionCreationInfo> infos{
+      ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
+                                    writeConcern, waitForReplication, json,
+                                    serverState->getId(), serverState->getRebootId()}};
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   return createCollectionsCoordinator(databaseName, infos, endTime,

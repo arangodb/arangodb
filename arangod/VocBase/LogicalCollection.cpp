@@ -393,9 +393,14 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
-void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> const& map) {
+void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept{
   TRI_ASSERT(_sharding != nullptr);
-  _sharding->setShardMap(map);
+  _sharding->setShardMap(std::move(map));
+}
+
+void LogicalCollection::setReplicatedLogsMap(std::shared_ptr<ReplicatedLogsMap> map) noexcept {
+  TRI_ASSERT(_sharding != nullptr);
+  _sharding->setReplicatedLogsMap(std::move(map));
 }
 
 ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
