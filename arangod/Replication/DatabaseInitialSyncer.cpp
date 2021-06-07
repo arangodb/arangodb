@@ -809,7 +809,16 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
           response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
         });
 
-        if (response != nullptr && response->isComplete()) {
+        if (response == nullptr) {
+          // No connection could be established. This is a showstopper:
+          sharedStatus->gotResponse(
+              Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                     std::string("could not connect to master: ") +
+                     _config.master.endpoint));
+          return;
+        }
+
+        if (response->isComplete()) {
           if (response->hasHeaderField("x-arango-async-id")) {
             // got the actual response
             break;
@@ -1147,7 +1156,14 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
         response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
       });
 
-      if (response != nullptr && response->isComplete()) {
+      if (response == nullptr) {
+        // No connection could be established. This is a showstopper:
+        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                      std::string("could not connect to ") +
+                      _config.master.endpoint);
+      }
+
+      if (response->isComplete()) {
         if (response->hasHeaderField("x-arango-async-id")) {
           // job is done, got the actual response
           break;
