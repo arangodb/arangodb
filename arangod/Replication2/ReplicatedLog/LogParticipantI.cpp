@@ -27,6 +27,7 @@
 #include "RestServer/Metrics.h"
 
 #include <Basics/Exceptions.h>
+#include <Basics/overload.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -61,4 +62,18 @@ auto replicated_log::LogParticipantI::waitForIterator(LogIndex index)
     -> replicated_log::LogParticipantI::WaitForIteratorFuture {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto replicated_log::LogParticipantI::getTerm() const noexcept -> std::optional<LogTerm> {
+  return std::visit(
+      overload{[&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
+                 return std::nullopt;
+               },
+               [&](replicated_log::LeaderStatus const& s) -> std::optional<LogTerm> {
+                 return s.term;
+               },
+               [&](replicated_log::FollowerStatus const& s) -> std::optional<LogTerm> {
+                 return s.term;
+               }},
+      getStatus());
 }

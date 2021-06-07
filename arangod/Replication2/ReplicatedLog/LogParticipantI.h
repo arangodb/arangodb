@@ -58,6 +58,7 @@ struct LogParticipantI {
 
   using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogIterator>>;
   [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture;
+  [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
 };
 
 /**

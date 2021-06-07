@@ -2034,7 +2034,7 @@ auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id)
   if (auto iter = _logManager->_logs.find(id); iter != _logManager->_logs.end()) {
     return iter->second;
   }
-
+  // TODO vocbase is not thread safe for replicated logs
   auto res = createReplicatedLog(id);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result());

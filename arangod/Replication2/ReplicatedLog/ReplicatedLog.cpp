@@ -56,22 +56,26 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     LogLeader::TermData const& termData,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
     -> std::shared_ptr<LogLeader> {
+  // TODO add check that term is different from current term
   auto leader = std::shared_ptr<LogLeader>{};
   auto deferred = std::invoke([&] {
     std::unique_lock guard(_mutex);
+    if (auto term = _participant->getTerm(); term && *term > termData.term) {
+      LOG_CTX("b8bf7", INFO, _logContext)
+          << "tried to become leader with term " << termData.term
+          << ", but current term is " << *term;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    }
+
+    auto [logCore, deferred] = std::move(*_participant).resign();
     LOG_CTX("23d7b", DEBUG, _logContext)
         << "becoming leader in term " << termData.term;
-    // TODO Resign: will resolve some promises because leader resigned
-    //      those promises will call ReplicatedLog::getLeader() -> DEADLOCK
-    auto [logCore, deferred] = std::move(*_participant).resign();
     leader = LogLeader::construct(termData, std::move(logCore), follower,
                                   _logContext, _metrics);
     _participant = std::static_pointer_cast<LogParticipantI>(leader);
     _metrics->replicatedLogLeaderTookOverNumber->count();
     return std::move(deferred);
   });
-
-  // resolve(promises);
 
   return leader;
 }
@@ -81,8 +85,14 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
     -> std::shared_ptr<LogFollower> {
   auto [follower, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
+    if (auto currentTerm = _participant->getTerm(); currentTerm && *currentTerm > term) {
+      LOG_CTX("c97e9", INFO, _logContext)
+          << "tried to become follower with term " << term
+          << ", but current term is " << *currentTerm;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    }
     auto [logCore, deferred] = std::move(*_participant).resign();
-    LOG_CTX("23d7b", DEBUG, _logContext)
+    LOG_CTX("1ed24", DEBUG, _logContext)
         << "becoming follower in term " << term << " with leader " << leaderId;
     // TODO this is a cheap trick for now. Later we should be aware of the fact
     //      that the log might not start at 1.

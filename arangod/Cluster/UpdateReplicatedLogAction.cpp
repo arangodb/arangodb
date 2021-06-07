@@ -70,28 +70,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
     TRI_ASSERT(logId == spec->id);
     TRI_ASSERT(spec->currentTerm.has_value());
     auto& leader = spec->currentTerm->leader;
-
-    // TODO add ensureReplicatedLog
     auto& log = vocbase.ensureReplicatedLog(logId);
-
-    auto term = std::invoke([&] {
-      auto status = log.getParticipant()->getStatus();
-      return std::visit(
-          overload{[&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
-                     return std::nullopt;
-                   },
-                   [&](replicated_log::LeaderStatus const& s) -> std::optional<LogTerm> {
-                     return s.term;
-                   },
-                   [&](replicated_log::FollowerStatus const& s) -> std::optional<LogTerm> {
-                     return s.term;
-                   }},
-          status);
-    });
-
-    if (term == spec->currentTerm->term) {
-      return Result();
-    }
 
     if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
       replicated_log::LogLeader::TermData termData;
@@ -101,9 +80,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
       termData.writeConcern = spec->currentTerm->config.writeConcern;
       termData.waitForSync = spec->currentTerm->config.waitForSync;
 
-      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
-
+      network::ConnectionPool* pool = _feature.server().getFeature<NetworkFeature>().pool();
       auto follower =
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
@@ -113,7 +90,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
         }
       }
 
-      log.becomeLeader(termData, std::move(follower));
+      std::ignore = log.becomeLeader(termData, std::move(follower));
     } else {
       auto leaderString = std::string{};
       if (spec->currentTerm->leader) {
