@@ -35,12 +35,11 @@ using namespace arangodb::replication2::replicated_log;
 struct FollowerAppendEntriesTest : ReplicatedLogTest {
   auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<LogFollower> {
     auto core = makeLogCore(LogId{3});
-    auto log = std::make_shared<ReplicatedLog>(std::move(core), logMetricsMock, defaultLogger());
+    auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock, defaultLogger());
     return log->becomeFollower(std::move(id), term, std::move(leaderId));
   }
 
   MessageId nextMessageId{0};
-  std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock{};
 };
 
 TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
