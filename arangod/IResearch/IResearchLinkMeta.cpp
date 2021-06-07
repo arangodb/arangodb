@@ -347,13 +347,13 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
   // .............................................................................
   if (forInvertedIndex) {
     // for index there is no recursive struct and fields array is mandatory
-    if (!mask->_fields) {
+    if (mask->_fields) {
       auto field = slice.get(fieldsFieldName);
       if (!field.isArray() || field.isEmptyArray()) {
         errorField = fieldsFieldName;
         return false;
       }
-      
+      auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
       VPackBuilder surrogateFields;
       for (VPackArrayIterator itr(field); itr.valid(); itr.next()) {
         auto val = itr.value();
@@ -361,25 +361,12 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
           try {
             std::vector<basics::AttributeName> fieldParts;
             TRI_ParseAttributeString(val.stringView(), fieldParts, false);
-            VPackBuilder surrogateFields;
-            {
-              surrogateFields.openObject();
-              for (auto const& fieldPart : fieldParts) {
-                surrogateFields.add(fieldsFieldName, VPackValue())
-             
-              }
-              surrogateFields.close();
-            }
-
-            }
-
-            FieldMeta& lastSubField = *this;
+            FieldMeta* lastSubField = this;    
             for (auto const& fieldPart : fieldParts) {
-              if (!_fields[fieldPart.name]->init(server, value, childErrorField, defaultVocbase,
-                                 subDefaults, nullptr, referencedAnalyzers)) {
-              }
+              lastSubField = lastSubField->_fields[fieldPart.name].get();
             }
-            lastSubField
+            // and now set analyzers to the last one 
+            lastSubField->_analyzers = defaults._analyzers;
           } catch (arangodb::basics::Exception const &err) {
             LOG_TOPIC("1d04c", ERR, iresearch::TOPIC)
               << "Error parsing attribute: " << err.what();
@@ -387,8 +374,73 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
                          basics::StringUtils::itoa(itr.index()) + "]";
             return false;
           }
-
         } else if (val.isObject()) {
+          auto nameSlice = val.get("name");
+          if (nameSlice.isString()) {
+            std::vector<basics::AttributeName> fieldParts;
+            TRI_ParseAttributeString(nameSlice.stringView(), fieldParts, false);
+            FieldMeta* lastSubField = this;    
+            for (auto const& fieldPart : fieldParts) {
+              lastSubField = lastSubField->_fields[fieldPart.name].get();
+            }
+            // and now set analyzers to the last one 
+            if (val.hasKey("analyzer")) {
+              auto analyzerSlice = val.get("analyzer");
+              if (analyzerSlice.isString()) {
+                auto name = analyzerSlice.copyString();
+                auto shortName = name;
+                if (!defaultVocbase.null()) {
+                  name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
+                  shortName = IResearchAnalyzerFeature::normalize(name, defaultVocbase, false);
+                }
+                AnalyzerPool::ptr analyzer;
+                bool found = false;
+                if (referencedAnalyzers) {
+                  auto it = referencedAnalyzers->find(irs::string_ref(name));
+
+                  if (it != referencedAnalyzers->end()) {
+                    analyzer = *it;
+                    found = static_cast<bool>(analyzer);
+
+                    if (ADB_UNLIKELY(!found)) {
+                      TRI_ASSERT(false); // should not happen
+                      referencedAnalyzers->erase(it); // remove null analyzer
+                    }
+                  }
+                }
+                if (!found) {
+                  // for cluster only check cache to avoid ClusterInfo locking issues
+                  // analyzer should have been populated via 'analyzerDefinitions' above
+                  analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST, ServerState::instance()->isClusterRole());
+                }
+                if (!analyzer) {
+                  errorField = fieldsFieldName + "[" +
+                               basics::StringUtils::itoa(itr.index()) + "]" +
+                               ".analyzer";
+                  LOG_TOPIC("2d79d", ERR, iresearch::TOPIC)
+                    << "Error loading analyzer '" << name << "' requested in "
+                    << errorField;
+                  return false;
+                }
+                if (!found && referencedAnalyzers) {
+                  // save in referencedAnalyzers
+                  referencedAnalyzers->emplace(analyzer);
+                }
+                lastSubField->_analyzers.emplace_back(analyzer, std::move(shortName));
+              } else {
+                errorField = fieldsFieldName + "[" +
+                             basics::StringUtils::itoa(itr.index()) + "]" +
+                             ".analyzer";
+                return false;
+              }
+            } else {
+              lastSubField->_analyzers = defaults._analyzers;
+            }
+          } else {
+            errorField = fieldsFieldName + "[" +
+                         basics::StringUtils::itoa(itr.index()) + "]";
+            return false;
+          }
 
         } else {
           errorField = fieldsFieldName + "[" +

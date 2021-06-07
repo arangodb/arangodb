@@ -40,9 +40,12 @@ class IResearchInvertedIndex : public Index {
   struct IResearchInvertedIndexMeta {
 
     Result  init(application_features::ApplicationServer& server,
+                 TRI_vocbase_t const* defaultVocbase,
                  velocypack::Slice const info,
                  bool isClusterConstructor);
-    static Result normalize(velocypack::Builder& normalized, velocypack::Slice definition);
+    static Result normalize(application_features::ApplicationServer& server,
+                            TRI_vocbase_t const* defaultVocbase, velocypack::Builder& normalized,
+                            velocypack::Slice definition);
 
     std::vector<std::vector<arangodb::basics::AttributeName>> fields() const;
 
