@@ -93,7 +93,7 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
              _opts.collectionToShardMap()),
       _stats{} {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
-  _cursor = buildCursor();
+  _cursor = buildCursor(queryContext);
 }
 
 void SingleServerProvider::activateCache(bool enableDocumentCache) {
@@ -173,9 +173,9 @@ void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
   _cache.insertEdgeIntoResult(edge, builder);
 }
 
-std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {
+std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor(arangodb::aql::QueryContext& queryContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), _opts.tmpVar(),
-                                                            _opts.indexInformations());
+                                                            _opts.indexInformations(), queryContext);
 }
 
 arangodb::transaction::Methods* SingleServerProvider::trx() {

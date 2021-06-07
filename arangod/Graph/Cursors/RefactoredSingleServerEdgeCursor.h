@@ -25,6 +25,8 @@
 #pragma once
 
 #include "Aql/Expression.h"
+#include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/QueryContext.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
@@ -55,7 +57,7 @@ class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
     LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-               std::optional<size_t> memberToUpdate);
+               std::optional<size_t> memberToUpdate, arangodb::transaction::Methods* trx);
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&) = delete;
@@ -66,6 +68,8 @@ class RefactoredSingleServerEdgeCursor {
                      arangodb::aql::Variable const* tmpVar);
 
     IndexIterator& cursor();
+    aql::Expression* getExpression();
+
 
    private:
     // This struct does only take responsibility for the expression
@@ -85,7 +89,7 @@ class RefactoredSingleServerEdgeCursor {
  public:
   RefactoredSingleServerEdgeCursor(arangodb::transaction::Methods* trx,
                                    arangodb::aql::Variable const* tmpVar,
-                                   std::vector<IndexAccessor> const& indexConditions);
+                                   std::vector<IndexAccessor> const& indexConditions, arangodb::aql::QueryContext& queryContext);
   ~RefactoredSingleServerEdgeCursor();
 
   using Callback =
@@ -97,11 +101,15 @@ class RefactoredSingleServerEdgeCursor {
   std::vector<LookupInfo> _lookupInfo;
 
   arangodb::transaction::Methods* _trx;
+  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;  // needed for expression evaluation
+  arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
  public:
   void readAll(aql::TraversalStats& stats, Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
+
+  bool evaluateExpression(arangodb::aql::Expression* expression, VPackSlice value);
 
  private:
   [[nodiscard]] transaction::Methods* trx() const;

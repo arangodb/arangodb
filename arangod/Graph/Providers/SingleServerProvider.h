@@ -152,7 +152,7 @@ struct SingleServerProvider {
  private:
   void activateCache(bool enableDocumentCache);
 
-  std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
+  std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor(arangodb::aql::QueryContext& queryContext);
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
