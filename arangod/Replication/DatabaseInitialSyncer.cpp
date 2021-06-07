@@ -809,7 +809,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
           response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
         });
 
-        if (response == nullptr) {
+        if (response == nullptr || response->getHttpReturnCode() == 0) {
           // No connection could be established. This is a showstopper:
           sharedStatus->gotResponse(
               Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
@@ -1156,7 +1156,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
         response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
       });
 
-      if (response == nullptr) {
+      if (response == nullptr || response->getHttpReturnCode() == 0) {
         // No connection could be established. This is a showstopper:
         return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
                       std::string("could not connect to ") +
