@@ -74,8 +74,13 @@ RestStatus RestShutdownHandler::execute() {
   auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
 
   if (_request->requestType() == rest::RequestType::GET) {
+    if (!ServerState::instance()->isCoordinator()) {
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+          TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      return RestStatus::DONE;
+    }
     VPackBuilder builder;
-    softShutdownTracker.toVelocyPack(builder, softShutdownTracker.getStatus());
+    softShutdownTracker.toVelocyPack(builder);
     generateResult(rest::ResponseCode::OK, builder.slice());
     return RestStatus::DONE;
   }

@@ -153,7 +153,8 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
   if (_softShutdownOngoing != nullptr &&
       _softShutdownOngoing->load(std::memory_order_relaxed)) {
     // Refuse to create the cursor:
-    return nullptr;   // this will lead to a 503 response
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+        "Coordinator soft shutdown ongoing.");
   }
 
   auto cursor = std::make_unique<aql::QueryResultCursor>(
@@ -174,7 +175,8 @@ Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query
   if (_softShutdownOngoing != nullptr &&
       _softShutdownOngoing->load(std::memory_order_relaxed)) {
     // Refuse to create the cursor:
-    return nullptr;   // this will lead to a 503 response
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+        "Coordinator soft shutdown ongoing.");
   }
 
   auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);

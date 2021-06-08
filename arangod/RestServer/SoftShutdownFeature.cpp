@@ -96,7 +96,7 @@ SoftShutdownTracker::SoftShutdownTracker(
       return;   // already stopping, do nothing, and in particular
                 // let's not schedule ourselves again!
     }
-    if (!this->check()) {   // Initiates shutdown if counters are 0
+    if (!this->checkAndShutdownIfAllClear()) {
       // Rearm ourselves:
       if (!::queueShutdownChecker(this->_workItemMutex, this->_workItem,
                                   this->_checkFunc)) {
@@ -119,15 +119,12 @@ void SoftShutdownTracker::initiateSoftShutdown() {
   LOG_TOPIC("fedd2", INFO, Logger::STARTUP)
       << "Initiating soft shutdown...";
 
-  // Tell asynchronous job manager:
-  auto* jobManager = GeneralServerFeature::JOB_MANAGER;
-  if (jobManager != nullptr) {
-    jobManager->initiateSoftShutdown();
-  }
-
-  // Tell Pregel subsystem:
-  auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
-  pregelFeature.initiateSoftShutdown();
+  // Tell GeneralServerFeature, which will forward to all features which
+  // overload the initiateSoftShutdown method:
+  _server.initiateSoftShutdown();
+  // Currently, these are:
+  //   - the GeneralServerFeature for its JobManager
+  //   - the PregelFeature
 
   // And initiate our checker to watch numbers:
   if (!::queueShutdownChecker(_workItemMutex, _workItem, _checkFunc)) {
@@ -140,9 +137,9 @@ void SoftShutdownTracker::initiateSoftShutdown() {
   }
 }
     
-bool SoftShutdownTracker::check() const {
+bool SoftShutdownTracker::checkAndShutdownIfAllClear() const {
   Status status = getStatus();
-  if (!status.allClear) {
+  if (!status.allClear()) {
     VPackBuilder builder;
     toVelocyPack(builder, status);
     // FIXME: Set to DEBUG level
@@ -184,15 +181,13 @@ void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,
   builder.add("pregelConductors", VPackValue(status.pregelConductors));
   builder.add("lowPrioOngoingRequests", VPackValue(status.lowPrioOngoingRequests));
   builder.add("lowPrioQueuedRequests", VPackValue(status.lowPrioQueuedRequests));
-  builder.add("allClear", VPackValue(status.allClear));
+  builder.add("allClear", VPackValue(status.allClear()));
 }
 
 SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
-  Status status;
-  status.softShutdownOngoing = _softShutdownOngoing.load(std::memory_order_relaxed);
+  Status status(_softShutdownOngoing.load(std::memory_order_relaxed));
 
   // Get number of active AQL cursors from each database:
-  status.AQLcursors = 0;
   auto& databaseFeature = _server.getFeature<DatabaseFeature>();
   databaseFeature.enumerate([&status](TRI_vocbase_t* vocbase) {
         CursorRepository* repo = vocbase->cursorRepository();
@@ -204,8 +199,6 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   auto* manager = managerFeature.manager();
   if (manager != nullptr) {
     status.transactions = manager->getActiveTransactionCount();
-  } else {
-    status.transactions = 0;
   }
 
   // Get numbers of pending and done asynchronous jobs:
@@ -227,13 +220,6 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
            status.lowPrioQueuedRequests)
       = SchedulerFeature::SCHEDULER->getNumberLowPrioOngoingAndQueued();
 
-  status.allClear = status.AQLcursors == 0 &&
-                    status.transactions == 0 &&
-                    status.pendingJobs == 0 &&
-                    status.doneJobs == 0 &&
-                    status.lowPrioOngoingRequests == 0 &&
-                    status.lowPrioQueuedRequests == 0 &&
-                    status.pregelConductors == 0;
   return status;
 }
 

@@ -286,10 +286,6 @@ std::pair<uint64_t, uint64_t> AsyncJobManager::getNrPendingAndDone() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
-  if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
-        "Soft shutdown ongoing.");
-  }
   handler->assignHandlerId();
   AsyncJobResult::IdType jobId = handler->handlerId();
 
@@ -297,6 +293,11 @@ void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
   AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, std::move(handler));
 
   WRITE_LOCKER(writeLocker, _lock);
+
+  if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+        "Soft shutdown ongoing.");
+  }
 
   _jobs.try_emplace(jobId, std::move(user), std::move(ajr));
 }
