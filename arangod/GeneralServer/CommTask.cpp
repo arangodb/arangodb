@@ -533,15 +533,9 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
       // coordinator. But this can also throw if we have an
       // out of memory situation, so we better handle this anyway.
       jobManager.initAsyncJob(handler);
-    } catch(arangodb::basics::Exception const& exc) {
-      LOG_TOPIC("fee33", INFO, Logger::STARTUP)
-        << "Async job rejected due to soft shutdown, exception:"
-        << exc.what();
-      return false;
     } catch(std::exception const& exc) {
       LOG_TOPIC("fee34", INFO, Logger::STARTUP)
-        << "Async job rejected due to out of memory, exception: "
-        << exc.what();
+        << "Async job rejected, exception: " << exc.what();
       return false;
     }
     *jobId = handler->handlerId();

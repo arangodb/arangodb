@@ -102,11 +102,6 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     arangodb::Cursor* cursor =
         cursors->createFromQueryResult(std::move(result),
                                        static_cast<size_t>(batchSize), ttl, true);
-    if (cursor == nullptr) {
-      TRI_V8_THROW_EXCEPTION_FULL(TRI_ERROR_SHUTTING_DOWN,
-           "coordinator soft shutdown, new cursors blocked");
-    }
-
     TRI_ASSERT(cursor != nullptr);
     TRI_DEFER(cursors->release(cursor));
 
@@ -115,6 +110,9 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     auto result = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
     TRI_V8_RETURN(result);
+  } catch (arangodb::basics::Exception const& exc) {
+    // Probably a coordinator soft shutdown:
+    TRI_V8_THROW_EXCEPTION_FULL(exc.code(), exc.message());
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
@@ -342,10 +340,12 @@ struct V8Cursor final {
                                           options.slice());
     
     // specify ID 0 so it uses the external V8 context
-    auto cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
-    if (cc == nullptr) {   // soft shutdown, no longer allowed
-      TRI_V8_THROW_EXCEPTION_FULL(TRI_ERROR_SHUTTING_DOWN,
-           "coordinator soft shutdown, new cursors blocked");
+    Cursor* cc;
+    try {
+      cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
+    } catch(arangodb::basics::Exception const& exc) {
+      // probably a soft shutdown, no longer allowed
+      TRI_V8_THROW_EXCEPTION_FULL(exc.code(), exc.message());
     }
     arangodb::ScopeGuard releaseCursorGuard([&]() {
       cc->release();
