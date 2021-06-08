@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
@@ -41,7 +42,9 @@ namespace graph {
 
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-                std::optional<size_t> memberToUpdate);
+                std::optional<size_t> memberToUpdate, std::unique_ptr<arangodb::aql::Expression> expression);
+  IndexAccessor(const IndexAccessor&) = delete;
+  IndexAccessor(IndexAccessor&&) = default;
 
   aql::AstNode* getCondition() const;
   transaction::Methods::IndexHandle indexHandle() const;
@@ -51,12 +54,15 @@ struct IndexAccessor {
   transaction::Methods::IndexHandle _idx;
   aql::AstNode* _indexCondition;
   std::optional<size_t> _memberToUpdate;
+  std::unique_ptr<arangodb::aql::Expression> _expression;
 };
 
 struct BaseProviderOptions {
  public:
   BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
                       std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
+  BaseProviderOptions(const BaseProviderOptions&) = delete;
+  BaseProviderOptions(BaseProviderOptions&&) = default;
 
   aql::Variable const* tmpVar() const;
   std::vector<IndexAccessor> const& indexInformations() const;

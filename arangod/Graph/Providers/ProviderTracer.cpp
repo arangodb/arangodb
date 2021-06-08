@@ -37,7 +37,7 @@ template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::ProviderTracer(arangodb::aql::QueryContext& queryContext,
                                              Options opts,
                                              arangodb::ResourceMonitor& resourceMonitor)
-    : _impl{queryContext, opts, resourceMonitor} {}
+    : _impl{queryContext, std::move(opts), resourceMonitor} {}
 
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::~ProviderTracer() {

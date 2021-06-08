@@ -206,7 +206,6 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
                      }
 #endif
                      // eval expression if available
-                     // TODO: Check what to do with result = true boolean case
                      if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
                        edgeDoc = edgeDoc.resolveExternal();
                        bool result =

@@ -27,8 +27,15 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
-                             aql::AstNode* condition, std::optional<size_t> memberToUpdate)
-    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {}
+                             aql::AstNode* condition, std::optional<size_t> memberToUpdate,
+                             std::unique_ptr<arangodb::aql::Expression> expression)
+    : _idx(idx),
+      _indexCondition(condition),
+      _memberToUpdate(memberToUpdate) {
+  if (expression != nullptr) {
+    _expression = std::move(expression);
+  }
+}
 
 aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
 

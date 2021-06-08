@@ -103,8 +103,8 @@ class GraphProviderTest : public ::testing::Test {
       auto tmpVar = singleServer->generateTempVar(query.get());
       auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
 
-      std::vector<IndexAccessor> usedIndexes{
-          IndexAccessor{edgeIndexHandle, indexCondition, 0}};
+      std::vector<IndexAccessor> usedIndexes{};
+      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr});
 
       BaseProviderOptions opts(tmpVar, std::move(usedIndexes), _emptyShardMap);
       return SingleServerProvider(*query.get(), std::move(opts), resourceMonitor);
@@ -121,12 +121,12 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
-        arangodb::aql::Query fakeQuery(ctx, queryString, nullptr);
         try {
           fakeQuery.collections().add("s9880", AccessMode::Type::READ,
                                       arangodb::aql::Collection::Hint::Shard);
         } catch (...) {
         }
+        arangodb::aql::Query fakeQuery(ctx, queryString, nullptr);
         fakeQuery.prepareQuery(SerializationFormat::SHADOWROWS);
         auto ast = fakeQuery.ast();
         auto tmpVar = ast->variables()->createTemporaryVariable();

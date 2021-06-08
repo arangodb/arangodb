@@ -70,7 +70,8 @@ class SingleServerProviderTest : public ::testing::Test {
     auto tmpVar = singleServer->generateTempVar(query.get());
     auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
 
-    std::vector<IndexAccessor> usedIndexes{IndexAccessor{edgeIndexHandle, indexCondition, 0}};
+    std::vector<IndexAccessor> usedIndexes{};
+    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr});
 
     BaseProviderOptions opts(tmpVar, std::move(usedIndexes), _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
