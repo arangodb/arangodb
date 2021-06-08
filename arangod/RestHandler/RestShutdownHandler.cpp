@@ -103,12 +103,7 @@ RestStatus RestShutdownHandler::execute() {
     clusterFeature.setUnregisterOnShutdown(true);
   }
 
-  bool soft = false;
-  bool softFound = false;
-  std::string const& softString = _request->value("soft", softFound);
-  if (softFound && softString.compare("true") == 0) {
-    soft = true;
-  }
+  bool soft = _request->parsedValue("soft", false);
 
   if (ServerState::instance()->isCoordinator() && soft) {
     softShutdownTracker.initiateSoftShutdown();

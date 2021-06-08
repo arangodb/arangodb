@@ -457,8 +457,9 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
   MUTEX_LOCKER(guard, _mutex);
   uint64_t nr{0};
   for (auto const& p : _conductors) {
-    std::shared_ptr<Conductor> c = p.second.second;
-    if (c->_state == ExecutionState::RUNNING ||
+    std::shared_ptr<Conductor> const& c = p.second.second;
+    if (c->_state == ExecutionState::DEFAULT ||
+        c->_state == ExecutionState::RUNNING ||
         c->_state == ExecutionState::STORING) {
       ++nr;
     }
