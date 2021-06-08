@@ -2,7 +2,8 @@ devel
 -----
 
 * Fix internal iterator states after intermediate commits in write
-  transactions.
+  transactions. Iterators could point to invalid data after an
+  intermediate commit, producing undefined behavior.
 
 * Added check to utils/generateAllMetricsDocumentation.py to check that
   the file name and the value of the name attribute are the same in the
