@@ -1077,7 +1077,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
         // No connection could be established. This is a showstopper:
         return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
                       std::string("could not connect to ") +
-                      _config.master.endpoint);
+                      _config.leader.endpoint);
       }
 
       if (response->isComplete()) {
