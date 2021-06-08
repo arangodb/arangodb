@@ -83,6 +83,7 @@ void SoftShutdownTracker::cancelChecker() {
     // This is called when an actual shutdown happens. We then want to
     // delete the WorkItem of the soft shutdown checker, such that the
     // Scheduler does not have any cron jobs any more:
+    std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
 }
@@ -159,7 +160,7 @@ bool SoftShutdownTracker::check() const {
 void SoftShutdownTracker::initiateActualShutdown() const {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   auto self = shared_from_this();
-  bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
+  bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this()] {
     // Give the server 2 seconds to finish stuff
     std::this_thread::sleep_for(std::chrono::seconds(2));
     self->_server.beginShutdown();
