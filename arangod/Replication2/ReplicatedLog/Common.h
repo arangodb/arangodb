@@ -134,6 +134,8 @@ class LogId : public arangodb::basics::Identifier {
 
   static auto fromShardName(std::string_view) noexcept -> std::optional<LogId>;
   static auto fromString(std::string_view) noexcept -> std::optional<LogId>;
+
+  [[nodiscard]] operator velocypack::Value() const noexcept;
 };
 
 auto to_string(LogId logId) -> std::string;

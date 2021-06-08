@@ -116,6 +116,10 @@ auto LogId::fromString(std::string_view name) noexcept -> std::optional<LogId> {
   return std::nullopt;
 }
 
+[[nodiscard]] LogId::operator velocypack::Value() const noexcept {
+  return velocypack::Value(id());
+}
+
 auto replication2::to_string(LogId logId) -> std::string {
   return std::to_string(logId.id());
 }

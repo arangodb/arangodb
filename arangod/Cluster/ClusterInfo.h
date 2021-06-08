@@ -30,6 +30,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <memory>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
@@ -660,14 +661,13 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
-  Result createCollectionCoordinator(   // create collection
-      std::string const& databaseName,  // database name
-      std::string const& collectionID, uint64_t numberOfShards,
-      uint64_t replicationFactor, uint64_t writeConcern,
-      bool waitForReplication, arangodb::velocypack::Slice const& json,
-      double timeout,  // request timeout
-      bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
+  Result createCollectionCoordinator(
+      std::string const& databaseName, std::string const& collectionID,
+      uint64_t numberOfShards, uint64_t replicationFactor, uint64_t writeConcern,
+      bool waitForReplication, velocypack::Slice const& json, double timeout,
+      bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+      replication::Version replicationVersion,
+      std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan. it populates
@@ -682,9 +682,10 @@ class ClusterInfo final {
   /// Note that in contrast to most other methods here, this method does not
   /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo>&,
+                                      std::vector<ClusterCollectionCreationInfo>& infos,
                                       double endTime, bool isNewDatabase,
-                                      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
+                                      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+                                      replication::Version replicationVersion);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////

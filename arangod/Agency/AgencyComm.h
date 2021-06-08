@@ -252,8 +252,10 @@ class AgencyOperation {
 
   AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
 
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType, velocypack::Slice value);
+
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
-                  velocypack::Slice const value);
+                  std::shared_ptr<velocypack::Builder> value);
 
   template <typename T>
   AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value)
@@ -267,7 +269,33 @@ class AgencyOperation {
   }
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
-                  velocypack::Slice const newValue, velocypack::Slice const oldValue);
+                  velocypack::Slice newValue, velocypack::Slice oldValue);
+
+  explicit AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path);
+
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencySimpleOperationType opType);
+
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencyValueOperationType opType, velocypack::Slice value);
+
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencyValueOperationType opType,
+                  std::shared_ptr<velocypack::Builder> value);
+
+  template <typename T>
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencyValueOperationType opType, T const& value)
+      : _key(path->str()), _opType(), _holder(std::make_shared<VPackBuilder>()) {
+    _holder->add(VPackValue(value));
+    _value = _holder->slice();
+    _opType.type = AgencyOperationType::Type::VALUE;
+    _opType.value = opType;
+  }
+
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencyValueOperationType opType, velocypack::Slice newValue,
+                  velocypack::Slice oldValue);
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;

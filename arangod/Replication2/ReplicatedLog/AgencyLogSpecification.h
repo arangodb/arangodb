@@ -37,6 +37,7 @@ struct from_velocypack_t {};
 inline constexpr auto from_velocypack = from_velocypack_t{};
 
 struct LogPlanConfig {
+  // TODO replicationFactor?
   std::size_t writeConcern = 1;
   bool waitForSync = false;
 

@@ -2686,7 +2686,8 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
   // all collections have the same database name - ArangoDB does not
   // support cross-database operations and they cannot be triggered by
   // users)
-  auto const dbName = collections[0]->vocbase().name();
+  auto const& vocbase = collections[0]->vocbase();
+  auto const& dbName = vocbase.name();
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ClusterCollectionCreationInfo> infos;
@@ -2716,11 +2717,16 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
       col->setShardMap(shards);
 
-      if (col->vocbase().replicationVersion() == replication::Version::TWO) {
-        // TODO initialize replicatedLogs : shardId => logId
-        auto replicatedLogs = initializeReplicatedLogs(*col, *shards, ci);
-        col->setReplicatedLogsMap(std::move(replicatedLogs));
-      }
+      auto replicatedLogs =
+          std::invoke([&]() -> std::optional<std::shared_ptr<ReplicatedLogsMap>> {
+            if (vocbase.replicationVersion() == replication::Version::TWO) {
+              auto replicatedLogs = initializeReplicatedLogs(*col, *shards, ci);
+              col->setReplicatedLogsMap(replicatedLogs);
+              return replicatedLogs;
+            } else {
+              return std::nullopt;
+            }
+          });
 
       std::unordered_set<std::string> const ignoreKeys{
           "allowUserKeys", "cid",     "globallyUniqueId", "count",
@@ -2729,17 +2735,18 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       VPackBuilder velocy =
           col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
 
-      auto const serverState = ServerState::instance();
+      auto const* const serverState = ServerState::instance();
       infos.emplace_back(ClusterCollectionCreationInfo{
-          std::to_string(col->id().id()), col->numberOfShards(),
-          col->replicationFactor(), col->writeConcern(), waitForSyncReplication,
-          velocy.slice(), serverState->getId(), serverState->getRebootId()});
+          std::to_string(col->id().id()), col->numberOfShards(), col->replicationFactor(),
+          col->writeConcern(), waitForSyncReplication, velocy.slice(),
+          serverState->getId(), serverState->getRebootId(), replicatedLogs});
       vpackData.emplace_back(velocy.steal());
-    } // for col : collections
+    }  // for col : collections
 
     // pass in the *endTime* here, not a timeout!
     Result res = ci.createCollectionsCoordinator(dbName, infos, endTime,
-                                                 isNewDatabase, colToDistributeLike);
+                                                 isNewDatabase, colToDistributeLike,
+                                                 vocbase.replicationVersion());
 
     if (res.ok()) {
       // success! exit the loop and go on

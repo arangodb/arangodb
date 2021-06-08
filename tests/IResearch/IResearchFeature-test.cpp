@@ -2271,10 +2271,10 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
 
   agencyCreateDatabase(vocbase->name());
 
-  ASSERT_TRUE(
-    ci.createCollectionCoordinator(
-      vocbase->name(), collectionId, 0, 1, 1, false, collectionJson->slice(), 0.0, false, nullptr)
-    .ok());
+  ASSERT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                             collectionJson->slice(), 0.0, false, nullptr,
+                                             arangodb::replication::Version::ONE, std::nullopt)
+                  .ok());
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
   EXPECT_TRUE(

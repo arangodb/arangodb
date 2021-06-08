@@ -242,29 +242,34 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                            ->replicatedLogs();
     auto const& replicatedLogsKey = path->component();
     auto replicatedLogsSlice = info.get(replicatedLogsKey);
-    TRI_ASSERT(replicatedLogsSlice.isObject() ==
-               (_collection->vocbase().replicationVersion() == replication::Version::TWO));
-    try {
-      auto replicatedLogs = std::make_shared<ReplicatedLogsMap>();
-      for (auto const& logSlice : VPackObjectIterator(replicatedLogsSlice)) {
-        auto shardId = logSlice.key.stringView();
-        auto logId = logSlice.value.stringView();
-        auto success =
-            replicatedLogs
-                ->emplace(shardId, replication2::LogId::fromString(logId).value())
-                .second;
-        TRI_ASSERT(success);
+    if (replicatedLogsSlice.isObject()) {
+      TRI_ASSERT(replicatedLogsSlice.isObject() ==
+                 (_collection->vocbase().replicationVersion() == replication::Version::TWO));
+      try {
+        auto replicatedLogs = std::make_shared<ReplicatedLogsMap>();
+        for (auto const& logSlice : VPackObjectIterator(replicatedLogsSlice)) {
+          auto shardId = logSlice.key.stringView();
+          auto logId = logSlice.value.stringView();
+          auto success =
+              replicatedLogs
+                  ->emplace(shardId, replication2::LogId::fromString(logId).value())
+                  .second;
+          TRI_ASSERT(success);
+        }
+        _replicatedLogs = std::move(replicatedLogs);
+      } catch (std::exception const& ex) {
+        using basics::StringUtils::concatT;
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            concatT("When creating ShardingInfo of collection ",
+                    _collection->vocbase().name(), "/", _collection->name(),
+                    ": "
+                    "Invalid agency entry at ",
+                    *path, ", exception while reading was: ", ex.what(), "."));
       }
-      _replicatedLogs = std::move(replicatedLogs);
-    } catch (std::exception const& ex) {
-      using basics::StringUtils::concatT;
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          concatT("When creating ShardingInfo of collection ",
-                  _collection->vocbase().name(), "/", _collection->name(),
-                  ": "
-                  "Invalid agency entry at ",
-                  *path, ", exception while reading was: ", ex.what(), "."));
+    } else {
+      LOG_DEVEL << "Empty replicatedLogsSlice for "
+                << _collection->vocbase().name() << "/" << _collection->name();
     }
   }
 

@@ -46,6 +46,7 @@
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
@@ -53,6 +54,8 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Common.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
@@ -82,6 +85,8 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <chrono>
+
+using namespace arangodb;
 
 namespace arangodb {
 /// @brief internal helper struct for counting the number of shards etc.
@@ -231,6 +236,27 @@ arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
   arangodb::AgencyOperation op{collectionPath(dbName, collection),
                                arangodb::AgencyValueOperationType::SET, info};
   return op;
+}
+
+auto createReplicatedLog(DatabaseID const& dbName, replication2::LogId const logId,
+                         std::uint64_t replicationFactor,
+                         std::uint64_t writeConcern, bool waitForSync) {
+  using namespace arangodb::cluster::paths::aliases;
+  auto const logPath = plan()->replicatedLogs()->database(dbName)->log(to_string(logId));
+
+  auto spec = replication2::agency::LogPlanSpecification();
+  spec.id = logId;
+  spec.currentTerm = std::nullopt;
+  spec.targetConfig.writeConcern = writeConcern;
+  // spec.targetConfig.replicationFactor = replicationFactor;
+  spec.targetConfig.waitForSync = waitForSync;
+
+  auto builder = std::make_shared<VPackBuilder>();
+  spec.toVelocyPack(*builder);
+
+  return std::make_pair(AgencyPrecondition{logPath, AgencyPrecondition::Type::EMPTY, true},
+                        AgencyOperation{logPath, arangodb::AgencyValueOperationType::SET,
+                                        std::move(builder)});
 }
 
 arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(std::string const& dbName,
@@ -2593,22 +2619,25 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 /// error code and the errorMsg is set accordingly. One possible error
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::createCollectionCoordinator(  // create collection
-    std::string const& databaseName, std::string const& collectionID, uint64_t numberOfShards,
-    uint64_t replicationFactor, uint64_t writeConcern, bool waitForReplication,
-    velocypack::Slice const& json,  // collection definition
-    double timeout,                 // request timeout,
-    bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
+Result ClusterInfo::createCollectionCoordinator(
+    std::string const& databaseName, std::string const& collectionID,
+    uint64_t numberOfShards, uint64_t replicationFactor, uint64_t writeConcern,
+    bool waitForReplication, velocypack::Slice const& json, double timeout,
+    bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+    replication::Version replicationVersion,
+    std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  auto serverState = ServerState::instance();
+  auto const* const serverState = ServerState::instance();
   std::vector<ClusterCollectionCreationInfo> infos{
       ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
                                     writeConcern, waitForReplication, json,
-                                    serverState->getId(), serverState->getRebootId()}};
+                                    serverState->getId(), serverState->getRebootId(),
+                                    std::move(replicatedLogs)}};
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   return createCollectionsCoordinator(databaseName, infos, endTime,
-                                      isNewDatabase, colToDistributeShardsLike);
+                                      isNewDatabase, colToDistributeShardsLike,
+                                      replication::Version::ONE);
 }
 
 /// @brief this method does an atomic check of the preconditions for the
@@ -2668,7 +2697,8 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
 Result ClusterInfo::createCollectionsCoordinator(
     std::string const& databaseName, std::vector<ClusterCollectionCreationInfo>& infos,
     double endTime, bool isNewDatabase,
-    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
+    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+    replication::Version replicationVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   using arangodb::velocypack::Slice;
 
@@ -2911,6 +2941,17 @@ Result ClusterInfo::createCollectionsCoordinator(
     // additionally ensure that no such collectionID exists yet in Plan/Collections
     precs.emplace_back(AgencyPrecondition("Plan/Collections/" + databaseName + "/" + info.collectionID,
                                           AgencyPrecondition::Type::EMPTY, true));
+
+    if (replicationVersion == replication::Version::TWO) {
+      auto const& replicatedLogs = *info.replicatedLogs.value();
+      for (auto const& it : replicatedLogs) {
+        auto const logId = it.second;
+        auto [prec, oper] = createReplicatedLog(databaseName, logId, info.replicationFactor,
+                                                info.writeConcern, false);
+        precs.emplace_back(std::move(prec));
+        opers.emplace_back(std::move(oper));
+      }
+    }
   }
 
   // We need to make sure our plan is up to date.
@@ -2924,16 +2965,21 @@ Result ClusterInfo::createCollectionsCoordinator(
     if (!isNewDatabase) {
       Result res = checkCollectionPreconditions(databaseName, infos, planVersion);
       if (res.fail()) {
+        auto collections = std::vector<std::string>{};
+        collections.reserve(infos.size());
+        std::transform(infos.cbegin(), infos.cend(), std::back_inserter(collections),
+                       [](auto const& info) { return info.name; });
         LOG_TOPIC("98762", DEBUG, Logger::CLUSTER)
             << "Failed createCollectionsCoordinator for " << infos.size()
-            << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-            << " first collection name: " << ((infos.size() > 0) ? infos[0].name : std::string());
+            << " collections in database " << databaseName
+            << ", isNewDatabase: " << isNewDatabase
+            << ", collection names: " << StringUtils::join(collections, ", ");
         return res;
       }
     }
   }
 
-  auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this, &ac]() {
+  auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this, &ac, replicationVersion]() {
     using namespace arangodb::cluster::paths;
     using namespace arangodb::cluster::paths::aliases;
     // We need to check isBuilding as a precondition.
@@ -2948,11 +2994,23 @@ Result ClusterInfo::createCollectionsCoordinator(
     // a single transaction, or none is.
 
     for (auto const& info : infos) {
-      using namespace std::string_literals;
-      auto const collectionPlanPath = "Plan/Collections/"s + databaseName + "/" + info.collectionID;
-      precs.emplace_back(collectionPlanPath + "/" + StaticStrings::AttrIsBuilding,
-          AgencyPrecondition::Type::EMPTY, false);
+      using StringUtils::concatT;
+      auto const collectionPlanPath =
+          concatT("Plan/Collections/", databaseName, "/", info.collectionID);
+      precs.emplace_back(concatT(collectionPlanPath, "/", StaticStrings::AttrIsBuilding),
+                         AgencyPrecondition::Type::EMPTY, false);
       opers.emplace_back(collectionPlanPath, AgencySimpleOperationType::DELETE_OP);
+      if (replicationVersion == replication::Version::TWO) {
+        auto const& replicatedLogs = *info.replicatedLogs.value();
+        for (auto const& it : replicatedLogs) {
+          using namespace arangodb::cluster::paths::aliases;
+          auto const logId = it.second;
+          auto const logPath =
+              plan()->replicatedLogs()->database(databaseName)->log(to_string(logId));
+
+          opers.emplace_back(logPath, AgencySimpleOperationType::DELETE_OP);
+        }
+      }
     }
     opers.emplace_back("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
     auto trx = AgencyWriteTransaction{opers, precs};
