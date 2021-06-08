@@ -23,6 +23,8 @@
 
 #include "Supervision.h"
 
+#include <Basics/StringUtils.h>
+#include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
 #include <thread>
 
 #include "Agency/ActiveFailoverJob.h"
@@ -1643,6 +1645,9 @@ bool Supervision::handleJobs() {
       << "Begin checkBrokenAnalyzers";
   checkBrokenAnalyzers();
 
+  LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
+  checkReplicatedLogs();
+
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
@@ -1892,25 +1897,24 @@ void Supervision::workJobs() {
   }
 }
 
-bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID,
-                                            uint64_t wantedRebootID, bool& coordinatorFound) {
+bool Supervision::verifyServerRebootID(std::string const& serverID,
+                                            uint64_t wantedRebootID, bool& serverFound) {
   // check if the coordinator exists in health
-  std::string const& health = serverHealth(coordinatorID);
+  std::string const& health = serverHealth(serverID);
   LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)
-      << "verifyCoordinatorRebootID: coordinatorID=" << coordinatorID
-      << " health=" << health;
+      << "verifyServerRebootID: coordinatorID=" << serverID << " health=" << health;
 
   // if the server is not found, health is an empty string
-  coordinatorFound = !health.empty();
+  serverFound = !health.empty();
   if (health != "GOOD" && health != "BAD") {
     return false;
   }
 
   // now lookup reboot id
   std::pair<uint64_t, bool> rebootID =
-      snapshot().hasAsUInt(curServersKnown + coordinatorID + "/" + StaticStrings::RebootId);
+      snapshot().hasAsUInt(curServersKnown + serverID + "/" + StaticStrings::RebootId);
   LOG_TOPIC("54326", DEBUG, Logger::SUPERVISION)
-      << "verifyCoordinatorRebootID: rebootId=" << rebootID.first
+      << "verifyServerRebootID: rebootId=" << rebootID.first
       << " bool=" << rebootID.second;
   return rebootID.second && rebootID.first == wantedRebootID;
 }
@@ -2087,7 +2091,7 @@ void Supervision::restoreBrokenAnalyzersRevision(std::string const& database,
   write_ret_t res = _agent->write(envelope);
   if (!res.successful()) {
     LOG_TOPIC("e43cb", DEBUG, Logger::SUPERVISION)
-        << "failed to resore broken analyzers revision in agency. Will retry. "
+        << "failed to restore broken analyzers revision in agency. Will retry. "
         << envelope->toJson();
   }
 }
@@ -2105,8 +2109,7 @@ void Supervision::resourceCreatorLost(
   bool coordinatorFound = false;
 
   if (rebootIDExists && coordinatorIDExists) {
-    keepResource = Supervision::verifyCoordinatorRebootID(coordinatorID,
-                                                          rebootID, coordinatorFound);
+    keepResource = Supervision::verifyServerRebootID(coordinatorID, rebootID, coordinatorFound);
     // incomplete data, should not happen
   } else {
     //          v---- Please note this awesome log-id
@@ -2198,7 +2201,7 @@ void Supervision::checkBrokenAnalyzers() {
   _lock.assertLockedByCurrentThread();
 
   // check if snapshot has analyzers
-  auto [node, exists] = snapshot().hasAsNode(planAnalyzersPrefix);
+  auto const& [node, exists] = snapshot().hasAsNode(planAnalyzersPrefix);
   if (!exists) {
     return;
   }
@@ -2215,6 +2218,154 @@ void Supervision::checkBrokenAnalyzers() {
         restoreBrokenAnalyzersRevision(dbData.first, revision.first, buildingRevision.first,
                                        ev.coordinatorId, ev.coordinatorRebootId, ev.coordinatorFound);
       });
+    }
+  }
+}
+
+namespace {
+
+using namespace replication2::agency;
+
+void updateTerm(Agent* agent, std::string const& agencyPrefix, std::string const& database,
+                std::string const& logId, uint64_t oldTerm, LogPlanTermSpecification const& newSpec) {
+  auto envelope = std::make_shared<Builder>();
+  {
+    VPackArrayBuilder trxs(envelope.get());
+    {
+      auto path = basics::StringUtils::joinT("/", agencyPrefix, PLAN, REPLICATED_LOGS, database, logId, "term");
+
+      VPackArrayBuilder trx(envelope.get());
+      {
+        VPackObjectBuilder operation(envelope.get());
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(envelope.get(), agencyPrefix + "/" + PLAN_VERSION);
+          envelope->add("op", VPackValue("increment"));
+        }
+        // store the new plan
+        {
+          VPackObjectBuilder o(envelope.get(), path);
+          envelope->add("op", VPackValue("set"));
+          envelope->add(VPackValue("new"));
+          newSpec.toVelocyPack(*envelope);
+        }
+      }
+      {
+        // precondition that the term is unchanged
+        VPackObjectBuilder preconditions(envelope.get());
+        envelope->add(path + "/term",
+                      VPackValue(oldTerm));
+      }
+    }
+  }
+
+  write_ret_t res = agent->write(envelope);
+  if (!res.successful()) {
+    LOG_TOPIC("e43cb", DEBUG, Logger::SUPERVISION)
+    << "failed to restore broken analyzers revision in agency. Will retry. "
+    << envelope->toJson();
+  }
+}
+
+}
+
+void Supervision::checkReplicatedLogs() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  auto const readPlanSpecification = [](Node const& node) -> LogPlanSpecification {
+    // TODO hack
+    auto builder = node.toBuilder();
+    return LogPlanSpecification{from_velocypack, builder.slice()};
+  };
+
+  // check is Plan has replicated logs
+  auto const& [node, exists] = snapshot().hasAsNode(planRepLogPrefix);
+  if (!exists) {
+    return;
+  }
+
+  for (auto const& [dbName, db] : node.children()) {
+    for (auto const& [idString, node] : db->children()) {
+      auto spec = readPlanSpecification(*node);
+
+      if (auto const& term = spec.currentTerm; term) {
+        if (auto const& leader = term->leader; leader) {
+          // check if leader is still valid
+          bool serverFound;
+          bool valid = verifyServerRebootID(leader->serverId,
+                                            leader->rebootId.value(), serverFound);
+          if (!valid) {
+            // create a new term with no leader
+            LogPlanTermSpecification newTermSpec = *term;
+            newTermSpec.leader = std::nullopt;
+            newTermSpec.term.value += 1;
+            // TODO collect all changes in one batch
+            //      it is likely that there is more than one replicated log
+            updateTerm(_agent, _agencyPrefix, dbName, idString, term->term.value, newTermSpec);
+          }
+        } else {
+          LOG_DEVEL << "replicated log " << dbName << "/" << idString << " has no leader!";
+          auto current = std::invoke([&, &dbName = dbName, &idString = idString]() -> LogCurrent {
+            auto currentPath = basics::StringUtils::joinT("/", CURRENT, REPLICATED_LOGS, dbName, idString);
+            auto const& node = snapshot().get(currentPath);
+            // TODO fix this hack
+            return LogCurrent(from_velocypack, node.toBuilder().slice());
+          });
+
+          // check if we can find a new leader
+          // wait for enough servers to report the current term
+          // a server is counted if:
+          //    - its reported term is the current term
+          //    - it is seen as healthy be the supervision
+
+          // if enough servers are found, declare the server with
+          // the "best" log as leader in a new term
+
+          auto newLeader = replication2::ParticipantId{};
+          auto bestTermIndex = replication2::replicated_log::TermIndexPair{};
+          auto numberOfAvailableParticipants = std::size_t{0};
+
+          for (auto const& [participant, status] : current.localState) {
+            bool const isHealthy = serverHealth(participant) == HEALTH_STATUS_GOOD;
+            if (!isHealthy || status.term != spec.currentTerm->term) {
+              continue;
+            }
+
+            numberOfAvailableParticipants += 1;
+            if (status.spearhead > bestTermIndex) {
+              newLeader = participant;
+              bestTermIndex = status.spearhead;
+            }
+          }
+
+          auto const requiredNumberOfAvailableParticipants = std::invoke([&spec = spec.currentTerm] {
+            // TODO is this still correct for MoveShard if Participants > ReplicationFactor?
+            return spec->participants.size() - spec->config.writeConcern + 1;
+          });
+
+          if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
+            auto [rebootId, rebootIdFound] = snapshot().hasAsUInt(
+                curServersKnown + newLeader + "/" + StaticStrings::RebootId);
+            if (rebootIdFound) {
+              // we can elect a new leader
+              LogPlanTermSpecification newTerm = *spec.currentTerm;
+              newTerm.term.value += 1;
+              newTerm.leader =
+                  LogPlanTermSpecification::Leader{newLeader, RebootId{rebootId}};
+              LOG_DEVEL << "declaring " << newLeader << " as new leader for log "
+                        << dbName << "/" << idString;
+              updateTerm(_agent, _agencyPrefix, dbName, idString,
+                         spec.currentTerm->term.value, newTerm);
+            }
+          } else {
+            LOG_DEVEL << "replicated log " << dbName << "/" << idString
+                      << " available " << numberOfAvailableParticipants << "/"
+                      << requiredNumberOfAvailableParticipants;
+          }
+        }
+      }
     }
   }
 }

@@ -1565,6 +1565,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             report.add(OP, VP_SET);
             report.add(VPackValue("payload"));
             localState.toVelocyPack(report);
+            {
+              VPackObjectBuilder preconditionBuilder(&report, "precondition");
+              report.add(preconditionPath, VPackValue(localTerm.value().value));
+            }
           }
         }
       }

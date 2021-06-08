@@ -90,7 +90,8 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
         }
       }
 
-      std::ignore = log.becomeLeader(termData, std::move(follower));
+      auto newLeader = log.becomeLeader(termData, std::move(follower));
+      newLeader->runAsyncStep(); // TODO move this call into becomeLeader?
     } else {
       auto leaderString = std::string{};
       if (spec->currentTerm->leader) {

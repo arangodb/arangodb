@@ -569,6 +569,21 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               break;
             }
           }
+        } else if (oper == PREC_LT) {
+          if (!found) {
+            continue;
+          }
+          if (op.value.isNumber<int64_t>() && node->type() == LEAF) {
+            auto opValue = op.value.getNumericValue<int64_t>();
+            auto nodeValue = node->slice().getNumericValue<int64_t>();
+            if (nodeValue < opValue) {
+              continue;
+            }
+          }
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
         } else if (oper == "intersectionEmpty") {  // in
           auto const nslice = node->slice();
           if (!op.value.isArray()) { // right hand side must be array will

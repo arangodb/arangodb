@@ -54,9 +54,15 @@ enum class AppendEntriesErrorReason {
   PERSISTENCE_FAILURE
 };
 
-struct TermIndexPair {
+struct TermIndexPair : implement_compare<TermIndexPair> {
   LogTerm term{};
   LogIndex index{};
+
+  friend auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept
+      -> bool;
+
+  TermIndexPair(LogTerm term, LogIndex index) : term(term), index(index) {}
+  TermIndexPair() = default;
 
   void toVelocyPack(velocypack::Builder& builder) const;
 };

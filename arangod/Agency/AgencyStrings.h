@@ -59,6 +59,8 @@ constexpr char const* PREC_IS_WRITE_LOCKED = "is-write-locked";
 constexpr char const* PREC_CAN_READ_LOCK = "can-read-lock";
 constexpr char const* PREC_CAN_WRITE_LOCK = "can-write-lock";
 
+constexpr char const* PREC_LT = "lt?";
+
 
 constexpr char const* OP_READ_LOCK = "read-lock";
 constexpr char const* OP_WRITE_LOCK = "write-lock";

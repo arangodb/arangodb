@@ -157,7 +157,7 @@ auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
 }
 
 LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
-  for (auto const& [key, value] : VPackObjectIterator(slice)) {
+  for (auto const& [key, value] : VPackObjectIterator(slice.get("localStatus"))) {
     localState.emplace(ParticipantId{key.copyString()},
                        LogCurrentLocalState(from_velocypack, value));
   }
@@ -165,6 +165,7 @@ LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
 
 auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
+  VPackObjectBuilder localStatusBuilder(&builder, "localStatus");
   for (auto const& [key, value] : localState) {
     builder.add(VPackValue(key));
     value.toVelocyPack(builder);

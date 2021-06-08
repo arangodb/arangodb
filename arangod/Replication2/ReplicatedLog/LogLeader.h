@@ -161,6 +161,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     LogIndex _lastIndex;
     LogIndex _currentCommitIndex;
     LogTerm _currentTerm;
+    std::chrono::steady_clock::duration _executionDelay;
   };
 
   struct ResolvedPromiseSet {

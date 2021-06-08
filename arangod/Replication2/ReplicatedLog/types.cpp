@@ -127,6 +127,17 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
                               waitForSync, std::move(entries)};
 }
 
+auto replicated_log::operator<=(replicated_log::TermIndexPair const& left,
+                                replicated_log::TermIndexPair const& right) noexcept -> bool {
+  if (left.term < right.term) {
+    return true;
+  } else if (left.term == right.term) {
+    return left.index <= right.index;
+  } else {
+    return false;
+  }
+}
+
 void replicated_log::TermIndexPair::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("term", VPackValue(term.value));

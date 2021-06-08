@@ -29,6 +29,8 @@
 
 #include "RestServer/Metrics.h"
 
+#include "Scheduler/SchedulerFeature.h"
+
 #include <Basics/Exceptions.h>
 #include <Basics/Guarded.h>
 #include <Basics/StringUtils.h>
@@ -150,62 +152,66 @@ auto replicated_log::LogLeader::instantiateFollowers(
 void replicated_log::LogLeader::executeAppendEntriesRequests(
     std::vector<std::optional<PreparedAppendEntryRequest>> requests,
     std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
+
   for (auto& it : requests) {
     if (it.has_value()) {
       // Capture self(shared_from_this()) instead of this
       // additionally capture a weak pointer that will be locked
       // when the request returns. If the locking is successful
       // we are still in the same term.
-      auto messageId = it->_request.messageId;
-      LOG_CTX("1b0ec", TRACE, it->_follower->logContext)
-          << "sending append entries, messageId = " << messageId;
-      auto startTime = std::chrono::steady_clock::now();
-      it->_follower->_impl->appendEntries(std::move(it->_request))
-          .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
-                      lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
-                      currentTerm = it->_currentTerm, messageId = messageId,
-                      startTime, logMetrics = logMetrics](futures::Try<AppendEntriesResult>&& res) {
-            auto const endTime = std::chrono::steady_clock::now();
+      SchedulerFeature::SCHEDULER->delay(it->_executionDelay).thenValue([it = it, logMetrics](auto&&) {
+        auto messageId = it->_request.messageId;
+        LOG_CTX("1b0ec", TRACE, it->_follower->logContext)
+            << "sending append entries, messageId = " << messageId;
+        auto startTime = std::chrono::steady_clock::now();
+        it->_follower->_impl->appendEntries(std::move(it->_request))
+            .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
+                        lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
+                        currentTerm = it->_currentTerm, messageId = messageId, startTime,
+                        logMetrics = logMetrics](futures::Try<AppendEntriesResult>&& res) {
+              auto const endTime = std::chrono::steady_clock::now();
 
-            // TODO report (endTime - startTime) to
-            //      server().getFeature<ReplicatedLogFeature>().metricReplicatedLogAppendEntriesRtt(),
-            //      probably implicitly so tests can be done as well
-            // TODO This has to be noexcept
-            if (auto self = parentLog.lock()) {
-              using namespace std::chrono_literals;
-              auto const duration = endTime - startTime;
-              self->_logMetrics->replicatedLogAppendEntriesRttUs->count(duration / 1us);
-              LOG_CTX("8ff44", TRACE, follower.logContext)
-                  << "received append entries response, messageId = " << messageId;
-              auto [preparedRequests, resolvedPromises] = std::invoke([&] {
-                auto guarded = self->acquireMutex();
-                if (guarded->_didResign) {
-                  // Is throwing the right thing to do here?
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-                }
-                return guarded->handleAppendEntriesResponse(
-                    parentLog, follower, lastIndex, currentCommitIndex,
-                    currentTerm, std::move(res), endTime - startTime, messageId);
-              });
-
-              // TODO execute this in a different context
-              for (auto& promise : resolvedPromises._set) {
-                promise.second.setValue(resolvedPromises._quorum);
-              }
-
-              auto const commitTp = LogEntry::clock::now(); // TODO Take a more exact measurement
-              for (auto const& it : resolvedPromises._commitedLogEntries) {
+              // TODO report (endTime - startTime) to
+              //      server().getFeature<ReplicatedLogFeature>().metricReplicatedLogAppendEntriesRtt(),
+              //      probably implicitly so tests can be done as well
+              // TODO This has to be noexcept
+              if (auto self = parentLog.lock()) {
                 using namespace std::chrono_literals;
-                auto const duration = commitTp - it.insertTp();
-                logMetrics->replicatedLogInsertsRtt->count(duration / 1us);
-              }
+                auto const duration = endTime - startTime;
+                self->_logMetrics->replicatedLogAppendEntriesRttUs->count(duration / 1us);
+                LOG_CTX("8ff44", TRACE, follower.logContext)
+                    << "received append entries response, messageId = " << messageId;
+                auto [preparedRequests, resolvedPromises] = std::invoke([&] {
+                  auto guarded = self->acquireMutex();
+                  if (guarded->_didResign) {
+                    // Is throwing the right thing to do here?
+                    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+                  }
+                  return guarded->handleAppendEntriesResponse(
+                      parentLog, follower, lastIndex, currentCommitIndex,
+                      currentTerm, std::move(res), endTime - startTime, messageId);
+                });
 
-              executeAppendEntriesRequests(std::move(preparedRequests), logMetrics);
-            } else {
-              LOG_TOPIC("de300", DEBUG, Logger::REPLICATION2)
-                  << "parent log already gone, messageId = " << messageId;
-            }
-          });
+                // TODO execute this in a different context
+                for (auto& promise : resolvedPromises._set) {
+                  promise.second.setValue(resolvedPromises._quorum);
+                }
+
+                auto const commitTp =
+                    LogEntry::clock::now();  // TODO Take a more exact measurement
+                for (auto const& it : resolvedPromises._commitedLogEntries) {
+                  using namespace std::chrono_literals;
+                  auto const entryDuration = commitTp - it.insertTp();
+                  logMetrics->replicatedLogInsertsRtt->count(entryDuration / 1us);
+                }
+
+                executeAppendEntriesRequests(std::move(preparedRequests), logMetrics);
+              } else {
+                LOG_TOPIC("de300", DEBUG, Logger::REPLICATION2)
+                    << "parent log already gone, messageId = " << messageId;
+              }
+            });
+      });
     }
   }
 }
@@ -342,7 +348,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     for (FollowerInfo const& f : leaderData._follower) {
       status.follower[f._impl->getParticipantId()] = {
           // TODO introduce lastAckedTerm
-          LogStatistics{TermIndexPair{LogTerm(0), f.lastAckedIndex}, f.lastAckedCommitIndex},
+          LogStatistics{TermIndexPair(LogTerm(0), f.lastAckedIndex), f.lastAckedCommitIndex},
           f.lastErrorReason,
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency)
               .count()};
@@ -516,6 +522,16 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   preparedRequest._lastIndex = lastIndex;
   preparedRequest._parentLog = parentLog;
   preparedRequest._request = std::move(req);
+  if (follower.numErrorsSinceLastAnswer > 0) {
+    using namespace std::chrono_literals;
+    // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
+    // until at most 100us * 2 ** 17 == 13.11s.
+    preparedRequest._executionDelay = 100us * (1u << std::min(follower.numErrorsSinceLastAnswer, std::size_t{17}));
+    LOG_CTX("2a6f7", DEBUG, follower.logContext)
+        << "requests failed " << follower.numErrorsSinceLastAnswer
+        << " - waiting " << preparedRequest._executionDelay / 1ms << "ms before sending message " << preparedRequest._request.messageId;
+  }
+
   return preparedRequest;
 }
 
@@ -574,16 +590,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           << ", latest " << follower.lastSendMessageId.value;
     }
   } else if (res.hasException()) {
-    auto const exp = follower.numErrorsSinceLastAnswer;
     ++follower.numErrorsSinceLastAnswer;
-
-    using namespace std::chrono_literals;
-    // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
-    // until at most 100us * 2 ** 17 == 13.11s.
-    auto const sleepFor = 100us * (1u << std::min(exp, std::size_t{17}));
-
-    std::this_thread::sleep_for(sleepFor);
-
     try {
       res.throwIfFailed();
     } catch (std::exception const& e) {
@@ -600,8 +607,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         << "in appendEntries to follower " << follower._impl->getParticipantId()
         << ", result future has neither value nor exception.";
     TRI_ASSERT(false);
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(1s);
+    FATAL_ERROR_EXIT();
   }
   // try sending the next batch
   return std::make_pair(prepareAppendEntries(parentLog), std::move(toBeResolved));
