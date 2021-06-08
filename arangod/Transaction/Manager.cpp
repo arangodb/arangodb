@@ -40,7 +40,6 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -94,18 +93,7 @@ Manager::Manager(ManagerFeature& feature)
       _disallowInserts(false),
       _writeLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
-      _softShutdownOngoing(nullptr) {
-  if (ServerState::instance()->isCoordinator()) {
-    try {
-      auto const& softShutdownFeature{_feature.server().getFeature<SoftShutdownFeature>()};
-      auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
-      _softShutdownOngoing = softShutdownTracker.getSoftShutdownFlag();
-    } catch(...) {
-      // Ignore if the feature is not there, this might happen in unit test
-      // mocks. Then _softShutdownOngoing is simply nullptr and all is well.
-    }
-  }
-}
+      _softShutdownOngoing(false) {}
 
 void Manager::registerTransaction(TransactionId transactionId, bool isReadOnlyTransaction,
                                   bool isFollowerTransaction) {
@@ -352,8 +340,7 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 }
 
 ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSlice trxOpts) {
-  if (_softShutdownOngoing != nullptr &&
-      _softShutdownOngoing->load(std::memory_order_relaxed)) {
+  if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
   transaction::Options options;

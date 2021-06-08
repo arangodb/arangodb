@@ -85,7 +85,7 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
 
     bool const softShutdownOngoing;
     
-    explicit(bool softShutdownOngoing) 
+    explicit Status(bool softShutdownOngoing) 
        : softShutdownOngoing(softShutdownOngoing) {}
        
     bool allClear() const noexcept {
@@ -116,10 +116,16 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
 
   Status getStatus() const;
 
+  void toVelocyPack(VPackBuilder& builder) {
+    Status status = getStatus();
+    toVelocyPack(builder, status);
+  }
+
   static void toVelocyPack(VPackBuilder& builder, Status const& status);
 
  private:
-  bool check() const;   // returns true if actual shutdown triggered
+  bool checkAndShutdownIfAllClear() const;
+    // returns true if actual shutdown triggered
   void initiateActualShutdown() const;
 };
 

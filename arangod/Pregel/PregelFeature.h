@@ -86,7 +86,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   uint64_t numberOfActiveConductors() const;
 
-  void initiateSoftShutdown() {
+  void initiateSoftShutdown() override final {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
 
