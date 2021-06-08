@@ -20,8 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATOR_STATE_TRACKER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATOR_STATE_TRACKER_H 1
+#pragma once
 
 #include <velocypack/Buffer.h>
 
@@ -79,4 +78,3 @@ class RocksDBIteratorStateTracker {
 };
 
 }  // namespace arangodb
-#endif
