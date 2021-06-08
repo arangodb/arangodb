@@ -127,10 +127,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::exposeUniqueVerti
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCondition(
     typename PathStore::Step const& step) -> ValidationResult {
-  if (step.isFirst()) {
-    // First step never has an edge, nothing to be checked here
-    return ValidationResult{ValidationResult::Type::TAKE};
-  }
   auto expr = _options.getVertexExpression(step.getDepth());
   if (expr != nullptr) {
     // TODO: Maybe we want to replace this by ExpressionContext for simplicity
@@ -154,10 +150,15 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateExpressio
 
   TRI_ASSERT(value.isObject() || value.isNull());
   auto tmpVar = _options.getTempVar();
+  /*
   expression->setVariable(tmpVar, value);
   TRI_DEFER(expression->clearVariable(tmpVar));
+  */
   bool mustDestroy = false;
-  aql::AqlValue res = expression->execute(_options.getExpressionContext(), mustDestroy);
+  auto ctx = _options.getExpressionContext();
+  aql::AqlValue tmpVal{value};
+  ctx->setVariableValue(tmpVar, tmpVal);
+  aql::AqlValue res = expression->execute(ctx, mustDestroy);
   aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());
   return res.toBoolean();

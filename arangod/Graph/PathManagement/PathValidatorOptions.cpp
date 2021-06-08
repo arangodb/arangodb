@@ -28,14 +28,13 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-PathValidatorOptions::PathValidatorOptions()
-    : _trx{std::nullopt}, _expressionCtx{std::nullopt} {}
+PathValidatorOptions::PathValidatorOptions() : _tmpVar(nullptr) {}
 
-PathValidatorOptions::PathValidatorOptions(arangodb::aql::QueryContext& query)
-    : _trx{query.newTrxContext()},
-      _aqlFunctionsInternalCache({}),
-      _expressionCtx(aql::FixedVarExpressionContext{_trx.value(), query,
-                                                    _aqlFunctionsInternalCache.value()}) {}
+PathValidatorOptions::PathValidatorOptions(aql::QueryContext& query, aql::Variable const* tmpVar)
+    : _tmpVar(tmpVar),
+      _trx{std::make_unique<transaction::Methods>(query.newTrxContext())},
+      _expressionCtx{std::make_unique<aql::FixedVarExpressionContext>(
+          *_trx.get(), query, _aqlFunctionsInternalCache)} {}
 
 PathValidatorOptions::~PathValidatorOptions() = default;
 
@@ -66,10 +65,9 @@ aql::Variable const* PathValidatorOptions::getTempVar() const {
   return _tmpVar;
 }
 
-aql::ExpressionContext* PathValidatorOptions::getExpressionContext() {
+aql::FixedVarExpressionContext* PathValidatorOptions::getExpressionContext() {
   // We can only call this if we have been called with QueryContext contructor.
   // Otherwise this object could not be constructed.
   // However it is also only necessary if we actually have expressions to check.
-  TRI_ASSERT(_expressionCtx.has_value());
-  return &_expressionCtx.value();
+  return _expressionCtx.get();
 }
