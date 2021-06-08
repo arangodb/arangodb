@@ -201,6 +201,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
  public:
   char const* typeName() const override { return "rocksdb-index-iterator"; }
+  
+  /// @brief index does not support rearming
+  bool canRearm() const override { return false; }
 
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
@@ -322,10 +325,17 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
  private:
   inline bool outOfRange() const {
-    // we are enumerating a subset of the index values of a collection
-    // so we really need to run the full-featured (read: expensive)
-    // comparator
-
+    // we can effectively disable the out-of-range checks for read-only
+    // transactions, as our Iterator is a snapshot-based iterator with a 
+    // configured iterate_upper_bound/iterate_lower_bound value. 
+    // this makes RocksDB filter out non-matching keys automatically.
+    // however, for a write transaction our Iterator is a rocksdb BaseDeltaIterator,
+    // which will merge the values from a snapshot iterator and the changes in
+    // the current transaction. here rocksdb will only apply the bounds checks
+    // for the base iterator (from the snapshot), but not for the delta iterator
+    // (from the current transaction), so we still have to carry out the checks
+    // ourselves.
+    
     if constexpr (reverse) {
       return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
@@ -387,7 +397,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   arangodb::RocksDBVPackIndex const* _index;
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  RocksDBKeyBounds _bounds;
+  RocksDBKeyBounds const _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
   bool _mustSeek;

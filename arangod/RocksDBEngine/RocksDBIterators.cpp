@@ -61,7 +61,19 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
 bool RocksDBAllIndexIterator::outOfRange() const {
   TRI_ASSERT(_trx->state()->isRunning());
   TRI_ASSERT(_iterator != nullptr);
-  return _isWriteTransaction && _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+  // we can effectively disable the out-of-range checks for read-only
+  // transactions, as our Iterator is a snapshot-based iterator with a 
+  // configured iterate_upper_bound/iterate_lower_bound value. 
+  // this makes RocksDB filter out non-matching keys automatically.
+  // however, for a write transaction our Iterator is a rocksdb BaseDeltaIterator,
+  // which will merge the values from a snapshot iterator and the changes in
+  // the current transaction. here rocksdb will only apply the bounds checks
+  // for the base iterator (from the snapshot), but not for the delta iterator
+  // (from the current transaction), so we still have to carry out the checks
+  // ourselves.
+
+  // note: this is always a forward iterator
+  return _isWriteTransaction && _cmp->Compare(_iterator->key(), _upperBound) > 0;
 }
 
 bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t limit) {
@@ -82,9 +94,7 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t
   TRI_ASSERT(limit > 0);
 
   do {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
-#endif
 
     cb(RocksDBKey::documentId(_iterator->key()));
     --limit;
@@ -368,7 +378,7 @@ RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db,
       _options(options),
       _iterator(db->NewIterator(_options, _bounds.columnFamily())),
       _cmp(_bounds.columnFamily()->GetComparator()) {
-  reset();
+  seek(_bounds.start());
 }
 
 bool RocksDBGenericIterator::hasMore() const {
@@ -377,24 +387,6 @@ bool RocksDBGenericIterator::hasMore() const {
 
 bool RocksDBGenericIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
-}
-
-bool RocksDBGenericIterator::reset() {
-  return seek(_bounds.start());
-}
-
-bool RocksDBGenericIterator::skip(uint64_t count, uint64_t& skipped) {
-  bool hasMore = _iterator->Valid();
-  while (count > 0 && hasMore) {
-    hasMore = next(
-        [&count, &skipped](rocksdb::Slice const&, rocksdb::Slice const&) {
-          --count;
-          ++skipped;
-          return true;
-        },
-        count /*gets copied*/);
-  }
-  return hasMore;
 }
 
 bool RocksDBGenericIterator::seek(rocksdb::Slice const& key) {
@@ -416,9 +408,7 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
   }
 
   while (limit > 0 && hasMore()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
-#endif
 
     if (!cb(_iterator->key(), _iterator->value())) {
       // stop iteration

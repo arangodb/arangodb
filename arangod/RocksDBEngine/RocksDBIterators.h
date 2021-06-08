@@ -51,6 +51,9 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   ~RocksDBAllIndexIterator() = default;
 
   char const* typeName() const override { return "all-index-iterator"; }
+  
+  /// @brief index does not support rearming
+  bool canRearm() const override { return false; }
 
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
@@ -63,7 +66,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
   RocksDBIteratorStateTracker _iteratorStateTracker;
   RocksDBKeyBounds const _bounds;
-  rocksdb::Slice _upperBound;  // used for iterate_upper_bound
+  rocksdb::Slice const _upperBound;  // used for iterate_upper_bound
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
   // we use _mustSeek to save repeated seeks for the same start key
@@ -101,6 +104,8 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 /// @brief return false to stop iteration
 typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
 
+/// @brief a forward-only iterator over the primary index, only reading from the
+/// database, not taking into account changes done in the current transaction
 class RocksDBGenericIterator {
  public:
   RocksDBGenericIterator(rocksdb::TransactionDB* db, rocksdb::ReadOptions& options,
@@ -113,10 +118,7 @@ class RocksDBGenericIterator {
   //  @param limit - number of documents the callback should be applied to
   bool next(GenericCallback const& cb, size_t limit);
 
-  // documents to skip, skipped documents
-  bool skip(uint64_t count, uint64_t& skipped);
   bool seek(rocksdb::Slice const& key);
-  bool reset();
   bool hasMore() const;
 
   // return bounds
@@ -125,7 +127,6 @@ class RocksDBGenericIterator {
  private:
   bool outOfRange() const;
 
- private:
   RocksDBKeyBounds const _bounds;
   rocksdb::ReadOptions const _options;
   std::unique_ptr<rocksdb::Iterator> _iterator;

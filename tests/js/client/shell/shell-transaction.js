@@ -28,13 +28,13 @@
 
 // tests for streaming transactions
 
-var jsunity = require('jsunity');
-var internal = require('internal');
-var arangodb = require('@arangodb');
-var db = arangodb.db;
-var testHelper = require('@arangodb/test-helper').Helper;
-var analyzers = require("@arangodb/analyzers");
-let ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
+const testHelper = require('@arangodb/test-helper').Helper;
+const analyzers = require("@arangodb/analyzers");
+const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
 
 var compareStringIds = function (l, r) {
@@ -4394,10 +4394,23 @@ function transactionIteratorSuite() {
         docs.push({ value1: i, value2: (100 - i) });
       }
       tc.save(docs);
+      
+      // full scan 
+      db._explain('FOR doc IN @@c RETURN doc', { '@c': cn });
+      let cur = trx.query('FOR doc IN @@c RETURN doc', { '@c': cn });
+      let half = cur.toArray();
+      assertEqual(half.length, 100);
+      
+      // full scan using primary index 
+      db._explain('FOR doc IN @@c SORT doc._key ASC RETURN doc._key', { '@c': cn });
+      cur = trx.query('FOR doc IN @@c SORT doc._key ASC RETURN doc._key', { '@c': cn });
+      half = cur.toArray();
+      assertEqual(half.length, 100);
 
-      const cur = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
-
-      const half = cur.toArray();
+      // full scan using secondary index 
+      db._explain('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
+      cur = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
+      half = cur.toArray();
       assertEqual(half.length, 100);
 
       trx.commit();
@@ -4427,9 +4440,21 @@ function transactionIteratorSuite() {
       }
       tc.save(docs);
 
-      const cur = trx.query('FOR doc IN @@c SORT doc.value2 DESC RETURN doc', { '@c': cn });
+      // full scan 
+      let cur = trx.query('FOR doc IN @@c SORT doc.value2 DESC RETURN doc', { '@c': cn });
+      let half = cur.toArray();
+      assertEqual(half.length, 100);
+      
+      // full scan using primary index 
+      db._explain('FOR doc IN @@c SORT doc._key DESC RETURN doc._key', { '@c': cn });
+      cur = trx.query('FOR doc IN @@c SORT doc._key DESC RETURN doc._key', { '@c': cn });
+      half = cur.toArray();
+      assertEqual(half.length, 100);
 
-      const half = cur.toArray();
+      // full scan using secondary index 
+      db._explain('FOR doc IN @@c SORT doc.value1 DESC RETURN doc', { '@c': cn });
+      cur = trx.query('FOR doc IN @@c SORT doc.value1 DESC RETURN doc', { '@c': cn });
+      half = cur.toArray();
       assertEqual(half.length, 100);
 
       trx.commit();
