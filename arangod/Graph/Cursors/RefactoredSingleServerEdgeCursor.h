@@ -53,11 +53,13 @@ struct IndexAccessor;
 
 struct EdgeDocumentToken;
 
+struct SingleServerProvider;
+
 class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
     LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-               std::optional<size_t> memberToUpdate, arangodb::transaction::Methods* trx);
+               std::optional<size_t> memberToUpdate, aql::Expression* expression, arangodb::transaction::Methods* trx);
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&) = delete;
@@ -75,7 +77,7 @@ class RefactoredSingleServerEdgeCursor {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
     transaction::Methods::IndexHandle _idxHandle;
-    std::unique_ptr<aql::Expression> _expression;
+    aql::Expression* _expression;
     aql::AstNode* _indexCondition;
 
     std::unique_ptr<IndexIterator> _cursor;
@@ -87,7 +89,7 @@ class RefactoredSingleServerEdgeCursor {
   enum Direction { FORWARD, BACKWARD };
 
  public:
-  RefactoredSingleServerEdgeCursor(arangodb::transaction::Methods* trx,
+  RefactoredSingleServerEdgeCursor(SingleServerProvider& provider,
                                    arangodb::aql::Variable const* tmpVar,
                                    std::vector<IndexAccessor> const& indexConditions, arangodb::aql::QueryContext& queryContext);
   ~RefactoredSingleServerEdgeCursor();
@@ -100,7 +102,7 @@ class RefactoredSingleServerEdgeCursor {
   size_t _currentCursor;
   std::vector<LookupInfo> _lookupInfo;
 
-  arangodb::transaction::Methods* _trx;
+  SingleServerProvider& _provider;
   arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;  // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 

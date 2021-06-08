@@ -47,6 +47,7 @@ struct IndexAccessor {
   IndexAccessor(IndexAccessor&&) = default;
 
   aql::AstNode* getCondition() const;
+  aql::Expression* getExpression() const;
   transaction::Methods::IndexHandle indexHandle() const;
   std::optional<size_t> getMemberToUpdate() const;
 
@@ -61,8 +62,11 @@ struct BaseProviderOptions {
  public:
   BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
                       std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
+  ~BaseProviderOptions() = default;
   BaseProviderOptions(const BaseProviderOptions&) = delete;
   BaseProviderOptions(BaseProviderOptions&&) = default;
+  BaseProviderOptions operator=(const BaseProviderOptions&) = delete;
+  BaseProviderOptions& operator=(BaseProviderOptions&&) = delete;
 
   aql::Variable const* tmpVar() const;
   std::vector<IndexAccessor> const& indexInformations() const;

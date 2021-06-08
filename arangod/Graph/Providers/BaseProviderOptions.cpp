@@ -39,6 +39,8 @@ IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
 
 aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
 
+aql::Expression* IndexAccessor::getExpression() const { return _expression.get(); }
+
 transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
   return _idx;
 }

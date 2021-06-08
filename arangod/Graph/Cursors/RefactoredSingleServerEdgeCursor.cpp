@@ -44,8 +44,9 @@ IndexIteratorOptions defaultIndexIteratorOptions;
 
 RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(
     transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-    std::optional<size_t> memberToUpdate, arangodb::transaction::Methods* trx)
+    std::optional<size_t> memberToUpdate, aql::Expression* expression, arangodb::transaction::Methods* trx)
     : _idxHandle(std::move(idx)),
+      _expression(expression),
       _indexCondition(condition),
       _cursor(nullptr),
       _conditionMemberToUpdate(memberToUpdate) {}
@@ -59,7 +60,7 @@ RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(LookupInfo&& other) noe
 RefactoredSingleServerEdgeCursor::LookupInfo::~LookupInfo() = default;
 
 aql::Expression* RefactoredSingleServerEdgeCursor::LookupInfo::getExpression() {
-  return _expression.get();
+  return _expression;
 }
 
 void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
@@ -123,18 +124,18 @@ IndexIterator& RefactoredSingleServerEdgeCursor::LookupInfo::cursor() {
 }
 
 RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
-    arangodb::transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
+    SingleServerProvider& provider, arangodb::aql::Variable const* tmpVar,
     std::vector<IndexAccessor> const& indexConditions, arangodb::aql::QueryContext& queryContext)
     : _tmpVar(tmpVar),
       _currentCursor(0),
-      _trx(trx),
-      _expressionCtx(*trx, queryContext, _aqlFunctionsInternalCache) {
+      _provider(provider),
+      _expressionCtx(*_provider.trx(), queryContext, _aqlFunctionsInternalCache) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!indexConditions.empty());
   _lookupInfo.reserve(indexConditions.size());
   for (auto const& idxCond : indexConditions) {
     _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                             idxCond.getMemberToUpdate(), trx);
+                             idxCond.getMemberToUpdate(), idxCond.getExpression(), _provider.trx());
   }
 }
 
@@ -155,13 +156,16 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 void RefactoredSingleServerEdgeCursor::rearm(VertexType vertex, uint64_t /*depth*/) {
   _currentCursor = 0;
   for (auto& info : _lookupInfo) {
-    info.rearmVertex(vertex, _trx, _tmpVar);
+    info.rearmVertex(vertex, _provider.trx(), _tmpVar);
   }
 }
 
 void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
                                                Callback const& callback) {
   TRI_ASSERT(!_lookupInfo.empty());
+  auto trx = _provider.trx();
+  VPackBuilder tmpBuilder;
+
   for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
     auto& cursor = _lookupInfo[_currentCursor].cursor();
     LogicalCollection* collection = cursor.collection();
@@ -170,19 +174,26 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
       cursor.allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
         stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
-        if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+        if (trx->skipInaccessible() && CheckInaccessible(trx, edge)) {
           return false;
         }
 #endif
         // eval expression if available
         if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
-          edge = edge.resolveExternal();
+          VPackSlice e = edge;
+          if (edge.isString()) {
+            tmpBuilder.clear();
+            _provider.insertEdgeIntoResult(EdgeDocumentToken(cid, token), tmpBuilder);
+            e = tmpBuilder.slice();
+          }
           bool result =
-              evaluateExpression(_lookupInfo[_currentCursor].getExpression(), edge);
+              evaluateExpression(_lookupInfo[_currentCursor].getExpression(), e);
           if (!result) {
             stats.incrFiltered();
             return false;
           }
+        } else {
+          LOG_DEVEL << "NOT FOUND 1";
         }
         callback(EdgeDocumentToken(cid, token), edge, _currentCursor);
         return true;
@@ -190,24 +201,23 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
     } else {
       cursor.all([&](LocalDocumentId const& token) {
         return collection->getPhysical()
-            ->read(_trx, token,
+            ->read(trx, token,
                    [&](LocalDocumentId const&, VPackSlice edgeDoc) {
                      stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
-                     if (_trx->skipInaccessible()) {
+                     if (trx->skipInaccessible()) {
                        // TODO: we only need to check one of these
                        VPackSlice from =
                            transaction::helpers::extractFromFromDocument(edgeDoc);
                        VPackSlice to =
                            transaction::helpers::extractToFromDocument(edgeDoc);
-                       if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+                       if (CheckInaccessible(trx, from) || CheckInaccessible(trx, to)) {
                          return false;
                        }
                      }
 #endif
                      // eval expression if available
                      if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
-                       edgeDoc = edgeDoc.resolveExternal();
                        bool result =
                            evaluateExpression(_lookupInfo[_currentCursor].getExpression(),
                                               edgeDoc);
@@ -215,6 +225,8 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
                          stats.incrFiltered();
                          return false;
                        }
+                     } else {
+                       LOG_DEVEL << "NOT FOUND 2";
                      }
                      callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
                      return true;
@@ -255,5 +267,5 @@ bool RefactoredSingleServerEdgeCursor::evaluateExpression(arangodb::aql::Express
 }
 
 arangodb::transaction::Methods* RefactoredSingleServerEdgeCursor::trx() const {
-  return _trx;
+  return _provider.trx();
 }

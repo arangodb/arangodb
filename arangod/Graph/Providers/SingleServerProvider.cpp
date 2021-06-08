@@ -174,7 +174,7 @@ void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor(arangodb::aql::QueryContext& queryContext) {
-  return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), _opts.tmpVar(),
+  return std::make_unique<RefactoredSingleServerEdgeCursor>(*this, _opts.tmpVar(),
                                                             _opts.indexInformations(), queryContext);
 }
 
