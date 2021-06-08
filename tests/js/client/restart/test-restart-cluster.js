@@ -98,7 +98,7 @@ function testSuite() {
       let options = global.testOptions;
       let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
       coordinator.pid = null;
-      console.warn("Restarting coordinator without authentication as cleanup...", coordinator);
+      console.warn("Cleaning up and restarting coordinator without authentication...", coordinator);
       let extraOptions = {
         "server.authentication": "false"
       };

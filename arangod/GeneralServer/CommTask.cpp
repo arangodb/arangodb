@@ -540,7 +540,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
       return false;
     } catch(std::exception const& exc) {
       LOG_TOPIC("fee34", INFO, Logger::STARTUP)
-        << "Async job rejected due to out of memory, exception:"
+        << "Async job rejected due to out of memory, exception: "
         << exc.what();
       return false;
     }
