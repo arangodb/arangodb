@@ -24,6 +24,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/debugging.h>
+#include <Basics/overload.h>
 #include <Basics/voc-errors.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -126,10 +127,17 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
                               waitForSync, std::move(entries)};
 }
 
+void replicated_log::TermIndexPair::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("term", VPackValue(term.value));
+  builder.add("index", VPackValue(index.value));
+}
+
 void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("commitIndex", VPackValue(commitIndex.value));
-  builder.add("spearHead", VPackValue(spearHead.value));
+  builder.add(VPackValue("spearHead"));
+  spearHead.toVelocyPack(builder);
 }
 
 void replicated_log::UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
@@ -164,7 +172,8 @@ void replicated_log::LeaderStatus::toVelocyPack(velocypack::Builder& builder) co
 void replicated_log::LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("commitIndex", VPackValue(commitIndex.value));
-  builder.add("spearHead", VPackValue(spearHead.value));
+  builder.add(VPackValue("spearHead"));
+  spearHead.toVelocyPack(builder);
   builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
   builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
   builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS));
@@ -193,4 +202,34 @@ std::string arangodb::replication2::replicated_log::to_string(replicated_log::Ap
 auto arangodb::replication2::replicated_log::MessageId::operator<=(MessageId other) const
     -> bool {
   return value <= other.value;
+}
+
+auto arangodb::replication2::replicated_log::getCurrentTerm(LogStatus const& status) noexcept
+    -> std::optional<LogTerm> {
+  return std::visit(
+      overload{[&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
+                 return std::nullopt;
+               },
+               [&](replicated_log::LeaderStatus const& s) -> std::optional<LogTerm> {
+                 return s.term;
+               },
+               [&](replicated_log::FollowerStatus const& s) -> std::optional<LogTerm> {
+                 return s.term;
+               }},
+      status);
+}
+
+auto arangodb::replication2::replicated_log::getLocalStatistics(LogStatus const& status) noexcept
+    -> std::optional<LogStatistics> {
+  return std::visit(
+      overload{[&](replicated_log::UnconfiguredStatus const& s) -> std::optional<LogStatistics> {
+                 return std::nullopt;
+               },
+               [&](replicated_log::LeaderStatus const& s) -> std::optional<LogStatistics> {
+                 return s.local;
+               },
+               [&](replicated_log::FollowerStatus const& s) -> std::optional<LogStatistics> {
+                 return s.local;
+               }},
+      status);
 }

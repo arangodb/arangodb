@@ -49,6 +49,7 @@ namespace arangodb::replication2::replicated_log {
  */
 struct InMemoryLog {
   [[nodiscard]] auto getLastIndex() const noexcept -> LogIndex;
+  [[nodiscard]] auto getLastTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept -> std::optional<LogEntry>;
   [[nodiscard]] auto splice(LogIndex from, LogIndex to) const -> immer::flex_vector<LogEntry>;

@@ -121,6 +121,31 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
         });
   }
 
+  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+    AsyncAgencyComm ac;
+
+    VPackBufferUInt8 trx;
+    {
+      std::string path = "arango/Plan/ReplicatedLogs/" + vocbase.name() + "/" +
+                         std::to_string(id.id());
+
+      VPackBuilder builder(trx);
+      arangodb::agency::envelope::into_builder(builder)
+          .write()
+          .remove(path)
+          .inc("arango/Plan/Version")
+          .precs()
+          .isNotEmpty(path)
+          .end()
+          .done();
+    }
+
+    return ac.sendWriteTransaction(std::chrono::seconds(120), std::move(trx))
+        .thenValue([](AsyncAgencyCommResult&& res) {
+          return res.asResult();  // TODO
+        });
+  }
+
   auto setTerm(LogId id, replication2::agency::LogPlanTermSpecification const& term) const
   -> futures::Future<Result> override {
     AsyncAgencyComm ac;

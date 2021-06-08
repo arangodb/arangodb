@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/Common.h"
+#include "types.h"
 
 #include <Basics/ErrorCode.h>
 #include <Basics/voc-errors.h>

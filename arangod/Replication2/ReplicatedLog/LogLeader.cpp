@@ -341,7 +341,9 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.term = term;
     for (FollowerInfo const& f : leaderData._follower) {
       status.follower[f._impl->getParticipantId()] = {
-          LogStatistics{f.lastAckedIndex, f.lastAckedCommitIndex}, f.lastErrorReason,
+          // TODO introduce lastAckedTerm
+          LogStatistics{TermIndexPair{LogTerm(0), f.lastAckedIndex}, f.lastAckedCommitIndex},
+          f.lastErrorReason,
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency)
               .count()};
     }
@@ -662,7 +664,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
 auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
-  result.spearHead = _inMemoryLog.getLastIndex();
+  result.spearHead.index = _inMemoryLog.getLastIndex();
+  result.spearHead.term = _inMemoryLog.getLastTerm();
   return result;
 }
 

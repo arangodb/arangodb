@@ -143,14 +143,17 @@ LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice) 
 }
 
 LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t, VPackSlice slice) {
-  spearhead = slice.get("spearhead").extract<LogIndex>();
+  auto spearheadSlice = slice.get("spearhead");
+  spearhead.term = spearheadSlice.get("term").extract<LogTerm>();
+  spearhead.index = spearheadSlice.get("index").extract<LogIndex>();
   term = slice.get("term").extract<LogTerm>();
 }
 
 auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
-  builder.add("spearhead", VPackValue(spearhead.value));
   builder.add("term", VPackValue(term.value));
+  builder.add(VPackValue("spearhead"));
+  spearhead.toVelocyPack(builder);
 }
 
 LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {

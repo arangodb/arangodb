@@ -753,16 +753,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         // check if the term is the same
         bool const requiresUpdate = std::invoke([&, &status = localIt->second] {
           if (spec.currentTerm.has_value()) {
-            return std::visit(overload{[&](replicated_log::UnconfiguredStatus) {
-                                         return true;
-                                       },
-                                       [&](replicated_log::LeaderStatus const& s) {
-                                         return s.term != spec.currentTerm->term;
-                                       },
-                                       [&](replicated_log::FollowerStatus const& s) {
-                                         return s.term != spec.currentTerm->term;
-                                       }},
-                              status);
+            auto currentTerm = getCurrentTerm(status);
+            return !currentTerm.has_value() || *currentTerm != spec.currentTerm->term;
           }
           return false;
         });
@@ -1222,7 +1214,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& current,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
-    VPackBuilder& report, ShardStatistics& shardStats) {
+    VPackBuilder& report, ShardStatistics& shardStats, LocalLogsMap const& localLogs) {
   for (auto const& dbName : dirty) {
     auto lit = local.find(dbName);
     VPackSlice ldb;
@@ -1535,6 +1527,54 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       throw;
     }
 
+    // UpdateReplicatedLogs
+    try {
+
+      if (auto logsIter = localLogs.find(dbName); logsIter != std::end(localLogs)) {
+        for (auto const& [id, status] : logsIter->second) {
+          // Check Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId>/currentTerm != currentTerm
+          // if so, update Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId> with
+          //  {"currentTerm": currentTerm, "spearHead": {"index": last-index, "term": last-term}}
+          // and precondition
+          //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
+          auto localTerm = getCurrentTerm(status);
+          auto termInCurrent =
+              cur.get(std::vector<std::string_view>{AgencyCommHelper::path(), CURRENT, REPLICATED_LOGS, dbName,
+                                                    std::to_string(id.id()),
+                                                    "localStatus", serverId,
+                                                    "term"});
+          if (!termInCurrent.isNone() &&
+              replication2::LogTerm{termInCurrent.extract<uint64_t>()} == localTerm) {
+            // nothing to do
+            continue;
+          }
+
+          LOG_DEVEL << "checking log " << id << " local term = " << localTerm.value() << " current " << termInCurrent.toJson();
+
+          replication2::agency::LogCurrentLocalState localState;
+          localState.term = *localTerm;
+          localState.spearhead = getLocalStatistics(status).value().spearHead;
+
+          auto reportPath = StringUtils::joinT("/", CURRENT, REPLICATED_LOGS,
+                                               dbName, id, "localStatus", serverId);
+          auto preconditionPath = StringUtils::joinT("/", PLAN, REPLICATED_LOGS,
+                                                     dbName, id, "term", "term");
+          report.add(VPackValue(reportPath));
+          {
+            VPackObjectBuilder o(&report);
+            report.add(OP, VP_SET);
+            report.add(VPackValue("payload"));
+            localState.toVelocyPack(report);
+          }
+        }
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("84ee0", WARN, Logger::MAINTENANCE)
+          << "caught exception in Maintenance for database '" << dbName
+          << "': " << ex.what();
+      throw;
+    }
+
   } // next database
 
   // Let's find database errors for databases which do not occur in Local
@@ -1798,7 +1838,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       // Update Current
       try {
         result = reportInCurrent(feature, plan, dirty, cur, local, allErrors,
-                                 serverId, report, shardStats);
+                                 serverId, report, shardStats, localLogs);
       } catch (std::exception const& e) {
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
           << "Error reporting in current: " << e.what();

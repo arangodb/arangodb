@@ -41,6 +41,7 @@ constexpr char const* VERSION = "Version";
 constexpr char const* CURRENT = "Current";
 constexpr char const* CURRENT_VERSION = "Current/Version";
 constexpr char const* CURRENT_COLLECTIONS = "Current/Collections/";
+constexpr char const* CURRENT_REPLICATED_LOGS = "Current/ReplicatedLogs/";
 constexpr char const* CURRENT_DATABASES = "Current/Databases/";
 
 constexpr char const* PLAN = "Plan";

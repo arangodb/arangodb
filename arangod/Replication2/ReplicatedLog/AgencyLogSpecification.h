@@ -27,6 +27,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 #include "Cluster/ClusterTypes.h"
 
@@ -72,10 +73,11 @@ struct LogPlanSpecification {
 };
 
 struct LogCurrentLocalState {
-  LogTerm term;
-  LogIndex spearhead;
+  LogTerm term{};
+  replicated_log::TermIndexPair spearhead{};
 
   auto toVelocyPack(VPackBuilder&) const -> void;
+  LogCurrentLocalState() = default;
   LogCurrentLocalState(from_velocypack_t, VPackSlice);
 };
 

@@ -342,6 +342,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() cons
     -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
-  result.spearHead = _inMemoryLog.getLastIndex();
+  result.spearHead.index = _inMemoryLog.getLastIndex();
+  result.spearHead.term = _inMemoryLog.getLastTerm();
   return result;
 }

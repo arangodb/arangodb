@@ -51,6 +51,7 @@ constexpr int INDEX_PRIORITY = 2;
 constexpr int SYNCHRONIZE_PRIORITY = 1;
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
+// database -> LogId -> LogStatus
 using LocalLogsMap = std::unordered_map<std::string, std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>>;
 
 /**
@@ -187,7 +188,7 @@ arangodb::Result reportInCurrent(
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& cur,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
-    VPackBuilder& report, ShardStatistics& shardStats);
+    VPackBuilder& report, ShardStatistics& shardStats, LocalLogsMap const& localLogs);
 
 /**
  * @brief            Schedule synchroneous replications

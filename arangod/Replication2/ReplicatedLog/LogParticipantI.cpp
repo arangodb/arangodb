@@ -65,15 +65,5 @@ auto replicated_log::LogParticipantI::waitForIterator(LogIndex index)
 }
 
 auto replicated_log::LogParticipantI::getTerm() const noexcept -> std::optional<LogTerm> {
-  return std::visit(
-      overload{[&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
-                 return std::nullopt;
-               },
-               [&](replicated_log::LeaderStatus const& s) -> std::optional<LogTerm> {
-                 return s.term;
-               },
-               [&](replicated_log::FollowerStatus const& s) -> std::optional<LogTerm> {
-                 return s.term;
-               }},
-      getStatus());
+  return getCurrentTerm(getStatus());
 }

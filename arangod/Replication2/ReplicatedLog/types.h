@@ -54,9 +54,15 @@ enum class AppendEntriesErrorReason {
   PERSISTENCE_FAILURE
 };
 
+struct TermIndexPair {
+  LogTerm term{};
+  LogIndex index{};
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+};
 
 struct LogStatistics {
-  LogIndex spearHead{};
+  TermIndexPair spearHead{};
   LogIndex commitIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
@@ -89,6 +95,9 @@ struct UnconfiguredStatus {
 };
 
 using LogStatus = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
+
+auto getCurrentTerm(LogStatus const&) noexcept -> std::optional<LogTerm>;
+auto getLocalStatistics(LogStatus const&) noexcept -> std::optional<LogStatistics>;
 
 struct AbstractFollower {
   virtual ~AbstractFollower() = default;

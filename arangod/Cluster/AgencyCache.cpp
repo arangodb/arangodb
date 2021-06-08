@@ -255,6 +255,10 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(CURRENT_DATABASES), CURRENT_DATABASES) == 0) {
           auto tmp = r.substr(strlen(CURRENT_DATABASES));
           currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+        } else if (rs > strlen(CURRENT_REPLICATED_LOGS) &&      // Current/Databases
+                   r.compare(0, strlen(CURRENT_REPLICATED_LOGS), CURRENT_REPLICATED_LOGS) == 0) {
+          auto tmp = r.substr(strlen(CURRENT_REPLICATED_LOGS));
+          currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else {
           currentChanges.emplace();          // "" to indicate non database
         }
@@ -667,9 +671,10 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       AgencyCommHelper::path(PLAN_DATABASES) + "/",
       AgencyCommHelper::path(PLAN_VIEWS) + "/",
       AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/"});
-  static std::vector<std::string> const currentGoodies ({
-      AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
-      AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
+  static std::vector<std::string> const currentGoodies(
+      {AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
+       AgencyCommHelper::path(CURRENT_REPLICATED_LOGS) + "/",
+       AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
 
   bool get_rest = false;
   std::unordered_map<std::string, query_t> db_res;
