@@ -1,6 +1,14 @@
 v3.8.0-rc.2 (2021-06-07)
 ------------------------
 
+* Added check to utils/generateAllMetricsDocumentation.py to check that the file
+  name and the value of the name attribute are the same in the metrics
+  documentation snippets. Correct a few such names.
+
+
+v3.8.0-rc.2 (2021-06-07)
+------------------------
+
 * Updated arangosync to 2.3.0.
 
 * Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
