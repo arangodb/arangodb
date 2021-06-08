@@ -156,7 +156,6 @@ std::shared_ptr<Index> IResearchInvertedIndexFactory::instantiate(LogicalCollect
                                                                   velocypack::Slice const& definition,
                                                                   IndexId id,
                                                                   bool isClusterConstructor) const {
-
   IResearchInvertedIndex::IResearchInvertedIndexMeta meta;
   // FIXME: for cluster  - where to get actual collection name? Pre-store in definition I guess!
   auto res = meta.init(_server, nullptr, definition, isClusterConstructor);
@@ -197,7 +196,7 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::init(
     application_features::ApplicationServer& server,
     TRI_vocbase_t const* defaultVocbase,
     velocypack::Slice const info, bool isClusterConstructor) {
-  std::string errField; 
+  std::string errField;
   if (!_indexMeta.init(info, errField)) {
      return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
@@ -206,7 +205,7 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::init(
         : (std::string("failed to initialize index from definition, error in attribute '")
           + errField + "': " + info.toString()));
   }
-  if (!_fieldsMeta.init(server,info, false, errField,
+  if (!_fieldsMeta.init(server, info, false, errField,
                         defaultVocbase ? defaultVocbase->name() : irs::string_ref::NIL,
                         IResearchLinkMeta::DEFAULT(), nullptr, true)) {
     return arangodb::Result(
@@ -224,7 +223,7 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(
     TRI_vocbase_t const* defaultVocbase,
     velocypack::Builder& normalized, velocypack::Slice definition) {
   IResearchViewMeta tmpMeta;
-  std::string errField; 
+  std::string errField;
   if (!tmpMeta.init(definition, errField)) {
      return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
