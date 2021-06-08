@@ -1073,7 +1073,14 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
       double waitTime = TRI_microtime() - startTime;
 
-      if (response != nullptr && response->isComplete()) {
+      if (response == nullptr || response->getHttpReturnCode() == 0) {
+        // No connection could be established. This is a showstopper:
+        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                      std::string("could not connect to ") +
+                      _config.master.endpoint);
+      }
+
+      if (response->isComplete()) {
         if (response->hasContentLength()) {
           stats.numSyncBytesReceived += response->getContentLength();
         }
