@@ -175,13 +175,13 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
         }
 #endif
         // eval expression if available
-        // TODO: Check what to do with result = true boolean case
         if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
           edge = edge.resolveExternal();
           bool result =
               evaluateExpression(_lookupInfo[_currentCursor].getExpression(), edge);
           if (!result) {
             stats.incrFiltered();
+            return false;
           }
         }
         callback(EdgeDocumentToken(cid, token), edge, _currentCursor);
@@ -213,6 +213,7 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
                                               edgeDoc);
                        if (!result) {
                          stats.incrFiltered();
+                         return false;
                        }
                      }
                      callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
@@ -227,10 +228,19 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
 bool RefactoredSingleServerEdgeCursor::evaluateExpression(arangodb::aql::Expression* expression,
                                                           VPackSlice value) {
   if (expression == nullptr) {
+    LOG_DEVEL << "Returned true";
     return true;
   }
 
+  VPackBuilder builder;
+  expression->toVelocyPack(builder, false);
+  LOG_DEVEL << "Expression: " << builder.toJson();
+
   TRI_ASSERT(value.isObject() || value.isNull());
+  builder.clear();
+  _tmpVar->toVelocyPack(builder);
+  LOG_DEVEL << "tmpVar: " << builder.toJson() << " with value: " << value.toJson();
+
   expression->setVariable(_tmpVar, value);
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);
