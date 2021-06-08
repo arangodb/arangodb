@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix internal iterator states after intermediate commits in write
+  transactions.
+
 * Added check to utils/generateAllMetricsDocumentation.py to check that
   the file name and the value of the name attribute are the same in the
   metrics documentation snippets. Correct a few such names.
