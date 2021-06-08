@@ -208,7 +208,6 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::init(
   if (!_fieldsMeta.init(server, info, false, errField,
                         defaultVocbase ? defaultVocbase->name() : irs::string_ref::NIL,
                         IResearchLinkMeta::DEFAULT(), nullptr, true)) {
-
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         errField.empty()
