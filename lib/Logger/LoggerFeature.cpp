@@ -196,8 +196,8 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--log.line-number",
-                     "log function name, file name and line number of the source file "
-                     "in the format `[func@FileName.cpp:123]`",
+                     "include the function name, file name and line number of the source code "
+                     "that issues the log message. Format: `[func@FileName.cpp:123]`",
                      new BooleanParameter(&_lineNumber),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
