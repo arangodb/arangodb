@@ -24,6 +24,7 @@
 
 #include "../Mocks/Servers.h"
 
+#include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -41,41 +42,21 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::velocypack;
 
+namespace {
+aql::AstNode* InitializeReference(aql::Ast& ast, aql::Variable& var) {
+  ast.scopes()->start(aql::ScopeType::AQL_SCOPE_MAIN);
+  ast.scopes()->addVariable(&var);
+  aql::AstNode* a = ast.createNodeReference("tmp");
+  ast.scopes()->endCurrent();
+  return a;
+}
+}  // namespace
+
 namespace arangodb {
 namespace tests {
 namespace graph_path_validator_test {
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
-
-/*
-class Step : public arangodb::graph::BaseStep<Step> {
- public:
-  using Vertex = HashedStringRef;
-  using Edge = HashedStringRef;
-
-  HashedStringRef _id;
-
-  Step(HashedStringRef id, size_t previous)
-      : arangodb::graph::BaseStep<Step>{previous}, _id{id} {};
-
-  ~Step() = default;
-
-  bool operator==(Step const& other) { return _id == other._id; }
-
-  std::string toString() const {
-    return "<Step> _id: " + _id.toString() +
-           ", _previous: " + basics::StringUtils::itoa(getPrevious());
-  }
-
-  bool isProcessable() const { return true; }
-  HashedStringRef getVertex() const { return _id; }
-  HashedStringRef getEdge() const { return _id; }
-
-  arangodb::velocypack::HashedStringRef getVertexIdentifier() const {
-    return getVertex();
-  }
-};
-*/
 
 using Step = typename graph::MockGraphProvider::Step;
 
@@ -86,9 +67,13 @@ using TypesToTest = ::testing::Types<
 
 template <class ValidatorType>
 class PathValidatorTest : public ::testing::Test {
+ protected:
   graph::MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
+
   std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
+
+ private:
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
 
@@ -100,6 +85,12 @@ class PathValidatorTest : public ::testing::Test {
 
   PathStore<Step> _pathStore{_resourceMonitor};
   StringHeap _heap{_resourceMonitor, 4096};
+
+ protected:
+  // Expression Parts
+  aql::Ast ast{*_query.get()};
+  aql::Variable tmpVar{"tmp", 0, false};
+  aql::AstNode* varNode{::InitializeReference(ast, tmpVar)};
 
  protected:
   VertexUniquenessLevel getVertexUniquness() {
@@ -117,9 +108,14 @@ class PathValidatorTest : public ::testing::Test {
   ValidatorType testee(PathValidatorOptions opts = PathValidatorOptions{}) {
     return ValidatorType{this->_provider, this->store(), std::move(opts)};
   }
+
   Step makeStep(size_t id, size_t previous) {
-    std::string idStr = basics::StringUtils::itoa(id);
+    // TODO this needs to be fully shifted to the provider
+    std::string idStr = mockGraph.vertexToId(id);
     HashedStringRef hStr(idStr.data(), static_cast<uint32_t>(idStr.length()));
+    if (previous == std::numeric_limits<size_t>::max()) {
+      return _provider.startVertex(hStr);
+    }
     return Step(_heap.registerString(hStr), previous);
   }
 };
@@ -450,6 +446,40 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interio
       EXPECT_TRUE(res.isFiltered());
       EXPECT_TRUE(res.isPruned());
     }
+  }
+}
+
+TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
+  this->mockGraph.addEdge(0, 1);
+  PathValidatorOptions opts(*(this->_query.get()), &this->tmpVar);
+  std::string matchedKey{"1"};
+  auto expectedKey =
+      this->ast.createNodeValueString(matchedKey.c_str(), matchedKey.length());
+  auto keyAccess =
+      this->ast.createNodeAttributeAccess(this->varNode,
+                                          StaticStrings::KeyString.c_str(),
+                                          StaticStrings::KeyString.length());
+  // This condition cannot be fulfilled
+  auto condition = this->ast.createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                      keyAccess, expectedKey);
+  auto expression = std::make_unique<aql::Expression>(&this->ast, condition);
+  opts.setAllVerticesExpression(std::move(expression));
+  auto validator = this->testee(std::move(opts));
+  {
+    // Testing x._key == "1" with `{_key: "0"} => Should fail
+    size_t lastIndex = std::numeric_limits<size_t>::max();
+    Step s = this->makeStep(0, lastIndex);
+    auto res = validator.validatePath(s);
+    EXPECT_TRUE(res.isFiltered());
+    EXPECT_TRUE(res.isPruned());
+  }
+  {
+    // Testing x._key == "1" with `{_key: "1"} => Should succeed
+    size_t lastIndex = std::numeric_limits<size_t>::max();
+    Step s = this->makeStep(1, lastIndex);
+    auto res = validator.validatePath(s);
+    EXPECT_FALSE(res.isFiltered());
+    EXPECT_FALSE(res.isPruned());
   }
 }
 
