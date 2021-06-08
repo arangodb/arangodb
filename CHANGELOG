@@ -2,7 +2,8 @@ v3.8.1 (XXXX-XX-XX)
 -------------------
 
 * Fix internal iterator states after intermediate commits in write
-  transactions.
+  transactions. Iterators could point to invalid data after an
+  intermediate commit, producing undefined behavior.
 
 
 v3.8.0 (XXXX-XX-XX)
