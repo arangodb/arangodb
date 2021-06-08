@@ -312,6 +312,9 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   char const* typeName() const override {
     return "primary-index-range-iterator";
   }
+  
+  /// @brief index does not support rearming
+  bool canRearm() const override { return false; }
 
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
@@ -495,12 +498,22 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     TRI_ASSERT(!_iteratorStateTracker.mustRebuildIterator());;
   }
 
-  bool outOfRange() const {
+  inline bool outOfRange() const {
     TRI_ASSERT(_trx->state()->isRunning());
+    // we can effectively disable the out-of-range checks for read-only
+    // transactions, as our Iterator is a snapshot-based iterator with a 
+    // configured iterate_upper_bound/iterate_lower_bound value. 
+    // this makes RocksDB filter out non-matching keys automatically.
+    // however, for a write transaction our Iterator is a rocksdb BaseDeltaIterator,
+    // which will merge the values from a snapshot iterator and the changes in
+    // the current transaction. here rocksdb will only apply the bounds checks
+    // for the base iterator (from the snapshot), but not for the delta iterator
+    // (from the current transaction), so we still have to carry out the checks
+    // ourselves.
     if constexpr (reverse) {
-      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
+      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
-      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
+      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
     }
   }
 
@@ -510,7 +523,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool _mustSeek;
   bool const _isWriteTransaction;
-  RocksDBKeyBounds _bounds;
+  RocksDBKeyBounds const _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
 };
