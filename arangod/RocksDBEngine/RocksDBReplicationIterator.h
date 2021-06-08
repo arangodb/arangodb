@@ -26,12 +26,21 @@
 
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
-#include <rocksdb/snapshot.h>
+#include <rocksdb/slice.h>
 
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/ReplicationIterator.h"
+#include "VocBase/Identifiers/RevisionId.h"
+
+namespace rocksdb {
+class Snaspshot;
+}
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
 class LogicalCollection;
 
 class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
@@ -51,7 +60,8 @@ class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
  private:
   std::unique_ptr<rocksdb::Iterator> _iter;
   rocksdb::ReadOptions _readOptions;
-  RocksDBKeyBounds _bounds;
+  RocksDBKeyBounds const _bounds;
+  rocksdb::Slice const _rangeBound;
   rocksdb::Comparator const* _cmp;
 };
 

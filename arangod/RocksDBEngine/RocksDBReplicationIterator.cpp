@@ -42,7 +42,8 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
     : RevisionReplicationIterator(collection),
       _readOptions(),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
-          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
+          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())),
+      _rangeBound(_bounds.end()) {
   auto& selector = collection.vocbase().server().getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = *static_cast<RocksDBEngine*>(&selector.engine());
   rocksdb::TransactionDB* db = engine.db();
@@ -54,6 +55,7 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
   _readOptions.verify_checksums = false;
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
+  _readOptions.iterate_upper_bound = &_rangeBound;
 
   rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
   _cmp = cf->GetComparator();
@@ -71,13 +73,15 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
     : RevisionReplicationIterator(collection),
       _readOptions(),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
-          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
+          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())),
+      _rangeBound(_bounds.end()) {
   RocksDBMethods* methods = RocksDBTransactionState::toMethods(&trx);
   _readOptions = methods->iteratorReadOptions();
 
   _readOptions.verify_checksums = false;
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
+  _readOptions.iterate_upper_bound = &_rangeBound;
 
   rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
   _cmp = cf->GetComparator();
