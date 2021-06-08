@@ -129,7 +129,7 @@ class RocksDBTrxMethods : public RocksDBMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState* state);
 
-  virtual bool isIndexingDisabled() const override{ return _indexingDisabled; }
+  virtual bool isIndexingDisabled() const override { return _indexingDisabled; }
 
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() override;
@@ -156,6 +156,7 @@ class RocksDBTrxMethods : public RocksDBMethods {
   rocksdb::Status RollbackToSavePoint() override;
   void PopSavePoint() override;
 
+ private:
   bool _indexingDisabled;
 };
 

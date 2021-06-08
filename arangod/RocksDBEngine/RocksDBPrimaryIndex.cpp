@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBIteratorStateTracker.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -290,27 +291,21 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
                                    arangodb::RocksDBPrimaryIndex const* index,
                                    RocksDBKeyBounds&& bounds) 
       : IndexIterator(collection, trx),
+        _iteratorStateTracker(trx),
         _index(index),
         _cmp(index->comparator()),
         _mustSeek(true),
+        _isWriteTransaction(_iteratorStateTracker.isActive()),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
-
-    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-    // we need to have a pointer to a slice for the upper bound
-    // so we need to assign the slice to an instance variable here
+    
+    // determine the bounds once and for all
     if constexpr (reverse) {
       _rangeBound = _bounds.start();
-      options.iterate_lower_bound = &_rangeBound;
     } else {
       _rangeBound = _bounds.end();
-      options.iterate_upper_bound = &_rangeBound;
     }
-
-    TRI_ASSERT(options.prefix_same_as_start);
-    _iterator = mthds->NewIterator(options, index->columnFamily());
   }
 
  public:
@@ -320,17 +315,23 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+    ensureIterator();
     TRI_ASSERT(_trx->state()->isRunning());
-    seekIfRequired();
+    TRI_ASSERT(_iterator != nullptr);
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      _iteratorStateTracker.reset();
       return false;
     }
 
-    while (limit > 0) {
+    TRI_ASSERT(limit > 0);
+
+    do {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 
       cb(RocksDBValue::documentId(_iterator->value()));
@@ -342,27 +343,43 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _iterator->Next();
       }
 
-      if (!_iterator->Valid() || outOfRange()) {
+      if (ADB_UNLIKELY(!_iterator->Valid())) {
+        // validate that Iterator is in a good shape and hasn't failed
+        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        _iteratorStateTracker.reset();
+        return false;
+      } else if (outOfRange()) {
+        _iteratorStateTracker.reset();
         return false;
       }
-    }
 
-    return true;
+      if (limit == 0) {
+        _iteratorStateTracker.trackKey(_iterator->key());
+        return true;
+      }
+    } while (true);
   }
   
   bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
-    seekIfRequired();
+    ensureIterator();
+    TRI_ASSERT(_trx->state()->isRunning());
+    TRI_ASSERT(_iterator != nullptr);
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      _iteratorStateTracker.reset();
       return false;
     }
 
+    TRI_ASSERT(limit > 0);
+
     transaction::BuilderLeaser builder(transaction());
 
-    while (limit > 0) {
+    do {
       LocalDocumentId documentId = RocksDBValue::documentId(_iterator->value());
       arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(_iterator->key());
 
@@ -376,38 +393,55 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       } else {
         _iterator->Next();
       }
-
-      if (!_iterator->Valid() || outOfRange()) {
+      
+      if (ADB_UNLIKELY(!_iterator->Valid())) {
+        // validate that Iterator is in a good shape and hasn't failed
+        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        _iteratorStateTracker.reset();
+        return false;
+      } else if (outOfRange()) {
+        _iteratorStateTracker.reset();
         return false;
       }
-    }
 
-    return true;
+      if (limit == 0) {
+        _iteratorStateTracker.trackKey(_iterator->key());
+        return true;
+      }
+    } while (true);
   }
 
   void skipImpl(uint64_t count, uint64_t& skipped) override {
+    ensureIterator();
     TRI_ASSERT(_trx->state()->isRunning());
-    seekIfRequired();
+    TRI_ASSERT(_iterator != nullptr);
 
-    if (!_iterator->Valid() || outOfRange()) {
-      return;
+    if (_iterator->Valid() && !outOfRange() && count > 0) {
+      do {
+        TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+
+        --count;
+        ++skipped;
+        if constexpr (reverse) {
+          _iterator->Prev();
+        } else {
+          _iterator->Next();
+        }
+      
+        if (!_iterator->Valid() || outOfRange()) {
+          _iteratorStateTracker.reset();
+          break;
+        }
+
+        if (count == 0) {
+          _iteratorStateTracker.trackKey(_iterator->key());
+          return;
+        }
+      } while (true);
     }
-
-    while (count > 0) {
-      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-
-      --count;
-      ++skipped;
-      if constexpr (reverse) {
-        _iterator->Prev();
-      } else {
-        _iterator->Next();
-      }
-
-      if (!_iterator->Valid() || outOfRange()) {
-        return;
-      }
-    }
+  
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
   }
 
   /// @brief Reset the cursor
@@ -415,22 +449,37 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
     _mustSeek = true;
   }
-
+  
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
   bool hasCovering() const override { return true; }
 
  private:
-  bool outOfRange() const {
-    TRI_ASSERT(_trx->state()->isRunning());
-    if constexpr (reverse) {
-      return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
-    } else {
-      return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
+  void ensureIterator() {
+    if (_iteratorStateTracker.mustRebuildIterator()) {
+      _iterator.reset();
     }
-  }
 
-  void seekIfRequired() {
+    if (_iterator == nullptr) {
+      RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
+      rocksdb::ReadOptions options = mthds->iteratorReadOptions();
+      // we need to have a pointer to a slice for the upper bound
+      // so we need to assign the slice to an instance variable here
+      if constexpr (reverse) {
+        options.iterate_lower_bound = &_rangeBound;
+      } else {
+        options.iterate_upper_bound = &_rangeBound;
+      }
+
+      TRI_ASSERT(options.prefix_same_as_start);
+      _iterator = mthds->NewIterator(options, _index->columnFamily());
+      TRI_ASSERT(_iterator != nullptr);
+      if (_iterator == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBPrimaryIndexRangeIterator");
+      }
+    }
+  
+    TRI_ASSERT(_iterator != nullptr);
     if (_mustSeek) {
       if constexpr (reverse) {
         _iterator->SeekForPrev(_bounds.end());
@@ -438,13 +487,29 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _iterator->Seek(_bounds.start());
       }
       _mustSeek = false;
+    } else if (_iteratorStateTracker.mustRebuildIterator()) {
+      _iterator->Seek(_iteratorStateTracker.key());
+    }
+    _iteratorStateTracker.reset();
+    TRI_ASSERT(!_mustSeek);
+    TRI_ASSERT(!_iteratorStateTracker.mustRebuildIterator());;
+  }
+
+  bool outOfRange() const {
+    TRI_ASSERT(_trx->state()->isRunning());
+    if constexpr (reverse) {
+      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
+    } else {
+      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
     }
   }
 
+  RocksDBIteratorStateTracker _iteratorStateTracker;
   arangodb::RocksDBPrimaryIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool _mustSeek;
+  bool const _isWriteTransaction;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
