@@ -42,9 +42,7 @@ namespace graph {
 
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-                std::optional<size_t> memberToUpdate, std::unique_ptr<arangodb::aql::Expression> expression);
-  IndexAccessor(const IndexAccessor&) = delete;
-  IndexAccessor(IndexAccessor&&) = default;
+                std::optional<size_t> memberToUpdate, std::shared_ptr<arangodb::aql::Expression> expression);
 
   aql::AstNode* getCondition() const;
   aql::Expression* getExpression() const;
@@ -55,18 +53,15 @@ struct IndexAccessor {
   transaction::Methods::IndexHandle _idx;
   aql::AstNode* _indexCondition;
   std::optional<size_t> _memberToUpdate;
-  std::unique_ptr<arangodb::aql::Expression> _expression;
+
+  // TODO: This needs to be changed BEFORE merge
+  std::shared_ptr<arangodb::aql::Expression> _expression;
 };
 
 struct BaseProviderOptions {
  public:
   BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
                       std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
-  ~BaseProviderOptions() = default;
-  BaseProviderOptions(const BaseProviderOptions&) = delete;
-  BaseProviderOptions(BaseProviderOptions&&) = default;
-  BaseProviderOptions operator=(const BaseProviderOptions&) = delete;
-  BaseProviderOptions& operator=(BaseProviderOptions&&) = delete;
 
   aql::Variable const* tmpVar() const;
   std::vector<IndexAccessor> const& indexInformations() const;

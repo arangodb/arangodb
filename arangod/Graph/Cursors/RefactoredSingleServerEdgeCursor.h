@@ -102,7 +102,7 @@ class RefactoredSingleServerEdgeCursor {
   size_t _currentCursor;
   std::vector<LookupInfo> _lookupInfo;
 
-  SingleServerProvider& _provider;
+  SingleServerProvider* _provider;
   arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;  // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 

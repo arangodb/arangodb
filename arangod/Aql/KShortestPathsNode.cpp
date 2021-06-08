@@ -357,9 +357,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         using KPathRefactored = KPathEnumerator<SingleServerProvider>;
 
         auto kPathUnique = std::make_unique<KPathRefactored>(
-            SingleServerProvider{opts->query(), std::move(forwardProviderOptions),
+            SingleServerProvider{opts->query(), forwardProviderOptions,
                                  opts->query().resourceMonitor()},
-            SingleServerProvider{opts->query(), std::move(backwardProviderOptions),
+            SingleServerProvider{opts->query(), backwardProviderOptions,
                                  opts->query().resourceMonitor()},
             std::move(enumeratorOptions), opts->query().resourceMonitor());
 
@@ -373,9 +373,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         // TODO: implement better initialization with less duplicate code
         using TracedKPathRefactored = TracedKPathEnumerator<SingleServerProvider>;
         auto kPathUnique = std::make_unique<TracedKPathRefactored>(
-            ProviderTracer<SingleServerProvider>{opts->query(), std::move(forwardProviderOptions),
+            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions,
                                                  opts->query().resourceMonitor()},
-            ProviderTracer<SingleServerProvider>{opts->query(), std::move(backwardProviderOptions),
+            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions,
                                                  opts->query().resourceMonitor()},
             std::move(enumeratorOptions), opts->query().resourceMonitor());
 

@@ -128,14 +128,14 @@ RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
     std::vector<IndexAccessor> const& indexConditions, arangodb::aql::QueryContext& queryContext)
     : _tmpVar(tmpVar),
       _currentCursor(0),
-      _provider(provider),
-      _expressionCtx(*_provider.trx(), queryContext, _aqlFunctionsInternalCache) {
+      _provider(&provider),
+      _expressionCtx(*_provider->trx(), queryContext, _aqlFunctionsInternalCache) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!indexConditions.empty());
   _lookupInfo.reserve(indexConditions.size());
   for (auto const& idxCond : indexConditions) {
     _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                             idxCond.getMemberToUpdate(), idxCond.getExpression(), _provider.trx());
+                             idxCond.getMemberToUpdate(), idxCond.getExpression(), _provider->trx());
   }
 }
 
@@ -156,14 +156,14 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 void RefactoredSingleServerEdgeCursor::rearm(VertexType vertex, uint64_t /*depth*/) {
   _currentCursor = 0;
   for (auto& info : _lookupInfo) {
-    info.rearmVertex(vertex, _provider.trx(), _tmpVar);
+    info.rearmVertex(vertex, _provider->trx(), _tmpVar);
   }
 }
 
 void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
                                                Callback const& callback) {
   TRI_ASSERT(!_lookupInfo.empty());
-  auto trx = _provider.trx();
+  auto trx = _provider->trx();
   VPackBuilder tmpBuilder;
 
   for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
@@ -183,7 +183,7 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
           VPackSlice e = edge;
           if (edge.isString()) {
             tmpBuilder.clear();
-            _provider.insertEdgeIntoResult(EdgeDocumentToken(cid, token), tmpBuilder);
+            _provider->insertEdgeIntoResult(EdgeDocumentToken(cid, token), tmpBuilder);
             e = tmpBuilder.slice();
           }
           bool result =
@@ -267,5 +267,5 @@ bool RefactoredSingleServerEdgeCursor::evaluateExpression(arangodb::aql::Express
 }
 
 arangodb::transaction::Methods* RefactoredSingleServerEdgeCursor::trx() const {
-  return _provider.trx();
+  return _provider->trx();
 }
