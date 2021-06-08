@@ -1,3 +1,10 @@
+v3.8.1 (XXXX-XX-XX)
+-------------------
+
+* Fix internal iterator states after intermediate commits in write
+  transactions.
+
+
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
