@@ -47,10 +47,11 @@ PathValidator<ProviderType, PathStore, vertexUniqueness>::~PathValidator() = def
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness>::validatePath(
     typename PathStore::Step const& step) -> ValidationResult {
-  // Reset variables
-
   auto ctx = _options.getExpressionContext();
-  ctx->clearVariableValues();
+  if (ctx != nullptr) {
+    // Reset variables
+    ctx->clearVariableValues();
+  }
   auto res = evaluateVertexCondition(step);
   if (res.isFiltered() && res.isPruned()) {
     // Can give up here. This Value is not used
