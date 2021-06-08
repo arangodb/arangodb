@@ -30,6 +30,7 @@
 
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBIteratorStateTracker.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 
 namespace rocksdb {
@@ -58,15 +59,16 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
  private:
   bool outOfRange() const;
-  void seekIfRequired();
+  void ensureIterator();
 
- private:
+  RocksDBIteratorStateTracker _iteratorStateTracker;
   RocksDBKeyBounds const _bounds;
   rocksdb::Slice _upperBound;  // used for iterate_upper_bound
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
   // we use _mustSeek to save repeated seeks for the same start key
   bool _mustSeek;
+  bool const _isWriteTransaction;
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {

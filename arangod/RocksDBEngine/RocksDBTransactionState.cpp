@@ -70,6 +70,7 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, Transac
       _readSnapshot(nullptr),
       _rocksReadOptions(),
       _cacheTx(nullptr),
+      _intermediateCommitId(0),
       _numCommits(0),
       _numInserts(0),
       _numUpdates(0),
@@ -635,6 +636,8 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   }
 
   hasPerformedIntermediateCommit = true;
+
+  ++_intermediateCommitId;
   ++statistics()._intermediateCommits;
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {

@@ -78,6 +78,9 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
+  
+  /// @brief a counter value that gets increase after every intermediate commit
+  uint64_t intermediateCommitId() const { return _intermediateCommitId; } 
 
   /// @brief number of commits, including intermediate commits
   uint64_t numCommits() const override { return _numCommits; }
@@ -205,6 +208,10 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief cache transaction to unblock banished keys
   cache::Transaction* _cacheTx;
+  
+  /// @brief a counter value that gets increase after every intermediate commit
+  uint64_t _intermediateCommitId;
+
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
