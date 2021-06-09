@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
 #include "Scheduler/Scheduler.h"
-#include "RestServer/Metrics.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

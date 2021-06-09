@@ -465,4 +465,4 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
     }
   }
   return nr;
- }
+}
