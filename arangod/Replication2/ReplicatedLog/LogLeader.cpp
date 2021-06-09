@@ -378,7 +378,7 @@ auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
 }
 
 auto replicated_log::LogLeader::waitFor(LogIndex index)
-    -> futures::Future<std::shared_ptr<QuorumData>> {
+    -> WaitForFuture {
   return _guardedLeaderData.doUnderLock([index](auto& leaderData) {
     if (leaderData._didResign) {
       auto promise = WaitForPromise{};
@@ -387,7 +387,7 @@ auto replicated_log::LogLeader::waitFor(LogIndex index)
       return promise.getFuture();
     }
     if (leaderData._commitIndex >= index) {
-      return futures::Future<std::shared_ptr<QuorumData>>{std::in_place,
+      return futures::Future<std::shared_ptr<QuorumData const>>{std::in_place,
                                                           leaderData._lastQuorum};
     }
     auto it = leaderData._waitForQueue.emplace(index, WaitForPromise{});

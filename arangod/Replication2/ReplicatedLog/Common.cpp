@@ -28,6 +28,7 @@
 
 #include <Basics/StringUtils.h>
 
+#include <Basics/VelocyPackHelper.h>
 #include <chrono>
 #include <utility>
 
@@ -53,14 +54,14 @@ void LogEntry::toVelocyPack(velocypack::Builder& builder) const {
   builder.openObject();
   builder.add("logTerm", velocypack::Value(_logTerm.value));
   builder.add("logIndex", velocypack::Value(_logIndex.value));
-  builder.add("payload", velocypack::Value(_payload.dummy));
+  builder.add("payload", velocypack::Slice(_payload.dummy.data()));
   builder.close();
 }
 
 auto LogEntry::fromVelocyPack(velocypack::Slice slice) -> LogEntry {
   auto const logTerm = LogTerm{slice.get("logTerm").getNumericValue<std::size_t>()};
   auto const logIndex = LogIndex{slice.get("logIndex").getNumericValue<std::size_t>()};
-  auto payload = LogPayload{slice.get("payload").copyString()};
+  auto payload = LogPayload{slice.get("payload")};
   return LogEntry{logTerm, logIndex, std::move(payload)};
 }
 
@@ -81,7 +82,13 @@ auto LogTerm::operator<=(LogTerm other) const -> bool {
 }
 
 auto LogPayload::operator==(LogPayload const& other) const -> bool {
-  return dummy == other.dummy;
+  return arangodb::basics::VelocyPackHelper::compare(
+      velocypack::Slice(dummy.data()), velocypack::Slice(other.dummy.data()), true);
+}
+
+LogPayload::LogPayload(VPackSlice slice) {
+  VPackBuilder builder(dummy);
+  builder.add(slice);
 }
 
 auto LogPayload::byteSize() const noexcept -> std::size_t {

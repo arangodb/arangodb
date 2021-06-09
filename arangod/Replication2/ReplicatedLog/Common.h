@@ -26,6 +26,10 @@
 #include <Basics/Identifier.h>
 #include <Basics/ResultT.h>
 
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -87,7 +91,8 @@ struct LogTerm : implement_compare<LogTerm> {
 };
 
 struct LogPayload {
-  explicit LogPayload(std::string_view dummy) : dummy(dummy) {}
+  explicit LogPayload(VPackBufferUInt8 dummy) : dummy(std::move(dummy)) {}
+  explicit LogPayload(VPackSlice slice);
 
   [[nodiscard]] auto operator==(LogPayload const&) const -> bool;
   [[nodiscard]] auto operator!=(LogPayload const& other) const -> bool;
@@ -95,7 +100,7 @@ struct LogPayload {
   [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
 
   // just a placeholder for now
-  std::string dummy;
+  VPackBufferUInt8 dummy;
 };
 
 // just a placeholder for now, must have a hash<>

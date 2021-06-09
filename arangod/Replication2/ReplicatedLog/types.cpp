@@ -56,6 +56,26 @@ replicated_log::QuorumData::QuorumData(LogIndex const& index, LogTerm term,
                                        std::vector<ParticipantId> quorum)
     : index(index), term(term), quorum(std::move(quorum)) {}
 
+replicated_log::QuorumData::QuorumData(VPackSlice slice) {
+  index = LogIndex{slice.get("index").extract<std::size_t>()};
+  term = LogTerm{slice.get("term").extract<std::size_t>()};
+  for (auto part : VPackArrayIterator(slice.get("quorum"))) {
+    quorum.push_back(part.copyString());
+  }
+}
+
+void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("index", VPackValue(index.value));
+  builder.add("term", VPackValue(term.value));
+  {
+    VPackArrayBuilder ab(&builder, "quorum");
+    for (auto const& part : quorum) {
+      builder.add(VPackValue(part));
+    }
+  }
+}
+
 void replicated_log::AppendEntriesResult::toVelocyPack(velocypack::Builder& builder) const {
   {
     velocypack::ObjectBuilder ob(&builder);

@@ -220,7 +220,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::waitFor(LogIndex index)
     -> replicated_log::LogParticipantI::WaitForFuture {
   if (_commitIndex >= index) {
     // TODO give current term?
-    return futures::Future<std::shared_ptr<QuorumData>>{std::in_place, nullptr};
+    return futures::Future<std::shared_ptr<QuorumData const>>{std::in_place, nullptr};
   }
   // emplace might throw a std::bad_alloc but the remainder is noexcept
   // so either you inserted it and or nothing happens

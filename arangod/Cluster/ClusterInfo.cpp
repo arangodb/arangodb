@@ -912,6 +912,7 @@ void ClusterInfo::loadPlan() {
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
+  decltype(_replicatedLogs) newReplicatedsLogs;
 
   bool swapDatabases = false;
   bool swapCollections = false;
@@ -927,6 +928,7 @@ void ClusterInfo::loadPlan() {
     newShardServers = _shardServers;
     newShardToName = _shardToName;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
+    newReplicatedsLogs = _replicatedLogs;
     auto ende = std::chrono::steady_clock::now();
     LOG_TOPIC("feee1", TRACE, Logger::CLUSTER)
         << "Time for copy operation in loadPlan: "
@@ -1413,6 +1415,32 @@ void ClusterInfo::loadPlan() {
     newCollections.insert_or_assign(std::move(databaseName), std::move(databaseCollections));
   }
 
+  // And now for replicated logs
+  for (auto const& [databaseName, query] : changeSet.dbs) {
+    if (databaseName.empty()) {
+      continue;
+    }
+    newReplicatedsLogs.erase(databaseName);
+    std::vector<std::string_view> replicatedLogsPaths{
+        AgencyCommHelper::path(), "Plan", "ReplicatedLogs", databaseName};
+
+    auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
+    if (logsSlice.isNone()) {
+      continue;
+    }
+
+
+    ReplicatedLogsMap newLogs;
+    for (auto const& [idString, logSlice] : VPackObjectIterator(logsSlice)) {
+      auto spec = std::make_shared<replication2::agency::LogPlanSpecification>
+       (replication2::agency::from_velocypack, logSlice);
+      newLogs.emplace(spec->id, spec);
+      LOG_DEVEL << "replicated log " << databaseName << "/" << idString.stringView();
+    }
+    newReplicatedsLogs[databaseName] = std::move(newLogs);
+  }
+
+
   if (isCoordinator) {
     auto systemDB = _server.getFeature<arangodb::SystemDatabaseFeature>().use();
     if (systemDB && systemDB->shardingPrototype() == ShardingPrototype::Undefined) {
@@ -1462,6 +1490,8 @@ void ClusterInfo::loadPlan() {
   if (swapAnalyzers) {
     _dbAnalyzersRevision.swap(newDbAnalyzersRevision);
   }
+
+  _replicatedLogs.swap(newReplicatedsLogs);
 
   if (planValid) {
     _planProt.isValid = true;
@@ -5655,6 +5685,23 @@ CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
     return it->second;
   }
   return StaticStrings::Empty;
+}
+
+auto ClusterInfo::getReplicatedLogLeader(DatabaseID const& database, replication2::LogId id) const
+    -> std::optional<ServerID> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  if (auto it = _replicatedLogs.find(database); it != std::end(_replicatedLogs)) {
+    if (auto it2 = it->second.find(id); it2 != std::end(it->second)) {
+      if (auto const& term = it2->second->currentTerm) {
+        if (auto const& leader = term->leader) {
+          return leader->serverId;
+        }
+      }
+    }
+  }
+
+  return std::nullopt;
 }
 
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {

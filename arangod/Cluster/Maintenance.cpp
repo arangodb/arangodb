@@ -1538,6 +1538,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           // and precondition
           //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
           auto localTerm = getCurrentTerm(status);
+          if (!localTerm.has_value()) {
+            continue;
+          }
+
           auto termInCurrent =
               cur.get(std::vector<std::string_view>{AgencyCommHelper::path(), CURRENT, REPLICATED_LOGS, dbName,
                                                     std::to_string(id.id()),

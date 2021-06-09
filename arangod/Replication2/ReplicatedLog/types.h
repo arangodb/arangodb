@@ -114,10 +114,13 @@ struct AbstractFollower {
 
 struct QuorumData {
   QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum);
+  explicit QuorumData(velocypack::Slice slice);
 
   LogIndex index;
   LogTerm term;
   std::vector<ParticipantId> quorum;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
 };
 
 }  // namespace arangodb::replication2::replicated_log

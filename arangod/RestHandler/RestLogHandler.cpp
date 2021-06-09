@@ -33,6 +33,7 @@
 
 #include <Agency/AsyncAgencyComm.h>
 #include <Agency/TransactionBuilder.h>
+#include <Cluster/ClusterFeature.h>
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
@@ -81,7 +82,7 @@ struct arangodb::ReplicatedLogMethods {
   }
 
   virtual auto insert(LogId, LogPayload) const
-  -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData>>> {
+  -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -91,7 +92,43 @@ struct arangodb::ReplicatedLogMethods {
   }
 };
 
+namespace {
+
+auto sendInsertRequest(network::ConnectionPool *pool, std::string const& server, std::string const& database,
+                       LogId id, LogPayload payload)
+    -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> {
+
+  auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
+
+  network::RequestOptions opts;
+  opts.database = database;
+  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post, path,
+                              payload.dummy, opts)
+      .thenValue([](network::Response&& resp) {
+        if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+          THROW_ARANGO_EXCEPTION(resp.combinedResult());
+        }
+
+        LOG_DEVEL << resp.slice().toJson();
+        return std::make_shared<replication2::replicated_log::QuorumData const>(resp.slice().get("result"));
+      });
+}
+}
+
 struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
+  auto insert(LogId id, LogPayload payload) const
+      -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> override {
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+
+    auto leader = ci.getReplicatedLogLeader(vocbase.name(), id);
+    if (!leader) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+
+    auto pool = server.getFeature<NetworkFeature>().pool();
+    return sendInsertRequest(pool, *leader, vocbase.name(), id, std::move(payload));
+  }
+
   auto createReplicatedLog(const replication2::agency::LogPlanSpecification& spec) const
       -> futures::Future<Result> override {
     AsyncAgencyComm ac;
@@ -176,11 +213,13 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
         });
   }
 
-  explicit ReplicatedLogMethodsCoord(TRI_vocbase_t& vocbase)
-      : vocbase(vocbase) {}
+  explicit ReplicatedLogMethodsCoord(TRI_vocbase_t& vocbase,
+                                     application_features::ApplicationServer& server)
+      : vocbase(vocbase), server(server) {}
 
  private:
   TRI_vocbase_t& vocbase;
+  application_features::ApplicationServer& server;
 };
 
 struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
@@ -218,14 +257,10 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
   }
 
   auto insert(LogId logId, LogPayload payload) const
-      -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData>>> override {
+      -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> override {
     auto log = vocbase.getReplicatedLogLeaderById(logId);
     auto idx = log->insert(std::move(payload));
-    auto f = log->waitFor(idx).thenValue(
-        [idx](std::shared_ptr<replicated_log::QuorumData>&& quorum) {
-          return std::make_pair(idx, quorum);
-        });
-
+    auto f = log->waitFor(idx);
     log->runAsyncStep();  // TODO
     return f;
   }
@@ -242,7 +277,7 @@ RestStatus RestLogHandler::execute() {
     case ServerState::ROLE_DBSERVER:
       return executeByMethod(ReplicatedLogMethodsDBServ(_vocbase));
     case ServerState::ROLE_COORDINATOR:
-      return executeByMethod(ReplicatedLogMethodsCoord(_vocbase));
+      return executeByMethod(ReplicatedLogMethodsCoord(_vocbase, server()));
     case ServerState::ROLE_SINGLE:
     case ServerState::ROLE_UNDEFINED:
     case ServerState::ROLE_AGENT:
@@ -305,20 +340,10 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
 
   if (auto& verb = suffixes[1]; verb == "insert") {
     return waitForFuture(
-        methods.insert(logId, LogPayload{body.toJson()}).thenValue([this](auto&& result) {
-          auto& [idx, quorum] = result;
-
+        methods.insert(logId, LogPayload{body}).thenValue([this](auto&& quorum) {
           VPackBuilder response;
-          {
-            VPackObjectBuilder ob(&response);
-            response.add("index", VPackValue(quorum->index.value));
-            response.add("term", VPackValue(quorum->term.value));
-            VPackArrayBuilder ab(&response, "quorum");
-            for (auto& part : quorum->quorum) {
-              response.add(VPackValue(part));
-            }
-          }
-          LOG_DEVEL << "insert completed idx = " << idx.value;
+          quorum->toVelocyPack(response);
+          LOG_DEVEL << "insert completed idx = " << quorum->index.value;
           generateOk(rest::ResponseCode::ACCEPTED, response.slice());
         }));
   } else if(verb == "setTerm") {
@@ -446,20 +471,8 @@ RestStatus RestLogHandler::handleGetRequest(ReplicatedLogMethods const& methods)
         methods.getLogEntryByIndex(logId, logIdx).thenValue([this](std::optional<LogEntry>&& entry) {
           if (entry) {
             VPackBuilder result;
-            {
-              VPackObjectBuilder builder(&result);
-              result.add("index", VPackValue(entry->logIndex().value));
-              result.add("term", VPackValue(entry->logTerm().value));
-
-              {
-                VPackParser parser;  // TODO remove parser and store vpack
-                parser.parse(entry->logPayload().dummy);
-                auto parserResult = parser.steal();
-                result.add("payload", parserResult->slice());
-              }
-            }
+            entry->toVelocyPack(result);
             generateOk(rest::ResponseCode::OK, result.slice());
-
           } else {
             generateError(rest::ResponseCode::NOT_FOUND,
                           TRI_ERROR_HTTP_NOT_FOUND, "log index not found");

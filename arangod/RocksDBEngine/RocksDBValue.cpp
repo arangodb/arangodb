@@ -158,7 +158,8 @@ replication2::LogPayload RocksDBValue::logPayload(const rocksdb::Slice& slice) {
   TRI_ASSERT(slice.size() >= 8);
   auto data = slice.ToStringView();
   data.remove_prefix(8);
-  return replication2::LogPayload(std::string{data});
+  return replication2::LogPayload(
+      VPackSlice(reinterpret_cast<uint8_t const*>(data.data())));
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
@@ -225,9 +226,10 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRe
 RocksDBValue::RocksDBValue(RocksDBEntryType type, replication2::LogTerm term,
                            replication2::LogPayload payload) {
   TRI_ASSERT(type == RocksDBEntryType::LogEntry);
-  _buffer.reserve(sizeof(uint64_t) + payload.dummy.size());
+  _buffer.reserve(sizeof(uint64_t) + payload.dummy.byteSize());
   uint64ToPersistent(_buffer, term.value);
-  _buffer.append(payload.dummy.begin(), payload.dummy.end());
+  _buffer.append(reinterpret_cast<const char*>(payload.dummy.data()),
+                 payload.dummy.byteSize());
 }
 
 RocksDBValue::RocksDBValue(S2Point const& p)

@@ -50,8 +50,8 @@ struct LogParticipantI {
   [[nodiscard]] virtual auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
 
-  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData>>;
-  using WaitForFuture = futures::Future<std::shared_ptr<QuorumData>>;
+  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData const>>;
+  using WaitForFuture = futures::Future<std::shared_ptr<QuorumData const>>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;

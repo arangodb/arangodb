@@ -1049,7 +1049,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
           [&](std::shared_ptr<replication2::replicated_log::LogLeader> const& leaderPtr) {
             LOG_DEVEL << "leading: calling insert";
             using namespace std::string_literals;
-            leaderPtr->insert(replication2::LogPayload{"Replicating document "s + value.toJson()});
+            leaderPtr->insert(replication2::LogPayload{value});
             leaderPtr->runAsyncStep();
           });
     } else {

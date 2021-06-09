@@ -2334,7 +2334,7 @@ void Supervision::checkReplicatedLogs() {
             }
 
             numberOfAvailableParticipants += 1;
-            if (status.spearhead > bestTermIndex) {
+            if (status.spearhead >= bestTermIndex) {
               newLeader = participant;
               bestTermIndex = status.spearhead;
             }
@@ -2358,6 +2358,8 @@ void Supervision::checkReplicatedLogs() {
                         << dbName << "/" << idString;
               updateTerm(_agent, _agencyPrefix, dbName, idString,
                          spec.currentTerm->term.value, newTerm);
+            } else {
+              LOG_DEVEL << "reboot id of server " << newLeader << " not found!";
             }
           } else {
             LOG_DEVEL << "replicated log " << dbName << "/" << idString

@@ -62,6 +62,9 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result.combinedResult());
     }
+    if (!result.slice().get("error").isFalse()) {
+      LOG_DEVEL << "received error from participant " << result.slice().toJson();
+    }
     TRI_ASSERT(result.slice().get("error").isFalse());  // TODO
     return AppendEntriesResult::fromVelocyPack(result.slice().get("result"));
   });
