@@ -174,11 +174,14 @@ void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor(arangodb::aql::QueryContext& queryContext) {
-  return std::make_unique<RefactoredSingleServerEdgeCursor>(*this, _opts.tmpVar(),
+  return std::make_unique<RefactoredSingleServerEdgeCursor>(this, _opts.tmpVar(),
                                                             _opts.indexInformations(), queryContext);
 }
 
 arangodb::transaction::Methods* SingleServerProvider::trx() {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_trx->state() != nullptr);
+  TRI_ASSERT(_trx->transactionContextPtr() != nullptr);
   return _trx.get();
 }
 

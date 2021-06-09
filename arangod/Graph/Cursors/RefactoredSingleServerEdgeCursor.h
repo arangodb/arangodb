@@ -89,7 +89,7 @@ class RefactoredSingleServerEdgeCursor {
   enum Direction { FORWARD, BACKWARD };
 
  public:
-  RefactoredSingleServerEdgeCursor(SingleServerProvider& provider,
+  RefactoredSingleServerEdgeCursor(SingleServerProvider* provider,
                                    arangodb::aql::Variable const* tmpVar,
                                    std::vector<IndexAccessor> const& indexConditions, arangodb::aql::QueryContext& queryContext);
   ~RefactoredSingleServerEdgeCursor();

@@ -153,6 +153,36 @@ class Methods {
   /// @brief return database of transaction
   TRI_vocbase_t& vocbase() const;
 
+  struct hass {
+    hass(transaction::Methods* ptr) : _ptr(ptr) {
+      LOG_DEVEL << "Created: " << (void*)_ptr << " state: " << (void*)_ptr->_state.get() << " context: " << (void*)_ptr->_transactionContext.get();
+    };
+    ~hass() {
+      LOG_DEVEL << "Destructed: " << (void*)_ptr << " state: " << (void*)_ptr->_state.get() << " context: " << (void*)_ptr->_transactionContext.get();
+    }
+    hass(hass&& other) {
+      _ptr = other._ptr;
+      LOG_DEVEL << "Moved: " << (void*)_ptr << " state: " << (void*)_ptr->_state.get() << " context: " << (void*)_ptr->_transactionContext.get();
+    }
+    hass(hass const& other) {
+      _ptr = other._ptr;
+      LOG_DEVEL << "Copied: " << (void*)_ptr << " state: " << (void*)_ptr->_state.get() << " context: " << (void*)_ptr->_transactionContext.get();
+    }
+    hass& operator=(hass const& other) {
+      _ptr = other._ptr;
+      LOG_DEVEL << "Copied2: " << (void*)_ptr << " state: " << (void*)_ptr->_state.get() << " context: " << (void*)_ptr->_transactionContext.get();
+      return *this;
+    }
+    hass& operator=(hass&& other) {
+      _ptr = other._ptr;
+      LOG_DEVEL << "Moved2: " << (void*)_ptr << " state: " << (void*)_ptr->_state.get() << " context: " << (void*)_ptr->_transactionContext.get();
+      return *this;
+    }
+
+
+    transaction::Methods* _ptr;
+  };
+
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state.get(); }
   inline std::shared_ptr<TransactionState> const& stateShrdPtr() const { return _state; }
@@ -483,6 +513,8 @@ class Methods {
 
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
+
+  hass _h;
   
   bool _mainTransaction;
   
