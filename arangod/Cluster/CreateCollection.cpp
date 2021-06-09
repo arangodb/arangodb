@@ -109,23 +109,7 @@ bool CreateCollection::first() {
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = getShard();
   auto const& leader = _description.get(THE_LEADER);
-  auto const& followerEncoded = _description.get(FOLLOWER_ID);
-
   auto const& props = properties();
-
-  std::vector<std::string> follower;
-
-  {
-    // YOLO!
-    auto followerDecoded = basics::StringUtils::decodeBase64(followerEncoded);
-    auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(followerDecoded.c_str()));
-    VPackArrayIterator iter(slice);
-    TRI_ASSERT(slice.isArray() && slice.length() >= 1);
-    std::transform(std::next(iter.begin()), iter.end(), std::back_inserter(follower),
-                   [](VPackSlice slice) { return slice.copyString(); });
-  }
-
-  LOG_DEVEL << "create collection with followers " << follower;
 
   LOG_TOPIC("21710", DEBUG, Logger::MAINTENANCE)
       << "CreateCollection: creating local shard '" << database << "/" << shard

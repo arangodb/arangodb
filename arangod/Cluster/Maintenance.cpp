@@ -387,11 +387,6 @@ static void handlePlanShard(
     if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
         errors.shards.end()) {
       auto props = createProps(cprops);  // Only once might need often!
-
-      VPackSlice shards = cprops.get(SHARDS);
-      VPackSlice planServers = shards.get(shname);
-      std::string followerString = basics::StringUtils::encodeBase64(planServers.startAs<char>(), planServers.byteSize());
-
       description = std::make_shared<ActionDescription>(
         std::map<std::string, std::string>{
           {NAME, CREATE_COLLECTION},
@@ -399,7 +394,6 @@ static void handlePlanShard(
           {SHARD, shname},
           {DATABASE, dbname},
           {SERVER_ID, serverId},
-          {FOLLOWER_ID, followerString},
           {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
         shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true, std::move(props));
       makeDirty.insert(dbname);
