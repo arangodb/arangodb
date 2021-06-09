@@ -46,13 +46,11 @@ class BaseStep {
     return static_cast<StepDetails*>(this)->isLooseEnd();
   }
 
-  size_t getDepth() const {
-    return _depth;
-  }
+  size_t getDepth() const { return _depth; }
 
  private:
-  size_t const _previous;
-  size_t const _depth;
+  size_t _previous;
+  size_t _depth;
 };
 }  // namespace graph
 }  // namespace arangodb
