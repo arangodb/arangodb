@@ -79,6 +79,23 @@
 
 namespace {
 
+bool willUseV8(arangodb::aql::ExecutionPlan const& plan) {
+  bool result{false};
+  struct V8Checker : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+    bool before(arangodb::aql::ExecutionNode* n) override {
+      if (n->getType() == arangodb::aql::ExecutionNode::CALCULATION &&
+          static_cast<arangodb::aql::CalculationNode*>(n)->expression()->willUseV8()) {
+        result = true;
+        return true;
+      }
+      return false;
+    }
+    bool result{false};
+  } walker{};
+  plan.root()->walk(walker);
+  return walker.result;
+}
+
 bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
                                 arangodb::aql::ExecutionNode const* node,
                                 arangodb::aql::VarSet& vars) {
@@ -7886,6 +7903,34 @@ void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
     }
   };
   AsyncPrefetchEnabler walker{};
+  plan.root()->walk(walker);
+}
+
+void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
+  if (willUseV8(plan)) {
+    // V8 requires thread local context configuration, so we cannot 
+    // use our thread based split solution...
+    return;
+  }
+  
+  auto const& options = plan.getAst()->query().queryOptions();
+  struct CallstackSplitter : WalkerWorkerBase<ExecutionNode> {
+    explicit CallstackSplitter(size_t maxNodes) : maxNodesPerCallstack(maxNodes) {}
+    bool before(ExecutionNode* n) override {
+      if (n->getType() == EN::REMOTE) {
+        // RemoteNodes provide a natural split in the callstack, so we can reset the counter here!
+        count = 0;
+      } else if (++count >= maxNodesPerCallstack) {
+        count = 0;
+        n->enableCallstackSplit();
+      }
+      return false;
+    }
+    size_t maxNodesPerCallstack;
+    size_t count = 0;
+  };
+  
+  CallstackSplitter walker(options.maxNodesPerCallstack);
   plan.root()->walk(walker);
 }
 

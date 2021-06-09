@@ -39,6 +39,10 @@
 #include <memory>
 #include <mutex>
 
+namespace arangodb {
+  class ExecContext;
+}
+
 namespace arangodb::aql {
 
 template <BlockPassthrough passThrough>
@@ -346,6 +350,33 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     std::condition_variable _bell;
     std::optional<PrefetchResult> _result;
   };
+  
+  struct CallstackSplit {
+    explicit CallstackSplit(ExecutionBlockImpl& block);
+    ~CallstackSplit();
+
+    using UpstreamResult =
+        std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>;
+    UpstreamResult execute(ExecutionContext& ctx, AqlCallType const& aqlCall);
+
+   private:
+    enum class State { Waiting, Signalled, Executing, Stopped };
+    struct Params {
+      std::variant<UpstreamResult, std::exception_ptr, std::nullopt_t>& result;
+      ExecutionContext& ctx;
+      AqlCallType const& aqlCall;
+    };
+
+    void run(ExecContext const& execContext);
+    std::atomic<State> _state{State::Waiting};
+    Params* _params;
+    ExecutionBlockImpl& _block;
+
+    std::mutex _lock;
+    std::condition_variable _bell;
+
+    std::thread _thread;
+  };
 
   RegisterInfos _registerInfos;
 
@@ -393,9 +424,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   AqlCallStack _stackBeforeWaiting;
   
   std::shared_ptr<PrefetchTask> _prefetchTask;
-  
+
+  std::unique_ptr<CallstackSplit> _callstackSplit;
+
   Result _firstFailure;
-  
+
   bool _hasMemoizedCall{false};
 
   // Only used in passthrough variant.

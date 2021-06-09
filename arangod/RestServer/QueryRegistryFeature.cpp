@@ -169,6 +169,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue(), 0.2, 0.75)),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
+      _maxNodesPerCallstack(aql::QueryOptions::defaultMaxNodesPerCallstack),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
@@ -301,6 +302,12 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--query.optimizer-max-plans",
                      "maximum number of query plans to create for a query",
                      new UInt64Parameter(&_maxQueryPlans));
+                     
+options->addOption("--query.max-nodes-per-callstack",
+                     "maximum number execution nodes on the callstack before "
+                     "splitting the remaining nodes into a separate thread",
+                     new UInt64Parameter(&_maxNodesPerCallstack),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--query.registry-ttl",
                      "default time-to-live of cursors and query snippets (in "
@@ -380,6 +387,7 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
   
   aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
   aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
+  aql::QueryOptions::defaultMaxNodesPerCallstack = _maxNodesPerCallstack;
   aql::QueryOptions::defaultMaxRuntime = _queryMaxRuntime;
   aql::QueryOptions::defaultTtl = _queryRegistryTTL;
   aql::QueryOptions::defaultFailOnWarning = _failOnWarning;
