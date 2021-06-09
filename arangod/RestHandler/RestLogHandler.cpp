@@ -111,6 +111,25 @@ auto sendInsertRequest(network::ConnectionPool *pool, std::string const& server,
         return std::make_shared<replication2::replicated_log::QuorumData const>(resp.slice().get("result"));
       });
 }
+
+
+auto sendReadEntryRequest(network::ConnectionPool *pool, std::string const& server, std::string const& database,
+                       LogId id, LogIndex index)
+-> futures::Future<std::optional<LogEntry>> {
+
+  auto path = basics::StringUtils::joinT("/", "_api/log", id, "readEntry", index.value);
+
+  network::RequestOptions opts;
+  opts.database = database;
+  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Get, path)
+      .thenValue([](network::Response&& resp) {
+        if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+          THROW_ARANGO_EXCEPTION(resp.combinedResult());
+        }
+        auto entry = LogEntry::fromVelocyPack(resp.slice().get("result"));
+        return std::optional<LogEntry>(std::move(entry));
+      });
+}
 }
 
 struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
@@ -125,6 +144,19 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
 
     auto pool = server.getFeature<NetworkFeature>().pool();
     return sendInsertRequest(pool, *leader, vocbase.name(), id, std::move(payload));
+  }
+
+  auto getLogEntryByIndex(LogId id, LogIndex index) const
+      -> futures::Future<std::optional<LogEntry>> override {
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+
+    auto leader = ci.getReplicatedLogLeader(vocbase.name(), id);
+    if (!leader) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+
+    auto pool = server.getFeature<NetworkFeature>().pool();
+    return sendReadEntryRequest(pool, *leader, vocbase.name(), id, index);
   }
 
   auto createReplicatedLog(const replication2::agency::LogPlanSpecification& spec) const
@@ -341,7 +373,6 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
         methods.insert(logId, LogPayload{body}).thenValue([this](auto&& quorum) {
           VPackBuilder response;
           quorum->toVelocyPack(response);
-          LOG_DEVEL << "insert completed idx = " << quorum->index.value;
           generateOk(rest::ResponseCode::ACCEPTED, response.slice());
         }));
   } else if(verb == "setTerm") {
