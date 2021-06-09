@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This
+  fixes BTS-425.
+
 * Added check to utils/generateAllMetricsDocumentation.py to check that
   the file name and the value of the name attribute are the same in the
   metrics documentation snippets. Correct a few such names.
