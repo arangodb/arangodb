@@ -1,3 +1,11 @@
+v3.8.1 (XXXX-XX-XX)
+-------------------
+
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This
+  fixes BTS-425.
+
+
 v3.8.0-rc.2 (2021-06-07)
 ------------------------
 
