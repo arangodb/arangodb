@@ -29,7 +29,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
-const pu = require('@arangodb/testutils/process-utils');
+const pu = require('@arangodb/process-utils');
 const request = require("@arangodb/request");
 const internal = require("internal");
 const db = require("internal").db;
@@ -115,6 +115,7 @@ function testSuite() {
       db._drop(cn);
     },
 
+    /*
     testSoftShutdownWithoutTraffic : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -228,6 +229,7 @@ function testSuite() {
       restartInstance(coordinator);
     },
 
+    */
     testSoftShutdownWithStreamingTrx : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -254,8 +256,9 @@ function testSuite() {
       assertTrue(respFailed.error);
       assertEqual(503, respFailed.code);
 
-      // Now wait for some seconds:
-      wait(10);
+      // Now wait for some seconds, attention, after 10 seconds the transaction
+      // will be aborted automatically:
+      wait(7.5);
 
       // And commit the transaction:
       resp = arango.PUT(`/_api/transaction/${resp.result.id}`, {});
@@ -294,8 +297,9 @@ function testSuite() {
       assertTrue(respFailed.error);
       assertEqual(503, respFailed.code);
 
-      // Now wait for some seconds:
-      wait(10);
+      // Now wait for some seconds, attention, after 10 seconds the transaction
+      // will be aborted automatically:
+      wait(7.5);
 
       // And abort the transaction:
       resp = arango.DELETE(`/_api/transaction/${resp.result.id}`);
@@ -555,5 +559,5 @@ function testSuitePregel() {
 }
 
 jsunity.run(testSuite);
-jsunity.run(testSuitePregel);
+//jsunity.run(testSuitePregel);
 return jsunity.done();

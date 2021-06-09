@@ -187,7 +187,9 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "arangodb_scheduler_threads_stopped", 0,
           "Number of scheduler threads stopped")),
       _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")) {
+          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")),
+      _ongoingLowPriorityJobs(0),
+      _lowPrioQueueLength(0) {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -232,6 +234,10 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     logQueueFullEveryNowAndThen(queueNo, maxSize);
     ++_metricsQueueFull;
     return false;
+  }
+
+  if (queueNo == 2) {
+    _lowPrioQueueLength.fetch_add(1, std::memory_order_relaxed);
   }
 
   // queue now has ownership for the WorkItem
@@ -613,6 +619,9 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     WorkItem* res = nullptr;
     for (uint64_t i = 0; i < 3; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
+        if (i == 2) {
+          _lowPrioQueueLength.fetch_sub(1, std::memory_order_relaxed);
+        }
         return res;
       }
     }
@@ -784,6 +793,18 @@ void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   b.add("direct-exec", VPackValue(0)); // obsolete
 }
 
+void SupervisedScheduler::trackBeginOngoingLowPriorityTask() {
+  if (!_server.isStopping()) {
+    ++_ongoingLowPriorityJobs;
+  }
+}
+
+void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
+  if (!_server.isStopping()) {
+    --_ongoingLowPriorityJobs;
+  }
+}
+
 double SupervisedScheduler::approximateQueueFillGrade() const {
   uint64_t const maxLength = _maxFifoSize;
   uint64_t const qLength = std::min<uint64_t>(maxLength, _metricsQueueLength.load());
@@ -795,7 +816,7 @@ double SupervisedScheduler::unavailabilityQueueFillGrade() const {
 }
 
 std::pair<uint64_t, uint64_t> SupervisedScheduler::getNumberLowPrioOngoingAndQueued() const {
-  return std::pair(_ongoingLowPriorityGauge.load(std::memory_order_relaxed),
-                   _metricsQueueLengths[NumberOfQueues - 1].get().load(std::memory_order_relaxed));
+  return std::pair(_ongoingLowPriorityJobs.load(std::memory_order_relaxed),
+                   _lowPrioQueueLength.load(std::memory_order_relaxed));
 }
 

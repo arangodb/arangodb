@@ -304,7 +304,7 @@ bool ExtractCollections(VPackSlice collections, std::vector<std::string>& reads,
 ResultT<TRI_voc_tid_t> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSlice trxOpts) {
 
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
-    return {TRI_ERROR_SHUTTING_DOWN};
+    return Result{TRI_ERROR_SHUTTING_DOWN, "Soft shutdown ongoing."};
   }
 
   Result res;

@@ -498,7 +498,10 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // and there is currently only a single client handled by the IoContext
   auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
     handler->statistics().SET_QUEUE_END();
+    handler->trackTaskStart();
+
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
+      handler->trackTaskEnd();
       try {
         // Pass the response to the io context
         self->sendResponse(handler->stealResponse(), handler->stealStatistics());
@@ -543,14 +546,19 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
     // callback will persist the response with the AsyncJobManager
     return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
+      handler->trackTaskStart();
       handler->runHandler([](RestHandler* h) {
+        h->trackTaskEnd();
         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
       });
     });
   } else {
     // here the response will just be ignored
     return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
-      handler->runHandler([](RestHandler*) {});
+      handler->trackTaskStart();
+      handler->runHandler([](RestHandler* h) {
+        h->trackTaskEnd();
+      });
     });
   }
 }

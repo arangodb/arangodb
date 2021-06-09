@@ -54,6 +54,9 @@ class SupervisedScheduler final : public Scheduler {
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
 
+  void trackBeginOngoingLowPriorityTask();
+  void trackEndOngoingLowPriorityTask();
+
   /// @brief approximate fill grade of the scheduler's queue (in %)
   double approximateQueueFillGrade() const override;
   
@@ -185,8 +188,11 @@ class SupervisedScheduler final : public Scheduler {
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
+  std::atomic<uint64_t> _ongoingLowPriorityJobs;
+  std::atomic<uint64_t> _lowPrioQueueLength;
 };
 
 }  // namespace arangodb
 
 #endif
+
