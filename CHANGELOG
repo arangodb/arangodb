@@ -2,7 +2,8 @@ v3.7.12 (XXXX-XX-XX)
 --------------------
 
 * Fixed a problem with active failover, where a failover could take 5 mins
-  because the follower was caught in a bad state during replication.
+  because the follower was caught in a bad state during replication. This
+  fixes BTS-425.
 
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
