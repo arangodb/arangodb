@@ -129,7 +129,7 @@ class MockGraphProvider {
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
     Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable, size_t depth);
-    ~Step();
+    ~Step() = default;
 
     bool operator<(Step const& other) const noexcept {
       return _vertex < other._vertex;

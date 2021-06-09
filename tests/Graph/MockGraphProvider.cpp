@@ -72,8 +72,6 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
       _edge(e),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::~Step() {}
-
 MockGraphProvider::MockGraphProvider(arangodb::aql::QueryContext& queryContext,
                                      MockGraphProviderOptions opts,
                                      arangodb::ResourceMonitor&)
