@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, arango */
+/* global getOptions, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief test for soft shutdown of a coordinator
@@ -46,7 +46,7 @@ const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function testAlgoStart(a, p) {
   let pid = pregel.start(a, graphName, p);
-  assertTrue(typeof pid === "string");
+  assertNotEqual(0, pid);
   return pid;
 }
 
@@ -115,7 +115,6 @@ function testSuite() {
       db._drop(cn);
     },
 
-    /*
     testSoftShutdownWithoutTraffic : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -229,7 +228,6 @@ function testSuite() {
       restartInstance(coordinator);
     },
 
-    */
     testSoftShutdownWithStreamingTrx : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -559,5 +557,5 @@ function testSuitePregel() {
 }
 
 jsunity.run(testSuite);
-//jsunity.run(testSuitePregel);
+jsunity.run(testSuitePregel);
 return jsunity.done();
