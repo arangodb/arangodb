@@ -229,8 +229,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
 
-  static void executeAppendEntriesRequests(std::vector<std::optional<PreparedAppendEntryRequest>> requests,
-                                           std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
+  static void executeAppendEntriesRequests(
+      std::vector<std::optional<PreparedAppendEntryRequest>> requests,
+      std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
 
   auto tryHardToClearQueue() noexcept -> void;
 };

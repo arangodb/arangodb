@@ -159,7 +159,15 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
       // additionally capture a weak pointer that will be locked
       // when the request returns. If the locking is successful
       // we are still in the same term.
-      SchedulerFeature::SCHEDULER->delay(it->_executionDelay).thenValue([it = it, logMetrics](auto&&) {
+      SchedulerFeature::SCHEDULER->delay(it->_executionDelay).thenValue([it = it, logMetrics](auto&&) mutable {
+        // we need to lock here, because we access _follower
+        auto guard = it->_parentLog.lock();
+        if (guard == nullptr) {
+          LOG_TOPIC("de312", DEBUG, Logger::REPLICATION2)
+              << "parent log already gone, messageId = " << it->_request.messageId;
+          return;
+        }
+
         auto messageId = it->_request.messageId;
         LOG_CTX("1b0ec", TRACE, it->_follower->logContext)
             << "sending append entries, messageId = " << messageId;

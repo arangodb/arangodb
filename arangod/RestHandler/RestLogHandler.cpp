@@ -108,8 +108,6 @@ auto sendInsertRequest(network::ConnectionPool *pool, std::string const& server,
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
           THROW_ARANGO_EXCEPTION(resp.combinedResult());
         }
-
-        LOG_DEVEL << resp.slice().toJson();
         return std::make_shared<replication2::replicated_log::QuorumData const>(resp.slice().get("result"));
       });
 }

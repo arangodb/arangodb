@@ -59,13 +59,10 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
                                 path, std::move(buffer), opts);
 
   return std::move(f).thenValue([](network::Response result) -> AppendEntriesResult {
-    if (result.fail()) {
+    if (result.fail() || !fuerte::statusIsSuccess(result.statusCode())) {
       THROW_ARANGO_EXCEPTION(result.combinedResult());
     }
-    if (!result.slice().get("error").isFalse()) {
-      LOG_DEVEL << "received error from participant " << result.slice().toJson();
-    }
-    TRI_ASSERT(result.slice().get("error").isFalse());  // TODO
+    TRI_ASSERT(result.slice().get("error").isFalse());
     return AppendEntriesResult::fromVelocyPack(result.slice().get("result"));
   });
 }
