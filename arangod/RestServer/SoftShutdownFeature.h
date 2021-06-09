@@ -20,7 +20,8 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef APPLICATION_FEATURES_SOFT_SHUTDOWN_FEATURE_H
+#define APPLICATION_FEATURES_SOFT_SHUTDOWN_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
@@ -130,3 +131,5 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
 };
 
 }  // namespace arangodb
+
+#endif
