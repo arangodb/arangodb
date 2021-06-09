@@ -35,6 +35,8 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/GlobalReplicationApplier.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -276,6 +278,16 @@ bool DatabaseInitialSyncer::isAborted() const {
       (vocbase().replicationApplier() != nullptr &&
        vocbase().replicationApplier()->stopInitialSynchronization())) {
     return true;
+  }
+
+  if (_state.isChildSyncer) {
+    // this syncer is used as a child syncer of the GlobalInitialSyncer.
+    // now check if parent was aborted
+    ReplicationFeature& replication = vocbase().server().getFeature<ReplicationFeature>();
+    GlobalReplicationApplier* applier = replication.globalReplicationApplier();
+    if (applier != nullptr && applier->stopInitialSynchronization()) {
+      return true;
+    }
   }
 
   return Syncer::isAborted();
@@ -568,16 +580,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
           response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
         });
 
-        if (response == nullptr || response->getHttpReturnCode() == 0) {
-          // No connection could be established. This is a showstopper:
-          sharedStatus->gotResponse(
-              Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                     std::string("could not connect to master: ") +
-                     _config.master.endpoint));
-          return;
-        }
-
-        if (response->isComplete()) {
+        if (response != nullptr && response->isComplete()) {
           if (response->hasHeaderField("x-arango-async-id")) {
             // got the actual response
             break;
@@ -885,14 +888,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
       response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
     });
 
-    if (response == nullptr || response->getHttpReturnCode() == 0) {
-      // No connection could be established. This is a showstopper:
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                    std::string("could not connect to ") +
-                    _config.master.endpoint);
-    }
-
-    if (response->isComplete()) {
+    if (response != nullptr && response->isComplete()) {
       if (response->hasHeaderField("x-arango-async-id")) {
         // job is done, got the actual response
         break;
