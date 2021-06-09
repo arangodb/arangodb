@@ -208,26 +208,6 @@ static std::string CreateLeaderString(std::string const& leaderId, bool shouldBe
   return leaderId;
 }
 
-[[maybe_unused]] static void handleReplicationConfiguration(
-    const std::string& dbname, const std::string& colname, const std::string& shname,
-    const std::string& serverId, const std::string& leaderId,
-    bool shouldBeLeading, std::unordered_set<DatabaseID>& makeDirty,
-    bool& callNotify, std::vector<std::shared_ptr<ActionDescription>>& actions) {
-    // TODO Create action only if necessary
-
-    makeDirty.emplace(dbname);
-    callNotify = true;
-    actions.emplace_back(std::make_shared<ActionDescription>(
-        std::map<std::string, std::string>{
-            {NAME, UPDATE_REPLICATION_CONFIGURATION},
-            {DATABASE, dbname},
-            {COLLECTION, colname},
-            {SHARD, shname},
-            {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)},
-        },
-        LEADER_PRIORITY, false));
-}
-
 static void handlePlanShard(
     StorageEngine& engine, uint64_t planIndex, VPackSlice const& cprops,
     VPackSlice const& ldb, std::string const& dbname, std::string const& colname,

@@ -679,7 +679,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
   Cluster/UpdateReplicatedLogAction.cpp
-  Cluster/UpdateReplicationConfiguration.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp

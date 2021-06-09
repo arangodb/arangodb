@@ -170,33 +170,6 @@ bool CreateCollection::first() {
       } else {
         col->followers()->setTheLeader(leader);
       }
-      if (vocbase.replicationVersion() == replication::Version::TWO) {
-        using namespace replication2;
-        using namespace replication2::replicated_log;
-        if (auto logId = LogId::fromShardName(col->name())) {
-          auto& log = vocbase.getReplicatedLogById(*logId);
-          if (leader.empty()) {
-            auto replicationFollowers =
-                std::vector<std::shared_ptr<AbstractFollower>>{};
-            replicationFollowers.reserve(follower.size());
-            auto& networkFeature = vocbase.server().getFeature<NetworkFeature>();
-            std::transform(follower.begin(), follower.end(),
-                           std::back_inserter(replicationFollowers),
-                           [&](auto const& followerId) {
-                             return std::make_shared<NetworkAttachedFollower>(
-                                 networkFeature.pool(), followerId, vocbase.name(), *logId);
-                           });
-
-            LogLeader::TermData termData;
-            termData.id = ServerState::instance()->getId();
-            termData.writeConcern = col->writeConcern();
-            termData.term = LogTerm{1};
-            log.becomeLeader(termData, replicationFollowers);
-          } else {
-            log.becomeFollower(ServerState::instance()->getId(), LogTerm{1}, leader);
-          }
-        }
-      }
     }
 
     if (res.fail()) {
