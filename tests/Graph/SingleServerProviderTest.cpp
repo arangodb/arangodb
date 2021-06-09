@@ -38,9 +38,21 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
 using namespace arangodb::graph;
 
+namespace {
+aql::AstNode* InitializeReference(aql::Ast& ast, aql::Variable& var) {
+  ast.scopes()->start(aql::ScopeType::AQL_SCOPE_MAIN);
+  ast.scopes()->addVariable(&var);
+  aql::AstNode* a = ast.createNodeReference(var.name);
+  ast.scopes()->endCurrent();
+  return a;
+}
+}  // namespace
+
 namespace arangodb {
 namespace tests {
 namespace single_server_provider_test {
+
+using Step = SingleServerProvider::Step;
 
 class SingleServerProviderTest : public ::testing::Test {
  protected:
@@ -51,7 +63,13 @@ class SingleServerProviderTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
 
+  // Expression Parts
+  aql::Variable* _tmpVar{nullptr};
+  aql::AstNode* _varNode{nullptr};
+
   std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+
+  std::string stringToMatch = "0-1";
 
   SingleServerProviderTest() {}
   ~SingleServerProviderTest() {}
@@ -67,18 +85,53 @@ class SingleServerProviderTest : public ::testing::Test {
     query = singleServer->getQuery("RETURN 1", {"v", "e"});
 
     auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
-    auto tmpVar = singleServer->generateTempVar(query.get());
-    auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
+    _tmpVar = singleServer->generateTempVar(query.get());
+
+    auto indexCondition = singleServer->buildOutboundCondition(query.get(), _tmpVar);
+    _varNode = ::InitializeReference(*query->ast(), *_tmpVar);
 
     std::vector<IndexAccessor> usedIndexes{};
-    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr});
+    auto expr = conditionKeyMatches(stringToMatch);
+    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, expr});
 
-    BaseProviderOptions opts(tmpVar, std::move(usedIndexes), _emptyShardMap);
+    BaseProviderOptions opts(_tmpVar, std::move(usedIndexes), _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
+  }
+
+  /*
+   * generates a condition #TMP._key == '<toMatch>'
+   */
+  std::shared_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
+    auto expectedKey =
+        query->ast()->createNodeValueString(toMatch.c_str(), toMatch.length());
+    auto keyAccess =
+        query->ast()->createNodeAttributeAccess(_varNode,
+                                                StaticStrings::KeyString.c_str(),
+                                                StaticStrings::KeyString.length());
+    // This condition cannot be fulfilled
+    auto condition = query->ast()->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                            keyAccess, expectedKey);
+    return std::make_shared<aql::Expression>(query->ast(), condition);
   }
 };
 
-TEST_F(SingleServerProviderTest, it_must_be_described) { ASSERT_TRUE(true); }
+TEST_F(SingleServerProviderTest, it_can_provide_edges) {
+  MockGraph g;
+  g.addEdge(0, 1, 2);
+  g.addEdge(0, 2, 3);
+  g.addEdge(1, 2, 1);
+  auto testee = makeProvider(g);
+  auto startVertex = g.vertexToId(0);
+  HashedStringRef hashedStart{startVertex.c_str(),
+                              static_cast<uint32_t>(startVertex.length())};
+  Step s = testee.startVertex(hashedStart);
+
+  testee.expand(s, 0, [&](Step next) {
+    VPackBuilder hund;
+    testee.addEdgeToBuilder(next.getEdge(), hund);
+    LOG_DEVEL << next.getVertexIdentifier() << " e: " << hund.toJson();
+  });
+}
 
 }  // namespace single_server_provider_test
 }  // namespace tests
