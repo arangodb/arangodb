@@ -130,3 +130,7 @@ auto LogId::fromString(std::string_view name) noexcept -> std::optional<LogId> {
 auto replication2::to_string(LogId logId) -> std::string {
   return std::to_string(logId.id());
 }
+
+auto replication2::to_string(LogTerm term) -> std::string {
+  return std::to_string(term.value);
+}

@@ -90,6 +90,8 @@ struct LogTerm : implement_compare<LogTerm> {
   }
 };
 
+auto to_string(LogTerm term) -> std::string;
+
 struct LogPayload {
   explicit LogPayload(VPackBufferUInt8 dummy) : dummy(std::move(dummy)) {}
   explicit LogPayload(VPackSlice slice);

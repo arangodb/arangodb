@@ -1313,7 +1313,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                 << dbName << ", shard: " << shName;
               continue;
             }
-            
+
             TRI_ASSERT(shardMap.slice().isObject());
 
             auto const [localCollectionInfo, shardInSync, shardReplicated] =
@@ -1542,21 +1542,24 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             continue;
           }
 
-          auto termInCurrent =
-              cur.get(std::vector<std::string_view>{AgencyCommHelper::path(), CURRENT, REPLICATED_LOGS, dbName,
-                                                    std::to_string(id.id()),
-                                                    "localStatus", serverId,
-                                                    "term"});
+          auto termInCurrent = cur.get(
+              std::vector<std::string_view>{AgencyCommHelper::path(), CURRENT, REPLICATED_LOGS,
+                                            dbName, std::to_string(id.id()),
+                                            "localStatus", serverId, "term"});
+
           if (!termInCurrent.isNone() &&
-              replication2::LogTerm{termInCurrent.extract<uint64_t>()} == localTerm) {
+              replication2::LogTerm{termInCurrent.extract<uint64_t>()} ==
+                  localTerm.value()) {
             // nothing to do
             continue;
           }
 
-          LOG_DEVEL << "checking log " << id << " local term = " << localTerm.value() << " current " << termInCurrent.toJson();
+          LOG_DEVEL << "checking log " << id << " local term = "
+                    << (localTerm ? to_string(localTerm.value()) : "n/a") << " current "
+                    << (!termInCurrent.isNone() ? termInCurrent.toJson() : "n/a");
 
           replication2::agency::LogCurrentLocalState localState;
-          localState.term = *localTerm;
+          localState.term = localTerm.value();
           localState.spearhead = getLocalStatistics(status).value().spearHead;
 
           auto reportPath = StringUtils::joinT("/", CURRENT, REPLICATED_LOGS,
@@ -1638,12 +1641,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
           std::string c = key.substr(pos + 1, pos2);
           std::string s = key.substr(pos2 + 1);  // shard name
-          auto const pdb = pit->second->slice();
+          TRI_ASSERT(pit->second->slice().isArray());
+          TRI_ASSERT(pit->second->slice().length() == 1);
+          auto const pdb = pit->second->slice()[0];
           auto const ldb = lit->second->slice();
 
           // Now find out if the shard appears in the Plan but not in Local:
-          std::vector<std::string> const planPath {
-            AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
+          std::vector<std::string> const planPath{
+              AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
 
           TRI_ASSERT(pdb.isObject());
           TRI_ASSERT(ldb.isObject());

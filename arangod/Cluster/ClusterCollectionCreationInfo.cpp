@@ -26,6 +26,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterTypes.h"
+#include "Replication2/ReplicatedLog/Common.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
