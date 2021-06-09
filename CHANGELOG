@@ -1,4 +1,5 @@
 v3.8.1 (XXXX-XX-XX)
+-------------------
 
 * Add soft coordinator shutdown: This is a new option `soft=true` for the
   DELETE /_admin/shutdown API. Has only meaning for coordinators, otherwise
