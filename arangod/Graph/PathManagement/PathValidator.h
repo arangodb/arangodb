@@ -66,6 +66,8 @@ class PathValidator {
 
   void setPostFilterEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
 
+  void reset();
+
  private:
   PathStore const& _store;
   Provider& _provider;

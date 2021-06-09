@@ -84,9 +84,9 @@ class PathValidatorTest : public ::testing::Test {
 
  protected:
   // Expression Parts
-  aql::Ast ast{*_query.get()};
-  aql::Variable tmpVar{"tmp", 0, false};
-  aql::AstNode* varNode{::InitializeReference(ast, tmpVar)};
+  aql::Ast _ast{*_query.get()};
+  aql::Variable _tmpVar{"tmp", 0, false};
+  aql::AstNode* _varNode{::InitializeReference(_ast, _tmpVar)};
 
  protected:
   VertexUniquenessLevel getVertexUniquness() {
@@ -100,6 +100,10 @@ class PathValidatorTest : public ::testing::Test {
   }
 
   PathStore<Step>& store() { return _pathStore; }
+
+  aql::Variable const* tmpVar() { return &_tmpVar; }
+
+  aql::Query* query() { return _query.get(); }
 
   ValidatorType testee(PathValidatorOptions opts = PathValidatorOptions{}) {
     ensureProvider();
@@ -131,6 +135,20 @@ class PathValidatorTest : public ::testing::Test {
     for (size_t i = 0; i < path.size() - 1; ++i) {
       mockGraph.addEdge(path.at(i), path.at(i + 1));
     }
+  }
+
+  /*
+   * generates a condition #TMP._key == '<toMatch>'
+   */
+  std::unique_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
+    auto expectedKey = _ast.createNodeValueString(toMatch.c_str(), toMatch.length());
+    auto keyAccess =
+        _ast.createNodeAttributeAccess(_varNode, StaticStrings::KeyString.c_str(),
+                                       StaticStrings::KeyString.length());
+    // This condition cannot be fulfilled
+    auto condition = _ast.createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                   keyAccess, expectedKey);
+    return std::make_unique<aql::Expression>(&_ast, condition);
   }
 
  private:
@@ -431,41 +449,44 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interio
   }
 }
 
-/*
 TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
-  this->mockGraph.addEdge(0, 1);
-  PathValidatorOptions opts(*(this->_query.get()), &this->tmpVar);
-  std::string matchedKey{"1"};
-  auto expectedKey =
-      this->ast.createNodeValueString(matchedKey.c_str(), matchedKey.length());
-  auto keyAccess =
-      this->ast.createNodeAttributeAccess(this->varNode,
-                                          StaticStrings::KeyString.c_str(),
-                                          StaticStrings::KeyString.length());
-  // This condition cannot be fulfilled
-  auto condition = this->ast.createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
-                                                      keyAccess, expectedKey);
-  auto expression = std::make_unique<aql::Expression>(&this->ast, condition);
+  this->addPath({0, 1});
+  PathValidatorOptions opts(*(this->query()), this->tmpVar());
+  auto expression = this->conditionKeyMatches("1");
   opts.setAllVerticesExpression(std::move(expression));
   auto validator = this->testee(std::move(opts));
   {
-    // Testing x._key == "1" with `{_key: "0"} => Should fail
-    size_t lastIndex = std::numeric_limits<size_t>::max();
-    Step s = this->makeStep(0, lastIndex);
-    auto res = validator.validatePath(s);
-    EXPECT_TRUE(res.isFiltered());
-    EXPECT_TRUE(res.isPruned());
-  }
-  {
     // Testing x._key == "1" with `{_key: "1"} => Should succeed
-    size_t lastIndex = std::numeric_limits<size_t>::max();
-    Step s = this->makeStep(1, lastIndex);
+    Step s = this->startPath(1);
     auto res = validator.validatePath(s);
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
   }
+
+  // we start a new path, so reset the uniqueness checks
+  validator.reset();
+
+  {
+    // Testing x._key == "1" with `{_key: "0"} => Should fail
+    Step s = this->startPath(0);
+    {
+      auto res = validator.validatePath(s);
+      EXPECT_TRUE(res.isFiltered());
+      EXPECT_TRUE(res.isPruned());
+    }
+
+    // Testing condition on level 1 (not start)
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1);
+    s = neighbors.at(0);
+    {
+      // Testing x._key == "1" with `{_key: "1"} => Should succeed
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+  }
 }
-*/
 
 }  // namespace graph_path_validator_test
 }  // namespace tests

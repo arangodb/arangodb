@@ -177,6 +177,13 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness>::setPostFilterEval
   _postFilterEvaluator = std::move(eval);
 }
 
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness>::reset() {
+  if constexpr (vertexUniqueness != VertexUniquenessLevel::NONE) {
+    _uniqueVertices.clear();
+  }
+}
+
 namespace arangodb {
 namespace graph {
 
