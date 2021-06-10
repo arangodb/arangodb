@@ -51,7 +51,8 @@ enum class AppendEntriesErrorReason {
   MESSAGE_OUTDATED,
   WRONG_TERM,
   NO_PREV_LOG_MATCH,
-  PERSISTENCE_FAILURE
+  PERSISTENCE_FAILURE,
+  COMMUNICATION_ERROR,
 };
 
 struct TermIndexPair : implement_compare<TermIndexPair> {

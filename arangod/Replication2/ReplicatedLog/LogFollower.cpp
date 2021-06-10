@@ -140,17 +140,19 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // prepare the new in memory state
   auto newInMemoryLog = self->_inMemoryLog._log.take(req.prevLogIndex.value);
 
-  auto res = self->_logCore->removeBack(req.prevLogIndex + 1);
-  if (!res.ok()) {
-    LOG_CTX("f17b8", ERR, _logContext)
-        << "failed to remove log entries after " << req.prevLogIndex;
-    abort();  // TODO abort?
+  if (self->_inMemoryLog.getLastIndex() != req.prevLogIndex) {
+    auto res = self->_logCore->removeBack(req.prevLogIndex + 1);
+    if (!res.ok()) {
+      LOG_CTX("f17b8", ERR, _logContext)
+          << "failed to remove log entries after " << req.prevLogIndex;
+      abort();  // TODO abort?
+    }
   }
 
   // commit the deletion in memory
   // TODO static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
   self->_inMemoryLog._log = std::move(newInMemoryLog);
-  newInMemoryLog = std::invoke([&]{
+  newInMemoryLog = std::invoke([&] {
     auto transient = self->_inMemoryLog._log.transient();
     transient.append(req.entries.transient());
     return transient.persistent();
@@ -203,7 +205,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
                                   }
                                 }));
         }
-        return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId}, DeferredAction{});
+        return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
+                              DeferredAction{});
       })
       .then([measureTime = std::move(measureTime)](auto&& res) mutable {
         measureTime.fire();
@@ -231,14 +234,13 @@ auto replicated_log::LogFollower::GuardedFollowerData::waitFor(LogIndex index)
   return std::move(future);
 }
 
-
 auto replicated_log::LogFollower::waitForIterator(LogIndex index)
--> replicated_log::LogParticipantI::WaitForIteratorFuture {
-    TRI_ASSERT(index != LogIndex{0});
-    return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
-        // TODO what if the data was compacted after the commit index reached index?
-        return getLogIterator(LogIndex{index.value - 1});
-    });
+    -> replicated_log::LogParticipantI::WaitForIteratorFuture {
+  TRI_ASSERT(index != LogIndex{0});
+  return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
+    // TODO what if the data was compacted after the commit index reached index?
+    return getLogIterator(LogIndex{index.value - 1});
+  });
 }
 
 auto replicated_log::LogFollower::acquireMutex() -> replicated_log::LogFollower::Guard {

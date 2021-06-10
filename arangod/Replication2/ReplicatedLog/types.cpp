@@ -226,6 +226,8 @@ std::string arangodb::replication2::replicated_log::to_string(replicated_log::Ap
       return "message was outdated";
     case AppendEntriesErrorReason::PERSISTENCE_FAILURE:
       return "persisting the log entries failed";
+    case AppendEntriesErrorReason::COMMUNICATION_ERROR:
+      return "communicating with participant failed - network error";
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }

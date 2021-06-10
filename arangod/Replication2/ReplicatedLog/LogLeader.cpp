@@ -574,9 +574,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           << ", errorCode = " << to_string(response.errorCode)
           << ", reason  = " << to_string(response.reason);
 
-      follower.numErrorsSinceLastAnswer = 0;
       follower.lastErrorReason = response.reason;
       if (response.isSuccess()) {
+        follower.numErrorsSinceLastAnswer = 0;
         follower.lastAckedIndex = lastIndex;
         follower.lastAckedCommitIndex = currentCommitIndex;
         toBeResolved = checkCommitIndex(parentLog);
@@ -586,8 +586,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         //      other failures than "I don't have that log entry" can lead to
         //      this branch.
         TRI_ASSERT(response.reason != AppendEntriesErrorReason::NONE);
-        if (follower.lastAckedIndex > LogIndex{0}) {
-          follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
+        switch (response.reason) {
+          case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
+            if (follower.lastAckedIndex > LogIndex{0}) {
+              follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
+            }
+            break;
+          default:
+            follower.numErrorsSinceLastAnswer += 1;
         }
       }
     } else {
@@ -599,6 +605,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     }
   } else if (res.hasException()) {
     ++follower.numErrorsSinceLastAnswer;
+    follower.lastErrorReason = AppendEntriesErrorReason::COMMUNICATION_ERROR;
     try {
       res.throwIfFailed();
     } catch (std::exception const& e) {
