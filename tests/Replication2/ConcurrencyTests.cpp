@@ -122,7 +122,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
         ASSERT_LE(idx.value, snapshot.size());
         auto const& entry = snapshot[idx.value - 1];
         EXPECT_EQ(idx, entry.logIndex());
-        EXPECT_EQ(payload, entry.logPayload());
+        EXPECT_EQ(payload, entry.logPayload()) << VPackSlice(payload.dummy.data()).toJson() << " " << VPackSlice(entry.logPayload().dummy.data()).toJson();
       }
       if (i == 10 * batch) {
         // we should have done at least a few iterations before finishing
@@ -210,7 +210,7 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
 
   auto stats = std::get<LeaderStatus>(data.log->getStatus()).local;
   EXPECT_LE(LogIndex{8000}, stats.commitIndex);
-  EXPECT_LE(stats.commitIndex, stats.spearHead);
+  EXPECT_LE(stats.commitIndex, stats.spearHead.index);
 }
 
 TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
@@ -263,5 +263,5 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
 
   auto stats = std::get<LeaderStatus>(data.log->getStatus()).local;
   EXPECT_LE(LogIndex{8000}, stats.commitIndex);
-  EXPECT_LE(stats.commitIndex, stats.spearHead);
+  EXPECT_LE(stats.commitIndex, stats.spearHead.index);
 }

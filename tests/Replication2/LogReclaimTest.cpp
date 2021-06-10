@@ -40,7 +40,7 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
   auto leader = leaderLog->becomeLeader(LogLeader::TermData{LogTerm{1}, "leader", false, 2}, {follower});
 
   auto idx = leader->insert(LogPayload{"payload"});
-  auto f = leader->waitFor(idx).then([&](futures::Try<std::shared_ptr<QuorumData>>&& quorum) {
+  auto f = leader->waitFor(idx).then([&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
     EXPECT_TRUE(quorum.hasException());
     try {
       quorum.throwIfFailed();
@@ -69,7 +69,7 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
   auto leader = leaderLog->becomeLeader(LogLeader::TermData{LogTerm{1}, "leader", false, 2}, {follower});
 
   auto idx = leader->insert(LogPayload{"payload"});
-  auto f = follower->waitFor(idx).then([&](futures::Try<std::shared_ptr<QuorumData>>&& quorum) {
+  auto f = follower->waitFor(idx).then([&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
     EXPECT_TRUE(quorum.hasException());
     try {
       quorum.throwIfFailed();

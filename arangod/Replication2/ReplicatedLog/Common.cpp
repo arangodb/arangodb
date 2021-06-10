@@ -82,7 +82,7 @@ auto LogTerm::operator<=(LogTerm other) const -> bool {
 }
 
 auto LogPayload::operator==(LogPayload const& other) const -> bool {
-  return arangodb::basics::VelocyPackHelper::compare(
+  return arangodb::basics::VelocyPackHelper::equal(
       velocypack::Slice(dummy.data()), velocypack::Slice(other.dummy.data()), true);
 }
 
@@ -99,7 +99,7 @@ auto LogPayload::operator!=(const LogPayload& other) const -> bool {
   return !operator==(other);
 }
 
-LogPayload::LogPayload(std::string const& dummy) {
+LogPayload::LogPayload(std::string_view dummy) {
   VPackBuilder builder(this->dummy);
   builder.add(VPackValue(dummy));
 }

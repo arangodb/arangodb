@@ -149,6 +149,18 @@ auto replicated_log::LogLeader::instantiateFollowers(
   return follower_vec;
 }
 
+
+namespace {
+auto delayedFuture(std::chrono::steady_clock::duration duration) -> futures::Future<futures::Unit> {
+  if (SchedulerFeature::SCHEDULER) {
+    return SchedulerFeature::SCHEDULER->delay(duration);
+  }
+
+  //std::this_thread::sleep_for(duration);
+  return futures::Future<futures::Unit>{};
+}
+}
+
 void replicated_log::LogLeader::executeAppendEntriesRequests(
     std::vector<std::optional<PreparedAppendEntryRequest>> requests,
     std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
@@ -159,7 +171,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
       // additionally capture a weak pointer that will be locked
       // when the request returns. If the locking is successful
       // we are still in the same term.
-      SchedulerFeature::SCHEDULER->delay(it->_executionDelay).thenValue([it = it, logMetrics](auto&&) mutable {
+      delayedFuture(it->_executionDelay).thenValue([it = it, logMetrics](auto&&) mutable {
         // we need to lock here, because we access _follower
         auto guard = it->_parentLog.lock();
         if (guard == nullptr) {

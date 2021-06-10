@@ -60,12 +60,12 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
-    EXPECT_EQ(stats.spearHead, LogIndex{1});
+    EXPECT_EQ(stats.spearHead.index, LogIndex{1});
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
-    EXPECT_EQ(stats.spearHead, LogIndex{3});
+    EXPECT_EQ(stats.spearHead.index, LogIndex{3});
   }
   {
     auto idx = leader->insert(LogPayload{"new second entry"});
@@ -75,12 +75,12 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
-    EXPECT_EQ(stats.spearHead, LogIndex{2});
+    EXPECT_EQ(stats.spearHead.index, LogIndex{2});
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
-    EXPECT_EQ(stats.spearHead, LogIndex{3});
+    EXPECT_EQ(stats.spearHead.index, LogIndex{3});
   }
 
   // now run the leader
@@ -102,12 +102,12 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{2});
-    EXPECT_EQ(stats.spearHead, LogIndex{2});
+    EXPECT_EQ(stats.spearHead.index, LogIndex{2});
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{2});
-    EXPECT_EQ(stats.spearHead, LogIndex{2});
+    EXPECT_EQ(stats.spearHead.index, LogIndex{2});
   }
 
   {

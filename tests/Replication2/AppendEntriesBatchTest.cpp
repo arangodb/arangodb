@@ -47,13 +47,13 @@ TEST_F(AppendEntriesBatchTest, test_with_two_batches) {
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus());
-    EXPECT_EQ(stats.local.spearHead, LogIndex{2000});
+    EXPECT_EQ(stats.local.spearHead, TermIndexPair(LogTerm{4}, LogIndex{2000}));
     EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
-    EXPECT_EQ(stats.follower.at("follower").spearHead, LogIndex{1999});
+    EXPECT_EQ(stats.follower.at("follower").spearHead.index, LogIndex{1999});
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus());
-    EXPECT_EQ(stats.local.spearHead, LogIndex{0});
+    EXPECT_EQ(stats.local.spearHead.index, LogIndex{0});
     EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
   }
 
@@ -77,12 +77,12 @@ TEST_F(AppendEntriesBatchTest, test_with_two_batches) {
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus());
-    EXPECT_EQ(stats.local.spearHead, LogIndex{2000});
+    EXPECT_EQ(stats.local.spearHead.index, LogIndex{2000});
     EXPECT_EQ(stats.local.commitIndex, LogIndex{2000});
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus());
-    EXPECT_EQ(stats.local.spearHead, LogIndex{2000});
+    EXPECT_EQ(stats.local.spearHead.index, LogIndex{2000});
     EXPECT_EQ(stats.local.commitIndex, LogIndex{2000});
   }
 }

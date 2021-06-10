@@ -95,7 +95,7 @@ auto to_string(LogTerm term) -> std::string;
 struct LogPayload {
   explicit LogPayload(VPackBufferUInt8 dummy) : dummy(std::move(dummy)) {}
   explicit LogPayload(VPackSlice slice);
-  explicit LogPayload(std::string const& dummy);
+  explicit LogPayload(std::string_view dummy);
 
   [[nodiscard]] auto operator==(LogPayload const&) const -> bool;
   [[nodiscard]] auto operator!=(LogPayload const& other) const -> bool;
