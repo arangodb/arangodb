@@ -1439,8 +1439,10 @@ void ClusterInfo::loadPlan() {
       continue;
     }
     newReplicatedsLogs.erase(databaseName);
-    std::vector<std::string_view> replicatedLogsPaths{
-        AgencyCommHelper::path(), "Plan", "ReplicatedLogs", databaseName};
+    auto replicatedLogsPaths = cluster::paths::aliases::plan()
+                                   ->replicatedLogs()
+                                   ->database(databaseName)
+                                   ->vec();
 
     auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
     if (logsSlice.isNone()) {

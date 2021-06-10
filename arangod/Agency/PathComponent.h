@@ -32,6 +32,13 @@
 
 namespace arangodb::cluster::paths {
 
+struct SkipComponents {
+  constexpr SkipComponents() : num(0) {}
+  explicit constexpr SkipComponents(std::size_t num) : num(num) {}
+
+  std::size_t num;
+};
+
 class Path {
  public:
   // Call for each component on the path, starting with the topmost component,
@@ -45,30 +52,30 @@ class Path {
     return std::move(init);
   }
 
-  auto toStream(std::ostream& stream, size_t skip = 0) const -> std::ostream& {
+  auto toStream(std::ostream& stream, SkipComponents skip = SkipComponents()) const -> std::ostream& {
     forEach([&stream, &skip](const char* component) {
-      if (skip == 0) {
+      if (skip.num == 0) {
         stream << "/" << component;
       } else {
-        --skip;
+        --skip.num;
       }
     });
     return stream;
   }
 
-  [[nodiscard]] auto vec(size_t skip = 0) const -> std::vector<std::string> {
+  [[nodiscard]] auto vec(SkipComponents skip = SkipComponents()) const -> std::vector<std::string> {
     std::vector<std::string> res;
     forEach([&res, &skip](const char* component) {
-      if (skip == 0) {
+      if (skip.num == 0) {
         res.emplace_back(component);
       } else {
-        --skip;
+        --skip.num;
       }
     });
     return res;
   }
 
-  [[nodiscard]] auto str(size_t skip = 0) const -> std::string {
+  [[nodiscard]] auto str(SkipComponents skip = SkipComponents()) const -> std::string {
     auto stream = std::stringstream{};
     toStream(stream, skip);
     return stream.str();

@@ -2232,7 +2232,12 @@ void updateTerm(Agent* agent, std::string const& agencyPrefix, std::string const
   {
     VPackArrayBuilder trxs(envelope.get());
     {
-      auto path = basics::StringUtils::joinT("/", agencyPrefix, PLAN, REPLICATED_LOGS, database, logId, "currentTerm");
+      auto path = cluster::paths::aliases::plan()
+                      ->replicatedLogs()
+                      ->database(database)
+                      ->log(logId)
+                      ->currentTerm()
+                      ->str();
 
       VPackArrayBuilder trx(envelope.get());
       {
@@ -2308,7 +2313,13 @@ void Supervision::checkReplicatedLogs() {
         } else {
           LOG_DEVEL << "replicated log " << dbName << "/" << idString << " has no leader!";
           auto current = std::invoke([&, &dbName = dbName, &idString = idString]() -> LogCurrent {
-            auto currentPath = basics::StringUtils::joinT("/", CURRENT, REPLICATED_LOGS, dbName, idString);
+            using namespace cluster::paths;
+            auto currentPath =
+                aliases::current()
+                    ->replicatedLogs()
+                    ->database(dbName)
+                    ->log(idString)
+                    ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
             auto const& node = snapshot().get(currentPath);
             // TODO fix this hack
             return LogCurrent(from_velocypack, node.toBuilder().slice());

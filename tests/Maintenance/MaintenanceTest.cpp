@@ -50,6 +50,7 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
+using namespace arangodb::cluster;
 
 #ifndef _WIN32
 char const* planStr =
@@ -550,13 +551,13 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   auto getShardsForServer(std::string const& dbName, std::string const& planId,
                           std::string const& serverId, Node const& plan)
       -> std::unordered_set<std::string> {
-    auto path = arangodb::cluster::paths::aliases::plan()
+    auto path = paths::aliases::plan()
                     ->collections()
                     ->database(dbName)
                     ->collection(planId)
                     ->shards();
 
-    auto vec = path->vec(2);
+    auto vec = path->vec(paths::SkipComponents(2));
     TRI_ASSERT(plan.has(vec));
     auto const& shardList = plan(vec);
     std::unordered_set<std::string> res;
@@ -573,13 +574,13 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
   auto setLeadershipPlan(std::string const& dbName, std::string const& planId,
                          PLAN_LEADERSHIP_TYPE type, Node& plan) -> void {
-    auto path = arangodb::cluster::paths::aliases::plan()
+    auto path = paths::aliases::plan()
                     ->collections()
                     ->database(dbName)
                     ->collection(planId)
                     ->shards();
 
-    auto vec = path->vec(2);
+    auto vec = path->vec(paths::SkipComponents(2));
     ASSERT_TRUE(plan.has(vec)) << "The underlying test plan is modified, it "
                                   "does not contain Database '"
                                << dbName << "' and Collection '" << planId << "' anymore.";

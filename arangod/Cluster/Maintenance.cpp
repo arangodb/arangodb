@@ -704,9 +704,9 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       continue;
     }
 
-    auto& logs = lit->second;
-    auto plans = pit->second->slice()[0].get(       // plan collections
-        std::vector<std::string>{AgencyCommHelper::path(), PLAN, REPLICATED_LOGS, dbname});
+    auto const& logs = lit->second;
+    auto plans = pit->second->slice()[0].get(
+        cluster::paths::aliases::plan()->replicatedLogs()->database(dbname)->vec());
     if (!plans.isObject()) {
       continue;
     }
@@ -1516,10 +1516,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             continue;
           }
 
-          auto termInCurrent = cur.get(
-              std::vector<std::string_view>{AgencyCommHelper::path(), CURRENT, REPLICATED_LOGS,
-                                            dbName, std::to_string(id.id()),
-                                            "localStatus", serverId, "term"});
+          auto termInCurrent = cur.get(cluster::paths::aliases::current()
+                                           ->replicatedLogs()
+                                           ->database(dbName)
+                                           ->log(to_string(id))
+                                           ->localStatus()
+                                           ->participant(serverId)
+                                           ->term()
+                                           ->vec());
 
           if (!termInCurrent.isNone() &&
               replication2::LogTerm{termInCurrent.extract<uint64_t>()} ==
@@ -1536,10 +1540,23 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           localState.term = localTerm.value();
           localState.spearhead = getLocalStatistics(status).value().spearHead;
 
-          auto reportPath = StringUtils::joinT("/", CURRENT, REPLICATED_LOGS,
-                                               dbName, id, "localStatus", serverId);
-          auto preconditionPath = StringUtils::joinT("/", PLAN, REPLICATED_LOGS,
-                                                     dbName, id, "currentTerm", "term");
+          using namespace cluster::paths;
+          auto reportPath =
+              aliases::current()
+                  ->replicatedLogs()
+                  ->database(dbName)
+                  ->log(to_string(id))
+                  ->localStatus()
+                  ->participant(serverId)
+                  ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+          auto preconditionPath =
+              aliases::plan()
+                  ->replicatedLogs()
+                  ->database(dbName)
+                  ->log(to_string(id))
+                  ->currentTerm()
+                  ->term()
+                  ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
           report.add(VPackValue(reportPath));
           {
             VPackObjectBuilder o(&report);
