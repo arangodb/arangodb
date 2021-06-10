@@ -37,8 +37,6 @@
 
 #include <velocypack/Builder.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace httpclient {
 class SimpleHttpClient;
@@ -75,6 +73,8 @@ struct Connection {
 
   /// @brief Thread-safe check aborted
   bool isAborted() const;
+
+  void preventRecycling();
 
   /// @brief get an exclusive connection
   template <typename F>
@@ -159,16 +159,16 @@ struct BatchInfo {
   /// @brief send a "start batch" command
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
-  Result start(Connection const& connection, ProgressInfo& progress, LeaderInfo& leader,
+  Result start(Connection& connection, ProgressInfo& progress, LeaderInfo& leader,
                SyncerId const& syncerId, char const* context, 
                std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
-  Result extend(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
+  Result extend(Connection& connection, ProgressInfo& progress, SyncerId syncerId);
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
+  Result finish(Connection& connection, ProgressInfo& progress, SyncerId syncerId);
 };
 
 /// @brief generates basic source headers for ClusterComm requests
@@ -179,7 +179,7 @@ bool hasFailed(httpclient::SimpleHttpResult* response);
 
 /// @brief create an error result from a failed HTTP request/response
 Result buildHttpError(httpclient::SimpleHttpResult* response,
-                      std::string const& url, Connection const& connection);
+                      std::string const& url, Connection& connection);
 
 /// @brief parse a velocypack response
 Result parseResponse(velocypack::Builder&, httpclient::SimpleHttpResult const*);

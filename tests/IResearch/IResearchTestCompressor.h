@@ -42,7 +42,7 @@ namespace iresearch {
 namespace compression {
 namespace mock {
 struct test_compressor {
-  class test_compressor_compressor final : public compressor {
+  class test_compressor_compressor final : public ::iresearch::compression::compressor {
    public:
     virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override {
       return test_compressor::functions().compress_mock ?
@@ -50,7 +50,7 @@ struct test_compressor {
     }
   };
 
-  class test_compressor_decompressor final : public decompressor {
+  class test_compressor_decompressor final : public ::iresearch::compression::decompressor {
    public:
     virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override {

@@ -845,7 +845,7 @@ class IRESEARCH_API index_writer
     std::atomic<size_t> active_count_; // number of active in-progress operations (insert/replace) (e.g. document instances or replace(...))
     std::atomic<size_t> buffered_docs_; // for use with index_writer::buffered_docs() asynchronous call
     format::ptr codec_; // the codec to used for flushing a segment writer
-    bool dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
+    std::atomic<bool> dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
     std::recursive_mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::vector<flushed_t> flushed_; // all of the previously flushed versions of this segment, guarded by the flush_context::flush_mutex_

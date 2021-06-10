@@ -102,7 +102,10 @@ int32_t RandomDevice::random(int32_t left, int32_t right) {
 
   TRI_ASSERT(right > left);
   int64_t r = static_cast<int64_t>(right) - static_cast<int64_t>(left) + 1;
-  TRI_ASSERT(r >= 0 && r <= UINT32_MAX);
+
+  // r must be at least 2, because right > left
+  // r must be strictly less UINT32_MAX, because we checked MIN & MAX
+  TRI_ASSERT(r > 1 && r < UINT32_MAX);
   uint32_t range = static_cast<uint32_t>(r);
 
   switch (range) {
@@ -201,10 +204,11 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 
   r %= range;
 
-  int32_t result = left + static_cast<int32_t>(r);
-  TRI_ASSERT(result >= left);
-  TRI_ASSERT(result < left + static_cast<int64_t>(range));
-  return result;
+  int64_t result = static_cast<int64_t>(left) + static_cast<int64_t>(r);
+  TRI_ASSERT(result >= static_cast<int64_t>(left));
+  TRI_ASSERT(result < static_cast<int64_t>(left) + static_cast<int64_t>(range));
+  TRI_ASSERT(result <= static_cast<int64_t>(INT32_MAX));
+  return static_cast<int32_t>(result);
 }
 
 // -----------------------------------------------------------------------------
@@ -585,6 +589,13 @@ uint64_t RandomGenerator::interval(uint64_t right) {
   TRI_ASSERT(value <= right);
   return value;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+int32_t RandomGenerator::random(int32_t left, int32_t right) {
+  ensureDeviceIsInitialized();
+  return _device->random(left, right);
+}
+#endif
 
 void RandomGenerator::seed(uint64_t seed) {
   ensureDeviceIsInitialized();

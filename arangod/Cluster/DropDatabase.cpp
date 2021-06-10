@@ -78,6 +78,8 @@ bool DropDatabase::first() {
                                      << " failed: " << res.errorMessage();
       return false;
     }
+    _feature.removeDBError(database);
+    _feature.removeReplicationError(database);
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();

@@ -69,7 +69,6 @@ class StaticStrings {
   static std::string const Prefix;
   static std::string const Overwrite;
   static std::string const OverwriteMode;
-  static std::string const PreserveRevisionIds;
   static std::string const Compact;
 
   // replication headers
@@ -226,7 +225,6 @@ class StaticStrings {
   static std::string const IsSmart;
   static std::string const IsSmartChild;
   static std::string const MinReplicationFactor;
-  static std::string const MinRevision;
   static std::string const NumberOfShards;
   static std::string const ObjectId;
   static std::string const ReplicationFactor;
@@ -238,6 +236,7 @@ class StaticStrings {
   static std::string const SyncByRevision;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Schema;
+  static std::string const InternalValidatorTypes;
   static std::string const Version;
   static std::string const WriteConcern;
   static std::string const ShardingSingle;
@@ -303,13 +302,13 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
-  static std::string const RevisionTreeBranchingFactor;
   static std::string const RevisionTreeCount;
   static std::string const RevisionTreeHash;
   static std::string const RevisionTreeMaxDepth;
   static std::string const RevisionTreeNodes;
   static std::string const RevisionTreeRangeMax;
   static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
@@ -365,6 +364,7 @@ class StaticStrings {
   static std::string const ValidationParameterMessage;
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
+  static std::string const ValidationParameterType;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

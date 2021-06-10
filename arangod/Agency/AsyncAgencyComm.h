@@ -54,9 +54,9 @@ struct AsyncAgencyCommResult {
 
   [[nodiscard]] bool fail() const { return !ok(); }
 
-  VPackSlice slice() const { 
+  VPackSlice slice() const {
     TRI_ASSERT(response != nullptr);
-    return response->slice(); 
+    return response->slice();
   }
 
   std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const {
@@ -74,9 +74,9 @@ struct AsyncAgencyCommResult {
     return response->payloadAsString();
   }
 
-  std::size_t payloadSize() const { 
+  std::size_t payloadSize() const {
     TRI_ASSERT(response != nullptr);
-    return response->payloadSize(); 
+    return response->payloadSize();
   }
 
   arangodb::fuerte::StatusCode statusCode() const {
@@ -90,8 +90,11 @@ struct AsyncAgencyCommResult {
       return Result{fuerteToArangoErrorCode(error), to_string(error)};
     } else {
       auto code = statusCode();
-      return Result{fuerteStatusToArangoErrorCode(code),
-                    fuerteStatusToArangoErrorMessage(code)};
+      auto internalCode = fuerteStatusToArangoErrorCode(code);
+      if (internalCode == TRI_ERROR_NO_ERROR) {
+        return Result(internalCode);
+      }
+      return Result{internalCode, fuerteStatusToArangoErrorMessage(code)};
     }
   }
 };
@@ -137,7 +140,6 @@ class AsyncAgencyCommManager final {
     INSTANCE = std::make_unique<AsyncAgencyCommManager>(server);
   }
 
-
   static bool isEnabled() { return INSTANCE != nullptr; }
   static AsyncAgencyCommManager& getInstance();
 
@@ -172,8 +174,8 @@ class AsyncAgencyCommManager final {
   void setStopping(bool stopping) { _isStopping = stopping; }
 
  private:
-  bool _isStopping = false;
-  bool _skipScheduler = true;
+  std::atomic<bool> _isStopping = false;
+  std::atomic<bool> _skipScheduler = true;
   application_features::ApplicationServer& _server;
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
@@ -266,9 +268,9 @@ class AsyncAgencyComm final {
                                               network::Timeout timeout, RequestType type,
                                               velocypack::Buffer<uint8_t>&& body) const;
 
-  [[nodiscard]] FutureResult sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
-    network::Timeout timeout, RequestType type, uint64_t index) const;
+  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
+                                              std::string const& url, network::Timeout timeout,
+                                              RequestType type, uint64_t index) const;
 
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)

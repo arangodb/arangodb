@@ -58,7 +58,6 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
-static std::vector<std::string> const compareProperties{WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED};
 static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
 
 static VPackValue const VP_DELETE("delete");
@@ -88,12 +87,15 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& first,
                                                           VPackSlice const& second) {
+  static std::vector<std::string> const compareProperties{WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
+                                                          StaticStrings::InternalValidatorTypes};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
     for (auto const& property : compareProperties) {
       auto const& planned = first.get(property);
-      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false)) {  // Register any change
+      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false) &&
+          !planned.isNone()) {  // Register any change
         result->add(property, planned);
       }
     }
@@ -826,6 +828,8 @@ arangodb::Result arangodb::maintenance::executePlan(
     if (!action->isRunEvenIfDuplicate()) {
       feature.addAction(std::move(action), false);
     } else {
+      TRI_ASSERT(action->has(SHARD));
+
       std::string shardName = action->get(SHARD);
       bool ok = feature.lockShard(shardName, action);
       TRI_ASSERT(ok);
@@ -1611,15 +1615,15 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         if (indexOf(cservers, serverId) > 0) {
           continue;
         }
-
-        auto const leader = pservers[0].copyString();
+       
+        std::string leader = pservers[0].copyString();
         std::shared_ptr<ActionDescription> description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
             {NAME, SYNCHRONIZE_SHARD},
             {DATABASE, dbname},
             {COLLECTION, colname.toString()},
             {SHARD, shname.toString()},
-            {THE_LEADER, leader},
+            {THE_LEADER, std::move(leader)},
             {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
           SYNCHRONIZE_PRIORITY, true);
         std::string shardName = description->get(SHARD);

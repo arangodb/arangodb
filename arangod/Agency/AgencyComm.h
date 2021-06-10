@@ -40,6 +40,7 @@
 #include "AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
+#include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/Metrics.h"
 
@@ -189,12 +190,14 @@ class AgencyCommHelper {
   static void initialize(std::string const& prefix);
   static void shutdown();
 
-  static std::string path();
+  static std::string const& path() noexcept;
   static std::string path(std::string const&);
   static std::string path(std::string const&, std::string const&);
   static std::vector<std::string> slicePath(std::string const&);
 
   static std::string generateStamp();
+
+  static network::Timeout defaultTimeout();
 };
 
 // -----------------------------------------------------------------------------
@@ -613,4 +616,3 @@ class AgencyComm {
 namespace std {
 ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
 }
-

@@ -38,6 +38,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "Rest/CommonDefines.h"
@@ -530,6 +531,16 @@ bool DatabaseInitialSyncer::isAborted() const {
     return true;
   }
 
+  if (_state.isChildSyncer) {
+    // this syncer is used as a child syncer of the GlobalInitialSyncer.
+    // now check if parent was aborted
+    ReplicationFeature& replication = vocbase().server().getFeature<ReplicationFeature>();
+    GlobalReplicationApplier* applier = replication.globalReplicationApplier();
+    if (applier != nullptr && applier->stopInitialSynchronization()) {
+      return true;
+    }
+  }
+
   return Syncer::isAborted();
 }
 
@@ -976,7 +987,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* coll,
                                                   std::string const& leaderColl,
                                                   TRI_voc_tick_t maxTick) {
-  if (coll->syncByRevision() && _config.leader.version() >= 30700) {
+  if (coll->syncByRevision() && _config.leader.version() >= 30800) {
     // local collection should support revisions, and leader is at least aware
     // of the revision-based protocol, so we can query it to find out if we
     // can use the new protocol; will fall back to old one if leader collection
@@ -1418,8 +1429,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
   // diff with local tree
   //std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();
-  std::unique_ptr<containers::RevisionTree> treeLocal =
-      physical->revisionTree(*trx);
+  auto treeLocal = physical->revisionTree(*trx);
   if (!treeLocal) {
     // local collection does not support syncing by revision, fall back to keys
     guard.fire();
@@ -1458,7 +1468,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     auto headers = replutils::createHeaders();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     RevisionId requestResume{ranges[0].first};  // start with beginning
-    TRI_ASSERT(requestResume >= coll->minRevision());
     RevisionId iterResume = requestResume;
     std::size_t chunk = 0;
     std::unique_ptr<ReplicationIterator> iter =

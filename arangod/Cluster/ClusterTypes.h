@@ -174,8 +174,7 @@ struct QueryAnalyzerRevisions {
   AnalyzersRevision::Revision systemDbRevision{ AnalyzersRevision::MIN};
 };
 
-}  // namespace arangodb
-
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
 std::ostream& operator<<(std::ostream& o, arangodb::QueryAnalyzerRevisions const& r);
 
+}  // namespace arangodb
