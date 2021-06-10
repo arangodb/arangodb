@@ -463,9 +463,6 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
   rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   ro.iterate_upper_bound = &end;
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(ro, _cf);
-  if (iter == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBFullTextIndex");
-  }
 
   // set is used to perform an intersection with the result set
   std::set<LocalDocumentId> intersect;

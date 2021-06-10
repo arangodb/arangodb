@@ -37,7 +37,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIteratorStateTracker.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -291,11 +290,10 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
                                    arangodb::RocksDBPrimaryIndex const* index,
                                    RocksDBKeyBounds&& bounds) 
       : IndexIterator(collection, trx),
-        _iteratorStateTracker(trx),
         _index(index),
         _cmp(index->comparator()),
         _mustSeek(true),
-        _isWriteTransaction(_iteratorStateTracker.isActive()),
+        _mustCheckBounds(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction()),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
@@ -328,7 +326,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-      _iteratorStateTracker.reset();
       return false;
     }
 
@@ -349,15 +346,12 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       if (ADB_UNLIKELY(!_iterator->Valid())) {
         // validate that Iterator is in a good shape and hasn't failed
         arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-        _iteratorStateTracker.reset();
         return false;
       } else if (outOfRange()) {
-        _iteratorStateTracker.reset();
         return false;
       }
 
       if (limit == 0) {
-        _iteratorStateTracker.trackKey(_iterator->key());
         return true;
       }
     } while (true);
@@ -374,7 +368,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-      _iteratorStateTracker.reset();
       return false;
     }
 
@@ -400,15 +393,12 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       if (ADB_UNLIKELY(!_iterator->Valid())) {
         // validate that Iterator is in a good shape and hasn't failed
         arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-        _iteratorStateTracker.reset();
         return false;
       } else if (outOfRange()) {
-        _iteratorStateTracker.reset();
         return false;
       }
 
       if (limit == 0) {
-        _iteratorStateTracker.trackKey(_iterator->key());
         return true;
       }
     } while (true);
@@ -432,12 +422,10 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         }
       
         if (!_iterator->Valid() || outOfRange()) {
-          _iteratorStateTracker.reset();
           break;
         }
 
         if (count == 0) {
-          _iteratorStateTracker.trackKey(_iterator->key());
           return;
         }
       } while (true);
@@ -459,10 +447,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
  private:
   void ensureIterator() {
-    if (_iteratorStateTracker.mustRebuildIterator()) {
-      _iterator.reset();
-    }
-
     if (_iterator == nullptr) {
       RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
       rocksdb::ReadOptions options = mthds->iteratorReadOptions();
@@ -476,10 +460,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
       TRI_ASSERT(options.prefix_same_as_start);
       _iterator = mthds->NewIterator(options, _index->columnFamily());
-      TRI_ASSERT(_iterator != nullptr);
-      if (_iterator == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBPrimaryIndexRangeIterator");
-      }
     }
   
     TRI_ASSERT(_iterator != nullptr);
@@ -490,12 +470,8 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _iterator->Seek(_bounds.start());
       }
       _mustSeek = false;
-    } else if (_iteratorStateTracker.mustRebuildIterator()) {
-      _iterator->Seek(_iteratorStateTracker.key());
     }
-    _iteratorStateTracker.reset();
     TRI_ASSERT(!_mustSeek);
-    TRI_ASSERT(!_iteratorStateTracker.mustRebuildIterator());;
   }
 
   inline bool outOfRange() const {
@@ -511,18 +487,17 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     // (from the current transaction), so we still have to carry out the checks
     // ourselves.
     if constexpr (reverse) {
-      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
+      return _mustCheckBounds && (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
-      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
+      return _mustCheckBounds && (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
     }
   }
 
-  RocksDBIteratorStateTracker _iteratorStateTracker;
   arangodb::RocksDBPrimaryIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool _mustSeek;
-  bool const _isWriteTransaction;
+  bool const _mustCheckBounds;
   RocksDBKeyBounds const _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;

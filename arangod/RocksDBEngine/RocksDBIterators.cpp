@@ -45,12 +45,11 @@ constexpr bool AnyIteratorFillBlockCache = false;
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
                                                  transaction::Methods* trx) 
     : IndexIterator(col, trx),
-      _iteratorStateTracker(trx),
       _bounds(static_cast<RocksDBMetaCollection*>(col->getPhysical())->bounds()),
       _upperBound(_bounds.end()),
       _cmp(_bounds.columnFamily()->GetComparator()),
       _mustSeek(true),
-      _isWriteTransaction(_iteratorStateTracker.isActive()) {
+      _mustCheckBounds(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction()) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::ColumnFamilyDescriptor desc;
   _bounds.columnFamily()->GetDescriptor(&desc);
@@ -73,7 +72,7 @@ bool RocksDBAllIndexIterator::outOfRange() const {
   // ourselves.
 
   // note: this is always a forward iterator
-  return _isWriteTransaction && _cmp->Compare(_iterator->key(), _upperBound) > 0;
+  return _mustCheckBounds && _cmp->Compare(_iterator->key(), _upperBound) > 0;
 }
 
 bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t limit) {
@@ -87,7 +86,6 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     // validate that Iterator is in a good shape and hasn't failed
     arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-    _iteratorStateTracker.reset();
     return false;
   }
 
@@ -103,15 +101,12 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t
     if (ADB_UNLIKELY(!_iterator->Valid())) {
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-      _iteratorStateTracker.reset();
       return false;
     } else if (outOfRange()) {
-      _iteratorStateTracker.reset();
       return false;
     }
 
     if (limit == 0) {
-      _iteratorStateTracker.trackKey(_iterator->key());
       return true;
     }
   } while (true);
@@ -129,7 +124,6 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     // validate that Iterator is in a good shape and hasn't failed
     arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-    _iteratorStateTracker.reset();
     return false;
   }
 
@@ -143,15 +137,12 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
     if (ADB_UNLIKELY(!_iterator->Valid())) {
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-      _iteratorStateTracker.reset();
       return false;
     } else if (outOfRange()) {
-      _iteratorStateTracker.reset();
       return false;
     }
     
     if (limit == 0) {
-      _iteratorStateTracker.trackKey(_iterator->key());
       return true;
     }
   } while (true);
@@ -169,12 +160,10 @@ void RocksDBAllIndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
       _iterator->Next();
 
       if (!_iterator->Valid() || outOfRange()) {
-        _iteratorStateTracker.reset();
         break;
       }
 
       if (count == 0) {
-        _iteratorStateTracker.trackKey(_iterator->key());
         return;
       }
     } while (true);
@@ -190,10 +179,6 @@ void RocksDBAllIndexIterator::resetImpl() {
 }
 
 void RocksDBAllIndexIterator::ensureIterator() {
-  if (_iteratorStateTracker.mustRebuildIterator()) {
-    _iterator.reset();
-  }
-
   if (_iterator == nullptr) {
     // acquire rocksdb transaction
     auto* mthds = RocksDBTransactionState::toMethods(_trx);
@@ -206,22 +191,14 @@ void RocksDBAllIndexIterator::ensureIterator() {
     // options.readahead_size = 4 * 1024 * 1024;
 
     _iterator = mthds->NewIterator(ro, _bounds.columnFamily());
-    TRI_ASSERT(_iterator != nullptr);
-    if (_iterator == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAllIndexIterator");
-    }
   }
 
   TRI_ASSERT(_iterator != nullptr);
   if (_mustSeek) {
     _iterator->Seek(_bounds.start());
     _mustSeek = false;
-  } else if (_iteratorStateTracker.mustRebuildIterator()) {
-    _iterator->Seek(_iteratorStateTracker.key());
   }
-  _iteratorStateTracker.reset();
   TRI_ASSERT(!_mustSeek);
-  TRI_ASSERT(!_iteratorStateTracker.mustRebuildIterator());;
 }
 
 // ================ Any Iterator ================

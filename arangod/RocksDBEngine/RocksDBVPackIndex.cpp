@@ -34,7 +34,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
-#include "RocksDBEngine/RocksDBIteratorStateTracker.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -182,12 +181,11 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             arangodb::RocksDBVPackIndex const* index,
                             RocksDBKeyBounds&& bounds)
       : IndexIterator(collection, trx),
-        _iteratorStateTracker(trx),
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _bounds(std::move(bounds)),
         _mustSeek(true),
-        _isWriteTransaction(_iteratorStateTracker.isActive()) {
+        _mustCheckBounds(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction()) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
 
@@ -217,7 +215,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-      _iteratorStateTracker.reset();
       return false;
     }
     
@@ -237,7 +234,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       
       --limit;
       if (limit == 0) {
-        _iteratorStateTracker.trackKey(_iterator->key());
         return true;
       }
     } while (true); 
@@ -254,7 +250,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-      _iteratorStateTracker.reset();
       return false;
     }
 
@@ -277,7 +272,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       
       --limit;
       if (limit == 0) {
-        _iteratorStateTracker.trackKey(_iterator->key());
         return true;
       }
     } while (true);
@@ -295,13 +289,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         --count;
         ++skipped;
         if (!advance()) {
-          // validate that Iterator is in a good shape and hasn't failed
-          arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-          return;
+          break;
         }
 
         if (count == 0) {
-          _iteratorStateTracker.trackKey(_iterator->key());
           return;
         }
       } while (true);
@@ -337,17 +328,13 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     // ourselves.
     
     if constexpr (reverse) {
-      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
+      return _mustCheckBounds && (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
-      return _isWriteTransaction && (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
+      return _mustCheckBounds && (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
     }
   }
   
   void ensureIterator() {
-    if (_iteratorStateTracker.mustRebuildIterator()) {
-      _iterator.reset();
-    }
-
     if (_iterator == nullptr) {
       RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
       rocksdb::ReadOptions options = mthds->iteratorReadOptions();
@@ -361,10 +348,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
       TRI_ASSERT(options.prefix_same_as_start);
       _iterator = mthds->NewIterator(options, _index->columnFamily());
-      TRI_ASSERT(_iterator != nullptr);
-      if (_iterator == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBVPackIndexRangeIterator");
-      }
     }
     
     TRI_ASSERT(_iterator != nullptr);
@@ -375,12 +358,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _iterator->Seek(_bounds.start());
       }
       _mustSeek = false;
-    } else if (_iteratorStateTracker.mustRebuildIterator()) {
-      _iterator->Seek(_iteratorStateTracker.key());
     }
-    _iteratorStateTracker.reset();
     TRI_ASSERT(!_mustSeek);
-    TRI_ASSERT(!_iteratorStateTracker.mustRebuildIterator());;
   }
 
   inline bool advance() {
@@ -393,7 +372,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     return _iterator->Valid() && !outOfRange();
   }
 
-  RocksDBIteratorStateTracker _iteratorStateTracker;
   arangodb::RocksDBVPackIndex const* _index;
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
@@ -401,7 +379,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
   bool _mustSeek;
-  bool const _isWriteTransaction;
+  bool const _mustCheckBounds;
 };
 
 } // namespace
