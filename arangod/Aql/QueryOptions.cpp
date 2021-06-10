@@ -136,11 +136,6 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     profile = static_cast<ProfileLevel>(value.getNumber<uint32_t>());
   }
 
-  value = slice.get("stream");
-  if (value.isBool()) {
-    stream = value.getBool();
-  }
-
   value = slice.get("allPlans");
   if (value.isBool()) {
     allPlans = value.getBool();
