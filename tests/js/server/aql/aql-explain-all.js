@@ -219,7 +219,7 @@ function explainSuite () {
       for (let i = 0; i < nodes.length; ++i) {
         const node = nodes[i];
         assertTrue(node.hasOwnProperty("isCallstackSplitEnabled"));
-        assertEqual((i % 2) != 0, node.isCallstackSplitEnabled);
+        assertEqual((i % 2) !== 0, node.isCallstackSplitEnabled);
       }
     },
 
