@@ -181,7 +181,7 @@ void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) c
 auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> LogStatistics {
   LogStatistics stats;
   stats.commitIndex = LogIndex{slice.get("commitIndex").getNumericValue<size_t>()};
-  stats.spearHead = TermIndexPair::fromVelocyPack(slice);
+  stats.spearHead = TermIndexPair::fromVelocyPack(slice.get("spearHead"));
   return stats;
 }
 
@@ -254,7 +254,7 @@ void replicated_log::LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::
 auto replicated_log::LeaderStatus::FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
   FollowerStatistics stats;
   stats.commitIndex = LogIndex{slice.get("commitIndex").getNumericValue<size_t>()};
-  stats.spearHead = TermIndexPair::fromVelocyPack(slice);
+  stats.spearHead = TermIndexPair::fromVelocyPack(slice.get("spearHead"));
   stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
   stats.lastRequestLatencyMS = slice.get("lastRequestLatencyMS").getDouble();
   return stats;
