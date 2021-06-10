@@ -1,5 +1,18 @@
+v3.7.13 (XXXX-XX-XX)
+--------------------
+
+* Backport bugfix from upstream rocksdb repository for calculating the
+  free disk space for the database directory. Before the bugfix, rocksdb
+  could overestimate the amount of free space when the arangod process 
+  was run as non-privileged users.
+
+
 v3.7.12 (XXXX-XX-XX)
 --------------------
+* Backport bugfix from upstream rocksdb repository for calculating the
+  free disk space for the database directory. Before the bugfix, rocksdb
+  could overestimate the amount of free space when the arangod process 
+  was run as non-privileged users.
 
 * Add soft coordinator shutdown: This is a new option `soft=true` for the DELETE
   /_admin/shutdown API. Has only meaning for coordinators, otherwise ignored. A
