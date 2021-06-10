@@ -58,7 +58,7 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
       _localAuthentication(true),
       _active(true),
       _authenticationTimeout(0.0),
-      _sessionTimeout(60.0 * 60.9 * 24.0 * 30.0 /*30 days*/) {
+      _sessionTimeout(30 * std::chrono::hours(24) / std::chrono::seconds(1)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
