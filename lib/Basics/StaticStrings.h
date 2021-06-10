@@ -317,6 +317,7 @@ class StaticStrings {
   // Replication 2.0
   static std::string const Config;
   static std::string const CurrentTerm;
+  static std::string const Follower;
   static std::string const Id;
   static std::string const Index;
   static std::string const Leader;

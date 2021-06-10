@@ -44,6 +44,7 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+namespace paths = arangodb::cluster::paths::aliases;
 
 struct arangodb::ReplicatedLogMethods {
   virtual ~ReplicatedLogMethods() = default;
@@ -165,8 +166,11 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
 
     VPackBufferUInt8 trx;
     {
-      std::string path = "arango/Plan/ReplicatedLogs/" + vocbase.name() + "/" +
-                         std::to_string(spec.id.id());
+      auto path = paths::plan()
+                      ->replicatedLogs()
+                      ->database(vocbase.name())
+                      ->log(to_string(spec.id))
+                      ->str();
 
       VPackBuilder builder(trx);
       arangodb::agency::envelope::into_builder(builder)
@@ -175,7 +179,7 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
                           [&](VPackBuilder& builder) {
                             spec.toVelocyPack(builder);
                           })
-          .inc("arango/Plan/Version")
+          .inc(paths::plan()->version()->str())
           .precs()
           .isEmpty(path)
           .end()
@@ -193,14 +197,17 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
 
     VPackBufferUInt8 trx;
     {
-      std::string path = "arango/Plan/ReplicatedLogs/" + vocbase.name() + "/" +
-                         std::to_string(id.id());
+      auto path = paths::plan()
+                      ->replicatedLogs()
+                      ->database(vocbase.name())
+                      ->log(to_string(id))
+                      ->str();
 
       VPackBuilder builder(trx);
       arangodb::agency::envelope::into_builder(builder)
           .write()
           .remove(path)
-          .inc("arango/Plan/Version")
+          .inc(paths::plan()->version()->str())
           .precs()
           .isNotEmpty(path)
           .end()
@@ -219,9 +226,9 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
 
     VPackBufferUInt8 trx;
     {
-      std::string path = "arango/Plan/ReplicatedLogs/" + vocbase.name() + "/" +
-                         std::to_string(id.id());
-      std::string termPath = path + "/term";
+      auto path = paths::plan()->replicatedLogs()->database(vocbase.name())->log(to_string(id));
+      auto logPath = path->str();
+      auto termPath = path->currentTerm()->str();
 
       VPackBuilder builder(trx);
       arangodb::agency::envelope::into_builder(builder)
@@ -230,9 +237,9 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
                           [&](VPackBuilder& builder) {
                             term.toVelocyPack(builder);
                           })
-          .inc("arango/Plan/Version")
+          .inc(paths::plan()->version()->str())
           .precs()
-          .isNotEmpty(path)
+          .isNotEmpty(logPath)
           .end()
           .done();
     }
@@ -390,12 +397,12 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
     }
     auto& log = _vocbase.getReplicatedLogById(logId);
 
-    auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
-    auto writeConcern = body.get("writeConcern").getNumericValue<std::size_t>();
-    auto waitForSync = body.get("waitForSync").isTrue();
+    auto term = LogTerm{body.get(StaticStrings::Term).getNumericValue<uint64_t>()};
+    auto writeConcern = body.get(StaticStrings::WriteConcern).getNumericValue<std::size_t>();
+    auto waitForSync = body.get(StaticStrings::WaitForSyncString).isTrue();
 
     std::vector<std::shared_ptr<replicated_log::AbstractFollower>> follower;
-    for (auto const& part : VPackArrayIterator(body.get("follower"))) {
+    for (auto const& part : VPackArrayIterator(body.get(StaticStrings::Follower))) {
       auto partId = part.copyString();
       follower.emplace_back(std::make_shared<replicated_log::NetworkAttachedFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
     }
@@ -412,8 +419,8 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
     auto& log = _vocbase.getReplicatedLogById(logId);
-    auto term = LogTerm{body.get("term").getNumericValue<uint64_t>()};
-    auto leaderId = body.get("leader").copyString();
+    auto term = LogTerm{body.get(StaticStrings::Term).getNumericValue<uint64_t>()};
+    auto leaderId = body.get(StaticStrings::Leader).copyString();
     log.becomeFollower(ServerState::instance()->getId(), term, leaderId);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
 
