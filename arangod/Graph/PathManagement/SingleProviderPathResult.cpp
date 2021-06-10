@@ -123,15 +123,16 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntr
    */
   VPackBuilder tmpResult;
   _provider.addVertexToBuilder(_step.getVertex(), tmpResult);
-  //LOG_DEVEL << "tmpResult"; // TODO: needs to be removed later - anyway just tmp workaround
-  //LOG_DEVEL << tmpResult.slice().toJson();
+  // LOG_DEVEL << "tmpResult"; // TODO: needs to be removed later - anyway just
+  // tmp workaround LOG_DEVEL << tmpResult.slice().toJson();
   if (tmpResult.slice().isNull()) {
     result.add(VPackValue(true));
   } else {
     result.add(VPackValue(false));
   }
+  result.add(tmpResult.slice());
 
-  _provider.addVertexToBuilder(_step.getVertex(), result);
+  // _provider.addVertexToBuilder(_step.getVertex(), result);
   _provider.addEdgeToBuilder(_step.getEdge(), result);
 }
 
