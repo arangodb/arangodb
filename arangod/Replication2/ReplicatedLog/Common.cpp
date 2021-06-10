@@ -99,6 +99,11 @@ auto LogPayload::operator!=(const LogPayload& other) const -> bool {
   return !operator==(other);
 }
 
+LogPayload::LogPayload(std::string const& dummy) {
+  VPackBuilder builder(this->dummy);
+  builder.add(VPackValue(dummy));
+}
+
 auto LogId::fromShardName(std::string_view name) noexcept -> std::optional<LogId> {
   using namespace basics::StringUtils;
   constexpr auto isShardName = [](auto const& name) {
