@@ -192,7 +192,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                 auto [preparedRequests, resolvedPromises] = std::invoke([&] {
                   auto guarded = self->acquireMutex();
                   if (guarded->_didResign) {
-                    // Is throwing the right thing to do here?
+                    // Is throwing the right thing to do here? - No, we are in a finally
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
                   }
                   return guarded->handleAppendEntriesResponse(
@@ -588,11 +588,15 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         TRI_ASSERT(response.reason != AppendEntriesErrorReason::NONE);
         switch (response.reason) {
           case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
+            follower.numErrorsSinceLastAnswer = 0;
             if (follower.lastAckedIndex > LogIndex{0}) {
               follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
             }
             break;
           default:
+            LOG_CTX("1bd0b", DEBUG, follower.logContext)
+                << "received error from follower, reason = " << to_string(response.reason)
+                << " message id = " << messageId;
             follower.numErrorsSinceLastAnswer += 1;
         }
       }

@@ -164,6 +164,13 @@ void replicated_log::TermIndexPair::toVelocyPack(velocypack::Builder& builder) c
   builder.add("index", VPackValue(index.value));
 }
 
+auto replicated_log::TermIndexPair::fromVelocyPack(velocypack::Slice slice) -> TermIndexPair {
+  TermIndexPair pair;
+  pair.term = LogTerm{slice.get("term").getNumericValue<size_t>()};
+  pair.index = LogIndex{slice.get("index").getNumericValue<size_t>()};
+  return pair;
+}
+
 void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("commitIndex", VPackValue(commitIndex.value));
@@ -171,9 +178,21 @@ void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) c
   spearHead.toVelocyPack(builder);
 }
 
+auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> LogStatistics {
+  LogStatistics stats;
+  stats.commitIndex = LogIndex{slice.get("commitIndex").getNumericValue<size_t>()};
+  stats.spearHead = TermIndexPair::fromVelocyPack(slice);
+  return stats;
+}
+
 void replicated_log::UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue("unconfigured"));
+}
+
+auto replicated_log::UnconfiguredStatus::fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus {
+  TRI_ASSERT(slice.get("role").isEqualString("unconfigured"));
+  return UnconfiguredStatus();
 }
 
 void replicated_log::FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
@@ -183,6 +202,15 @@ void replicated_log::FollowerStatus::toVelocyPack(velocypack::Builder& builder) 
   builder.add("term", VPackValue(term.value));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
+}
+
+auto replicated_log::FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
+  TRI_ASSERT(slice.get("role").isEqualString("follower"));
+  FollowerStatus status;
+  status.leader = slice.get("leader").copyString();
+  status.term = LogTerm{slice.get("term").getNumericValue<std::size_t>()};
+  status.local = LogStatistics::fromVelocyPack(slice);
+  return status;
 }
 
 void replicated_log::LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
@@ -200,6 +228,19 @@ void replicated_log::LeaderStatus::toVelocyPack(velocypack::Builder& builder) co
   }
 }
 
+auto replicated_log::LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
+  TRI_ASSERT(slice.get("role").isEqualString("leader"));
+  LeaderStatus status;
+  status.term = LogTerm{slice.get("term").getNumericValue<std::size_t>()};
+  status.local = LogStatistics::fromVelocyPack(slice.get("local"));
+  for (auto [key, value] : VPackObjectIterator(slice.get("follower"))) {
+    auto id = ParticipantId{key.copyString()};
+    auto stat = FollowerStatistics::fromVelocyPack(value);
+    status.follower.emplace(id, std::move(stat));
+  }
+  return status;
+}
+
 void replicated_log::LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("commitIndex", VPackValue(commitIndex.value));
@@ -208,6 +249,15 @@ void replicated_log::LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::
   builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
   builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
   builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS));
+}
+
+auto replicated_log::LeaderStatus::FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
+  FollowerStatistics stats;
+  stats.commitIndex = LogIndex{slice.get("commitIndex").getNumericValue<size_t>()};
+  stats.spearHead = TermIndexPair::fromVelocyPack(slice);
+  stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
+  stats.lastRequestLatencyMS = slice.get("lastRequestLatencyMS").getDouble();
+  return stats;
 }
 
 std::string arangodb::replication2::replicated_log::to_string(replicated_log::AppendEntriesErrorReason reason) {
@@ -265,4 +315,15 @@ auto arangodb::replication2::replicated_log::getLocalStatistics(LogStatus const&
                  return s.local;
                }},
       status);
+}
+
+auto replicated_log::statusFromVelocyPack(VPackSlice slice) -> replicated_log::LogStatus {
+  auto role = slice.get("role");
+  if (role.isEqualString("leader")) {
+    return LeaderStatus::fromVelocyPack(slice);
+  } else if (role.isEqualString("follower")) {
+    return FollowerStatus::fromVelocyPack(slice);
+  } else {
+    return UnconfiguredStatus::fromVelocyPack(slice);
+  }
 }

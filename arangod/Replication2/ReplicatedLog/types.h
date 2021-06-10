@@ -66,6 +66,7 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   TermIndexPair() = default;
 
   void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
 };
 
 struct LogStatistics {
@@ -73,6 +74,7 @@ struct LogStatistics {
   LogIndex commitIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice slice) -> LogStatistics;
 };
 
 struct LeaderStatus {
@@ -80,6 +82,7 @@ struct LeaderStatus {
     AppendEntriesErrorReason lastErrorReason;
     double lastRequestLatencyMS;
     void toVelocyPack(velocypack::Builder& builder) const;
+    static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
   };
 
   LogStatistics local;
@@ -87,6 +90,7 @@ struct LeaderStatus {
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
 
   void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;
 };
 
 struct FollowerStatus {
@@ -95,13 +99,17 @@ struct FollowerStatus {
   LogTerm term;
 
   void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatus;
 };
 
 struct UnconfiguredStatus {
   void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus;
 };
 
 using LogStatus = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
+
+auto statusFromVelocyPack(VPackSlice slice) -> LogStatus;
 
 auto getCurrentTerm(LogStatus const&) noexcept -> std::optional<LogTerm>;
 auto getLocalStatistics(LogStatus const&) noexcept -> std::optional<LogStatistics>;

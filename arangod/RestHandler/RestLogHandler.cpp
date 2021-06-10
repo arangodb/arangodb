@@ -114,6 +114,23 @@ auto sendInsertRequest(network::ConnectionPool *pool, std::string const& server,
 }
 
 
+auto sendLogStatusRequest(network::ConnectionPool *pool, std::string const& server, std::string const& database,
+                       LogId id)
+-> futures::Future<replication2::replicated_log::LogStatus> {
+
+  auto path = basics::StringUtils::joinT("/", "_api/log", id);
+
+  network::RequestOptions opts;
+  opts.database = database;
+  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Get, path)
+      .thenValue([](network::Response&& resp) {
+        if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+          THROW_ARANGO_EXCEPTION(resp.combinedResult());
+        }
+        return replication2::replicated_log::statusFromVelocyPack(resp.slice().get("result"));
+      });
+}
+
 auto sendReadEntryRequest(network::ConnectionPool *pool, std::string const& server, std::string const& database,
                        LogId id, LogIndex index)
 -> futures::Future<std::optional<LogEntry>> {
@@ -158,6 +175,18 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
 
     auto pool = server.getFeature<NetworkFeature>().pool();
     return sendReadEntryRequest(pool, *leader, vocbase.name(), id, index);
+  }
+
+  auto getLogStatus(LogId id) const -> futures::Future<replication2::replicated_log::LogStatus> override {
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+
+    auto leader = ci.getReplicatedLogLeader(vocbase.name(), id);
+    if (!leader) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+
+    auto pool = server.getFeature<NetworkFeature>().pool();
+    return sendLogStatusRequest(pool, *leader, vocbase.name(), id);
   }
 
   auto createReplicatedLog(const replication2::agency::LogPlanSpecification& spec) const
