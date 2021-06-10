@@ -822,7 +822,15 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   auto cid = std::to_string(collection->id().id());
   ClusterInfo& ci =
       collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto res = ci.dropCollectionCoordinator(databaseName, cid, 300.0);
+
+  auto replicatedLogs = std::vector<replication2::LogId>{};
+  if (coll->vocbase().replicationVersion() == replication::Version::TWO) {
+    auto const& logs = *coll->shardingInfo()->replicatedLogs();
+    std::transform(logs.cbegin(), logs.cend(), std::back_inserter(replicatedLogs),
+                   [](auto const& it) { return it.second; });
+  }
+
+  auto res = ci.dropCollectionCoordinator(databaseName, cid, 300.0, std::move(replicatedLogs));
 
   if (!res.ok()) {
     return res;

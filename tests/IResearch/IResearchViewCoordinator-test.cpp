@@ -361,7 +361,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
     arangodb::LogicalView::ptr logicalView;
     auto res = arangodb::iresearch::IResearchViewCoordinator::factory().create(
@@ -394,7 +394,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
 
     struct ExecContext : public arangodb::ExecContext {
@@ -442,7 +442,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
 
     // simulate heartbeat thread (create index in current)
@@ -4562,7 +4562,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -4620,7 +4620,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -4755,7 +4755,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -4817,7 +4817,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -4956,7 +4956,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0, {});
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                         collection1Json->slice(), 0.0, false, nullptr,
@@ -4966,7 +4966,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId1](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId1, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId1, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -5113,7 +5113,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0, {});
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                         collection1Json->slice(), 0.0, false, nullptr,
@@ -5123,7 +5123,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId1](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId1, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId1, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -5327,7 +5327,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -5384,7 +5384,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -5519,7 +5519,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -5581,7 +5581,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalCollection));
     auto dropLogicalCollection = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -5716,7 +5716,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0, {});
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                         collection1Json->slice(), 0.0, false, nullptr,
@@ -5726,7 +5726,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId1](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId1, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId1, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
@@ -5881,7 +5881,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalCollection0));
     auto dropLogicalCollection0 = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId0](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId0, 0, {});
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                         collection1Json->slice(), 0.0, false, nullptr,
@@ -5891,7 +5891,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalCollection1));
     auto dropLogicalCollection1 = std::shared_ptr<arangodb::ClusterInfo>(
         &ci, [vocbase, &collectionId1](arangodb::ClusterInfo* ci) -> void {
-          ci->dropCollectionCoordinator(vocbase->name(), collectionId1, 0);
+          ci->dropCollectionCoordinator(vocbase->name(), collectionId1, 0, {});
         });
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())

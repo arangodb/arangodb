@@ -693,11 +693,9 @@ class ClusterInfo final {
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
-  Result dropCollectionCoordinator(     // drop collection
-      std::string const& databaseName,  // database name
-      std::string const& collectionID,  // collection identifier
-      double timeout                    // request timeout
-  );
+  Result dropCollectionCoordinator(std::string const& dbName,
+                                   std::string const& collectionID, double timeout,
+                                   std::vector<replication2::LogId> replicatedLogs);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection properties in coordinator

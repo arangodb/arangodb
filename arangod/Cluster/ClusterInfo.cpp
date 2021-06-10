@@ -3345,16 +3345,16 @@ Result ClusterInfo::createCollectionsCoordinator(
 /// error code and the errorMsg is set accordingly. One possible error
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::dropCollectionCoordinator(  // drop collection
-    std::string const& dbName,                  // database name
-    std::string const& collectionID,
-    double timeout  // request timeout
-) {
+Result ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
+                                              std::string const& collectionID, double timeout,
+                                              std::vector<replication2::LogId> replicatedLogs) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
     events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
+
+  // TODO Drop replicated logs, if this is a replication::Version::TWO vocbase!
 
   AgencyComm ac(_server);
   AgencyCommResult res;
