@@ -314,7 +314,6 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
                               transaction::Options const& options)
     : _state(nullptr),
       _transactionContext(transactionContext),
-      _h(this),
       _mainTransaction(false) {
 
   TRI_ASSERT(transactionContext != nullptr);
