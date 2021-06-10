@@ -336,6 +336,19 @@ std::string const StaticStrings::RevisionTreeRanges("ranges");
 std::string const StaticStrings::RevisionTreeResume("resume");
 std::string const StaticStrings::RevisionTreeVersion("version");
 
+// Replication 2.0
+std::string const StaticStrings::Config("config");
+std::string const StaticStrings::CurrentTerm("currentTerm");
+std::string const StaticStrings::Id("id");
+std::string const StaticStrings::Index("spearhead");
+std::string const StaticStrings::Leader("leader");
+std::string const StaticStrings::LocalStatus("localStatus");
+std::string const StaticStrings::Participants("participants");
+std::string const StaticStrings::ServerId("serverId");
+std::string const StaticStrings::Spearhead("spearhead");
+std::string const StaticStrings::TargetConfig("targetConfig");
+std::string const StaticStrings::Term("term");
+
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
 std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");

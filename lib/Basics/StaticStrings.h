@@ -314,6 +314,19 @@ class StaticStrings {
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
 
+  // Replication 2.0
+  static std::string const Config;
+  static std::string const CurrentTerm;
+  static std::string const Id;
+  static std::string const Index;
+  static std::string const Leader;
+  static std::string const LocalStatus;
+  static std::string const Participants;
+  static std::string const ServerId;
+  static std::string const Spearhead;
+  static std::string const TargetConfig;
+  static std::string const Term;
+
   // generic attribute names
   static std::string const AttrCoordinator;
   static std::string const AttrCoordinatorRebootId;

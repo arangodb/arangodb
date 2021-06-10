@@ -20,16 +20,16 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <optional>
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
+#include "Agency/AgencyPaths.h"
+#include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-#include "Cluster/ClusterTypes.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+#include <optional>
 
 namespace arangodb::replication2::agency {
 
