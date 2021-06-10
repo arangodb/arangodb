@@ -2232,7 +2232,7 @@ void updateTerm(Agent* agent, std::string const& agencyPrefix, std::string const
   {
     VPackArrayBuilder trxs(envelope.get());
     {
-      auto path = basics::StringUtils::joinT("/", agencyPrefix, PLAN, REPLICATED_LOGS, database, logId, "term");
+      auto path = basics::StringUtils::joinT("/", agencyPrefix, PLAN, REPLICATED_LOGS, database, logId, "currentTerm");
 
       VPackArrayBuilder trx(envelope.get());
       {

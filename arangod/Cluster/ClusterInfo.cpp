@@ -239,17 +239,35 @@ arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
 }
 
 auto createReplicatedLog(DatabaseID const& dbName, replication2::LogId const logId,
+                         std::vector<ServerID> const& participants,
                          std::uint64_t replicationFactor,
                          std::uint64_t writeConcern, bool waitForSync) {
   using namespace arangodb::cluster::paths::aliases;
   auto const logPath = plan()->replicatedLogs()->database(dbName)->log(to_string(logId));
 
+  auto config = replication2::agency::LogPlanConfig();
+  config.writeConcern = writeConcern;
+  // config.replicationFactor = replicationFactor;
+  config.waitForSync = waitForSync;
+
+  auto firstTerm = std::invoke([&] {
+    using namespace replication2;
+    using namespace replication2::agency;
+    auto spec = LogPlanTermSpecification();
+    spec.term = LogTerm{1};
+    spec.config = config;
+    std::transform(participants.cbegin(), participants.cend(),
+                   std::inserter(spec.participants, spec.participants.end()),
+                   [](auto const& it) {
+                     return std::make_pair(it, LogPlanTermSpecification::Participant{});
+                   });
+    return spec;
+  });
+
   auto spec = replication2::agency::LogPlanSpecification();
   spec.id = logId;
-  spec.currentTerm = std::nullopt;
-  spec.targetConfig.writeConcern = writeConcern;
-  // spec.targetConfig.replicationFactor = replicationFactor;
-  spec.targetConfig.waitForSync = waitForSync;
+  spec.currentTerm = firstTerm;
+  spec.targetConfig = config;
 
   auto builder = std::make_shared<VPackBuilder>();
   spec.toVelocyPack(*builder);
@@ -2976,8 +2994,10 @@ Result ClusterInfo::createCollectionsCoordinator(
       auto const& replicatedLogs = *info.replicatedLogs.value();
       for (auto const& it : replicatedLogs) {
         auto const logId = it.second;
-        auto [prec, oper] = createReplicatedLog(databaseName, logId, info.replicationFactor,
-                                                info.writeConcern, false);
+        // TODO add a check whether shardServers contains it.first
+        auto [prec, oper] =
+            createReplicatedLog(databaseName, logId, shardServers.at(it.first),
+                                info.replicationFactor, info.writeConcern, false);
         precs.emplace_back(std::move(prec));
         opers.emplace_back(std::move(oper));
       }

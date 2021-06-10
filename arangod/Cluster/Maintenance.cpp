@@ -1539,7 +1539,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           auto reportPath = StringUtils::joinT("/", CURRENT, REPLICATED_LOGS,
                                                dbName, id, "localStatus", serverId);
           auto preconditionPath = StringUtils::joinT("/", PLAN, REPLICATED_LOGS,
-                                                     dbName, id, "term", "term");
+                                                     dbName, id, "currentTerm", "term");
           report.add(VPackValue(reportPath));
           {
             VPackObjectBuilder o(&report);

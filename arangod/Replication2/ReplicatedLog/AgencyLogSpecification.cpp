@@ -137,8 +137,8 @@ auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
 LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice) {
   id = slice.get("id").extract<LogId>();
   targetConfig = LogPlanConfig(from_velocypack, slice.get("targetConfig"));
-  if (auto terms = slice.get("term"); !terms.isNone()) {
-    currentTerm = LogPlanTermSpecification{from_velocypack, terms};
+  if (auto term = slice.get("currentTerm"); !term.isNone()) {
+    currentTerm = LogPlanTermSpecification{from_velocypack, term};
   }
 }
 

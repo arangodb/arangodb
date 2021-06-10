@@ -60,6 +60,7 @@ struct LogPlanTermSpecification {
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanTermSpecification(from_velocypack_t, VPackSlice);
+  LogPlanTermSpecification() = default;
 };
 
 struct LogPlanSpecification {
