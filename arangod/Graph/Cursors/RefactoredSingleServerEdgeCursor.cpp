@@ -194,8 +194,6 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
             stats.incrFiltered();
             return false;
           }
-        } else {
-          LOG_DEVEL << "NOT FOUND 1";
         }
         callback(EdgeDocumentToken(cid, token), edge, _currentCursor);
         return true;
@@ -227,8 +225,6 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
                          stats.incrFiltered();
                          return false;
                        }
-                     } else {
-                       LOG_DEVEL << "NOT FOUND 2";
                      }
                      callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
                      return true;
