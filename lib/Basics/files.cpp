@@ -2643,8 +2643,18 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return {TRI_errno(), TRI_last_error()};
   }
-  totalSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_blocks);
-  freeSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_bfree);
+  totalSpace = static_cast<uint64_t>(stat.f_bsize) * static_cast<uint64_t>(stat.f_blocks);
+
+  // sbuf.bfree is total free space available to root
+  // sbuf.bavail is total free space available to unprivileged user
+  // sbuf.bavail <= sbuf.bfree ... pick correct based upon effective user id
+  if (geteuid()) {
+    // non-zero user is unprivileged, or -1 if error. take more conservative size
+    freeSpace = static_cast<uint64_t>(stat.f_bsize) * static_cast<uint64_t>(stat.f_bavail);
+  } else {
+    // root user can access all disk space
+    freeSpace = static_cast<uint64_t>(stat.f_bsize) * static_cast<uint64_t>(stat.f_bfree);
+  }
 #endif
   return {};
 }
