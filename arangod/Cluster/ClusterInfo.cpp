@@ -3355,6 +3355,9 @@ Result ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
   }
 
   // TODO Drop replicated logs, if this is a replication::Version::TWO vocbase!
+  // TODO Think/discuss whether it is correct to get the logs to be deleted in
+  //      as an argument, originally taken from ShardingInfo. Or whether it
+  //      should better be read from the AgencyCache, like the shards below.
 
   AgencyComm ac(_server);
   AgencyCommResult res;
