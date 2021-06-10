@@ -29,9 +29,7 @@ using namespace arangodb::graph;
 IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
                              aql::AstNode* condition, std::optional<size_t> memberToUpdate,
                              std::shared_ptr<arangodb::aql::Expression> expression)
-    : _idx(idx),
-      _indexCondition(condition),
-      _memberToUpdate(memberToUpdate) {
+    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {
   if (expression != nullptr) {
     _expression = std::move(expression);
   }
@@ -39,7 +37,9 @@ IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
 
 aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
 
-aql::Expression* IndexAccessor::getExpression() const { return _expression.get(); }
+aql::Expression* IndexAccessor::getExpression() const {
+  return _expression.get();
+}
 
 transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
   return _idx;
@@ -50,7 +50,8 @@ std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
 }
 
 BaseProviderOptions::BaseProviderOptions(
-    aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
+    aql::Variable const* tmpVar,
+    std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> indexInfo,
     std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
@@ -60,7 +61,9 @@ aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
 }
 
-std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const {
+// first is global index information, second is depth-based index information.
+std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> const&
+BaseProviderOptions::indexInformations() const {
   return _indexInformation;
 }
 

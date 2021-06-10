@@ -89,10 +89,11 @@ class RefactoredSingleServerEdgeCursor {
   enum Direction { FORWARD, BACKWARD };
 
  public:
-  RefactoredSingleServerEdgeCursor(transaction::Methods* trx,
-                                   arangodb::aql::Variable const* tmpVar,
-                                   std::vector<IndexAccessor> const& indexConditions,
-                                   arangodb::aql::QueryContext& queryContext);
+  RefactoredSingleServerEdgeCursor(
+      transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
+      std::vector<IndexAccessor> const& globalIndexConditions,
+      std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
+      arangodb::aql::QueryContext& queryContext);
   ~RefactoredSingleServerEdgeCursor();
 
   using Callback =
@@ -117,4 +118,3 @@ class RefactoredSingleServerEdgeCursor {
 };
 }  // namespace graph
 }  // namespace arangodb
-

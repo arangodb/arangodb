@@ -125,15 +125,17 @@ IndexIterator& RefactoredSingleServerEdgeCursor::LookupInfo::cursor() {
 
 RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
     transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
-    std::vector<IndexAccessor> const& indexConditions, arangodb::aql::QueryContext& queryContext)
+    std::vector<IndexAccessor> const& globalIndexConditions,
+    std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
+    arangodb::aql::QueryContext& queryContext)
     : _tmpVar(tmpVar),
       _currentCursor(0),
       _trx(trx),
       _expressionCtx(*_trx, queryContext, _aqlFunctionsInternalCache) {
   // We need at least one indexCondition, otherwise nothing to serve
-  TRI_ASSERT(!indexConditions.empty());
-  _lookupInfo.reserve(indexConditions.size());
-  for (auto const& idxCond : indexConditions) {
+  TRI_ASSERT(!globalIndexConditions.empty());
+  _lookupInfo.reserve(globalIndexConditions.size());
+  for (auto const& idxCond : globalIndexConditions) {
     _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
                              idxCond.getMemberToUpdate(), idxCond.getExpression(), _trx);
   }
