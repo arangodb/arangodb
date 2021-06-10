@@ -203,8 +203,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  _collectionType = Helper::getNumericValue(info, StaticStrings::InternalCollectionType,
-                                            InternalCollectionType::Community);
+  _internalValidatorTypes =
+      Helper::getNumericValue<uint64_t>(info, StaticStrings::InternalValidatorTypes, 0);
 
   TRI_ASSERT(!guid().empty());
 
@@ -405,7 +405,7 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 }
 
 /// @briefs creates a new document key, the input slice is ignored here
-std::string LogicalCollection::createKey(VPackSlice) const {
+std::string LogicalCollection::createKey(VPackSlice) {
   return keyGenerator()->generate();
 }
 
@@ -794,7 +794,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
     schemaToVelocyPack(result);
   }
   // Internal CollectionType
-  result.add(StaticStrings::InternalCollectionType, VPackValue((int)_collectionType));
+  result.add(StaticStrings::InternalValidatorTypes, VPackValue(_internalValidatorTypes));
 
   // Cluster Specific
   result.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
@@ -995,6 +995,26 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   _waitForSync = Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString, _waitForSync);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern, replicationFactor);
 
+  if (ServerState::instance()->isDBServer()) {
+    // This code is only allowed to be executed by the maintenance
+    // and should only be triggered during cluster upgrades.
+    // The user is NOT allowed to modify this value in any way.
+    auto nextType = Helper::getNumericValue<uint64_t>(slice, StaticStrings::InternalValidatorTypes,
+                                                      _internalValidatorTypes);
+    if (nextType != _internalValidatorTypes) {
+      // This is a bit dangerous operation, if the internalValidators are NOT
+      // empty a concurrent writer could have one in it's hand while this thread deletes it.
+      // For now the situation cannot happen, but may happen in the future.
+      // As soon as it happens we need to make sure that we hold a write lock on this collection
+      // while we swap the validators. (Or apply some local locking for validators only, that would be fine too)
+
+      TRI_ASSERT(_internalValidators.empty());
+      _internalValidatorTypes = nextType;
+      _internalValidators.clear();
+      decorateWithInternalValidators();
+    }
+  }
+
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
@@ -1191,8 +1211,11 @@ Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) co
       return res;
     }
   }
-  if (_internalValidator) {
-    return _internalValidator->validate(s, VPackSlice::noneSlice(), true, options);
+  for (auto const& validator : _internalValidators) {
+    auto res = validator->validate(s, VPackSlice::noneSlice(), true, options);
+    if (!res.ok()) {
+      return res;
+    }
   }
   return {};
 }
@@ -1206,22 +1229,27 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
       return res;
     }
   }
-  if (_internalValidator) {
-    return _internalValidator->validate(modifiedDoc, oldDoc, false, options);
+  for (auto const& validator : _internalValidators) {
+    auto res = validator->validate(modifiedDoc, oldDoc, false, options);
+    if (res.fail()) {
+      return res;
+    }
   }
   return {};
 }
 
-void LogicalCollection::setInternalCollectionType(InternalCollectionType type) {
-  _collectionType = type;
+void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
+  _internalValidatorTypes = type;
 }
 
-void LogicalCollection::setInternalValidator(std::unique_ptr<arangodb::ValidatorBase> validator) {
-  // We can only set the InteralSchema once.
-  // We cannot override it
-  TRI_ASSERT(!_internalValidator);
+void LogicalCollection::addInternalValidator(std::unique_ptr<arangodb::ValidatorBase> validator) {
+  // For the time beeing we only allow ONE internal validator.
+  // This however is a non-necessary restriction and can be leveraged at any
+  // time. The code is prepared to handle any number of validators, and this
+  // assert is only to make sure we do not create one twice.
+  TRI_ASSERT(_internalValidators.empty());
   TRI_ASSERT(validator);
-  _internalValidator = std::move(validator);
+  _internalValidators.emplace_back(std::move(validator));
 }
 
 void LogicalCollection::decorateWithInternalValidators() {
@@ -1232,15 +1260,15 @@ void LogicalCollection::decorateWithInternalValidators() {
 bool LogicalCollection::isShard() const noexcept { return planId() != id(); }
 
 bool LogicalCollection::isLocalSmartEdgeCollection() const noexcept {
-  return _collectionType == InternalCollectionType::LocalSmartEdge;
+  return (_internalValidatorTypes & InternalValidatorType::LocalSmartEdge) != 0;
 }
 
 bool LogicalCollection::isRemoteSmartEdgeCollection() const noexcept {
-  return _collectionType == InternalCollectionType::RemoteSmartEdge;
+  return (_internalValidatorTypes & InternalValidatorType::RemoteSmartEdge) != 0;
 }
 
 bool LogicalCollection::isSmartEdgeCollection() const noexcept {
-  return _collectionType == InternalCollectionType::SmartEdge;
+  return (_internalValidatorTypes & InternalValidatorType::LogicalSmartEdge) != 0;
 }
 
 #ifndef USE_ENTERPRISE

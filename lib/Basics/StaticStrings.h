@@ -236,7 +236,7 @@ class StaticStrings {
   static std::string const SyncByRevision;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Schema;
-  static std::string const InternalCollectionType;
+  static std::string const InternalValidatorTypes;
   static std::string const Version;
   static std::string const WriteConcern;
   static std::string const ShardingSingle;
