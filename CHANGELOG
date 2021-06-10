@@ -1,3 +1,12 @@
+v3.8.1 (XXXX-XX-XX)
+-------------------
+
+* Only build actually used subattributes of traversal paths, i.e. "vertices",
+  "edges" or "weights". If any of the paths subcomponents is not used, the 
+  optimizer will try to save these components from being built for each result
+  item.
+
+
 v3.8.0-rc.2 (2021-06-07)
 ------------------------
 

@@ -1260,7 +1260,23 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         if (node.hasOwnProperty('pathOutVariable')) {
-          parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* paths */'));
+          let pathParts = [];
+          if (node.options.producePathsVertices) {
+            pathParts.push("vertices");
+          }
+          if (node.options.producePathsEdges) {
+            pathParts.push("edges");
+          }
+          if (node.options.producePathsWeights) {
+            pathParts.push("weights");
+          }
+          if (pathParts.length === 3) {
+            pathParts = '';
+          } else {
+            pathParts = ': ' + pathParts.join(', ');
+          }
+
+          parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* paths' + pathParts + ' */'));
         }
 
         rc += parts.join(', ') + ' ' + keyword('IN') + ' ' +
