@@ -1,6 +1,13 @@
 devel
 -----
 
+* Fix potential stack overflow when executing large queries. This is
+  achieved by splitting the callstack and moving part of the execution
+  to a separate thread. The number of execution nodes after which such
+  a callstack split should be performed can be configured via the query
+  option `maxNodesPerCallstack` and the command line option
+  `--query.max-nodes-per-callstack`; the default is 250.
+  
 * Added check to utils/generateAllMetricsDocumentation.py to check that
   the file name and the value of the name attribute are the same in the
   metrics documentation snippets. Correct a few such names.
