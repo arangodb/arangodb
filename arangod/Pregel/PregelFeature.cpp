@@ -22,8 +22,6 @@
 
 #include "PregelFeature.h"
 
-#include <atomic>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"

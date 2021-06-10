@@ -24,6 +24,7 @@
 #define ARANGODB_PREGEL_FEATURE_H 1
 
 #include <cstdint>
+#include <atomic>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
