@@ -124,18 +124,18 @@ IndexIterator& RefactoredSingleServerEdgeCursor::LookupInfo::cursor() {
 }
 
 RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
-    SingleServerProvider* provider, arangodb::aql::Variable const* tmpVar,
+    transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
     std::vector<IndexAccessor> const& indexConditions, arangodb::aql::QueryContext& queryContext)
     : _tmpVar(tmpVar),
       _currentCursor(0),
-      _provider(provider),
-      _expressionCtx(*_provider->trx(), queryContext, _aqlFunctionsInternalCache) {
+      _trx(trx),
+      _expressionCtx(*_trx, queryContext, _aqlFunctionsInternalCache) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!indexConditions.empty());
   _lookupInfo.reserve(indexConditions.size());
   for (auto const& idxCond : indexConditions) {
     _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                             idxCond.getMemberToUpdate(), idxCond.getExpression(), _provider->trx());
+                             idxCond.getMemberToUpdate(), idxCond.getExpression(), _trx);
   }
 }
 
@@ -156,14 +156,14 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 void RefactoredSingleServerEdgeCursor::rearm(VertexType vertex, uint64_t /*depth*/) {
   _currentCursor = 0;
   for (auto& info : _lookupInfo) {
-    info.rearmVertex(vertex, _provider->trx(), _tmpVar);
+    info.rearmVertex(vertex, _trx, _tmpVar);
   }
 }
 
-void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
+void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
+                                               aql::TraversalStats& stats,
                                                Callback const& callback) {
   TRI_ASSERT(!_lookupInfo.empty());
-  auto trx = _provider->trx();
   VPackBuilder tmpBuilder;
 
   for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
@@ -174,7 +174,7 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
       cursor.allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
         stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
-        if (trx->skipInaccessible() && CheckInaccessible(trx, edge)) {
+        if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
           return false;
         }
 #endif
@@ -183,7 +183,7 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
           VPackSlice e = edge;
           if (edge.isString()) {
             tmpBuilder.clear();
-            _provider->insertEdgeIntoResult(EdgeDocumentToken(cid, token), tmpBuilder);
+            provider.insertEdgeIntoResult(EdgeDocumentToken(cid, token), tmpBuilder);
             e = tmpBuilder.slice();
           }
           bool result =
@@ -201,17 +201,17 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
     } else {
       cursor.all([&](LocalDocumentId const& token) {
         return collection->getPhysical()
-            ->read(trx, token,
+            ->read(_trx, token,
                    [&](LocalDocumentId const&, VPackSlice edgeDoc) {
                      stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
-                     if (trx->skipInaccessible()) {
+                     if (_trx->skipInaccessible()) {
                        // TODO: we only need to check one of these
                        VPackSlice from =
                            transaction::helpers::extractFromFromDocument(edgeDoc);
                        VPackSlice to =
                            transaction::helpers::extractToFromDocument(edgeDoc);
-                       if (CheckInaccessible(trx, from) || CheckInaccessible(trx, to)) {
+                       if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
                          return false;
                        }
                      }
@@ -264,8 +264,4 @@ bool RefactoredSingleServerEdgeCursor::evaluateExpression(arangodb::aql::Express
   }
 
   return result;
-}
-
-arangodb::transaction::Methods* RefactoredSingleServerEdgeCursor::trx() const {
-  return _provider->trx();
 }

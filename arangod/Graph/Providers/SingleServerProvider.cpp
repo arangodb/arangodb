@@ -144,7 +144,7 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
   _cursor->rearm(vertex.getID(), 0);
-  _cursor->readAll(_stats, [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
+  _cursor->readAll(*this, _stats, [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
     VertexType id = _cache.persistString(([&]() -> auto {
       if (edge.isString()) {
         return VertexType(edge);
@@ -173,9 +173,11 @@ void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
   _cache.insertEdgeIntoResult(edge, builder);
 }
 
-std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor(arangodb::aql::QueryContext& queryContext) {
-  return std::make_unique<RefactoredSingleServerEdgeCursor>(this, _opts.tmpVar(),
-                                                            _opts.indexInformations(), queryContext);
+std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor(
+    arangodb::aql::QueryContext& queryContext) {
+  return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), _opts.tmpVar(),
+                                                            _opts.indexInformations(),
+                                                            queryContext);
 }
 
 arangodb::transaction::Methods* SingleServerProvider::trx() {

@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include "Aql/Expression.h"
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/QueryContext.h"
 #include "Indexes/IndexIterator.h"
@@ -59,7 +59,8 @@ class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
     LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-               std::optional<size_t> memberToUpdate, aql::Expression* expression, arangodb::transaction::Methods* trx);
+               std::optional<size_t> memberToUpdate,
+               aql::Expression* expression, arangodb::transaction::Methods* trx);
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&) = delete;
@@ -71,7 +72,6 @@ class RefactoredSingleServerEdgeCursor {
 
     IndexIterator& cursor();
     aql::Expression* getExpression();
-
 
    private:
     // This struct does only take responsibility for the expression
@@ -89,9 +89,10 @@ class RefactoredSingleServerEdgeCursor {
   enum Direction { FORWARD, BACKWARD };
 
  public:
-  RefactoredSingleServerEdgeCursor(SingleServerProvider* provider,
+  RefactoredSingleServerEdgeCursor(transaction::Methods* trx,
                                    arangodb::aql::Variable const* tmpVar,
-                                   std::vector<IndexAccessor> const& indexConditions, arangodb::aql::QueryContext& queryContext);
+                                   std::vector<IndexAccessor> const& indexConditions,
+                                   arangodb::aql::QueryContext& queryContext);
   ~RefactoredSingleServerEdgeCursor();
 
   using Callback =
@@ -102,19 +103,17 @@ class RefactoredSingleServerEdgeCursor {
   size_t _currentCursor;
   std::vector<LookupInfo> _lookupInfo;
 
-  SingleServerProvider* _provider;
+  transaction::Methods* _trx;
   arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;  // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
  public:
-  void readAll(aql::TraversalStats& stats, Callback const& callback);
+  void readAll(SingleServerProvider& provider, aql::TraversalStats& stats,
+               Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 
   bool evaluateExpression(arangodb::aql::Expression* expression, VPackSlice value);
-
- private:
-  [[nodiscard]] transaction::Methods* trx() const;
 };
 }  // namespace graph
 }  // namespace arangodb
