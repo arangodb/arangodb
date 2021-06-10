@@ -1,5 +1,25 @@
 devel
 -----
+
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
+
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This
+  fixes BTS-425.
+
+* Added check to utils/generateAllMetricsDocumentation.py to check that
+  the file name and the value of the name attribute are the same in the
+  metrics documentation snippets. Correct a few such names.
+
+* Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
+  symmetrical.
+
+* Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
+  K_SHORTEST_PATHS and K_PATHS.
+
+* Updated arangosync to 2.3.0.
+
 * Added check for data type compatibility between members of pipeline
   ArangoSearch analyzer.
 
@@ -38,6 +58,10 @@ devel
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
+
+* Fix BTS-446: When finding a not yet fully initialized agency, do not
+  immediately fatal exit. Keep trying for (very generous) 5
+  minutes.
 
 * Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
   documentation about the long deprecated features Simple Queries and
