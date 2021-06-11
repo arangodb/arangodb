@@ -105,18 +105,14 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
                         std::unique_ptr<VPackBuilder>&& keys, bool isFrom)
       : IndexIterator(collection, trx),
         _map(map),
-        _begin(_map.begin()),
+        _begin(_map.end()),
         _end(_map.end()),
         _keys(std::move(keys)),
         _keysIt(_keys->slice()),
         _isFrom(isFrom) {}
 
-  char const* typeName() const override { return "edge-index-iterator-mock"; }
-
-  bool hasExtra() const override { return true; }
-
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
-    while (limit && _begin != _end && _keysIt.valid()) {
+  bool prepareNextRange() {
+    if (_keysIt.valid()) {
       auto key = _keysIt.value();
 
       if (key.isObject()) {
@@ -124,20 +120,43 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
       }
 
       std::tie(_begin, _end) = _map.equal_range(key.toString());
-
-      while (limit && _begin != _end) {
-        cb(_begin->second);
-        ++_begin;
-        --limit;
-      }
-
-      ++_keysIt;
+      _keysIt++;
+      return true;
+    } else {
+      // Just make sure begin and end are equal
+      _begin = _map.end();
+      _end = _map.end();
+      return false;
     }
-    return _begin != _end && _keysIt.valid();
+  }
+
+  char const* typeName() const override { return "edge-index-iterator-mock"; }
+
+  bool hasExtra() const override { return true; }
+
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+    // We can at most return limit
+    for (size_t l = 0; l < limit; ++l) {
+      while (_begin == _end) {
+        if (!prepareNextRange()) {
+          return false;
+        }
+      }
+      TRI_ASSERT(_begin != _end);
+      cb(_begin->second);
+      ++_begin;
+    }
+    // Returned due to limit.
+    if (_begin == _end) {
+      // Out limit hit the last index entry
+      // Return false if we do not have another range
+      return prepareNextRange();
+    }
+    return true;
   }
 
   bool nextExtraImpl(ExtraCallback const& cb, size_t limit) override {
-    return nextImpl(
+    auto res = nextImpl(
         [&](arangodb::LocalDocumentId docId) -> bool {
           auto res = _collection->getPhysical()->read(
               _trx, docId,
@@ -151,9 +170,13 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
                   return cb(token, doc.get(arangodb::StaticStrings::FromString));
                 }
               });
+          // We can only have good responses here.
+          // Otherwise storage and Index do differ
+          TRI_ASSERT(res.ok());
           return res.ok();
         },
         limit);
+    return res;
   }
 
   void resetImpl() override {
@@ -366,7 +389,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
     return std::make_unique<EdgeIndexIteratorMock>(&_collection, trx, this,
                                                    isFrom ? _edgesFrom : _edgesTo,
-                                                   std::move(keys));
+                                                   std::move(keys), isFrom);
   }
 
   /// @brief create the iterator
