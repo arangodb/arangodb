@@ -157,7 +157,7 @@ auto delayedFuture(std::chrono::steady_clock::duration duration) -> futures::Fut
   }
 
   //std::this_thread::sleep_for(duration);
-  return futures::Future<futures::Unit>{};
+  return futures::Future<futures::Unit>{std::in_place};
 }
 }
 
