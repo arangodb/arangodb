@@ -440,6 +440,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_SHUTTING_DOWN):
     case static_cast<int>(TRI_ERROR_STARTING_UP):
     case static_cast<int>(TRI_ERROR_CLUSTER_CONNECTION_LOST):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED):
       return ResponseCode::SERVICE_UNAVAILABLE;
 
     case static_cast<int>(TRI_ERROR_HTTP_NOT_IMPLEMENTED):

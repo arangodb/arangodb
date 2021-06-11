@@ -138,7 +138,7 @@ auto sendReadEntryRequest(network::ConnectionPool *pool, std::string const& serv
 
   network::RequestOptions opts;
   opts.database = database;
-  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Get, path)
+  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Get, path, {}, opts)
       .thenValue([](network::Response&& resp) {
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
           THROW_ARANGO_EXCEPTION(resp.combinedResult());
@@ -151,11 +151,12 @@ auto sendReadEntryRequest(network::ConnectionPool *pool, std::string const& serv
 auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
                      std::string const& database, LogId id, LogIndex first)
     -> futures::Future<std::unique_ptr<LogIterator>> {
-  auto path = basics::StringUtils::joinT("/", "_api/log", id, "tail") + "?first=" + to_string(first);
+  auto path = basics::StringUtils::joinT("/", "_api/log", id, "tail");
 
   network::RequestOptions opts;
   opts.database = database;
-  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Get, path)
+  opts.parameters["first"] = to_string(first);
+  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Get, path, {}, opts)
       .thenValue([](network::Response&& resp) -> std::unique_ptr<LogIterator> {
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
           THROW_ARANGO_EXCEPTION(resp.combinedResult());
@@ -163,7 +164,9 @@ auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
 
         struct VPackLogIterator final : LogIterator {
           explicit VPackLogIterator(std::shared_ptr<velocypack::Buffer<uint8_t>> buffer_ptr)
-              : buffer(std::move(buffer_ptr)), iter(VPackSlice(buffer->data())), end(iter.end()) {}
+              : buffer(std::move(buffer_ptr)),
+                iter(VPackSlice(buffer->data()).get("result")),
+                end(iter.end()) {}
 
           auto next() -> std::optional<LogEntry> override {
             if (iter != end) {
