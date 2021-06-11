@@ -94,7 +94,10 @@ class SingleServerProviderTest : public ::testing::Test {
     auto expr = conditionKeyMatches(stringToMatch);
     usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, expr});
 
-    BaseProviderOptions opts(_tmpVar, std::move(usedIndexes), _emptyShardMap);
+    BaseProviderOptions opts(_tmpVar,
+                             std::make_pair(std::move(usedIndexes),
+                                            std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+                             _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 

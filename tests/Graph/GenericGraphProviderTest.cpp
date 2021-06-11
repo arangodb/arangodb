@@ -106,7 +106,11 @@ class GraphProviderTest : public ::testing::Test {
       std::vector<IndexAccessor> usedIndexes{};
       usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr});
 
-      BaseProviderOptions opts(tmpVar, std::move(usedIndexes), _emptyShardMap);
+      BaseProviderOptions opts(
+          tmpVar,
+          std::make_pair(std::move(usedIndexes),
+                         std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+          _emptyShardMap);
       return SingleServerProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {
