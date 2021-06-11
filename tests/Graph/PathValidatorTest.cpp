@@ -452,7 +452,13 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_interio
 TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
   this->addPath({0, 1});
   std::string keyToMatch = "1";
-  PathValidatorOptions opts(*(this->query()), this->tmpVar());
+
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  arangodb::aql::FixedVarExpressionContext expressionContext =
+      arangodb::aql::FixedVarExpressionContext(this->query()->trxForOptimization(),
+                                               *this->query(), _functionsCache);
+  PathValidatorOptions opts(*(this->query()), this->tmpVar(), expressionContext);
+
   auto expression = this->conditionKeyMatches(keyToMatch);
   opts.setAllVerticesExpression(std::move(expression));
   auto validator = this->testee(std::move(opts));

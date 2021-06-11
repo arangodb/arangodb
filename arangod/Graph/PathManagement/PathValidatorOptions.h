@@ -45,7 +45,8 @@ namespace graph {
 class PathValidatorOptions {
  public:
   PathValidatorOptions();
-  PathValidatorOptions(aql::QueryContext& query, aql::Variable const* tmpVar);
+  PathValidatorOptions(aql::QueryContext& query, aql::Variable const* tmpVar,
+                       arangodb::aql::FixedVarExpressionContext& expressionContext);
   ~PathValidatorOptions();
   PathValidatorOptions(PathValidatorOptions&&);
 
@@ -84,7 +85,9 @@ class PathValidatorOptions {
   std::unique_ptr<transaction::Methods> _trx;
   // TODO: FixedVarExpressionContext is a bit overkill here, a lot of methods are implemented but not used.
   // We may be able to simplify this and reduce the InputParameters for ValidatorOptions;
-  std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionCtx;
+
+  // TODO: Better use reference here - note: currently we need nullptr init in our c++ tests -
+  arangodb::aql::FixedVarExpressionContext* _expressionCtx;
 };
 }  // namespace graph
 }  // namespace arangodb
