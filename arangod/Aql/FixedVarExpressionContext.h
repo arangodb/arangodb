@@ -38,8 +38,7 @@ class AqlItemBlock;
 
 class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
-  explicit FixedVarExpressionContext(transaction::Methods& trx,
-                                     QueryContext& query,
+  explicit FixedVarExpressionContext(transaction::Methods& trx, QueryContext& query,
                                      AqlFunctionsInternalCache& cache);
 
   ~FixedVarExpressionContext() override = default;
@@ -51,7 +50,14 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
 
   void clearVariableValues();
 
+  // @brief This method will set the given variable to the given AQL value
+  // if the variable already holds a value, this method will keep the old value.
   void setVariableValue(Variable const*, AqlValue const&);
+
+  // @brief This method will set the given variable to the given AQL value
+  // if the variable already holds a value, the old value is dropped and
+  // overwritten with the new one.
+  void overwriteVariableValue(Variable const*, AqlValue const&);
 
   void serializeAllVariables(velocypack::Options const& opts,
                              arangodb::velocypack::Builder&) const;
