@@ -1,6 +1,10 @@
 v3.7.12 (XXXX-XX-XX)
 --------------------
 
+* Fix URL request parsing in case data is handed in in small chunks.
+  Previously the URL could be cut off if the chunk size was smaller than
+  the URL size.
+
 * Add soft coordinator shutdown: This is a new option `soft=true` for the DELETE
   /_admin/shutdown API. Has only meaning for coordinators, otherwise ignored. A
   number of things are allowed to finish but no new things are allowed when in
