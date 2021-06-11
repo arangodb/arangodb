@@ -60,7 +60,7 @@ class RefactoredSingleServerEdgeCursor {
   struct LookupInfo {
     LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
                std::optional<size_t> memberToUpdate,
-               aql::Expression* expression, arangodb::transaction::Methods* trx);
+               aql::Expression* expression);
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&) = delete;
@@ -72,6 +72,7 @@ class RefactoredSingleServerEdgeCursor {
 
     IndexIterator& cursor();
     aql::Expression* getExpression();
+    aql::Expression* getExpression(uint64_t position);
 
    private:
     // This struct does only take responsibility for the expression
@@ -103,6 +104,7 @@ class RefactoredSingleServerEdgeCursor {
   aql::Variable const* _tmpVar;
   size_t _currentCursor;
   std::vector<LookupInfo> _lookupInfo;
+  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   transaction::Methods* _trx;
   arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;  // needed for expression evaluation
@@ -110,7 +112,7 @@ class RefactoredSingleServerEdgeCursor {
 
  public:
   void readAll(SingleServerProvider& provider, aql::TraversalStats& stats,
-               Callback const& callback);
+               size_t depth, Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 

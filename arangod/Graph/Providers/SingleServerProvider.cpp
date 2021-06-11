@@ -144,7 +144,7 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
   _cursor->rearm(vertex.getID(), 0);
-  _cursor->readAll(*this, _stats, [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
+  _cursor->readAll(*this, _stats, step.getDepth(), [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
     VertexType id = _cache.persistString(([&]() -> auto {
       if (edge.isString()) {
         return VertexType(edge);
