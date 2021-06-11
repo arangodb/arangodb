@@ -341,7 +341,7 @@ std::string const StaticStrings::Config("config");
 std::string const StaticStrings::CurrentTerm("currentTerm");
 std::string const StaticStrings::Follower("follower");
 std::string const StaticStrings::Id("id");
-std::string const StaticStrings::Index("spearhead");
+std::string const StaticStrings::Index("index");
 std::string const StaticStrings::Leader("leader");
 std::string const StaticStrings::LocalStatus("localStatus");
 std::string const StaticStrings::Participants("participants");
