@@ -2672,15 +2672,16 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 Result ClusterInfo::createCollectionCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     uint64_t numberOfShards, uint64_t replicationFactor, uint64_t writeConcern,
-    bool waitForReplication, velocypack::Slice const& json, double timeout,
-    bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+    bool waitForSync, bool waitForReplication, velocypack::Slice const& json,
+    double timeout, bool isNewDatabase,
+    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
     replication::Version replicationVersion,
     std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto const* const serverState = ServerState::instance();
   std::vector<ClusterCollectionCreationInfo> infos{
       ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
-                                    writeConcern, waitForReplication, json,
+                                    writeConcern, waitForSync, waitForReplication, json,
                                     serverState->getId(), serverState->getRebootId(),
                                     std::move(replicatedLogs)}};
   double const realTimeout = getTimeout(timeout);
@@ -3346,8 +3347,8 @@ Result ClusterInfo::createCollectionsCoordinator(
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
-                                              std::string const& collectionID, double timeout,
-                                              std::vector<replication2::LogId> replicatedLogs) {
+                                              std::string const& collectionID,
+                                              double timeout) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
     events::DropCollection(dbName, collectionID, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);

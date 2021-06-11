@@ -690,10 +690,13 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   TRI_ASSERT(col);
   TRI_ASSERT(other);
   if (col->vocbase().replicationVersion() == replication::Version::TWO) {
+    LOG_DEVEL << "TODO: FIXME: " << "distributeShardsLike is not yet implemented for replication 2.0.";
+    /*
     // TODO implement this
     ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
         "distributeShardsLike is not yet implemented for replication 2.0.");
+    */
   }
 
   if (!other->distributeShardsLike().empty()) {

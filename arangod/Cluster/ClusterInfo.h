@@ -667,9 +667,10 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   Result createCollectionCoordinator(
       std::string const& databaseName, std::string const& collectionID,
-      uint64_t numberOfShards, uint64_t replicationFactor, uint64_t writeConcern,
-      bool waitForReplication, velocypack::Slice const& json, double timeout,
-      bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+      uint64_t numberOfShards, uint64_t replicationFactor,
+      uint64_t writeConcern, bool waitForSync, bool waitForReplication,
+      velocypack::Slice const& json, double timeout, bool isNewDatabase,
+      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
       replication::Version replicationVersion,
       std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs);
 
@@ -694,8 +695,7 @@ class ClusterInfo final {
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
   Result dropCollectionCoordinator(std::string const& dbName,
-                                   std::string const& collectionID, double timeout,
-                                   std::vector<replication2::LogId> replicatedLogs);
+                                   std::string const& collectionID, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection properties in coordinator

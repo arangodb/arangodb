@@ -64,10 +64,10 @@ struct ClusterCollectionCreationInfo {
 
     void toVelocyPack(velocypack::Builder& builder) const override;
 
-    virtual ~CreatorInfo() = default;
+    ~CreatorInfo() override = default;
 
-    RebootId rebootId() const noexcept;
-    std::string const& coordinatorId() const noexcept;
+    [[nodiscard]] RebootId rebootId() const noexcept;
+    [[nodiscard]] std::string const& coordinatorId() const noexcept;
 
   private:
    std::string _coordinatorId;
@@ -77,10 +77,10 @@ struct ClusterCollectionCreationInfo {
   std::optional<CreatorInfo> creator;
 
  public:
-  velocypack::Slice isBuildingSlice() const;
+  [[nodiscard]] velocypack::Slice isBuildingSlice() const;
 
  private:
-  bool needsBuildingFlag() const;
+  [[nodiscard]] bool needsBuildingFlag() const;
 
  private:
   velocypack::Builder _isBuildingJson;
