@@ -262,6 +262,12 @@ void GeneralServerFeature::start() {
   }
 }
 
+void GeneralServerFeature::initiateSoftShutdown() {
+  if (_jobManager != nullptr) {
+    _jobManager->initiateSoftShutdown();
+  }
+}
+
 void GeneralServerFeature::beginShutdown() {
   for (auto& server : _servers) {
     server->stopListening();

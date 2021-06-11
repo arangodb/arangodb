@@ -279,7 +279,8 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
   VocBase/VersionTest.cpp
-  VPackDeserializer/BasicTests.cpp)
+  VPackDeserializer/BasicTests.cpp
+  ${ADDITIONAL_TEST_SOURCES})
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/AppendEntriesBatchTest.cpp

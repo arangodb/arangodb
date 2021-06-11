@@ -1,6 +1,64 @@
 devel
 -----
 
+* Backport bugfix from upstream rocksdb repository for calculating the
+  free disk space for the database directory. Before the bugfix, rocksdb
+  could overestimate the amount of free space when the arangod process
+  was run as non-privileged users.
+
+* Add soft coordinator shutdown: This is a new option `soft=true` for the
+  DELETE /_admin/shutdown API. Has only meaning for coordinators, otherwise
+  ignored. A number of things are allowed to finish but no new things are
+  allowed when in soft coordinator shutdown:
+    - AQL cursors
+    - transactions
+    - asynchronous operations
+    - Pregel runs
+  Once all of the ongoing operations of these have finished and all requests
+  on the low priority queue have been executed, the coordinator shuts down
+  the normal way. This is supposed to make a coordinator restart less
+  intrusive for clients.
+
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
+
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This
+  fixes BTS-425.
+
+* Added check to utils/generateAllMetricsDocumentation.py to check that
+  the file name and the value of the name attribute are the same in the
+  metrics documentation snippets. Correct a few such names.
+
+* Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
+  symmetrical.
+
+* Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
+  K_SHORTEST_PATHS and K_PATHS.
+
+* Updated arangosync to 2.3.0.
+
+* Added check for data type compatibility between members of pipeline
+  ArangoSearch analyzer.
+
+* Implemented an optimization for Traversals. If you apply a POST filter on
+  the vertex and/or edge result this filter will now be applied during the
+	traversal to avoid generating the full output for AQL. This will have
+	positive effect if you filter on the vertex/edge but return the path,
+	this way the system does only need to produce a path that is allowed to
+	be passed through.
+	e.g.
+  
+	  FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+		  FILTER v.isRelevant == true
+			RETURN p
+
+	can now be optimized, and the traversal statement will only produce
+	paths where the last vertex has `isRelevant == true`.
+
+* Fix BTS-450: RandomGenerator caught assertion during a value generation within
+  `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
+
 * Fix BTS-442: a query with fullCount on a sharded collection hangs
   indefinitely when LIMIT is less than number of available documents.
 
@@ -18,6 +76,10 @@ devel
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
+
+* Fix BTS-446: When finding a not yet fully initialized agency, do not
+  immediately fatal exit. Keep trying for (very generous) 5
+  minutes.
 
 * Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
   documentation about the long deprecated features Simple Queries and
