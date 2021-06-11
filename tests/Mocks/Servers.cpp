@@ -35,8 +35,8 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
-#include "Basics/files.h"
 #include "Basics/StringUtils.h"
+#include "Basics/files.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -81,7 +81,6 @@
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
-
 #include "Servers.h"
 #include "TemplateSpecializer.h"
 
@@ -124,6 +123,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   SetupBasicFeaturePhase(server);
   server.addFeature<arangodb::application_features::DatabaseFeaturePhase>(false);  // true ??
   server.addFeature<arangodb::AuthenticationFeature>(true);
+  server.addFeature<arangodb::transaction::ManagerFeature>(false);
   server.addFeature<arangodb::DatabaseFeature>(false);
   server.addFeature<arangodb::EngineSelectorFeature>(false);
   server.addFeature<arangodb::StorageEngineFeature>(false);
@@ -141,7 +141,7 @@ static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<arangodb::application_features::ClusterFeaturePhase>(false);
   server.addFeature<arangodb::ClusterFeature>(false);
- 
+
   // fake the exit code with which unresolved futures are returned on
   // shutdown. if we don't do this lots of places in ClusterInfo will
   // report failures during testing
@@ -192,7 +192,7 @@ MockServer::MockServer()
 MockServer::~MockServer() {
   stopFeatures();
   _server.setStateUnsafe(_oldApplicationServerState);
-  
+
   arangodb::ServerState::instance()->setRebootId(_oldRebootId);
 }
 
@@ -207,9 +207,9 @@ void MockServer::init() {
   _server.setStateUnsafe(arangodb::application_features::ApplicationServer::State::IN_WAIT);
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
 
-  // many other places rely on the reboot id being initialized, 
+  // many other places rely on the reboot id being initialized,
   // so we do it here in a central place
-  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1}); 
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 }
 
 void MockServer::startFeatures() {
@@ -258,7 +258,7 @@ void MockServer::startFeatures() {
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
     // We only start those features...
-    if(info != _features.end()) {
+    if (info != _features.end()) {
       if (info->second) {
         try {
           f.start();
@@ -297,7 +297,7 @@ void MockServer::stopFeatures() {
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
     // We only start those features...
-    if(info != _features.end()) {
+    if (info != _features.end()) {
       if (info->second) {
         try {
           f.stop();
@@ -312,7 +312,7 @@ void MockServer::stopFeatures() {
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
     // We only start those features...
-    if(info != _features.end()) {
+    if (info != _features.end()) {
       try {
         f.unprepare();
       } catch (...) {
@@ -549,10 +549,14 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   st = ts.specialize(current_dbs_string);
   agencyTrx("/arango/Current/Databases/" + name, st);
 
-  _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
-    agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
-  _server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
-    agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
+  _server.getFeature<arangodb::ClusterFeature>()
+      .clusterInfo()
+      .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
+      .wait();
+  _server.getFeature<arangodb::ClusterFeature>()
+      .clusterInfo()
+      .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
+      .wait();
 }
 
 void MockClusterServer::agencyCreateCollections(std::string const& name) {
@@ -605,7 +609,7 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   std::string cid = "98765" + basics::StringUtils::itoa(type);
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(dbName);
-  
+
   VPackBuilder props;
   {
     // This is hand-crafted unfortunately the code does not exist...
@@ -618,25 +622,25 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
     {
       VPackArrayBuilder guard2(&props);
       auto const primIndex = arangodb::velocypack::Parser::fromJson(
-      R"({"id":"0","type":"primary","name":
+          R"({"id":"0","type":"primary","name":
 "primary","fields":["_key"],"unique":true,"sparse":false
 })");
-props.add(primIndex->slice());
-if (type == TRI_COL_TYPE_EDGE) {
-  auto const fromIndex = arangodb::velocypack::Parser::fromJson(
-    R"({"id":"1","type":"edge","name":
+      props.add(primIndex->slice());
+      if (type == TRI_COL_TYPE_EDGE) {
+        auto const fromIndex = arangodb::velocypack::Parser::fromJson(
+            R"({"id":"1","type":"edge","name":
 "edge_from","fields":["_from"],"unique":false,"sparse":false
 })");
-props.add(fromIndex->slice());
-auto const toIndex = arangodb::velocypack::Parser::fromJson(
-R"({"id":"2","type":"edge","name":
+        props.add(fromIndex->slice());
+        auto const toIndex = arangodb::velocypack::Parser::fromJson(
+            R"({"id":"2","type":"edge","name":
 "edge_to","fields":["_to"],"unique":false,"sparse":false})");
-props.add(toIndex->slice());
-}
+        props.add(toIndex->slice());
+      }
     }
   }
   LogicalCollection dummy(*vocbase, props.slice(), true);
-  
+
   auto shards = std::make_shared<ShardMap>();
   for (auto const& [shard, server] : shardNameToServerNamePairs) {
     shards->emplace(shard, std::vector<ServerID>{server});
@@ -650,11 +654,13 @@ props.add(toIndex->slice());
   VPackBuilder velocy =
       dummy.toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
 
-  agencyTrx("/arango/Plan/Collections/" + dbName + "/" + basics::StringUtils::itoa(dummy.planId().id()), velocy.toJson());
+  agencyTrx("/arango/Plan/Collections/" + dbName + "/" +
+                basics::StringUtils::itoa(dummy.planId().id()),
+            velocy.toJson());
   {
-  /* Hard-Coded section to inject the CURRENT counter part.
-   * We do not have a shard available here that could generate the values accordingly.
-   */
+    /* Hard-Coded section to inject the CURRENT counter part.
+     * We do not have a shard available here that could generate the values accordingly.
+     */
     VPackBuilder current;
     {
       VPackObjectBuilder report(&current);
@@ -678,7 +684,9 @@ props.add(toIndex->slice());
         // NOTE: we omited Indexes
       }
     }
-    agencyTrx("/arango/Current/Collections/" + dbName + "/" + basics::StringUtils::itoa(dummy.planId().id()), current.toJson());
+    agencyTrx("/arango/Current/Collections/" + dbName + "/" +
+                  basics::StringUtils::itoa(dummy.planId().id()),
+              current.toJson());
   }
 
   _server.getFeature<arangodb::ClusterFeature>()
@@ -762,7 +770,8 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
   maintenance::ActionDescription ad(
       std::map<std::string, std::string>{{maintenance::NAME, maintenance::CREATE_COLLECTION},
                                          {maintenance::COLLECTION,
-                                          basics::StringUtils::itoa(clusterCollection.planId().id())},
+                                          basics::StringUtils::itoa(
+                                              clusterCollection.planId().id())},
                                          {maintenance::SHARD, shardName},
                                          {maintenance::DATABASE, dbName},
                                          {maintenance::SERVER_ID, "PRMR_0001"},
@@ -828,7 +837,7 @@ std::pair<std::string, std::string> MockCoordinator::registerFakedDBServer(std::
   {
     VPackObjectBuilder b(&builder);
     builder.add("endpoint", VPackValue(fakedEndpoint));
-    builder.add("advertisedEndpoint",VPackValue(fakedEndpoint));
+    builder.add("advertisedEndpoint", VPackValue(fakedEndpoint));
     builder.add("host", VPackValue(fakedHost));
     builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
     builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
