@@ -2999,7 +2999,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         // TODO add a check whether shardServers contains it.first
         auto [prec, oper] =
             createReplicatedLog(databaseName, logId, shardServers.at(it.first),
-                                info.replicationFactor, info.writeConcern, false);
+                                info.replicationFactor, info.writeConcern, info.waitForSync);
         precs.emplace_back(std::move(prec));
         opers.emplace_back(std::move(oper));
       }

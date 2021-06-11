@@ -2737,9 +2737,10 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
       auto const* const serverState = ServerState::instance();
       infos.emplace_back(ClusterCollectionCreationInfo{
-          std::to_string(col->id().id()), col->numberOfShards(), col->replicationFactor(),
-          col->writeConcern(), waitForSyncReplication, velocy.slice(),
-          serverState->getId(), serverState->getRebootId(), replicatedLogs});
+          std::to_string(col->id().id()), col->numberOfShards(),
+          col->replicationFactor(), col->writeConcern(), col->waitForSync(),
+          waitForSyncReplication, velocy.slice(), serverState->getId(),
+          serverState->getRebootId(), replicatedLogs});
       vpackData.emplace_back(velocy.steal());
     }  // for col : collections
 
