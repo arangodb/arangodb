@@ -6,7 +6,7 @@
 
 @RESTDESCRIPTION
 This call reports progress about a soft coordinator shutdown (see
-documentation of `DELETE /_admin/shutdown?soft=true`. 
+documentation of `DELETE /_admin/shutdown?soft=true`). 
 In this case, the following types of operations are tracked:
 
  - AQL cursors (in particular streaming cursors)
