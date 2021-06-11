@@ -8848,6 +8848,105 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
   return AqlValue{input};
 }
 
+double gauss_decay_f(const double arg, const double origin, const double scale, const double offset = 0, const double decay = 0.5) {
+
+  double sigma_sqr = - (scale * scale) / (2 * std::log(decay));
+  double val = std::exp(- (std::pow(std::max(0.0, std::fabs(arg - origin) - offset), 2)) / (2 * sigma_sqr));
+  return val > decay ? val : decay;
+}
+
+AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionContext,
+                                             AstNode const& node,
+                                             VPackFunctionParameters const& parameters) {
+
+  AqlValue const& arg_value = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& origin_value = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& scale_value = extractFunctionParameterValue(parameters, 2);
+  AqlValue const& offset_value = extractFunctionParameterValue(parameters, 3);
+  AqlValue const& decay_value = extractFunctionParameterValue(parameters, 4);
+
+  // extract AQL function name
+  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  TRI_ASSERT(impl != nullptr);
+
+  // check type of arguments
+  if ((!arg_value.isRange() && !arg_value.isArray() && !arg_value.isNumber()) ||
+    !origin_value.isNumber() || !scale_value.isNumber() ||
+    !offset_value.isNumber() || !decay_value.isNumber()) {
+
+    registerInvalidArgumentWarning(expressionContext, impl->name.c_str());
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // extracting values
+  bool failed;
+  bool error = false;
+  double origin = origin_value.toDouble(failed);
+  error |= failed;
+  double scale = scale_value.toDouble(failed);
+  error |= failed;
+  double offset = offset_value.toDouble(failed);
+  error |= failed;
+  double decay = decay_value.toDouble(failed);
+  error |= failed;
+
+  if (error) {
+    registerWarning(expressionContext, impl->name.c_str(), TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // check that parameters are correct
+  if (origin < 0 || scale < 0 || offset < 0 || decay < 0) {
+    registerWarning(expressionContext, impl->name.c_str(), TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // argument is number
+  if (arg_value.isNumber()) {
+      double arg = arg_value.slice().getNumber<double>();
+      double func_res = gauss_decay_f(arg, origin, scale, offset, decay);
+      return ::numberValue(func_res, true);
+  } else {
+    // argument is array or range
+    auto* trx = &expressionContext->trx();
+    AqlValueMaterializer materializer(&trx->vpackOptions());
+    VPackSlice slice = materializer.slice(arg_value, true);
+    TRI_ASSERT(slice.isArray());
+
+    VPackBuilder builder;
+    {
+      VPackArrayBuilder array_builder(&builder);
+      for (VPackSlice curr_arg : VPackArrayIterator(slice)) {
+        if (!curr_arg.isNumber()) {
+          registerWarning(expressionContext, impl->name.c_str(), TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+          return AqlValue(AqlValueHintNull());
+        }
+        double arg = curr_arg.getNumber<double>();
+        double func_res = gauss_decay_f(arg, origin, scale, offset, decay);
+        builder.add(VPackValue(func_res));
+      }
+    }
+
+    return AqlValue(builder.slice());
+  }
+}
+
+AqlValue Functions::ExpDecay(arangodb::aql::ExpressionContext* expressionContext,
+                                             AstNode const& node,
+                                             VPackFunctionParameters const& parameters) {
+  // temp plug
+  AqlValue tmp;
+  return tmp;
+}
+
+AqlValue Functions::LinearDecay(arangodb::aql::ExpressionContext* expressionContext,
+                                             AstNode const& node,
+                                             VPackFunctionParameters const& parameters) {
+  // temp plug
+  AqlValue tmp;
+  return tmp;
+}
+
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& params) {
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
