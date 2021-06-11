@@ -56,9 +56,8 @@ void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue c
   _vars.try_emplace(var, value);
 }
 
-void FixedVarExpressionContext::overwriteVariableValue(Variable const* var,
-                                                       AqlValue const& value) {
-  _vars.insert_or_assign(var, value);
+void FixedVarExpressionContext::clearVariableValue(Variable const* var) {
+  _vars.erase(var);
 }
 
 void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const& opts,

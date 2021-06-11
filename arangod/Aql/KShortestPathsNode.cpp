@@ -356,8 +356,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       // TODO FIXME END
 
       BaseProviderOptions forwardProviderOptions(opts->tmpVar(), usedIndexes,
+                                                 opts->getExpressionCtx(),
                                                  opts->collectionToShard());
       BaseProviderOptions backwardProviderOptions(opts->tmpVar(), reversedUsedIndexes,
+                                                  opts->getExpressionCtx(),
                                                   opts->collectionToShard());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==

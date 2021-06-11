@@ -178,6 +178,8 @@ struct BaseOptions {
   bool refactor() const { return _refactor; }
 
   aql::Variable const* tmpVar();  // TODO check public
+  arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
+
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
  protected:

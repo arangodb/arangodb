@@ -54,10 +54,9 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
   // if the variable already holds a value, this method will keep the old value.
   void setVariableValue(Variable const*, AqlValue const&);
 
-  // @brief This method will set the given variable to the given AQL value
-  // if the variable already holds a value, the old value is dropped and
-  // overwritten with the new one.
-  void overwriteVariableValue(Variable const*, AqlValue const&);
+  // @brief This method will only clear the given variable, and keep
+  // all others intact. If the variable does not exist, this is a noop.
+  void clearVariableValue(Variable const*);
 
   void serializeAllVariables(velocypack::Options const& opts,
                              arangodb::velocypack::Builder&) const;

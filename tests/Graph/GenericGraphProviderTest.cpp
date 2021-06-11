@@ -67,6 +67,8 @@ class GraphProviderTest : public ::testing::Test {
 
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
 
   std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
 
@@ -106,11 +108,14 @@ class GraphProviderTest : public ::testing::Test {
       std::vector<IndexAccessor> usedIndexes{};
       usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr});
 
+      _expressionContext = std::make_unique<arangodb::aql::FixedVarExpressionContext>(
+          query->trxForOptimization(), *query, _functionsCache);
+
       BaseProviderOptions opts(
           tmpVar,
           std::make_pair(std::move(usedIndexes),
                          std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-          _emptyShardMap);
+          *_expressionContext.get(), _emptyShardMap);
       return SingleServerProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {

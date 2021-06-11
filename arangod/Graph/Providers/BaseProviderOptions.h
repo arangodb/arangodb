@@ -64,6 +64,7 @@ struct BaseProviderOptions {
   BaseProviderOptions(
       aql::Variable const* tmpVar,
       std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> indexInfo,
+      aql::FixedVarExpressionContext& expressionContext,
       std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
 
   aql::Variable const* tmpVar() const;
@@ -71,12 +72,18 @@ struct BaseProviderOptions {
 
   std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap() const;
 
+  aql::FixedVarExpressionContext& expressionContext() const;
+
  private:
   // The temporary Variable used in the Indexes
   aql::Variable const* _temporaryVariable;
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
   std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> _indexInformation;
+
+  // The context of AQL variables. These variables are set from the outside.
+  // and the caller needs to make sure the reference stays valid
+  aql::FixedVarExpressionContext& _expressionContext;
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
   std::unordered_map<std::string, std::vector<std::string>> const& _collectionToShardMap;

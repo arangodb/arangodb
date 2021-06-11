@@ -117,7 +117,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     TRI_ASSERT(shardList.isArray());
     for (VPackSlice const shard : VPackArrayIterator(shardList)) {
       TRI_ASSERT(shard.isString());
-      _query.collections().add(shard.copyString(), AccessMode::Type::READ, aql::Collection::Hint::Collection);
+      _query.collections().add(shard.copyString(), AccessMode::Type::READ, aql::Collection::Hint::Shard);
     }
   }
 

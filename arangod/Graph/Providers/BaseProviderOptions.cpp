@@ -52,9 +52,11 @@ std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
 BaseProviderOptions::BaseProviderOptions(
     aql::Variable const* tmpVar,
     std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> indexInfo,
+    aql::FixedVarExpressionContext& expressionContext,
     std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
+      _expressionContext(expressionContext),
       _collectionToShardMap(collectionToShardMap) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
@@ -69,6 +71,10 @@ BaseProviderOptions::indexInformations() const {
 
 std::unordered_map<std::string, std::vector<std::string>> const& BaseProviderOptions::collectionToShardMap() const {
   return _collectionToShardMap;
+}
+
+aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
+  return _expressionContext;
 }
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(

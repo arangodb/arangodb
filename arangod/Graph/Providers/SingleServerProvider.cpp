@@ -93,7 +93,7 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
              _opts.collectionToShardMap()),
       _stats{} {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
-  _cursor = buildCursor(queryContext);
+  _cursor = buildCursor(opts.expressionContext());
 }
 
 void SingleServerProvider::activateCache(bool enableDocumentCache) {
@@ -144,23 +144,25 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
   _cursor->rearm(vertex.getID(), 0);
-  _cursor->readAll(*this, _stats, step.getDepth(), [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
-    VertexType id = _cache.persistString(([&]() -> auto {
-      if (edge.isString()) {
-        return VertexType(edge);
-      } else {
-        VertexType other(transaction::helpers::extractFromFromDocument(edge));
-        if (other == vertex.getID()) {  // TODO: Check getId - discuss
-          other = VertexType(transaction::helpers::extractToFromDocument(edge));
-        }
-        return other;
-      }
-    })());
-    // TODO: Adjust log output
-    LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
-        << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
-    callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
-  });
+  _cursor->readAll(
+      *this, _stats, step.getDepth(),
+      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
+        VertexType id = _cache.persistString(([&]() -> auto {
+          if (edge.isString()) {
+            return VertexType(edge);
+          } else {
+            VertexType other(transaction::helpers::extractFromFromDocument(edge));
+            if (other == vertex.getID()) {  // TODO: Check getId - discuss
+              other = VertexType(transaction::helpers::extractToFromDocument(edge));
+            }
+            return other;
+          }
+        })());
+        // TODO: Adjust log output
+        LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
+            << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
+        callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
+      });
 }
 
 void SingleServerProvider::addVertexToBuilder(Step::Vertex const& vertex,
@@ -174,10 +176,10 @@ void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor(
-    arangodb::aql::QueryContext& queryContext) {
+    arangodb::aql::FixedVarExpressionContext& expressionContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor>(
       trx(), _opts.tmpVar(), _opts.indexInformations().first,
-      _opts.indexInformations().second, queryContext);
+      _opts.indexInformations().second, expressionContext);
 }
 
 arangodb::transaction::Methods* SingleServerProvider::trx() {

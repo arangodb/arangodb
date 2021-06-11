@@ -62,6 +62,8 @@ class SingleServerProviderTest : public ::testing::Test {
   std::unique_ptr<arangodb::aql::Query> query{nullptr};
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
 
   // Expression Parts
   aql::Variable* _tmpVar{nullptr};
@@ -94,10 +96,12 @@ class SingleServerProviderTest : public ::testing::Test {
     auto expr = conditionKeyMatches(stringToMatch);
     usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, expr});
 
+    _expressionContext = std::make_unique<arangodb::aql::FixedVarExpressionContext>(
+        query->trxForOptimization(), *query, _functionsCache);
     BaseProviderOptions opts(_tmpVar,
                              std::make_pair(std::move(usedIndexes),
                                             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-                             _emptyShardMap);
+                             *_expressionContext.get(), _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 

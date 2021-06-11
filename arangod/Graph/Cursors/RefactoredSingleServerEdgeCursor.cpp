@@ -127,11 +127,8 @@ RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
     transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
     std::vector<IndexAccessor> const& globalIndexConditions,
     std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
-    arangodb::aql::QueryContext& queryContext)
-    : _tmpVar(tmpVar),
-      _currentCursor(0),
-      _trx(trx),
-      _expressionCtx(*_trx, queryContext, _aqlFunctionsInternalCache) {
+    arangodb::aql::FixedVarExpressionContext& expressionContext)
+    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx), _expressionCtx(expressionContext) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!globalIndexConditions.empty());
   _lookupInfo.reserve(globalIndexConditions.size());
@@ -179,7 +176,8 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
   TRI_ASSERT(!_lookupInfo.empty());
   VPackBuilder tmpBuilder;
 
-  auto handleExpression = [&](aql::Expression* expression, EdgeDocumentToken edgeToken, VPackSlice edge) {
+  auto handleExpression = [&](aql::Expression* expression,
+                              EdgeDocumentToken edgeToken, VPackSlice edge) {
     if (edge.isString()) {
       tmpBuilder.clear();
       provider.insertEdgeIntoResult(edgeToken, tmpBuilder);
@@ -207,14 +205,16 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
             (_depthLookupInfo.find(depth) == _depthLookupInfo.end()) ? false : true;
         if (foundDepthInfo && _depthLookupInfo.at(depth).size() > 0 &&
             _depthLookupInfo.at(depth)[_currentCursor].getExpression() != nullptr) {
-          if (!handleExpression(_depthLookupInfo.at(depth)[_currentCursor].getExpression(), edgeToken, edge)) {
+          if (!handleExpression(_depthLookupInfo.at(depth)[_currentCursor].getExpression(),
+                                edgeToken, edge)) {
             stats.incrFiltered();
             return false;
           }
         } else {
           // eval global expression if available AND only if no depth specific expression needs to be handled before
           if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
-            if (!handleExpression(_lookupInfo[_currentCursor].getExpression(), edgeToken, edge)) {
+            if (!handleExpression(_lookupInfo[_currentCursor].getExpression(),
+                                  edgeToken, edge)) {
               stats.incrFiltered();
               return false;
             }
@@ -267,22 +267,16 @@ bool RefactoredSingleServerEdgeCursor::evaluateExpression(arangodb::aql::Express
     return true;
   }
 
-  VPackBuilder builder;
-  expression->toVelocyPack(builder, false);
-
   TRI_ASSERT(value.isObject() || value.isNull());
-  builder.clear();
-  _tmpVar->toVelocyPack(builder);
 
-  expression->setVariable(_tmpVar, value);
+  aql::AqlValue edgeVal(aql::AqlValueHintDocumentNoCopy(value.begin()));
+  _expressionCtx.setVariableValue(_tmpVar, edgeVal);
+  TRI_DEFER(_expressionCtx.clearVariableValue(_tmpVar));
+
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);
+  aql::AqlValueGuard guard(res, mustDestroy);
   TRI_ASSERT(res.isBoolean());
-  bool result = res.toBoolean();
-  expression->clearVariable(_tmpVar);
-  if (mustDestroy) {
-    res.destroy();
-  }
 
-  return result;
+  return res.toBoolean();
 }
