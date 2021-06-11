@@ -162,9 +162,13 @@ class GraphProviderTest : public ::testing::Test {
         std::tie(preparedResponses, engineId) =
             graph.simulateApi(server, expectedVerticesEdgesBundleToFetch, opts);
         // Note: Please don't remove for debugging purpose.
-        /*for (auto const& resp : preparedResponses) {
-          LOG_DEVEL << resp.generateResponse()->copyPayload().get()->toString();
-        }*/
+#if 0
+        for (auto const& resp : preparedResponses) {
+          auto payload = resp.generateResponse()->copyPayload();
+          VPackSlice husti(payload->data());
+          LOG_DEVEL << husti.toJson();
+        }
+#endif
       }
 
       server = std::make_unique<mocks::MockCoordinator>(true, false);
