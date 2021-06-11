@@ -124,6 +124,15 @@ struct envelope {
       return std::move(*this);
     }
 
+    template<typename F>
+    precs_trx cond(bool condition, F&& func) && {
+      static_assert(std::is_invocable_r_v<precs_trx, F, precs_trx&&>);
+      if (condition) {
+        return std::invoke(func, std::move(*this));
+      }
+      return std::move(*this);
+    }
+
     envelope end(std::string const& clientId = {}) {
       _builder->close();
       _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));

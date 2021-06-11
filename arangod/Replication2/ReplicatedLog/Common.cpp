@@ -139,3 +139,7 @@ auto replication2::to_string(LogId logId) -> std::string {
 auto replication2::to_string(LogTerm term) -> std::string {
   return std::to_string(term.value);
 }
+
+auto replication2::to_string(LogIndex index) -> std::string {
+  return std::to_string(index.value);
+}

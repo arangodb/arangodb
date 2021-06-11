@@ -24,6 +24,7 @@
 #include "Supervision.h"
 
 #include <Basics/StringUtils.h>
+#include <Replication2/AgencyMethods.h>
 #include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
 #include <thread>
 
@@ -2224,45 +2225,16 @@ void Supervision::checkBrokenAnalyzers() {
 
 namespace {
 
+using namespace replication2;
 using namespace replication2::agency;
 
 void updateTerm(Agent* agent, std::string const& agencyPrefix, std::string const& database,
-                std::string const& logId, uint64_t oldTerm, LogPlanTermSpecification const& newSpec) {
+                LogId logId, LogTerm oldTerm, LogPlanTermSpecification const& newSpec) {
   auto envelope = std::make_shared<Builder>();
-  {
-    VPackArrayBuilder trxs(envelope.get());
-    {
-      auto path = cluster::paths::aliases::plan()
-                      ->replicatedLogs()
-                      ->database(database)
-                      ->log(logId)
-                      ->currentTerm()
-                      ->str();
 
-      VPackArrayBuilder trx(envelope.get());
-      {
-        VPackObjectBuilder operation(envelope.get());
-        // increment Plan Version
-        {
-          VPackObjectBuilder o(envelope.get(), agencyPrefix + "/" + PLAN_VERSION);
-          envelope->add("op", VPackValue("increment"));
-        }
-        // store the new plan
-        {
-          VPackObjectBuilder o(envelope.get(), path);
-          envelope->add("op", VPackValue("set"));
-          envelope->add(VPackValue("new"));
-          newSpec.toVelocyPack(*envelope);
-        }
-      }
-      {
-        // precondition that the term is unchanged
-        VPackObjectBuilder preconditions(envelope.get());
-        envelope->add(path + "/term",
-                      VPackValue(oldTerm));
-      }
-    }
-  }
+  replication2::agency::methods::updateTermSpecificationTrx(
+      arangodb::agency::envelope::into_builder(*envelope), database, logId, newSpec, oldTerm)
+      .done();
 
   write_ret_t res = agent->write(envelope);
   if (!res.successful()) {
@@ -2308,7 +2280,7 @@ void Supervision::checkReplicatedLogs() {
             newTermSpec.term.value += 1;
             // TODO collect all changes in one batch
             //      it is likely that there is more than one replicated log
-            updateTerm(_agent, _agencyPrefix, dbName, idString, term->term.value, newTermSpec);
+            updateTerm(_agent, _agencyPrefix, dbName, spec.id, term->term, newTermSpec);
           }
         } else {
           LOG_DEVEL << "replicated log " << dbName << "/" << idString << " has no leader!";
@@ -2367,8 +2339,7 @@ void Supervision::checkReplicatedLogs() {
                   LogPlanTermSpecification::Leader{newLeader, RebootId{rebootId}};
               LOG_DEVEL << "declaring " << newLeader << " as new leader for log "
                         << dbName << "/" << idString;
-              updateTerm(_agent, _agencyPrefix, dbName, idString,
-                         spec.currentTerm->term.value, newTerm);
+              updateTerm(_agent, _agencyPrefix, dbName, spec.id, term->term, newTerm);
             } else {
               LOG_DEVEL << "reboot id of server " << newLeader << " not found!";
             }

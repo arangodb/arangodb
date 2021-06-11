@@ -23,7 +23,6 @@
 #include "RestLogHandler.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <Cluster/ServerState.h>
@@ -31,9 +30,9 @@
 #include <Network/Methods.h>
 #include <Network/NetworkFeature.h>
 
-#include <Agency/AsyncAgencyComm.h>
-#include <Agency/TransactionBuilder.h>
 #include <Cluster/ClusterFeature.h>
+
+#include "Replication2/AgencyMethods.h"
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
@@ -87,7 +86,7 @@ struct arangodb::ReplicatedLogMethods {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual auto setTerm(LogId, replication2::agency::LogPlanTermSpecification const& term) const
+  virtual auto updateTermSpecification(LogId, replication2::agency::LogPlanTermSpecification const& term) const
       -> futures::Future<Result> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -148,6 +147,40 @@ auto sendReadEntryRequest(network::ConnectionPool *pool, std::string const& serv
         return std::optional<LogEntry>(std::move(entry));
       });
 }
+
+auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
+                     std::string const& database, LogId id, LogIndex first)
+    -> futures::Future<std::unique_ptr<LogIterator>> {
+  auto path = basics::StringUtils::joinT("/", "_api/log", id, "tail") + "?first=" + to_string(first);
+
+  network::RequestOptions opts;
+  opts.database = database;
+  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Get, path)
+      .thenValue([](network::Response&& resp) -> std::unique_ptr<LogIterator> {
+        if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+          THROW_ARANGO_EXCEPTION(resp.combinedResult());
+        }
+
+        struct VPackLogIterator final : LogIterator {
+          explicit VPackLogIterator(std::shared_ptr<velocypack::Buffer<uint8_t>> buffer_ptr)
+              : buffer(std::move(buffer_ptr)), iter(VPackSlice(buffer->data())), end(iter.end()) {}
+
+          auto next() -> std::optional<LogEntry> override {
+            if (iter != end) {
+              return LogEntry::fromVelocyPack(*iter++);
+            }
+            return std::nullopt;
+          }
+
+         private:
+          std::shared_ptr<velocypack::Buffer<uint8_t>> buffer;
+          VPackArrayIterator iter;
+          VPackArrayIterator end;
+        };
+
+        return std::make_unique<VPackLogIterator>(resp.response().copyPayload());
+      });
+}
 }
 
 struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
@@ -189,94 +222,31 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
     return sendLogStatusRequest(pool, *leader, vocbase.name(), id);
   }
 
-  auto createReplicatedLog(const replication2::agency::LogPlanSpecification& spec) const
-      -> futures::Future<Result> override {
-    AsyncAgencyComm ac;
+  auto tailEntries(LogId id, LogIndex first) const
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
 
-    VPackBufferUInt8 trx;
-    {
-      auto path = paths::plan()
-                      ->replicatedLogs()
-                      ->database(vocbase.name())
-                      ->log(to_string(spec.id))
-                      ->str();
-
-      VPackBuilder builder(trx);
-      arangodb::agency::envelope::into_builder(builder)
-          .write()
-          .emplace_object(path,
-                          [&](VPackBuilder& builder) {
-                            spec.toVelocyPack(builder);
-                          })
-          .inc(paths::plan()->version()->str())
-          .precs()
-          .isEmpty(path)
-          .end()
-          .done();
+    auto leader = ci.getReplicatedLogLeader(vocbase.name(), id);
+    if (!leader) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
 
-    return ac.sendWriteTransaction(std::chrono::seconds(120), std::move(trx))
-        .thenValue([](AsyncAgencyCommResult&& res) {
-          return res.asResult();  // TODO
-        });
+    auto pool = server.getFeature<NetworkFeature>().pool();
+    return sendTailRequest(pool, *leader, vocbase.name(), id, first);
+  }
+
+  auto createReplicatedLog(replication2::agency::LogPlanSpecification const& spec) const
+      -> futures::Future<Result> override {
+    return replication2::agency::methods::createReplicatedLog(vocbase.name(), spec);
   }
 
   auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
-    AsyncAgencyComm ac;
-
-    VPackBufferUInt8 trx;
-    {
-      auto path = paths::plan()
-                      ->replicatedLogs()
-                      ->database(vocbase.name())
-                      ->log(to_string(id))
-                      ->str();
-
-      VPackBuilder builder(trx);
-      arangodb::agency::envelope::into_builder(builder)
-          .write()
-          .remove(path)
-          .inc(paths::plan()->version()->str())
-          .precs()
-          .isNotEmpty(path)
-          .end()
-          .done();
-    }
-
-    return ac.sendWriteTransaction(std::chrono::seconds(120), std::move(trx))
-        .thenValue([](AsyncAgencyCommResult&& res) {
-          return res.asResult();  // TODO
-        });
+    return replication2::agency::methods::deleteReplicatedLog(vocbase.name(), id);
   }
 
-  auto setTerm(LogId id, replication2::agency::LogPlanTermSpecification const& term) const
-  -> futures::Future<Result> override {
-    AsyncAgencyComm ac;
-
-    VPackBufferUInt8 trx;
-    {
-      auto path = paths::plan()->replicatedLogs()->database(vocbase.name())->log(to_string(id));
-      auto logPath = path->str();
-      auto termPath = path->currentTerm()->str();
-
-      VPackBuilder builder(trx);
-      arangodb::agency::envelope::into_builder(builder)
-          .write()
-          .emplace_object(termPath,
-                          [&](VPackBuilder& builder) {
-                            term.toVelocyPack(builder);
-                          })
-          .inc(paths::plan()->version()->str())
-          .precs()
-          .isNotEmpty(logPath)
-          .end()
-          .done();
-    }
-
-    return ac.sendWriteTransaction(std::chrono::seconds(120), std::move(trx))
-        .thenValue([](AsyncAgencyCommResult&& res) {
-          return res.asResult();  // TODO
-        });
+  auto updateTermSpecification(LogId id, replication2::agency::LogPlanTermSpecification const& term) const
+      -> futures::Future<Result> override {
+    return replication2::agency::methods::updateTermSpecification(vocbase.name(), id, term);
   }
 
   explicit ReplicatedLogMethodsCoord(TRI_vocbase_t& vocbase,
@@ -411,9 +381,10 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
           quorum->toVelocyPack(response);
           generateOk(rest::ResponseCode::ACCEPTED, response.slice());
         }));
-  } else if(verb == "setTerm") {
+  } else if(verb == "updateTermSpecification") {
     auto term = replication2::agency::LogPlanTermSpecification(replication2::agency::from_velocypack, body);
-    return waitForFuture(methods.setTerm(logId, term).thenValue([this](auto&& result) {
+    return waitForFuture(
+        methods.updateTermSpecification(logId, term).thenValue([this](auto&& result) {
       if (result.ok()) {
         generateOk(ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
       } else {
@@ -510,7 +481,7 @@ RestStatus RestLogHandler::handleGetRequest(ReplicatedLogMethods const& methods)
                     "expect GET /_api/log/<log-id>/tail");
       return RestStatus::DONE;
     }
-    LogIndex logIdx{basics::StringUtils::uint64(_request->value("lastId"))};
+    LogIndex logIdx{basics::StringUtils::uint64(_request->value("first"))};
     auto fut = methods.tailEntries(logId, logIdx).thenValue([&](std::unique_ptr<LogIterator> iter) {
       VPackBuilder builder;
       {

@@ -874,6 +874,9 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
           std::shared_ptr<Log const> log(std::string value) const {
             return Log::make_shared(shared_from_this(), std::move(value));
           }
+          std::shared_ptr<Log const> log(replication2::LogId id) const {
+            return Log::make_shared(shared_from_this(), std::to_string(id.id()));
+          }
         };
 
         std::shared_ptr<Database const> database(DatabaseID name) const {
