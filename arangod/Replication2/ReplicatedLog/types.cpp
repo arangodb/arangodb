@@ -24,6 +24,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/debugging.h>
+#include <Basics/StaticStrings.h>
 #include <Basics/overload.h>
 #include <Basics/voc-errors.h>
 #include <velocypack/Builder.h>
@@ -57,7 +58,7 @@ replicated_log::QuorumData::QuorumData(LogIndex const& index, LogTerm term,
     : index(index), term(term), quorum(std::move(quorum)) {}
 
 replicated_log::QuorumData::QuorumData(VPackSlice slice) {
-  index = LogIndex{slice.get("index").extract<std::size_t>()};
+  index = LogIndex{slice.get(StaticStrings::Index).extract<std::size_t>()};
   term = LogTerm{slice.get("term").extract<std::size_t>()};
   for (auto part : VPackArrayIterator(slice.get("quorum"))) {
     quorum.push_back(part.copyString());
@@ -66,7 +67,7 @@ replicated_log::QuorumData::QuorumData(VPackSlice slice) {
 
 void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add("index", VPackValue(index.value));
+  builder.add(StaticStrings::Index, VPackValue(index.value));
   builder.add("term", VPackValue(term.value));
   {
     VPackArrayBuilder ab(&builder, "quorum");
@@ -160,28 +161,28 @@ auto replicated_log::operator<=(replicated_log::TermIndexPair const& left,
 
 void replicated_log::TermIndexPair::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add("term", VPackValue(term.value));
-  builder.add("index", VPackValue(index.value));
+  builder.add(StaticStrings::Term, VPackValue(term.value));
+  builder.add(StaticStrings::Index, VPackValue(index.value));
 }
 
 auto replicated_log::TermIndexPair::fromVelocyPack(velocypack::Slice slice) -> TermIndexPair {
   TermIndexPair pair;
-  pair.term = LogTerm{slice.get("term").getNumericValue<size_t>()};
-  pair.index = LogIndex{slice.get("index").getNumericValue<size_t>()};
+  pair.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<size_t>()};
+  pair.index = LogIndex{slice.get(StaticStrings::Index).getNumericValue<size_t>()};
   return pair;
 }
 
 void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("commitIndex", VPackValue(commitIndex.value));
-  builder.add(VPackValue("spearHead"));
+  builder.add(VPackValue(StaticStrings::Spearhead));
   spearHead.toVelocyPack(builder);
 }
 
 auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> LogStatistics {
   LogStatistics stats;
   stats.commitIndex = LogIndex{slice.get("commitIndex").getNumericValue<size_t>()};
-  stats.spearHead = TermIndexPair::fromVelocyPack(slice.get("spearHead"));
+  stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   return stats;
 }
 
@@ -197,30 +198,30 @@ auto replicated_log::UnconfiguredStatus::fromVelocyPack(velocypack::Slice slice)
 
 void replicated_log::FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add("role", VPackValue("follower"));
-  builder.add("leader", VPackValue(leader));
-  builder.add("term", VPackValue(term.value));
+  builder.add("role", VPackValue(StaticStrings::Follower));
+  builder.add(StaticStrings::Leader, VPackValue(leader));
+  builder.add(StaticStrings::Term, VPackValue(term.value));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
 }
 
 auto replicated_log::FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
-  TRI_ASSERT(slice.get("role").isEqualString("follower"));
+  TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Follower));
   FollowerStatus status;
-  status.leader = slice.get("leader").copyString();
-  status.term = LogTerm{slice.get("term").getNumericValue<std::size_t>()};
+  status.leader = slice.get(StaticStrings::Leader).copyString();
+  status.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<std::size_t>()};
   status.local = LogStatistics::fromVelocyPack(slice);
   return status;
 }
 
 void replicated_log::LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add("role", VPackValue("leader"));
-  builder.add("term", VPackValue(term.value));
+  builder.add("role", VPackValue(StaticStrings::Leader));
+  builder.add(StaticStrings::Term, VPackValue(term.value));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
   {
-    VPackObjectBuilder ob2(&builder, "follower");
+    VPackObjectBuilder ob2(&builder, StaticStrings::Follower);
     for (auto const& [id, stat] : follower) {
       builder.add(VPackValue(id));
       stat.toVelocyPack(builder);
@@ -229,14 +230,14 @@ void replicated_log::LeaderStatus::toVelocyPack(velocypack::Builder& builder) co
 }
 
 auto replicated_log::LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
-  TRI_ASSERT(slice.get("role").isEqualString("leader"));
+  TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Leader));
   LeaderStatus status;
-  status.term = LogTerm{slice.get("term").getNumericValue<std::size_t>()};
+  status.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<std::size_t>()};
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
-  for (auto [key, value] : VPackObjectIterator(slice.get("follower"))) {
+  for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);
-    status.follower.emplace(id, std::move(stat));
+    status.follower.emplace(id, stat);
   }
   return status;
 }
@@ -244,7 +245,7 @@ auto replicated_log::LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> Le
 void replicated_log::LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("commitIndex", VPackValue(commitIndex.value));
-  builder.add(VPackValue("spearHead"));
+  builder.add(VPackValue(StaticStrings::Spearhead));
   spearHead.toVelocyPack(builder);
   builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
   builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
@@ -254,7 +255,7 @@ void replicated_log::LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::
 auto replicated_log::LeaderStatus::FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
   FollowerStatistics stats;
   stats.commitIndex = LogIndex{slice.get("commitIndex").getNumericValue<size_t>()};
-  stats.spearHead = TermIndexPair::fromVelocyPack(slice.get("spearHead"));
+  stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
   stats.lastRequestLatencyMS = slice.get("lastRequestLatencyMS").getDouble();
   return stats;
@@ -319,9 +320,9 @@ auto arangodb::replication2::replicated_log::getLocalStatistics(LogStatus const&
 
 auto replicated_log::statusFromVelocyPack(VPackSlice slice) -> replicated_log::LogStatus {
   auto role = slice.get("role");
-  if (role.isEqualString("leader")) {
+  if (role.isEqualString(StaticStrings::Leader)) {
     return LeaderStatus::fromVelocyPack(slice);
-  } else if (role.isEqualString("follower")) {
+  } else if (role.isEqualString(StaticStrings::Follower)) {
     return FollowerStatus::fromVelocyPack(slice);
   } else {
     return UnconfiguredStatus::fromVelocyPack(slice);
