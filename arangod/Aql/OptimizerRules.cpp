@@ -80,7 +80,6 @@
 namespace {
 
 bool willUseV8(arangodb::aql::ExecutionPlan const& plan) {
-  bool result{false};
   struct V8Checker : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
     bool before(arangodb::aql::ExecutionNode* n) override {
       if (n->getType() == arangodb::aql::ExecutionNode::CALCULATION &&
