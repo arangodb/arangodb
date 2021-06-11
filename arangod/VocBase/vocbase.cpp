@@ -93,6 +93,43 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+struct arangodb::VocBaseLogManager {
+  explicit VocBaseLogManager(arangodb::application_features::ApplicationServer& server) {}
+
+  auto getReplicatedLogById(arangodb::replication2::LogId id) const
+  -> arangodb::replication2::replicated_log::ReplicatedLog const& {
+    if (auto iter = _logs.find(id); iter != _logs.end()) {
+      return iter->second;
+    }
+    // THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+                                  "replicated log %" PRIu64 " not found", id.id());
+  }
+
+  auto getReplicatedLogById(arangodb::replication2::LogId id)
+  -> arangodb::replication2::replicated_log::ReplicatedLog& {
+    if (auto iter = _logs.find(id); iter != _logs.end()) {
+      return iter->second;
+    }
+    // THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+                                  "replicated log %" PRIu64 " not found", id.id());
+  }
+
+  auto resignAll() {
+    std::unique_lock guard(_mutex);
+    for (auto&& [id, log] : _logs) {
+      auto core = log.drop();
+      core.release();
+    }
+    _logs.clear();
+  }
+
+  // Needs to be a map for stable pointers
+  std::map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::ReplicatedLog> _logs;
+  std::mutex _mutex;
+};
+
 /// @brief increase the reference counter for a database
 bool TRI_vocbase_t::use() {
   auto expected = _refCount.load(std::memory_order_relaxed);
@@ -789,6 +826,7 @@ void TRI_vocbase_t::shutdown() {
   }
 
   _collections.clear();
+  _logManager->resignAll();
 }
 
 /// @brief returns names of all known (document) collections
@@ -1592,33 +1630,6 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem)
   return TRI_ERROR_NO_ERROR;
 }
 
-struct arangodb::VocBaseLogManager {
-  explicit VocBaseLogManager(arangodb::application_features::ApplicationServer& server) {}
-
-  auto getReplicatedLogById(arangodb::replication2::LogId id) const
-      -> arangodb::replication2::replicated_log::ReplicatedLog const& {
-    if (auto iter = _logs.find(id); iter != _logs.end()) {
-      return iter->second;
-    }
-    // THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-                                  "replicated log %" PRIu64 " not found", id.id());
-  }
-
-  auto getReplicatedLogById(arangodb::replication2::LogId id)
-      -> arangodb::replication2::replicated_log::ReplicatedLog& {
-    if (auto iter = _logs.find(id); iter != _logs.end()) {
-      return iter->second;
-    }
-    // THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-                                  "replicated log %" PRIu64 " not found", id.id());
-  }
-
-  // Needs to be a map for stable pointers
-  std::map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::ReplicatedLog> _logs;
-  std::mutex _mutex;
-};
 
 TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&& info)
     : _server(info.server()),
