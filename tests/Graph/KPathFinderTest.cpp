@@ -69,6 +69,11 @@ class KPathFinderTest
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
 
+  // PathValidatorOptions parts (used for API not under test here)
+  aql::Variable _tmpVar{"tmp", 0, false};
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_query->trxForOptimization(),
+                                                              *_query.get(), _functionsCache};
   KPathFinderTest() {
     if (activateLogging) {
       Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
@@ -159,6 +164,7 @@ class KPathFinderTest
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder {
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
+    PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return KPathFinder{
         MockGraphProvider(*_query.get(),
                           MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
@@ -166,7 +172,7 @@ class KPathFinderTest
         MockGraphProvider(*_query.get(),
                           MockGraphProviderOptions{mockGraph, looseEndBehaviour(), true},
                           resourceMonitor),
-        std::move(options), resourceMonitor};
+        std::move(options), std::move(validatorOpts), resourceMonitor};
   }
 
   auto vId(size_t nr) -> std::string {

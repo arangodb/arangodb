@@ -82,11 +82,15 @@ class PathValidatorTest : public ::testing::Test {
   PathStore<Step> _pathStore{_resourceMonitor};
   StringHeap _heap{_resourceMonitor, 4096};
 
- protected:
   // Expression Parts
   aql::Ast _ast{*_query.get()};
   aql::Variable _tmpVar{"tmp", 0, false};
   aql::AstNode* _varNode{::InitializeReference(_ast, _tmpVar)};
+
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_query->trxForOptimization(),
+                                                              *_query, _functionsCache};
+  PathValidatorOptions _opts{&_tmpVar, _expressionContext};
 
  protected:
   VertexUniquenessLevel getVertexUniquness() {
@@ -105,9 +109,9 @@ class PathValidatorTest : public ::testing::Test {
 
   aql::Query* query() { return _query.get(); }
 
-  ValidatorType testee(PathValidatorOptions opts = PathValidatorOptions{}) {
+  ValidatorType testee() {
     ensureProvider();
-    return ValidatorType{*_provider.get(), this->store(), std::move(opts)};
+    return ValidatorType{*_provider.get(), this->store(), _opts};
   }
 
   Step startPath(size_t id) {
@@ -117,6 +121,10 @@ class PathValidatorTest : public ::testing::Test {
     auto hStr = _heap.registerString(ref);
     return _provider->startVertex(hStr);
   }
+
+  // Get and modify the options used in the Validator testee().
+  // Make sure to Modify them before calling testee() method.
+  PathValidatorOptions& options() { return _opts; }
 
   std::vector<Step> expandPath(Step previous) {
     // We at least have called startPath before, this ensured the provider
@@ -453,15 +461,10 @@ TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
   this->addPath({0, 1});
   std::string keyToMatch = "1";
 
-  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
-  arangodb::aql::FixedVarExpressionContext expressionContext =
-      arangodb::aql::FixedVarExpressionContext(this->query()->trxForOptimization(),
-                                               *this->query(), _functionsCache);
-  PathValidatorOptions opts(*(this->query()), this->tmpVar(), expressionContext);
-
   auto expression = this->conditionKeyMatches(keyToMatch);
+  auto& opts = this->options();
   opts.setAllVerticesExpression(std::move(expression));
-  auto validator = this->testee(std::move(opts));
+  auto validator = this->testee();
   {
     // Testing x._key == "1" with `{_key: "1"} => Should succeed
     Step s = this->startPath(1);

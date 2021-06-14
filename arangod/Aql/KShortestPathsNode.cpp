@@ -342,6 +342,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                  opts->maxDepth};
+    PathValidatorOptions validatorOptions(opts->tmpVar(), opts->getExpressionCtx());
 
     if (!ServerState::instance()->isCoordinator()) {
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
@@ -371,7 +372,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                  opts->query().resourceMonitor()},
             SingleServerProvider{opts->query(), backwardProviderOptions,
                                  opts->query().resourceMonitor()},
-            std::move(enumeratorOptions), opts->query().resourceMonitor());
+            std::move(enumeratorOptions), std::move(validatorOptions),
+            opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -387,7 +389,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                                  opts->query().resourceMonitor()},
             ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions,
                                                  opts->query().resourceMonitor()},
-            std::move(enumeratorOptions), opts->query().resourceMonitor());
+            std::move(enumeratorOptions), std::move(validatorOptions),
+            opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -411,7 +414,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                             opts->query().resourceMonitor()},
             ClusterProvider{opts->query(), backwardProviderOptions,
                             opts->query().resourceMonitor()},
-            std::move(enumeratorOptions), opts->query().resourceMonitor());
+            std::move(enumeratorOptions), std::move(validatorOptions),
+            opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -427,7 +431,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                             opts->query().resourceMonitor()},
             ProviderTracer<ClusterProvider>{opts->query(), backwardProviderOptions,
                                             opts->query().resourceMonitor()},
-            std::move(enumeratorOptions), opts->query().resourceMonitor());
+            std::move(enumeratorOptions), std::move(validatorOptions),
+            opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),

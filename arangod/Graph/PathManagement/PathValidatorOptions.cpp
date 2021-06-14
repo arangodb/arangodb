@@ -28,17 +28,28 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-PathValidatorOptions::PathValidatorOptions()
-    : _tmpVar(nullptr), _expressionCtx(nullptr) {}
-
-PathValidatorOptions::PathValidatorOptions(aql::QueryContext& query,
-                                           aql::Variable const* tmpVar,
+PathValidatorOptions::PathValidatorOptions(aql::Variable const* tmpVar,
                                            arangodb::aql::FixedVarExpressionContext& expressionContext)
-    : _tmpVar(tmpVar), _expressionCtx(&expressionContext) {}
+    : _tmpVar(tmpVar), _expressionCtx(expressionContext) {}
 
-PathValidatorOptions::~PathValidatorOptions() = default;
+PathValidatorOptions::PathValidatorOptions(PathValidatorOptions const& other)
+    : _allVerticesExpression(nullptr),
+      _tmpVar(other._tmpVar),
+      _expressionCtx(other._expressionCtx) {
+  auto ast = _expressionCtx.query().ast();
 
-PathValidatorOptions::PathValidatorOptions(PathValidatorOptions&&) = default;
+  // Now copy over the conditions
+  // We need to clone them, to keep two copied validators independent of each other.
+  // NOTE: We could make these expressions shared ptr, if we would make Expression::execute() const
+  // and read only. Right now the Expression::execute modifies local state.
+  if (other._allVerticesExpression != nullptr) {
+    _allVerticesExpression = other._allVerticesExpression->clone(ast);
+  }
+  _vertexExpressionOnDepth.reserve(other._vertexExpressionOnDepth.size());
+  for (auto const& [depth, expr] : other._vertexExpressionOnDepth) {
+    _vertexExpressionOnDepth.emplace(depth, expr->clone(ast));
+  }
+}
 
 void PathValidatorOptions::setAllVerticesExpression(std::unique_ptr<aql::Expression> expression) {
   // All edge expression should not be set before
@@ -65,10 +76,6 @@ aql::Variable const* PathValidatorOptions::getTempVar() const {
   return _tmpVar;
 }
 
-aql::FixedVarExpressionContext* PathValidatorOptions::getExpressionContext() {
-  // We can only call this if we have been called with QueryContext contructor.
-  // Otherwise this object could not be constructed.
-  // However it is also only necessary if we actually have expressions to check.
-  TRI_ASSERT(_expressionCtx != nullptr);
+aql::FixedVarExpressionContext& PathValidatorOptions::getExpressionContext() {
   return _expressionCtx;
 }

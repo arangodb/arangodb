@@ -44,11 +44,11 @@ struct Variable;
 namespace graph {
 class PathValidatorOptions {
  public:
-  PathValidatorOptions();
-  PathValidatorOptions(aql::QueryContext& query, aql::Variable const* tmpVar,
+  PathValidatorOptions(aql::Variable const* tmpVar,
                        arangodb::aql::FixedVarExpressionContext& expressionContext);
-  ~PathValidatorOptions();
-  PathValidatorOptions(PathValidatorOptions&&);
+  ~PathValidatorOptions() = default;
+  PathValidatorOptions(PathValidatorOptions const&);
+  PathValidatorOptions(PathValidatorOptions&&) = default;
 
   /**
    * @brief Set the expression that needs to hold true for ALL vertices on the path.
@@ -71,7 +71,7 @@ class PathValidatorOptions {
 
   aql::Variable const* getTempVar() const;
 
-  aql::FixedVarExpressionContext* getExpressionContext();
+  aql::FixedVarExpressionContext& getExpressionContext();
 
  private:
   std::unique_ptr<aql::Expression> _allVerticesExpression;
@@ -81,13 +81,7 @@ class PathValidatorOptions {
 
   aql::Variable const* _tmpVar;
 
-  // Only needed for the fixed var expression context below. No real usage here.
-  std::unique_ptr<transaction::Methods> _trx;
-  // TODO: FixedVarExpressionContext is a bit overkill here, a lot of methods are implemented but not used.
-  // We may be able to simplify this and reduce the InputParameters for ValidatorOptions;
-
-  // TODO: Better use reference here - note: currently we need nullptr init in our c++ tests -
-  arangodb::aql::FixedVarExpressionContext* _expressionCtx;
+  arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 };
 }  // namespace graph
 }  // namespace arangodb

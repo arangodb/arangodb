@@ -48,10 +48,8 @@ template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqu
 auto PathValidator<ProviderType, PathStore, vertexUniqueness>::validatePath(
     typename PathStore::Step const& step) -> ValidationResult {
   auto ctx = _options.getExpressionContext();
-  if (ctx != nullptr) {
-    // Reset variables
-    ctx->clearVariableValues();
-  }
+  // Reset variables
+  ctx.clearVariableValues();
   auto res = evaluateVertexCondition(step);
   if (res.isFiltered() && res.isPruned()) {
     // Can give up here. This Value is not used
@@ -158,8 +156,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateExpressio
   bool mustDestroy = false;
   auto ctx = _options.getExpressionContext();
   aql::AqlValue tmpVal{value};
-  ctx->setVariableValue(tmpVar, tmpVal);
-  aql::AqlValue res = expression->execute(ctx, mustDestroy);
+  ctx.setVariableValue(tmpVar, tmpVal);
+  aql::AqlValue res = expression->execute(&ctx, mustDestroy);
   aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());
   return res.toBoolean();

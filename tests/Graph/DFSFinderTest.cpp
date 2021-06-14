@@ -68,6 +68,12 @@ class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEn
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
 
+  // PathValidatorOptions parts (used for API not under test here)
+  aql::Variable _tmpVar{"tmp", 0, false};
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_query->trxForOptimization(),
+                                                              *_query.get(), _functionsCache};
+
   DFSFinderTest() {
     if (activateLogging) {
       Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
@@ -163,7 +169,7 @@ class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEn
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> DFSFinder {
     arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth};
-    PathValidatorOptions validatorOpts{};
+    PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return DFSFinder({*_query.get(),
                       MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
                       resourceMonitor},

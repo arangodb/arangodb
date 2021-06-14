@@ -47,6 +47,7 @@ class HashedStringRef;
 
 namespace graph {
 
+class PathValidatorOptions;
 struct TwoSidedEnumeratorOptions;
 
 template <class ProviderType, class Step>
@@ -69,7 +70,7 @@ class TwoSidedEnumerator {
   class Ball {
    public:
     Ball(Direction dir, ProviderType&& provider, GraphOptions const& options,
-         arangodb::ResourceMonitor& resourceMonitor);
+         PathValidatorOptions validatorOptions, arangodb::ResourceMonitor& resourceMonitor);
     ~Ball();
     auto clear() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
@@ -82,7 +83,8 @@ class TwoSidedEnumerator {
 
     auto buildPath(Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void;
 
-    auto matchResultsInShell(Step const& match, ResultList& results, PathValidatorType const& otherSideValidator) -> void;
+    auto matchResultsInShell(Step const& match, ResultList& results,
+                             PathValidatorType const& otherSideValidator) -> void;
     auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results) -> void;
 
     // Ensure that we have fetched all vertices
@@ -118,7 +120,7 @@ class TwoSidedEnumerator {
 
  public:
   TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
-                     TwoSidedEnumeratorOptions&& options,
+                     TwoSidedEnumeratorOptions&& options, PathValidatorOptions validatorOptions,
                      arangodb::ResourceMonitor& resourceMonitor);
   TwoSidedEnumerator(TwoSidedEnumerator const& other) = delete;
   TwoSidedEnumerator(TwoSidedEnumerator&& other) noexcept = default;
