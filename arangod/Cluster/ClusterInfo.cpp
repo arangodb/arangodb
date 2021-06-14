@@ -3501,7 +3501,6 @@ Result ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
 
         if (coll->vocbase().replicationVersion() == replication::Version::TWO) {
           auto const& logs = *coll->shardingInfo()->replicatedLogs();
-          auto const& dbPath = paths::plan()->replicatedLogs()->database(dbName);
           VPackBuilder replicatedLogs;
           {
             VPackObjectBuilder guard(&replicatedLogs);
