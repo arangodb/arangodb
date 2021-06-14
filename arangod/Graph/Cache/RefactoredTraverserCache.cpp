@@ -203,10 +203,10 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
     auto it = _collectionToShardMap.find(collectionName);
     if (it == _collectionToShardMap.end()) {
       // Connected to a vertex where we do not know the Shard to.
-      throw Result{TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                   "collection not known to traversal: '" + collectionName +
-                       "'. please add 'WITH " + collectionName +
-                       "' as the first line in your AQL"};
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "collection not known to traversal: '" + collectionName +
+                                         "'. please add 'WITH " + collectionName +
+                                         "' as the first line in your AQL");
     }
     for (auto const& shard : it->second) {
       if (findDocumentInShard(shard)) {
