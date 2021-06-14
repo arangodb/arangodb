@@ -1336,12 +1336,18 @@ void SynchronizeShard::setState(ActionState state) {
     while (!_feature.server().isStopping() && clock::now() < stoppage) {
       cluster::fetchCurrentVersion(0.1 * timeout)
         .thenValue(
-          [&v] (auto&& res) { v = res.get(); })
+          [&v] (auto&& res) {
+            // we need to check if res is ok() in order to not trigger a 
+            // bad_optional_access exception here
+            if (res.ok()) {
+              v = res.get(); 
+            }
+          })
         .thenError<std::exception>(
           [this] (std::exception const& e) {
             LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
               << "Failed to acquire current version from agency while increasing shard version"
-              << " for shard "  << getDatabase() << "/" << getShard() << e.what();
+              << " for shard "  << getDatabase() << "/" << getShard() << ": " << e.what();
           })
         .wait();
       if (v > 0) {
