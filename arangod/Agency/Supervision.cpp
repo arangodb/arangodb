@@ -2306,7 +2306,7 @@ void Supervision::checkReplicatedLogs() {
           // if enough servers are found, declare the server with
           // the "best" log as leader in a new term
 
-          auto newLeader = replication2::ParticipantId{};
+          auto newLeaderSet = std::vector<replication2::ParticipantId>{};
           auto bestTermIndex = replication2::replicated_log::TermIndexPair{};
           auto numberOfAvailableParticipants = std::size_t{0};
 
@@ -2318,7 +2318,10 @@ void Supervision::checkReplicatedLogs() {
 
             numberOfAvailableParticipants += 1;
             if (status.spearhead >= bestTermIndex) {
-              newLeader = participant;
+              if (status.spearhead != bestTermIndex) {
+                newLeaderSet.clear();
+              }
+              newLeaderSet.push_back(participant);
               bestTermIndex = status.spearhead;
             }
           }
@@ -2329,6 +2332,9 @@ void Supervision::checkReplicatedLogs() {
           });
 
           if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
+            // Randomly select one of the best participants
+            auto const& newLeader = newLeaderSet.at(RandomGenerator::interval(newLeaderSet.size()));
+
             auto [rebootId, rebootIdFound] = snapshot().hasAsUInt(
                 curServersKnown + newLeader + "/" + StaticStrings::RebootId);
             if (rebootIdFound) {
