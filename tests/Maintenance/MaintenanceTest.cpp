@@ -762,11 +762,9 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   auto changeInternalCollectionTypePlan(std::string const& dbName, std::string const& planId,
                                         LogicalCollection::InternalValidatorType type,
                                         Node& plan) -> void {
-    auto path = arangodb::cluster::paths::aliases::plan()
-                    ->collections()
-                    ->database(dbName)
-                    ->collection(planId);
-    auto vec = path->vec(2);
+    using namespace arangodb::cluster::paths;
+    auto path = aliases::plan()->collections()->database(dbName)->collection(planId);
+    auto vec = path->vec(SkipComponents(2));
     ASSERT_TRUE(plan.has(vec)) << "The underlying test plan is modified, it "
                                   "does not contain Database '"
                                << dbName << "' and Collection '" << planId << "' anymore.";
@@ -1162,7 +1160,8 @@ TEST_F(MaintenanceTestActionPhaseOne,
     arangodb::maintenance::diffPlanLocal(engine, planToChangeset(plan), 0,
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+                                         arangodb::MaintenanceFeature::ShardActionMap{},
+                                         LocalLogsMap{});
     // Every server is responsible for something, either leader or follower
     ASSERT_FALSE(actions.empty());
     ASSERT_EQ(actions.size(), relevantShards.size());
