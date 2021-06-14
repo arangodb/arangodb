@@ -96,10 +96,10 @@ Result DBServerAgencySync::getLocalCollections(
     {
       auto [it, created] = replLogs.try_emplace(dbname, vocbase.getReplicatedLogs());
       if (!created) {
-        LOG_TOPIC("0e9d7", ERR, Logger::MAINTENANCE)
-            << "Failed to emplace new entry in local collection cache";
+        LOG_TOPIC("5d5c9", ERR, Logger::MAINTENANCE)
+            << "Failed to emplace new entry in local replicated logs cache";
         return Result(TRI_ERROR_INTERNAL,
-                      "Failed to emplace new entry in local collection cache");
+                      "Failed to emplace new entry in local replicated logs cache");
       }
     }
 

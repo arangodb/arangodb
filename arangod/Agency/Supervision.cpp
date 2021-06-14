@@ -2238,9 +2238,9 @@ void updateTerm(Agent* agent, std::string const& agencyPrefix, std::string const
 
   write_ret_t res = agent->write(envelope);
   if (!res.successful()) {
-    LOG_TOPIC("e43cb", DEBUG, Logger::SUPERVISION)
-    << "failed to restore broken analyzers revision in agency. Will retry. "
-    << envelope->toJson();
+    // TODO should we ignore if writing this fails?
+    LOG_TOPIC("12d36", DEBUG, Logger::SUPERVISION)
+        << "failed to update term in agency. Will retry. " << envelope->toJson();
   }
 }
 
