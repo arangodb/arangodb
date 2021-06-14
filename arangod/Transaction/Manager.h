@@ -213,6 +213,10 @@ class Manager final {
     }
   }
 
+  void initiateSoftShutdown() {
+    _softShutdownOngoing.store(true, std::memory_order_relaxed);
+  }
+
  private:
   Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(transaction::Options const& options) const;
@@ -267,6 +271,8 @@ class Manager final {
   bool _writeLockHeld;
 
   double _streamingLockTimeout;
+
+  std::atomic<bool> _softShutdownOngoing;
 };
 }  // namespace transaction
 }  // namespace arangodb

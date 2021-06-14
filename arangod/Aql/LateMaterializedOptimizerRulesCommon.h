@@ -42,18 +42,18 @@ namespace latematerialized {
 
 struct AstAndFieldData {
   // ast node
-  AstNode* parentNode;
-  size_t childNumber;
+  AstNode* parentNode{nullptr};
+  size_t childNumber{0};
 
   // index data
-  std::vector<arangodb::basics::AttributeName> const* field;
-  size_t fieldNumber;
+  std::vector<arangodb::basics::AttributeName> const* field{nullptr};
+  size_t fieldNumber{0};
 
   std::vector<std::string> postfix;
 };
 
 struct AstAndColumnFieldData : AstAndFieldData {
-  ptrdiff_t columnNumber;
+  ptrdiff_t columnNumber{0};
 };
 
 template<typename T>
