@@ -25,6 +25,8 @@
 
 #include "RocksDBEngine/RocksDBCommon.h"
 
+#include <memory>
+
 namespace rocksdb {
 class Transaction;
 class Slice;
@@ -42,8 +44,8 @@ class RocksDBTransactionState;
 
 class RocksDBMethods {
  public:
-  explicit RocksDBMethods(RocksDBTransactionState* state) : _state(state) {}
-  virtual ~RocksDBMethods() = default;
+  explicit RocksDBMethods(RocksDBTransactionState* state);
+  virtual ~RocksDBMethods();
 
   /// @brief read options for use with iterators
   rocksdb::ReadOptions iteratorReadOptions();
@@ -79,6 +81,9 @@ class RocksDBMethods {
 
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                          rocksdb::ColumnFamilyHandle*) = 0;
+  
+  virtual std::unique_ptr<rocksdb::Iterator> NewReadOwnWritesIterator(rocksdb::ReadOptions const&,
+                                                                      rocksdb::ColumnFamilyHandle*) = 0;
 
   virtual void SetSavePoint() = 0;
   virtual rocksdb::Status RollbackToSavePoint() = 0;
@@ -87,7 +92,7 @@ class RocksDBMethods {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::size_t countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange = false);
 #endif
-
+  
  protected:
   RocksDBTransactionState* _state;
 };
@@ -112,13 +117,15 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;
+  std::unique_ptr<rocksdb::Iterator> NewReadOwnWritesIterator(rocksdb::ReadOptions const&,
+                                                              rocksdb::ColumnFamilyHandle*) override;
 
   void SetSavePoint() override {}
   rocksdb::Status RollbackToSavePoint() override {
     return rocksdb::Status::OK();
   }
   void PopSavePoint() override {}
-
+  
  private:
   rocksdb::TransactionDB* _db;
 };
@@ -150,12 +157,15 @@ class RocksDBTrxMethods : public RocksDBMethods {
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;
+  std::unique_ptr<rocksdb::Iterator> NewReadOwnWritesIterator(rocksdb::ReadOptions const&,
+                                                              rocksdb::ColumnFamilyHandle*) override;
 
   void SetSavePoint() override;
   rocksdb::Status RollbackToSavePoint() override;
   void PopSavePoint() override;
-
+  
  private:
+  rocksdb::TransactionDB* _db;
   bool _indexingDisabled;
 };
 
@@ -180,6 +190,8 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;
+  std::unique_ptr<rocksdb::Iterator> NewReadOwnWritesIterator(rocksdb::ReadOptions const&,
+                                                              rocksdb::ColumnFamilyHandle*) override;
 
   void SetSavePoint() override {}
   rocksdb::Status RollbackToSavePoint() override {
@@ -211,6 +223,8 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;
+  std::unique_ptr<rocksdb::Iterator> NewReadOwnWritesIterator(rocksdb::ReadOptions const&,
+                                                              rocksdb::ColumnFamilyHandle*) override;
 
   void SetSavePoint() override {}
   rocksdb::Status RollbackToSavePoint() override {

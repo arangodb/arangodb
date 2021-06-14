@@ -38,14 +38,17 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
+#include <memory>
+#include <utility>
+#include <vector>
+
 struct TRI_vocbase_t;
 
 namespace rocksdb {
-
-class Transaction;
-class Slice;
 class Iterator;
-
+class Slice;
+class Transaction;
+class WriteBatchWithIndex;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -103,6 +106,11 @@ class RocksDBTransactionState final : public TransactionState {
   bool hasFailedOperations() const override {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
+
+  void pushQuery(bool responsibleForCommit) override;
+  void popQuery() noexcept override;
+
+  bool iteratorMustCheckBounds() const;
 
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
@@ -172,7 +180,13 @@ class RocksDBTransactionState final : public TransactionState {
 
   rocksdb::SequenceNumber beginSeq() const;
 
+  /// @brief copies the current WriteBatchWithIndex of a running (write)
+  /// transaction, and returns a pointer to it
+  rocksdb::WriteBatchWithIndex* ensureWriteBatch();
+
  private:
+  std::unique_ptr<rocksdb::WriteBatchWithIndex> copyWriteBatch() const;
+
   /// @brief create a new rocksdb transaction
   void createTransaction();
 
@@ -229,6 +243,11 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief if true there key buffers will no longer be shared
   bool _parallel;
+  
+  /// @brief LIFO stack of running queries. the booleans indicate whether
+  /// the query is responsible for the commit. will only be populated
+  /// in write transactions. always empty in read-only transactions!
+  std::vector<std::pair<bool, std::unique_ptr<rocksdb::WriteBatchWithIndex>>> _queries;
 };
 
 class RocksDBKeyLeaser {

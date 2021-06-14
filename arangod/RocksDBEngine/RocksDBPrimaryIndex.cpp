@@ -293,7 +293,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _index(index),
         _cmp(index->comparator()),
         _mustSeek(true),
-        _mustCheckBounds(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction()),
+        _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds()),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));

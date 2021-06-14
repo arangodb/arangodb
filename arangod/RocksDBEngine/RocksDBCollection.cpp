@@ -701,7 +701,6 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
 ///////////////////////////////////
 
 Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
-
   ::TruncateTimeTracker timeTracker(_statistics._rocksdb_truncate_sec, _statistics, options);
 
   TRI_ASSERT(objectId() != 0);
@@ -818,6 +817,12 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
   state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
+
+  // push our current transaction on the stack
+  state->pushQuery(trx.isMainTransaction());
+  auto stateGuard = scopeGuard([state]() {
+    state->popQuery();
+  });
 
   uint64_t found = 0;
 

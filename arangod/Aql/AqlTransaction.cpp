@@ -26,6 +26,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Collections.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -74,6 +75,15 @@ AqlTransaction::AqlTransaction(
 
     return true;
   });
+  
+  TRI_ASSERT(_state != nullptr);
+  // register ourselves in the TransactionState
+  _state->pushQuery(_mainTransaction);
+}
+
+AqlTransaction::~AqlTransaction() {
+  // unregister ourselves in the TransactionState
+  _state->popQuery();
 }
 
 /// @brief add a collection to the transaction

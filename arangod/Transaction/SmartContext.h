@@ -48,6 +48,9 @@ class SmartContext : public Context {
     
   /// @brief destroy the context
   ~SmartContext();
+  
+  /// @brief return the context type
+  Context::Type type() const override { return Context::Type::SmartContext; }
 
   /// @brief order a custom type handler
   arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
@@ -85,6 +88,9 @@ struct ManagedContext final : public SmartContext {
   
   ~ManagedContext();
   
+  /// @brief return the context type
+  Context::Type type() const override { return Context::Type::ManagedContext; }
+  
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
                                                  bool& responsibleForCommit) override;
@@ -94,9 +100,9 @@ struct ManagedContext final : public SmartContext {
   
   std::shared_ptr<Context> clone() const override;
   
-private:
-  const bool _responsibleForCommit;
-  const bool _cloned;
+ private:
+  bool const _responsibleForCommit;
+  bool const _cloned;
 };
 
 /// Used for a standalone AQL query. Always creates the state first.
@@ -104,6 +110,9 @@ private:
 struct AQLStandaloneContext final : public SmartContext {
   AQLStandaloneContext(TRI_vocbase_t& vocbase, TransactionId globalId)
       : SmartContext(vocbase, globalId, nullptr) {}
+  
+  /// @brief return the context type
+  Context::Type type() const override { return Context::Type::AQLStandaloneContext; }
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,

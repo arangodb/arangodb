@@ -40,6 +40,11 @@
 using namespace arangodb;
 
 // =================== RocksDBMethods ===================
+  
+RocksDBMethods::RocksDBMethods(RocksDBTransactionState* state) 
+    : _state(state) {}
+
+RocksDBMethods::~RocksDBMethods() = default;
 
 rocksdb::ReadOptions RocksDBMethods::iteratorReadOptions() {
   if (_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
@@ -56,33 +61,30 @@ std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool i
   std::size_t count = 0;
 
   // iterator is from read only / trx / writebatch
-  std::unique_ptr<rocksdb::Iterator> iter =
-      this->NewIterator(iteratorReadOptions(), bounds.columnFamily());
+  std::unique_ptr<rocksdb::Iterator> iter = NewReadOwnWritesIterator(iteratorReadOptions(), bounds.columnFamily());
   iter->Seek(bounds.start());
   auto end = bounds.end();
   rocksdb::Comparator const* cmp = bounds.columnFamily()->GetComparator();
 
-  // extra check to avoid extra comparisons with isElementInRage later;
-  if (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+  // extra check to avoid extra comparisons with isElementInRange later;
+  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++count;
     if (isElementInRange) {
-      return count;
+      break;
     }
     iter->Next();
   }
 
-  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
-    iter->Next();
-    ++count;
-  }
   return count;
-};
+}
 #endif
 
 // =================== RocksDBReadOnlyMethods ====================
 
 RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state)
     : RocksDBMethods(state) {
+
+  TRI_ASSERT(_state->isReadOnlyTransaction());
   auto& selector = state->vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   _db = engine.db();
@@ -132,7 +134,9 @@ void RocksDBReadOnlyMethods::PutLogData(rocksdb::Slice const& blob) {
 std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
     rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
-  
+
+  // always use db iterator based on snapshot. as the entire transaction
+  // is read-only, there is never a need to read any of our own writes here.
   std::unique_ptr<rocksdb::Iterator> iterator(_db->NewIterator(opts, cf));
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBReadOnlyMethods");
@@ -140,11 +144,23 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
   return iterator;
 }
 
+std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewReadOwnWritesIterator(
+    rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
+//  return NewIterator(opts, cf);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request for ryow iterator in RocksDBReadOnlyMethods");
+}
+  
 // =================== RocksDBTrxMethods ====================
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
-    : RocksDBMethods(state), _indexingDisabled(false) {
+    : RocksDBMethods(state), 
+      _db(nullptr),
+      _indexingDisabled(false) { 
   TRI_ASSERT(_state != nullptr);
+  auto& selector = state->vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  _db = engine.db();
+  TRI_ASSERT(_db != nullptr);
 }
 
 bool RocksDBTrxMethods::DisableIndexing() {
@@ -236,6 +252,41 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->_rocksTransaction);
 
+  TRI_ASSERT(!_state->isReadOnlyTransaction());
+
+  std::unique_ptr<rocksdb::Iterator> iterator;
+  if (!_state->iteratorMustCheckBounds()) {
+    // we are in a write transaction, but only run a single query in it. 
+    // in this case, we can get away with the DB snapshot iterator
+    iterator.reset(_db->NewIterator(opts, cf));
+  } else {
+    // in case we have intermediate commits enabled, the transaction's WBWI
+    // may get invalidated on an intermediate commit. we must create our own
+    // copy of the transaction's WBWI to prevent pointing into invalid memory
+    // after an intermediate commit
+    rocksdb::WriteBatchWithIndex* wbwi = _state->ensureWriteBatch();
+    if (wbwi == nullptr) {
+      // when we don't have intermediate commits enabled, we can create an
+      // iterator based on the transaction's own WBWI
+      iterator.reset(_state->_rocksTransaction->GetIterator(opts, cf));
+    } else {
+      iterator.reset(wbwi->NewIteratorWithBase(cf, _db->NewIterator(opts, cf)));
+    }
+  }
+
+  if (iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBTrxMethods");
+  }
+  return iterator;
+}
+
+std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewReadOwnWritesIterator(
+    rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
+  TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
+
+  TRI_ASSERT(!_state->isReadOnlyTransaction());
   std::unique_ptr<rocksdb::Iterator> iterator(_state->_rocksTransaction->GetIterator(opts, cf));
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBTrxMethods");
@@ -265,7 +316,7 @@ void RocksDBTrxMethods::PopSavePoint() {
   _state->_rocksTransaction->PopSavePoint();
 #endif
 }
-
+  
 // =================== RocksDBBatchedMethods ====================
 
 RocksDBBatchedMethods::RocksDBBatchedMethods(RocksDBTransactionState* state,
@@ -320,6 +371,11 @@ std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
     rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "BatchedMethods does not provide NewIterator");
+}
+
+std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewReadOwnWritesIterator(
+    rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request for ryow iterator in RocksDBBatchedMethods");
 }
 
 // =================== RocksDBBatchedWithIndexMethods ====================
@@ -387,4 +443,9 @@ std::unique_ptr<rocksdb::Iterator> RocksDBBatchedWithIndexMethods::NewIterator(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBBatchedWithIndexMethods");
   }
   return iterator;
+}
+
+std::unique_ptr<rocksdb::Iterator> RocksDBBatchedWithIndexMethods::NewReadOwnWritesIterator(
+    rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request for ryow iterator in RocksDBBatchedWithIndexMethods");
 }

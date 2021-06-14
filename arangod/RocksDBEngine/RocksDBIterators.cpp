@@ -49,7 +49,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
       _upperBound(_bounds.end()),
       _cmp(_bounds.columnFamily()->GetComparator()),
       _mustSeek(true),
-      _mustCheckBounds(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction()) {
+      _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds()) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::ColumnFamilyDescriptor desc;
   _bounds.columnFamily()->GetDescriptor(&desc);

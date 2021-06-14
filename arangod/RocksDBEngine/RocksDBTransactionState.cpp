@@ -36,6 +36,7 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -461,6 +462,124 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   ++statistics()._transactionsAborted;
 
   return result;
+}
+  
+void RocksDBTransactionState::pushQuery(bool responsibleForCommit) {
+  if (isReadOnlyTransaction()) {
+    // don't bother tracking for read-only transactions at all
+    return;
+  }
+
+  // push query information, still without a WriteBatchWithIndex clone
+  _queries.emplace_back(responsibleForCommit, nullptr);
+}
+
+void RocksDBTransactionState::popQuery() noexcept {
+  if (isReadOnlyTransaction()) {
+    // don't bother tracking for read-only transactions at all
+    return;
+  }
+
+  TRI_ASSERT(!_queries.empty());
+  _queries.pop_back();
+}
+
+/// @brief whether or not a RocksDB iterator in this transaction must check its
+/// bounds during iteration in addition to setting iterator_lower_bound or
+/// iterate_upper_bound. this is currently true for all iterators that are based
+/// on in-flight writes of the current transaction. it is never necessary to
+/// check bounds for read-only transactions
+bool RocksDBTransactionState::iteratorMustCheckBounds() const {
+  if (isReadOnlyTransaction()) {
+    // in transactions that only read there is never the need
+    // to take care of any transaction writes
+    return false;
+  }
+  if (_queries.size() == 1 && _queries[0].first) {
+    // only one query, and it is the main query!
+    // in this case, the iterator should always be based on the db snapshot
+    return false;
+  }
+
+  return true;
+}
+
+rocksdb::WriteBatchWithIndex* RocksDBTransactionState::ensureWriteBatch() {
+  TRI_ASSERT(!isReadOnlyTransaction());
+
+  if (_queries.empty()) {
+    return nullptr;
+  }
+
+  auto& top = _queries.back();
+  if (top.second == nullptr) {
+    top.second = copyWriteBatch();
+  }
+  TRI_ASSERT(top.second != nullptr);
+  return top.second.get();
+}
+
+std::unique_ptr<rocksdb::WriteBatchWithIndex> RocksDBTransactionState::copyWriteBatch() const {
+  TRI_ASSERT(!isReadOnlyTransaction());
+
+  struct WBCloner final : public rocksdb::WriteBatch::Handler {
+    explicit WBCloner(rocksdb::WriteBatchWithIndex& target) 
+        : wbwi(target) {}
+
+    rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                          const rocksdb::Slice& value) override {
+      return wbwi.Put(familyId(column_family_id), key, value);
+    }
+    
+    rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+      return wbwi.Delete(familyId(column_family_id), key);
+    }
+  
+    rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+      return wbwi.SingleDelete(familyId(column_family_id), key);
+    }
+  
+    rocksdb::Status DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
+                                  const rocksdb::Slice& end_key) override {
+      return wbwi.DeleteRange(familyId(column_family_id), begin_key, end_key);
+    }
+    
+    rocksdb::Status MergeCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                            const rocksdb::Slice& value) override {
+      // should never be used by our code
+      TRI_ASSERT(false);
+      return wbwi.Merge(familyId(column_family_id), key, value);
+    }
+    
+    void LogData(const rocksdb::Slice& blob) override {
+      wbwi.PutLogData(blob);
+    }
+
+    rocksdb::ColumnFamilyHandle* familyId(uint32_t id) {
+      for (auto const& it : RocksDBColumnFamilyManager::allHandles()) {
+        if (it->GetID() == id) {
+          return it;
+        }
+      }
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown column family id");
+    }
+
+    rocksdb::WriteBatchWithIndex& wbwi;
+  };
+
+  auto wbwi = std::make_unique<rocksdb::WriteBatchWithIndex>(rocksdb::BytewiseComparator(), 0, true, 0);
+  WBCloner cloner(*wbwi);
+  
+  // get the transaction's current WriteBatch
+  TRI_ASSERT(_rocksTransaction != nullptr);
+  rocksdb::WriteBatch* wb = _rocksTransaction->GetWriteBatch()->GetWriteBatch();
+  rocksdb::Status s = wb->Iterate(&cloner);
+
+  if (!s.ok()) {
+    THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+  }
+
+  return wbwi;
 }
 
 void RocksDBTransactionState::prepareOperation(DataSourceId cid, RevisionId rid,

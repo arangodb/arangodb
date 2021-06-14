@@ -4396,19 +4396,16 @@ function transactionIteratorSuite() {
       tc.save(docs);
       
       // full scan 
-      db._explain('FOR doc IN @@c RETURN doc', { '@c': cn });
       let cur = trx.query('FOR doc IN @@c RETURN doc', { '@c': cn });
       let half = cur.toArray();
       assertEqual(half.length, 100);
       
       // full scan using primary index 
-      db._explain('FOR doc IN @@c SORT doc._key ASC RETURN doc._key', { '@c': cn });
       cur = trx.query('FOR doc IN @@c SORT doc._key ASC RETURN doc._key', { '@c': cn });
       half = cur.toArray();
       assertEqual(half.length, 100);
 
       // full scan using secondary index 
-      db._explain('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
       cur = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
       half = cur.toArray();
       assertEqual(half.length, 100);
@@ -4446,13 +4443,11 @@ function transactionIteratorSuite() {
       assertEqual(half.length, 100);
       
       // full scan using primary index 
-      db._explain('FOR doc IN @@c SORT doc._key DESC RETURN doc._key', { '@c': cn });
       cur = trx.query('FOR doc IN @@c SORT doc._key DESC RETURN doc._key', { '@c': cn });
       half = cur.toArray();
       assertEqual(half.length, 100);
 
       // full scan using secondary index 
-      db._explain('FOR doc IN @@c SORT doc.value1 DESC RETURN doc', { '@c': cn });
       cur = trx.query('FOR doc IN @@c SORT doc.value1 DESC RETURN doc', { '@c': cn });
       half = cur.toArray();
       assertEqual(half.length, 100);

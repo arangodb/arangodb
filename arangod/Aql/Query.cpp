@@ -1198,7 +1198,6 @@ CollectionNameResolver const& Query::resolver() const {
 
 /// @brief create a transaction::Context
 std::shared_ptr<transaction::Context> Query::newTrxContext() const {
-
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
 
