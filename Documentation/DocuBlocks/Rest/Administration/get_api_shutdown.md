@@ -40,6 +40,9 @@ Once all numbers have gone to 0, the flag `allClear` is set and the
 coordinator shuts down automatically. This API is not available on
 DBServers and Agents.
 
+This API call was introduced in 3.7.12, 3.8.1 and all versions greater
+or equal to 3.9.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

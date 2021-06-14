@@ -29,6 +29,9 @@ The following types of operations are tracked:
 Note that the latter two are tracked but not prevented from being
 started, to allow for finishing operations.
 
+This query parameter was introduced in 3.7.12, 3.8.1 and all versions
+greater or equal than 3.9.
+
 @RESTDESCRIPTION
 This call initiates a clean shutdown sequence. Requires administrive privileges.
 
