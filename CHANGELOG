@@ -1,6 +1,8 @@
 devel
 -----
 
+* Slightly improve specific warning messages for better readability.
+
 * Fix URL request parsing in case data is handed in in small chunks.
   Previously the URL could be cut off if the chunk size was smaller than
   the URL size.
