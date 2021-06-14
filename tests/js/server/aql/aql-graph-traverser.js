@@ -3620,7 +3620,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3665,7 +3665,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3694,7 +3694,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3724,7 +3724,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3769,7 +3769,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3797,7 +3797,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3828,7 +3828,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3859,7 +3859,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 3);
+        assertTrue(stats.scannedIndex <= 7, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3890,7 +3890,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3922,7 +3922,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 3);
+        assertTrue(stats.scannedIndex <= 7, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3954,7 +3954,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 9);
@@ -3986,7 +3986,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 3);
+        assertTrue(stats.scannedIndex <= 6, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
