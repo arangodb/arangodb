@@ -77,6 +77,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -3360,9 +3361,6 @@ Result ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
   //      as an argument, originally taken from ShardingInfo. Or whether it
   //      should better be read from the AgencyCache, like the shards below.
 
-  AgencyComm ac(_server);
-  AgencyCommResult res;
-
   // First check that no other collection has a distributeShardsLike
   // entry pointing to us:
   auto coll = getCollection(dbName, collectionID);
@@ -3464,21 +3462,79 @@ Result ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  if (coll->vocbase().replicationVersion() == replication::Version::TWO) {
+    if (coll->shardingInfo()->replicatedLogs()->empty()) {
+      LOG_TOPIC("df403", WARN, Logger::CLUSTER)
+          << "When dropping collection " << coll->name() << " in database "
+          << dbName << ": "
+          << "No replicated logs listed, even though the databases uses "
+             "replicationVersion 2.";
+      TRI_ASSERT(false);
+    }
+  }
 
-  // Transact to agency
-  AgencyOperation delPlanCollection("Plan/Collections/" + dbName + "/" + collectionID,
-                                    AgencySimpleOperationType::DELETE_OP);
-  AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition precondition =
-      AgencyPrecondition("Plan/Databases/" + dbName, AgencyPrecondition::Type::EMPTY, false);
-  AgencyWriteTransaction trans({delPlanCollection, incrementVersion}, precondition);
-  res = ac.sendTransactionWithFailover(trans);
+  auto createDropCollectionTrx =
+      [&dbName = std::as_const(dbName), &collectionID = std::as_const(collectionID),
+       &coll = std::as_const(coll)](VPackBuffer<uint8_t>& buffer) {
+        namespace paths = cluster::paths::aliases;
+        auto builder = VPackBuilder(buffer);
+        auto envelope = agency::envelope::into_builder(builder);
 
-  if (!res.successful()) {
-    if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+        auto writeTrx = envelope.write()
+                            .inc(paths::plan()->version()->str())
+                            .remove(paths::plan()
+                                        ->collections()
+                                        ->database(dbName)
+                                        ->collection(collectionID)
+                                        ->str());
+
+        if (coll->vocbase().replicationVersion() == replication::Version::TWO) {
+          auto const& logs = *coll->shardingInfo()->replicatedLogs();
+          auto const& dbPath = paths::plan()->replicatedLogs()->database(dbName);
+          for (auto const& it : logs) {
+            auto const& logId = it.second;
+            writeTrx = std::move(writeTrx).remove(dbPath->log(logId)->str());
+          }
+        }
+        auto precTrx = std::move(writeTrx).precs().isNotEmpty(
+            paths::plan()->databases()->database(dbName)->str());
+
+        if (coll->vocbase().replicationVersion() == replication::Version::TWO) {
+          auto const& logs = *coll->shardingInfo()->replicatedLogs();
+          auto const& dbPath = paths::plan()->replicatedLogs()->database(dbName);
+          VPackBuilder replicatedLogs;
+          {
+            VPackObjectBuilder guard(&replicatedLogs);
+            for (auto const& it : logs) {
+              auto const& [shardId, logId] = it;
+              replicatedLogs.add(shardId, VPackValue(to_string(logId)));
+            }
+          }
+          precTrx = std::move(precTrx).isEqual(paths::plan()
+                                                   ->collections()
+                                                   ->database(dbName)
+                                                   ->collection(collectionID)
+                                                   ->str(),
+                                               replicatedLogs.slice());
+        }
+
+        auto trx = precTrx.end();
+      };
+
+  auto trx = VPackBuffer<uint8_t>();
+  createDropCollectionTrx(trx);
+  auto trxCpy = velocypack::SharedSlice(trx);
+
+  using namespace std::chrono_literals;
+  // TODO Stop using .get(), return a future instead.
+  auto result = AsyncAgencyComm().sendWriteTransaction(120s, std::move(trx)).get();
+
+  auto res = result.asResult();
+  if (!res.ok()) {
+    if (result.statusCode() == fuerte::StatusPreconditionFailed) {
       LOG_TOPIC("279c5", ERR, Logger::CLUSTER)
-          << "Precondition failed for this agency transaction: " << trans.toJson()
-          << ", return code: " << res.httpCode();
+          << "Precondition failed for this agency transaction: " << trxCpy.toJson()
+          << ", return code: " << result.statusCode();
     }
 
     logAgencyDump();
@@ -3488,7 +3544,7 @@ Result ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
     events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
   }
-  if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
+  if (VPackSlice resultsSlice = result.slice().get("results"); resultsSlice.length() > 0) {
     Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
     if (r.fail()) {
       return r;
@@ -3506,10 +3562,14 @@ Result ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
       if (tmpRes.has_value()) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
-        AgencyOperation delCurrentCollection("Current/Collections/" + dbName + "/" + collectionID,
+        AgencyOperation delCurrentCollection(paths::aliases::current()
+                                                 ->collections()
+                                                 ->database(dbName)
+                                                 ->collection(collectionID)
+                                                 ->str(),
                                              AgencySimpleOperationType::DELETE_OP);
         AgencyWriteTransaction cx({delCurrentCollection});
-        res = ac.sendTransactionWithFailover(cx);
+        std::ignore = AgencyComm(_server).sendTransactionWithFailover(cx);
         events::DropCollection(dbName, collectionID, *tmpRes);
         return Result(*tmpRes);
       }
@@ -3518,7 +3578,7 @@ Result ClusterInfo::dropCollectionCoordinator(std::string const& dbName,
         LOG_TOPIC("76ea6", ERR, Logger::CLUSTER)
             << "Timeout in _drop collection (" << realTimeout << ")"
             << ": database: " << dbName << ", collId:" << collectionID
-            << "\ntransaction sent to agency: " << trans.toJson();
+            << "\ntransaction sent to agency: " << trxCpy.toJson();
 
         logAgencyDump();
 
