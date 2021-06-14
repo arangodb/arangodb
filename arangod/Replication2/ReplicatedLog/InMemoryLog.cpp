@@ -73,3 +73,28 @@ auto replicated_log::InMemoryLog::splice(LogIndex from, LogIndex to) const
   TRI_ASSERT(res.size() == to.value - from.value);
   return res;
 }
+
+auto replicated_log::InMemoryLog::getFirstIndexOfTerm(LogTerm term) const noexcept -> std::optional<LogIndex> {
+  auto it = std::lower_bound(_log.begin(), _log.end(), term, [](auto const& entry, auto const& term) {
+    return term < entry.logTerm();
+  });
+
+  if (it != _log.end() && it->logTerm() == term) {
+    return it->logIndex();
+  } else {
+    return std::nullopt;
+  }
+}
+auto replicated_log::InMemoryLog::getLastIndexOfTerm(LogTerm term) const noexcept -> std::optional<LogIndex> {
+  // Note that we're using reverse iterators
+  auto it = std::lower_bound(_log.rbegin(), _log.rend(), term, [](auto const& entry, auto const& term) {
+    // Note that this is flipped
+    return entry.logTerm() < term;
+  });
+
+  if (it != _log.rend() && it->logTerm() == term) {
+    return it->logIndex();
+  } else {
+    return std::nullopt;
+  }
+}

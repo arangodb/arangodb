@@ -54,6 +54,10 @@ struct InMemoryLog {
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept -> std::optional<LogEntry>;
   [[nodiscard]] auto splice(LogIndex from, LogIndex to) const -> immer::flex_vector<LogEntry>;
 
+  // TODO Add unit tests for getFirstIndexOfTerm and getLastIndexOfTerm
+  [[nodiscard]] auto getFirstIndexOfTerm(LogTerm term) const noexcept -> std::optional<LogIndex>;
+  [[nodiscard]] auto getLastIndexOfTerm(LogTerm term) const noexcept -> std::optional<LogIndex>;
+
   immer::flex_vector<LogEntry> _log{};
 };
 
