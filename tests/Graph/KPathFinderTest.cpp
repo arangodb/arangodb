@@ -72,8 +72,10 @@ class KPathFinderTest
   // PathValidatorOptions parts (used for API not under test here)
   aql::Variable _tmpVar{"tmp", 0, false};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
-  arangodb::aql::FixedVarExpressionContext _expressionContext{_query->trxForOptimization(),
-                                                              *_query.get(), _functionsCache};
+
+  arangodb::transaction::Methods _trx{_query->newTrxContext()};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query.get(),
+                                                              _functionsCache};
   KPathFinderTest() {
     if (activateLogging) {
       Logger::GRAPHS.setLogLevel(LogLevel::TRACE);

@@ -64,6 +64,7 @@ class SingleServerProviderTest : public ::testing::Test {
   arangodb::ResourceMonitor _resourceMonitor{_global};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
   std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
+  std::unique_ptr<arangodb::transaction::Methods> _trx{};
 
   // Expression Parts
   aql::Variable* _tmpVar{nullptr};
@@ -85,6 +86,7 @@ class SingleServerProviderTest : public ::testing::Test {
 
     // We now have collections "v" and "e"
     query = singleServer->getQuery("RETURN 1", {"v", "e"});
+    _trx = std::make_unique<arangodb::transaction::Methods>(query->newTrxContext());
 
     auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
     _tmpVar = singleServer->generateTempVar(query.get());
@@ -96,8 +98,8 @@ class SingleServerProviderTest : public ::testing::Test {
     auto expr = conditionKeyMatches(stringToMatch);
     usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, expr});
 
-    _expressionContext = std::make_unique<arangodb::aql::FixedVarExpressionContext>(
-        query->trxForOptimization(), *query, _functionsCache);
+    _expressionContext =
+        std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx, *query, _functionsCache);
     BaseProviderOptions opts(_tmpVar,
                              std::make_pair(std::move(usedIndexes),
                                             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),

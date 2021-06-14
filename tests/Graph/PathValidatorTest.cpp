@@ -83,13 +83,13 @@ class PathValidatorTest : public ::testing::Test {
   StringHeap _heap{_resourceMonitor, 4096};
 
   // Expression Parts
+  arangodb::transaction::Methods _trx{_query->newTrxContext()};
   aql::Ast _ast{*_query.get()};
   aql::Variable _tmpVar{"tmp", 0, false};
   aql::AstNode* _varNode{::InitializeReference(_ast, _tmpVar)};
 
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
-  arangodb::aql::FixedVarExpressionContext _expressionContext{_query->trxForOptimization(),
-                                                              *_query, _functionsCache};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query, _functionsCache};
   PathValidatorOptions _opts{&_tmpVar, _expressionContext};
 
  protected:
