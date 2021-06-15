@@ -8,6 +8,37 @@ devel
   option `maxNodesPerCallstack` and the command line option
   `--query.max-nodes-per-callstack`; the default is 250.
   
+* Slightly improve specific warning messages for better readability.
+
+* Fix URL request parsing in case data is handed in in small chunks.
+  Previously the URL could be cut off if the chunk size was smaller than
+  the URL size.
+ 
+* Backport bugfix from upstream rocksdb repository for calculating the
+  free disk space for the database directory. Before the bugfix, rocksdb
+  could overestimate the amount of free space when the arangod process
+  was run as non-privileged users.
+
+* Add soft coordinator shutdown: This is a new option `soft=true` for the
+  DELETE /_admin/shutdown API. Has only meaning for coordinators, otherwise
+  ignored. A number of things are allowed to finish but no new things are
+  allowed when in soft coordinator shutdown:
+    - AQL cursors
+    - transactions
+    - asynchronous operations
+    - Pregel runs
+  Once all of the ongoing operations of these have finished and all requests
+  on the low priority queue have been executed, the coordinator shuts down
+  the normal way. This is supposed to make a coordinator restart less
+  intrusive for clients.
+
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
+
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This
+  fixes BTS-425.
+
 * Added check to utils/generateAllMetricsDocumentation.py to check that
   the file name and the value of the name attribute are the same in the
   metrics documentation snippets. Correct a few such names.
