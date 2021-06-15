@@ -70,7 +70,7 @@ struct DFSConfiguration {
       typename std::conditional<useTracing, ProviderTracer<ProviderType>, ProviderType>::type;
   using Step = typename Provider::Step;
   using Queue =
-      typename std::conditional<useTracing, QueueTracer<LifoQueue<Step>>, FifoQueue<Step>>::type;
+      typename std::conditional<useTracing, QueueTracer<LifoQueue<Step>>, LifoQueue<Step>>::type;
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>, PathStore<Step>>::type;
   using Validator = PathValidator<Provider, Store, vertexUniqueness>;
