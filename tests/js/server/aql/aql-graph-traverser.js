@@ -2848,7 +2848,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
-        assertTrue(stats.scannedIndex <= 7, stats.scannedIndex);
+        assertTrue(stats.scannedIndex <= 13, stats.scannedIndex);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary (B, D) for Filtering
