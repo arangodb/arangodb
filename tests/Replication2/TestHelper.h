@@ -78,10 +78,13 @@ struct DelayedFollowerLog : AbstractFollower {
                      std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock,
                      ParticipantId const& id, std::unique_ptr<LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
-      : DelayedFollowerLog(
-            std::make_shared<LogFollower>(logContext, std::move(logMetricsMock),
-                                          id, std::move(logCore), term,
-                                          std::move(leaderId), InMemoryLog{})) {}
+      : DelayedFollowerLog([&] {
+          auto inMemoryLog = InMemoryLog{logContext, *logCore};
+          return std::make_shared<LogFollower>(logContext, std::move(logMetricsMock),
+                                               id, std::move(logCore), term,
+                                               std::move(leaderId),
+                                               std::move(inMemoryLog));
+        }()) {}
 
   auto appendEntries(AppendEntriesRequest req)
       -> arangodb::futures::Future<AppendEntriesResult> override {
