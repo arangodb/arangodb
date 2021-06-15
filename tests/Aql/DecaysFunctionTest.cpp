@@ -126,6 +126,9 @@ AqlValue evaluateDecayFunction(const SmallVector<AqlValue>& params, const Functi
         node.setData(static_cast<void const*>(&f));
         return Functions::LinearDecay(&expressionContext, node, params);
       }
+    default: {
+      return AqlValue(AqlValueHintNull());
+    }
   }
 }
 
