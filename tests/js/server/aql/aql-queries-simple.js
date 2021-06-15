@@ -1335,6 +1335,18 @@ function ahuacatlQuerySimpleTestSuite () {
       });
     },
 
+    testLargeQuery : function() {
+      let q = "";
+      const cnt = 1000;
+      for (let i = 0; i < cnt; ++i) {
+        q += `LET v${i} = NOOPT(1)\n`;
+      }
+      q += "RETURN v0";
+      for (let i = 1; i < cnt; ++i) {
+        q += ` + v${1}`;
+      }
+      assertEqual([cnt], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    }
   };
 }
 

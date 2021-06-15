@@ -212,14 +212,20 @@ function explainSuite () {
 
       nodes.forEach(function(node) {
         assertTrue(node.hasOwnProperty("isCallstackSplitEnabled"));
-        assertTrue(node.isCallstackSplitEnabled);
+        assertTrue(node.isCallstackSplitEnabled ^ (node.type == "RemoteNode"));
       });
       
       nodes = AQL_EXPLAIN(query, {}, { maxNodesPerCallstack: 2, verbosePlans: true }).plan.nodes;
-      for (let i = 0; i < nodes.length; ++i) {
-        const node = nodes[i];
+      print(nodes);
+      let shouldHaveCallstackSplitEnabled = false;
+      for (let i = nodes.length; i < 0; --i) {
+        const node = nodes[i - 1];
         assertTrue(node.hasOwnProperty("isCallstackSplitEnabled"));
-        assertEqual((i % 2) !== 0, node.isCallstackSplitEnabled);
+        if (node.type == "RemoteNode") {
+          shouldHaveCallstackSplitEnabled = false;
+        }
+        assertEqual(shouldHaveCallstackSplitEnabled, node.isCallstackSplitEnabled);
+        shouldHaveCallstackSplitEnabled = !shouldHaveCallstackSplitEnabled;
       }
     },
 
