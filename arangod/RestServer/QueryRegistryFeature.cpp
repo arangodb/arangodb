@@ -307,7 +307,8 @@ options->addOption("--query.max-nodes-per-callstack",
                      "maximum number execution nodes on the callstack before "
                      "splitting the remaining nodes into a separate thread",
                      new UInt64Parameter(&_maxNodesPerCallstack),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30900);
 
   options->addOption("--query.registry-ttl",
                      "default time-to-live of cursors and query snippets (in "
