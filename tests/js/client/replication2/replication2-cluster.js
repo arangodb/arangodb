@@ -90,7 +90,7 @@ const replicationApi = {
     assertTypeOf('object', res.json);
     assertIdentical(false, res.json.error, JSON.stringify(res.json));
     const result = res.json.result;
-    assertEqual(["index", "payload", "term"].sort(), Object.keys(result).sort());
+    assertEqual(["logIndex", "payload", "logTerm"].sort(), Object.keys(result).sort());
     return result;
   },
 
