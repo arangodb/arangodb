@@ -28,7 +28,12 @@ const console = require('console');
 const request = require('@arangodb/request');
 const _ = require('lodash');
 const {checkRequestResult} = require('@arangodb/arangosh');
-const {assertEqual} = jsunity.jsUnity.assertions;
+const {
+  assertEqual,
+  assertNotNull,
+  assertTypeOf,
+  assertIdentical,
+} = jsunity.jsUnity.assertions;
 
 const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 
@@ -39,6 +44,8 @@ const replicationApi = {
       body: JSON.stringify({id}),
     });
     checkRequestResult(res);
+    assertTypeOf('object', res.json);
+    assertIdentical(false, res.json.error, JSON.stringify(res.json));
   },
 
   becomeLeader: (id, server, {term, writeConcern, follower}) => {
@@ -47,6 +54,8 @@ const replicationApi = {
       body: JSON.stringify({term, writeConcern, follower: follower.map(server => server.id)}),
     });
     checkRequestResult(res);
+    assertTypeOf('object', res.json);
+    assertIdentical(false, res.json.error, JSON.stringify(res.json));
   },
 
   becomeFollower: (id, server, {term, leader}) => {
@@ -55,6 +64,8 @@ const replicationApi = {
       body: JSON.stringify({term, leader: leader.id}),
     });
     checkRequestResult(res);
+    assertTypeOf('object', res.json);
+    assertIdentical(false, res.json.error, JSON.stringify(res.json));
   },
 
   insert: (id, server, data) => {
@@ -63,7 +74,10 @@ const replicationApi = {
       body: JSON.stringify(data),
     });
     checkRequestResult(res);
+    assertTypeOf('object', res.json);
+    assertIdentical(false, res.json.error, JSON.stringify(res.json));
     const result = res.json.result;
+    assertTypeOf('object', result, JSON.stringify(res.json));
     assertEqual(["index", "term", "quorum"].sort(), Object.keys(result).sort());
     return result;
   },
@@ -73,6 +87,8 @@ const replicationApi = {
       url: getUrl(server.endpoint) + `/_api/log/${id}/readEntry/${entry}`,
     });
     checkRequestResult(res);
+    assertTypeOf('object', res.json);
+    assertIdentical(false, res.json.error, JSON.stringify(res.json));
     const result = res.json.result;
     assertEqual(["index", "payload", "term"].sort(), Object.keys(result).sort());
     return result;
@@ -93,6 +109,10 @@ function testSuite() {
       servers.push(...
         [serverA, serverB, serverC] = instanceInfo.arangods.filter(isDBServer)
       );
+      assertEqual(3, servers.length);
+      assertNotNull(serverA);
+      assertNotNull(serverB);
+      assertNotNull(serverC);
     },
 
     testReplicationMinimalInsert: function () {
