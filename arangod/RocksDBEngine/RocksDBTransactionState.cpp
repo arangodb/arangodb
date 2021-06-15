@@ -630,6 +630,13 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
 
   hasPerformedIntermediateCommit = true;
   ++statistics()._intermediateCommits;
+  
+  // reset counters for DML operations, but intentionally don't reset
+  // the commit counter, as we need to track if we had intermediate commits
+  _numInserts = 0;
+  _numUpdates = 0;
+  _numRemoves = 0;
+  _numLogdata = 0;
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -638,12 +645,6 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
     TRI_TerminateDebugging("SegfaultAfterIntermediateCommit");
   }
 
-  // reset counters for DML operations, but intentionally don't reset
-  // the commit counter, as we need to track if we had intermediate commits
-  _numInserts = 0;
-  _numUpdates = 0;
-  _numRemoves = 0;
-  _numLogdata = 0;
   createTransaction();
   _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
   TRI_ASSERT(_readSnapshot != nullptr);  // snapshots for iterators

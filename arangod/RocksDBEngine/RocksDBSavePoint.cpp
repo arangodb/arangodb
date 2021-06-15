@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBSavePoint.h"
+#include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -72,23 +73,42 @@ void RocksDBSavePoint::prepareOperation(DataSourceId cid, RevisionId rid) {
   _state->prepareOperation(cid, rid, _operationType);
 }
 
-void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
-  if (!_handled && !hasPerformedIntermediateCommit) {
-    // pop the savepoint from the transaction in order to
-    // save some memory for transactions with many operations
-    // this is only safe to do when we have a created a savepoint
-    // when creating the guard, and when there hasn't been an
-    // intermediate commit in the transaction
-    // when there has been an intermediate commit, we must
-    // leave the savepoint alone, because it belonged to another
-    // transaction, and the current transaction will not have any
-    // savepoint
-    auto mthds = RocksDBTransactionState::toMethods(_trx);
-    mthds->PopSavePoint();
+/// @brief acknowledges the current savepoint, so there
+/// will be no rollback when the destructor is called
+Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
+  bool hasPerformedIntermediateCommit = false;
+  Result res = basics::catchToResult([&]() -> Result {
+    return _state->addOperation(cid, rid, _operationType, hasPerformedIntermediateCommit);
+  });
+
+  if (!_handled) {
+    if (res.ok()) {
+      if (!hasPerformedIntermediateCommit) {
+        // pop the savepoint from the transaction in order to
+        // save some memory for transactions with many operations
+        // this is only safe to do when we have a created a savepoint
+        // when creating the guard, and when there hasn't been an
+        // intermediate commit in the transaction
+        // when there has been an intermediate commit, we must
+        // leave the savepoint alone, because it belonged to another
+        // transaction, and the current transaction will not have any
+        // savepoint
+        auto mthds = RocksDBTransactionState::toMethods(_trx);
+        mthds->PopSavePoint();
+      }
+    
+      // this will prevent the rollback call in the destructor
+      _handled = true;
+    } else {
+      TRI_ASSERT(res.fail());
+      if (hasPerformedIntermediateCommit) {
+        // very rare case reached only during testing
+        _handled = true;
+      }
+    }
   }
 
-  // this will prevent the rollback call in the destructor
-  _handled = true;
+  return res;
 }
 
 void RocksDBSavePoint::rollback() {

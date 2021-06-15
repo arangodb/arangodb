@@ -24,6 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_SAVEPOINT_H
 #define ARANGOD_ROCKSDB_ROCKSDB_SAVEPOINT_H 1
 
+#include "Basics/Result.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
@@ -47,9 +48,7 @@ class RocksDBSavePoint {
   
   /// @brief acknowledges the current savepoint, so there
   /// will be no rollback when the destructor is called
-  /// if an intermediate commit was performed, pass a value of
-  /// true, false otherwise
-  void finish(bool hasPerformedIntermediateCommit);
+  [[nodiscard]] Result finish(DataSourceId cid, RevisionId rid);
   
   TRI_voc_document_operation_e operationType() const {
     return _operationType;
@@ -59,7 +58,6 @@ class RocksDBSavePoint {
   /// has made it into the underyling WBWI. if so, on rollback we must
   /// perform a full rebuild
   void tainted() { _tainted = true; }
-  
   
  private:
   void rollback();

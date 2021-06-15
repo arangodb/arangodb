@@ -850,21 +850,13 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
     auto res = removeDocument(&trx, savepoint, docId, docBuffer.slice(), options, rid);
 
+    if (res.ok()) {
+      res = savepoint.finish(_logicalCollection.id(), newRevisionId());
+    }
+    
     if (res.fail()) {  // Failed to remove document in truncate.
       return res;
     }
-
-    bool hasPerformedIntermediateCommit = false;
-    res = state->addOperation(_logicalCollection.id(), newRevisionId(),
-                              TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-                              hasPerformedIntermediateCommit);
-
-    if (res.fail()) {  // This should never happen...
-      return res;
-    }
-
-    savepoint.finish(hasPerformedIntermediateCommit);
-
     trackWaitForSync(&trx, options);
   }
 
@@ -1050,12 +1042,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       resultMdr.setRevisionId(revisionId);
     }
 
-    bool hasPerformedIntermediateCommit = false;
-    res = state->addOperation(_logicalCollection.id(), revisionId,
-                              TRI_VOC_DOCUMENT_OPERATION_INSERT,
-                              hasPerformedIntermediateCommit);
-
-    savepoint.finish(hasPerformedIntermediateCommit);
+    res = savepoint.finish(_logicalCollection.id(), revisionId);
   }
 
   return res;
@@ -1172,16 +1159,10 @@ Result RocksDBCollection::update(transaction::Methods* trx,
       previousMdr.clearData();
     }
 
-    bool hasPerformedIntermediateCommit = false;
-    auto result = state->addOperation(_logicalCollection.id(), revisionId,
-                                      TRI_VOC_DOCUMENT_OPERATION_UPDATE,
-                                      hasPerformedIntermediateCommit);
-
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
+    res = savepoint.finish(_logicalCollection.id(), revisionId);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
-
-    savepoint.finish(hasPerformedIntermediateCommit);
   }
     
   return res;
@@ -1289,16 +1270,10 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
       previousMdr.clearData();
     }
 
-    bool hasPerformedIntermediateCommit = false;
-    auto result = state->addOperation(_logicalCollection.id(), revisionId,
-                                      TRI_VOC_DOCUMENT_OPERATION_REPLACE,
-                                      hasPerformedIntermediateCommit);
-
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
+    res = savepoint.finish(_logicalCollection.id(), revisionId);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
-
-    savepoint.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
@@ -1397,12 +1372,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
       previousMdr.clearData();
     }
 
-    bool hasPerformedIntermediateCommit = false;
-    res = state->addOperation(_logicalCollection.id(), newRevisionId(),
-                              TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-                              hasPerformedIntermediateCommit);
-
-    savepoint.finish(hasPerformedIntermediateCommit);
+    res = savepoint.finish(_logicalCollection.id(), newRevisionId());
   }
   
   return res;
