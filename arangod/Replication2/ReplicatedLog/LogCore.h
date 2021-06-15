@@ -64,7 +64,7 @@ struct alignas(64) LogCore {
 
   auto insertAsync(std::unique_ptr<LogIterator> iter, bool waitForSync) -> futures::Future<Result>;
   auto insert(LogIterator& iter, bool waitForSync) -> Result;
-  [[nodiscard]] auto read(LogIndex first) -> std::unique_ptr<LogIterator>;
+  [[nodiscard]] auto read(LogIndex first) const -> std::unique_ptr<LogIterator>;
   auto removeBack(LogIndex first) -> Result;
 
   auto releasePersistedLog() && -> std::shared_ptr<PersistedLog>;
@@ -73,7 +73,7 @@ struct alignas(64) LogCore {
 
  private:
   std::shared_ptr<PersistedLog> _persistedLog;
-  std::mutex _operationMutex;
+  mutable std::mutex _operationMutex;
 };
 
 }  // namespace arangodb::replication2::replicated_log

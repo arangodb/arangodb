@@ -86,7 +86,7 @@ class MutexGuard {
   ~MutexGuard() = default;
 
   MutexGuard(MutexGuard&&) noexcept = default;
-  MutexGuard& operator=(MutexGuard&&) noexcept = default;
+  auto operator=(MutexGuard&&) noexcept -> MutexGuard& = default;
 
   auto get() const noexcept -> T&;
   auto operator->() const noexcept -> T*;

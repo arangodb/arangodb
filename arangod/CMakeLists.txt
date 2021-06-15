@@ -546,6 +546,7 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   )
 
 set(LIB_ARANGO_REPLICATION2_SOURCES
+  Replication2/AgencyMethods.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
   Replication2/ReplicatedLog/Common.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp
@@ -557,10 +558,11 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLog.cpp
   Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
+  Replication2/ReplicatedLog/messages.cpp
   Replication2/ReplicatedLog/types.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-        Replication2/AgencyMethods.cpp Replication2/AgencyMethods.h)
+)
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp

@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Replication2/LogContext.h"
 #include "Replication2/ReplicatedLog/Common.h"
 
 #include <optional>
@@ -40,6 +41,8 @@
 #endif
 
 namespace arangodb::replication2::replicated_log {
+struct LogCore;
+class ReplicatedLogIterator;
 
 /**
  * @brief The ephemeral part of the replicated log held in memory. Can hold more
@@ -48,17 +51,53 @@ namespace arangodb::replication2::replicated_log {
  * instance), this is restored from the persisted log.
  */
 struct InMemoryLog {
+ private:
+  immer::flex_vector<LogEntry> _log{};
+
+ public:
+  InMemoryLog() = delete;
+  InMemoryLog(LogContext const& logContext, replicated_log::LogCore const& logCore);
+
+  InMemoryLog(InMemoryLog&& other) noexcept;
+  InMemoryLog(InMemoryLog const&) = default;
+
+  auto operator=(InMemoryLog&& other) noexcept -> InMemoryLog&;
+  auto operator=(InMemoryLog const&) -> InMemoryLog& = default;
+
+  ~InMemoryLog() noexcept = default;
+
   [[nodiscard]] auto getLastIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getLastTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
-  [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept -> std::optional<LogEntry>;
-  [[nodiscard]] auto splice(LogIndex from, LogIndex to) const -> immer::flex_vector<LogEntry>;
+  [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept
+      -> std::optional<LogEntry>;
+  [[nodiscard]] auto splice(LogIndex from, LogIndex to) const
+      -> immer::flex_vector<LogEntry>;
 
   // TODO Add unit tests for getFirstIndexOfTerm and getLastIndexOfTerm
-  [[nodiscard]] auto getFirstIndexOfTerm(LogTerm term) const noexcept -> std::optional<LogIndex>;
-  [[nodiscard]] auto getLastIndexOfTerm(LogTerm term) const noexcept -> std::optional<LogIndex>;
+  [[nodiscard]] auto getFirstIndexOfTerm(LogTerm term) const noexcept
+      -> std::optional<LogIndex>;
+  [[nodiscard]] auto getLastIndexOfTerm(LogTerm term) const noexcept
+      -> std::optional<LogIndex>;
 
-  immer::flex_vector<LogEntry> _log{};
+  // @brief Unconditionally accesses the last element
+  [[nodiscard]] auto back() const noexcept -> decltype(_log)::const_reference;
+  [[nodiscard]] auto empty() const noexcept -> bool;
+
+  auto appendInPlace(LogContext const& logContext, LogEntry&& entry) -> void;
+  auto appendInPlace(LogContext const& logContext, LogEntry const& entry) -> void;
+
+  [[nodiscard]] auto append(LogContext const& logContext,
+                            immer::flex_vector<LogEntry> entries) const -> InMemoryLog;
+
+  [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<LogIterator>;
+
+  [[nodiscard]] auto takeSnapshotUpToAndIncluding(LogIndex until) const -> InMemoryLog;
+
+  [[nodiscard]] auto copyFlexVector() const -> immer::flex_vector<LogEntry>;
+
+ protected:
+  explicit InMemoryLog(immer::flex_vector<LogEntry> log);
 };
 
 }  // namespace arangodb::replication2::replicated_log

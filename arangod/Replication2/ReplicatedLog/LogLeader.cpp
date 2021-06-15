@@ -264,13 +264,7 @@ auto replicated_log::LogLeader::construct(
                     std::move(termData), std::move(inMemoryLog)) {}
   };
 
-  // TODO this is a cheap trick for now. Later we should be aware of the fact
-  //      that the log might not start at 1.
-  auto iter = logCore->read(LogIndex{0});
-  auto log = InMemoryLog{};
-  while (auto entry = iter->next()) {
-    log._log = log._log.push_back(std::move(entry).value());
-  }
+  auto log = InMemoryLog{logContext, *logCore};
   auto const lastIndex = log.getLastIndex();
 
   auto commonLogContext = logContext.with<logContextKeyTerm>(termData.term)
@@ -391,7 +385,8 @@ auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
     auto const payloadSize = payload.byteSize();
     auto logEntry = LogEntry{_termData.term, index, std::move(payload)};
     logEntry.setInsertTp(insertTp);
-    leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(std::move(logEntry));
+    leaderData._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));
+    //leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(std::move(logEntry));
     _logMetrics->replicatedLogInsertsBytes->count(payloadSize);
     return index;
   });
@@ -648,8 +643,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex fromI
     -> std::unique_ptr<LogIterator> {
   auto const endIdx = _inMemoryLog.getNextIndex();
   TRI_ASSERT(fromIdx < endIdx);
-  auto log = _inMemoryLog._log.drop(fromIdx.value);
-  return std::make_unique<ReplicatedLogIterator>(std::move(log));
+  return _inMemoryLog.getIteratorFrom(fromIdx);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
@@ -716,9 +710,11 @@ auto replicated_log::LogLeader::getReplicatedLogSnapshot() const
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
-    return std::make_pair(leaderData._inMemoryLog._log, leaderData._commitIndex);
+
+    return std::make_pair(leaderData._inMemoryLog, leaderData._commitIndex);
   });
-  return log.take(commitIndex.value);
+
+  return log.takeSnapshotUpToAndIncluding(commitIndex).copyFlexVector();
 }
 
 auto replicated_log::LogLeader::waitForIterator(LogIndex index)

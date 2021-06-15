@@ -205,7 +205,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 
     LogLeader const& _self;
-    InMemoryLog _inMemoryLog{};
+    InMemoryLog _inMemoryLog;
     std::vector<FollowerInfo> _follower{};
     WaitForQueue _waitForQueue{};
     std::shared_ptr<QuorumData> _lastQuorum{};

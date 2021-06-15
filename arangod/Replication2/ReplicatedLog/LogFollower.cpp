@@ -22,6 +22,7 @@
 
 #include "LogFollower.h"
 
+#include "ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
@@ -138,7 +139,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   }
 
   // prepare the new in memory state
-  auto newInMemoryLog = self->_inMemoryLog._log.take(req.prevLogIndex.value);
+  auto newInMemoryLog = self->_inMemoryLog.takeSnapshotUpToAndIncluding(req.prevLogIndex);
 
   if (self->_inMemoryLog.getLastIndex() != req.prevLogIndex) {
     auto res = self->_logCore->removeBack(req.prevLogIndex + 1);
@@ -150,64 +151,65 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   }
 
   // commit the deletion in memory
-  // TODO static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
-  self->_inMemoryLog._log = std::move(newInMemoryLog);
-  newInMemoryLog = std::invoke([&] {
-    auto transient = self->_inMemoryLog._log.transient();
-    transient.append(req.entries.transient());
-    return transient.persistent();
-  });
+  static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
+  self->_inMemoryLog = std::move(newInMemoryLog);
+  newInMemoryLog = self->_inMemoryLog.append(_logContext, req.entries);
 
   auto iter = std::make_unique<ReplicatedLogIterator>(req.entries);
-  auto core = self->_logCore.get();
+  auto* core = self->_logCore.get();
+  auto commitToMemoryAndResolve = [self = std::move(self), req = std::move(req),
+                                   newInMemoryLog = std::move(newInMemoryLog),
+                                   toBeResolved = std::move(toBeResolved)](Result&& res) mutable {
+    static_assert(noexcept(res.fail()));
+    if (res.fail()) {
+      LOG_CTX("216d8", ERR, self->_self._logContext)
+          << "failed to insert log entries: " << res.errorMessage();
+      return std::make_pair(
+          AppendEntriesResult{
+              self->_self._currentTerm,
+              res.errorNumber(),
+              AppendEntriesErrorReason::PERSISTENCE_FAILURE,
+              req.messageId,
+          },
+          DeferredAction{});
+    }
+
+    // commit the write in memory
+    static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
+    self->_inMemoryLog = std::move(newInMemoryLog);
+
+    LOG_CTX("dd72d", TRACE, self->_self._logContext)
+        << "appended " << req.entries.size() << " log entries after "
+        << req.prevLogIndex << ", leader commit index = " << req.leaderCommit;
+
+    if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog.empty()) {
+      self->_commitIndex =
+          std::min(req.leaderCommit, self->_inMemoryLog.back().logIndex());
+      LOG_CTX("1641d", TRACE, self->_self._logContext)
+          << "increment commit index: " << self->_commitIndex;
+
+      *toBeResolved = WaitForQueueResolve{self->_waitForQueue.getLockedGuard(),
+                                          self->_commitIndex};
+      return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
+                            DeferredAction([toBeResolved = std::move(toBeResolved)]() noexcept {
+                              for (auto it = toBeResolved->value().begin;
+                                   it != toBeResolved->value().end; it++) {
+                                // TODO what do we resolve this with? QuorumData is not available on follower
+                                // TODO execute this in a different context.
+                                if (!it->second.isFulfilled()) {
+                                  // This only throws if promise was fulfilled earlier.
+                                  it->second.setValue(std::shared_ptr<QuorumData>{});
+                                }
+                              }
+                            }));
+    }
+    return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
+                          DeferredAction{});
+  };
+  static_assert(std::is_nothrow_move_constructible_v<decltype(newInMemoryLog)>);
+  static_assert(std::is_nothrow_move_constructible_v<decltype(commitToMemoryAndResolve)>);
   return core->insertAsync(std::move(iter), req.waitForSync)
-      .thenValue([self = std::move(self), req = std::move(req),
-                  newInMemoryLog = std::move(newInMemoryLog),
-                  toBeResolved = std::move(toBeResolved)](Result&& res) mutable {
-        if (!res.ok()) {
-          LOG_CTX("216d8", ERR, self->_self._logContext)
-              << "failed to insert log entries: " << res.errorMessage();
-          return std::make_pair(
-              AppendEntriesResult{
-                  self->_self._currentTerm,
-                  res.errorNumber(),
-                  AppendEntriesErrorReason::PERSISTENCE_FAILURE,
-                  req.messageId,
-              },
-              DeferredAction{});
-        }
-
-        // commit the write in memory
-        self->_inMemoryLog._log = std::move(newInMemoryLog);
-
-        LOG_CTX("dd72d", TRACE, self->_self._logContext)
-            << "appended " << req.entries.size() << " log entries after "
-            << req.prevLogIndex << ", leader commit index = " << req.leaderCommit;
-
-        if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog._log.empty()) {
-          self->_commitIndex =
-              std::min(req.leaderCommit, self->_inMemoryLog._log.back().logIndex());
-          LOG_CTX("1641d", TRACE, self->_self._logContext)
-              << "increment commit index: " << self->_commitIndex;
-
-          *toBeResolved = WaitForQueueResolve{self->_waitForQueue.getLockedGuard(),
-                                              self->_commitIndex};
-          return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
-                                DeferredAction([toBeResolved = std::move(toBeResolved)]() noexcept {
-                                  for (auto it = toBeResolved->value().begin;
-                                       it != toBeResolved->value().end; it++) {
-                                    // TODO what do we resolve this with? QuorumData is not available on follower
-                                    // TODO execute this in a different context.
-                                    if (!it->second.isFulfilled()) {
-                                      // This only throws if promise was fulfilled earlier.
-                                      it->second.setValue(std::shared_ptr<QuorumData>{});
-                                    }
-                                  }
-                                }));
-        }
-        return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
-                              DeferredAction{});
-      })
+      .thenValue(std::move(commitToMemoryAndResolve))
       .then([measureTime = std::move(measureTime)](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, toBeResolved] = res.get();
@@ -329,8 +331,7 @@ auto replicated_log::LogFollower::getLogIterator(LogIndex fromIdx) const
       [&](GuardedFollowerData const& data) -> std::unique_ptr<LogIterator> {
         auto const endIdx = data._inMemoryLog.getNextIndex();
         TRI_ASSERT(fromIdx < endIdx);
-        auto log = data._inMemoryLog._log.drop(fromIdx.value);
-        return std::make_unique<ReplicatedLogIterator>(std::move(log));
+        return data._inMemoryLog.getIteratorFrom(fromIdx);
       });
 }
 

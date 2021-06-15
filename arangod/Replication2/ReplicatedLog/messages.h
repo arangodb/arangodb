@@ -23,12 +23,13 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/Common.h"
-#include "types.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 #include <Basics/ErrorCode.h>
 #include <Basics/voc-errors.h>
 
 #include <string>
+#include <utility>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -80,9 +81,29 @@ struct AppendEntriesResult {
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 };
 
-std::string to_string(AppendEntriesErrorReason reason);
+auto to_string(AppendEntriesErrorReason reason) -> std::string;
 
 struct AppendEntriesRequest {
+  AppendEntriesRequest() = default;
+  AppendEntriesRequest(LogTerm leaderTerm, ParticipantId leaderId, LogTerm prevLogTerm,
+                       LogIndex prevLogIndex, LogIndex leaderCommit, MessageId messageId,
+                       bool waitForSync, immer::flex_vector<LogEntry> entries)
+      : leaderTerm(leaderTerm),
+        leaderId(std::move(leaderId)),
+        prevLogTerm(prevLogTerm),
+        prevLogIndex(prevLogIndex),
+        leaderCommit(leaderCommit),
+        messageId(messageId),
+        waitForSync(waitForSync),
+        entries(std::move(entries)) {}
+
+  AppendEntriesRequest(AppendEntriesRequest&& other) noexcept;
+  AppendEntriesRequest(AppendEntriesRequest const& other) = default;
+  auto operator=(AppendEntriesRequest&& other) noexcept -> AppendEntriesRequest&;
+  auto operator=(AppendEntriesRequest const& other) -> AppendEntriesRequest& = default;
+  ~AppendEntriesRequest() noexcept = default;
+
+  // TODO reorder members for a more efficient layout
   LogTerm leaderTerm;
   ParticipantId leaderId;
   // TODO assert index == 0 <=> term == 0
@@ -96,4 +117,5 @@ struct AppendEntriesRequest {
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
 };
-}
+
+}  // namespace arangodb::replication2::replicated_log

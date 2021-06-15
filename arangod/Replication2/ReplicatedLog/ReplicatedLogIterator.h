@@ -39,7 +39,8 @@
 
 #include "Common.h"
 
-namespace arangodb::replication2 {
+namespace arangodb::replication2::replicated_log {
+
 class ReplicatedLogIterator : public LogIterator {
  public:
   explicit ReplicatedLogIterator(immer::flex_vector<LogEntry> container)
@@ -61,4 +62,5 @@ class ReplicatedLogIterator : public LogIterator {
   immer::flex_vector<LogEntry>::const_iterator _begin;
   immer::flex_vector<LogEntry>::const_iterator _end;
 };
-}
+
+}  // namespace arangodb::replication2::replicated_log
