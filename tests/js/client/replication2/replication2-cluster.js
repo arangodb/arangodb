@@ -41,7 +41,10 @@ const replicationApi = {
   createLog: (id, server) => {
     const res = request.post({
       url: getUrl(server.endpoint) + `/_api/log`,
-      body: JSON.stringify({id}),
+      // Note that `targetConfig` is deserialized by the RestHandler, but ignored (on a DBServer, as is the case here).
+      // Just the `id` is needed. We might want to change this if the API is kept, i.e. make passing `targetConfig`
+      // obsolete.
+      body: JSON.stringify({id, targetConfig: {waitForSync: false, writeConcern: 2}}),
     });
     checkRequestResult(res);
     assertTypeOf('object', res.json);
