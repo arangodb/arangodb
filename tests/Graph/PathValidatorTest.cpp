@@ -84,9 +84,9 @@ class PathValidatorTest : public ::testing::Test {
 
   // Expression Parts
   arangodb::transaction::Methods _trx{_query->newTrxContext()};
-  aql::Ast _ast{*_query.get()};
+  aql::Ast* _ast{_query->ast()};
   aql::Variable _tmpVar{"tmp", 0, false};
-  aql::AstNode* _varNode{::InitializeReference(_ast, _tmpVar)};
+  aql::AstNode* _varNode{::InitializeReference(*_ast, _tmpVar)};
 
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
   arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query, _functionsCache};
@@ -149,14 +149,14 @@ class PathValidatorTest : public ::testing::Test {
    * generates a condition #TMP._key == '<toMatch>'
    */
   std::unique_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
-    auto expectedKey = _ast.createNodeValueString(toMatch.c_str(), toMatch.length());
+    auto expectedKey = _ast->createNodeValueString(toMatch.c_str(), toMatch.length());
     auto keyAccess =
-        _ast.createNodeAttributeAccess(_varNode, StaticStrings::KeyString.c_str(),
-                                       StaticStrings::KeyString.length());
+        _ast->createNodeAttributeAccess(_varNode, StaticStrings::KeyString.c_str(),
+                                        StaticStrings::KeyString.length());
     // This condition cannot be fulfilled
-    auto condition = _ast.createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
-                                                   keyAccess, expectedKey);
-    return std::make_unique<aql::Expression>(&_ast, condition);
+    auto condition = _ast->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                    keyAccess, expectedKey);
+    return std::make_unique<aql::Expression>(_ast, condition);
   }
 
  private:

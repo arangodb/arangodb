@@ -38,17 +38,14 @@ class QueryContext;
 struct Variable;
 }  // namespace aql
 
-// TODO the context and transaction is right now optional and potentially dangerous.
-// However it is actually not needed often so we may want to split this into two classes
-// or simplify the expression context to make it creatable with a query context.
 namespace graph {
 class PathValidatorOptions {
  public:
   PathValidatorOptions(aql::Variable const* tmpVar,
                        arangodb::aql::FixedVarExpressionContext& expressionContext);
   ~PathValidatorOptions() = default;
-  PathValidatorOptions(PathValidatorOptions const&);
   PathValidatorOptions(PathValidatorOptions&&) = default;
+  PathValidatorOptions(PathValidatorOptions const&) = default;
 
   /**
    * @brief Set the expression that needs to hold true for ALL vertices on the path.
@@ -74,13 +71,9 @@ class PathValidatorOptions {
   aql::FixedVarExpressionContext& getExpressionContext();
 
  private:
-  std::unique_ptr<aql::Expression> _allVerticesExpression;
-  std::unordered_map<uint64_t, std::unique_ptr<aql::Expression>> _vertexExpressionOnDepth;
-  // Only needed for the fixed var expression context below. No real usage here.
-  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-
+  std::shared_ptr<aql::Expression> _allVerticesExpression;
+  std::unordered_map<uint64_t, std::shared_ptr<aql::Expression>> _vertexExpressionOnDepth;
   aql::Variable const* _tmpVar;
-
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 };
 }  // namespace graph
