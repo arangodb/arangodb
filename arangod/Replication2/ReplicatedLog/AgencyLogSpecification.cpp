@@ -66,6 +66,11 @@ auto LogPlanConfig::toVelocyPack(VPackBuilder& builder) const -> void {
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
 }
 
+auto agency::operator==(LogPlanConfig const& left, LogPlanConfig const& right) noexcept -> bool {
+  // TODO How can we make sure that we never forget a field here?
+  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern;
+}
+
 template<>
 struct velocypack::Extractor<LogTerm> {
   static auto extract(VPackSlice slice) -> LogTerm {

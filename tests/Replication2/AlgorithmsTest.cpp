@@ -38,8 +38,13 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
     return spec;
   }
 
+  auto makeLeader(ParticipantId leader, RebootId rebootId)
+      -> agency::LogPlanTermSpecification::Leader {
+    return {leader, rebootId};
+  }
+
   auto makeTermSpecification(LogTerm term, agency::LogPlanConfig const& config,
-                             ParticipantInfo const& info, std::optional<std::string> leader)
+                             ParticipantInfo const& info)
       -> agency::LogPlanTermSpecification {
     auto termSpec = agency::LogPlanTermSpecification{};
     termSpec.term = term;
@@ -50,11 +55,6 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
                      return std::make_pair(info.first,
                                            agency::LogPlanTermSpecification::Participant{});
                    });
-    if (leader) {
-      termSpec.leader =
-          agency::LogPlanTermSpecification::Leader{*leader, info.at(*leader).rebootId};
-    }
-
     return termSpec;
   }
 
@@ -63,10 +63,20 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
     return current;
   }
 
+  auto makeLogCurrentReportAll(ParticipantInfo const& info, LogTerm term, LogIndex spearhead, LogTerm spearheadTerm) {
+    auto current = agency::LogCurrent{};
+    std::transform(info.begin(), info.end(), std::inserter(current.localState, current.localState.end()), [&](auto const& info) {
+      auto state = agency::LogCurrentLocalState{};
+      state.term = term;
+      state.spearhead = replicated_log::TermIndexPair{spearheadTerm, spearhead};
+      return std::make_pair(info.first, state);
+    });
+    return current;
+  }
+
 };
 
 TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
-
 
   auto const participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
@@ -75,14 +85,103 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
   };
 
   auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants, "A");
-
+  spec.currentTerm =
+      makeTermSpecification(LogTerm{1}, {}, participants);
+  spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
+  auto result = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_EQ(result, std::nullopt);
+}
+
+TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
+
+  auto const participants = ParticipantInfo{
+      {"A", ParticipantRecord{RebootId{1}, true}},
+      {"B", ParticipantRecord{RebootId{2}, false}},
+      {"C", ParticipantRecord{RebootId{1}, true}},
+  };
+
+  auto spec = makePlanSpecification(LogId{1});
+  spec.currentTerm =
+      makeTermSpecification(LogTerm{1}, {}, participants);
+  spec.currentTerm->leader = makeLeader("A", RebootId{1});
+  auto current = makeLogCurrent();
 
   auto result = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_EQ(result, std::nullopt);
+}
 
+TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
 
+  auto participants = ParticipantInfo{
+      {"A", ParticipantRecord{RebootId{2}, false}},
+      {"B", ParticipantRecord{RebootId{1}, true}},
+      {"C", ParticipantRecord{RebootId{1}, true}},
+  };
 
+  auto spec = makePlanSpecification(LogId{1});
+  spec.currentTerm =
+      makeTermSpecification(LogTerm{1}, {}, participants);
+  spec.currentTerm->leader = makeLeader("A", RebootId{1});
+  auto current = makeLogCurrent();
 
+  auto result = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->leader, std::nullopt);
+  EXPECT_EQ(result->term, LogTerm{2});
+  EXPECT_EQ(result->config, spec.currentTerm->config);
+}
+
+TEST_F(CheckLogsAlgorithmTest, check_elect_leader_if_all_available) {
+
+  auto participants = ParticipantInfo{
+      {"A", ParticipantRecord{RebootId{1}, true}},
+      {"B", ParticipantRecord{RebootId{1}, true}},
+      {"C", ParticipantRecord{RebootId{1}, true}},
+  };
+
+  auto spec = makePlanSpecification(LogId{1});
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
+  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
+
+  auto result = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NE(result->leader, std::nullopt);
+  ASSERT_TRUE(participants.find(result->leader->serverId) != participants.end());
+  EXPECT_EQ(participants.at(result->leader->serverId).rebootId, result->leader->rebootId);
+  EXPECT_EQ(result->term, LogTerm{2});
+  EXPECT_EQ(result->config, spec.currentTerm->config);
+}
+
+TEST_F(CheckLogsAlgorithmTest, do_nothing_if_non_healthy) {
+
+  auto participants = ParticipantInfo{
+      {"A", ParticipantRecord{RebootId{1}, false}},
+      {"B", ParticipantRecord{RebootId{1}, false}},
+      {"C", ParticipantRecord{RebootId{1}, false}},
+  };
+
+  auto spec = makePlanSpecification(LogId{1});
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
+  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
+
+  auto result = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
+
+  auto participants = ParticipantInfo{
+      {"A", ParticipantRecord{RebootId{1}, true}},
+      {"B", ParticipantRecord{RebootId{1}, true}},
+      {"C", ParticipantRecord{RebootId{1}, true}},
+  };
+
+  auto spec = makePlanSpecification(LogId{1});
+  spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
+  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
+
+  auto result = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_FALSE(result.has_value());
 }

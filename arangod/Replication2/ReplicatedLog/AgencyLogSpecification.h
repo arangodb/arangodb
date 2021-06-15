@@ -44,6 +44,11 @@ struct LogPlanConfig {
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanConfig(from_velocypack_t, VPackSlice);
   LogPlanConfig() noexcept = default;
+
+  friend auto operator==(LogPlanConfig const& left, LogPlanConfig const& right) noexcept -> bool;
+  friend auto operator!=(LogPlanConfig const& left, LogPlanConfig const& right) noexcept -> bool {
+    return !(left == right);
+  }
 };
 
 struct LogPlanTermSpecification {
