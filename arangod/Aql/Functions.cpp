@@ -1313,6 +1313,13 @@ Result parseShape(ExpressionContext* exprCtx,
   }
 }
 
+std::string getFunctionName(const AstNode& node) {
+
+  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  TRI_ASSERT(impl != nullptr);
+  return impl->name;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -8848,16 +8855,11 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
   return AqlValue{input};
 }
 
-double gauss_decay_f(const double arg, const double origin, const double scale, const double offset = 0, const double decay = 0.5) {
-
-  double sigma_sqr = - (scale * scale) / (2 * std::log(decay));
-  double val = std::exp(- (std::pow(std::max(0.0, std::fabs(arg - origin) - offset), 2)) / (2 * sigma_sqr));
-  return val > decay ? val : decay;
-}
-
-AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionContext,
-                                             AstNode const& node,
-                                             VPackFunctionParameters const& parameters) {
+template <typename F>
+AqlValue calc_function(arangodb::aql::ExpressionContext* expressionContext,
+                     AstNode const& node,
+                     VPackFunctionParameters const& parameters,
+                     F lambda_func) {
 
   AqlValue const& arg_value = extractFunctionParameterValue(parameters, 0);
   AqlValue const& origin_value = extractFunctionParameterValue(parameters, 1);
@@ -8865,16 +8867,12 @@ AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionConte
   AqlValue const& offset_value = extractFunctionParameterValue(parameters, 3);
   AqlValue const& decay_value = extractFunctionParameterValue(parameters, 4);
 
-  // extract AQL function name
-  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
-  TRI_ASSERT(impl != nullptr);
-
   // check type of arguments
   if ((!arg_value.isRange() && !arg_value.isArray() && !arg_value.isNumber()) ||
     !origin_value.isNumber() || !scale_value.isNumber() ||
     !offset_value.isNumber() || !decay_value.isNumber()) {
 
-    registerInvalidArgumentWarning(expressionContext, impl->name.c_str());
+    registerInvalidArgumentWarning(expressionContext, getFunctionName(node).c_str());
     return AqlValue(AqlValueHintNull());
   }
 
@@ -8891,20 +8889,23 @@ AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionConte
   error |= failed;
 
   if (error) {
-    registerWarning(expressionContext, impl->name.c_str(), TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    registerWarning(expressionContext, getFunctionName(node).c_str(), TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
   // check that parameters are correct
-  if (origin < 0 || scale < 0 || offset < 0 || decay < 0) {
-    registerWarning(expressionContext, impl->name.c_str(), TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+  if (scale <= 0 || offset < 0 || decay <= 0 || decay >= 1) {
+    registerWarning(expressionContext, getFunctionName(node).c_str(), TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
     return AqlValue(AqlValueHintNull());
   }
+
+  // get lambda for further calculation
+  auto f = lambda_func(origin, scale, offset, decay);
 
   // argument is number
   if (arg_value.isNumber()) {
       double arg = arg_value.slice().getNumber<double>();
-      double func_res = gauss_decay_f(arg, origin, scale, offset, decay);
+      double func_res = f(arg);
       return ::numberValue(func_res, true);
   } else {
     // argument is array or range
@@ -8918,11 +8919,11 @@ AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionConte
       VPackArrayBuilder array_builder(&builder);
       for (VPackSlice curr_arg : VPackArrayIterator(slice)) {
         if (!curr_arg.isNumber()) {
-          registerWarning(expressionContext, impl->name.c_str(), TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+          registerWarning(expressionContext, getFunctionName(node).c_str(), TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
           return AqlValue(AqlValueHintNull());
         }
         double arg = curr_arg.getNumber<double>();
-        double func_res = gauss_decay_f(arg, origin, scale, offset, decay);
+        double func_res = f(arg);
         builder.add(VPackValue(func_res));
       }
     }
@@ -8931,20 +8932,53 @@ AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionConte
   }
 }
 
+AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionContext,
+                                             AstNode const& node,
+                                             VPackFunctionParameters const& parameters) {
+
+  auto gauss_decay_f = [](const double origin, const double scale, const double offset, const double decay) {
+    double sigma_sqr = - (scale * scale) / (2 * std::log(decay));
+    return [=](double arg) {
+      double max = std::max(0.0, std::fabs(arg - origin) - offset);
+      double numerator = max * max;
+      double val = std::exp(- numerator / (2 * sigma_sqr));
+      return val > decay ? val : decay;
+    };
+  };
+
+  return calc_function(expressionContext, node, parameters, gauss_decay_f);
+}
+
 AqlValue Functions::ExpDecay(arangodb::aql::ExpressionContext* expressionContext,
                                              AstNode const& node,
                                              VPackFunctionParameters const& parameters) {
-  // temp plug
-  AqlValue tmp;
-  return tmp;
+
+  auto exp_decay_f = [](const double origin, const double scale, const double offset, const double decay) {
+    double lambda = std::log(decay) / scale;
+    return [=](double arg) {
+      double numerator = lambda * std::max(0.0, std::abs(arg - origin) - offset);
+      double val = std::exp(numerator);
+      return val > decay ? val : decay;
+    };
+  };
+
+  return calc_function(expressionContext, node, parameters, exp_decay_f);
 }
 
 AqlValue Functions::LinearDecay(arangodb::aql::ExpressionContext* expressionContext,
                                              AstNode const& node,
                                              VPackFunctionParameters const& parameters) {
-  // temp plug
-  AqlValue tmp;
-  return tmp;
+
+  auto linear_decay_f = [](const double origin, const double scale, const double offset, const double decay) {
+    double s = scale / (1.0 - decay);
+    return [=](double arg) {
+      double max = std::max(0.0, std::fabs(arg - origin) - offset);
+      double val = std::max((s - max) / s, 0.0);
+      return val > decay ? val : decay;
+    };
+  };
+
+  return calc_function(expressionContext, node, parameters, linear_decay_f);
 }
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext, AstNode const&,

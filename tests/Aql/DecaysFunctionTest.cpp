@@ -47,8 +47,7 @@ using namespace arangodb::containers;
 
 namespace {
 
-
-// helper function
+// helper functions
 SmallVector<AqlValue> create_arg_vec(const VPackSlice slice) {
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
@@ -62,6 +61,9 @@ SmallVector<AqlValue> create_arg_vec(const VPackSlice slice) {
 }
 
 void expect_eq_slices(const VPackSlice actual_slice, const VPackSlice expected_slice) {
+  ASSERT_TRUE((actual_slice.isNumber() && expected_slice.isNumber()) ||
+              (actual_slice.isArray() && expected_slice.isArray()));
+
   if (actual_slice.isArray() && expected_slice.isArray()) {
     VPackValueLength actual_size = actual_slice.length();
     VPackValueLength expected_size = actual_slice.length();
@@ -73,18 +75,22 @@ void expect_eq_slices(const VPackSlice actual_slice, const VPackSlice expected_s
       rhs = actual_slice.at(i).getNumber<decltype (rhs)>();
       ASSERT_DOUBLE_EQ(lhs, rhs);
     }
-  } else if (actual_slice.isNumber() && expected_slice.isNumber()) {
+  } else {
     double lhs = actual_slice.getNumber<decltype (lhs)>();
     double rhs = expected_slice.getNumber<decltype (rhs)>();
     ASSERT_DOUBLE_EQ(lhs, rhs);
-  } else {
-    ASSERT_TRUE(false);
   }
 
   return;
 }
 
-AqlValue evaluate_gauss(const SmallVector<AqlValue> params) {
+enum class FunctionType {
+  Gauss = 0,
+  Exp,
+  Linear
+};
+
+AqlValue evaluateDecayFunction(const SmallVector<AqlValue>& params, const FunctionType& type ) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*){ });
@@ -103,14 +109,27 @@ AqlValue evaluate_gauss(const SmallVector<AqlValue> params) {
     return trx;
   });
 
-  arangodb::aql::Function f("GAUSS_DECAY", &Functions::GaussDecay);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  node.setData(static_cast<void const*>(&f));
-
-  return Functions::GaussDecay(&expressionContext, node, params);
+  switch(type) {
+    case FunctionType::Gauss: {
+        arangodb::aql::Function f("GAUSS_DECAY", &Functions::GaussDecay);
+        node.setData(static_cast<void const*>(&f));
+        return Functions::GaussDecay(&expressionContext, node, params);
+      }
+    case FunctionType::Exp: {
+        arangodb::aql::Function f("EXP_DECAY", &Functions::ExpDecay);
+        node.setData(static_cast<void const*>(&f));
+        return Functions::ExpDecay(&expressionContext, node, params);
+      }
+    case FunctionType::Linear: {
+        arangodb::aql::Function f("LINEAR_DECAY", &Functions::LinearDecay);
+        node.setData(static_cast<void const*>(&f));
+        return Functions::LinearDecay(&expressionContext, node, params);
+      }
+  }
 }
 
-void assertGauss(char const* expected, char const* args) {
+void assertDecayFunction(char const* expected, char const* args, const FunctionType& type) {
 
   // get slice for expected value
   auto const expected_json = VPackParser::fromJson(expected);
@@ -126,15 +145,15 @@ void assertGauss(char const* expected, char const* args) {
   SmallVector<AqlValue> params = create_arg_vec(args_slice);
 
   // evaluate
-  auto const actual_value = evaluate_gauss(params);
-  ASSERT_TRUE(actual_value.isNumber() || actual_value.isArray());
+  auto const actual_value = evaluateDecayFunction(params, type);
 
   // check equality
   expect_eq_slices(actual_value.slice(), expected_slice);
+
   return;
 }
 
-void assertGaussFail(char const* args) {
+void assertDecayFunctionFail(char const* args, const FunctionType& type) {
   // get slice for args value
   auto const args_json = VPackParser::fromJson(args);
   auto const args_slice = args_json->slice();
@@ -143,20 +162,100 @@ void assertGaussFail(char const* args) {
   // create params vector from args slice
   SmallVector<AqlValue> params = create_arg_vec(args_slice);
 
-  ASSERT_TRUE(evaluate_gauss(params).isNull(false));
+  ASSERT_TRUE(evaluateDecayFunction(params, type).isNull(false));
 }
 
 TEST(GaussDecayFunctionTest, test) {
-  assertGauss("0.5", "[20, 40, 5, 5, 0.5]");
-  assertGauss("1", "[41, 40, 5, 5, 0.5]");
-  assertGauss("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]");
-  assertGauss("1.0", "[40, 40, 5, 5, 0.5]");
-  assertGauss("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]");
-  assertGauss("0.2715403018822964", "[49.9889, 49.987, 0.001, 0.001, 0.2]");
-  assertGauss("0.1", "[-10, 40, 5, 0, 0.1]");
-  assertGaussFail("[30, 40, 5]");
-  assertGaussFail("[30, 40, 5, 100]");
-  assertGaussFail("[30, 40, 5, 100, -100]");
+  // expecting 1
+  assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", FunctionType::Gauss);
+  assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", FunctionType::Gauss);
+  assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", FunctionType::Gauss);
+
+  assertDecayFunction("1.0", "[49.987, 49.987, 0.000000000000000001, 0.001, 0.2]", FunctionType::Gauss);
+
+  // with offset=0
+  assertDecayFunction("0.9840344433634576", "[1, 0, 10, 0, 0.2]", FunctionType::Gauss);
+  assertDecayFunction("0.9376509540020155", "[2, 0, 10, 0, 0.2]", FunctionType::Gauss);
+  assertDecayFunction("0.668740304976422", "[5, 0, 10, 0, 0.2]", FunctionType::Gauss);
+  assertDecayFunction("0.21316171604122283", "[9.8, 0, 10, 0, 0.2]", FunctionType::Gauss);
+
+  // with scale=0.001 (almost zero)
+  // also test array input and array output
+  assertDecayFunction("[1.0, 1.0, 1e0, 1, 2e-1]", "[[0,1,9.8,10,11], 0, 0.001, 10, 0.2]", FunctionType::Gauss);
+
+  // test array input and array output
+  assertDecayFunction("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]", FunctionType::Gauss);
+
+  // expecting decay value
+  assertDecayFunction("0.5", "[20, 40, 5, 5, 0.5]", FunctionType::Gauss);
+  assertDecayFunction("0.2715403018822964", "[49.9889, 49.987, 0.001, 0.001, 0.2]", FunctionType::Gauss);
+  assertDecayFunction("0.1", "[-10, 40, 5, 0, 0.1]", FunctionType::Gauss);
+
+  // incorrect input
+  assertDecayFunctionFail("[10, 10, 0.0, 2, 0.2]", FunctionType::Gauss);
+  assertDecayFunctionFail("[30, 40, 5]", FunctionType::Gauss);
+  assertDecayFunctionFail("[30, 40, 5, 100]", FunctionType::Gauss);
+  assertDecayFunctionFail("[30, 40, 5, 100, -100]", FunctionType::Gauss);
+  assertDecayFunctionFail("[\"a\", 40, 5, 5, 0.5]", FunctionType::Gauss);
+}
+
+TEST(ExpDecayFunctionTest, test) {
+  // expecting 1
+  assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", FunctionType::Exp);
+  assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", FunctionType::Exp);
+  assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", FunctionType::Exp);
+
+  // with offset=0
+  assertDecayFunction("0.8513399225207846", "[1, 0, 10, 0, 0.2]", FunctionType::Exp);
+  assertDecayFunction("0.7247796636776955", "[2, 0, 10, 0, 0.2]", FunctionType::Exp);
+  assertDecayFunction("0.447213595499958", "[5, 0, 10, 0, 0.2]", FunctionType::Exp);
+  assertDecayFunction("0.20654248397928862", "[9.8, 0, 10, 0, 0.2]", FunctionType::Exp);
+
+  // with scale=0.001 (almost zero)
+  assertDecayFunction("1", "[0, 0, 0.001, 10, 0.2]", FunctionType::Exp);
+  assertDecayFunction("1", "[1, 0, 0.001, 10, 0.2]", FunctionType::Exp);
+  assertDecayFunction("1", "[9.8, 0, 0.001, 10, 0.2]", FunctionType::Exp);
+  assertDecayFunction("1", "[10, 0, 0.001, 10, 0.2]", FunctionType::Exp);
+  assertDecayFunction("0.2", "[11, 0, 0.001, 10, 0.2]", FunctionType::Exp);
+
+  // expecting decay value
+  assertDecayFunction("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]", FunctionType::Exp);
+  assertDecayFunction("0.2", "[49.9889, 50, 0.001, 0.001, 0.2]", FunctionType::Exp);
+  assertDecayFunction("0.1", "[-10, 40, 5, 0, 0.1]", FunctionType::Exp);
+
+  // incorrect input
+  assertDecayFunctionFail("[10, 10, 3, 2, 1]", FunctionType::Exp);
+  assertDecayFunctionFail("[30, 40, 5]", FunctionType::Exp);
+  assertDecayFunctionFail("[30, 40, 5, 100]", FunctionType::Exp);
+  assertDecayFunctionFail("[30, 40, 5, 100, -100]", FunctionType::Exp);
+  assertDecayFunctionFail("[\"a\", 40, 5, 5, 0.5]", FunctionType::Exp);
+}
+
+TEST(LinDecayFunctionTest, test) {
+  // expecting 1
+  assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", FunctionType::Exp);
+  assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", FunctionType::Exp);
+  assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", FunctionType::Exp);
+
+  // with offset=0
+  assertDecayFunction("0.92", "[1, 0, 10, 0, 0.2]", FunctionType::Linear);
+  assertDecayFunction("0.84", "[2, 0, 10, 0, 0.2]", FunctionType::Linear);
+  assertDecayFunction("0.6", "[5, 0, 10, 0, 0.2]", FunctionType::Linear);
+  assertDecayFunction("0.21599999999999994", "[9.8, 0, 10, 0, 0.2]", FunctionType::Linear);
+
+  // with scale=0.001 (almost zero)
+  assertDecayFunction("[1,1,1,1,0.2]", "[[0,1,5,9.8,10,11], 0, 10, 0, 0.2]", FunctionType::Linear);
+
+  // expecting decay value
+  assertDecayFunction("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]", FunctionType::Exp);
+  assertDecayFunction("0.2", "[49.9889, 50, 0.001, 0.001, 0.2]", FunctionType::Exp);
+  assertDecayFunction("0.1", "[-10, 40, 5, 0, 0.1]", FunctionType::Exp);
+
+  // incorrect input
+  assertDecayFunctionFail("[30, 40, 5]", FunctionType::Exp);
+  assertDecayFunctionFail("[30, 40, 5, 100]", FunctionType::Exp);
+  assertDecayFunctionFail("[30, 40, 5, 100, -100]", FunctionType::Exp);
+  assertDecayFunctionFail("[\"a\", 40, 5, 5, 0.5]", FunctionType::Exp);
 }
 
 } // namespase
