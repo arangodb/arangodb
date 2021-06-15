@@ -38,6 +38,8 @@ CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel",
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",
                  "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb"]
 
+NODE_TYPES = ["coordinator", "dbserver", "agent", "single"]
+
 # Check that we are in the right place:
 LS_HERE = os.listdir(".")
 if not("arangod" in LS_HERE and "arangosh" in LS_HERE and
@@ -145,10 +147,20 @@ for i, metric in enumerate(METRICSLIST):
                         print(f"YAML file '{filename}' has an attribute "
                               f"'{attr}' whose value must be a string but isn't.")
                         bad = True
+                if y["help"].strip()[-1] != ".":
+                    print(f"YAML file '{filename}' has a 'help' attribute that "
+                          f"does not end with a period.")
+                    bad = True
                 if not isinstance(y["exposedBy"], list):
                     print(f"YAML file '{filename}' has an attribute 'exposedBy' "
                           f"whose value must be a list but isn't.")
                     bad = True
+                else:
+                    for e in y["exposedBy"]:
+                        if e not in NODE_TYPES:
+                            print(f"YAML file '{filename}' has an attribute 'exposedBy' "
+                                  f"that lists an invalid value '{e}'.")
+                            bad = True
                 if not bad:
                     if not y["category"] in CATEGORYNAMES:
                         print(f"YAML file '{filename}' has an unknown category "
