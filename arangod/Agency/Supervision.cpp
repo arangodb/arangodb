@@ -24,8 +24,6 @@
 #include "Supervision.h"
 
 #include <Basics/StringUtils.h>
-#include <Replication2/AgencyMethods.h>
-#include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
 #include <thread>
 
 #include "Agency/ActiveFailoverJob.h"
@@ -45,6 +43,9 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/AgencyMethods.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
 #include "StorageEngine/HealthData.h"
 
 using namespace arangodb;
@@ -2223,28 +2224,6 @@ void Supervision::checkBrokenAnalyzers() {
   }
 }
 
-namespace {
-
-using namespace replication2;
-using namespace replication2::agency;
-
-void updateTerm(Agent* agent, std::string const& agencyPrefix, std::string const& database,
-                LogId logId, LogTerm oldTerm, LogPlanTermSpecification const& newSpec) {
-  auto envelope = std::make_shared<Builder>();
-
-  replication2::agency::methods::updateTermSpecificationTrx(
-      arangodb::agency::envelope::into_builder(*envelope), database, logId, newSpec, oldTerm)
-      .done();
-
-  write_ret_t res = agent->write(envelope);
-  if (!res.successful()) {
-    // TODO should we ignore if writing this fails?
-    LOG_TOPIC("12d36", DEBUG, Logger::SUPERVISION)
-        << "failed to update term in agency. Will retry. " << envelope->toJson();
-  }
-}
-
-}
 
 void Supervision::checkReplicatedLogs() {
   _lock.assertLockedByCurrentThread();
@@ -2257,105 +2236,64 @@ void Supervision::checkReplicatedLogs() {
     return LogPlanSpecification{from_velocypack, builder.slice()};
   };
 
+  auto const readLogCurrent = [](Node const& node) -> LogCurrent {
+    // TODO fix this hack
+    auto builder = node.toBuilder();
+    return LogCurrent(from_velocypack, builder.slice());
+  };
+
   // check is Plan has replicated logs
   auto const& [node, exists] = snapshot().hasAsNode(planRepLogPrefix);
   if (!exists) {
     return;
   }
 
+  using namespace replication2::algorithms;
+
+  ParticipantInfo info = std::invoke([&]{
+    ParticipantInfo info;
+    Node::Children const& dbservers = snapshot().hasAsChildren(plannedServers).first;
+    for (auto const& [serverId, node]: dbservers) {
+      bool const isHealthy = serverHealth(serverId) == HEALTH_STATUS_GOOD;
+      std::pair<uint64_t, bool> rebootID =
+          snapshot().hasAsUInt(curServersKnown + serverId + "/" + StaticStrings::RebootId);
+      if (rebootID.second) {
+        info.emplace(serverId, ParticipantRecord{RebootId{rebootID.first}, isHealthy});
+      }
+    }
+    return info;
+  });
+
+  auto builder = std::make_shared<Builder>();
+  auto envelope = arangodb::agency::envelope::into_builder(*builder);
   for (auto const& [dbName, db] : node.children()) {
     for (auto const& [idString, node] : db->children()) {
       auto spec = readPlanSpecification(*node);
-
-      if (auto const& term = spec.currentTerm; term) {
-        if (auto const& leader = term->leader; leader) {
-          // check if leader is still valid
-          bool serverFound;
-          bool valid = verifyServerRebootID(leader->serverId,
-                                            leader->rebootId.value(), serverFound);
-          if (!valid) {
-            // create a new term with no leader
-            LogPlanTermSpecification newTermSpec = *term;
-            newTermSpec.leader = std::nullopt;
-            newTermSpec.term.value += 1;
-            // TODO collect all changes in one batch
-            //      it is likely that there is more than one replicated log
-            updateTerm(_agent, _agencyPrefix, dbName, spec.id, term->term, newTermSpec);
-          }
-        } else {
-          LOG_DEVEL << "replicated log " << dbName << "/" << idString << " has no leader!";
-          auto current = std::invoke([&, &dbName = dbName, &idString = idString]() -> LogCurrent {
-            using namespace cluster::paths;
-            auto currentPath =
-                aliases::current()
-                    ->replicatedLogs()
-                    ->database(dbName)
-                    ->log(idString)
-                    ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
-            auto const& node = snapshot().get(currentPath);
-            // TODO fix this hack
-            return LogCurrent(from_velocypack, node.toBuilder().slice());
-          });
-
-          // check if we can find a new leader
-          // wait for enough servers to report the current term
-          // a server is counted if:
-          //    - its reported term is the current term
-          //    - it is seen as healthy be the supervision
-
-          // if enough servers are found, declare the server with
-          // the "best" log as leader in a new term
-
-          auto newLeaderSet = std::vector<replication2::ParticipantId>{};
-          auto bestTermIndex = replication2::replicated_log::TermIndexPair{};
-          auto numberOfAvailableParticipants = std::size_t{0};
-
-          for (auto const& [participant, status] : current.localState) {
-            bool const isHealthy = serverHealth(participant) == HEALTH_STATUS_GOOD;
-            if (!isHealthy || status.term != spec.currentTerm->term) {
-              continue;
-            }
-
-            numberOfAvailableParticipants += 1;
-            if (status.spearhead >= bestTermIndex) {
-              if (status.spearhead != bestTermIndex) {
-                newLeaderSet.clear();
-              }
-              newLeaderSet.push_back(participant);
-              bestTermIndex = status.spearhead;
-            }
-          }
-
-          auto const requiredNumberOfAvailableParticipants = std::invoke([&spec = spec.currentTerm] {
-            // TODO is this still correct for MoveShard if Participants > ReplicationFactor?
-            return spec->participants.size() - spec->config.writeConcern + 1;
-          });
-
-          if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
-            // Randomly select one of the best participants
-            auto const& newLeader = newLeaderSet.at(RandomGenerator::interval(newLeaderSet.size()));
-
-            auto [rebootId, rebootIdFound] = snapshot().hasAsUInt(
-                curServersKnown + newLeader + "/" + StaticStrings::RebootId);
-            if (rebootIdFound) {
-              // we can elect a new leader
-              LogPlanTermSpecification newTerm = *spec.currentTerm;
-              newTerm.term.value += 1;
-              newTerm.leader =
-                  LogPlanTermSpecification::Leader{newLeader, RebootId{rebootId}};
-              LOG_DEVEL << "declaring " << newLeader << " as new leader for log "
-                        << dbName << "/" << idString;
-              updateTerm(_agent, _agencyPrefix, dbName, spec.id, term->term, newTerm);
-            } else {
-              LOG_DEVEL << "reboot id of server " << newLeader << " not found!";
-            }
-          } else {
-            LOG_DEVEL << "replicated log " << dbName << "/" << idString
-                      << " available " << numberOfAvailableParticipants << "/"
-                      << requiredNumberOfAvailableParticipants;
-          }
-        }
+      auto current = std::invoke([&, &dbName = dbName, &idString = idString]() -> LogCurrent {
+        using namespace cluster::paths;
+        auto currentPath =
+            aliases::current()
+                ->replicatedLogs()
+                ->database(dbName)
+                ->log(idString)
+                ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+        return readLogCurrent(snapshot().get(currentPath));
+      });
+      auto newTermSpec = checkReplicatedLog(dbName, spec, current, info);
+      if (newTermSpec) {
+        envelope = arangodb::replication2::agency::methods::updateTermSpecificationTrx(
+            std::move(envelope), dbName, spec.id, *newTermSpec, spec.currentTerm->term);
       }
+    }
+  }
+
+  envelope.done();
+  if (builder->slice().length() > 0) {
+    write_ret_t res = _agent->write(builder);
+    if (!res.successful()) {
+      // TODO should we ignore if writing this fails?
+      LOG_TOPIC("12d36", DEBUG, Logger::SUPERVISION)
+      << "failed to update term in agency. Will retry. " << builder->toJson();
     }
   }
 }

@@ -548,6 +548,7 @@ set(LIB_ARANGO_REPLICATION_SOURCES
 set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/AgencyMethods.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
+  Replication2/ReplicatedLog/Algorithms.cpp
   Replication2/ReplicatedLog/Common.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp
   Replication2/ReplicatedLog/LogCore.cpp

@@ -88,6 +88,7 @@ struct LogCurrent {
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrent(from_velocypack_t, VPackSlice);
+  LogCurrent() = default;
 };
 
 }
