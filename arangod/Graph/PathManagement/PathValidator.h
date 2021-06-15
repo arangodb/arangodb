@@ -87,6 +87,7 @@ class PathValidator {
 
  private:
   auto evaluateVertexCondition(typename PathStore::Step const&) -> ValidationResult;
+  auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;
 
   auto exposeUniqueVertices() const
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const&;

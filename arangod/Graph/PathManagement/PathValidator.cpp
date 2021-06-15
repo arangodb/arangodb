@@ -128,14 +128,46 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::exposeUniqueVerti
 }
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexRestriction(
+    typename PathStore::Step const& step) -> bool {
+  if (step.isFirst()) {
+    // first step => always allowed
+    return true;
+  }
+
+  auto allowedCollections = _options.getAllowedVertexCollections();
+  if (allowedCollections.empty()) {
+    // all allowed
+    return true;
+  }
+
+  auto collectionName = step.getCollectionName();
+  if (std::find(allowedCollections.begin(), allowedCollections.end(),
+                collectionName) != allowedCollections.end()) {
+    // found in allowed collections => allowed
+    return true;
+  }
+
+  // not allowed
+  return false;
+}
+
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCondition(
     typename PathStore::Step const& step) -> ValidationResult {
+  // evaluate if vertex collection is allowed
+  bool isAllowed = evaluateVertexRestriction(step);
+  if (!isAllowed) {
+    return ValidationResult{ValidationResult::Type::FILTER};
+  }
+
   auto expr = _options.getVertexExpression(step.getDepth());
   if (expr != nullptr) {
     // TODO: Maybe we want to replace this by ExpressionContext for simplicity
-
     _tmpObjectBuilder.clear();
     _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
+
+    // evaluate expression
     bool satifiesCondition = evaluateExpression(expr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
       return ValidationResult{ValidationResult::Type::FILTER};

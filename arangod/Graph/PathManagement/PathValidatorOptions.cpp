@@ -72,6 +72,23 @@ aql::Expression* PathValidatorOptions::getVertexExpression(uint64_t depth) const
   return _allVerticesExpression.get();
 }
 
+void PathValidatorOptions::addAllowedVertexCollection(std::string const& collectionName) {
+  TRI_ASSERT(std::find(_allowedVertexCollections.begin(),
+                       _allowedVertexCollections.end(),
+                       collectionName) == _allowedVertexCollections.end());
+  _allowedVertexCollections.emplace_back(collectionName);
+}
+
+void PathValidatorOptions::addAllowedVertexCollections(std::vector<std::string> const& collectionNames) {
+  for (auto& name : collectionNames) {
+    addAllowedVertexCollection(name);
+  }
+}
+
+std::vector<std::string> const& PathValidatorOptions::getAllowedVertexCollections() const {
+  return _allowedVertexCollections;
+}
+
 aql::Variable const* PathValidatorOptions::getTempVar() const {
   return _tmpVar;
 }

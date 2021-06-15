@@ -121,6 +121,14 @@ class ClusterProvider {
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
 
+    std::string getCollectionName() const {
+      auto collectionNameResult = extractCollectionName(_vertex.getID());
+      if (collectionNameResult.fail()) {
+        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+      }
+      return collectionNameResult.get().first;
+    };
+
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
    private:

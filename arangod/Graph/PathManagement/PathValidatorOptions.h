@@ -69,6 +69,12 @@ class PathValidatorOptions {
    */
   aql::Expression* getVertexExpression(uint64_t depth) const;
 
+  void addAllowedVertexCollection(std::string const& collectionName);
+
+  void addAllowedVertexCollections(std::vector<std::string> const& collectionNames);
+
+  std::vector<std::string> const& getAllowedVertexCollections() const;
+
   aql::Variable const* getTempVar() const;
 
   aql::FixedVarExpressionContext& getExpressionContext();
@@ -82,6 +88,8 @@ class PathValidatorOptions {
   aql::Variable const* _tmpVar;
 
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
+
+  std::vector<std::string> _allowedVertexCollections;
 };
 }  // namespace graph
 }  // namespace arangodb
