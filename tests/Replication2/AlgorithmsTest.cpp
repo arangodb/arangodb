@@ -198,6 +198,7 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
   auto spec = makePlanSpecification(LogId{1});
   spec.targetConfig.writeConcern = 2;
   spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
+  spec.currentTerm->config.writeConcern = 2;
   auto current = makeLogCurrentReportAll(participants, LogTerm{2}, LogIndex{4}, LogTerm{1});
 
   auto result = checkReplicatedLog("db", spec, current, participants);
@@ -206,6 +207,6 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
   ASSERT_TRUE(participants.find(result->leader->serverId) != participants.end());
   EXPECT_EQ(participants.at(result->leader->serverId).rebootId, result->leader->rebootId);
   EXPECT_TRUE(participants.at(result->leader->serverId).isHealthy);
-  EXPECT_EQ(result->term, LogTerm{2});
+  EXPECT_EQ(result->term, LogTerm{3});
   EXPECT_EQ(result->config, spec.currentTerm->config);
 }
