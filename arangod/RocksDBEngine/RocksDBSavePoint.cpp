@@ -32,12 +32,17 @@
 
 namespace arangodb {
 
-RocksDBSavePoint::RocksDBSavePoint(transaction::Methods* trx,
+RocksDBSavePoint::RocksDBSavePoint(RocksDBTransactionState* state,
+                                   transaction::Methods* trx,
                                    TRI_voc_document_operation_e operationType)
-    : _trx(trx),
+    : _state(state),
+      _trx(trx),
       _operationType(operationType),
-      _handled(_trx->isSingleOperationTransaction()) {
+      _handled(_trx->isSingleOperationTransaction()),
+      _tainted(false) {
+  TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(trx != nullptr);
+
   if (!_handled) {
     auto mthds = RocksDBTransactionState::toMethods(_trx);
     // only create a savepoint when necessary
@@ -61,15 +66,10 @@ RocksDBSavePoint::~RocksDBSavePoint() {
   }
 }
 
-void RocksDBSavePoint::cancel() {
-  // unconditionally cancel the savepoint
-  if (!_handled) {
-    auto mthds = RocksDBTransactionState::toMethods(_trx);
-    mthds->PopSavePoint();
-  
-    // this will prevent the rollback call in the destructor
-    _handled = true;
-  }
+void RocksDBSavePoint::prepareOperation(DataSourceId cid, RevisionId rid) {
+  TRI_ASSERT(!_tainted);
+
+  _state->prepareOperation(cid, rid, _operationType);
 }
 
 void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
@@ -94,10 +94,24 @@ void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
 void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
   auto mthds = RocksDBTransactionState::toMethods(_trx);
-  mthds->RollbackToSavePoint();
 
-  auto state = RocksDBTransactionState::toState(_trx);
-  state->rollbackOperation(_operationType);
+  rocksdb::Status s;
+  if (_tainted) {
+    // we have written at least one Put or Delete operation after
+    // we created the savepoint. because that has modified the
+    // WBWI, we need to do a full rebuild
+    s = mthds->RollbackToSavePoint();
+  } else {
+    // we have written only LogData values since we created the
+    // savepoint. we can get away by rolling back the WBWI's
+    // underlying WriteBatch only. this is a lot faster (simple
+    // std::string::resize instead of a full rebuild of the WBWI
+    // from the WriteBatch)
+    s = mthds->RollbackToWriteBatchSavePoint();
+  }  
+  TRI_ASSERT(s.ok());
+
+  _state->rollbackOperation(_operationType);
 
   _handled = true;  // in order to not roll back again by accident
 }

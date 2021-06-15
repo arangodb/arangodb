@@ -1,3 +1,11 @@
+v3.8.0 (XXXX-XX-XX)
+-------------------
+
+* Fix partial cleanup of internal write batches for multi-document operations of
+  which one or multiple failed. The previous implementation had an unreleased
+  performance optimization that wouldn't clean up the write batch completely.
+
+
 v3.8.0-rc.2 (2021-06-07)
 ------------------------
 

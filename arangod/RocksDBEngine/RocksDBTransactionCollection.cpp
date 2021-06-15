@@ -268,12 +268,18 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t co
 
 void RocksDBTransactionCollection::trackInsert(RevisionId rid) {
   if (_collection->useSyncByRevision()) {
+    if (_trackedOperations.inserts.empty() && !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+      _trackedOperations.inserts.reserve(8);
+    }
     _trackedOperations.inserts.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
 
 void RocksDBTransactionCollection::trackRemove(RevisionId rid) {
   if (_collection->useSyncByRevision()) {
+    if (_trackedOperations.removals.empty() && !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+      _trackedOperations.removals.reserve(8);
+    }
     _trackedOperations.removals.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
