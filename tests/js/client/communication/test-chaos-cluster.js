@@ -84,7 +84,7 @@ const checkCollectionConsistency = (cn) => {
       };
       
       if (!_.isEqual(leaderTree, followerTree)) {
-        console.error(`Leader and follower have different trees for shard ${shard}`)
+        console.error(`Leader and follower have different trees for shard ${shard}`);
         console.error("Leader: ", leaderTree);
         console.error("Follower: ", followerTree);
         failed = true;
