@@ -65,32 +65,41 @@ const checkCollectionConsistency = (cn) => {
   
   let failed = false;
   const getServerUrl = (serverId) => servers.filter((server) => server.id === serverId)[0].url;
-  Object.entries(shardInfo).forEach(
-    ([shard, [leader, follower]]) => {
-      const leaderTree = fetchRevisionTree(getServerUrl(leader), shard);
-      leaderTree.computed.nodes = "<reduced>";
-      leaderTree.stored.nodes = "<reduced>";
-      if (!leaderTree.equal) {
-        console.error(`Leader has inconsistent for shard ${shard}:`, leaderTree);
-        failed = true;
-      };
-      
-      const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
-      followerTree.computed.nodes = "<reduced>";
-      followerTree.stored.nodes = "<reduced>";
-      if (!followerTree.equal) {
-        console.error(`Follower has inconsistent for shard ${shard}:`, followerTree);
-        failed = true;
-      };
-      
-      if (!_.isEqual(leaderTree, followerTree)) {
-        console.error(`Leader and follower have different trees for shard ${shard}`);
-        console.error("Leader: ", leaderTree);
-        console.error("Follower: ", followerTree);
-        failed = true;
+  let tries = 0;
+  do {
+    Object.entries(shardInfo).forEach(
+      ([shard, [leader, follower]]) => {
+        const leaderTree = fetchRevisionTree(getServerUrl(leader), shard);
+        leaderTree.computed.nodes = "<reduced>";
+        leaderTree.stored.nodes = "<reduced>";
+        if (!leaderTree.equal) {
+          console.error(`Leader has inconsistent tree for shard ${shard}:`, leaderTree);
+          failed = true;
+        };
+        
+        const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
+        followerTree.computed.nodes = "<reduced>";
+        followerTree.stored.nodes = "<reduced>";
+        if (!followerTree.equal) {
+          console.error(`Follower has inconsistent tree for shard ${shard}:`, followerTree);
+          failed = true;
+        };
+        
+        if (!_.isEqual(leaderTree, followerTree)) {
+          console.error(`Leader and follower have different trees for shard ${shard}`);
+          console.error("Leader: ", leaderTree);
+          console.error("Follower: ", followerTree);
+          failed = true;
+        }
+      });
+    if (failed) {
+      if (++tries >= 3) {
+        throw `Cluster still not in sync - giving up!`;
       }
-    });
-  assertFalse(failed);
+      console.warn(`Found some inconsistencies! Giving cluster some more time to get in sync before checking again... try=${tries}`);
+      internal.sleep(10);
+    }
+  } while(failed);
 };
 
 function ChaosSuite() {
