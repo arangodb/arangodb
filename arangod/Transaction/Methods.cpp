@@ -57,6 +57,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Random/RandomGenerator.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -2402,6 +2403,9 @@ Future<Result> Methods::replicateOperations(
   }
 
   reqOpts.timeout = network::Timeout(chooseTimeoutForReplication(count, payload->size()));
+  TRI_IF_FAILURE("replicateOperations_randomize_timeout") {
+    reqOpts.timeout = network::Timeout((double) RandomGenerator::interval(uint32_t(60)));
+  }
 
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
