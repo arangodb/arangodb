@@ -2567,7 +2567,55 @@ function iResearchAqlTestSuite () {
         db._dropView(queryView);
         analyzers.remove(queryAnalyzer, true);
       }
+    },
+    
+    testDisjunctionVisit : function() {
+      let queryColl = "DisjunctionCollection";
+      let queryView = "DisjunctionView";
+      try {
+        db._drop(queryColl);
+        db._dropView(queryView);
+        let coll = db._create(queryColl);
+        let view = db._createView(queryView, "arangosearch", { 
+              links: { 
+                  [queryColl] : { 
+                      fields: {
+                        value: { analyzers:['identity', 'text_en'] }
+                      }
+                  }
+              }
+        });
+        let documents = [
+          {"value":"test"},
+          // these docs will make STARTS_WITH more "costly" than PHRASE and conjunction will use PHRASE as lead! 
+          {"value":"test1234"},
+          {"value":"test21321312312"},
+          {"value":"test213213123122"},
+          {"value":"test2132131231222"},
+          {"value":"test21321312312222"},
+          {"value":"test2132131231222322"},
+          {"value":"test2132131231231231222322"},
+          // this will make PHRASE iterator not use small_disjunction (more than 5 candidates for LEVENSHTEIN)
+          {"value":"rest"},
+          {"value":"arest"},
+          {"value":"brest"},
+          {"value":"zest"},
+          {"value":"qest"}];
+        db[queryColl].save(documents);
+        let res = db._query("FOR d IN " + queryView +" SEARCH "
+                  + " (ANALYZER(PHRASE(d.value, {LEVENSHTEIN_MATCH : ['test', 2, true]}), 'text_en') "
+                  + " && ANALYZER(STARTS_WITH(d.value, 'test'),'text_en')) OR "
+                  + " BOOST(PHRASE(d.value, 'test144', 'identity'), 10) "
+                  + " OPTIONS {waitForSync:true} SORT BM25(d) DESC LIMIT 20 "
+                  + " RETURN {'Score':BM25(d), 'Id' : d.value, 'Entity' : d }").toArray();
+        assertEqual(2, res.length);
+        
+      } finally {
+        db._drop(queryColl);
+        db._dropView(queryView);
+      }
     }
+    
   };
 }
 
