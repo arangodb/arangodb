@@ -380,15 +380,22 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   }
 
   TRI_ASSERT(numOps > 0);  // simon: should hold unless we're being stupid
+  // the transaction id that is returned here is the seqno of the transaction's
+  // first write operation in the WAL
   rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetId();
   TRI_ASSERT(postCommitSeq != 0);
   if (ADB_LIKELY(numOps > 0)) {
+    // we now need to add 1 for each write operation carried out in the trx
+    // to get to the transaction's last operation's seqno
     postCommitSeq += numOps - 1;  // add to get to the next batch
   }
+  // now use the transaction's last seqno for persisting revision trees
+  _lastWrittenOperationTick = postCommitSeq;
+
+
   auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   TRI_ASSERT(postCommitSeq <= engine.db()->GetLatestSequenceNumber());
-  _lastWrittenOperationTick = postCommitSeq;
 
   commitCounts();
   cleanupCollTrx.cancel();

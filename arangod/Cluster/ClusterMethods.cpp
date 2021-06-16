@@ -184,7 +184,7 @@ void addTransactionHeaderForShard(transaction::Methods const& trx, ShardMap cons
     if (it->second.empty()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
     }
-    ServerID const& leader = it->second[0];
+    ServerID const leader = it->second[0];
     // intentional copy
     auto followers = it->second;
     followers.erase(followers.begin());
@@ -1246,12 +1246,16 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   futures.reserve(shardIds->size());
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-  for (auto& p : *shardIds) {
+  for (auto const& p : *shardIds) {
     network::Headers headers;
+    if (p.second.empty()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+    }
     // extract leader
     std::string const leader = p.second[0];
-    p.second.erase(p.second.begin());
-    ClusterTrxMethods::addTransactionHeader(trx, leader, headers, p.second);
+    auto followers = p.second;
+    followers.erase(followers.begin());
+    ClusterTrxMethods::addTransactionHeader(trx, leader, headers, followers);
 
     futures.emplace_back(network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                                                    "/_api/collection/" + StringUtils::urlEncode(p.first) + "/count",
