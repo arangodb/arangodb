@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add 3 AQL functions: GAUSS_DECAY, EXP_DECAY and LINEAR_DECAY.
+
 * Fix URL request parsing in case data is handed in in small chunks.
   Previously the URL could be cut off if the chunk size was smaller than
   the URL size.
