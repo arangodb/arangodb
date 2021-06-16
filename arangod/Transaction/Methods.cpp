@@ -1893,7 +1893,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 
       for (auto const& f : *followers) {
         network::Headers headers;
-        ClusterTrxMethods::addTransactionHeader(*this, f, headers);
+        ClusterTrxMethods::addTransactionHeader(*this, f, headers, *followers);
         auto future = network::sendRequestRetry(pool, "server:" + f, fuerte::RestVerb::Put,
                                            path, body, reqOpts, std::move(headers));
         futures.emplace_back(std::move(future));
@@ -2412,7 +2412,7 @@ Future<Result> Methods::replicateOperations(
   auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
     network::Headers headers;
-    ClusterTrxMethods::addTransactionHeader(*this, f, headers);
+    ClusterTrxMethods::addTransactionHeader(*this, f, headers, *followerList);
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + f, requestType,
                                                    url, *(payload->buffer()), reqOpts,
                                                    std::move(headers)));
