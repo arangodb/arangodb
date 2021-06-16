@@ -48,7 +48,7 @@ AppendEntriesRequest::AppendEntriesRequest(AppendEntriesRequest&& other) noexcep
   // The try/catch is *only* for logging, but *must* terminate (e.g. by
   // rethrowing) the process if an exception is caught.
 } catch (std::exception const& ex) {
-  LOG_TOPIC("33563", FATAL, Logger::REPLICATION2)
+  LOG_TOPIC("f8d2e", FATAL, Logger::REPLICATION2)
       << "Caught an exception when moving an AppendEntriesRequest. This is "
          "fatal, as consistency of persistent and in-memory state can no "
          "longer be guaranteed. The process will terminate now. The exception "
@@ -56,7 +56,7 @@ AppendEntriesRequest::AppendEntriesRequest(AppendEntriesRequest&& other) noexcep
       << ex.what();
   throw;
 } catch (...) {
-  LOG_TOPIC("9771c", FATAL, Logger::REPLICATION2)
+  LOG_TOPIC("12f06", FATAL, Logger::REPLICATION2)
       << "Caught an exception when moving an AppendEntriesRequest. This is "
          "fatal, as consistency of persistent and in-memory state can no "
          "longer be guaranteed. The process will terminate now.";
@@ -86,7 +86,7 @@ auto AppendEntriesRequest::operator=(replicated_log::AppendEntriesRequest&& othe
 
   return *this;
 } catch (std::exception const& ex) {
-  LOG_TOPIC("33563", FATAL, Logger::REPLICATION2)
+  LOG_TOPIC("dec5f", FATAL, Logger::REPLICATION2)
       << "Caught an exception when moving an AppendEntriesRequest. This is "
          "fatal, as consistency of persistent and in-memory state can no "
          "longer be guaranteed. The process will terminate now. The exception "
@@ -94,7 +94,7 @@ auto AppendEntriesRequest::operator=(replicated_log::AppendEntriesRequest&& othe
       << ex.what();
   throw;
 } catch (...) {
-  LOG_TOPIC("9771c", FATAL, Logger::REPLICATION2)
+  LOG_TOPIC("facec", FATAL, Logger::REPLICATION2)
       << "Caught an exception when moving an AppendEntriesRequest. This is "
          "fatal, as consistency of persistent and in-memory state can no "
          "longer be guaranteed. The process will terminate now.";

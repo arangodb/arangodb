@@ -80,7 +80,7 @@
     try {                                                                   \
       EXPAND_(THROW_MACRO(__VA_ARGS__));                                    \
     } catch (::arangodb::basics::Exception const& ex) {                     \
-      LOG_TOPIC("fatal", FATAL, ::arangodb::Logger::CRASH) << ex.message(); \
+      LOG_TOPIC("fa7a1", FATAL, ::arangodb::Logger::CRASH) << ex.message(); \
       TRI_ASSERT(false);                                                    \
     } catch (...) {                                                         \
       TRI_ASSERT(false);                                                    \
