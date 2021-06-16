@@ -1093,16 +1093,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
       return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
     }
   }
-
-  if (newSlice.length() <= 1) {  // TODO move above ?!
-    // shortcut. no need to do anything
-    resultMdr.setManaged(oldDoc.begin());
-    TRI_ASSERT(!resultMdr.empty());
-
-    trackWaitForSync(trx, options);
-    return res;
-  }
-
+  
   // merge old and new values
   RevisionId revisionId;
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
@@ -1544,7 +1535,15 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
-  
+ 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    rocksdb::PinnableSlice val;
+    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val);
+    TRI_ASSERT(s.IsNotFound());
+  }
+#endif
+
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
       key.ref(),
@@ -1612,6 +1611,14 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    rocksdb::PinnableSlice val;
+    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val);
+    TRI_ASSERT(s.ok());
+  }
+#endif
 
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
