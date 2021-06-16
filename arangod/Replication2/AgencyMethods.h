@@ -42,6 +42,10 @@ auto updateTermSpecification(DatabaseID const& database, LogId id,
                              std::optional<LogTerm> prevTerm = {})
     -> futures::Future<Result>;
 
+auto updateElectionResult(arangodb::agency::envelope envelope, DatabaseID const& database,
+                          LogId id, LogCurrentSupervisionElection const& result)
+    -> arangodb::agency::envelope;
+
 auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope, DatabaseID const& database,
                          LogId id) -> arangodb::agency::envelope;
 auto deleteReplicatedLog(DatabaseID const& database, LogId id) -> futures::Future<Result>;

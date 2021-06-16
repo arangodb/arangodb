@@ -134,3 +134,17 @@ auto methods::createReplicatedLog(DatabaseID const& database, LogPlanSpecificati
 
   return sendAgencyWriteTransaction(std::move(trx));
 }
+
+auto methods::updateElectionResult(arangodb::agency::envelope envelope,
+                                   const DatabaseID& database, LogId id,
+                                   const LogCurrentSupervisionElection& result)
+    -> arangodb::agency::envelope {
+  auto path = paths::current()->replicatedLogs()->database(database)->log(to_string(id))->str();
+  return envelope.write()
+      .emplace_object(path + "/supervision/election",
+                      [&](VPackBuilder& builder) {
+                        result.toVelocyPack(builder);
+                      })
+      .inc(paths::current()->version()->str())
+      .end();
+}

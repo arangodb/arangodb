@@ -90,8 +90,8 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
-  auto result = checkReplicatedLog("db", spec, current, participants);
-  ASSERT_EQ(result, std::nullopt);
+  auto v = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_TRUE(std::holds_alternative<std::monostate>(v));
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
@@ -108,8 +108,8 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
-  auto result = checkReplicatedLog("db", spec, current, participants);
-  ASSERT_EQ(result, std::nullopt);
+  auto v = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_TRUE(std::holds_alternative<std::monostate>(v));
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
@@ -126,11 +126,12 @@ TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
-  auto result = checkReplicatedLog("db", spec, current, participants);
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->leader, std::nullopt);
-  EXPECT_EQ(result->term, LogTerm{2});
-  EXPECT_EQ(result->config, spec.currentTerm->config);
+  auto v = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_TRUE(std::holds_alternative<agency::LogPlanTermSpecification>(v));
+  auto result = std::get<agency::LogPlanTermSpecification>(v);
+  EXPECT_EQ(result.leader, std::nullopt);
+  EXPECT_EQ(result.term, LogTerm{2});
+  EXPECT_EQ(result.config, spec.currentTerm->config);
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_elect_leader_if_all_available) {
@@ -145,14 +146,15 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_if_all_available) {
   spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
   auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
 
-  auto result = checkReplicatedLog("db", spec, current, participants);
-  ASSERT_TRUE(result.has_value());
-  EXPECT_NE(result->leader, std::nullopt);
-  ASSERT_TRUE(participants.find(result->leader->serverId) != participants.end());
-  EXPECT_EQ(participants.at(result->leader->serverId).rebootId, result->leader->rebootId);
-  EXPECT_TRUE(participants.at(result->leader->serverId).isHealthy);
-  EXPECT_EQ(result->term, LogTerm{2});
-  EXPECT_EQ(result->config, spec.currentTerm->config);
+  auto v = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_TRUE(std::holds_alternative<agency::LogPlanTermSpecification>(v));
+  auto result = std::get<agency::LogPlanTermSpecification>(v);
+  EXPECT_NE(result.leader, std::nullopt);
+  ASSERT_TRUE(participants.find(result.leader->serverId) != participants.end());
+  EXPECT_EQ(participants.at(result.leader->serverId).rebootId, result.leader->rebootId);
+  EXPECT_TRUE(participants.at(result.leader->serverId).isHealthy);
+  EXPECT_EQ(result.term, LogTerm{2});
+  EXPECT_EQ(result.config, spec.currentTerm->config);
 }
 
 TEST_F(CheckLogsAlgorithmTest, do_nothing_if_non_healthy) {
@@ -167,8 +169,8 @@ TEST_F(CheckLogsAlgorithmTest, do_nothing_if_non_healthy) {
   spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
   auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
 
-  auto result = checkReplicatedLog("db", spec, current, participants);
-  ASSERT_FALSE(result.has_value());
+  auto v = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_TRUE(std::holds_alternative<agency::LogCurrentSupervisionElection>(v));
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
@@ -183,8 +185,15 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
   spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
   auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
 
-  auto result = checkReplicatedLog("db", spec, current, participants);
-  ASSERT_FALSE(result.has_value());
+  auto v = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_TRUE(std::holds_alternative<agency::LogCurrentSupervisionElection>(v));
+  auto& e = std::get<agency::LogCurrentSupervisionElection>(v);
+  EXPECT_EQ(e.term, spec.currentTerm->term);
+  EXPECT_EQ(e.participantsRequired, 3);
+  EXPECT_EQ(e.participantsAvailable, 0);
+  EXPECT_EQ(e.detail.at("A"), agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
+  EXPECT_EQ(e.detail.at("B"), agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
+  EXPECT_EQ(e.detail.at("C"), agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
@@ -201,12 +210,40 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
   spec.currentTerm->config.writeConcern = 2;
   auto current = makeLogCurrentReportAll(participants, LogTerm{2}, LogIndex{4}, LogTerm{1});
 
-  auto result = checkReplicatedLog("db", spec, current, participants);
-  ASSERT_TRUE(result.has_value());
-  EXPECT_NE(result->leader, std::nullopt);
-  ASSERT_TRUE(participants.find(result->leader->serverId) != participants.end());
-  EXPECT_EQ(participants.at(result->leader->serverId).rebootId, result->leader->rebootId);
-  EXPECT_TRUE(participants.at(result->leader->serverId).isHealthy);
-  EXPECT_EQ(result->term, LogTerm{3});
-  EXPECT_EQ(result->config, spec.currentTerm->config);
+  auto v = checkReplicatedLog("db", spec, current, participants);
+  ASSERT_TRUE(std::holds_alternative<agency::LogPlanTermSpecification>(v));
+  auto result = std::get<agency::LogPlanTermSpecification>(v);
+  ASSERT_TRUE(participants.find(result.leader->serverId) != participants.end());
+  EXPECT_EQ(participants.at(result.leader->serverId).rebootId, result.leader->rebootId);
+  EXPECT_TRUE(participants.at(result.leader->serverId).isHealthy);
+  EXPECT_EQ(result.term, LogTerm{3});
+  EXPECT_EQ(result.config, spec.currentTerm->config);
+}
+
+TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
+
+  auto participants = ParticipantInfo{
+      {"A", ParticipantRecord{RebootId{1}, false}},
+      {"B", ParticipantRecord{RebootId{1}, true}},
+      {"C", ParticipantRecord{RebootId{1}, true}},
+  };
+
+  auto spec = makePlanSpecification(LogId{1});
+  spec.targetConfig.writeConcern = 2;
+  spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
+  spec.currentTerm->config.writeConcern = 2;
+  auto current = makeLogCurrent();
+  current.localState["A"] = agency::LogCurrentLocalState{LogTerm{2}, replicated_log::TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["B"] = agency::LogCurrentLocalState{LogTerm{1}, replicated_log::TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["C"] = agency::LogCurrentLocalState{LogTerm{2}, replicated_log::TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  // only C is available, because it is healthy and it has confirmed term 2
+
+  auto v = checkReplicatedLog("db", spec, current, participants);
+  auto& e = std::get<agency::LogCurrentSupervisionElection>(v);
+  EXPECT_EQ(e.term, spec.currentTerm->term);
+  EXPECT_EQ(e.participantsRequired, 2);
+  EXPECT_EQ(e.participantsAvailable, 1);
+  EXPECT_EQ(e.detail.at("A"), agency::LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD);
+  EXPECT_EQ(e.detail.at("B"), agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
+  EXPECT_EQ(e.detail.at("C"), agency::LogCurrentSupervisionElection::ErrorCode::OK);
 }

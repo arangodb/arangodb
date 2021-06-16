@@ -86,10 +86,50 @@ struct LogCurrentLocalState {
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrentLocalState() = default;
   LogCurrentLocalState(from_velocypack_t, VPackSlice);
+  LogCurrentLocalState(LogTerm, replicated_log::TermIndexPair) noexcept;
+};
+
+
+struct LogCurrentSupervisionElection {
+  enum class ErrorCode {
+    OK,
+    SERVER_NOT_GOOD,
+    TERM_NOT_CONFIRMED,
+  };
+
+  LogTerm term;
+  std::size_t participantsRequired{};
+  std::size_t participantsAvailable{};
+  std::unordered_map<ParticipantId, ErrorCode> detail;
+
+  auto toVelocyPack(VPackBuilder&) const -> void;
+
+  friend auto operator==(LogCurrentSupervisionElection const&,
+                         LogCurrentSupervisionElection const&) noexcept -> bool;
+  friend auto operator!=(LogCurrentSupervisionElection const& left,
+                         LogCurrentSupervisionElection const& right) noexcept -> bool {
+    return !(left == right);
+  }
+
+  LogCurrentSupervisionElection() = default;
+  LogCurrentSupervisionElection(from_velocypack_t, VPackSlice slice);
+};
+
+auto to_string(LogCurrentSupervisionElection::ErrorCode) -> std::string_view;
+auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&) -> void;
+
+struct LogCurrentSupervision {
+  std::optional<LogCurrentSupervisionElection> election;
+
+  auto toVelocyPack(VPackBuilder&) const -> void;
+
+  LogCurrentSupervision() = default;
+  LogCurrentSupervision(from_velocypack_t, VPackSlice slice);
 };
 
 struct LogCurrent {
   std::unordered_map<ParticipantId, LogCurrentLocalState> localState;
+  std::optional<LogCurrentSupervision> supervision;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrent(from_velocypack_t, VPackSlice);

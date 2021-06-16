@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <variant>
 #include <unordered_map>
 
 #include "Cluster/ClusterTypes.h"
@@ -40,6 +41,6 @@ using ParticipantInfo = std::unordered_map<ParticipantId, ParticipantRecord>;
 auto checkReplicatedLog(DatabaseID const& database, agency::LogPlanSpecification const& spec,
                         agency::LogCurrent const& current,
                         std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::optional<agency::LogPlanTermSpecification>;
+    -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection>;
 
 }  // namespace arangodb::replication2::algorithms

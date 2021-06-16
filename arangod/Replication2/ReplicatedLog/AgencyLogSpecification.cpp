@@ -159,6 +159,9 @@ LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t, VPackSlice slice) 
   term = slice.get(StaticStrings::Term).extract<LogTerm>();
 }
 
+LogCurrentLocalState::LogCurrentLocalState(LogTerm term, replicated_log::TermIndexPair spearhead) noexcept
+    : term(term), spearhead(spearhead) {}
+
 auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));
@@ -172,6 +175,24 @@ LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
     localState.emplace(ParticipantId{key.copyString()},
                        LogCurrentLocalState(from_velocypack, value));
   }
+  if (auto ss = slice.get("supervision"); !ss.isNone()) {
+    supervision = LogCurrentSupervision{from_velocypack, ss};
+  }
+}
+
+LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t, VPackSlice slice) {
+  if (auto es = slice.get("election"); !es.isNone()) {
+    election = LogCurrentSupervisionElection{from_velocypack, es};
+  }
+}
+
+LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t, VPackSlice slice) {
+  term = slice.get(StaticStrings::Term).extract<LogTerm>();
+  participantsRequired = slice.get("participantsRequired").getNumericValue<std::size_t>();
+  participantsAvailable = slice.get("participantsAvailable").getNumericValue<std::size_t>();
+  for (auto [key, value] : VPackObjectIterator(slice.get("details"))) {
+    detail.emplace(key.copyString(), value.get("code").getNumericValue<ErrorCode>());
+  }
 }
 
 auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
@@ -181,4 +202,55 @@ auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
     builder.add(VPackValue(key));
     value.toVelocyPack(builder);
   }
+  if (supervision.has_value()) {
+    builder.add(VPackValue("supervision"));
+    supervision->toVelocyPack(builder);
+  }
+}
+
+auto LogCurrentSupervision::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  if (election.has_value()) {
+    builder.add(VPackValue("election"));
+    election->toVelocyPack(builder);
+  }
+}
+
+auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Term, VPackValue(term.value));
+  builder.add("participantsRequired", VPackValue(participantsRequired));
+  builder.add("participantsAvailable", VPackValue(participantsAvailable));
+  {
+    VPackObjectBuilder db(&builder, "details");
+    for (auto const&[server, error] : detail) {
+      builder.add(VPackValue(server));
+      ::toVelocyPack(error, builder);
+    }
+  }
+}
+
+auto agency::toVelocyPack(LogCurrentSupervisionElection::ErrorCode ec, VPackBuilder& builder) -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add("code", VPackValue(static_cast<int>(ec)));
+  builder.add("message", VPackValue(to_string(ec)));
+}
+
+auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) -> std::string_view {
+  switch(ec) {
+    case LogCurrentSupervisionElection::ErrorCode::OK:
+      return "the server is ok";
+    case LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD:
+      return "the server is not reported as good in Supervision/Health";
+    case LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED:
+      return "the server has not (yet) confirmed the current term";
+  }
+}
+
+auto agency::operator==(const LogCurrentSupervisionElection& left,
+                        const LogCurrentSupervisionElection& right) noexcept -> bool {
+  return left.term == right.term &&
+         left.participantsAvailable == right.participantsAvailable &&
+         left.participantsRequired == right.participantsRequired &&
+         left.detail == right.detail;
 }

@@ -31,10 +31,11 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::algorithms;
 
-auto algorithms::checkReplicatedLog(DatabaseID const& database, LogPlanSpecification const& spec,
-                        LogCurrent const& current,
-                        std::unordered_map<ParticipantId, ParticipantRecord> const& info)
--> std::optional<agency::LogPlanTermSpecification> {
+auto algorithms::checkReplicatedLog(DatabaseID const& database,
+                                    LogPlanSpecification const& spec,
+                                    LogCurrent const& current,
+                                    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+    -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection> {
   auto const verifyServerRebootId = [&](ParticipantId const& id, RebootId rebootId) -> bool {
     if (auto it = info.find(id); it != std::end(info)) {
       return it->second.rebootId == rebootId;
@@ -73,14 +74,27 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database, LogPlanSpecifica
 
       // if enough servers are found, declare the server with
       // the "best" log as leader in a new term
+      agency::LogCurrentSupervisionElection election;
+      election.term = spec.currentTerm ? spec.currentTerm->term : LogTerm{0};
 
       auto newLeaderSet = std::vector<replication2::ParticipantId>{};
       auto bestTermIndex = replication2::replicated_log::TermIndexPair{};
       auto numberOfAvailableParticipants = std::size_t{0};
 
       for (auto const& [participant, status] : current.localState) {
-        bool const isHealthy = isServerHealthy(participant);
-        if (!isHealthy || status.term != spec.currentTerm->term) {
+        auto error = std::invoke([&, &status = status, &participant = participant]{
+          bool const isHealthy = isServerHealthy(participant);
+          if (!isHealthy) {
+            return agency::LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
+          } else if (status.term != spec.currentTerm->term) {
+            return agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
+          } else {
+            return agency::LogCurrentSupervisionElection::ErrorCode::OK;
+          }
+        });
+
+        election.detail.emplace(participant, error);
+        if (error != agency::LogCurrentSupervisionElection::ErrorCode::OK) {
           continue;
         }
 
@@ -101,6 +115,9 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database, LogPlanSpecifica
 
       TRI_ASSERT(requiredNumberOfAvailableParticipants > 0);
 
+      election.participantsRequired = requiredNumberOfAvailableParticipants;
+      election.participantsAvailable = numberOfAvailableParticipants;
+
       if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
         TRI_ASSERT(!newLeaderSet.empty());
         // Randomly select one of the best participants
@@ -117,14 +134,19 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database, LogPlanSpecifica
         return newTermSpec;
 
       } else {
-        LOG_TOPIC("57de2", WARN, Logger::REPLICATION2)
-            << "replicated log " << database << "/" << spec.id
-            << " not enough participants available for leader election "
-            << numberOfAvailableParticipants << "/"
-            << requiredNumberOfAvailableParticipants;
+        // Check if something has changed
+        if (!current.supervision || !current.supervision->election ||
+            election != current.supervision->election) {
+          LOG_TOPIC("57de2", WARN, Logger::REPLICATION2)
+              << "replicated log " << database << "/" << spec.id
+              << " not enough participants available for leader election "
+              << numberOfAvailableParticipants << "/"
+              << requiredNumberOfAvailableParticipants;
+          return election;
+        }
       }
     }
   }
 
-  return std::nullopt;
+  return std::monostate{};
 }

@@ -24,6 +24,7 @@
 #include "Supervision.h"
 
 #include <Basics/StringUtils.h>
+#include <Basics/overload.h>
 #include <thread>
 
 #include "Agency/ActiveFailoverJob.h"
@@ -2280,10 +2281,21 @@ void Supervision::checkReplicatedLogs() {
         return readLogCurrent(snapshot().get(currentPath));
       });
       auto newTermSpec = checkReplicatedLog(dbName, spec, current, info);
-      if (newTermSpec) {
-        envelope = arangodb::replication2::agency::methods::updateTermSpecificationTrx(
-            std::move(envelope), dbName, spec.id, *newTermSpec, spec.currentTerm->term);
-      }
+
+      envelope = std::visit(
+          overload{[&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
+                     return arangodb::replication2::agency::methods::updateTermSpecificationTrx(
+                         std::move(envelope), dbName, spec.id, newSpec,
+                         spec.currentTerm->term);
+                   },
+                   [&, &dbName = dbName](LogCurrentSupervisionElection const& newElection) {
+                     return arangodb::replication2::agency::methods::updateElectionResult(
+                         std::move(envelope), dbName, spec.id, newElection);
+                   },
+                   [&](auto) {
+                     return std::move(envelope);  // do nothing
+                   }},
+          newTermSpec);
     }
   }
 
