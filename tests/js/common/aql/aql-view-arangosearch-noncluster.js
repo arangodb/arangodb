@@ -2608,7 +2608,7 @@ function iResearchAqlTestSuite () {
                   + " BOOST(PHRASE(d.value, 'test144', 'identity'), 10) "
                   + " OPTIONS {waitForSync:true} SORT BM25(d) DESC LIMIT 20 "
                   + " RETURN {'Score':BM25(d), 'Id' : d.value, 'Entity' : d }").toArray();
-        assertEqual(2, res.length);
+        assertEqual(1, res.length);
         
       } finally {
         db._drop(queryColl);
