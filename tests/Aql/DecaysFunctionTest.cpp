@@ -48,7 +48,7 @@ using namespace arangodb::containers;
 namespace {
 
 // helper functions
-SmallVector<AqlValue> create_arg_vec(const VPackSlice slice) {
+SmallVector<AqlValue> createArgVec(const VPackSlice slice) {
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
@@ -60,24 +60,26 @@ SmallVector<AqlValue> create_arg_vec(const VPackSlice slice) {
   return params;
 }
 
-void expect_eq_slices(const VPackSlice actual_slice, const VPackSlice expected_slice) {
-  ASSERT_TRUE((actual_slice.isNumber() && expected_slice.isNumber()) ||
-              (actual_slice.isArray() && expected_slice.isArray()));
+void expectEqSlices(const VPackSlice actualSlice,
+                    const VPackSlice expectedSlice) {
 
-  if (actual_slice.isArray() && expected_slice.isArray()) {
-    VPackValueLength actual_size = actual_slice.length();
-    VPackValueLength expected_size = actual_slice.length();
-    ASSERT_EQ(actual_size, expected_size);
+  ASSERT_TRUE((actualSlice.isNumber() && expectedSlice.isNumber()) ||
+              (actualSlice.isArray() && expectedSlice.isArray()));
+
+  if (actualSlice.isArray() && expectedSlice.isArray()) {
+    VPackValueLength actualSize = actualSlice.length();
+    VPackValueLength expectedSize = expectedSlice.length();
+    ASSERT_EQ(actualSize, expectedSize);
 
     double lhs, rhs;
-    for(VPackValueLength i = 0; i < actual_size; ++i) {
-      lhs = actual_slice.at(i).getNumber<decltype (lhs)>();
-      rhs = actual_slice.at(i).getNumber<decltype (rhs)>();
+    for(VPackValueLength i = 0; i < actualSize; ++i) {
+      lhs = actualSlice.at(i).getNumber<decltype (lhs)>();
+      rhs = expectedSlice.at(i).getNumber<decltype (rhs)>();
       ASSERT_DOUBLE_EQ(lhs, rhs);
     }
   } else {
-    double lhs = actual_slice.getNumber<decltype (lhs)>();
-    double rhs = expected_slice.getNumber<decltype (rhs)>();
+    double lhs = actualSlice.getNumber<decltype (lhs)>();
+    double rhs = expectedSlice.getNumber<decltype (rhs)>();
     ASSERT_DOUBLE_EQ(lhs, rhs);
   }
 
@@ -90,7 +92,11 @@ enum class FunctionType {
   Linear
 };
 
-AqlValue evaluateDecayFunction(const SmallVector<AqlValue>& params, const FunctionType& type ) {
+template <typename F>
+AqlValue evaluateDecayFunction(const SmallVector<AqlValue>& params,
+                               F&& decayFunction,
+                               const arangodb::aql::AstNode& node) {
+
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*){ });
@@ -109,156 +115,160 @@ AqlValue evaluateDecayFunction(const SmallVector<AqlValue>& params, const Functi
     return trx;
   });
 
-  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  switch(type) {
-    case FunctionType::Gauss: {
-        arangodb::aql::Function f("GAUSS_DECAY", &Functions::GaussDecay);
-        node.setData(static_cast<void const*>(&f));
-        return Functions::GaussDecay(&expressionContext, node, params);
-      }
-    case FunctionType::Exp: {
-        arangodb::aql::Function f("EXP_DECAY", &Functions::ExpDecay);
-        node.setData(static_cast<void const*>(&f));
-        return Functions::ExpDecay(&expressionContext, node, params);
-      }
-    case FunctionType::Linear: {
-        arangodb::aql::Function f("LINEAR_DECAY", &Functions::LinearDecay);
-        node.setData(static_cast<void const*>(&f));
-        return Functions::LinearDecay(&expressionContext, node, params);
-      }
-    default: {
-      return AqlValue(AqlValueHintNull());
-    }
-  }
+  return decayFunction(&expressionContext, node, params);
 }
 
-void assertDecayFunction(char const* expected, char const* args, const FunctionType& type) {
+template <typename F>
+void assertDecayFunction(char const* expected, char const* args,
+                         F&& decayFunction,
+                         const arangodb::aql::AstNode& node) {
 
   // get slice for expected value
-  auto const expected_json = VPackParser::fromJson(expected);
-  auto const expected_slice = expected_json->slice();
-  ASSERT_TRUE(expected_slice.isArray() || expected_slice.isNumber());
+  auto const expectedJson = VPackParser::fromJson(expected);
+  auto const expectedSlice = expectedJson->slice();
+  ASSERT_TRUE(expectedSlice.isArray() || expectedSlice.isNumber());
 
   // get slice for args value
-  auto const args_json = VPackParser::fromJson(args);
-  auto const args_slice = args_json->slice();
-  ASSERT_TRUE(args_slice.isArray());
+  auto const argsJson = VPackParser::fromJson(args);
+  auto const argsSlice = argsJson->slice();
+  ASSERT_TRUE(argsSlice.isArray());
 
   // create params vector from args slice
-  SmallVector<AqlValue> params = create_arg_vec(args_slice);
+  SmallVector<AqlValue> params = createArgVec(argsSlice);
 
   // evaluate
-  auto const actual_value = evaluateDecayFunction(params, type);
+  auto const actual_value = evaluateDecayFunction(params, decayFunction, node);
 
   // check equality
-  expect_eq_slices(actual_value.slice(), expected_slice);
+  expectEqSlices(actual_value.slice(), expectedSlice);
 
   return;
 }
 
-void assertDecayFunctionFail(char const* args, const FunctionType& type) {
+template <typename F>
+void assertDecayFunctionFail(char const* args,
+                             F&& decayFunction,
+                             const arangodb::aql::AstNode& node) {
   // get slice for args value
-  auto const args_json = VPackParser::fromJson(args);
-  auto const args_slice = args_json->slice();
-  ASSERT_TRUE(args_slice.isArray());
+  auto const argsJson = VPackParser::fromJson(args);
+  auto const argsSlice = argsJson->slice();
+  ASSERT_TRUE(argsSlice.isArray());
 
   // create params vector from args slice
-  SmallVector<AqlValue> params = create_arg_vec(args_slice);
+  SmallVector<AqlValue> params = createArgVec(argsSlice);
 
-  ASSERT_TRUE(evaluateDecayFunction(params, type).isNull(false));
+  ASSERT_TRUE(evaluateDecayFunction(params, decayFunction, node).isNull(false));
 }
 
 TEST(GaussDecayFunctionTest, test) {
-  // expecting 1
-  assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", FunctionType::Gauss);
-  assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", FunctionType::Gauss);
-  assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", FunctionType::Gauss);
+  // preparing
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  arangodb::aql::Function f("GAUSS_DECAY", &Functions::GaussDecay);
+  node.setData(static_cast<void const*>(&f));
 
-  assertDecayFunction("1.0", "[49.987, 49.987, 0.000000000000000001, 0.001, 0.2]", FunctionType::Gauss);
+  // expecting 1
+  assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", Functions::GaussDecay, node);
+  assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", Functions::GaussDecay, node);
+  assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", Functions::GaussDecay, node);
+
+  assertDecayFunction("1.0", "[49.987, 49.987, 0.000000000000000001, 0.001, 0.2]", Functions::GaussDecay, node);
 
   // with offset=0
-  assertDecayFunction("0.9840344433634576", "[1, 0, 10, 0, 0.2]", FunctionType::Gauss);
-  assertDecayFunction("0.9376509540020155", "[2, 0, 10, 0, 0.2]", FunctionType::Gauss);
-  assertDecayFunction("0.668740304976422", "[5, 0, 10, 0, 0.2]", FunctionType::Gauss);
-  assertDecayFunction("0.21316171604122283", "[9.8, 0, 10, 0, 0.2]", FunctionType::Gauss);
+  assertDecayFunction("0.9840344433634576", "[1, 0, 10, 0, 0.2]", Functions::GaussDecay, node);
+  assertDecayFunction("0.9376509540020155", "[2, 0, 10, 0, 0.2]", Functions::GaussDecay, node);
+  assertDecayFunction("0.668740304976422", "[5, 0, 10, 0, 0.2]", Functions::GaussDecay, node);
+  assertDecayFunction("0.21316171604122283", "[9.8, 0, 10, 0, 0.2]", Functions::GaussDecay, node);
 
   // with scale=0.001 (almost zero)
   // also test array input and array output
-  assertDecayFunction("[1.0, 1.0, 1e0, 1, 2e-1]", "[[0,1,9.8,10,11], 0, 0.001, 10, 0.2]", FunctionType::Gauss);
+  assertDecayFunction("[1.0, 1.0, 1e0, 1, 2e-1]", "[[0,1,9.8,10,11], 0, 0.001, 10, 0.2]", Functions::GaussDecay, node);
 
   // test array input and array output
-  assertDecayFunction("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]", FunctionType::Gauss);
+  assertDecayFunction("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]", Functions::GaussDecay, node);
 
   // expecting decay value
-  assertDecayFunction("0.5", "[20, 40, 5, 5, 0.5]", FunctionType::Gauss);
-  assertDecayFunction("0.2715403018822964", "[49.9889, 49.987, 0.001, 0.001, 0.2]", FunctionType::Gauss);
-  assertDecayFunction("0.1", "[-10, 40, 5, 0, 0.1]", FunctionType::Gauss);
+  assertDecayFunction("0.5", "[20, 40, 5, 5, 0.5]", Functions::GaussDecay, node);
+  assertDecayFunction("0.2715403018822964", "[49.9889, 49.987, 0.001, 0.001, 0.2]", Functions::GaussDecay, node);
+  assertDecayFunction("0.1", "[-10, 40, 5, 0, 0.1]", Functions::GaussDecay, node);
 
   // incorrect input
-  assertDecayFunctionFail("[10, 10, 0.0, 2, 0.2]", FunctionType::Gauss);
-  assertDecayFunctionFail("[30, 40, 5]", FunctionType::Gauss);
-  assertDecayFunctionFail("[30, 40, 5, 100]", FunctionType::Gauss);
-  assertDecayFunctionFail("[30, 40, 5, 100, -100]", FunctionType::Gauss);
-  assertDecayFunctionFail("[\"a\", 40, 5, 5, 0.5]", FunctionType::Gauss);
+  assertDecayFunctionFail("[10, 10, 0.0, 2, 0.2]", Functions::GaussDecay, node);
+  assertDecayFunctionFail("[30, 40, 5]", Functions::GaussDecay, node);
+  assertDecayFunctionFail("[30, 40, 5, 100]", Functions::GaussDecay, node);
+  assertDecayFunctionFail("[30, 40, 5, 100, -100]", Functions::GaussDecay, node);
+  assertDecayFunctionFail("[\"a\", 40, 5, 5, 0.5]", Functions::GaussDecay, node);
 }
 
 TEST(ExpDecayFunctionTest, test) {
+
+  // preparing
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  arangodb::aql::Function f("EXP_DECAY", &Functions::ExpDecay);
+  node.setData(static_cast<void const*>(&f));
+
   // expecting 1
-  assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", FunctionType::Exp);
-  assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", FunctionType::Exp);
-  assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", FunctionType::Exp);
+  assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", Functions::ExpDecay, node);
+  assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", Functions::ExpDecay, node);
+  assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", Functions::ExpDecay, node);
 
   // with offset=0
-  assertDecayFunction("0.8513399225207846", "[1, 0, 10, 0, 0.2]", FunctionType::Exp);
-  assertDecayFunction("0.7247796636776955", "[2, 0, 10, 0, 0.2]", FunctionType::Exp);
-  assertDecayFunction("0.447213595499958", "[5, 0, 10, 0, 0.2]", FunctionType::Exp);
-  assertDecayFunction("0.20654248397928862", "[9.8, 0, 10, 0, 0.2]", FunctionType::Exp);
+  assertDecayFunction("0.8513399225207846", "[1, 0, 10, 0, 0.2]", Functions::ExpDecay, node);
+  assertDecayFunction("0.7247796636776955", "[2, 0, 10, 0, 0.2]", Functions::ExpDecay, node);
+  assertDecayFunction("0.447213595499958", "[5, 0, 10, 0, 0.2]", Functions::ExpDecay, node);
+  assertDecayFunction("0.20654248397928862", "[9.8, 0, 10, 0, 0.2]", Functions::ExpDecay, node);
 
   // with scale=0.001 (almost zero)
-  assertDecayFunction("1", "[0, 0, 0.001, 10, 0.2]", FunctionType::Exp);
-  assertDecayFunction("1", "[1, 0, 0.001, 10, 0.2]", FunctionType::Exp);
-  assertDecayFunction("1", "[9.8, 0, 0.001, 10, 0.2]", FunctionType::Exp);
-  assertDecayFunction("1", "[10, 0, 0.001, 10, 0.2]", FunctionType::Exp);
-  assertDecayFunction("0.2", "[11, 0, 0.001, 10, 0.2]", FunctionType::Exp);
+  assertDecayFunction("1", "[0, 0, 0.001, 10, 0.2]", Functions::ExpDecay, node);
+  assertDecayFunction("1", "[1, 0, 0.001, 10, 0.2]", Functions::ExpDecay, node);
+  assertDecayFunction("1", "[9.8, 0, 0.001, 10, 0.2]", Functions::ExpDecay, node);
+  assertDecayFunction("1", "[10, 0, 0.001, 10, 0.2]", Functions::ExpDecay, node);
+  assertDecayFunction("0.2", "[11, 0, 0.001, 10, 0.2]", Functions::ExpDecay, node);
 
   // expecting decay value
-  assertDecayFunction("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]", FunctionType::Exp);
-  assertDecayFunction("0.2", "[49.9889, 50, 0.001, 0.001, 0.2]", FunctionType::Exp);
-  assertDecayFunction("0.1", "[-10, 40, 5, 0, 0.1]", FunctionType::Exp);
+  assertDecayFunction("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]", Functions::ExpDecay, node);
+  assertDecayFunction("0.2", "[49.9889, 50, 0.001, 0.001, 0.2]", Functions::ExpDecay, node);
+  assertDecayFunction("0.1", "[-10, 40, 5, 0, 0.1]", Functions::ExpDecay, node);
 
   // incorrect input
-  assertDecayFunctionFail("[10, 10, 3, 2, 1]", FunctionType::Exp);
-  assertDecayFunctionFail("[30, 40, 5]", FunctionType::Exp);
-  assertDecayFunctionFail("[30, 40, 5, 100]", FunctionType::Exp);
-  assertDecayFunctionFail("[30, 40, 5, 100, -100]", FunctionType::Exp);
-  assertDecayFunctionFail("[\"a\", 40, 5, 5, 0.5]", FunctionType::Exp);
+  assertDecayFunctionFail("[10, 10, 3, 2, 1]", Functions::ExpDecay, node);
+  assertDecayFunctionFail("[30, 40, 5]", Functions::ExpDecay, node);
+  assertDecayFunctionFail("[30, 40, 5, 100]", Functions::ExpDecay, node);
+  assertDecayFunctionFail("[30, 40, 5, 100, -100]", Functions::ExpDecay, node);
+  assertDecayFunctionFail("[\"a\", 40, 5, 5, 0.5]", Functions::ExpDecay, node);
 }
 
 TEST(LinDecayFunctionTest, test) {
+
+  // preparing
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  arangodb::aql::Function f("LINEAR_DECAY", &Functions::LinearDecay);
+  node.setData(static_cast<void const*>(&f));
+
   // expecting 1
-  assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", FunctionType::Exp);
-  assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", FunctionType::Exp);
-  assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", FunctionType::Exp);
+  assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", Functions::LinearDecay, node);
+  assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", Functions::LinearDecay, node);
+  assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", Functions::LinearDecay, node);
 
   // with offset=0
-  assertDecayFunction("0.92", "[1, 0, 10, 0, 0.2]", FunctionType::Linear);
-  assertDecayFunction("0.84", "[2, 0, 10, 0, 0.2]", FunctionType::Linear);
-  assertDecayFunction("0.6", "[5, 0, 10, 0, 0.2]", FunctionType::Linear);
-  assertDecayFunction("0.21599999999999994", "[9.8, 0, 10, 0, 0.2]", FunctionType::Linear);
+  assertDecayFunction("0.92", "[1, 0, 10, 0, 0.2]", Functions::LinearDecay, node);
+  assertDecayFunction("0.84", "[2, 0, 10, 0, 0.2]", Functions::LinearDecay, node);
+  assertDecayFunction("0.6", "[5, 0, 10, 0, 0.2]", Functions::LinearDecay, node);
+  assertDecayFunction("0.21599999999999994", "[9.8, 0, 10, 0, 0.2]", Functions::LinearDecay, node);
 
   // with scale=0.001 (almost zero)
-  assertDecayFunction("[1,1,1,1,0.2]", "[[0,1,5,9.8,10,11], 0, 10, 0, 0.2]", FunctionType::Linear);
+  // also test array input and array output
+  assertDecayFunction("[1,1,1,1,0.2]", "[[0,1,9.8,10,11], 0, 0.001, 10, 0.2]", Functions::LinearDecay, node);
 
   // expecting decay value
-  assertDecayFunction("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]", FunctionType::Exp);
-  assertDecayFunction("0.2", "[49.9889, 50, 0.001, 0.001, 0.2]", FunctionType::Exp);
-  assertDecayFunction("0.1", "[-10, 40, 5, 0, 0.1]", FunctionType::Exp);
+  assertDecayFunction("[0.5, 1.0]", "[[20.0, 41], 40, 5, 5, 0.5]", Functions::LinearDecay, node);
+  assertDecayFunction("0.2", "[49.9889, 50, 0.001, 0.001, 0.2]", Functions::LinearDecay, node);
+  assertDecayFunction("0.1", "[-10, 40, 5, 0, 0.1]", Functions::LinearDecay, node);
 
   // incorrect input
-  assertDecayFunctionFail("[30, 40, 5]", FunctionType::Exp);
-  assertDecayFunctionFail("[30, 40, 5, 100]", FunctionType::Exp);
-  assertDecayFunctionFail("[30, 40, 5, 100, -100]", FunctionType::Exp);
-  assertDecayFunctionFail("[\"a\", 40, 5, 5, 0.5]", FunctionType::Exp);
+  assertDecayFunctionFail("[30, 40, 5]", Functions::LinearDecay, node);
+  assertDecayFunctionFail("[30, 40, 5, 100]", Functions::LinearDecay, node);
+  assertDecayFunctionFail("[30, 40, 5, 100, -100]", Functions::LinearDecay, node);
+  assertDecayFunctionFail("[\"a\", 40, 5, 5, 0.5]", Functions::LinearDecay, node);
 }
 
 } // namespase
