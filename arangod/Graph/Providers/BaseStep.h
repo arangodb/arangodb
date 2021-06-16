@@ -23,9 +23,12 @@
 
 #pragma once
 
+#include <velocypack/HashedStringRef.h>
+
 #include <numeric>
 
 namespace arangodb {
+
 namespace graph {
 
 template <class StepDetails>
@@ -49,7 +52,7 @@ class BaseStep {
   size_t getDepth() const { return _depth; }
 
   ResultT<std::pair<std::string, size_t>> extractCollectionName(
-      velocypack::HashedStringRef const& idHashed) const {
+      arangodb::velocypack::HashedStringRef const& idHashed) const {
     size_t pos = idHashed.find('/');
     if (pos == std::string::npos) {
       // Invalid input. If we get here somehow we managed to store invalid

@@ -166,6 +166,14 @@ class MockGraphProvider {
 
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
 
+    std::string getCollectionName() const {
+      auto collectionNameResult = extractCollectionName(_vertex.getID());
+      if (collectionNameResult.fail()) {
+        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+      }
+      return collectionNameResult.get().first;
+    };
+
     bool isProcessable() const { return _isProcessable; }
 
     bool isLooseEnd() const { return !isProcessable(); }
