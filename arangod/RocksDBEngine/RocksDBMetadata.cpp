@@ -116,13 +116,13 @@ Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumbe
       }
       LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
           << "[" << this << "] placed blocker (" << trxId.id() << ", " << seq << ")";
-      return res;
     } catch (...) {
       _blockers.erase(trxId);
       throw;
     }
 
     _maxBlockersSequenceNumber = seq;
+    return res;
   });
 }
 
