@@ -1235,7 +1235,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     }
   }
   
-  TRI_ASSERT(!value.isArray() || resultBuilder.slice().length() == value.length()); 
+  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length()); 
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1506,7 +1506,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     res = workForOneDocument(newValue, false);
   }
 
-  TRI_ASSERT(!newValue.isArray() || resultBuilder.slice().length() == newValue.length()); 
+  TRI_ASSERT(!newValue.isArray() || options.silent || resultBuilder.slice().length() == newValue.length()); 
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1724,7 +1724,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     res = workForOneDocument(value, false);
   }
   
-  TRI_ASSERT(!value.isArray() || resultBuilder.slice().length() == value.length()); 
+  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length()); 
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
