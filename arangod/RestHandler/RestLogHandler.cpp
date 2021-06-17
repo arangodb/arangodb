@@ -264,7 +264,7 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
 struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
   auto createReplicatedLog(const replication2::agency::LogPlanSpecification& spec) const
       -> futures::Future<Result> override {
-    return vocbase.createReplicatedLog(spec.id).result();
+    return vocbase.createReplicatedLog(spec.id, std::nullopt).result();
   }
 
   auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {

@@ -131,12 +131,19 @@ struct arangodb::VocBaseLogManager {
     _logs.clear();
   }
 
-  [[nodiscard]] auto createReplicatedLog(TRI_vocbase_t& vocbase, replication2::LogId id)
+  [[nodiscard]] auto createReplicatedLog(TRI_vocbase_t& vocbase, replication2::LogId id, std::optional<std::string> collectionName)
       -> arangodb::ResultT<std::reference_wrapper<replication2::replicated_log::ReplicatedLog>> {
     LOG_CTX("04b14", DEBUG, _logContext) << "Creating replicated log " << id;
     std::unique_lock guard(_mutex);
 
     StorageEngine& engine = _server.getFeature<EngineSelectorFeature>().engine();
+    auto const logContext = std::invoke([&]{
+      if (collectionName) {
+        return _logContext.with<logContextKeyCollectionName>(*collectionName);
+      } else {
+        return _logContext;
+      }
+    });
 
     if (auto iter = _logs.lower_bound(id); iter == _logs.end() || iter->first != id) {
       auto&& persistedLog = engine.createReplicatedLog(vocbase, id);
@@ -147,7 +154,7 @@ struct arangodb::VocBaseLogManager {
           std::move(persistedLog.get()));
       auto it = _logs.try_emplace(iter, id, std::move(logCore),
                                   _server.getFeature<ReplicatedLogFeature>().metrics(),
-                                  _logContext);
+                                  logContext);
       _server.getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_add(1);
       _server.getFeature<ReplicatedLogFeature>()
           .metrics()
@@ -1985,9 +1992,9 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 
 using namespace arangodb::replication2;
 
-auto TRI_vocbase_t::createReplicatedLog(LogId id)
+auto TRI_vocbase_t::createReplicatedLog(LogId id, std::optional<std::string> collectionName)
     -> arangodb::ResultT<std::reference_wrapper<replicated_log::ReplicatedLog>> {
-  return _logManager->createReplicatedLog(*this, id);
+  return _logManager->createReplicatedLog(*this, id, collectionName);
 }
 
 auto TRI_vocbase_t::dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result {
@@ -2051,7 +2058,7 @@ void TRI_vocbase_t::unregisterReplicatedLog(arangodb::replication2::LogId id) {
   server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_sub(1);
 }
 
-auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id)
+auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id, std::string const& collectionName)
     -> arangodb::replication2::replicated_log::ReplicatedLog& {
   {
     std::unique_lock guard(_logManager->_mutex);
@@ -2060,7 +2067,7 @@ auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id)
     }
   }
   // TODO vocbase is not thread safe for replicated logs
-  auto res = createReplicatedLog(id);
+  auto res = createReplicatedLog(id, collectionName);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result());
   }
