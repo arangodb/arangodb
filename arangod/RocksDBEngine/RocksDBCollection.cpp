@@ -1537,10 +1537,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   IndexingDisabler disabler(mthds, state->isSingleOperation());
  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
+  if (performPreflightChecks) {
     rocksdb::PinnableSlice val;
     rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val);
-    TRI_ASSERT(s.IsNotFound());
+    TRI_ASSERT(s.IsNotFound() || !s.ok());
   }
 #endif
 
