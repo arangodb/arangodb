@@ -175,7 +175,7 @@ TEST_F(ReplicatedLogConcurrentTest, genPayloadTest) {
 TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   using namespace std::chrono_literals;
 
-  auto replicatedLog = makeReplicatedLog(LogId{1});
+  auto replicatedLog = makeReplicatedLogWithAsyncMockLog(LogId{1});
   // TODO this test hangs because there is not local follower currently
   auto leaderLog = replicatedLog->becomeLeader("leader", LogTerm{1}, {}, 1);
 

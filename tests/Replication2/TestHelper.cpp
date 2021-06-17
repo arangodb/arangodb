@@ -97,18 +97,66 @@ void MockLog::setEntry(replication2::LogIndex idx, replication2::LogTerm term,
                    std::forward_as_tuple(term, idx, std::move(payload)));
 }
 
-MockLog::MockLog(replication2::LogId id) : PersistedLog(id) {}
+MockLog::MockLog(replication2::LogId id) : MockLog(id, {}) {}
 
 MockLog::MockLog(replication2::LogId id, MockLog::storeType storage)
-    : PersistedLog(id), _storage(std::move(storage)) {}
+    : PersistedLog(id),
+      _storage(std::move(storage)) {}
+
+AsyncMockLog::AsyncMockLog(replication2::LogId id)
+    : MockLog(id), _asyncWorker([this] { this->runWorker(); }) {}
+
+AsyncMockLog::~AsyncMockLog() {
+  {
+    std::unique_lock guard(_mutex);
+    _stopping = true;
+    _cv.notify_all();
+  }
+  _asyncWorker.join();
+}
 
 void MockLog::setEntry(replication2::LogEntry entry) {
   _storage.emplace(entry.logIndex(), std::move(entry));
 }
 
-auto MockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts)
-    -> futures::Future<Result> {
+auto MockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts) -> futures::Future<Result> {
   return insert(*iter, opts);
+}
+
+auto AsyncMockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts)
+    -> futures::Future<Result> {
+  auto entry = std::make_shared<QueueEntry>();
+  entry->opts = opts;
+  entry->iter = std::move(iter);
+
+  {
+    std::unique_lock guard(_mutex);
+    _queue.emplace_back(entry);
+    _cv.notify_all();
+  }
+
+  return entry->promise.getFuture();
+}
+
+void AsyncMockLog::runWorker() {
+  while (!_stopping) {
+    std::vector<std::shared_ptr<QueueEntry>> queue;
+    {
+      std::unique_lock guard(_mutex);
+      if (_queue.empty()) {
+        _cv.wait(guard);
+        if (_stopping) {
+          return;
+        }
+      } else {
+        std::swap(queue, _queue);
+      }
+    }
+    for (auto& lambda : queue) {
+      auto res = insert(*lambda->iter, lambda->opts);
+      lambda->promise.setValue(res);
+    }
+  }
 }
 
 auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)

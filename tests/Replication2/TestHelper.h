@@ -49,8 +49,6 @@ struct MockLog : replication2::PersistedLog {
   explicit MockLog(replication2::LogId id);
   MockLog(replication2::LogId id, storeType storage);
 
-  ~MockLog() override = default;
-
   auto insert(replication2::LogIterator& iter, WriteOptions const&) -> Result override;
   auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
@@ -68,6 +66,31 @@ struct MockLog : replication2::PersistedLog {
  private:
   using iteratorType = storeType::iterator;
   storeType _storage;
+};
+
+struct AsyncMockLog : MockLog {
+
+  explicit AsyncMockLog(replication2::LogId id);
+
+  ~AsyncMockLog();
+
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
+                   WriteOptions const&) -> futures::Future<Result> override;
+
+ private:
+  struct QueueEntry {
+    WriteOptions opts;
+    std::unique_ptr<replication2::LogIterator> iter;
+    futures::Promise<Result> promise;
+  };
+
+  void runWorker();
+
+  std::mutex _mutex;
+  std::vector<std::shared_ptr<QueueEntry>> _queue;
+  std::condition_variable _cv;
+  std::thread _asyncWorker;
+  std::atomic<bool> _stopping = false;
 };
 
 struct DelayedFollowerLog : AbstractFollower {
@@ -205,6 +228,13 @@ struct ReplicatedLogTest : ::testing::Test {
 
   auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
     auto core = makeLogCore(id);
+    return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock, LogContext(Logger::FIXME));
+  }
+
+  auto makeReplicatedLogWithAsyncMockLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
+    auto persisted = std::make_shared<AsyncMockLog>(id);
+    _persistedLogs[id] = persisted;
+    auto core = std::make_unique<LogCore>(persisted);
     return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock, LogContext(Logger::FIXME));
   }
 
