@@ -29,6 +29,7 @@
 #include "Agency/FailedLeader.h"
 #include "Agency/Job.h"
 #include "Basics/StaticStrings.h"
+#include "Replication2/Version.h"
 
 using namespace arangodb::consensus;
 
@@ -157,6 +158,17 @@ bool FailedServer::start(bool& aborts) {
       // FIXME: looks OK, but only the non-clone shards are put into the job
       for (auto const& database : databases) {
         // dead code   auto cdatabase = current.at(database.first)->children();
+
+        if (auto [version, has] = database.second->hasAsString(StaticStrings::ReplicationVersion); has) {
+          if (auto res = replication::parseVersion(version); res.ok()) {
+            switch (res.get()) {
+              case replication::Version::ONE:
+                break;
+              case replication::Version::TWO:
+                continue;    // Don't create FailedLeader or failedFollower jobs for new replication
+            }
+          }
+        }
 
         for (auto const& collptr : database.second->children()) {
           auto const& collection = *(collptr.second);

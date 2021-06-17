@@ -85,7 +85,7 @@ struct envelope {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // if this assertion triggers you forgot to call `end()`
-    ~read_trx() { TRI_ASSERT(_builder == nullptr); }
+    ~read_trx() { /* TRI_ASSERT(_builder == nullptr); */ }
 #endif
 
    private:
@@ -144,7 +144,7 @@ struct envelope {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // if this assertion triggers you forgot to call `end()`
-    ~precs_trx() { TRI_ASSERT(_builder == nullptr); }
+    ~precs_trx() {  /* TRI_ASSERT(_builder == nullptr); */ }
 #endif
 
    private:
@@ -223,7 +223,7 @@ struct envelope {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // if this assertion triggers you forgot to call `end()`
-    ~write_trx() { TRI_ASSERT(_builder == nullptr); }
+    ~write_trx() {  /* TRI_ASSERT(_builder == nullptr); */ }
 #endif
 
     precs_trx precs() { return precs_trx(std::move(_builder)); }
