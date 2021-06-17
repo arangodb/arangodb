@@ -128,6 +128,111 @@ TEST_F(UserManagerClusterTest, regression_forgotten_update) {
     FAIL();
   }
 }
+
+TEST_F(UserManagerClusterTest, cacheRevalidationShouldKeepVersionsInLine) {
+  TRI_AddFailurePointDebugging(FailureOnLoadDB);
+  auto guard = arangodb::scopeGuard(
+      []() { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
+
+  auto um = userManager();
+  // If for some reason this EXPECT ever triggers, we can
+  // inject either the AgencyValue into the UserManager
+  // or vice-versa. This is just an assertion that we
+  // expect everything to start at default (1).
+  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
+
+  try {
+    // This needs to trigger a reload from DB
+    // Internally it will do local, global, and loadFromDB.
+    um->triggerCacheRevalidation();
+    FAIL();
+  } catch (arangodb::basics::Exception const& e) {
+    // This Execption indicates that we got past the version
+    // checks and would contact DBServer now.
+    // This is not under test here, we only want to test that we load
+    // the plan
+    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
+  } catch (...) {
+    FAIL();
+  }
+  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
+}
+
+TEST_F(UserManagerClusterTest, triggerLocalReloadShouldNotUpdateClusterVersion) {
+  TRI_AddFailurePointDebugging(FailureOnLoadDB);
+  auto guard = arangodb::scopeGuard(
+      []() { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
+
+  auto um = userManager();
+  // If for some reason this EXPECT ever triggers, we can
+  // inject either the AgencyValue into the UserManager
+  // or vice-versa. This is just an assertion that we
+  // expect everything to start at default (1).
+  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
+
+  uint64_t versionBefore = getAgencyUserVersion();
+
+  um->triggerLocalReload();
+  EXPECT_EQ(versionBefore, getAgencyUserVersion());
+
+  /*
+   * This is the correct test here, see above
+   *
+   * this->simulateOneHeartbeat();
+   */
+  // This needs to trigger a reload from DB
+  try {
+    um->userExists("unknown user");
+    FAIL();
+  } catch (arangodb::basics::Exception const& e) {
+    // This Execption indicates that we got past the version
+    // checks and would contact DBServer now.
+    // This is not under test here, we only want to test that we load
+    // the plan
+    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
+  } catch (...) {
+    FAIL();
+  }
+}
+
+TEST_F(UserManagerClusterTest, triggerGlobalReloadShouldUpdateClusterVersion) {
+  TRI_AddFailurePointDebugging(FailureOnLoadDB);
+  auto guard = arangodb::scopeGuard(
+      []() { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
+
+  auto um = userManager();
+  // If for some reason this EXPECT ever triggers, we can
+  // inject either the AgencyValue into the UserManager
+  // or vice-versa. This is just an assertion that we
+  // expect everything to start at default (1).
+  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
+
+  uint64_t versionBefore = getAgencyUserVersion();
+
+  um->triggerGlobalReload();
+  // The version in the Agency needs to be increased
+  EXPECT_LT(versionBefore, getAgencyUserVersion());
+
+  /*
+   * This is the correct test here, see above
+   *
+   * this->simulateOneHeartbeat();
+   */
+  // This needs to trigger a reload from DB
+  try {
+    um->userExists("unknown user");
+    FAIL();
+  } catch (arangodb::basics::Exception const& e) {
+    // This Execption indicates that we got past the version
+    // checks and would contact DBServer now.
+    // This is not under test here, we only want to test that we load
+    // the plan
+    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
+  } catch (...) {
+    FAIL();
+  }
+}
+
 #endif
 
 }  // namespace auth_info_test
