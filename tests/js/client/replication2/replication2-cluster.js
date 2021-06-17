@@ -256,7 +256,7 @@ function ddlSuite() {
 
       for (const test of tests) {
         try {
-          console.warn(`Running test ${JSON.stringify(test)}...`);
+          console.debug(`Running test ${JSON.stringify(test)}...`);
           runCreateDbTest(test);
         } catch (e) {
           if (e instanceof Error) {

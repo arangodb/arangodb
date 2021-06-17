@@ -131,7 +131,8 @@ struct arangodb::VocBaseLogManager {
     _logs.clear();
   }
 
-  [[nodiscard]] auto createReplicatedLog(TRI_vocbase_t& vocbase, replication2::LogId id, std::optional<std::string> collectionName)
+  [[nodiscard]] auto createReplicatedLog(TRI_vocbase_t& vocbase, replication2::LogId id,
+                                         std::optional<std::string> const& collectionName)
       -> arangodb::ResultT<std::reference_wrapper<replication2::replicated_log::ReplicatedLog>> {
     LOG_CTX("04b14", DEBUG, _logContext) << "Creating replicated log " << id;
     std::unique_lock guard(_mutex);
@@ -1992,7 +1993,7 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 
 using namespace arangodb::replication2;
 
-auto TRI_vocbase_t::createReplicatedLog(LogId id, std::optional<std::string> collectionName)
+auto TRI_vocbase_t::createReplicatedLog(LogId id, std::optional<std::string> const& collectionName)
     -> arangodb::ResultT<std::reference_wrapper<replicated_log::ReplicatedLog>> {
   return _logManager->createReplicatedLog(*this, id, collectionName);
 }
