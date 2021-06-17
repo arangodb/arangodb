@@ -24,30 +24,49 @@
 
 #include <unordered_map>
 
+#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <Basics/Identifier.h>
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb::replication2::agency {
 
-struct CollectionGroupId : basics::Identifier {};
+struct CollectionGroupId : basics::Identifier {
+  using Identifier::Identifier;
+};
 
 struct CollectionGroup {
   CollectionGroupId id;
 
-  struct Collection {};
+  struct Collection {
+
+    explicit Collection(VPackSlice slice);
+    void toVelocyPack(VPackBuilder& builder) const;
+  };
   std::unordered_map<CollectionID, Collection> collections;
 
   struct ShardSheaf {
     LogId replicatedLog;
+
+    explicit ShardSheaf(VPackSlice slice);
+    void toVelocyPack(VPackBuilder& builder) const;
   };
   std::vector<ShardSheaf> shardSheaves;
 
   struct Attributes {
     std::size_t writeConcern;
     bool waitForSync;
+
+    explicit Attributes(VPackSlice slice);
+    void toVelocyPack(VPackBuilder& builder) const;
   };
   Attributes attributes;
+
+  explicit CollectionGroup(VPackSlice slice);
+  void toVelocyPack(VPackBuilder& builder) const;
 };
 
 }
