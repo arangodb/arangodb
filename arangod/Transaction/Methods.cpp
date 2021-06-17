@@ -2353,9 +2353,19 @@ Future<Result> Methods::replicateOperations(
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
+      
+      opName = "insert";
+      // handle overwrite modes
       if (options.isOverwriteModeSet()) {
         if (options.overwriteMode != OperationOptions::OverwriteMode::Unknown) {
           reqOpts.param(StaticStrings::OverwriteMode, OperationOptions::stringifyOverwriteMode(options.overwriteMode));
+          if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+            opName = "insert w/ overwriteMode update";
+          } else if (options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
+            opName = "insert w/ overwriteMode replace";
+          } else if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
+            opName = "insert w/ overwriteMode ingore";
+          } 
         }
         if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
           // extra parameters only required for update
@@ -2363,7 +2373,6 @@ Future<Result> Methods::replicateOperations(
           reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects ? "true" : "false");
         }
       }
-      opName = "insert";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::fuerte::RestVerb::Patch;
@@ -2478,15 +2487,16 @@ Future<Result> Methods::replicateOperations(
       network::Response const& resp = responses[i].get();
       ServerID const& follower = (*followerList)[i];
 
-      bool replicationWorked = false;
+      std::string replicationFailureReason;
       if (resp.error == fuerte::Error::NoError) {
-        replicationWorked = resp.statusCode() == fuerte::StatusAccepted ||
-                            resp.statusCode() == fuerte::StatusCreated ||
-                            resp.statusCode() == fuerte::StatusOK;
-        if (replicationWorked) {
+        if (resp.statusCode() == fuerte::StatusAccepted ||
+            resp.statusCode() == fuerte::StatusCreated ||
+            resp.statusCode() == fuerte::StatusOK) {
           bool found;
-          resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
-          replicationWorked = !found;
+          std::string const& errors = resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
+          if (found) {
+            replicationFailureReason = "got error header from follower: " + errors;
+          }
         } else {
           auto r = resp.combinedResult();
           bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
@@ -2502,19 +2512,24 @@ Future<Result> Methods::replicateOperations(
               << " refused the operation: " << r.errorMessage();
           }
         }
+      } else {
+        replicationFailureReason = "no response from follower";
       }
 
       TRI_IF_FAILURE("replicateOperationsDropFollower") {
-        replicationWorked = false;
+        replicationFailureReason = "intentional debug error";
       }
 
-      if (!replicationWorked) {
+      if (!replicationFailureReason.empty()) {
         if (!vocbase().server().isStopping()) {
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-            << "synchronous replication of " << opName << " operation: "
-            << ": dropping follower " << follower << " for shard "
+            << "synchronous replication of " << opName << " operation "
+            << "(" << count << " doc(s)): "
+            << "dropping follower " << follower << " for shard "
             << collection->vocbase().name() << "/" << collection->name()
-            << ": " << resp.combinedResult().errorMessage();
+            << ": failure reason: " << replicationFailureReason
+            << ", http response code: " << (int) resp.statusCode() 
+            << ", error message: " << resp.combinedResult().errorMessage();
 
           Result res = collection->followers()->remove(follower);
           if (res.ok()) {
