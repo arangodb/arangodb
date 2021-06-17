@@ -254,7 +254,9 @@ struct envelope {
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // if this assertion triggers you forgot to call `done()`
-    ~envelope() { TRI_ASSERT(_builder == nullptr); }
+    ~envelope() {
+      // TRI_ASSERT(_builder == nullptr);
+    }
 #endif
  private:
   envelope(VPackBuilder* b) : _builder(b) {}

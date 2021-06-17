@@ -27,10 +27,13 @@ const jsunity = require('jsunity');
 const console = require('console');
 const request = require('@arangodb/request');
 const _ = require('lodash');
+const db = require('@arangodb').db;
 const {checkRequestResult} = require('@arangodb/arangosh');
 const {
   assertEqual,
+  assertFalse,
   assertNotNull,
+  assertNotUndefined,
   assertTypeOf,
   assertIdentical,
 } = jsunity.jsUnity.assertions;
@@ -99,7 +102,7 @@ const replicationApi = {
 
 };
 
-function testSuite() {
+function dbServerApiSuite() {
   const instanceInfo = global.instanceInfo;
   let serverA;
   let serverB;
@@ -113,6 +116,9 @@ function testSuite() {
         [serverA, serverB, serverC] = instanceInfo.arangods.filter(isDBServer)
       );
       assertEqual(3, servers.length);
+      assertNotUndefined(serverA);
+      assertNotUndefined(serverB);
+      assertNotUndefined(serverC);
       assertNotNull(serverA);
       assertNotNull(serverB);
       assertNotNull(serverC);
@@ -136,5 +142,167 @@ function testSuite() {
   };
 }
 
-jsunity.run(testSuite);
+const runInDb = (name, callback) => {
+  const oldDbName = db._name();
+  try {
+    db._useDatabase(name);
+    callback();
+  } catch (e) {
+    db._useDatabase(oldDbName);
+    throw e;
+  }
+  db._useDatabase(oldDbName);
+};
+
+function ddlSuite() {
+  return {
+    testCreateDatabaseReplicationVersion: function () {
+      const dbName = 'replicationVersionDb';
+
+      const tests = [
+        // default to v1
+        { params: undefined,
+          expected: {properties: {replicationVersion: "1"}},
+        },
+        { params: null,
+          expected: {properties: {replicationVersion: "1"}},
+        },
+        { params: {replicationVersion: undefined},
+          expected: {properties: {replicationVersion: "1"}},
+        },
+        { params: {},
+          expected: {properties: {replicationVersion: "1"}},
+        },
+        // set v1 explicitly
+        { params: {replicationVersion: "1"},
+          expected: {properties: {replicationVersion: "1"}},
+        },
+        // set v2 explicitly
+        { params: {replicationVersion: "2"},
+          expected: {properties: {replicationVersion: "2"}},
+        },
+        // erroneous inputs
+        { params: {replicationVersion: null},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: "3"},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: "11"},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: "22"},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: -1},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: 0},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: 1},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: 2},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: '1 hund'},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: '2 hunde'},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: {some: 'object'}},
+          expected: {error: true},
+        },
+        { params: {replicationVersion: ['some',  'array']},
+          expected: {error: true},
+        },
+      ];
+
+      const runCreateDbTest = (test) => {
+        const {params, expected} = Object.assign({}, test);
+
+        if (expected.hasOwnProperty('properties')) {
+          // Creating the database should work, and we want to check the properties are as expected
+          db._createDatabase(dbName, params);
+          try {
+            runInDb(dbName, () => {
+              const props = db._properties();
+              for (const prop of Object.keys(expected.properties)) {
+                assertIdentical(props[prop], expected.properties[prop]);
+              }
+            });
+          } catch(e) {
+            // rather throw the first exception here, it'll be more interesting
+            try { db._dropDatabase(dbName); } catch (e) {}
+            throw e;
+          }
+          db._dropDatabase(dbName);
+        } else if (expected.hasOwnProperty('error')) {
+          // Creating the database should fail
+          let success = false;
+          try {
+            db._createDatabase(dbName, params);
+            success = true;
+            // make testing.js happy
+            db._dropDatabase(dbName);
+          } catch (e) {}
+          assertFalse(success);
+        } else {
+          throw Error('Unexpected test object, has neither "properties" nor "error": ' + JSON.stringify(test));
+        }
+      };
+
+      for (const test of tests) {
+        try {
+          console.warn(`Running test ${JSON.stringify(test)}...`);
+          runCreateDbTest(test);
+        } catch (e) {
+          if (e instanceof Error) {
+            e.message = `When executing test ${JSON.stringify(test)}: ${e.message}`;
+          } else if (typeof e === 'string') {
+            e = `When executing test ${JSON.stringify(test)}: ${e}`;
+          }
+          throw e;
+        }
+      }
+    },
+
+    testCreateDatabaseWithOldReplication: function () {
+      const dbName = 'replv1db';
+      db._createDatabase(dbName, {replicationVersion: "1"});
+      try {
+        runInDb(dbName, () => {
+          const props = db._properties();
+          assertNotUndefined(props.replicationVersion);
+          assertIdentical("1", props.replicationVersion);
+        });
+      } catch(e) {
+        db._dropDatabase(dbName);
+        throw e;
+      }
+      db._dropDatabase(dbName);
+    },
+
+    testCreateDatabaseWithNewReplication: function () {
+      const dbName = 'replv2db';
+      db._createDatabase(dbName, {replicationVersion: "2"});
+      try {
+        runInDb(dbName, () => {
+          const props = db._properties();
+          assertNotUndefined(props.replicationVersion);
+          assertIdentical("2", props.replicationVersion);
+        });
+      } catch(e) {
+        db._dropDatabase(dbName);
+        throw e;
+      }
+      db._dropDatabase(dbName);
+    },
+  };
+}
+
+jsunity.run(dbServerApiSuite);
+jsunity.run(ddlSuite);
 return jsunity.done();
