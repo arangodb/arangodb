@@ -77,7 +77,7 @@ const waitForShardsInSync = (cn) => {
     if (insync === shards.length) {
       return;
     }
-    console.warn("Hugo: insync=", insync, ", collInfo=", collInfo, internal.time() - start, shards);
+    console.warn("insync=", insync, ", collInfo=", collInfo, internal.time() - start);
     internal.wait(1);
   }
 }
