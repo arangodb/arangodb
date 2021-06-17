@@ -57,6 +57,31 @@ const fetchRevisionTree = (serverUrl, shardId) => {
   return JSON.parse(result.body);
 };
 
+const waitForShardsInSync = (cn) => {
+  let start = internal.time();
+  while (true) {
+    if (internal.time() - start > 300) {
+      assertTrue(false, "Shards were not getting in sync in time, giving up!");
+    }
+    let shardDistribution = arango.GET("/_admin/cluster/shardDistribution");
+    assertFalse(shardDistribution.error);
+    assertEqual(200, shardDistribution.code);
+    let collInfo = shardDistribution.results[cn];
+    let shards = Object.keys(collInfo.Plan);
+    let insync = 0;
+    for (let s of shards) {
+      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length) {
+        ++insync;
+      }
+    }
+    if (insync === shards.length) {
+      return;
+    }
+    console.warn("Hugo: insync=", insync, ", collInfo=", collInfo, internal.time() - start, shards);
+    internal.wait(1);
+  }
+}
+
 const checkCollectionConsistency = (cn) => {
   internal.sleep(10); // give the cluster some time to get in sync
   const c = db._collection(cn);
@@ -177,6 +202,8 @@ function ChaosSuite() {
       // run the suite for 5 minutes
       runParallelArangoshTests(tests, 5 * 60, cn);
       
+      waitForShardsInSync(cn);
+
       checkCollectionConsistency(cn);
     }
   };
