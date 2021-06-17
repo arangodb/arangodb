@@ -1928,6 +1928,7 @@ using namespace arangodb::replication2;
 
 auto TRI_vocbase_t::createReplicatedLog(LogId id)
     -> arangodb::ResultT<std::reference_wrapper<replicated_log::ReplicatedLog>> {
+  LOG_TOPIC("04b14", DEBUG, Logger::REPLICATION2) << "Creating replicated log " << id;
   std::unique_lock guard(_logManager->_mutex);
   auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
   auto& logs = manager->_logs;
@@ -1954,6 +1955,7 @@ auto TRI_vocbase_t::createReplicatedLog(LogId id)
 }
 
 auto TRI_vocbase_t::dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result {
+  LOG_TOPIC("658c7", DEBUG, Logger::REPLICATION2) << "Dropping replicated log " << id;
   std::unique_lock guard(_logManager->_mutex);
   auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();

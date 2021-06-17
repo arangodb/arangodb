@@ -104,22 +104,6 @@ LogPayload::LogPayload(std::string_view dummy) {
   builder.add(VPackValue(dummy));
 }
 
-auto LogId::fromShardName(std::string_view name) noexcept -> std::optional<LogId> {
-  using namespace basics::StringUtils;
-  constexpr auto isShardName = [](auto const& name) {
-    return !name.empty() && name[0] == 's' &&
-           std::all_of(name.begin() + 1, name.end(),
-                       [](char c) { return isdigit(c); });
-  };
-  if (isShardName(name)) {
-    auto const shardId = uint64({name.begin() + 1, name.end()});
-    if (shardId > 0) {
-      return LogId{shardId};
-    }
-  }
-  return std::nullopt;
-}
-
 auto LogId::fromString(std::string_view name) noexcept -> std::optional<LogId> {
   if (std::all_of(name.begin(), name.end(), [](char c) { return isdigit(c); })) {
     using namespace basics::StringUtils;

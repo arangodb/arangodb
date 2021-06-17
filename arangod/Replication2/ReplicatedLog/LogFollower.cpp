@@ -22,6 +22,7 @@
 
 #include "LogFollower.h"
 
+#include "LogContextKeys.h"
 #include "ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"

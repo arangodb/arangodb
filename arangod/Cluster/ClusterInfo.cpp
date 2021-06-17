@@ -1456,7 +1456,6 @@ void ClusterInfo::loadPlan() {
       auto spec = std::make_shared<replication2::agency::LogPlanSpecification>
        (replication2::agency::from_velocypack, logSlice);
       newLogs.emplace(spec->id, spec);
-      LOG_DEVEL << "replicated log " << databaseName << "/" << idString.stringView();
     }
     newReplicatedsLogs[databaseName] = std::move(newLogs);
   }

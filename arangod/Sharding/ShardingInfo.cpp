@@ -268,8 +268,10 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                     *path, ", exception while reading was: ", ex.what(), "."));
       }
     } else {
-      LOG_DEVEL << "Empty replicatedLogsSlice for "
-                << _collection->vocbase().name() << "/" << _collection->name();
+      LOG_TOPIC("77879", INFO, Logger::MAINTENANCE)
+          << "Empty replicatedLogsSlice for " << _collection->vocbase().name()
+          << "/" << _collection->name()
+          << ", even though the database uses replicationVersion 2.";
     }
   }
 

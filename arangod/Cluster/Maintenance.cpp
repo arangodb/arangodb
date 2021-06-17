@@ -38,7 +38,9 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/LogContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
@@ -1534,9 +1536,12 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             continue;
           }
 
-          LOG_DEVEL << "checking log " << id << " local term = "
-                    << (localTerm ? to_string(localTerm.value()) : "n/a") << " current "
-                    << (!termInCurrent.isNone() ? termInCurrent.toJson() : "n/a");
+          auto logContext = LogContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
+
+          LOG_CTX("11dbd", TRACE, logContext)
+              << "checking replicated log " << id << " local term = "
+              << (localTerm ? to_string(localTerm.value()) : "n/a") << " current "
+              << (!termInCurrent.isNone() ? termInCurrent.toJson() : "n/a");
 
           replication2::agency::LogCurrentLocalState localState;
           localState.term = localTerm.value();

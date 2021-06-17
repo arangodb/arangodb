@@ -25,10 +25,9 @@
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-
 #include "RestServer/Metrics.h"
-
 #include "Scheduler/SchedulerFeature.h"
 
 #include <Basics/Exceptions.h>
@@ -63,8 +62,6 @@
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
-
-#include "ReplicatedLogIterator.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

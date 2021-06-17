@@ -273,27 +273,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     _followers.reset(new FollowerInfo(this));
   }
 
-  // Link replicated log first, if necessary
-  if (vocbase.replicationVersion() == replication::Version::TWO) {
-    bool const isLocalCollection =
-        (!ServerState::instance()->isCoordinator() && planId() == id());
-
-    if (ServerState::instance()->isDBServer() && !isLocalCollection) {
-      if (auto logId = replication2::LogId::fromShardName(name())) {
-        // Note: We could also add the reference to the ReplicatedLog (*logRes)
-        // to the logical collection, for direct access.
-        setReplicatedLogId(*logId);
-        LOG_DEVEL << "Set logId of " << vocbase.name() << "/" << name()
-                  << " to " << logId->id();
-      } else {
-        TRI_ASSERT(false);
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            basics::StringUtils::concatT("Expected shard id, got ", name()));
-      }
-    }
-  }
-
   TRI_ASSERT(_physical != nullptr);
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
