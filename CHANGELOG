@@ -1,5 +1,9 @@
 devel
 -----
+
+* Lower log level to warning, when take over shard leadership finds
+  an agency Current entry is missing the server taking over.
+
 * Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
   iterator.
 
@@ -8,7 +12,7 @@ devel
 * Fix URL request parsing in case data is handed in in small chunks.
   Previously the URL could be cut off if the chunk size was smaller than
   the URL size.
- 
+
 * Backport bugfix from upstream rocksdb repository for calculating the
   free disk space for the database directory. Before the bugfix, rocksdb
   could overestimate the amount of free space when the arangod process
@@ -56,7 +60,7 @@ devel
 	this way the system does only need to produce a path that is allowed to
 	be passed through.
 	e.g.
-  
+
 	  FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
 		  FILTER v.isRelevant == true
 			RETURN p
