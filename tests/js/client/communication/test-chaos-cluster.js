@@ -33,6 +33,7 @@ const db = arangodb.db;
 const {
   debugSetFailAt,
   debugClearFailAt,
+  deriveTestSuite,
   getEndpointById,
   getServersByType,
   runParallelArangoshTests
@@ -80,10 +81,9 @@ const waitForShardsInSync = (cn) => {
     console.warn("insync=", insync, ", collInfo=", collInfo, internal.time() - start);
     internal.wait(1);
   }
-}
+};
 
 const checkCollectionConsistency = (cn) => {
-  internal.sleep(10); // give the cluster some time to get in sync
   const c = db._collection(cn);
   const servers = getDBServers();
   const shardInfo = c.shards(true);
@@ -92,6 +92,7 @@ const checkCollectionConsistency = (cn) => {
   const getServerUrl = (serverId) => servers.filter((server) => server.id === serverId)[0].url;
   let tries = 0;
   do {
+    failed = false;
     Object.entries(shardInfo).forEach(
       ([shard, [leader, follower]]) => {
         const leaderTree = fetchRevisionTree(getServerUrl(leader), shard);
@@ -109,7 +110,7 @@ const checkCollectionConsistency = (cn) => {
           console.error(`Follower has inconsistent tree for shard ${shard}:`, followerTree);
           failed = true;
         };
-        
+
         if (!_.isEqual(leaderTree, followerTree)) {
           console.error(`Leader and follower have different trees for shard ${shard}`);
           console.error("Leader: ", leaderTree);
@@ -119,7 +120,7 @@ const checkCollectionConsistency = (cn) => {
       });
     if (failed) {
       if (++tries >= 3) {
-        throw `Cluster still not in sync - giving up!`;
+        assertFalse(failed, `Cluster still not in sync - giving up!`);
       }
       console.warn(`Found some inconsistencies! Giving cluster some more time to get in sync before checking again... try=${tries}`);
       internal.sleep(10);
@@ -127,7 +128,13 @@ const checkCollectionConsistency = (cn) => {
   } while(failed);
 };
 
-function ChaosSuite() {
+const clearAllFailurePoints = () => {
+  for (const server of getDBServers()) {
+    debugClearFailAt(getEndpointById(server.id));
+  }
+};
+
+function BaseChaosSuite(testOpts) {
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
 
@@ -136,24 +143,23 @@ function ChaosSuite() {
       db._drop(cn);
       db._create(cn, { numberOfShards: 4, replicationFactor: 2 });
       
-      const servers = getDBServers();
-      assertTrue(servers.length > 0);
-      for (const server of servers) {
-        debugSetFailAt(getEndpointById(server.id), "replicateOperations_randomize_timeout");
-        debugSetFailAt(getEndpointById(server.id), "delayed_synchronous_replication_request_processing");
+      if (testOpts.withFailurePoints) {
+        const servers = getDBServers();
+        assertTrue(servers.length > 0);
+        for (const server of servers) {
+          debugSetFailAt(getEndpointById(server.id), "replicateOperations_randomize_timeout");
+          debugSetFailAt(getEndpointById(server.id), "delayed_synchronous_replication_request_processing");
+        }
       }
     },
 
     tearDown: function () {
-      for (const server of getDBServers()) {
-        debugClearFailAt(getEndpointById(server.id));
-      }
+      clearAllFailurePoints();
       db._drop(cn);
     },
     
     testWorkInParallel: function () {
-      let code = `
-      {
+      let code = (testOpts) => {
         const key = () => "testmann" + Math.floor(Math.random() * 100000000);
         const docs = () => {
           let result = [];
@@ -163,36 +169,67 @@ function ChaosSuite() {
           }
           return result;
         };
-        
-        let c = db._collection("${cn}");
+
+        let c = db._collection(testOpts.collection);
         const opts = () => {
-          const r = Math.random();
-          return r <= 0.5 ? { intermediateCommitSize: 7 + Math.floor(r * 10) } : {};
+          let result = {};
+          if (testOpts.withIntermediateCommits) {
+            const r = Math.random();
+            if (r <= 0.5) {
+              result.intermediateCommitCount = 7 + Math.floor(r * 10);
+            }
+          }
+          
+          if (testOpts.withVaryingOverwriteMode) {
+            let r = Math.random();
+            if (r >= 0.75) {
+              result.overwriteMode = "replace";
+            } else if (r >= 0.5) {
+              result.overwriteMode = "update";
+            } else if (r >= 0.25) {
+              result.overwriteMode = "ignore";
+            } 
+          }
         };
+        
+        let query = db._query;
+        let trx = null;
+        let ctx = db;
+        if (testOpts.withStreamingTransactions && Math.random() < 0.5) {
+          trx = db._createTransaction({ collections: { write: [c.name()] } });
+          ctx = trx;
+          c = trx.collection(testOpts.collection);
+          query = trx.query;
+        }
+
         try {
           const d = Math.random();
-          if (d >= 0.9) {
-            db._query("FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: docs()}, opts());
+          if (d >= 0.98 && testOpts.withTruncate) {
+            c.truncate();
+          } else if (d >= 0.9) {
+            query.call(ctx, "FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: docs()}, opts());
           } else if (d >= 0.8) {
-            db._query("FOR doc IN " + c.name() + " LIMIT 138 REMOVE doc IN " + c.name(), {}, opts());
+            query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 138 REMOVE doc IN " + c.name(), {}, opts());
           } else if (d >= 0.7) {
-            db._query("FOR doc IN " + c.name() + " LIMIT 1338 REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {}, opts());
+            query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 1338 REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {}, opts());
           } else if (d >= 0.25) {
-            let r = Math.random();
-            let opts = {};
-            if (r >= 0.75) {
-              opts = { overwriteMode: "replace"};
-            } else if (r >= 0.5) {
-              opts = { overwriteMode: "update"};
-            } else if (r >= 0.25) {
-              opts = { overwriteMode: "ignore"};
-            }
-            c.insert(docs(), opts);
+            c.insert(docs(), opts());
           } else {
             c.remove(docs());
           }
-        } catch {}
-      }`;
+        } catch (err) {}
+        
+        if (trx) {
+          if (Math.random() < 0.2) {
+            trx.abort();
+          } else {
+            trx.commit();
+          }
+        }
+      };
+
+      testOpts.collection = cn;
+      code = `(${code.toString()})(${JSON.stringify(testOpts)});`;
       
       let tests = [];
       for (let i = 0; i < 3; ++i) {
@@ -201,14 +238,40 @@ function ChaosSuite() {
 
       // run the suite for 5 minutes
       runParallelArangoshTests(tests, 5 * 60, cn);
-      
-      waitForShardsInSync(cn);
 
+      print("Finished load test - waiting for cluster to get in sync before checking consistency.");
+      clearAllFailurePoints();
+      waitForShardsInSync(cn);
       checkCollectionConsistency(cn);
     }
   };
 }
 
-jsunity.run(ChaosSuite);
+function BuildChaosSuite(opts, suffix) {
+  let suite = {};
+  deriveTestSuite(BaseChaosSuite(opts), suite, suffix);
+  return suite;
+}
+
+const params = ["IntermediateCommits", "FailurePoints", "Truncate", "VaryingOverwriteMode", "StreamingTransactions"];
+
+for (let i = 0; i < (1 << params.length); ++i) {
+  let paramValues = [];
+  for (let j = params.length - 1; j >= 0; --j) {
+    paramValues.push(Boolean(i & (1 << j)));
+  }
+  
+  let suffix = "";
+  let opts = {};
+  for (let j = 0; j < params.length; ++j) {
+    suffix += paramValues[j] ? "_with_" : "_no_";
+    suffix += params[j];
+    opts["with" + params[j]] = paramValues[j];
+  }  
+  let func = function() { return BuildChaosSuite(opts, suffix); };
+  Object.defineProperty(func, 'name', {value: "ChaosSuite" + suffix, writable: false});
+
+  jsunity.run(func);
+}
 
 return jsunity.done();
