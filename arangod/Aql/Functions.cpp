@@ -8940,7 +8940,7 @@ AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,
   }
 }
 
-AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionContext,
+AqlValue Functions::DecayGauss(arangodb::aql::ExpressionContext* expressionContext,
                                AstNode const& node,
                                VPackFunctionParameters const& parameters) {
 
@@ -8960,7 +8960,7 @@ AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionConte
   return decayFuncImpl(expressionContext, node, parameters, gaussDecayFactory);
 }
 
-AqlValue Functions::ExpDecay(arangodb::aql::ExpressionContext* expressionContext,
+AqlValue Functions::DecayExp(arangodb::aql::ExpressionContext* expressionContext,
                              AstNode const& node,
                              VPackFunctionParameters const& parameters) {
 
@@ -8979,7 +8979,7 @@ AqlValue Functions::ExpDecay(arangodb::aql::ExpressionContext* expressionContext
   return decayFuncImpl(expressionContext, node, parameters, expDecayFactory);
 }
 
-AqlValue Functions::LinearDecay(arangodb::aql::ExpressionContext* expressionContext,
+AqlValue Functions::DecayLinear(arangodb::aql::ExpressionContext* expressionContext,
                                 AstNode const& node,
                                 VPackFunctionParameters const& parameters) {
 

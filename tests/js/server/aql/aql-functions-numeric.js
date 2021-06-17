@@ -5763,10 +5763,10 @@ function ahuacatlNumericFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test GAUSS_DECAY function
+/// @brief test DECAY_GAUSS function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGaussDecay : function () {
+    testDecayGauss : function () {
         var data = [
           [1, 0, 10, 0, 0.2, 0.9840344433634576],
           [-10, 40, 5, 0, 0.1, 1.0000000000000458e-100],
@@ -5782,20 +5782,20 @@ function ahuacatlNumericFunctionsTestSuite () {
           var offset = JSON.stringify(value[3]);
           var decay = JSON.stringify(value[4]);
 
-          var query = "RETURN GAUSS_DECAY(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
+          var query = "RETURN DECAY_GAUSS(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
           var actual = getQueryResults(query);
           assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
 
-          actual = getQueryResults("RETURN NOOPT(GAUSS_DECAY(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
+          actual = getQueryResults("RETURN NOOPT(DECAY_GAUSS(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
           assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
         });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test EXP_DECAY function
+/// @brief test DECAY_EXP function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testExpDecay : function () {
+    testDecayExp : function () {
         var data = [
           [1, 0, 10, 0, 0.2, 0.8513399225207846],
           [0, 0, 0.001, 10, 0.2, 1],
@@ -5811,19 +5811,19 @@ function ahuacatlNumericFunctionsTestSuite () {
           var offset = JSON.stringify(value[3]);
           var decay = JSON.stringify(value[4]);
 
-          var query = "RETURN EXP_DECAY(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
+          var query = "RETURN DECAY_EXP(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
           var actual = getQueryResults(query);
           assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
 
-          actual = getQueryResults("RETURN NOOPT(EXP_DECAY(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
+          actual = getQueryResults("RETURN NOOPT(DECAY_EXP(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
           assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
         });
     },
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test LINEAR_DECAY function
+/// @brief test DECAY_LINEAR function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLinDecay : function () {
+    testDecayLin : function () {
         var data = [
           [41, 40, 5, 5, 0.5, 1],
           [1, 0, 10, 0, 0.2, 0.92],
@@ -5839,11 +5839,11 @@ function ahuacatlNumericFunctionsTestSuite () {
           var offset = JSON.stringify(value[3]);
           var decay = JSON.stringify(value[4]);
 
-          var query = "RETURN LINEAR_DECAY(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
+          var query = "RETURN DECAY_LINEAR(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
           var actual = getQueryResults(query);
           assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
 
-          actual = getQueryResults("RETURN NOOPT(LINEAR_DECAY(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
+          actual = getQueryResults("RETURN NOOPT(DECAY_LINEAR(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
           assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
         });
     }

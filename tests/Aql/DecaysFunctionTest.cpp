@@ -157,7 +157,7 @@ void assertDecayFunctionFail(char const* args,
 TEST(GaussDecayFunctionTest, test) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("GAUSS_DECAY", &Functions::GaussDecay);
+  arangodb::aql::Function f("DECAY_GAUSS", &Functions::DecayGauss);
   node.setData(static_cast<void const*>(&f));
 
   // expecting 1
@@ -202,7 +202,7 @@ TEST(ExpDecayFunctionTest, test) {
 
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("EXP_DECAY", &Functions::ExpDecay);
+  arangodb::aql::Function f("DECAY_EXP", &Functions::DecayExp);
   node.setData(static_cast<void const*>(&f));
 
   // expecting 1
@@ -244,7 +244,7 @@ TEST(LinDecayFunctionTest, test) {
 
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("LINEAR_DECAY", &Functions::LinearDecay);
+  arangodb::aql::Function f("DECAY_LINEAR", &Functions::DecayLinear);
   node.setData(static_cast<void const*>(&f));
 
   // expecting 1
