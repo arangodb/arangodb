@@ -8936,7 +8936,7 @@ AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,
       }
     }
 
-    return AqlValue(builder.slice());
+    return AqlValue(std::move(*builder.steal()));
   }
 }
 
@@ -8953,7 +8953,7 @@ AqlValue Functions::GaussDecay(arangodb::aql::ExpressionContext* expressionConte
       double max = std::max(0.0, std::fabs(arg - origin) - offset);
       double numerator = max * max;
       double val = std::exp(- numerator / (2 * sigmaSqr));
-      return val > decay ? val : decay;
+      return val;
     };
   };
 
@@ -8972,7 +8972,7 @@ AqlValue Functions::ExpDecay(arangodb::aql::ExpressionContext* expressionContext
     return [=](double arg) {
       double numerator = lambda * std::max(0.0, std::abs(arg - origin) - offset);
       double val = std::exp(numerator);
-      return val > decay ? val : decay;
+      return val;
     };
   };
 
@@ -8991,7 +8991,7 @@ AqlValue Functions::LinearDecay(arangodb::aql::ExpressionContext* expressionCont
     return [=](double arg) {
       double max = std::max(0.0, std::fabs(arg - origin) - offset);
       double val = std::max((s - max) / s, 0.0);
-      return val > decay ? val : decay;
+      return val;
     };
   };
 
