@@ -30,6 +30,7 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
+#include <unordered_map>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
@@ -63,6 +64,8 @@
 #include "Logger/LogMacros.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication2/LogContext.h"
+#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -94,10 +97,13 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 struct arangodb::VocBaseLogManager {
-  explicit VocBaseLogManager(arangodb::application_features::ApplicationServer& server) {}
+  explicit VocBaseLogManager(application_features::ApplicationServer& server, DatabaseID database)
+      : _server(server),
+        _logContext(LogContext{Logger::REPLICATION2}.with<logContextKeyDatabaseName>(
+            std::move(database))) {}
 
-  auto getReplicatedLogById(arangodb::replication2::LogId id) const
-  -> arangodb::replication2::replicated_log::ReplicatedLog const& {
+  [[nodiscard]] auto getReplicatedLogById(replication2::LogId id) const
+      -> replication2::replicated_log::ReplicatedLog const& {
     if (auto iter = _logs.find(id); iter != _logs.end()) {
       return iter->second;
     }
@@ -106,8 +112,8 @@ struct arangodb::VocBaseLogManager {
                                   "replicated log %" PRIu64 " not found", id.id());
   }
 
-  auto getReplicatedLogById(arangodb::replication2::LogId id)
-  -> arangodb::replication2::replicated_log::ReplicatedLog& {
+  [[nodiscard]] auto getReplicatedLogById(replication2::LogId id)
+      -> replication2::replicated_log::ReplicatedLog& {
     if (auto iter = _logs.find(id); iter != _logs.end()) {
       return iter->second;
     }
@@ -125,7 +131,60 @@ struct arangodb::VocBaseLogManager {
     _logs.clear();
   }
 
-  // Needs to be a map for stable pointers
+  [[nodiscard]] auto createReplicatedLog(TRI_vocbase_t& vocbase, replication2::LogId id)
+      -> arangodb::ResultT<std::reference_wrapper<replication2::replicated_log::ReplicatedLog>> {
+    LOG_CTX("04b14", DEBUG, _logContext) << "Creating replicated log " << id;
+    std::unique_lock guard(_mutex);
+
+    StorageEngine& engine = _server.getFeature<EngineSelectorFeature>().engine();
+
+    if (auto iter = _logs.lower_bound(id); iter == _logs.end() || iter->first != id) {
+      auto&& persistedLog = engine.createReplicatedLog(vocbase, id);
+      if (persistedLog.fail()) {
+        return persistedLog.result();
+      }
+      auto&& logCore = std::make_unique<replication2::replicated_log::LogCore>(
+          std::move(persistedLog.get()));
+      auto it = _logs.try_emplace(iter, id, std::move(logCore),
+                                  _server.getFeature<ReplicatedLogFeature>().metrics(),
+                                  _logContext);
+      _server.getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_add(1);
+      _server.getFeature<ReplicatedLogFeature>()
+          .metrics()
+          ->replicatedLogCreationNumber->count();
+      return std::ref(it->second);
+    } else {
+      return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+    }
+  }
+
+  [[nodiscard]] auto dropReplicatedLog(TRI_vocbase_t& vocbase,
+                                       arangodb::replication2::LogId id) -> arangodb::Result {
+    LOG_CTX("658c7", DEBUG, _logContext) << "Dropping replicated log " << id;
+    std::unique_lock guard(_mutex);
+    StorageEngine& engine = _server.getFeature<EngineSelectorFeature>().engine();
+
+    if (auto iter = _logs.find(id); iter != _logs.end()) {
+      auto core = iter->second.drop();
+      auto res = engine.dropReplicatedLog(vocbase, std::move(*core).releasePersistedLog());
+      if (res.fail()) {
+        return res;
+      }
+      // Now we can drop the persisted log
+      _logs.erase(iter);
+      _server.getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_sub(1);
+      _server.getFeature<ReplicatedLogFeature>()
+          .metrics()
+          ->replicatedLogDeletionNumber->count();
+    } else {
+      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    }
+
+    return Result();
+  }
+
+  application_features::ApplicationServer& _server;
+  LogContext _logContext;
   std::map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::ReplicatedLog> _logs;
   std::mutex _mutex;
 };
@@ -1652,7 +1711,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseIn
   _deadCollections.reserve(32);
 
   _cacheData = std::make_unique<arangodb::DatabaseJavaScriptCache>();
-  _logManager = std::make_shared<VocBaseLogManager>(_info.server());
+  _logManager = std::make_shared<VocBaseLogManager>(_info.server(), name());
 }
 
 /// @brief destroy a vocbase object
@@ -1928,53 +1987,11 @@ using namespace arangodb::replication2;
 
 auto TRI_vocbase_t::createReplicatedLog(LogId id)
     -> arangodb::ResultT<std::reference_wrapper<replicated_log::ReplicatedLog>> {
-  LOG_TOPIC("04b14", DEBUG, Logger::REPLICATION2) << "Creating replicated log " << id;
-  std::unique_lock guard(_logManager->_mutex);
-  auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
-  auto& logs = manager->_logs;
-
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-
-  if (auto iter = logs.lower_bound(id); iter == logs.end() || iter->first != id) {
-    auto&& persistedLog = engine.createReplicatedLog(*this, id);
-    if (persistedLog.fail()) {
-      return persistedLog.result();
-    }
-    auto&& logCore =
-        std::make_unique<replicated_log::LogCore>(std::move(persistedLog.get()));
-    auto it =
-        manager->_logs.try_emplace(iter, id, std::move(logCore),
-                                   server().getFeature<ReplicatedLogFeature>().metrics(),
-                                   LogContext(Logger::REPLICATION2));
-    server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_add(1);
-    server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogCreationNumber->count();
-    return std::ref(it->second);
-  } else {
-    return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
-  }
+  return _logManager->createReplicatedLog(*this, id);
 }
 
 auto TRI_vocbase_t::dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result {
-  LOG_TOPIC("658c7", DEBUG, Logger::REPLICATION2) << "Dropping replicated log " << id;
-  std::unique_lock guard(_logManager->_mutex);
-  auto manager = std::static_pointer_cast<VocBaseLogManager>(_logManager);
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-
-  if (auto iter = manager->_logs.find(id); iter != manager->_logs.end()) {
-    auto core = iter->second.drop();
-    auto res = engine.dropReplicatedLog(*this, std::move(*core).releasePersistedLog());
-    if (res.fail()) {
-      return res;
-    }
-    // Now we can drop the persisted log
-    manager->_logs.erase(iter);
-    server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_sub(1);
-    server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogDeletionNumber->count();
-  } else {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
-  return Result();
+  return _logManager->dropReplicatedLog(*this, id);
 }
 
 /// @brief sanitize an object, given as slice, builder must contain an

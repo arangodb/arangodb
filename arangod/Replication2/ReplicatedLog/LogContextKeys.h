@@ -33,5 +33,7 @@ inline constexpr char logContextKeyPrevLogTerm[] = "prev-log-term";
 inline constexpr char logContextKeyLeaderCommit[] = "leader-commit";
 inline constexpr char logContextKeyFollowerId[] = "follower-id";
 inline constexpr char logContextKeyLogId[] = "log-id";
+inline constexpr char logContextKeyDatabaseName[] = "database-name";
+inline constexpr char logContextKeyCollectionName[] = "collection-name";
 
 }  // namespace arangodb

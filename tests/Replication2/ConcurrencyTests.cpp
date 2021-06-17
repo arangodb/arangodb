@@ -5,6 +5,11 @@
 #include "Replication2/ReplicatedLog/types.h"
 #include "TestHelper.h"
 
+#include <Basics/ScopeGuard.h>
+#include <Basics/application-exit.h>
+
+#include <functional>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -216,6 +221,12 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
 TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   using namespace std::chrono_literals;
 
+  auto guard = scopeGuard([] {
+    LOG_TOPIC("27bc7", FATAL, Logger::REPLICATION2)
+        << "Test terminating early, aborting for debugging";
+    FATAL_ERROR_ABORT();
+  });
+
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower1Log = makeReplicatedLog(LogId{2});
   auto follower2Log = makeReplicatedLog(LogId{3});
@@ -260,6 +271,8 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   data.stopReplicationThreads.store(true);
   replicationThread.join();
   followerReplicationThread.join();
+
+  guard.cancel();
 
   auto stats = std::get<LeaderStatus>(data.log->getStatus()).local;
   EXPECT_LE(LogIndex{8000}, stats.commitIndex);

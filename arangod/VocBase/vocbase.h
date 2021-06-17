@@ -182,9 +182,9 @@ struct TRI_vocbase_t {
       -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
   [[nodiscard]] auto getReplicatedLogs() const
       -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
-  auto createReplicatedLog(arangodb::replication2::LogId id)
+  [[nodiscard]] auto createReplicatedLog(arangodb::replication2::LogId id)
       -> arangodb::ResultT<std::reference_wrapper<arangodb::replication2::replicated_log::ReplicatedLog>>;
-  auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;
+  [[nodiscard]] auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;
   auto ensureReplicatedLog(arangodb::replication2::LogId id)
       -> arangodb::replication2::replicated_log::ReplicatedLog&;
 
