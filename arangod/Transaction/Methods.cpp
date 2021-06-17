@@ -1095,7 +1095,9 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
-  auto workForOneDocument = [&](VPackSlice const value, bool isBabies) -> Result {
+  auto workForOneDocument = [&](VPackSlice const value, bool isBabies, bool& excludeFromReplication) -> Result {
+    excludeFromReplication = false;
+
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
@@ -1141,6 +1143,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         // in case of unique constraint violation: ignore and do nothing (no write!)
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(),
                               oldRevisionId, RevisionId::none(), nullptr, nullptr);
+        excludeFromReplication = true;
         return res;
       }
       if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
@@ -1197,17 +1200,27 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
   Result res;
   std::unordered_map<ErrorCode, size_t> errorCounter;
+  std::unordered_set<size_t> excludePositions;
+
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
-    for (VPackSlice s : VPackArrayIterator(value)) {
-      res = workForOneDocument(s, true);
+    VPackArrayIterator it(value);
+    for (VPackSlice s : it) {
+      bool excludeFromReplication = false;
+      res = workForOneDocument(s, true, excludeFromReplication);
       if (res.fail()) {
         createBabiesError(resultBuilder, errorCounter, res);
+      } else if (excludeFromReplication) {
+        excludePositions.insert(it.index());
       }
     }
     res.reset(); // With babies reporting is handled in the result body
   } else {
-    res = workForOneDocument(value, false);
+    bool excludeFromReplication = false;
+    res = workForOneDocument(value, false, excludeFromReplication);
+    if (res.ok() && excludeFromReplication) {
+      excludePositions.insert(0);
+    }
   }
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
@@ -1221,7 +1234,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs)
+                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs,
+                               excludePositions)
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
@@ -1492,7 +1506,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, newValue,
-                               operation, resDocs)
+                               operation, resDocs, {})
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
@@ -1702,7 +1716,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs)
+                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs, {})
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
@@ -2308,7 +2322,8 @@ Future<Result> Methods::replicateOperations(
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, VPackSlice const value,
     TRI_voc_document_operation_e const operation,
-    std::shared_ptr<VPackBuffer<uint8_t>> const& ops) {
+    std::shared_ptr<VPackBuffer<uint8_t>> const& ops,
+    std::unordered_set<size_t> const& excludePositions) {
   TRI_ASSERT(followerList != nullptr);
 
   if (followerList->empty()) {
@@ -2388,15 +2403,23 @@ Future<Result> Methods::replicateOperations(
     while (itValue.valid() && itResult.valid()) {
       TRI_ASSERT((*itResult).isObject());
       if (!(*itResult).hasKey(StaticStrings::Error)) {
-        doOneDoc(itValue.value(), itResult.value());
-        count++;
+        // not an error
+        // now check if document is explicitly excluded from replication
+        // this currently happens only for insert with overwriteMode=ignore
+        // for already-existing documents
+        if (excludePositions.find(itValue.index()) == excludePositions.end()) {
+          doOneDoc(itValue.value(), itResult.value());
+          count++;
+        }
       }
       itValue.next();
       itResult.next();
     }
   } else {
-    doOneDoc(value, ourResult);
-    count++;
+    if (excludePositions.find(0) == excludePositions.end()) {
+      doOneDoc(value, ourResult);
+      count++;
+    }
   }
 
   if (count == 0) {
