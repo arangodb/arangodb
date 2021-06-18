@@ -383,7 +383,7 @@ extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
       application_features::ApplicationServer::CTRL_C.store(true);
     } else {
       LOG_TOPIC("11ca3", FATAL, arangodb::Logger::FIXME)
-          << signals::name(signal) << "received during shutdown sequence (sender pid "
+          << signals::name(signal) << " received during shutdown sequence (sender pid "
           << info->si_pid << "), terminating!";
       FATAL_ERROR_EXIT();
     }
