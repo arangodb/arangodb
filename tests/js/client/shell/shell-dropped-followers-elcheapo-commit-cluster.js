@@ -262,7 +262,7 @@ function dropFollowersElCheapoSuite() {
 
       // And another 20, then both shards should be dropped:
       for (let i = 0; i < 20; ++i) {
-        arango.POST("/_api/document/" + cn, {_key:"A"+i},
+        arango.POST("/_api/document/" + cn, {_key:"B"+i},
                     {"x-arango-trx-id":trxid});
       }
 
