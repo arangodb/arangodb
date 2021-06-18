@@ -94,7 +94,7 @@ set(ARANGODB_VERSION_MINOR "8")
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
   set(ARANGODB_VERSION_PATCH "0")
   set(ARANGODB_VERSION_RELEASE_TYPE "rc")
-  set(ARANGODB_VERSION_RELEASE_NUMBER "1")
+  set(ARANGODB_VERSION_RELEASE_NUMBER "2")
 else()
   unset (ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
   unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
@@ -1376,15 +1376,3 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
 add_custom_target(arangodb
         DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
-
-################################################################################
-## node modules
-################################################################################
-
-file(READ ${CMAKE_CURRENT_SOURCE_DIR}/js/node/package.json PACKAGE_JSON)
-string(REGEX REPLACE "[ \t]*\"eslint\"[^,]*," "" OUT_PACKAGE_JSON ${PACKAGE_JSON})
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/js/node/package.json-no-eslint ${OUT_PACKAGE_JSON})
-
-file(READ ${CMAKE_CURRENT_SOURCE_DIR}/js/node/package-lock.json PACKAGE_LOCK_JSON)
-string(REGEX REPLACE "\n    \"eslint\": {.*\n    },\n\    \"expect.js\"" "\n    \"expect.js\"" OUT_PACKAGE_LOCK_JSON ${PACKAGE_LOCK_JSON})
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/js/node/package-lock.json-no-eslint ${OUT_PACKAGE_LOCK_JSON})

@@ -1,12 +1,30 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
+  iterator.
+
+* Slightly improve specific warning messages for better readability.
+
+* Fix URL request parsing in case data is handed in in small chunks.
+  Previously the URL could be cut off if the chunk size was smaller than the URL
+  size.
+
+* Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
+  K_SHORTEST_PATHS and K_PATHS.
+
+* Added check to utils/generateAllMetricsDocumentation.py to check that the file
+  name and the value of the name attribute are the same in the metrics
+  documentation snippets. Correct a few such names.
+
+
+v3.8.0-rc.2 (2021-06-07)
+------------------------
+
+* Updated arangosync to 2.3.0.
+
 * Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
   symmetrical.
-
-* Fixed ES-867: remove eslint from the package.json and package-lock.json files
-  exported in the packages. ESLINT itself was not part of these packages.
-  However, the package file mentioned it.
 
 * Fix BTS-450: RandomGenerator caught assertion during a value generation within
   `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
