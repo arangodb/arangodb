@@ -121,7 +121,6 @@ function waitForShardsInSyncAgain(cn) {
         ++good;
       }
     }
-    console.warn(good, plan, current);
     if (good === shards.length) {
       break;
     }
@@ -276,7 +275,6 @@ function dropFollowersElCheapoSuite() {
       switchConnectionToCoordinator(collInfo);
 
       let commitRes = arango.PUT(`/_api/transaction/${trxid}`, {});
-      console.warn("Resultat:", commitRes);
       assertFalse(commitRes.error);
 
       switchConnectionToFollower(collInfo);
@@ -298,7 +296,6 @@ function dropFollowersElCheapoSuite() {
       assertFalse(found);
       switchConnectionToFollower(collInfo);
       let trxsFollower = arango.GET("/_api/transaction");
-      console.warn("trxsFollower:", trxsFollower);
       assertTrue(trxsFollower.hasOwnProperty("transactions"));
       for (let t of trxsFollower.transactions) {
         if (t.id === followerTrxId) {
