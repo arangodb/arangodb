@@ -1,4 +1,4 @@
-v3.8.0-rc.2 (2021-06-07)
+v3.8.0 (XXXX-XX-XX)
 ------------------------
 
 * Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
