@@ -32,6 +32,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Transaction/StandaloneContext.h"
 
+#include <Logger/LogMacros.h>
 #include <chrono>
 #include <thread>
 
@@ -232,7 +233,13 @@ void InternalRestTraverserHandler::queryEngine() {
     // Safe cast BaseTraverserEngines are all of type TRAVERSER
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
+    VPackBuilder peter;
+    eng->smartSearch(body, peter);
     eng->smartSearchNew(body, result);
+    LOG_DEVEL << "OLD WORKING";
+    LOG_DEVEL << peter.toJson();
+    LOG_DEVEL << "OLD KAPOTT";
+    LOG_DEVEL << result.toJson();
 
   } else if (option == "smartSearchBFS") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {

@@ -31,6 +31,7 @@
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 
 #include <numeric>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -57,7 +58,8 @@ class SingleProviderPathResult : public PathResultInterface {
   /**
    * @brief Appends this path as a SchreierVector entry into the given builder
    */
-  auto toSchreierEntry(arangodb::velocypack::Builder& builder) -> void override;
+  auto toSchreierEntry(arangodb::velocypack::Builder& builder, std::unordered_map<size_t, size_t>& indexLookupTable)
+      -> void override;
 
   auto isEmpty() const -> bool;
 

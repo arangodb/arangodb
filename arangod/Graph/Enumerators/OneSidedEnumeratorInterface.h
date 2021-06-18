@@ -26,6 +26,7 @@
 
 #include <memory>
 #include <numeric>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -47,7 +48,9 @@ class PathResultInterface {
   virtual ~PathResultInterface() {}
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
-  virtual auto toSchreierEntry(arangodb::velocypack::Builder& builder) -> void = 0;
+  virtual auto toSchreierEntry(arangodb::velocypack::Builder& builder,
+                               std::unordered_map<size_t, size_t>& indexLookupTable)
+      -> void = 0;
 };
 
 class TraversalEnumerator {

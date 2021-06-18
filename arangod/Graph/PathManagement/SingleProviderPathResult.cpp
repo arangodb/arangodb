@@ -106,33 +106,82 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
 
 template <class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntry(
-    arangodb::velocypack::Builder& result) -> void {
-  VPackArrayBuilder arrayGuard(&result);
-  // Create a VPackValue based on the char* inside the HashedStringRef, will save us a String copy each time.
-  result.add(VPackValue(_step.getVertex().getID().begin()));
-  if (_step.getPrevious() == std::numeric_limits<size_t>::max()) {
-    result.add(VPackValue(0));
-  } else {
-    result.add(VPackValue(_step.getPrevious()));
-  }
-  result.add(VPackValue(_step.getDepth()));
+    arangodb::velocypack::Builder& result, std::unordered_map<size_t, size_t>& indexLookupTable) -> void {
+  auto writeStepToBuilder = [&]() {
+    VPackArrayBuilder arrayGuard(&result);
+    // Create a VPackValue based on the char* inside the HashedStringRef, will save us a String copy each time.
+    result.add(VPackValue(_step.getVertex().getID().begin()));
 
-  // TODO require the Step to know if the Vertex isOpen or not.
+    // Index position of previous step
+    if (_step.isFirst()) {
+      result.add(VPackValue(0));
+    } else {
+      TRI_ASSERT(indexLookupTable.find(_step.getPrevious()) != indexLookupTable.end());
+      result.add(VPackValue(indexLookupTable.at(_step.getPrevious())));
+    }
+    result.add(VPackValue(_step.getDepth()));
+
+    // TODO require the Step to know if the Vertex isOpen or not.
+    /*
+     * tmp messy workaround for isOpen
+     */
+    VPackBuilder tmpResult;
+    _provider.addVertexToBuilder(_step.getVertex(), tmpResult);
+
+    // is loose end
+    if (!_step.isFirst() && tmpResult.slice().isNull()) {
+      result.add(VPackValue(true));
+    } else {
+      result.add(VPackValue(false));
+    }
+
+    // content of step
+    result.add(tmpResult.slice());
+
+    // _provider.addVertexToBuilder(_step.getVertex(), result);
+    _provider.addEdgeToBuilder(_step.getEdge(), result);
+  };
+
+  LOG_DEVEL << "  => Handling step: " << _step.toString();
+
+  // FOUND
+  if (indexLookupTable.find(_step.getPrevious()) != indexLookupTable.end()) {
+    // step already got written into result, which means schreier index position
+    // also has to be written before already.
+    writeStepToBuilder();
+    return;
+  }
+
+  if (_step.isFirst()) {
+    // first step => first entry in schreier vector, set 0 as initial schreier index position
+    indexLookupTable.try_emplace(0, 0);
+    writeStepToBuilder();
+
+    return;
+  }
+
+  TRI_ASSERT(indexLookupTable.find(_step.getPrevious()) == indexLookupTable.end());
+
+  indexLookupTable.try_emplace(_step.getPrevious(), indexLookupTable.size());
+  writeStepToBuilder();
+
   /*
-   * tmp messy workaround for isOpen
-   */
-  VPackBuilder tmpResult;
-  _provider.addVertexToBuilder(_step.getVertex(), tmpResult);
-  // tmp workaround
-  if (!_step.isFirst() && tmpResult.slice().isNull()) {
-    result.add(VPackValue(true));
-  } else {
-    result.add(VPackValue(false));
+  LOG_DEVEL << "before recursion: [" << currentIndex << "]";
+  uint64_t previousPosition = toSchreierEntry(result, currentIndex);
+  LOG_DEVEL << "after recursion";
+  if (previousPosition == currentIndex) {
+    LOG_DEVEL << "increasing currentIndex: [" << currentIndex << "]";
+    currentIndex++;
   }
-  result.add(tmpResult.slice());
 
-  // _provider.addVertexToBuilder(_step.getVertex(), result);
-  _provider.addEdgeToBuilder(_step.getEdge(), result);
+  LOG_DEVEL << "Setting step to currentIndex";
+  _step.setSchreierIndex(currentIndex);
+  LOG_DEVEL << "Wrote entry";
+  writeStepToBuilder();
+  LOG_DEVEL << "return";
+
+  return _step.getSchreierIndex();
+   */
 }
 
 template <class ProviderType, class PathStoreType, class Step>

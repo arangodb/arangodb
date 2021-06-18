@@ -37,6 +37,7 @@ class BaseStep {
   BaseStep() : _previous{std::numeric_limits<size_t>::max()}, _depth{0} {}
 
   BaseStep(size_t prev) : _previous{prev}, _depth{0} {}
+
   BaseStep(size_t prev, size_t depth) : _previous{prev}, _depth{depth} {}
 
   size_t getPrevious() const { return _previous; }
