@@ -8,7 +8,7 @@ v3.8.0-rc.2 (2021-06-07)
   write batch, which may have confused the WAL tailing API later. This bug was
   only present in 3.8 RCs.
 
-* Fix some occurences in which Merkle trees could silently apply the same change
+* Fix some occurrences in which Merkle trees could silently apply the same change
   multiple times, which led to data drift between the Merkle tree and the
   underlying collection's data. This bug was only present in 3.8 but no earlier
   versions.
