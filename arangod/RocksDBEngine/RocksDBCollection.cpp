@@ -701,6 +701,7 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
 ///////////////////////////////////
 
 Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
+  TRI_ASSERT(!RocksDBTransactionState::toState(&trx)->isReadOnlyTransaction());
 
   ::TruncateTimeTracker timeTracker(_statistics._rocksdb_truncate_sec, _statistics, options);
 
@@ -844,29 +845,18 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid.isSet());
 
-    RocksDBSavePoint savepoint(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    state->prepareOperation(_logicalCollection.id(),
-                            rid,  // actual revision ID!!
-                            TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    RocksDBSavePoint savepoint(state, &trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
-    auto res = removeDocument(&trx, savepoint, docId, docBuffer.slice(), options);
+    auto res = removeDocument(&trx, savepoint, docId, docBuffer.slice(), options, rid);
 
+    if (res.ok()) {
+      res = savepoint.finish(_logicalCollection.id(), newRevisionId());
+    }
+    
     if (res.fail()) {  // Failed to remove document in truncate.
       return res;
     }
-
-    bool hasPerformedIntermediateCommit = false;
-    res = state->addOperation(_logicalCollection.id(), newRevisionId(),
-                              TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-                              hasPerformedIntermediateCommit);
-
-    if (res.fail()) {  // This should never happen...
-      return res;
-    }
-
-    savepoint.finish(hasPerformedIntermediateCommit);
-
     trackWaitForSync(&trx, options);
   }
 
@@ -996,6 +986,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
+  TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec, _statistics, options);
 
@@ -1030,12 +1021,10 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   LocalDocumentId const documentId = ::generateDocumentId(_logicalCollection, revisionId);
   
-  RocksDBSavePoint savepoint(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
-
   auto* state = RocksDBTransactionState::toState(trx);
-  state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+  RocksDBSavePoint savepoint(state, trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
-  res = insertDocument(trx, savepoint, documentId, newSlice, options);
+  res = insertDocument(trx, savepoint, documentId, newSlice, options, revisionId);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1053,12 +1042,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       resultMdr.setRevisionId(revisionId);
     }
 
-    bool hasPerformedIntermediateCommit = false;
-    res = state->addOperation(_logicalCollection.id(), revisionId,
-                              TRI_VOC_DOCUMENT_OPERATION_INSERT,
-                              hasPerformedIntermediateCommit);
-
-    savepoint.finish(hasPerformedIntermediateCommit);
+    res = savepoint.finish(_logicalCollection.id(), revisionId);
   }
 
   return res;
@@ -1068,6 +1052,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
+  TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec, _statistics, options);
 
@@ -1108,16 +1093,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
       return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
     }
   }
-
-  if (newSlice.length() <= 1) {  // TODO move above ?!
-    // shortcut. no need to do anything
-    resultMdr.setManaged(oldDoc.begin());
-    TRI_ASSERT(!resultMdr.empty());
-
-    trackWaitForSync(trx, options);
-    return res;
-  }
-
+  
   // merge old and new values
   RevisionId revisionId;
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
@@ -1151,13 +1127,10 @@ Result RocksDBCollection::update(transaction::Methods* trx,
   }
 
   VPackSlice newDoc(builder->slice());
-  RocksDBSavePoint savepoint(trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-
   auto* state = RocksDBTransactionState::toState(trx);
-  // add possible log statement under guard
-  state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+  RocksDBSavePoint savepoint(state, trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
-  res = updateDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
+  res = modifyDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options, revisionId);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1177,16 +1150,10 @@ Result RocksDBCollection::update(transaction::Methods* trx,
       previousMdr.clearData();
     }
 
-    bool hasPerformedIntermediateCommit = false;
-    auto result = state->addOperation(_logicalCollection.id(), revisionId,
-                                      TRI_VOC_DOCUMENT_OPERATION_UPDATE,
-                                      hasPerformedIntermediateCommit);
-
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
+    res = savepoint.finish(_logicalCollection.id(), revisionId);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
-
-    savepoint.finish(hasPerformedIntermediateCommit);
   }
     
   return res;
@@ -1196,6 +1163,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
+  TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
   
@@ -1270,13 +1238,10 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     }
   }
 
-  RocksDBSavePoint savepoint(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-
   auto* state = RocksDBTransactionState::toState(trx);
-  // add possible log statement under guard
-  state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  RocksDBSavePoint savepoint(state, trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
-  res = updateDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
+  res = modifyDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options, revisionId);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1296,16 +1261,10 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
       previousMdr.clearData();
     }
 
-    bool hasPerformedIntermediateCommit = false;
-    auto result = state->addOperation(_logicalCollection.id(), revisionId,
-                                      TRI_VOC_DOCUMENT_OPERATION_REPLACE,
-                                      hasPerformedIntermediateCommit);
-
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
+    res = savepoint.finish(_logicalCollection.id(), revisionId);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
-
-    savepoint.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
@@ -1314,6 +1273,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  TRI_ASSERT(!RocksDBTransactionState::toState(&trx)->isReadOnlyTransaction());
   
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
 
@@ -1386,13 +1346,10 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
     }
   }
 
-  auto state = RocksDBTransactionState::toState(&trx);
-  RocksDBSavePoint savepoint(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+  auto* state = RocksDBTransactionState::toState(&trx);
+  RocksDBSavePoint savepoint(state, &trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
-  // add possible log statement under guard
-  state->prepareOperation(_logicalCollection.id(), previousMdr.revisionId(),
-                          TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-  res = removeDocument(&trx, savepoint, documentId, oldDoc, options);
+  res = removeDocument(&trx, savepoint, documentId, oldDoc, options, previousMdr.revisionId());
 
   if (res.ok()) {
     trackWaitForSync(&trx, options);
@@ -1406,12 +1363,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
       previousMdr.clearData();
     }
 
-    bool hasPerformedIntermediateCommit = false;
-    res = state->addOperation(_logicalCollection.id(), newRevisionId(),
-                              TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-                              hasPerformedIntermediateCommit);
-
-    savepoint.finish(hasPerformedIntermediateCommit);
+    res = savepoint.finish(_logicalCollection.id(), newRevisionId());
   }
   
   return res;
@@ -1534,7 +1486,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          RocksDBSavePoint& savepoint,
                                          LocalDocumentId const& documentId,
                                          VPackSlice doc,
-                                         OperationOptions const& options) const {
+                                         OperationOptions const& options,
+                                         RevisionId const& revisionId) const {
+  savepoint.prepareOperation(_logicalCollection.id(), revisionId);
+
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
@@ -1562,10 +1517,6 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
       res = rIdx->checkInsert(*trx, mthds, documentId, doc, options);
       if (res.fail()) {
-        // no operations happened yet in this savepoint. if we don't
-        // cancel it, the WriteBatch will need to be reconstructed from
-        // scratch. this is so expensive that we want to avoid it.
-        savepoint.cancel();
         return res;
       }
     }
@@ -1584,13 +1535,20 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (performPreflightChecks) {
+    rocksdb::PinnableSlice val;
+    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val);
+    TRI_ASSERT(s.IsNotFound() || !s.ok());
+  }
+#endif
   
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
       key.ref(),
       rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
   if (!s.ok()) {
-    savepoint.cancel();
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
       TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
@@ -1599,6 +1557,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     });
     return res;
   }
+
+  // we have successfully added a value to the WBWI. after this, we 
+  // can only restore the previous state via a full rebuild
+  savepoint.tainted();
  
   bool needReversal = false;
  
@@ -1624,8 +1586,8 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
 
   if (res.ok()) {
-    RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
-                                                       RevisionId::fromSlice(doc));
+    TRI_ASSERT(revisionId == RevisionId::fromSlice(doc));
+    state->trackInsert(_logicalCollection.id(), revisionId);
   }
   
   return res;
@@ -1635,7 +1597,10 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                          RocksDBSavePoint& savepoint,
                                          LocalDocumentId const& documentId,
                                          VPackSlice doc,
-                                         OperationOptions const& options) const {
+                                         OperationOptions const& options,
+                                         RevisionId const& revisionId) const {
+  savepoint.prepareOperation(_logicalCollection.id(), revisionId);
+
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
@@ -1653,12 +1618,19 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    rocksdb::PinnableSlice val;
+    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val);
+    TRI_ASSERT(s.ok());
+  }
+#endif
+
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
                               RocksDBColumnFamilyManager::Family::Documents),
                           key.ref());
   if (!s.ok()) {
-    savepoint.cancel();
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
       TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
@@ -1667,6 +1639,10 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
     });
     return res;
   }
+
+  // we have successfully removed a value from the WBWI. after this, we 
+  // can only restore the previous state via a full rebuild
+  savepoint.tainted();
 
   /*LOG_TOPIC("17502", ERR, Logger::ENGINES)
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
@@ -1694,20 +1670,24 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   }
 
   if (res.ok()) {
-    RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
-                                                       RevisionId::fromSlice(doc));
+    RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
+    TRI_ASSERT(revisionId == RevisionId::fromSlice(doc));
+    state->trackRemove(_logicalCollection.id(), revisionId);
   }
 
   return res;
 }
 
-Result RocksDBCollection::updateDocument(transaction::Methods* trx,
+Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
                                          RocksDBSavePoint& savepoint,
                                          LocalDocumentId const& oldDocumentId,
                                          VPackSlice const& oldDoc,
                                          LocalDocumentId const& newDocumentId,
                                          VPackSlice const& newDoc,
-                                         OperationOptions& options) const {
+                                         OperationOptions& options,
+                                         RevisionId const& revisionId) const {
+  savepoint.prepareOperation(_logicalCollection.id(), revisionId);
+
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
@@ -1736,10 +1716,6 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
       res = rIdx->checkReplace(*trx, mthds, oldDocumentId, newDoc, options);
       if (res.fail()) {
-        // no operations happened yet in this savepoint. if we don't
-        // cancel it, the WriteBatch will need to be reconstructed from
-        // scratch. this is so expensive that we want to avoid it.
-        savepoint.cancel();
         return res;
       }
     }
@@ -1766,6 +1742,10 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
     });
     return res;
   }
+  
+  // we have successfully removed a value from the WBWI. after this, we 
+  // can only restore the previous state via a full rebuild
+  savepoint.tainted();
 
   key->constructDocument(objectId(), newDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
@@ -1805,10 +1785,9 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   }
 
   if (res.ok()) {
-    RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
-                                                       RevisionId::fromSlice(oldDoc));
-    RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
-                                                       RevisionId::fromSlice(newDoc));
+    TRI_ASSERT(revisionId == RevisionId::fromSlice(newDoc));
+    state->trackRemove(_logicalCollection.id(), RevisionId::fromSlice(oldDoc));
+    state->trackInsert(_logicalCollection.id(), revisionId);
   }
 
   return res;

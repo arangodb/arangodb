@@ -255,6 +255,12 @@ rocksdb::Status RocksDBTrxMethods::RollbackToSavePoint() {
   return _state->_rocksTransaction->RollbackToSavePoint();
 }
 
+rocksdb::Status RocksDBTrxMethods::RollbackToWriteBatchSavePoint() {
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
+  return _state->_rocksTransaction->GetWriteBatch()->GetWriteBatch()->RollbackToSavePoint();
+}
+
 void RocksDBTrxMethods::PopSavePoint() {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->_rocksTransaction);

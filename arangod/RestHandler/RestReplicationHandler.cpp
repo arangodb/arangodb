@@ -2701,6 +2701,22 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
+  // check if we are not the actual leader anymore. this can
+  // happen if there is a leader change after a follower scheduled a
+  // synchronize shard job
+  bool isLeader = col->followers()->getLeader().empty();
+  if (!isLeader) {
+    auto res = cancelBlockingTransaction(id);
+    if (!res.ok()) {
+      // this is potentially bad!
+      LOG_TOPIC("957fa", WARN, Logger::REPLICATION)
+          << "Lock " << id << " could not be canceled because of: " << res.errorMessage();
+    }
+    // indicate that we are not the leader
+    generateError(TRI_ERROR_CLUSTER_NOT_LEADER);
+    return;
+  }
+
   TRI_ASSERT(isLockHeld(id).ok());
   TRI_ASSERT(isLockHeld(id).get() == true);
 

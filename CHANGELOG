@@ -1,5 +1,35 @@
 devel
 -----
+
+* Fix partial cleanup of internal write batches for multi-document operations of
+  which one or multiple failed. The previous implementation had an unreleased
+  performance optimization that wouldn't clean up the write batch completely.
+  That could have led to a wrong sequence of events being accumulated in the 
+  write batch, which may have confused the WAL tailing API later. 
+
+* Fix some occurences in which Merkle trees could silently apply the same change
+  multiple times, which led to data drift between the Merkle tree and the
+  underlying collection's data.
+
+* On a failure during synchronous replication, do not remove the failed follower 
+  from the list of known servers in the transaction.
+  If we do, we would not be able to send the commit/abort to the follower later.
+  However, we still need to send the commit/abort to the follower at transaction 
+  end, because the follower may be responsbile  for _other_ shards as well.
+
+  This change also removes dangling transactions that could stay around on
+  followers until they expired after the transaction idle timeout (180 seconds),
+  and that could prevent a follower from getting back in sync during this period.
+
+* Added more context to "dropping follower" messages, so it is easier to analyze
+  what exactly went wrong.
+
+* Fixed invalid shard synchronization for documents not added via INSERT with
+  `overwriteMode` set to `ignore`. In this case, if a document with the given key
+  already exists, it is not changed on the leader (i.e. no write happens on the
+  leader). However, a write was replicated to the follower, which was wrong.
+  This write is now suppressed, which can only make such insert operations faster.
+
 * Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
   iterator.
 

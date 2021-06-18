@@ -58,7 +58,8 @@ Future<arangodb::Result> abortTransaction(transaction::Methods& trx);
 /// @brief add the transaction ID header for servers
 template <typename MapT>
 void addTransactionHeader(transaction::Methods const& trx,
-                          ServerID const& server, MapT& headers);
+                          ServerID const& server, MapT& headers,
+                          std::vector<ServerID> const& servers = std::vector<ServerID>());
 
 /// @brief add transaction ID header for setting up AQL snippets
 template <typename MapT>

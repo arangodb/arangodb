@@ -82,6 +82,7 @@ class RocksDBMethods {
 
   virtual void SetSavePoint() = 0;
   virtual rocksdb::Status RollbackToSavePoint() = 0;
+  virtual rocksdb::Status RollbackToWriteBatchSavePoint() = 0;
   virtual void PopSavePoint() = 0;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -115,6 +116,9 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
 
   void SetSavePoint() override {}
   rocksdb::Status RollbackToSavePoint() override {
+    return rocksdb::Status::OK();
+  }
+  rocksdb::Status RollbackToWriteBatchSavePoint() override {
     return rocksdb::Status::OK();
   }
   void PopSavePoint() override {}
@@ -153,6 +157,7 @@ class RocksDBTrxMethods : public RocksDBMethods {
 
   void SetSavePoint() override;
   rocksdb::Status RollbackToSavePoint() override;
+  rocksdb::Status RollbackToWriteBatchSavePoint() override;
   void PopSavePoint() override;
 
   bool _indexingDisabled;
@@ -184,6 +189,9 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
   rocksdb::Status RollbackToSavePoint() override {
     return rocksdb::Status::OK();
   }
+  rocksdb::Status RollbackToWriteBatchSavePoint() override {
+    return rocksdb::Status::OK();
+  }
   void PopSavePoint() override {}
 
  private:
@@ -213,6 +221,9 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
 
   void SetSavePoint() override {}
   rocksdb::Status RollbackToSavePoint() override {
+    return rocksdb::Status::OK();
+  }
+  rocksdb::Status RollbackToWriteBatchSavePoint() override {
     return rocksdb::Status::OK();
   }
   void PopSavePoint() override {}
