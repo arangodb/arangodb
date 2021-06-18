@@ -1,11 +1,14 @@
-v3.8.1 (XXXX-XX-XX)
+v3.8.0 (XXXX-XX-XX)
 -------------------
 
 * Slightly improve specific warning messages for better readability.
 
+* Fix URL request parsing in case data is handed in in small chunks.
+  Previously the URL could be cut off if the chunk size was smaller than the URL
+  size.
 
-v3.8.0-rc.2 (2021-06-07)
-------------------------
+* Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
+  K_SHORTEST_PATHS and K_PATHS.
 
 * Added check to utils/generateAllMetricsDocumentation.py to check that the file
   name and the value of the name attribute are the same in the metrics
