@@ -4,7 +4,7 @@ devel
 * Fixed reloading of users within the Cluster
 	If a Coordinator is asked to reload it's users (e.g. by the UserManager in
 	Foxx, it is also possible to do via API, but this is internal and on purpose
-	not documented, so unlikely that you hit this), in concurency with user
+	not documented, so unlikely that you hit this), in concurrency with user
 	management updates there is a chance that the reload is not correctly performed
 	on this coordinator. It may have missed the last update locally, causing
 	one user to have an older state. It will be fixed on the next modification
@@ -12,7 +12,7 @@ devel
 	in a bug situation, and hit the same bug again, this coordinator is now
 	off by two updates.
 	In DC-2-DC this situation is more likely to happen on the follower
-	datacenter, causing this datacenter to seemeingly having other rights
+	datacenter, causing this datacenter to seemingly having other rights
 	then the main one.
 
 * Slightly improve specific warning messages for better readability.
