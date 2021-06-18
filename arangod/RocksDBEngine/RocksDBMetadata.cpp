@@ -178,7 +178,6 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumb
 void RocksDBMetadata::removeBlocker(TransactionId trxId) {
   WRITE_LOCKER(locker, _blockerLock);
   auto it = _blockers.find(trxId);
-  TRI_ASSERT(it != _blockers.end());
 
   if (ADB_LIKELY(_blockers.end() != it)) {
     auto cross = _blockersBySeq.find(std::make_pair(it->second, it->first));
