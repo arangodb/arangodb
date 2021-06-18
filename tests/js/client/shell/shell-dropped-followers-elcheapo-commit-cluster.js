@@ -38,16 +38,84 @@ let { getEndpointById,
       debugClearFailAt
     } = require('@arangodb/test-helper');
 
+function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
+  db._create(cn, {numberOfShards:2, replicationFactor:2});
+  // Get dbserver names first:
+  let health = arango.GET("/_admin/cluster/health").Health;
+  let endpointMap = {};
+  for (let sid in health) {
+    endpointMap[health[sid].ShortName] = health[sid].Endpoint;
+  }
+  let plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
+  let shards = Object.keys(plan);
+  let coordinator = "Coordinator0001";
+  let leader = plan[shards[0]].leader;
+  let follower = plan[shards[0]].followers[0];
+  // Make leaders the same:
+  if (leader !== plan[shards[1]].leader) {
+    let moveShardJob = {
+      database: "_system",
+      collection: cn,
+      shard: shards[1],
+      fromServer: plan[shards[1]].leader,
+      toServer: leader,
+      isLeader: true
+    };
+    let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
+    while (true) {
+      let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${res.id}`);
+      if (res2.status === "Finished") {
+        break;
+      }
+      internal.wait(1);
+    }
+  }
+  plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
+  // Make followers the same:
+  if (follower !== plan[shards[1]].followers[0]) {
+    let moveShardJob = {
+      database: "_system",
+      collection: cn,
+      shard: shards[1],
+      fromServer: plan[shards[1]].followers[0],
+      toServer: follower,
+      isLeader: false
+    };
+    let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
+    while (true) {
+      let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${res.id}`);
+      if (res2.status === "Finished") {
+        break;
+      }
+      internal.wait(1);
+    }
+  }
+  return { endpointMap, coordinator, leader, follower, shards };
+}
+
+function switchConnectionToCoordinator(collInfo) {
+  arango.reconnect(collInfo.endpointMap[collInfo.coordinator], "_system", "root", "");
+}
+
+function switchConnectionToLeader(collInfo) {
+  arango.reconnect(collInfo.endpointMap[collInfo.leader], "_system", "root", "");
+}
+
+function switchConnectionToFollower(collInfo) {
+  arango.reconnect(collInfo.endpointMap[collInfo.follower], "_system", "root", "");
+}
+
 function dropFollowersElCheapoSuite() {
   'use strict';
   const cn = 'UnitTestsElCheapoDroppedFollowers';
+  let collInfo = {};
 
   return {
 
     setUp: function () {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
-      db._create(cn, {numberOfShards:2, replicationFactor:2});
+      collInfo = createCollectionWithTwoShardsSameLeaderAndFollower(cn);
     },
 
     tearDown: function () {
@@ -56,61 +124,12 @@ function dropFollowersElCheapoSuite() {
     },
     
     testDropFollowerDuringTransactionMultipleShards: function() {
-      // Get dbserver names first:
-      let health = arango.GET("/_admin/cluster/health").Health;
-      let endpointMap = {};
-      for (let sid in health) {
-        endpointMap[health[sid].ShortName] = health[sid].Endpoint;
-      }
-      let plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
-      let shards = Object.keys(plan);
-      let coordinator = "Coordinator0001";
-      let leader = plan[shards[0]].leader;
-      let follower = plan[shards[0]].followers[0];
-      if (leader !== plan[shards[1]].leader) {
-        let moveShardJob = {
-          database: "_system",
-          collection: cn,
-          shard: shards[1],
-          fromServer: plan[shards[1]].leader,
-          toServer: leader,
-          isLeader: true
-        };
-        let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
-        while (true) {
-          let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${res.id}`);
-          if (res2.status === "Finished") {
-            break;
-          }
-          internal.wait(1);
-        }
-      }
-      plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
-      if (follower !== plan[shards[1]].followers[0]) {
-        let moveShardJob = {
-          database: "_system",
-          collection: cn,
-          shard: shards[1],
-          fromServer: plan[shards[1]].followers[0],
-          toServer: follower,
-          isLeader: false
-        };
-        let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
-        while (true) {
-          let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${res.id}`);
-          if (res2.status === "Finished") {
-            break;
-          }
-          internal.wait(1);
-        }
-      }
-      plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
-
-      // Now we have two shards whose leader and follower are the same.
+      // We have two shards whose leader is the same and whose follower is
+      // the same.
       
       // Let's insert some documents:
 
-      // Now run one transaction touching multiple documents:
+      // Run one transaction touching multiple documents:
       let trx = arango.POST("/_api/transaction/begin", {collections:{write:[cn]}});
       let trxid = trx.result.id;
       for (let i = 0; i < 20; ++i) {
@@ -122,23 +141,23 @@ function dropFollowersElCheapoSuite() {
       // got some documents written with a high likelyhood
       // Now activate a failure point on the leader to make it drop a follower
       // with the next request:
-      arango.reconnect(endpointMap[leader], "_system", "root", "");
+      switchConnectionToLeader(collInfo);
       arango.PUT("/_admin/debug/failat/replicateOperationsDropFollower",{});
-      arango.reconnect(endpointMap[coordinator], "_system", "root", "");
+      switchConnectionToCoordinator(collInfo);
 
       arango.POST("/_api/document/" + cn, {_key:"F"},
                   {"x-arango-trx-id":trxid});
 
-      arango.reconnect(endpointMap[leader], "_system", "root", "");
+      switchConnectionToLeader(collInfo);
       arango.DELETE("/_admin/debug/failat/replicateOperationsDropFollower");
-      arango.reconnect(endpointMap[coordinator], "_system", "root", "");
+      switchConnectionToCoordinator(collInfo);
 
       let commitRes = arango.PUT(`/_api/transaction/${trxid}`, {});
       assertFalse(commitRes.error);
 
       // Now check that no subordinate transaction is still running on the
       // leader or follower:
-      arango.reconnect(endpointMap[leader],"_system", "root", "");
+      switchConnectionToLeader(collInfo);
       let trxsLeader = arango.GET("/_api/transaction");
       assertTrue(trxsLeader.hasOwnProperty("transactions"));
       let followerTrxId = String(Number(trxid) + 2);
@@ -149,7 +168,7 @@ function dropFollowersElCheapoSuite() {
         }
       }
       assertFalse(found);
-      arango.reconnect(endpointMap[follower],"_system", "root", "");
+      switchConnectionToFollower(collInfo);
       let trxsFollower = arango.GET("/_api/transaction");
       assertTrue(trxsFollower.hasOwnProperty("transactions"));
       for (let t of trxsFollower.transactions) {
@@ -163,21 +182,21 @@ function dropFollowersElCheapoSuite() {
       // note that we need to check on the dbservers and not via the,
       // coordinator otherwise we do not see the follower information.
 
-      arango.reconnect(endpointMap[leader],"_system", "root", "");
+      switchConnectionToLeader(collInfo);
       let count = 0;
-      for (let s of shards) {
+      for (let s of collInfo.shards) {
         count += db._collection(s).count();
       }
       assertEqual(21, count);
 
-      arango.reconnect(endpointMap[follower],"_system", "root", "");
+      switchConnectionToFollower(collInfo);
       count = 0;
-      for (let s of shards) {
+      for (let s of collInfo.shards) {
         count += db._collection(s).count();
       }
       assertEqual(21, count);
 
-      arango.reconnect(endpointMap[coordinator], "_system", "root", "");
+      switchConnectionToCoordinator(collInfo);
     },
     
   };
