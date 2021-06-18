@@ -1010,6 +1010,12 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
   if (status == transaction::Status::COMMITTED) {
     res = trx.commit();
     if (res.fail()) {  // set final status to aborted
+      // Note that if the failure point TransactionCommitFail is used, then
+      // the trx can still be running here.
+      if (trx.state()->isRunning()) {
+        // ignore return code here
+        trx.abort();
+      }
       abortTombstone();
     }
   } else {
