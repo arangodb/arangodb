@@ -370,8 +370,14 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
     // we only need to return an empty tree here.
     return allocateEmptyRevisionTree(revisionTreeDepth); 
   }
- 
-  applyUpdates(safeSeq);
+
+  // If the tree has already moved past `notAfter`, then all is lost and we can
+  // only give up:
+  if (_revisionTreeApplied > notAfter) {
+    return nullptr;
+  }
+
+  applyUpdates(safeSeq);  // will not go beyond `notAfter` because code above!
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
   
@@ -810,12 +816,19 @@ void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
 }
   
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transactionId) {
+  // make sure that the global revision tree in _revisionTree does not move beyond
+  // the sequence number we get here from RocksDB:
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
   auto& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+  // Since we have the lock above, the revision tree cannot move beyond
+  // this sequence number before we have actually placed the blocker.
+  TRI_ASSERT(preSeq >= _revisionTreeApplied);
   _meta.placeBlocker(transactionId, preSeq);
+  // This remains true, even if `placeBlocker` has advanced the sequence number
 }
 
 void RocksDBMetaCollection::removeRevisionTreeBlocker(TransactionId transactionId) {
