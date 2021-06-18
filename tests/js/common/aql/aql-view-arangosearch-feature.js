@@ -1836,7 +1836,28 @@ function iResearchFeatureAqlTestSuite () {
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
         analyzers.save(analyzerName,"stopwords",
-                        {stopwords:["QWE", "qwe", "qqq"]}, ["position", "frequency"]);
+                        {stopwords:["QWE", "qwe", "qqq", "abcd"]}, ["position", "frequency"]);
+        try {
+          let result = db._query(
+            "RETURN TOKENS(['QWE', 'qqq', 'aaa', 'qWe', 'abcd'], '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(5, result[0].length);
+          assertEqual([ ], result[0][0]);
+          assertEqual([ ], result[0][1]);
+          assertEqual([ "aaa" ], result[0][2]);
+          assertEqual([ "qWe" ], result[0][3]);
+          assertEqual([ ], result[0][4]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      {
+        analyzers.save(analyzerName,"stopwords",
+                        {stopwords:["515745", "717765", "717171"], hex:true}, ["position", "frequency"]);
         try {
           let result = db._query(
             "RETURN TOKENS(['QWE', 'qqq', 'aaa', 'qWe'], '" + analyzerName + "' )",
