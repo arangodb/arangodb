@@ -124,6 +124,8 @@ struct SingleServerProvider {
       return collectionNameResult.get().first;
     };
 
+    bool isResponsible(transaction::Methods* trx) const;
+
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
    private:

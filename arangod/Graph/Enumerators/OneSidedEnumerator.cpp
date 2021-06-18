@@ -106,6 +106,11 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
     _results.push_back(step);
   }
 
+  // only expand if we're responsible
+  if (!step.isResponsible(_provider.trx())) {
+    return;
+  }
+
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
     _provider.expand(step, posPrevious, [&](Step n) -> void { _queue.append(n); });
   }
