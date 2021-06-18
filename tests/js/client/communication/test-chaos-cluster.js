@@ -141,7 +141,8 @@ function BaseChaosSuite(testOpts) {
   return {
     setUp: function () {
       db._drop(cn);
-      db._create(cn, { numberOfShards: 4, replicationFactor: 2 });
+      let rf = Math.max(2, getDBServers().length);
+      db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
       
       if (testOpts.withFailurePoints) {
         const servers = getDBServers();
@@ -202,22 +203,25 @@ function BaseChaosSuite(testOpts) {
           query = trx.query;
         }
 
-        try {
-          const d = Math.random();
-          if (d >= 0.98 && testOpts.withTruncate) {
-            c.truncate();
-          } else if (d >= 0.9) {
-            query.call(ctx, "FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: docs()}, opts());
-          } else if (d >= 0.8) {
-            query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 138 REMOVE doc IN " + c.name(), {}, opts());
-          } else if (d >= 0.7) {
-            query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 1338 REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {}, opts());
-          } else if (d >= 0.25) {
-            c.insert(docs(), opts());
-          } else {
-            c.remove(docs());
-          }
-        } catch (err) {}
+        const ops = Math.round(Math.random() * 5) + 1;
+        for (let op = 0; op < ops; ++op) {
+          try {
+            const d = Math.random();
+            if (d >= 0.98 && testOpts.withTruncate) {
+              c.truncate();
+            } else if (d >= 0.9) {
+              query.call(ctx, "FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: docs()}, opts());
+            } else if (d >= 0.8) {
+              query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 138 REMOVE doc IN " + c.name(), {}, opts());
+            } else if (d >= 0.7) {
+              query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 1338 REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {}, opts());
+            } else if (d >= 0.25) {
+              c.insert(docs(), opts());
+            } else {
+              c.remove(docs());
+            }
+          } catch (err) {}
+        }
         
         if (trx) {
           if (Math.random() < 0.2) {
@@ -255,12 +259,7 @@ function BuildChaosSuite(opts, suffix) {
 
 const params = ["IntermediateCommits", "FailurePoints", "Truncate", "VaryingOverwriteMode", "StreamingTransactions"];
 
-for (let i = 0; i < (1 << params.length); ++i) {
-  let paramValues = [];
-  for (let j = params.length - 1; j >= 0; --j) {
-    paramValues.push(Boolean(i & (1 << j)));
-  }
-  
+function addSuite(paramValues) {
   let suffix = "";
   let opts = {};
   for (let j = 0; j < params.length; ++j) {
@@ -269,9 +268,18 @@ for (let i = 0; i < (1 << params.length); ++i) {
     opts["with" + params[j]] = paramValues[j];
   }  
   let func = function() { return BuildChaosSuite(opts, suffix); };
+  // define the function name as it shows up as suiteName
   Object.defineProperty(func, 'name', {value: "ChaosSuite" + suffix, writable: false});
 
   jsunity.run(func);
+}
+
+for (let i = 0; i < (1 << params.length); ++i) {
+  let paramValues = [];
+  for (let j = params.length - 1; j >= 0; --j) {
+    paramValues.push(Boolean(i & (1 << j)));
+  }
+  addSuite(paramValues);
 }
 
 return jsunity.done();
