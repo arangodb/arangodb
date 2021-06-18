@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
+  iterator.
+
 * Slightly improve specific warning messages for better readability.
 
 * Fix URL request parsing in case data is handed in in small chunks.
