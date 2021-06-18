@@ -1953,9 +1953,17 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
               << " for shard " << collection->vocbase().name() << "/" << collectionName
               << ": " << responses[i].get().combinedResult().errorMessage();
             res = followerInfo->remove((*followers)[i]);
-            if (res.ok()) {
-              _state->removeKnownServer((*followers)[i]);
-            } else {
+            // intentionally do NOT remove the follower from the list of
+            // known servers here. if we do, we will not be able to
+            // send the commit/abort to the follower later. However, we
+            // still need to send the commit/abort to the follower at 
+            // transaction end, because the follower may be responsbile
+            // for _other_ shards as well. 
+            // it does not matter if we later commit the writes of the shard 
+            // from which we just removed the follower, because the follower
+            // is now dropped and will try to get back in sync anyway, so
+            // it will run the full shard synchronization process.
+            if (res.fail()) {
               LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collection->vocbase().name() << "/" << collection->name()
@@ -2557,10 +2565,17 @@ Future<Result> Methods::replicateOperations(
             << ", error message: " << resp.combinedResult().errorMessage();
 
           Result res = collection->followers()->remove(follower);
-          if (res.ok()) {
-            // simon: follower cannot be re-added without lock on collection
-            _state->removeKnownServer(follower);
-          } else {
+          // intentionally do NOT remove the follower from the list of
+          // known servers here. if we do, we will not be able to
+          // send the commit/abort to the follower later. However, we
+          // still need to send the commit/abort to the follower at 
+          // transaction end, because the follower may be responsbile
+          // for _other_ shards as well. 
+          // it does not matter if we later commit the writes of the shard 
+          // from which we just removed the follower, because the follower
+          // is now dropped and will try to get back in sync anyway, so
+          // it will run the full shard synchronization process.
+          if (res.fail()) {
             LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication of " << opName << " operation: "
               << "could not drop follower " << follower << " for shard "
