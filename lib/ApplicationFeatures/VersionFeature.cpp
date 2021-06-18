@@ -24,10 +24,15 @@
 #include "ApplicationFeatures/VersionFeature.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/Version.h"
 
 #include <iostream>
+
+#include <velocypack/Dumper.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -45,9 +50,33 @@ void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--version", "reports the version and exits",
                      new BooleanParameter(&_printVersion),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
+
+  options->addOption("--version-json", "reports the version as JSON and exits",
+                     new BooleanParameter(&_printVersionJson),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command))
+    .setIntroducedIn(30900);
 }
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  if (_printVersionJson) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+      Version::getVPack(builder);
+
+      builder.add("version", VPackValue(Version::getServerVersion()));
+    }
+
+    basics::StringBuffer output;
+    basics::VPackStringBufferAdapter buffer(output.stringBuffer());
+    VPackOptions opts;
+    VPackDumper dumper(&buffer, &opts);
+    dumper.dump(builder.slice());
+    std::string s(output.c_str(), output.length());
+    std::cout << s << std::endl;
+    exit(EXIT_SUCCESS);
+  }
+
   if (_printVersion) {
     std::cout << Version::getServerVersion() << std::endl
               << std::endl
