@@ -63,7 +63,6 @@ function dropFollowersElCheapoSuite() {
         endpointMap[health[sid].ShortName] = health[sid].Endpoint;
       }
       let plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
-      console.warn("Plan:", plan);
       let shards = Object.keys(plan);
       let coordinator = "Coordinator0001";
       let leader = plan[shards[0]].leader;
@@ -73,13 +72,13 @@ function dropFollowersElCheapoSuite() {
           database: "_system",
           collection: cn,
           shard: shards[1],
-          fromServer: plan[shards[1]].leader;
-          toServer: leader
+          fromServer: plan[shards[1]].leader,
+          toServer: leader,
+          isLeader: true
         };
         let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
         while (true) {
           let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${res.id}`);
-          console.warn(res2);
           if (res2.status === "Finished") {
             break;
           }
@@ -87,19 +86,18 @@ function dropFollowersElCheapoSuite() {
         }
       }
       plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
-      console.warn("Plan2:", plan);
       if (follower !== plan[shards[1]].followers[0]) {
         let moveShardJob = {
           database: "_system",
           collection: cn,
           shard: shards[1],
-          fromServer: plan[shards[1]].leader;
-          toServer: leader
+          fromServer: plan[shards[1]].followers[0],
+          toServer: follower,
+          isLeader: false
         };
         let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
         while (true) {
           let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${res.id}`);
-          console.warn(res2);
           if (res2.status === "Finished") {
             break;
           }
@@ -107,24 +105,18 @@ function dropFollowersElCheapoSuite() {
         }
       }
       plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
-      console.warn("Plan3:", plan);
 
       // Now we have two shards whose leader and follower are the same.
       
-      console.warn("Hugo ist bereit...");
-      internal.wait(120);
       // Let's insert some documents:
 
       // Now run one transaction touching multiple documents:
       let trx = arango.POST("/_api/transaction/begin", {collections:{write:[cn]}});
       let trxid = trx.result.id;
-      internal.wait(1);
-      console.warn("TrxId:", trxid);
       for (let i = 0; i < 20; ++i) {
         arango.POST("/_api/document/" + cn, {_key:"A"+i},
                     {"x-arango-trx-id":trxid});
       }
-      internal.wait(15);
 
       // Now the follower is in the knownServers list and each shard has
       // got some documents written with a high likelyhood
@@ -142,19 +134,34 @@ function dropFollowersElCheapoSuite() {
       arango.reconnect(endpointMap[coordinator], "_system", "root", "");
 
       let commitRes = arango.PUT(`/_api/transaction/${trxid}`, {});
-      console.warn("Commit result:", commitRes);
       assertFalse(commitRes.error);
-
-      internal.wait(60);
 
       // Now check that no subordinate transaction is still running on the
       // leader or follower:
       arango.reconnect(endpointMap[leader],"_system", "root", "");
       let trxsLeader = arango.GET("/_api/transaction");
-      console.warn("hugo:", trxsLeader);
+      assertTrue(trxsLeader.hasOwnProperty("transactions"));
+      let followerTrxId = String(Number(trxid) + 2);
+      let found = false;
+      for (let t of trxsLeader.transactions) {
+        if (t.id === followerTrxId) {
+          found = true;
+        }
+      }
+      assertFalse(found);
       arango.reconnect(endpointMap[follower],"_system", "root", "");
       let trxsFollower = arango.GET("/_api/transaction");
-      console.warn("hugo:", trxsFollower);
+      assertTrue(trxsFollower.hasOwnProperty("transactions"));
+      for (let t of trxsFollower.transactions) {
+        if (t.id === followerTrxId) {
+          found = true;
+        }
+      }
+      assertFalse(found);
+
+      // The above transaction should be entirely visible across the shards,
+      // note that we need to check on the dbservers and not via the,
+      // coordinator otherwise we do not see the follower information.
 
       arango.reconnect(endpointMap[leader],"_system", "root", "");
       let count = 0;
