@@ -13,6 +13,31 @@ v3.7.13 (XXXX-XX-XX)
   update/replace/remove behavior is executed, which will fail because of an
   array being used as input.
 
+
+v3.7.12 (2021-06-14)
+--------------------
+
+* Add soft coordinator shutdown: This is a new option `soft=true` for the DELETE
+  /_admin/shutdown API. Has only meaning for coordinators, otherwise ignored. A
+  number of things are allowed to finish but no new things are allowed when in
+  soft coordinator shutdown:
+    - AQL cursors
+    - transactions
+    - asynchronous operations
+    - Pregel runs
+  Once all of the ongoing operations of these have finished and all requests on
+  the low priority queue have been executed, the coordinator shuts down the
+  normal way. This is supposed to make a coordinator restart less intrusive for
+  clients.
+
+* Updated arangosync to 1.5.0.
+
+* Fixed ES-881: ensure that LDAP options for async, referrals and restart set
+  the off value correctly. Otherwise, this can result in an "operations error".
+
+* Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
+  function.
+
 * Added 2 options to allow HTTP redirection customization for root ("/") call of
   HTTP API:
 
