@@ -1,6 +1,9 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-446: When finding a not yet fully initialized agency, do not
+  immediately fatal exit. Keep trying for (very generous) 5 minutes.
+
 * Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
   iterator.
 
