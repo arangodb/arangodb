@@ -5,8 +5,47 @@ v3.7.13 (XXXX-XX-XX)
   Previously the URL could be cut off if the chunk size was smaller than the URL
   size.
 
+* Backport bugfix from upstream rocksdb repository for calculating the free disk
+  space for the database directory. Before the bugfix, rocksdb could
+  overestimate the amount of free space when the arangod process was run as
+  non-privileged users.
 
-v3.7.12 (XXXX-XX-XX)
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This fixes
+  BTS-425.
+
+* Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
+  symmetrical.
+
+* Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
+  K_SHORTEST_PATHS and K_PATHS.
+
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
+
+* Fix BTS-450: RandomGenerator caught assertion during a value generation within
+  `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
+
+* Fix BTS-442: a query with fullCount on a sharded collection hangs indefinitely
+  when LIMIT is less than number of available documents.
+  
+* Remove unused sync-by-revisions APIs, which will be introduced only with
+  ArangoDB 3.8.
+
+* Fixed BTS-422: SingleRemoteModification in AQL behaves different.
+
+  This disables the optimizer rule `optimize-cluster-single-document-operations`
+  for array inputs, e.g.
+  
+      INSERT [...] INTO collection
+      REMOVE [...] IN collection
+
+  For the cases, the optimization is not pulled off, and the normal insert/
+  update/replace/remove behavior is executed, which will fail because of an
+  array being used as input.
+
+
+v3.7.12 (2021-06-14)
 --------------------
 
 * Add soft coordinator shutdown: This is a new option `soft=true` for the DELETE
