@@ -2,8 +2,20 @@ v3.6.14 (XXXX-XX-XX)
 --------------------
 
 * Fix URL request parsing in case data is handed in small chunks.
-  Previously the URL could be cut off if the chunk size was smaller than
-  the URL size.
+  Previously the URL could be cut off if the chunk size was smaller than the URL
+  size.
+
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This fixes
+  BTS-425.
+
+* Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
+  K_SHORTEST_PATHS and K_PATHS.
+
+* Fix BTS-450: RandomGenerator caught assertion during a value generation within
+  `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
+
+* Updated arangosync to 1.5.0.
 
 * Fixed issue #14122: when the optimizer rule "inline-subqueries" is applied, it
   may rename some variables in the query. The variable renaming was however not
@@ -27,8 +39,6 @@ v3.6.14 (XXXX-XX-XX)
 * Fixed proper return value in sendRequestRetry if server is shutting down.
 
 * Updated ArangoDB Starter to 0.15.0.
-
-* Updated arangosync to 1.4.0.
 
 * Fixed internal issue #798: In  rare case when remove request completely cleans
   just consolidated segment commit could be cancelled and documents removed from
