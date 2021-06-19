@@ -89,6 +89,10 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   requiresElevatedPrivileges(false);
 }
 
+MaintenanceFeature::~MaintenanceFeature() {
+  stop();
+}
+
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 

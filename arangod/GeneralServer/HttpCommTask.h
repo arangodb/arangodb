@@ -86,6 +86,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
   std::string _origin;  // value of the HTTP origin header the client sent
+  std::string _url;
   std::unique_ptr<HttpRequest> _request;
   std::unique_ptr<basics::StringBuffer> _response;
   bool _lastHeaderWasValue;
