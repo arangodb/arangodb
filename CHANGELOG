@@ -1,6 +1,9 @@
 v3.6.14 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
+  symmetrical.
+
 * Fix URL request parsing in case data is handed in small chunks.
   Previously the URL could be cut off if the chunk size was smaller than the URL
   size.
