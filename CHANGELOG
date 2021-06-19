@@ -4,6 +4,14 @@ v3.6.14 (XXXX-XX-XX)
 * Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
   symmetrical.
 
+* Fix URL request parsing in case data is handed in small chunks.
+  Previously the URL could be cut off if the chunk size was smaller than the URL
+  size.
+
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This fixes
+  BTS-425.
+
 * Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
   K_SHORTEST_PATHS and K_PATHS.
 

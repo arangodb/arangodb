@@ -80,6 +80,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   self->_lastHeaderField.clear();
   self->_lastHeaderValue.clear();
   self->_origin.clear();
+  self->_url.clear();
   self->_request = std::make_unique<HttpRequest>(self->_connectionInfo, /*header*/ nullptr,
                                                  0, self->_allowMethodOverride);
   self->_response.reset();
@@ -97,7 +98,6 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
 template <SocketType T>
 int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
-  self->_request->parseUrl(at, len);
   self->_request->setRequestType(llhttpToRequestType(p));
   if (self->_request->requestType() == RequestType::ILLEGAL) {
     self->addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -108,6 +108,7 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
   RequestStatistics* stat = self->statistics(1UL);
   RequestStatistics::SET_REQUEST_TYPE(stat, self->_request->requestType());
 
+  self->_url.append(at, len);
   return HPE_OK;
 }
 
@@ -202,6 +203,7 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
 template <SocketType T>
 int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
+  self->_request->parseUrl(self->_url.data(), self->_url.size());
 
   RequestStatistics* stat = self->statistics(1UL);
   RequestStatistics::SET_READ_END(stat);
@@ -281,13 +283,26 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     size_t parsedBytes = 0;
     for (auto const& buffer : this->_protocol->buffer.data()) {
       const char* data = reinterpret_cast<const char*>(buffer.data());
+      const char* end = data + buffer.size();
+      do {
+        size_t datasize = end - data;
 
-      err = llhttp_execute(&_parser, data, buffer.size());
-      if (err != HPE_OK) {
-        parsedBytes += llhttp_get_error_pos(&_parser) - data;
-        break;
-      }
-      parsedBytes += buffer.size();
+        TRI_IF_FAILURE("HttpCommTask<T>::readCallback_in_small_chunks") {
+          // we had an issue that URLs were cut off because the url data was handed
+          // in in multiple buffers.
+          // To cover this case, we simulate that data fed to the parser in small chunks.
+          constexpr size_t chunksize = 5;
+          datasize = std::min<size_t>(datasize, chunksize);
+        }
+        
+        err = llhttp_execute(&_parser, data, datasize);
+        if (err != HPE_OK) {
+          parsedBytes += llhttp_get_error_pos(&_parser) - data;
+          break;
+        }
+        parsedBytes += datasize;
+        data += datasize;
+      } while (ADB_UNLIKELY(data < end));
     }
 
     TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());

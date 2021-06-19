@@ -35,6 +35,8 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/GlobalReplicationApplier.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -276,6 +278,16 @@ bool DatabaseInitialSyncer::isAborted() const {
       (vocbase().replicationApplier() != nullptr &&
        vocbase().replicationApplier()->stopInitialSynchronization())) {
     return true;
+  }
+
+  if (_state.isChildSyncer) {
+    // this syncer is used as a child syncer of the GlobalInitialSyncer.
+    // now check if parent was aborted
+    ReplicationFeature& replication = vocbase().server().getFeature<ReplicationFeature>();
+    GlobalReplicationApplier* applier = replication.globalReplicationApplier();
+    if (applier != nullptr && applier->stopInitialSynchronization()) {
+      return true;
+    }
   }
 
   return Syncer::isAborted();
