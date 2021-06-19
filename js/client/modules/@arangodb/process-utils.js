@@ -56,6 +56,7 @@ const GREEN = internal.COLORS.COLOR_GREEN;
 const RED = internal.COLORS.COLOR_RED;
 const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
+const IS_A_TTY = RED.length !== 0;
 
 const platform = internal.platform;
 
@@ -63,6 +64,7 @@ const abortSignal = 6;
 const termSignal = 15;
 
 let tcpdump;
+let assertLines = [];
 
 class ConfigBuilder {
   constructor(type) {
@@ -386,7 +388,41 @@ function readImportantLogLines (logPath) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief cleans up the database direcory
+// / @brief scans the log files for assert lines
+// //////////////////////////////////////////////////////////////////////////////
+
+function readAssertLogLines (logPath) {
+  const list = fs.list(logPath);
+
+  for (let i = 0; i < list.length; i++) {
+    let fnLines = [];
+
+    if (list[i].slice(0, 3) === 'log') {
+      const buf = fs.readBuffer(fs.join(logPath, list[i]));
+      let lineStart = 0;
+      let maxBuffer = buf.length;
+
+      for (let j = 0; j < maxBuffer; j++) {
+        if (buf[j] === 10) { // \n
+          const line = buf.asciiSlice(lineStart, j);
+          lineStart = j + 1;
+
+          // scan for asserts from the crash dumper
+          if (line.search('{crash}') !== -1) {
+            if (!IS_A_TTY) {
+              // else the server has already printed these:
+              print("ERROR: " + line);
+            }
+            assertLines.push(line);
+          }
+        }
+      }
+    }
+  }
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cleans up the database directory
 // //////////////////////////////////////////////////////////////////////////////
 
 function cleanupLastDirectory (options) {
@@ -1551,6 +1587,9 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       }
     });
   }
+  instanceInfo.arangods.forEach(arangod => {
+    readAssertLogLines(arangod.rootDir);
+  });
   if (tcpdump !== undefined) {
     print(CYAN + "Stopping tcpdump" + RESET);
     killExternal(tcpdump.pid);
@@ -2229,6 +2268,12 @@ function reStartInstance(options, instanceInfo, moreArgs) {
 }
 
 function aggregateFatalErrors(currentTest) {
+  if (assertLines.length > 0) {
+    assertLines.forEach(line => {
+      rp.addFailRunsMessage(currentTest, line);
+    });
+    assertLines = [];
+  }
   if (serverCrashedLocal) {
     rp.addFailRunsMessage(currentTest, serverFailMessagesLocal);
     serverFailMessagesLocal = "";
