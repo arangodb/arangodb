@@ -1,6 +1,9 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
+  iterator.
+
 * Fix URL request parsing in case data is handed in in small chunks.
   Previously the URL could be cut off if the chunk size was smaller than the URL
   size.
