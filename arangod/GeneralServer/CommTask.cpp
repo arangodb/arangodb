@@ -498,7 +498,10 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // and there is currently only a single client handled by the IoContext
   auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
     handler->statistics().SET_QUEUE_END();
+    handler->trackTaskStart();
+
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
+      handler->trackTaskEnd();
       try {
         // Pass the response to the io context
         self->sendResponse(handler->stealResponse(), handler->stealStatistics());
@@ -529,19 +532,33 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   auto const lane = handler->getRequestLane();
 
   if (jobId != nullptr) {
-    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler);
+    try {
+      // This will throw if a soft shutdown is already going on on a
+      // coordinator. But this can also throw if we have an
+      // out of memory situation, so we better handle this anyway.
+      GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler);
+    } catch(std::exception const& exc) {
+      LOG_TOPIC("fee34", INFO, Logger::STARTUP)
+        << "Async job rejected, exception: " << exc.what();
+      return false;
+    }
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
     return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
+      handler->trackTaskStart();
       handler->runHandler([](RestHandler* h) {
+        h->trackTaskEnd();
         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
       });
     });
   } else {
     // here the response will just be ignored
     return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
-      handler->runHandler([](RestHandler*) {});
+      handler->trackTaskStart();
+      handler->runHandler([](RestHandler* h) {
+        h->trackTaskEnd();
+      });
     });
   }
 }

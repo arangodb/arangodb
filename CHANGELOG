@@ -4,9 +4,36 @@ v3.7.13 (XXXX-XX-XX)
 * Remove unused sync-by-revisions APIs, which will be introduced only with
   ArangoDB 3.8.
 
+* Fixed BTS-422: SingleRemoteModification in AQL behaves different.
 
-v3.7.12 (XXXX-XX-XX)
+  This disables the optimizer rule `optimize-cluster-single-document-operations`
+  for array inputs, e.g.
+  
+      INSERT [...] INTO collection
+      REMOVE [...] IN collection
+
+  For the cases, the optimization is not pulled off, and the normal insert/
+  update/replace/remove behavior is executed, which will fail because of an
+  array being used as input.
+
+
+v3.7.12 (2021-06-14)
 --------------------
+
+* Add soft coordinator shutdown: This is a new option `soft=true` for the DELETE
+  /_admin/shutdown API. Has only meaning for coordinators, otherwise ignored. A
+  number of things are allowed to finish but no new things are allowed when in
+  soft coordinator shutdown:
+    - AQL cursors
+    - transactions
+    - asynchronous operations
+    - Pregel runs
+  Once all of the ongoing operations of these have finished and all requests on
+  the low priority queue have been executed, the coordinator shuts down the
+  normal way. This is supposed to make a coordinator restart less intrusive for
+  clients.
+
+* Updated arangosync to 1.5.0.
 
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
