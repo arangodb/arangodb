@@ -266,6 +266,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
     _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
+    // Throws if soft shutdown is ongoing!
     _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
     
     return generateCursorResult(rest::ResponseCode::CREATED);
@@ -412,6 +413,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
     _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
+    // throws if a coordinator soft shutdown is ongoing
 
     return generateCursorResult(rest::ResponseCode::CREATED);
   }
