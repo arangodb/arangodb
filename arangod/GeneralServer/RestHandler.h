@@ -74,6 +74,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   uint64_t handlerId() const { return _handlerId; }
   uint64_t messageId() const;
 
+  /// @brief called when the handler execution is started
+  void trackTaskStart() noexcept;
+
+  /// @brief called when the handler execution is finalized
+  void trackTaskEnd() noexcept;
+
+
   GeneralRequest const* request() const { return _request.get(); }
   GeneralResponse* response() const { return _response.get(); }
   std::unique_ptr<GeneralResponse> stealResponse() {
