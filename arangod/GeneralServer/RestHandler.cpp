@@ -42,6 +42,7 @@
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -92,6 +93,21 @@ uint64_t RestHandler::messageId() const {
 
   return messageId;
 }
+
+void RestHandler::trackTaskStart() noexcept {
+  if (PriorityRequestLane(getRequestLane()) == RequestPriority::LOW) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
+  }
+}
+
+void RestHandler::trackTaskEnd() noexcept {
+  if (PriorityRequestLane(getRequestLane()) == RequestPriority::LOW) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+  }
+}
+
 
 RequestStatistics::Item&& RestHandler::stealStatistics() {
   return std::move(_statistics);

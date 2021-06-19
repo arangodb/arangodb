@@ -96,6 +96,7 @@
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -227,6 +228,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<ShellColorsFeature>();
     server.addFeature<ShutdownFeature>(
         std::vector<std::type_index>{std::type_index(typeid(ScriptFeature))});
+    server.addFeature<SoftShutdownFeature>();
     server.addFeature<SslFeature>();
     server.addFeature<StatisticsFeature>();
     server.addFeature<StorageEngineFeature>();
