@@ -76,6 +76,12 @@ class AqlItemBlockInputRange {
   size_t skipAllRemainingDataRows();
 
   size_t skipAllShadowRowsOfDepth(size_t depth);
+  
+  /**
+   * @brief Skip over all remaining data rows until the next shadow row.
+   * Count how many rows are skipped
+   */
+  std::size_t countAndSkipAllRemainingDataRows();
 
   // Subtract up to this many rows from the local `_skipped` state; return
   // the number actually skipped. Does not skip data rows.

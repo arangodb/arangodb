@@ -303,7 +303,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const& sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
-    arangodb::aql::AstNode*& specializedCondition, bool& isSparse) {
+    arangodb::aql::AstNode*& specializedCondition, bool& isSparse, bool failOnForcedHint) {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
   bool bestSupportsFilter = false;
@@ -431,7 +431,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
       }
     }
 
-    if (hint.isForced() && bestIndex == nullptr) {
+    if (hint.isForced() && bestIndex == nullptr && failOnForcedHint) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
           "could not use index hint to serve query; " + hint.toString());
@@ -498,7 +498,7 @@ bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
   std::vector<std::shared_ptr<Index>> usedIndexes;
   if (findIndexHandleForAndNode(indexes, node,
                                 reference, sortCondition, itemsInCollection,
-                                hint, usedIndexes, specializedCondition, isSparse)
+                                hint, usedIndexes, specializedCondition, isSparse, true /*failOnForcedHint*/)
           .first) {
     TRI_ASSERT(!usedIndexes.empty());
     usedIndex = usedIndexes[0];
@@ -526,12 +526,19 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
   bool canUseForSort = false;
   bool isSparse = false;
 
-  for (size_t i = 0; i < root->numMembers(); ++i) {
+  TRI_ASSERT(usedIndexes.empty());
+
+  size_t const n = root->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    // BTS-398: if there are multiple OR-ed conditions, fail only for forced index
+    // hints if no index can be found for _any_ condition part.
     auto node = root->getMemberUnchecked(i);
     arangodb::aql::AstNode* specializedCondition = nullptr;
+    
+    bool failOnForcedHint = (hint.isForced() && i + 1 == n && usedIndexes.empty());
     auto canUseIndex = findIndexHandleForAndNode(indexes, node, reference, *sortCondition,
                                                  itemsInCollection, hint, usedIndexes,
-                                                 specializedCondition, isSparse);
+                                                 specializedCondition, isSparse, failOnForcedHint);
 
     if (canUseIndex.second && !canUseIndex.first) {
       // index can be used for sorting only
