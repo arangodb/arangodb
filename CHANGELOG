@@ -1,6 +1,9 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-450: RandomGenerator caught assertion during a value generation within
+  `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
+
 * Fix BTS-442: a query with fullCount on a sharded collection hangs indefinitely
   when LIMIT is less than number of available documents.
   
