@@ -1,6 +1,9 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
+
 * Fix BTS-450: RandomGenerator caught assertion during a value generation within
   `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
 
