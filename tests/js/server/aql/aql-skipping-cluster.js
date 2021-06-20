@@ -70,6 +70,16 @@ function aqlSkippingClusterTestsuite () {
         assertEqual(i, n);
       }
     },
+
+    testSkipWithFullCount: function () {
+      const query = 'FOR doc IN @@col LIMIT 2 RETURN doc';
+      const bind = {'@col': colName};
+      for (let i = 0; i < 10; ++i) {
+        col.insert({});
+      }
+      const res = db._query(query, bind, {'fullCount': true});
+      assertEqual(2, res.toArray().length);
+    },
   };
 }
 
