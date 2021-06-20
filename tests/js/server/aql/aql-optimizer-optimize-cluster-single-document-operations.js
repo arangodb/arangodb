@@ -491,6 +491,34 @@ function optimizerClusterSingleDocumentTestSuite () {
         "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE 'foo' IN @@cn1",
         "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE 'foo' IN " + cn2,
         "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE one IN " + cn2,
+
+        "INSERT [] INTO @@cn1",
+        "INSERT [ {} ] INTO @@cn1",
+        "INSERT [{ foo: 1 }] INTO @@cn1",
+        "INSERT [] INTO @@cn1 RETURN NEW",
+        "INSERT [ {} ] INTO @@cn1 RETURN NEW",
+        "INSERT [{ foo: 2 }] INTO @@cn1 RETURN NEW",
+
+        "UPDATE [] IN @@cn1",
+        "UPDATE [ {} ] IN @@cn1",
+        "UPDATE [{ foo: 3 }] IN @@cn1",
+        "UPDATE [] IN @@cn1 RETURN OLD",
+        "UPDATE [ {} ] IN @@cn1 RETURN OLD",
+        "UPDATE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+        
+        "REPLACE [] IN @@cn1",
+        "REPLACE [ {} ] IN @@cn1",
+        "REPLACE [{ foo: 3 }] IN @@cn1",
+        "REPLACE [] IN @@cn1 RETURN OLD",
+        "REPLACE [ {} ] IN @@cn1 RETURN OLD",
+        "REPLACE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+
+        "REMOVE [] IN @@cn1",
+        "REMOVE [ {} ] IN @@cn1",
+        "REMOVE [{ foo: 3 }] IN @@cn1",
+        "REMOVE [] IN @@cn1 RETURN OLD",
+        "REMOVE [ {} ] IN @@cn1 RETURN OLD",
+        "REMOVE [{ foo: 4 }] IN @@cn1 RETURN OLD",
       ];
 
       queries.forEach(function(query) {
