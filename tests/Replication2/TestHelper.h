@@ -72,10 +72,21 @@ struct AsyncMockLog : MockLog {
 
   explicit AsyncMockLog(replication2::LogId id);
 
-  ~AsyncMockLog();
+  ~AsyncMockLog() noexcept;
 
   auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
+
+  auto stop() noexcept -> void {
+    if (!_stopping) {
+      {
+        std::unique_lock guard(_mutex);
+        _stopping = true;
+        _cv.notify_all();
+      }
+      _asyncWorker.join();
+    }
+  }
 
  private:
   struct QueueEntry {
@@ -240,6 +251,14 @@ struct ReplicatedLogTest : ::testing::Test {
 
   auto defaultLogger() {
     return LogContext(Logger::REPLICATION2);
+  }
+
+  auto stopAsyncMockLogs() -> void {
+    for (auto const& it : _persistedLogs) {
+      if (auto log = std::dynamic_pointer_cast<AsyncMockLog>(it.second); log != nullptr) {
+        log->stop();
+      }
+    }
   }
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
