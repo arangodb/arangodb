@@ -52,10 +52,8 @@ namespace {
 // Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
 const double FAST_PATH_LOCK_TIMEOUT = 2.0;
 
-void buildTransactionBody(TransactionState& state, 
-                          ServerID const& server,
-                          VPackBuilder& builder,
-                          std::vector<ServerID> const& followers = std::vector<ServerID>()) {
+void buildTransactionBody(TransactionState& state, ServerID const& server,
+                          VPackBuilder& builder) {
   builder.openObject();
   state.options().toVelocyPack(builder);
   builder.add("collections", VPackValue(VPackValueType::Object));
@@ -66,13 +64,7 @@ void buildTransactionBody(TransactionState& state,
         return true;
       }
       if (!state.isCoordinator()) {
-        bool doInclude =  col.collection()->followers()->contains(server);
-        if (!doInclude) {
-          // this is a workaround to prevent sending empty collection lists to followers in 
-          // case the follower list changes during a replication operation
-          doInclude =  (std::find(followers.begin(), followers.end(), server) != followers.end());
-        }
-        if (doInclude) {
+        if (col.hasFollower(server)) {
           if (numCollections == 0) {
             builder.add(key, VPackValue(VPackValueType::Array));
           }
@@ -481,9 +473,7 @@ Future<Result> abortTransaction(transaction::Methods& trx) {
 /// @brief set the transaction ID header
 template <typename MapT>
 void addTransactionHeader(transaction::Methods const& trx,
-                          ServerID const& server, 
-                          MapT& headers,
-                          std::vector<ServerID> const& followers) {
+                          ServerID const& server, MapT& headers) {
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isRunningInCluster());
   if (!ClusterTrxMethods::isElCheapo(trx)) {
@@ -501,7 +491,7 @@ void addTransactionHeader(transaction::Methods const& trx,
     TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
                state.id().isLeaderTransactionId());
     transaction::BuilderLeaser builder(trx.transactionContextPtr());
-    ::buildTransactionBody(state, server, *builder.get(), followers);
+    ::buildTransactionBody(state, server, *builder.get());
     headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
     headers.try_emplace(arangodb::StaticStrings::TransactionId,
                         std::to_string(tidPlus.id()).append(" begin"));
@@ -512,19 +502,15 @@ void addTransactionHeader(transaction::Methods const& trx,
   }
 }
 template void addTransactionHeader<std::map<std::string, std::string>>(
-    transaction::Methods const&, ServerID const&, 
-    std::map<std::string, std::string>&,
-    std::vector<ServerID> const&);
+    transaction::Methods const&, ServerID const&, std::map<std::string, std::string>&);
 template void addTransactionHeader<std::unordered_map<std::string, std::string>>(
     transaction::Methods const&, ServerID const&,
-    std::unordered_map<std::string, std::string>&,
-    std::vector<ServerID> const&);
+    std::unordered_map<std::string, std::string>&);
 
 /// @brief add transaction ID header for setting up AQL snippets
 template <typename MapT>
 void addAQLTransactionHeader(transaction::Methods const& trx,
-                             ServerID const& server, 
-                             MapT& headers) {
+                             ServerID const& server, MapT& headers) {
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isCoordinator());
   if (!ClusterTrxMethods::isElCheapo(trx)) {
