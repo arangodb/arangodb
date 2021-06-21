@@ -159,6 +159,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Aql/WindowExecutorTest.cpp
+  Aql/DecaysFunctionTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Basics/conversions-test.cpp

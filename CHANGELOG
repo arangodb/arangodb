@@ -1,7 +1,11 @@
 devel
 -----
+* Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
+  iterator.
 
 * Slightly improve specific warning messages for better readability.
+
+* Add 3 AQL functions: DECAY_GAUSS, DECAY_EXP and DECAY_LINEAR.
 
 * Fix URL request parsing in case data is handed in in small chunks.
   Previously the URL could be cut off if the chunk size was smaller than
