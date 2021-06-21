@@ -31,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
@@ -190,6 +191,12 @@ RestStatus RestDocumentHandler::insertDocument() {
   Result res = _activeTrx->begin();
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
+    return RestStatus::DONE;
+  }
+
+  if (ServerState::instance()->isDBServer() &&
+      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+    generateTransactionError(cname, OperationResult(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION), opOptions), "");
     return RestStatus::DONE;
   }
 
@@ -493,6 +500,12 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
+  
+  if (ServerState::instance()->isDBServer() &&
+      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+    generateTransactionError(cname, OperationResult(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION), opOptions), "");
+    return RestStatus::DONE;
+  }
 
   auto f = futures::Future<OperationResult>::makeEmpty();
   if (isPatch) {
@@ -613,6 +626,12 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
+    return RestStatus::DONE;
+  }
+  
+  if (ServerState::instance()->isDBServer() &&
+      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+    generateTransactionError(cname, OperationResult(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION), opOptions), "");
     return RestStatus::DONE;
   }
 

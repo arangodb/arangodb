@@ -40,6 +40,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -589,6 +590,7 @@ ResultT<TransactionId> Manager::createManagedTrx(
   // During beginTransaction we may reroll the Transaction ID.
   tid = state->id();
 
+
   bool stored = storeManagedState(tid, std::move(state), ttl);
   if (!stored) {
     return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
@@ -901,7 +903,19 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
 
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
-    if (it == buck._managed.end() || !::authorized(it->second.user) ||
+    if (it == buck._managed.end()) {
+      // insert a tombstone for an aborted transaction that we never saw before
+      auto inserted = buck._managed.try_emplace(tid, _feature, MetaType::Tombstone, 0, nullptr, arangodb::cluster::CallbackGuard{});
+      inserted.first->second.finalStatus = transaction::Status::ABORTED;
+      std::string msg = "transaction " + std::to_string(tid.id()) + " not found";
+      if (status == transaction::Status::COMMITTED) {
+        msg += " on commit operation";
+      } else {
+        msg += " on abort operation";
+      }
+      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::move(msg));
+    } 
+    if (!::authorized(it->second.user) ||
         (!database.empty() && it->second.db != database)) {
       std::string msg = "transaction " + std::to_string(tid.id());
       if (it == buck._managed.end()) {
@@ -914,6 +928,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       } else {
         msg += " on abort operation";
       }
+    
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::move(msg));
     }
 
