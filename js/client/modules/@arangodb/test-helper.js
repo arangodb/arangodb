@@ -218,7 +218,7 @@ const buildCode = function(key, command, cn) {
 (function() {
 let tries = 0;
 while (true) {
-  if (++tries % 10 === 0) {
+  if (++tries % 3 === 0) {
     if (db['${cn}'].exists('stop')) {
       break;
     }
@@ -263,7 +263,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
     db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
     let tries = 0;
     let done = 0;
-    while (++tries < 60) {
+    while (++tries < 120) {
       clients.forEach(function (client) {
         if (!client.done) {
           let status = internal.statusExternal(client.pid);

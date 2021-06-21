@@ -191,6 +191,7 @@ function BaseChaosSuite(testOpts) {
               result.overwriteMode = "ignore";
             } 
           }
+          return result;
         };
         
         let query = db._query;
@@ -208,17 +209,30 @@ function BaseChaosSuite(testOpts) {
           try {
             const d = Math.random();
             if (d >= 0.98 && testOpts.withTruncate) {
+              console.warn("RUNNING TRUNCATE");
               c.truncate();
             } else if (d >= 0.9) {
-              query.call(ctx, "FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: docs()}, opts());
+              let o = opts();
+              let d = docs();
+              console.warn("RUNNING AQL INSERT WITH " + d.length + " DOCS. OPTIONS: " + JSON.stringify(o));
+              query.call(ctx, "FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: d}, o);
             } else if (d >= 0.8) {
-              query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 138 REMOVE doc IN " + c.name(), {}, opts());
+              let o = opts();
+              console.warn("RUNNING AQL REMOVE. OPTIONS: " + JSON.stringify(o));
+              query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 138 REMOVE doc IN " + c.name(), {}, o);
             } else if (d >= 0.7) {
-              query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 1338 REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {}, opts());
+              let o = opts();
+              console.warn("RUNNING AQL REPLACE. OPTIONS: " + JSON.stringify(o));
+              query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 1338 REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {}, o);
             } else if (d >= 0.25) {
-              c.insert(docs(), opts());
+              let o = opts();
+              let d = docs();
+              console.warn("RUNNING INSERT WITH " + d.length + " DOCS. OPTIONS: " + JSON.stringify(o));
+              c.insert(d, o);
             } else {
-              c.remove(docs());
+              let d = docs();
+              console.warn("RUNNING REMOVE WITH " + d.length + " DOCS");
+              c.remove(d);
             }
           } catch (err) {}
         }
@@ -285,6 +299,6 @@ for (let i = 0; i < (1 << params.length); ++i) {
 
 // ATM we only create a single suite with all options except Truncate, because there are still known issues.
 // Later we probably want to have all possible combinations, at least for the nightly builds.
-addSuite([true, true, false, true, true]);
+addSuite([true, true, false, true, false]);
 
 return jsunity.done();
