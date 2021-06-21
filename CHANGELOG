@@ -7,7 +7,7 @@ devel
   That could have led to a wrong sequence of events being accumulated in the 
   write batch, which may have confused the WAL tailing API later. 
 
-* Fix some occurences in which Merkle trees could silently apply the same change
+* Fix some occurrences in which Merkle trees could silently apply the same change
   multiple times, which led to data drift between the Merkle tree and the
   underlying collection's data.
 
