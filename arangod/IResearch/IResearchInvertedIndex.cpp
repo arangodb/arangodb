@@ -258,26 +258,40 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(
 }
 
 namespace {
+template<bool first>
 void traverseFields(
-    std::vector<std::vector<arangodb::basics::AttributeName>>& total,
-    FieldMeta const& meta, std::vector<arangodb::basics::AttributeName> current) {
+    irs::hashed_string_ref const myName,
+    FieldMeta const& meta, std::vector<arangodb::basics::AttributeName> current, // intentional copy
+    std::vector<std::vector<arangodb::basics::AttributeName>>& total) {
+  if constexpr (!first) {
+     current.push_back(
+         arangodb::basics::AttributeName(
+           arangodb::velocypack::StringRef(myName.c_str(), myName.size()), false));
+  }
   if (meta._fields.empty()) {
     // reached the bottom
     total.push_back(current);
     return;
   }
   for (auto const& f : meta._fields) {
-    current.push_back(arangodb::basics::AttributeName(
-                      arangodb::velocypack::StringRef(f.key().c_str(), f.key().size())));
-    traverseFields(total, *f.value().get(), current);
+    traverseFields<false>(f.key(),  *f.value().get(), current, total);
+  }
+}
+
+void traverseMetaFields(
+    FieldMeta const& meta,
+    std::vector<std::vector<arangodb::basics::AttributeName>>& total) {
+  total.clear();
+  if(!meta._fields.empty()) {
+    std::vector<arangodb::basics::AttributeName> current;
+    traverseFields<true>(irs::hashed_string_ref(0, irs::string_ref::NIL), meta,  current, total);
   }
 }
 } // namespace
 
 std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::IResearchInvertedIndexMeta::fields() const {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
-  std::vector<arangodb::basics::AttributeName> current;
-  traverseFields(res, _fieldsMeta, current);
+  traverseMetaFields(_fieldsMeta, res);
   return res;
 }
 
