@@ -178,6 +178,20 @@ class MockGraphProvider {
       return collectionNameResult.get().first;
     };
 
+    void setLocalSchreierIndex(size_t index) {
+      TRI_ASSERT(index != std::numeric_limits<size_t>::max());
+      TRI_ASSERT(!hasLocalSchreierIndex());
+      _localSchreierIndex = index;
+    }
+
+    bool hasLocalSchreierIndex() const {
+      return _localSchreierIndex != std::numeric_limits<size_t>::max();
+    }
+
+    std::size_t getLocalSchreierIndex() const {
+      return _localSchreierIndex;
+    }
+
     bool isProcessable() const { return _isProcessable; }
 
     bool isLooseEnd() const { return !isProcessable(); }
@@ -193,6 +207,7 @@ class MockGraphProvider {
     Vertex _vertex;
     Edge _edge;
     bool _isProcessable;
+    size_t _localSchreierIndex;
   };
 
   MockGraphProvider() = delete;

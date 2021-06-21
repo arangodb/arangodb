@@ -46,7 +46,7 @@ class SingleProviderPathResult : public PathResultInterface {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  SingleProviderPathResult(Step step, ProviderType& provider, PathStoreType& store);
+  SingleProviderPathResult(Step* step, ProviderType& provider, PathStoreType& store);
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;
@@ -58,13 +58,13 @@ class SingleProviderPathResult : public PathResultInterface {
   /**
    * @brief Appends this path as a SchreierVector entry into the given builder
    */
-  auto toSchreierEntry(arangodb::velocypack::Builder& builder, std::unordered_map<size_t, size_t>& indexLookupTable)
+  auto toSchreierEntry(arangodb::velocypack::Builder& builder, size_t& currentLength)
       -> void override;
 
   auto isEmpty() const -> bool;
 
  private:
-  Step _step;
+  Step* _step;
 
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;

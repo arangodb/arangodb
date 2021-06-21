@@ -90,8 +90,9 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
     TRI_ASSERT(_queue.hasProcessableElement());
   }
 
-  auto step = _queue.pop();
-  auto posPrevious = _interior.append(step);
+  auto tmp = _queue.pop();
+  auto posPrevious = _interior.append(std::move(tmp));
+  auto& step = _interior.getStepReference(posPrevious);
 
   ValidationResult res = _validator.validatePath(step);
 
@@ -103,7 +104,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
       << "<= " << _options.getMaxDepth();
   if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
     // Include it in results.
-    _results.push_back(step);
+    _results.push_back(&step);
   }
 
   // only expand if we're responsible
@@ -163,9 +164,9 @@ auto OneSidedEnumerator<Configuration>::getNextPath()
     searchMoreResults();
 
     while (!_results.empty()) {
-      auto step = std::move(_results.back());
+      auto* step = _results.back();
       _results.pop_back();
-      return std::make_unique<ResultPathType>(std::move(step), _provider, _interior);
+      return std::make_unique<ResultPathType>(step, _provider, _interior);
     }
   }
   return nullptr;
@@ -212,9 +213,9 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
   if (!_resultsFetched && !_results.empty()) {
     std::vector<Step*> looseEnds{};
 
-    for (auto& vertex : _results) {
-      if (!vertex.isProcessable()) {
-        looseEnds.emplace_back(&vertex);
+    for (auto* vertex : _results) {
+      if (!vertex->isProcessable()) {
+        looseEnds.emplace_back(vertex);
       }
     }
 

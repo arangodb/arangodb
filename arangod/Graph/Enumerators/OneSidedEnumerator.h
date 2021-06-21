@@ -63,7 +63,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
  private:
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
-  using ResultList = std::vector<Step>;
+  using ResultList = std::vector<Step*>;
   using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
 
  public:

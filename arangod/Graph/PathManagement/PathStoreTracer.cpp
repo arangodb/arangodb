@@ -64,10 +64,17 @@ size_t PathStoreTracer<PathStoreImpl>::append(Step step) {
 }
 
 template <class PathStoreImpl>
-typename PathStoreImpl::Step PathStoreTracer<PathStoreImpl>::get(size_t position) const {
+typename PathStoreImpl::Step PathStoreTracer<PathStoreImpl>::getStep(size_t position) const {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["get"].addTiming(TRI_microtime() - start));
-  return _impl.get(position);
+  TRI_DEFER(_stats["getStep"].addTiming(TRI_microtime() - start));
+  return _impl.getStep(position);
+}
+
+template <class PathStoreImpl>
+typename PathStoreImpl::Step& PathStoreTracer<PathStoreImpl>::getStepReference(size_t position)  {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["getStepReference"].addTiming(TRI_microtime() - start));
+  return _impl.getStepReference(position);
 }
 
 template <class PathStoreImpl>
@@ -102,6 +109,13 @@ auto PathStoreTracer<PathStoreImpl>::visitReversePath(
   double start = TRI_microtime();
   TRI_DEFER(_stats["visitReversePath"].addTiming(TRI_microtime() - start));
   return _impl.visitReversePath(step, visitor);
+}
+
+template <class PathStoreImpl>
+auto PathStoreTracer<PathStoreImpl>::modifyReversePath(Step& step, const std::function<bool(Step&)>& visitor) -> bool {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["modifyReversePath"].addTiming(TRI_microtime() - start));
+  return _impl.modifyReversePath(step, visitor);
 }
 
 /* SingleServerProvider Section */

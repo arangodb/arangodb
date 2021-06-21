@@ -56,10 +56,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::validatePath(
     return res;
   }
 
-  LOG_DEVEL << "Uniqueness: " << vertexUniqueness;
-
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
-LOG_DEVEL << " WE ARE UNIQUE!!!!";
     _uniqueVertices.clear();
     // Reserving here is pointless, we will test paths that increase by at most 1 entry.
 

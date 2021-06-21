@@ -77,11 +77,21 @@ size_t PathStore<Step>::append(Step step) {
 }
 
 template <class Step>
-Step PathStore<Step>::get(size_t position) const {
+Step PathStore<Step>::getStep(size_t position) const {
   TRI_ASSERT(position <= size());
   Step step = _schreier.at(position);
   LOG_TOPIC("45bf5", TRACE, Logger::GRAPHS)
       << "<PathStore> Get step: " << step.toString();
+
+  return step;
+}
+
+template <class Step>
+Step& PathStore<Step>::getStepReference(size_t position) {
+  TRI_ASSERT(position <= size());
+  auto& step = _schreier.at(position);
+  LOG_TOPIC("45bf6", TRACE, Logger::GRAPHS)
+  << "<PathStore> Get step: " << step.toString();
 
   return step;
 }
@@ -143,6 +153,26 @@ auto PathStore<Step>::visitReversePath(Step const& step,
                                        std::function<bool(Step const&)> const& visitor) const
     -> bool {
   Step const* walker = &step;
+  // Guaranteed to make progress, as the schreier vector contains a loop-free tree.
+  while (true) {
+    bool cont = visitor(*walker);
+    if (!cont) {
+      // Aborted
+      return false;
+    }
+    if (walker->isFirst()) {
+      // Visited the full path
+      return true;
+    }
+    walker = &_schreier.at(walker->getPrevious());
+  }
+}
+
+template <class Step>
+auto PathStore<Step>::modifyReversePath(Step& step,
+                                       std::function<bool(Step &)> const& visitor)
+-> bool {
+  Step * walker = &step;
   // Guaranteed to make progress, as the schreier vector contains a loop-free tree.
   while (true) {
     bool cont = visitor(*walker);

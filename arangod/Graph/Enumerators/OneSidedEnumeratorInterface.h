@@ -49,7 +49,7 @@ class PathResultInterface {
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
   virtual auto toSchreierEntry(arangodb::velocypack::Builder& builder,
-                               std::unordered_map<size_t, size_t>& indexLookupTable)
+                               size_t& currentLength)
       -> void = 0;
 };
 
