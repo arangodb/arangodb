@@ -146,6 +146,10 @@ class MockGraphProvider {
       }
     }
 
+    bool isResponsible(transaction::Methods* trx) const {
+      return true;
+    }
+
     Vertex getVertex() const {
       /*if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
