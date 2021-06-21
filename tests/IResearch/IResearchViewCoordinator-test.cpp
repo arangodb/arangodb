@@ -467,9 +467,6 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
-  auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
-
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -1053,7 +1050,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -1121,7 +1118,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
@@ -1178,7 +1175,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -1218,7 +1215,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(9, tmpSlice2.length());
+      EXPECT_EQ(10, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1226,6 +1223,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
       EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
       EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());
@@ -1336,7 +1334,7 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
@@ -1407,7 +1405,7 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
     EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     { // consolidation policy
@@ -6017,8 +6015,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
 
     // dummy query
     arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(*vocbase),
-                               arangodb::aql::QueryString("RETURN 1"),
-                               nullptr, arangodb::velocypack::Parser::fromJson("{}"));
+                               arangodb::aql::QueryString("RETURN 1"), nullptr);
     query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
     arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
@@ -6043,8 +6040,8 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     node.setVarsValid({arangodb::aql::VarSet{&outVariable}});
     singleton.setVarUsageValid();
     node.setVarUsageValid();
-    singleton.planRegisters(nullptr);
-    node.planRegisters(nullptr);
+    singleton.planRegisters();
+    node.planRegisters();
     auto singletonBlock = singleton.createBlock(*query.rootEngine(), cache);
     auto execBlock = node.createBlock(*query.rootEngine(), cache);
     ASSERT_TRUE(nullptr != execBlock);

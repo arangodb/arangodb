@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_TRY_ALTERNATIVES_H
-#define VELOCYPACK_TRY_ALTERNATIVES_H
+
+#pragma once
+
 #include "utilities.h"
 
 namespace arangodb {
@@ -124,4 +125,3 @@ struct deserialize_plan_executor<try_alternatives::try_alternatives_deserializer
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_TRY_ALTERNATIVES_H

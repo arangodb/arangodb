@@ -54,7 +54,7 @@
 
 #endif // _WIN32
 
-NS_LOCAL
+namespace {
 
 #ifdef _WIN32
 
@@ -83,10 +83,10 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
   #endif
 }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(file_utils)
+namespace iresearch {
+namespace file_utils {
 
 
 void file_deleter::operator()(void* f) const noexcept {
@@ -252,10 +252,10 @@ long ftell(void* fd) {
 
 
 #ifdef _WIN32
-NS_LOCAL
+namespace {
 constexpr DWORD FS_DEFERRED_DELETE_TIMEOUT = 10;
 constexpr int CREATE_FILE_TRIES = 3;
-NS_END
+}
 
 bool verify_lock_file(const file_path_t file) {
   if (!exists(file)) {
@@ -1144,8 +1144,12 @@ bool remove(const file_path_t path) noexcept {
         std::string utf8path;
 
         irs::locale_utils::append_external<char_t>(utf8path, path, locale);
-        IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), GetLastError());
-
+        const auto system_error = GetLastError();
+        if (ERROR_FILE_NOT_FOUND == system_error) { // file is just not here, so we are done actually
+          IR_FRMT_DEBUG("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+        } else {
+          IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+        }
         return false;
       }
 
@@ -1169,7 +1173,13 @@ bool remove(const file_path_t path) noexcept {
       std::string utf8path;
 
       irs::locale_utils::append_external<char_t>(utf8path, path, locale);
-      IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), GetLastError());
+      const auto system_error = GetLastError();
+      if (ERROR_FILE_NOT_FOUND == system_error) { // file is just not here, so we are done actually
+        IR_FRMT_DEBUG("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+      }
+      else {
+        IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+      }
 
       return false;
     }
@@ -1177,8 +1187,11 @@ bool remove(const file_path_t path) noexcept {
     auto res = ::remove(path);
 
     if (res) { // non-0 == error
-      IR_FRMT_ERROR("Failed to remove path: '%s', error %d", path, errno);
-
+      if (ENOENT == errno) { // file is just not here, so we are done actually
+        IR_FRMT_DEBUG("Failed to remove path: '%s', error %d", path, errno);
+      } else {
+        IR_FRMT_ERROR("Failed to remove path: '%s', error %d", path, errno);
+      }
       return false;
     }
   #endif
@@ -1273,5 +1286,5 @@ bool visit_directory(
   #endif
 }
 
-NS_END // file_utils
-NS_END // ROOT
+} // file_utils
+} // ROOT

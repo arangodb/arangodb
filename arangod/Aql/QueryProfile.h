@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_PROFILE_H
-#define ARANGOD_AQL_QUERY_PROFILE_H 1
+#pragma once
 
 #include "Aql/QueryExecutionState.h"
 #include "Basics/Common.h"
@@ -65,8 +64,6 @@ struct QueryProfile {
 
   /// @brief convert the profile to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&) const;
-  
- private:
 
  private:
   Query* _query;
@@ -85,4 +82,3 @@ static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

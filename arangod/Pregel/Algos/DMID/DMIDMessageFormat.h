@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,7 @@
 // in the
 // cpp files to do template specialization
 
-#ifndef ARANGODB_PREGEL_ALGO_DMID_MESSAGE_F_H
-#define ARANGODB_PREGEL_ALGO_DMID_MESSAGE_F_H 1
+#pragma once
 
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
@@ -61,4 +60,3 @@ struct DMIDMessageFormat : public MessageFormat<DMIDMessage> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

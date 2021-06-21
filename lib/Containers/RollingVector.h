@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINER_ROLLING_VECTOR_H
-#define ARANGODB_CONTAINER_ROLLING_VECTOR_H 1
+#pragma once
 
 #include <type_traits>
 
@@ -156,4 +155,3 @@ class RollingVector {
 }  // namespace containers
 }  // namespace arangodb
 
-#endif

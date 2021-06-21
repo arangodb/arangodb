@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#pragma once
 
 #include <string.h>
 #include <atomic>
@@ -91,6 +90,10 @@ struct SimpleHttpClientParams {
   uint64_t getRetryWaitTime() { return _retryWaitTime; }
 
   void setRetryMessage(std::string const& m) { _retryMessage = m; }
+  
+  double getRequestTimeout() const { return _requestTimeout; }
+  
+  void setRequestTimeout(double value) { _requestTimeout = value; }
 
   void setMaxPacketSize(size_t ms) { _maxPacketSize = ms; }
 
@@ -201,6 +204,8 @@ class SimpleHttpClient {
  public:
   void setInterrupted(bool value);
 
+  request_state state() const { return _state; }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates the connection used by the client
   /// this may be called from other objects that are responsible for managing
@@ -285,7 +290,7 @@ class SimpleHttpClient {
   /// @brief register and dump an error message
   //////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(std::string const& message, bool forceWarn = false) {
+  void setErrorMessage(std::string_view message, bool forceWarn = false) {
     _errorMessage = message;
 
     if (_params._warn || forceWarn) {
@@ -297,9 +302,9 @@ class SimpleHttpClient {
   /// @brief register an error message
   //////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(std::string const& message, int error) {
+  void setErrorMessage(std::string_view message, ErrorCode error) {
     if (error != TRI_ERROR_NO_ERROR) {
-      _errorMessage = message + ": " + TRI_errno_string(error);
+      _errorMessage = basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
     } else {
       setErrorMessage(message);
     }
@@ -315,15 +320,16 @@ class SimpleHttpClient {
   /// @brief fetch the version from the server
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getServerVersion(int* errorCode = nullptr);
+  std::string getServerVersion(ErrorCode* errorCode = nullptr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract an error message from a response
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHttpErrorMessage(SimpleHttpResult const*, int* errorCode = nullptr);
+  std::string getHttpErrorMessage(SimpleHttpResult const* result,
+                                  ErrorCode* errorCode = nullptr);
 
-  SimpleHttpClientParams& params() { return _params; };
+  SimpleHttpClientParams& params() { return _params; }
 
   /// @brief Thread-safe check abortion status
   bool isAborted() const noexcept {
@@ -499,4 +505,3 @@ class SimpleHttpClient {
 }  // namespace httpclient
 }  // namespace arangodb
 
-#endif

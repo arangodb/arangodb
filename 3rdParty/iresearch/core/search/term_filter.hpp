@@ -26,7 +26,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_term;
 struct filter_visitor;
@@ -55,10 +55,6 @@ struct IRESEARCH_API by_term_options {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_term : public filter_base<by_term_options> {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_term";
-  }
-
   DECLARE_FACTORY();
 
   static prepared::ptr prepare(
@@ -80,15 +76,15 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
       const index_reader& rdr,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_provider* /*ctx*/) const {
+      const attribute_provider* /*ctx*/) const override {
     return prepare(rdr, ord, boost*this->boost(),
                    field(), options().term);
   }
 }; // by_term
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::iresearch::by_term_options> {
@@ -97,6 +93,6 @@ struct hash<::iresearch::by_term_options> {
   }
 };
 
-NS_END
+}
 
 #endif // IRESEARCH_TERM_FILTER_H

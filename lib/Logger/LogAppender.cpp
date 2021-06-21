@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,10 +28,10 @@
 #include "LogAppender.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/operating-system.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderSyslog.h"
 #include "Logger/LogGroup.h"
@@ -43,7 +43,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-arangodb::Mutex LogAppender::_appendersLock;
+arangodb::basics::ReadWriteLock LogAppender::_appendersLock;
 
 std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count> LogAppender::_globalAppenders;
 
@@ -55,7 +55,7 @@ bool LogAppender::_allowStdLogging = true;
 
 void LogAppender::addGlobalAppender(LogGroup const& group,
                                     std::shared_ptr<LogAppender> appender) {
-  MUTEX_LOCKER(guard, _appendersLock);
+  WRITE_LOCKER(guard, _appendersLock);
   _globalAppenders[group.id()].emplace_back(std::move(appender));
 }
 
@@ -82,7 +82,7 @@ void LogAppender::addAppender(LogGroup const& group, std::string const& definiti
 
   auto& definitionsMap = _definition2appenders[group.id()];
 
-  MUTEX_LOCKER(guard, _appendersLock);
+  WRITE_LOCKER(guard, _appendersLock);
 
   auto it = definitionsMap.find(key);
 
@@ -152,7 +152,7 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(LogGroup const& group,
 }
 
 void LogAppender::logGlobal(LogGroup const& group, LogMessage const& message) {
-  MUTEX_LOCKER(guard, _appendersLock);
+  WRITE_LOCKER(guard, _appendersLock);
 
   auto& appenders = _globalAppenders[group.id()];
 
@@ -187,7 +187,7 @@ void LogAppender::log(LogGroup const& group, LogMessage const& message) {
   // try to find a topic-specific appender
   size_t topicId = message._topicId;
   
-  MUTEX_LOCKER(guard, _appendersLock);
+  WRITE_LOCKER(guard, _appendersLock);
  
   if (topicId < LogTopic::MAX_LOG_TOPICS) {
     shown = output(group, message, topicId);
@@ -200,7 +200,7 @@ void LogAppender::log(LogGroup const& group, LogMessage const& message) {
 }
 
 void LogAppender::shutdown() {
-  MUTEX_LOCKER(guard, _appendersLock);
+  WRITE_LOCKER(guard, _appendersLock);
 
 #ifdef ARANGODB_ENABLE_SYSLOG
   LogAppenderSyslog::close();
@@ -215,7 +215,7 @@ void LogAppender::shutdown() {
 }
 
 void LogAppender::reopen() {
-  MUTEX_LOCKER(guard, _appendersLock);
+  WRITE_LOCKER(guard, _appendersLock);
 
   LogAppenderFile::reopenAll();
 }
@@ -276,7 +276,14 @@ Result LogAppender::parseDefinition(std::string const& definition,
 }
 
 bool LogAppender::haveAppenders(LogGroup const& group, size_t topicId) {
-  return !_topics2appenders[group.id()][topicId].empty() ||
-         !_topics2appenders[group.id()][LogTopic::MAX_LOG_TOPICS].empty() ||
+  // It might be preferable if we could avoid the lock here, but ATM this is not possible.
+  // If this actually causes performance issues we have to think about other solutions.
+  READ_LOCKER(guard, _appendersLock);
+  auto const& appenders = _topics2appenders[group.id()];
+  auto haveTopicAppenders = [&appenders](size_t topicId) {
+    auto it = appenders.find(topicId);
+    return it != appenders.end() && !it->second.empty();
+  };
+  return haveTopicAppenders(topicId) || haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
          !_globalAppenders[group.id()].empty();
 }

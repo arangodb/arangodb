@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_SERVER_TTL_FEATURE_H
-#define ARANGOD_REST_SERVER_TTL_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
@@ -60,7 +59,6 @@ struct TtlProperties {
   uint64_t frequency = 30 * 1000; // milliseconds
   uint64_t maxTotalRemoves = 1000000;
   uint64_t maxCollectionRemoves = 1000000;
-  bool onlyLoadedCollections = true;
   
   void toVelocyPack(arangodb::velocypack::Builder& out, bool isActive) const;
   Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
@@ -131,4 +129,3 @@ class TtlFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

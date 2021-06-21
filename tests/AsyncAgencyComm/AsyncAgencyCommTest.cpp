@@ -44,7 +44,6 @@
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -91,7 +90,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
 
       response = std::make_unique<fuerte::Response>(std::move(header));
       response->setPayload(std::move(body), 0);
-    };
+    }
 
     void returnError(fuerte::Error err) {
       error = err;
@@ -175,17 +174,17 @@ struct AsyncAgencyCommTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS, arangodb::LogLevel::FATAL> {
   AsyncAgencyCommTest() : server(false) {
-    server.addFeature<SchedulerFeature>(true);
+      server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
   }
 
   network::ConnectionPool::Config config() {
-    network::ConnectionPool::Config config;
+    network::ConnectionPool::Config config(server.getFeature<MetricsFeature>());
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
-    config.minOpenConnections = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "AsyncAgencyCommTest";
     return config;
   }
 
@@ -486,6 +485,41 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_timeout_not_found
   pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post,
                      "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
       .returnError(fuerte::Error::RequestTimeout);
+  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post,
+                     "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
+      .returnResponse(fuerte::StatusNotFound, R"=({"error": 404, "results": [0]})="_vpack);
+  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post,
+                     "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
+      .returnResponse(fuerte::StatusOK, R"=({"results": [15]})="_vpack);
+
+  AsyncAgencyCommManager manager(server.server());
+  manager.pool(&pool);
+  manager.updateEndpoints({
+      "http+tcp://10.0.0.1:8529",
+      "http+tcp://10.0.0.2:8529",
+      "http+tcp://10.0.0.3:8529",
+  });
+
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
+                    .get();
+  ASSERT_EQ(result.error, fuerte::Error::NoError);
+  ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
+  ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
+
+  compareEndpoints(manager.endpoints(),
+                   {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529",
+                    "http+tcp://10.0.0.2:8529"});
+}
+
+TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_service_unavailable) {
+  AsyncAgencyCommPoolMock pool(config());
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post,
+                     "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
+      .returnError(fuerte::Error::RequestTimeout);
+  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post,
+                     "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
+    .returnResponse(fuerte::StatusServiceUnavailable,  R"=({"error": 503})="_vpack);
   pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post,
                      "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
       .returnResponse(fuerte::StatusNotFound, R"=({"error": 404, "results": [0]})="_vpack);

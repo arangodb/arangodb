@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
     ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
   RegisterId const keyReg = _infos._input2RegisterId;
-  bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
+  bool const hasKeyVariable = keyReg.isValid();
 
   // The document to be REPLACE/UPDATEd
   AqlValue const& inDoc = row.getValue(inDocReg);

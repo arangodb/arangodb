@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,8 +49,10 @@ BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, TraverserOp
       _schreierIndex(0),
       _lastReturned(0),
       _currentDepth(0),
-      _toSearchPos(0) {
-  _schreier.reserve(32);
+      _toSearchPos(0) {}
+
+BreadthFirstEnumerator::~BreadthFirstEnumerator() {
+  _opts->resourceMonitor().decreaseMemoryUsage(_schreier.capacity() * pathStepSize());
 }
 
 void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
@@ -64,6 +66,7 @@ void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef star
   _currentDepth = 0;
   _toSearchPos = 0;
 
+  growStorage();
   _schreier.emplace_back(startVertex);
   _toSearch.emplace_back(NextStep(0));
 }
@@ -78,29 +81,47 @@ bool BreadthFirstEnumerator::next() {
     }
     // We have faked the 0 position in schreier for pruning
     _schreierIndex++;
+
     if (_opts->minDepth == 0) {
-      return true;
+      if (_opts->usesPostFilter()) {
+        auto evaluator = _opts->getPostFilterEvaluator();
+        if (usePostFilter(evaluator)) {
+          return true;
+        }
+      } else {
+        return true;
+      }
     }
   }
-  _lastReturned++;
-
-  if (_lastReturned < _schreierIndex) {
-    // We still have something on our stack.
-    // Paths have been read but not returned.
-    return true;
-  }
-
   if (_opts->maxDepth == 0) {
     // Short circuit.
     // We cannot find any path of length 0 or less
     return false;
   }
+  _lastReturned++;
+
   // Avoid large call stacks.
   // Loop will be left if we are either finished
   // with searching.
   // Or we found vertices in the next depth for
   // a vertex.
   while (true) {
+    while (_lastReturned < _schreierIndex) {
+      // We still have something on our stack.
+      // Paths have been read but not returned.
+
+      if (_opts->usesPostFilter()) {
+        auto evaluator = _opts->getPostFilterEvaluator();
+        if (!usePostFilter(evaluator)) {
+          // Skip this path, the Filter does not allow it.
+          _lastReturned++;
+          continue;
+        }
+      }
+      // If we get here we now have a valid path to be returned
+      return true;
+    }
+
     if (_toSearchPos >= _toSearch.size()) {
       // This depth is done. GoTo next
       if (!prepareSearchOnNextDepth()) {
@@ -116,11 +137,9 @@ bool BreadthFirstEnumerator::next() {
     auto const nextVertex = _schreier[nextIdx].vertex;
 
     EdgeCursor* cursor = getCursor(nextVertex, _currentDepth);
-    bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
-    bool didInsert = false;
 
-    cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e,
-                         size_t cursorIdx) -> void {
+    TRI_ASSERT(cursor != nullptr);
+    cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e, size_t cursorIdx) -> void {
       if (!keepEdge(eid, e, nextVertex, _currentDepth, cursorIdx)) {
         return;
       }
@@ -142,6 +161,8 @@ bool BreadthFirstEnumerator::next() {
           }
         }
 
+        growStorage();
+        TRI_ASSERT(_schreier.capacity() > _schreier.size());
         _schreier.emplace_back(nextIdx, std::move(eid), vId);
         if (_currentDepth < _opts->maxDepth - 1) {
           // Prune here
@@ -150,29 +171,21 @@ bool BreadthFirstEnumerator::next() {
           }
         }
         _schreierIndex++;
-        didInsert = true;
       }
     });
-    
+
     incHttpRequests(cursor->httpRequests());
 
-    if (!shouldReturnPath) {
-      _lastReturned = _schreierIndex;
-      didInsert = false;
-    }
-    if (didInsert) {
-      // We exit the loop here.
-      // _schreierIndex is moved forward
-      break;
-    }
-    // Nothing found for this vertex.
-    // _toSearchPos is increased so
-    // we are not stuck in an endless loop
-  }
+    _opts->isQueryKilledCallback();
+    // If we found a valid path, the schreier index was moved forward
+    // Otherwise the searchPosition was moved forward.
 
-  // _lastReturned points to the last used
-  // entry. We compute the path to it.
-  return true;
+    if (_currentDepth + 1 < _opts->minDepth) {
+      // The depth we are working on is not supposed to be returned.
+      // Move it fast-forward
+      _lastReturned = _schreierIndex;
+    }
+  }
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
@@ -201,7 +214,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
   return _opts->cache()->fetchEdgeAqlResult(_schreier[index].edge);
 }
 
-VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index) {
+VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index, bool fromPrune) {
   _tempPathHelper.clear();
   while (index != 0) {
     // Walk backwards through the path and push everything found on the local
@@ -212,18 +225,22 @@ VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size
 
   result.clear();
   result.openObject();
-  result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
-  for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
-    _opts->cache()->insertEdgeIntoResult(_schreier[*it].edge, result);
+  if (fromPrune || _opts->producePathsEdges()) {
+    result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
+    for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
+      _opts->cache()->insertEdgeIntoResult(_schreier[*it].edge, result);
+    }
+    result.close();  // edges
   }
-  result.close();  // edges
-  result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
-  // Always add the start vertex
-  _traverser->addVertexToVelocyPack(_schreier[0].vertex, result);
-  for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
-    _traverser->addVertexToVelocyPack(_schreier[*it].vertex, result);
+  if (fromPrune || _opts->producePathsVertices()) {
+    result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
+    // Always add the start vertex
+    _traverser->addVertexToVelocyPack(_schreier[0].vertex, result);
+    for (auto it = _tempPathHelper.rbegin(); it != _tempPathHelper.rend(); ++it) {
+      _traverser->addVertexToVelocyPack(_schreier[*it].vertex, result);
+    }
+    result.close();  // vertices
   }
-  result.close();  // vertices
   result.close();
   TRI_ASSERT(result.isClosed());
   return result.slice();
@@ -231,7 +248,7 @@ VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::pathToIndexToAqlValue(
     arangodb::velocypack::Builder& result, size_t index) {
-  return arangodb::aql::AqlValue(pathToIndexToSlice(result, index));
+  return arangodb::aql::AqlValue(pathToIndexToSlice(result, index, false));
 }
 
 bool BreadthFirstEnumerator::pathContainsVertex(size_t index,
@@ -290,13 +307,13 @@ bool BreadthFirstEnumerator::shouldPrune() {
   if (!_opts->usesPrune()) {
     return false;
   }
-  
+
   transaction::BuilderLeaser pathBuilder(_opts->trx());
 
   // evaluator->evaluate() might access these, so they have to live long enough.
   aql::AqlValue vertex, edge;
   aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
-  
+
   auto* evaluator = _opts->getPruneEvaluator();
   TRI_ASSERT(evaluator != nullptr);
 
@@ -315,8 +332,35 @@ bool BreadthFirstEnumerator::shouldPrune() {
     evaluator->injectEdge(edge.slice());
   }
   if (evaluator->needsPath()) {
-    VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex);
+    VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex, true);
     evaluator->injectPath(path);
   }
   return evaluator->evaluate();
+}
+
+void BreadthFirstEnumerator::growStorage() {
+  size_t capacity;
+  if (_schreier.empty()) {
+    // minimal reserve size
+    capacity = 8;
+  } else {
+    capacity = _schreier.size() + 1;
+    if (capacity > _schreier.capacity()) {
+      capacity *= 2;
+    }
+  }
+
+  TRI_ASSERT(capacity > _schreier.size());
+  if (capacity > _schreier.capacity()) {
+    arangodb::ResourceUsageScope guard(_opts->resourceMonitor(), (capacity - _schreier.capacity()) * pathStepSize());
+
+    _schreier.reserve(capacity);
+
+    // now we are responsible for tracking the memory
+    guard.steal();
+  }
+}
+
+constexpr size_t BreadthFirstEnumerator::pathStepSize() const noexcept {
+  return sizeof(void*) + sizeof(PathStep) + 2 * sizeof(NextStep);
 }

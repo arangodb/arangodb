@@ -96,7 +96,7 @@ function EdgeIndexCacheSuite () {
       assertEqual(1, result.length);
       assertEqual([ null ], result);
 
-      edge.truncate();
+      edge.truncate({ compact: false });
       assertEqual(0, vertex.count());
       assertEqual(0, edge.count());
       
@@ -125,7 +125,7 @@ function EdgeIndexCacheSuite () {
       // execute once more so result is going to be served from cache
       assertEqual(1, db._query(q).toArray().length);
 
-      edge.truncate();
+      edge.truncate({ compact: false });
       assertEqual(2, vertex.count());
       assertEqual(0, edge.count());
       
@@ -152,7 +152,7 @@ function EdgeIndexCacheSuite () {
       // execute once more so result is going to be served from cache
       assertEqual(2, db._query(q).toArray().length);
 
-      edge.truncate();
+      edge.truncate({ compact: false });
       assertEqual(3, vertex.count());
       assertEqual(0, edge.count());
       
@@ -182,7 +182,7 @@ function EdgeIndexCacheSuite () {
       // execute once more so result is going to be served from cache
       assertEqual(99, db._query(q).toArray().length);
 
-      edge.truncate();
+      edge.truncate({ compact: false });
       assertEqual(100, vertex.count());
       assertEqual(0, edge.count());
       

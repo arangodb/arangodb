@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORT_CONDITION_H
-#define ARANGOD_AQL_SORT_CONDITION_H 1
+#pragma once
 
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
@@ -128,4 +127,3 @@ class SortCondition {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

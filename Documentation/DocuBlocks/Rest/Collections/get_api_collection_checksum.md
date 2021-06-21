@@ -49,8 +49,6 @@ The response is a JSON object with the following attributes:
 
 - *revision*: The collection revision id as a string.
 
-**Note**: this method is not available in a cluster.
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}

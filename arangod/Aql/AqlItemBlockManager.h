@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
-#define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
+#pragma once
 
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/types.h"
@@ -33,6 +32,7 @@
 #include <mutex>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace velocypack {
 class Slice;
@@ -42,14 +42,13 @@ namespace aql {
 
 class AqlItemBlock;
 class SharedAqlItemBlockPtr;
-struct ResourceMonitor;
 
 class AqlItemBlockManager {
   friend class SharedAqlItemBlockPtr;
 
  public:
   /// @brief create the manager
-  explicit AqlItemBlockManager(ResourceMonitor*, SerializationFormat format);
+  explicit AqlItemBlockManager(arangodb::ResourceMonitor&, SerializationFormat format);
 
   /// @brief destroy the manager
   TEST_VIRTUAL ~AqlItemBlockManager();
@@ -61,9 +60,15 @@ class AqlItemBlockManager {
   /// @brief request a block and initialize it from the slice
   TEST_VIRTUAL SharedAqlItemBlockPtr requestAndInitBlock(velocypack::Slice slice);
 
-  TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept;
+  TEST_VIRTUAL arangodb::ResourceMonitor& resourceMonitor() const noexcept;
 
   SerializationFormat getFormatType() const { return _format; }
+
+  void initializeConstValueBlock(RegisterCount nrRegs);
+
+  AqlItemBlock* getConstValueBlock() {
+    return _constValueBlock;
+  }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Only used for the mocks in the catch tests. Other code should always use
@@ -84,7 +89,7 @@ class AqlItemBlockManager {
   TEST_VIRTUAL void returnBlock(AqlItemBlock*& block) noexcept;
 
  private:
-  ResourceMonitor* _resourceMonitor;
+  arangodb::ResourceMonitor& _resourceMonitor;
   SerializationFormat const _format;
 
   static constexpr uint32_t numBuckets = 12;
@@ -110,9 +115,12 @@ class AqlItemBlockManager {
   };
 
   Bucket _buckets[numBuckets];
+
+  /// @brief the AqlItemBlock used to store the values of const variables
+  // Note: we are using a raw pointer here, because the AqlItemBlock destructor is protected.
+  AqlItemBlock* _constValueBlock = nullptr;
 };
 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

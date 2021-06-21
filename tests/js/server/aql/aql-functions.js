@@ -885,7 +885,6 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceNthCxx : function () {
-
       var testArray = [
         null,
         true,
@@ -936,6 +935,43 @@ function ahuacatlFunctionsTestSuite () {
                                       );
           assertEqual(actual[0][actualReplaceIndex], testArray[replaceValue], msg);
         }
+      }
+    },
+
+    testReplaceNthIssue13632 : function () {
+      if (require("internal").isCluster()) {
+        return;
+      }
+
+      const cn = "UnitTestsCollection";
+      db._drop(cn);
+      db._create(cn);
+      try {
+        let query = `
+  LET values = [["t1", 0, 0], ["t1", 1, 0]]
+  FOR value_set IN values
+    LET t = value_set[0]
+    LET index = value_set[1]
+    LET value = value_set[2]
+    UPSERT {}
+    INSERT {v: {[t]: []}}
+    UPDATE { 
+      'v' : {[t]: REPLACE_NTH(OLD.v[t], index, value, value)}
+    } IN ${cn}
+    RETURN [OLD, NEW]`;
+        let actual = getQueryResults(query);
+        assertEqual(2, actual.length);
+
+        let OLD, NEW;
+        [OLD, NEW] = actual[0];
+        assertNull(OLD);
+        assertEqual({ t1: [] }, NEW.v);
+
+        [OLD, NEW] = actual[1];
+        assertEqual({ t1: [] }, OLD.v);
+        assertEqual({ t1: [0, 0] }, NEW.v);
+      } finally {
+        db._drop(cn);
       }
     },
 

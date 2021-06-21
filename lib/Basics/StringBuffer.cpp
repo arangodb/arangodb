@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,7 @@ static inline size_t Remaining(TRI_string_buffer_t* self) {
 }
 
 /// @brief reserve space
-static int Reserve(TRI_string_buffer_t* self, size_t size) {
+static ErrorCode Reserve(TRI_string_buffer_t* self, size_t size) {
   if (size > Remaining(self)) {
     ptrdiff_t off = self->_current - self->_buffer;
     size_t len = static_cast<size_t>(1.3 * (self->_len + size));
@@ -68,9 +68,9 @@ static int Reserve(TRI_string_buffer_t* self, size_t size) {
 }
 
 /// @brief append a string to a string buffer
-static int AppendString(TRI_string_buffer_t* self, char const* str, size_t const len) {
+static ErrorCode AppendString(TRI_string_buffer_t* self, char const* str, size_t const len) {
   if (0 < len) {
-    int res = Reserve(self, len);
+    auto res = Reserve(self, len);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -168,7 +168,7 @@ void TRI_FreeStringBuffer(TRI_string_buffer_t* self) {
 }
 
 /// @brief compress the string buffer using deflate
-int TRI_DeflateStringBuffer(TRI_string_buffer_t* self, size_t bufferSize) {
+ErrorCode TRI_DeflateStringBuffer(TRI_string_buffer_t* self, size_t bufferSize) {
   TRI_string_buffer_t deflated;
   char const* ptr;
   char const* end;
@@ -251,7 +251,7 @@ int TRI_DeflateStringBuffer(TRI_string_buffer_t* self, size_t bufferSize) {
 }
 
 /// @brief ensure the string buffer has a specific capacity
-int TRI_ReserveStringBuffer(TRI_string_buffer_t* self, size_t const length) {
+ErrorCode TRI_ReserveStringBuffer(TRI_string_buffer_t* self, size_t const length) {
   if (length > 0) {
     return Reserve(self, length);
   }
@@ -348,7 +348,7 @@ char* TRI_StealStringBuffer(TRI_string_buffer_t* self) {
 }
 
 /// @brief copies the string buffer
-int TRI_CopyStringBuffer(TRI_string_buffer_t* self, TRI_string_buffer_t const* source) {
+ErrorCode TRI_CopyStringBuffer(TRI_string_buffer_t* self, TRI_string_buffer_t const* source) {
   return TRI_ReplaceStringStringBuffer(self, source->_buffer,
                                        (size_t)(source->_current - source->_buffer));
 }
@@ -366,30 +366,17 @@ void TRI_EraseFrontStringBuffer(TRI_string_buffer_t* self, size_t len) {
   }
 }
 
-/// @brief removes the first characters but does not clear the remaining
-/// buffer space
-void TRI_MoveFrontStringBuffer(TRI_string_buffer_t* self, size_t len) {
-  size_t off = (size_t)(self->_current - self->_buffer);
-
-  if (off <= len) {
-    TRI_ResetStringBuffer(self);
-  } else if (0 < len) {
-    memmove(self->_buffer, self->_buffer + len, off - len);
-    self->_current -= len;
-    *self->_current = '\0';
-  }
-}
-
 /// @brief replaces characters
-int TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self, char const* str, size_t len) {
+ErrorCode TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self,
+                                        char const* str, size_t len) {
   self->_current = self->_buffer;
 
   return TRI_AppendString2StringBuffer(self, str, len);
 }
 
 /// @brief appends character
-int TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr) {
-  int res = Reserve(self, 1);
+ErrorCode TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr) {
+  auto res = Reserve(self, 1);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -400,17 +387,18 @@ int TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr) {
 }
 
 /// @brief appends characters
-int TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str) {
+ErrorCode TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str) {
   return AppendString(self, str, strlen(str));
 }
 
 /// @brief appends characters
-int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str, size_t len) {
+ErrorCode TRI_AppendString2StringBuffer(TRI_string_buffer_t* self,
+                                        char const* str, size_t len) {
   return AppendString(self, str, len);
 }
 
-int AppendJsonEncoded(TRI_string_buffer_t* self, char const* src, size_t length,
-                      bool escapeForwardSlashes) {
+ErrorCode AppendJsonEncoded(TRI_string_buffer_t* self, char const* src,
+                            size_t length, bool escapeForwardSlashes) {
   static char const EscapeTable[256] = {
       // 0    1    2    3    4    5    6    7    8    9    A    B    C    D    E
       // F
@@ -445,7 +433,7 @@ int AppendJsonEncoded(TRI_string_buffer_t* self, char const* src, size_t length,
       0,    0,   0,   0};
 
   // reserve enough room for the whole string at once
-  int res = Reserve(self, 6 * length + 2);
+  auto res = Reserve(self, 6 * length + 2);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -518,59 +506,15 @@ int AppendJsonEncoded(TRI_string_buffer_t* self, char const* src, size_t length,
 }
 
 /// @brief appends characters but json-encode the string
-int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self, char const* src,
-                                            size_t length, bool escapeSlash) {
+ErrorCode TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
+                                                  char const* src, size_t length,
+                                                  bool escapeSlash) {
   return AppendJsonEncoded(self, src, length, escapeSlash);
 }
 
-/// @brief appends integer with two digits
-int TRI_AppendInteger2StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
-  int res = Reserve(self, 2);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  AppendChar(self, (attr / 10U) % 10 + '0');
-  AppendChar(self, attr % 10 + '0');
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief appends integer with three digits
-int TRI_AppendInteger3StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
-  int res = Reserve(self, 3);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  AppendChar(self, (attr / 100U) % 10 + '0');
-  AppendChar(self, (attr / 10U) % 10 + '0');
-  AppendChar(self, attr % 10 + '0');
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief appends integer with four digits
-int TRI_AppendInteger4StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
-  int res = Reserve(self, 4);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  AppendChar(self, (attr / 1000U) % 10 + '0');
-  AppendChar(self, (attr / 100U) % 10 + '0');
-  AppendChar(self, (attr / 10U) % 10 + '0');
-  AppendChar(self, attr % 10 + '0');
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief appends integer with 8 bits
-int TRI_AppendInt8StringBuffer(TRI_string_buffer_t* self, int8_t attr) {
-  int res = Reserve(self, 4);
+ErrorCode TRI_AppendInt8StringBuffer(TRI_string_buffer_t* self, int8_t attr) {
+  auto res = Reserve(self, 4);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -583,8 +527,8 @@ int TRI_AppendInt8StringBuffer(TRI_string_buffer_t* self, int8_t attr) {
 }
 
 /// @brief appends unsigned integer with 8 bits
-int TRI_AppendUInt8StringBuffer(TRI_string_buffer_t* self, uint8_t attr) {
-  int res = Reserve(self, 3);
+ErrorCode TRI_AppendUInt8StringBuffer(TRI_string_buffer_t* self, uint8_t attr) {
+  auto res = Reserve(self, 3);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -597,8 +541,8 @@ int TRI_AppendUInt8StringBuffer(TRI_string_buffer_t* self, uint8_t attr) {
 }
 
 /// @brief appends integer with 16 bits
-int TRI_AppendInt16StringBuffer(TRI_string_buffer_t* self, int16_t attr) {
-  int res = Reserve(self, 6);
+ErrorCode TRI_AppendInt16StringBuffer(TRI_string_buffer_t* self, int16_t attr) {
+  auto res = Reserve(self, 6);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -611,8 +555,8 @@ int TRI_AppendInt16StringBuffer(TRI_string_buffer_t* self, int16_t attr) {
 }
 
 /// @brief appends unsigned integer with 32 bits
-int TRI_AppendUInt16StringBuffer(TRI_string_buffer_t* self, uint16_t attr) {
-  int res = Reserve(self, 5);
+ErrorCode TRI_AppendUInt16StringBuffer(TRI_string_buffer_t* self, uint16_t attr) {
+  auto res = Reserve(self, 5);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -625,8 +569,8 @@ int TRI_AppendUInt16StringBuffer(TRI_string_buffer_t* self, uint16_t attr) {
 }
 
 /// @brief appends integer with 32 bits
-int TRI_AppendInt32StringBuffer(TRI_string_buffer_t* self, int32_t attr) {
-  int res = Reserve(self, 11);
+ErrorCode TRI_AppendInt32StringBuffer(TRI_string_buffer_t* self, int32_t attr) {
+  auto res = Reserve(self, 11);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -639,8 +583,8 @@ int TRI_AppendInt32StringBuffer(TRI_string_buffer_t* self, int32_t attr) {
 }
 
 /// @brief appends unsigned integer with 32 bits
-int TRI_AppendUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
-  int res = Reserve(self, 10);
+ErrorCode TRI_AppendUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
+  auto res = Reserve(self, 10);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -653,8 +597,8 @@ int TRI_AppendUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
 }
 
 /// @brief appends integer with 64 bits
-int TRI_AppendInt64StringBuffer(TRI_string_buffer_t* self, int64_t attr) {
-  int res = Reserve(self, 20);
+ErrorCode TRI_AppendInt64StringBuffer(TRI_string_buffer_t* self, int64_t attr) {
+  auto res = Reserve(self, 20);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -667,8 +611,8 @@ int TRI_AppendInt64StringBuffer(TRI_string_buffer_t* self, int64_t attr) {
 }
 
 /// @brief appends unsigned integer with 64 bits
-int TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
-  int res = Reserve(self, 21);
+ErrorCode TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
+  auto res = Reserve(self, 21);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -681,8 +625,8 @@ int TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
 }
 
 /// @brief appends unsigned integer with 32 bits in hex
-int TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
-  int res = Reserve(self, 5);
+ErrorCode TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
+  auto res = Reserve(self, 5);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -695,8 +639,8 @@ int TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
 }
 
 /// @brief appends unsigned integer with 64 bits in hex
-int TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
-  int res = Reserve(self, 9);
+ErrorCode TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
+  auto res = Reserve(self, 9);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -709,7 +653,7 @@ int TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
 }
 
 /// @brief appends floating point number
-int TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr) {
+ErrorCode TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr) {
   if (std::isnan(attr)) {
     return TRI_AppendStringStringBuffer(self, "NaN");
   }
@@ -721,7 +665,7 @@ int TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr) {
     return TRI_AppendStringStringBuffer(self, "-inf");
   }
 
-  int res = Reserve(self, 24);
+  auto res = Reserve(self, 24);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -733,37 +677,9 @@ int TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr) {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief appends time in standard format
-int TRI_AppendTimeStringBuffer(TRI_string_buffer_t* self, int32_t attr) {
-  int hour;
-  int minute;
-  int second;
-  int res;
-
-  hour = attr / 3600;
-  minute = (attr / 60) % 60;
-  second = attr % 60;
-
-  res = Reserve(self, 9);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  TRI_AppendInteger2StringBuffer(self, (uint32_t)hour);
-  AppendChar(self, ':');
-  TRI_AppendInteger2StringBuffer(self, (uint32_t)minute);
-  AppendChar(self, ':');
-  TRI_AppendInteger2StringBuffer(self, (uint32_t)second);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief appends csv 32-bit integer
-int TRI_AppendCsvInt32StringBuffer(TRI_string_buffer_t* self, int32_t i) {
-  int res;
-
-  res = TRI_AppendInt32StringBuffer(self, i);
+ErrorCode TRI_AppendCsvInt32StringBuffer(TRI_string_buffer_t* self, int32_t i) {
+  auto res = TRI_AppendInt32StringBuffer(self, i);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -780,10 +696,8 @@ int TRI_AppendCsvInt32StringBuffer(TRI_string_buffer_t* self, int32_t i) {
 }
 
 /// @brief appends csv unisgned 32-bit integer
-int TRI_AppendCsvUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t i) {
-  int res;
-
-  res = TRI_AppendUInt32StringBuffer(self, i);
+ErrorCode TRI_AppendCsvUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t i) {
+  auto res = TRI_AppendUInt32StringBuffer(self, i);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -800,10 +714,8 @@ int TRI_AppendCsvUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t i) {
 }
 
 /// @brief appends csv 64-bit integer
-int TRI_AppendCsvInt64StringBuffer(TRI_string_buffer_t* self, int64_t i) {
-  int res;
-
-  res = TRI_AppendInt64StringBuffer(self, i);
+ErrorCode TRI_AppendCsvInt64StringBuffer(TRI_string_buffer_t* self, int64_t i) {
+  auto res = TRI_AppendInt64StringBuffer(self, i);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -820,10 +732,8 @@ int TRI_AppendCsvInt64StringBuffer(TRI_string_buffer_t* self, int64_t i) {
 }
 
 /// @brief appends csv unsigned 64-bit integer
-int TRI_AppendCsvUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t i) {
-  int res;
-
-  res = TRI_AppendUInt64StringBuffer(self, i);
+ErrorCode TRI_AppendCsvUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t i) {
+  auto res = TRI_AppendUInt64StringBuffer(self, i);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -840,10 +750,8 @@ int TRI_AppendCsvUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t i) {
 }
 
 /// @brief appends csv double
-int TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d) {
-  int res;
-
-  res = TRI_AppendDoubleStringBuffer(self, d);
+ErrorCode TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d) {
+  auto res = TRI_AppendDoubleStringBuffer(self, d);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -864,11 +772,9 @@ std::ostream& operator<<(std::ostream& stream, arangodb::basics::StringBuffer co
   return stream;
 }
 
-
 /// @brief uncompress the buffer into stringstream out, using zlib-inflate
-int arangodb::basics::StringBuffer::inflate(std::stringstream& out,
-                                            size_t bufferSize,
-                                            size_t skip) {
+ErrorCode arangodb::basics::StringBuffer::inflate(std::stringstream& out,
+                                                  size_t bufferSize, size_t skip) {
   z_stream strm;
 
   strm.zalloc = Z_NULL;
@@ -911,11 +817,12 @@ int arangodb::basics::StringBuffer::inflate(std::stringstream& out,
       TRI_ASSERT(res != Z_STREAM_ERROR);
 
       switch (res) {
-      case Z_NEED_DICT:
-      case Z_DATA_ERROR:
-      case Z_MEM_ERROR: {
-        return TRI_ERROR_INTERNAL;
-      }
+        case Z_NEED_DICT:
+        case Z_DATA_ERROR:
+        case Z_MEM_ERROR: {
+          return TRI_ERROR_INTERNAL;
+        }
+        default:;
       }
 
       out.write(buffer.get(), bufferSize - strm.avail_out);
@@ -930,9 +837,8 @@ int arangodb::basics::StringBuffer::inflate(std::stringstream& out,
 }
 
 /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
-int arangodb::basics::StringBuffer::inflate(arangodb::basics::StringBuffer& out,
-                                            size_t bufferSize,
-                                            size_t skip) {
+ErrorCode arangodb::basics::StringBuffer::inflate(arangodb::basics::StringBuffer& out,
+                                                  size_t bufferSize, size_t skip) {
   z_stream strm;
 
   strm.zalloc = Z_NULL;
@@ -989,11 +895,12 @@ int arangodb::basics::StringBuffer::inflate(arangodb::basics::StringBuffer& out,
       TRI_ASSERT(res != Z_STREAM_ERROR);
 
       switch (res) {
-      case Z_NEED_DICT:
-      case Z_DATA_ERROR:
-      case Z_MEM_ERROR: {
-        return TRI_ERROR_INTERNAL;
-      }
+        case Z_NEED_DICT:
+        case Z_DATA_ERROR:
+        case Z_MEM_ERROR: {
+          return TRI_ERROR_INTERNAL;
+        }
+        default:;
       }
 
       out.appendText(buffer.get(), bufferSize - strm.avail_out);

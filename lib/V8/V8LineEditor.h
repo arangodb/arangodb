@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8LINE_EDITOR_H
-#define ARANGODB_V8_V8LINE_EDITOR_H 1
+#pragma once
 
 #include <atomic>
 #include <string>
@@ -86,4 +85,3 @@ class V8LineEditor : public LineEditor {
 };
 }  // namespace arangodb
 
-#endif

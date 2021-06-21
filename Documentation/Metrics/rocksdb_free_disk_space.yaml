@@ -1,0 +1,17 @@
+name: rocksdb_free_disk_space
+introducedIn: "3.8.0"
+help: |
+  Free disk space in bytes on volume used by RocksDB
+unit: bytes
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric shows the currently free disk space in bytes on the volume
+  which is used by RocksDB. Since RocksDB does not like out of disk
+  space scenarios, please make sure that there is enough free disk space
+  available at all times!  Note that this metric is only available/populated on some platforms.

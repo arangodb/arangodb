@@ -23,8 +23,7 @@
    SOFTWARE.
 */
 
-#ifndef LIB_BASICS_FASTHASH_H
-#define LIB_BASICS_FASTHASH_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -33,7 +32,7 @@ static constexpr uint64_t fasthash_m = 0x880355f21e6d1965ULL;
 
 // Compression function for Merkle-Damgard construction.
 // This function is generated using the framework provided.
-static inline uint64_t fasthash_mix(uint64_t h) {
+constexpr uint64_t fasthash_mix(uint64_t h) {
   h ^= h >> 23;
   h *= 0x2127599bf4325c37ULL;
   h ^= h >> 47;
@@ -41,7 +40,7 @@ static inline uint64_t fasthash_mix(uint64_t h) {
   return h;
 }
 
-static inline uint64_t fasthash64_uint64(uint64_t value, uint64_t seed) {
+constexpr uint64_t fasthash64_uint64(uint64_t value, uint64_t seed) {
   uint64_t h = seed ^ 4619197404915747624ULL;  // this is h = seed ^ (sizeof(uint64_t) *
                                                // m), but prevents VS warning C4307:
                                                // integral constant overflow
@@ -66,5 +65,3 @@ uint32_t fasthash32(const void* buf, size_t len, uint32_t seed);
  * @seed: the seed
  */
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed);
-
-#endif

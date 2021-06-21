@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef DESERIALIZER_TYPES_H
-#define DESERIALIZER_TYPES_H
+#pragma once
 #include <variant>
 
 namespace arangodb {
@@ -162,4 +161,3 @@ class result {
 template <typename T>
 using deserializer_result =
     arangodb::velocypack::deserializer::result<T, arangodb::velocypack::deserializer::error>;
-#endif  // DESERIALIZER_TYPES_H

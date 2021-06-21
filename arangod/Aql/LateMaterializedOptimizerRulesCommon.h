@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_LATE_MATERIALIZATION_OPTIMIZER_RULES_COMMON_H
-#define ARANGOD_AQL_LATE_MATERIALIZATION_OPTIMIZER_RULES_COMMON_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -43,18 +42,18 @@ namespace latematerialized {
 
 struct AstAndFieldData {
   // ast node
-  AstNode* parentNode;
-  size_t childNumber;
+  AstNode* parentNode{nullptr};
+  size_t childNumber{0};
 
   // index data
-  std::vector<arangodb::basics::AttributeName> const* field;
-  size_t fieldNumber;
+  std::vector<arangodb::basics::AttributeName> const* field{nullptr};
+  size_t fieldNumber{0};
 
   std::vector<std::string> postfix;
 };
 
 struct AstAndColumnFieldData : AstAndFieldData {
-  ptrdiff_t columnNumber;
+  ptrdiff_t columnNumber{0};
 };
 
 template<typename T>
@@ -88,4 +87,3 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_LATE_MATERIALIZATION_OPTIMIZER_RULES_COMMON_H

@@ -54,7 +54,7 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
   VPackBuilder body(buffer);
 
   // intentionally building this in non-alphabetic order, and name not first
-  //  {"name":"CreateCollection","collection":"a","database":"test","properties":{"journalSize":1111}}
+  //  {"name":"CreateCollection","collection":"a","database":"test","properties":{"waitForSync":true}}
   {
     VPackObjectBuilder b(&body);
     body.add("database", VPackValue("test"));
@@ -62,7 +62,7 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
     body.add(VPackValue("properties"));
     {
       VPackObjectBuilder bb(&body);
-      body.add("journalSize", VPackValue(1111));
+      body.add("waitForSync", VPackValue(true));
     }
     body.add("collection", VPackValue("a"));
   }
@@ -85,6 +85,6 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
   ASSERT_EQ(dummyHandler.getActionDesc().get("database"), "test");
 
   VPackObjectIterator it(dummyHandler.getActionProp().slice(), true);
-  ASSERT_EQ(it.key().copyString(), "journalSize");
-  ASSERT_EQ(it.value().getInt(), 1111);
+  ASSERT_EQ(it.key().copyString(), "waitForSync");
+  ASSERT_EQ(it.value().getBoolean(), true);
 }

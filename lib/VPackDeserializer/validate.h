@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef DESERIALIZE_VALIDATE_H
-#define DESERIALIZE_VALIDATE_H
+
+#pragma once
 #include "deserialize-with.h"
 #include "plan-executor.h"
 
@@ -143,4 +143,3 @@ struct executor::deserialize_plan_executor<validate<D, V>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // DESERIALIZE_VALIDATE_H

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +23,9 @@
 
 #include "RocksDBRestHandlers.h"
 
-#include "Aql/QueryRegistry.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "RestHandler/RestHandlerCreator.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBRestCollectionHandler.h"
-#include "RocksDBEngine/RocksDBRestExportHandler.h"
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBRestWalHandler.h"
 
@@ -37,11 +34,6 @@ using namespace arangodb;
 void RocksDBRestHandlers::registerResources(rest::RestHandlerFactory* handlerFactory) {
   handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::COLLECTION_PATH,
                                    RestHandlerCreator<RocksDBRestCollectionHandler>::createNoData);
-  auto queryRegistry = QueryRegistryFeature::registry();
-  handlerFactory->addPrefixHandler(
-      "/_api/export",
-      RestHandlerCreator<RocksDBRestExportHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
   handlerFactory->addPrefixHandler("/_api/replication",
                                    RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
   handlerFactory->addPrefixHandler("/_admin/wal",

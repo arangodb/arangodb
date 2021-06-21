@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,7 @@ void setCollator(std::string const& language, void* icuDataPtr) {
   }
 }
 
-  void setLocale(icu::Locale& locale) {
+void setLocale(icu::Locale& locale) {
   using arangodb::basics::Utf8Helper;
   std::string languageName;
 
@@ -85,14 +85,12 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-static LanguageFeature* Instance = nullptr;
-
 LanguageFeature::LanguageFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Language"),
       _locale(),
       _binaryPath(server.getBinaryPath()),
-      _icuDataPtr(nullptr) {
-  Instance = this;
+      _icuDataPtr(nullptr),
+      _forceLanguageCheck(true) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -103,12 +101,15 @@ LanguageFeature::~LanguageFeature() {
   }
 }
 
-LanguageFeature* LanguageFeature::instance() { return Instance; }
-
 void LanguageFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--default-language", "ISO-639 language code",
                      new StringParameter(&_language),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--default-language-check", "check if default language matches stored language",
+                     new BooleanParameter(&_forceLanguageCheck),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800);
 }
 
 void* LanguageFeature::prepareIcu(std::string const& binaryPath,
@@ -187,6 +188,16 @@ void LanguageFeature::prepare() {
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
+
+icu::Locale& LanguageFeature::getLocale() { return _locale; }
+
+std::string const& LanguageFeature::getDefaultLanguage() const {
+  return _language;
+}
+
+bool LanguageFeature::forceLanguageCheck() const {
+  return _forceLanguageCheck;
+}
 
 std::string LanguageFeature::getCollatorLanguage() const {
   using arangodb::basics::Utf8Helper;

@@ -4,7 +4,7 @@ project(libunwind C)
 include(ExternalProject)
 
 # set version and paths
-set(LIBUNWIND_VERSION "1.4")
+set(LIBUNWIND_VERSION "1.5")
 set(LIBUNWIND_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/v${LIBUNWIND_VERSION}")
 set(LIBUNWIND_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/v${LIBUNWIND_VERSION}")
 
@@ -42,7 +42,7 @@ if (LINUX)
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --disable-shared --enable-static --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --disable-zlibdebuginfo --disable-minidebuginfo --disable-cxx-exceptions
     BUILD_COMMAND
-      $(MAKE) 
+      $(MAKE)
     BUILD_IN_SOURCE
       1
     INSTALL_COMMAND

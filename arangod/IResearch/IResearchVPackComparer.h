@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H 1
+#pragma once
 
 #include "IResearchViewSort.h"
 #include "index/comparer.hpp"
@@ -65,4 +64,3 @@ class VPackComparer final : public irs::comparer {
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H

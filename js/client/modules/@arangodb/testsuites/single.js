@@ -34,8 +34,8 @@ const functionsDocumentation = {
 const optionsDocumentation = [
 ];
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'single_server': [],

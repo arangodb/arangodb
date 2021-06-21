@@ -38,10 +38,12 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery');
-      
+
+  let docs = [];
   for (var i = 0; i < 10000; ++i) {
-    c.insert({ _key: 'test' + i, value: i });
+    docs.push({ _key: 'test' + i, value: i });
   }
+  c.insert(docs);
 
   c.truncate({ waitForSync: true, intermediateCommitCount: 1000 });
   internal.debugTerminate('crashing server');

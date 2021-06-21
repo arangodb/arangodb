@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,14 +37,8 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-/// @brief controls if backtraces are printed with exceptions
-static bool WithBackTrace = false;
-
-/// @brief controls whether a backtrace is created for each exception
-void Exception::SetVerbose(bool verbose) { WithBackTrace = verbose; }
-
 /// @brief constructor, without format string
-Exception::Exception(int code, char const* file, int line)
+Exception::Exception(ErrorCode code, char const* file, int line)
     : _errorMessage(TRI_errno_string(code)), _file(file), _line(line), _code(code) {
   appendLocation();
 }
@@ -68,21 +62,21 @@ Exception::Exception(arangodb::Result&& result, char const* file, int line)
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, std::string const& errorMessage, char const* file, int line)
+Exception::Exception(ErrorCode code, std::string_view errorMessage, char const* file, int line)
     : _errorMessage(errorMessage), _file(file), _line(line), _code(code) {
   appendLocation();
 }
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, std::string&& errorMessage, char const* file, int line)
+Exception::Exception(ErrorCode code, std::string&& errorMessage, char const* file, int line)
     : _errorMessage(std::move(errorMessage)), _file(file), _line(line), _code(code) {
   appendLocation();
 }
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, char const* errorMessage, char const* file, int line)
+Exception::Exception(ErrorCode code, char const* errorMessage, char const* file, int line)
     : _errorMessage(errorMessage), _file(file), _line(line), _code(code) {
   appendLocation();
 }
@@ -91,7 +85,7 @@ Exception::Exception(int code, char const* errorMessage, char const* file, int l
 std::string const& Exception::message() const noexcept { return _errorMessage; }
 
 /// @brief returns the error code
-int Exception::code() const noexcept { return _code; }
+ErrorCode Exception::code() const noexcept { return _code; }
 
 /// @brief adds to the message
 void Exception::addToMessage(std::string const& more) { _errorMessage += more; }
@@ -109,24 +103,17 @@ void Exception::appendLocation() noexcept try {
     _errorMessage += std::string(" (exception location: ") + _file + ":" +
                      std::to_string(_line) + ")";
   }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-  if (WithBackTrace) {
-    _errorMessage += std::string("\n\n");
-    TRI_GetBacktrace(_errorMessage);
-    _errorMessage += std::string("\n\n");
-  }
-#endif
-#endif
 } catch (...) {
   // this function is called from the exception constructor, so it should
   // not itself throw another exception
 }
 
 /// @brief construct an error message from a template string
-std::string Exception::FillExceptionString(int code, ...) {
-  char const* format = TRI_errno_string(code);
+std::string Exception::FillExceptionString(ErrorCode code, ...) {
+  // Note that we rely upon the string being null-terminated.
+  // The string_view doesn't guarantee that, but we know that all error messages
+  // are null-terminated.
+  char const* format = TRI_errno_string(code).data();
   TRI_ASSERT(format != nullptr);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

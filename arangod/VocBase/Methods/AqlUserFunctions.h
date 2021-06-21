@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_METHODS_AQL_USER_FUNCTIONS_HANDLER_H
-#define ARANGOD_VOCBASE_METHODS_AQL_USER_FUNCTIONS_HANDLER_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -86,4 +85,3 @@ Result toArrayUserFunctions(TRI_vocbase_t& vocbase, std::string const& functionF
 
 }  // namespace arangodb
 
-#endif

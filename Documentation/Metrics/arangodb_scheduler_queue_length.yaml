@@ -1,0 +1,15 @@
+name: arangodb_scheduler_queue_length
+introducedIn: "3.6.7"
+help: |
+  Server's internal queue length.
+unit: number
+type: gauge
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The total number of currently queued jobs in all queues.

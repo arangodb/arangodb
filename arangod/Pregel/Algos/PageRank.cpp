@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,12 +60,6 @@ struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
   SeededPRGraphFormat(application_features::ApplicationServer& server,
                       std::string const& source, std::string const& result, float vertexNull)
       : NumberGraphFormat(server, source, result, vertexNull, 0.0f) {}
-
-  void copyEdgeData(arangodb::velocypack::Slice document, float&) override {}
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, float const*,
-                         size_t size) const override {
-    return false;
-  }
 };
 
 GraphFormat<float, float>* PageRank::inputFormat() const {

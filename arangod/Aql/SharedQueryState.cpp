@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -128,37 +128,36 @@ void SharedQueryState::queueHandler() {
     // We are shutting down
     return;
   }
-      
-  bool queued = scheduler->queue(RequestLane::CLUSTER_AQL,
-                                 [self = shared_from_this(),
-                                  cb = _wakeupCb,
-                                  v = _cbVersion]() {
-    
-    std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-    do {
-      bool cntn = false;
-      try {
-        cntn = cb();
-      } catch (...) {}
-      
-      lck.lock();
-      if (v == self->_cbVersion) {
-        unsigned c = self->_numWakeups--;
-        TRI_ASSERT(c > 0);
-        if (c == 1 || !cntn || !self->_valid) {
-          break;
-        }
-      } else {
-        return;
-      }
-      lck.unlock();
-    } while (true);
+  bool queued =
+      scheduler->queue(RequestLane::CLUSTER_AQL_CONTINUATION,
+                       [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
+                         std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-    TRI_ASSERT(lck);
-    self->queueHandler();
-  });
-  
+                         do {
+                           bool cntn = false;
+                           try {
+                             cntn = cb();
+                           } catch (...) {
+                           }
+
+                           lck.lock();
+                           if (v == self->_cbVersion) {
+                             unsigned c = self->_numWakeups--;
+                             TRI_ASSERT(c > 0);
+                             if (c == 1 || !cntn || !self->_valid) {
+                               break;
+                             }
+                           } else {
+                             return;
+                           }
+                           lck.unlock();
+                         } while (true);
+
+                         TRI_ASSERT(lck);
+                         self->queueHandler();
+                       });
+
   if (!queued) { // just invalidate
      _wakeupCb = nullptr;
      _valid = false;

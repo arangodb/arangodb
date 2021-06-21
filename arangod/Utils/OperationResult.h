@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_OPERATION_RESULT_H
-#define ARANGOD_UTILS_OPERATION_RESULT_H 1
+#pragma once
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "Basics/Result.h"
 #include "Utils/OperationOptions.h"
 
@@ -33,23 +33,16 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <unordered_map>
+
 namespace arangodb {
 
-struct OperationResult {
-  OperationResult() {}
-
-  // create from integer status code
-  explicit OperationResult(int code) : result(code) {}
-  explicit OperationResult(int code, OperationOptions const& options)
-      : result(code), _options(options) {}
-
+struct OperationResult final {
   // create from Result
-  explicit OperationResult(Result const& other) : result(other) {}
   explicit OperationResult(Result const& other, OperationOptions const& options)
-      : result(other), _options(options) {}
-  explicit OperationResult(Result&& other) : result(std::move(other)) {}
+      : result(other), options(options) {}
   explicit OperationResult(Result&& other, OperationOptions const& options)
-      : result(std::move(other)), _options(options) {}
+      : result(std::move(other)), options(options) {}
 
   // copy
   OperationResult(OperationResult const& other) = delete;
@@ -61,7 +54,7 @@ struct OperationResult {
     if (this != &other) {
       result = std::move(other.result);
       buffer = std::move(other.buffer);
-      _options = other._options;
+      options = std::move(other.options);
       countErrorCodes = std::move(other.countErrorCodes);
     }
     return *this;
@@ -69,11 +62,11 @@ struct OperationResult {
 
   // create result with details
   OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
-                  OperationOptions options = {},
-                  std::unordered_map<int, size_t> countErrorCodes = std::unordered_map<int, size_t>())
+                  OperationOptions options,
+                  std::unordered_map<ErrorCode, size_t> countErrorCodes = {})
       : result(std::move(result)),
         buffer(std::move(buffer)),
-        _options(std::move(options)),
+        options(std::move(options)),
         countErrorCodes(std::move(countErrorCodes)) {
     if (this->result.ok()) {
       TRI_ASSERT(this->buffer != nullptr);
@@ -86,12 +79,12 @@ struct OperationResult {
   // Result-like interface
   bool ok() const noexcept { return result.ok(); }
   bool fail() const noexcept { return result.fail(); }
-  int errorNumber() const noexcept { return result.errorNumber(); }
-  bool is(int errorNumber) const noexcept {
+  ErrorCode errorNumber() const noexcept { return result.errorNumber(); }
+  bool is(ErrorCode errorNumber) const noexcept {
     return result.errorNumber() == errorNumber;
   }
-  bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
-  std::string errorMessage() const { return result.errorMessage(); }
+  bool isNot(ErrorCode errorNumber) const noexcept { return !is(errorNumber); }
+  std::string_view errorMessage() const { return result.errorMessage(); }
 
   inline bool hasSlice() const { return buffer != nullptr; }
   inline VPackSlice slice() const {
@@ -102,20 +95,19 @@ struct OperationResult {
   void reset() {
     result.reset();
     buffer.reset();
-    _options = OperationOptions();
+    options = OperationOptions();
     countErrorCodes.clear();
   }
 
   Result result;
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-  OperationOptions _options;
+  OperationOptions options;
 
   // Executive summary for baby operations: reports all errors that did occur
   // during these operations. Details are stored in the respective positions of
   // the failed documents.
-  std::unordered_map<int, size_t> countErrorCodes;
+  std::unordered_map<ErrorCode, size_t> countErrorCodes;
 };
 
 }  // namespace arangodb
 
-#endif

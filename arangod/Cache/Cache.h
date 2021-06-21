@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_CACHE_H
-#define ARANGODB_CACHE_CACHE_H
+#pragma once
 
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
@@ -145,6 +144,12 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   inline bool isShutdown() const { return _shutdown.load(); }
 
+  struct Inserter {
+    Inserter(Cache& cache, void const* key, std::size_t keySize, void const* value,
+             std::size_t valueSize, std::function<bool(Result const&)> retry);
+    Result status;
+  };
+
  protected:
   static constexpr std::uint64_t triesFast = 200;
   static constexpr std::uint64_t triesSlow = 10000;
@@ -221,4 +226,3 @@ class Cache : public std::enable_shared_from_this<Cache> {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

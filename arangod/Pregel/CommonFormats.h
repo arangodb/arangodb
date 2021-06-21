@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,7 @@
 // in the
 // cpp files to do template specialization
 
-#ifndef ARANGODB_PREGEL_COMMON_MFORMATS_H
-#define ARANGODB_PREGEL_COMMON_MFORMATS_H 1
+#pragma once
 
 #include <map>
 
@@ -115,9 +114,9 @@ struct SCCValue {
 
 template <typename T>
 struct SenderMessage {
-  SenderMessage() {}
-  SenderMessage(PregelID const& pid, T const& val)
-      : senderId(pid), value(val) {}
+  SenderMessage() = default;
+  SenderMessage(PregelID pid, T const& val)
+      : senderId(std::move(pid)), value(val) {}
 
   PregelID senderId;
   T value;
@@ -145,4 +144,3 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

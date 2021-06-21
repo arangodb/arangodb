@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H 1
+#pragma once
 
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -36,6 +35,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+class RocksDBKeyLeaser;
 
 namespace transaction {
 class Methods;
@@ -109,22 +109,44 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;
 
+  /// @brief returns whether the document can be inserted into the primary index
+  /// (or if there will be a conflict)
+  Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
+                     LocalDocumentId const& documentId, velocypack::Slice doc,
+                     OperationOptions const& options) override;
+  
+  Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                      OperationOptions const& options) override;
+
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const& doc,
-                OperationOptions& options) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options,
+                bool performChecks) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                velocypack::Slice doc) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId,
-                velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
-                velocypack::Slice const& newDoc, Index::OperationMode mode) override;
+                velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice newDoc,
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
  private:
+  /// @brief test if the specified key (keySlice) already exists.
+  /// if it exists and the key exists, lock it for updates!
+  Result probeKey(transaction::Methods& trx, 
+                  RocksDBMethods* mthd,
+                  RocksDBKeyLeaser const& key,
+                  arangodb::velocypack::Slice keySlice,
+                  OperationOptions const& options, 
+                  bool insert);
+  
   /// @brief create the iterator, for a single attribute, IN operator
   std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
                                                   arangodb::aql::AstNode const*, bool ascending);
@@ -151,4 +173,3 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

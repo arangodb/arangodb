@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused: false */
-/*global assertEqual, assertTrue, arango, ARGUMENTS */
+/*global assertEqual, assertTrue, arango, print, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -28,17 +28,20 @@
 /// @author Copyright 2017, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var db = arangodb.db;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
 
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
-var replication = require("@arangodb/replication");
-let compareTicks = replication.compareTicks;
-var console = require("console");
-var internal = require("internal");
-var masterEndpoint = arango.getEndpoint();
-var slaveEndpoint = ARGUMENTS[0];
+const replication = require("@arangodb/replication");
+const compareTicks = replication.compareTicks;
+const console = require("console");
+const internal = require("internal");
+const leaderEndpoint = arango.getEndpoint();
+const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
+const isCluster = arango.getRole() === 'COORDINATOR';
+const isSingle = arango.getRole() === 'SINGLE';
+const havePreconfiguredReplication = isSingle && replication.globalApplier.stateAll()["_system"].state.running === true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -48,81 +51,126 @@ function ReplicationSuite() {
   'use strict';
   var cn = "UnitTestsReplication";
 
-  var connectToMaster = function() {
-    reconnectRetry(masterEndpoint, db._name(), "root", "");
+  var connectToLeader = function() {
+    reconnectRetry(leaderEndpoint, db._name(), "root", "");
     db._flushCache();
   };
 
-  var connectToSlave = function() {
-    reconnectRetry(slaveEndpoint, db._name(), "root", "");
+  var connectToFollower = function() {
+    reconnectRetry(followerEndpoint, db._name(), "root", "");
     db._flushCache();
   };
 
   var collectionChecksum = function(name) {
-    return db._collection(name).checksum(false, true).checksum;
+    if (isCluster) {
+      let csa = db._query('RETURN md5(FOR doc IN @@col SORT doc._key RETURN [doc._key, doc._rev])', {'@col':name}).toArray();
+      return csa[0];
+    } else {
+      return db._collection(name).checksum(false, true).checksum;
+    }
   };
 
   var collectionCount = function(name) {
     return db._collection(name).count();
   };
 
-  var compare = function(masterFunc, slaveFuncFinal) {
+  var compare = function(leaderFunc, followerFuncFinal) {
     db._useDatabase("_system"); 
     db._flushCache();
-    connectToSlave();
-
-    let syncResult = replication.setupReplicationGlobal({
-      endpoint: masterEndpoint,
-      username: "root",
-      password: "",
-      verbose: true,
-      includeSystem: false,
-      requireFromPresent: true,
-      incremental: true,
-      autoResync: true,
-      autoResyncRetries: 5 
-    });
-
+    if (isSingle) {
+      connectToFollower();
+      if (!havePreconfiguredReplication) {
+        let syncResult = replication.setupReplicationGlobal({
+          endpoint: leaderEndpoint,
+          username: "root",
+          password: "",
+          verbose: true,
+          includeSystem: false,
+          requireFromPresent: true,
+          incremental: true,
+          autoResync: true,
+          autoResyncRetries: 5
+        });
+      }
+    }
     let state = {};
-    connectToMaster();
-    masterFunc(state);
+    connectToLeader();
+    leaderFunc(state);
     
     // use lastLogTick as of now
-    state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
-
-    db._useDatabase("_system");
-    connectToSlave();
-
-    var printed = false;
-
-    while (true) {
-      let slaveState = replication.globalApplier.state();
-
-      if (slaveState.state.lastError.errorNum > 0) {
-        console.topic("replication=error", "slave has errored:", JSON.stringify(slaveState.state.lastError));
-        throw JSON.stringify(slaveState.state.lastError);
-      }
-
-      if (!slaveState.state.running) {
-        console.topic("replication=error", "slave is not running");
-        break;
-      }
-
-      if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
-          compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
-        console.topic("replication=debug", "slave has caught up. state.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
-        break;
-      }
-        
-      if (!printed) {
-        console.topic("replication=debug", "waiting for slave to catch up");
-        printed = true;
-      }
-      internal.wait(0.5, false);
+    if (!isCluster) {
+      state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+    } else {
+      state.lastLogTick = 0;
+      db._useDatabase('_system');
+      db._databases().forEach(function(d) {
+        db._useDatabase(d);
+        db._collections().forEach(col => {
+          if (col.name()[0] !== '_') {
+            state.lastLogTick += col.count() + 1;
+          }
+        });
+      });
     }
 
+    db._useDatabase("_system");
+
+    connectToFollower();
+    if (isCluster) {
+      let count = 0;
+      let lastLogTick = 0;
+      while ((lastLogTick !== state.lastLogTick) && (count < 500)) {
+        lastLogTick = 0;
+        count += 1;
+        db._flushCache();
+        db._useDatabase('_system');
+        db._databases().forEach(function(d) {
+          db._useDatabase(d);
+          db._collections().forEach(col => {
+            if (col.name()[0] !== '_') {
+              lastLogTick += col.count() + 1;
+            }
+          });
+        });
+        if (lastLogTick !== state.lastLogTick) {
+          print('. ' + lastLogTick + " !== " + state.lastLogTick);
+          internal.wait(1);
+          db._flushCache();
+        }
+      }
+      db._useDatabase('_system');
+    } else {
+
+      var printed = false;
+
+      while (true) {
+        let followerState = replication.globalApplier.state();
+
+        if (followerState.state.lastError.errorNum > 0) {
+          console.topic("replication=error", "follower has errored:", JSON.stringify(followerState.state.lastError));
+          throw JSON.stringify(followerState.state.lastError);
+        }
+
+        if (!followerState.state.running) {
+          console.topic("replication=error", "follower is not running");
+          break;
+        }
+
+        if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
+            compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
+          console.topic("replication=debug", "follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
+          break;
+        }
+        
+        if (!printed) {
+          console.topic("replication=debug", "waiting for follower to catch up");
+          printed = true;
+        }
+        internal.wait(0.5, false);
+      }
+    }
     db._flushCache();
-    slaveFuncFinal(state);
+    followerFuncFinal(state);
   };
 
   return {
@@ -133,14 +181,17 @@ function ReplicationSuite() {
 
     tearDown: function() {
       db._useDatabase("_system");
-      connectToMaster();
+      connectToLeader();
 
-      connectToSlave();
-      replication.globalApplier.forget();
+      connectToFollower();
+      if (isSingle && !havePreconfiguredReplication) {
+        print("deleting replication");
+        replication.globalApplier.forget();
+      }
     },
     
     testFuzzGlobal: function() {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function(state) {
@@ -365,7 +416,7 @@ function ReplicationSuite() {
           
           let truncateCollection = function() {
             let collection = pickCollection();
-            collection.truncate();
+            collection.truncate({ compact: false });
           };
 
           let createIndex = function () {
@@ -416,7 +467,6 @@ function ReplicationSuite() {
             { name: "insertBatch", func: insertBatch },
             { name: "createCollection", func: createCollection },
             { name: "dropCollection", func: dropCollection },
-            { name: "renameCollection", func: renameCollection },
             { name: "changeCollection", func: changeCollection },
             { name: "truncateCollection", func: truncateCollection },
             { name: "createIndex", func: createIndex },
@@ -424,52 +474,98 @@ function ReplicationSuite() {
             { name: "createDatabase", func: createDatabase },
             { name: "dropDatabase", func: dropDatabase },
           ];
-     
-          for (let i = 0; i < 3000; ++i) { 
-            pickDatabase();
-            let op = ops[Math.floor(Math.random() * ops.length)];
-            op.func();
+          if (!isCluster) {
+            ops.push({ name: "renameCollection", func: renameCollection });
           }
 
+          for (let i = 0; i < 3000; ++i) {
+            pickDatabase();
+            let op = ops[Math.floor(Math.random() * ops.length)];
+            print(op.name);
+            op.func();
+          }
+          if (isCluster) {
+            for (let i = 0; i < 300; i++) {
+              internal.sleep(1);
+              print(".");
+            }
+          }
           let total = "";
+          let databases = {};
+          let dbNames = [];
           db._useDatabase('_system');
 
           db._databases().forEach(function(d) {
             if (d === '_system') {
               return;
             }
+            dbNames.push(d);
             db._useDatabase(d);
 
+            let colnames = [];
+
             db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
-              total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
-              c.indexes().forEach(function(index) {
+              colnames.push(c.name());
+            });
+
+            let sortNames = colnames.sort();
+
+            let oneDB = '';
+            sortNames.forEach(function(name) {
+              oneDB += " " + name + "-" + db[name].count() + "-" + collectionChecksum(name);
+              db[name].indexes().forEach(function(index) {
                 delete index.selectivityEstimate;
-                total += index.type + "-" + JSON.stringify(index.fields);
+                total += " " + index.type + "-" + JSON.stringify(index.fields);
               });
             });
+            databases[d] = oneDB;
           });
 
-          state.state = total;
+          state.state = '';
+          dbNames.sort().forEach(dbName => {
+            state.state += ' ' + dbName + databases[dbName] + ' - ';
+          });
         },
 
         function(state) {
           let total = "";
+          let databases = {};
+          let dbNames = [];
+          db._useDatabase('_system');
           db._databases().forEach(function(d) {
             if (d === '_system') {
               return;
             }
             db._useDatabase(d);
+            dbNames.push(d);
+            db._useDatabase(d);
+
+            let colnames = [];
 
             db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
-              total += c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
-              c.indexes().forEach(function(index) {
+              colnames.push(c.name());
+            });
+
+            let sortNames = colnames.sort();
+
+            let oneDB = '';
+            sortNames.forEach(function(name) {
+              oneDB += " " + name + "-" + db[name].count() + "-" + collectionChecksum(name);
+              db[name].indexes().forEach(function(index) {
                 delete index.selectivityEstimate;
-                total += index.type + "-" + JSON.stringify(index.fields);
+                total += " " + index.type + "-" + JSON.stringify(index.fields);
               });
             });
+            databases[d] = oneDB;
           });
 
-          assertEqual(total, state.state);
+          total = '';
+          dbNames.sort().forEach(dbName => {
+            total += ' ' + dbName + databases[dbName] + ' - ';
+          });
+
+          const diff = (diffMe, diffBy) => diffMe.split(diffBy).join('');
+          assertEqual(total, state.state, diff(total, state.state));
         }
       );
     }

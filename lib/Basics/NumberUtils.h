@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_NUMBER_UTILS_H
-#define ARANGODB_BASICS_NUMBER_UTILS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/system-compiler.h"
@@ -33,6 +32,12 @@
 
 namespace arangodb {
 namespace NumberUtils {
+
+template <typename T>
+constexpr bool isPowerOfTwo(T value) {
+  static_assert(std::is_integral_v<T>);
+  return (value & (value - 1)) == 0;
+}
 
 // low-level worker function to convert the string value between p
 // (inclusive) and e (exclusive) into a negative number value of type T,
@@ -65,9 +70,8 @@ template <typename T>
 inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
   T result = 0;
   while (p != e) {
-    result = (result * 10) + *(p++) - '0';
+    result = (result * 10) + (*(p++) - '0');
   }
-
   return result;
 }
 
@@ -263,4 +267,3 @@ uint32_t log2(uint32_t value) noexcept;
 }  // namespace NumberUtils
 }  // namespace arangodb
 
-#endif

@@ -1,8 +1,10 @@
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
-    <% if (isCluster) { %>
-      <li class="cluster-menu"><a id="cluster" class="tab" href="#cluster"><i class="fa fa-circle-o"></i>Cluster</a></li>
+    <% if (isCluster && frontendConfig.clusterApiJwtPolicy !== 'jwt-all') { %>
+      <% if (currentDB.get('isSystem') || statisticsInAllDatabases) { %>
+        <li class="cluster-menu"><a id="cluster" class="tab" href="#cluster"><i class="fa fa-circle-o"></i>Cluster</a></li>
+      <% } %>
       <li class="nodes-menu"><a id="nodes" class="tab" href="#nodes"><i class="fa fa-server"></i>Nodes</a></li>
-    <% } else { %>
+    <% } else if (!isCluster) { %>
       <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard"><i class="fa fa-dashboard"></i>Dashboard</a></li>
     <% } %>
     <li class="navbar-spacer big"></li>

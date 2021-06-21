@@ -23,7 +23,7 @@
 #include "all_filter.hpp"
 #include "all_iterator.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                               all
@@ -75,4 +75,4 @@ filter::prepared::ptr all::prepare(
   return memory::make_managed<all_query>(std::move(stats), this->boost()*filter_boost);
 }
 
-NS_END // ROOT
+} // ROOT

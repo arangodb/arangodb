@@ -30,8 +30,8 @@ const time = require('internal').time;
 const fs = require('fs');
 const yaml = require('js-yaml');
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const toArgv = require('internal').toArgv;
 const executeScript = require('internal').executeScript;
@@ -64,6 +64,8 @@ const testPaths = {
 function arangosh (options) {
   let ret = { failed: 0 };
   [
+    'testArangoshExitCodeConnectAny',
+    'testArangoshExitCodeConnectAnyIp6',
     'testArangoshExitCodeNoConnect',
     'testArangoshExitCodeSyntaxError',
     'testArangoshExitCodeSyntaxErrorInSubScript',
@@ -189,15 +191,27 @@ function arangosh (options) {
     process.env.TMPDIR = tmpPath;
     process.env.TEMP = tmpPath;
     process.env.TMP = tmpPath;
-
   }
+
+  runTest('testArangoshExitCodeConnectAny',
+          'Starting arangosh with failing connect:',
+          'db._databases();',
+          1,
+          {'server.endpoint': 'tcp://0.0.0.0:8529'});
+  print();
+  
+  runTest('testArangoshExitCodeConnectAnyIp6',
+          'Starting arangosh with failing connect:',
+          'db._databases();',
+          1,
+          {'server.endpoint': 'tcp://[::]:8529'});
+  print();
 
   runTest('testArangoshExitCodeNoConnect',
           'Starting arangosh with failing connect:',
           'db._databases();',
           1,
           {'server.endpoint': 'tcp://127.0.0.1:0'});
-
   print();
 
   runTest('testArangoshExitCodeSyntaxError',

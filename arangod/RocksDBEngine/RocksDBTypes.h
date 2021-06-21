@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_TYPES_H
-#define ARANGO_ROCKSDB_ROCKSDB_TYPES_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -53,7 +52,9 @@ enum class RocksDBEntryType : char {
   KeyGeneratorValue = '=',
   View = '>',
   GeoIndexValue = '?',
-  RevisionTreeValue = '@'
+  // RevisionTreeValue = '@', // pre-3.8 GA revision trees. do not use or reuse!
+  // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
+  RevisionTreeValue = '*'
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);
@@ -109,4 +110,3 @@ char const* rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }  // namespace arangodb
 
-#endif

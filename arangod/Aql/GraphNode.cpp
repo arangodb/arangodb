@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,10 +80,14 @@ TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
 }
 
 TRI_edge_direction_e parseDirection(AstNode const* node) {
-  TRI_ASSERT(node->isIntValue());
-  auto dirNum = node->getIntValue();
-
-  return uint64ToDirection(dirNum);
+  TRI_ASSERT(node->isIntValue() || node->type == NODE_TYPE_DIRECTION);
+  AstNode const* dirNode = node;
+  if (node->type == NODE_TYPE_DIRECTION) {
+    TRI_ASSERT(node->numMembers() == 2);
+    dirNode = node->getMember(0);
+  }
+  TRI_ASSERT(dirNode->isIntValue());
+  return uint64ToDirection(dirNode->getIntValue());
 }
 
 }
@@ -100,10 +104,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _defaultDirection(parseDirection(direction)),
-      _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(false),
-      _isDisjoint(false) {
+      _isDisjoint(false),
+      _options(std::move(options)) {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
 
@@ -112,7 +116,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(graph != nullptr);
-    
+
   auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
@@ -202,8 +206,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci.getCollection(_vocbase->name(), eColName);
         if (!c->isSmart()) {
-          auto aqlCollection = collections.get(eColName);
-          addEdgeCollection(aqlCollection, dir);
+          addEdgeCollection(collections, eColName, dir);
         } else {
           std::vector<std::string> names;
           if (_isSmart) {
@@ -212,13 +215,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
             names = c->realNamesForRead();
           }
           for (auto const& name : names) {
-            auto aqlCollection = collections.get(name);
-            addEdgeCollection(aqlCollection, dir);
+            addEdgeCollection(collections, name, dir);
           }
         }
       } else {
-        auto aqlCollection = collections.get(eColName);
-        addEdgeCollection(aqlCollection, dir);
+        addEdgeCollection(collections, eColName, dir);
       }
     }
     _graphInfo.close();
@@ -257,8 +258,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci.getCollection(_vocbase->name(), n);
         if (!c->isSmart()) {
-          auto aqlCollection = collections.get(n);
-          addEdgeCollection(aqlCollection, _defaultDirection);
+          addEdgeCollection(collections, n, _defaultDirection);
         } else {
           std::vector<std::string> names;
           if (_isSmart) {
@@ -267,13 +267,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
             names = c->realNamesForRead();
           }
           for (auto const& name : names) {
-            auto aqlCollection = collections.get(name);
-            addEdgeCollection(aqlCollection, _defaultDirection);
+            addEdgeCollection(collections, name, _defaultDirection);
           }
         }
       } else {
-        auto aqlCollection = collections.get(n);
-        addEdgeCollection(aqlCollection, _defaultDirection);
+        addEdgeCollection(collections, n, _defaultDirection);
       }
     }
 
@@ -285,8 +283,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     }
     _vertexColls.reserve(length);
     for (auto const& v : vColls) {
-      auto aqlCollection = collections.get(v);
-      addVertexCollection(aqlCollection);
+      addVertexCollection(collections, v);
     }
   }
 }
@@ -305,9 +302,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _optionsBuilt(false),
       _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isSmart", false)),
       _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isDisjoint", false)) {
-  auto thread_local const isDBServer = ServerState::instance()->isDBServer();
 
-  if (!isDBServer) {
+  if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
     if (base.get("graph").isString()) {
@@ -357,10 +353,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   // MSVC did throw an internal compiler error with auto instead of std::string
   // here at the time of this writing (some MSVC 2019 14.25.28610). Could
   // reproduce it only in our CI, my local MSVC (same version) ran fine...
-  auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection* {
+  auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection& {
     // if the collection was already existent in the query, addCollection will
     // just return it.
-    return query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Collection);
+    return *query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Collection);
   };
 
   auto vPackDirListIter = VPackArrayIterator(dirList);
@@ -374,7 +370,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     TRI_ASSERT(d == TRI_EDGE_IN || d == TRI_EDGE_OUT);
     std::string e =
         arangodb::basics::VelocyPackHelper::getStringValue(*edgeIt, "");
-    auto* aqlCollection = getAqlCollectionFromName(e);
+    auto& aqlCollection = getAqlCollectionFromName(e);
     addEdgeCollection(aqlCollection, d);
   }
 
@@ -388,7 +384,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
   for (VPackSlice it : VPackArrayIterator(vertexCollections)) {
     std::string v = arangodb::basics::VelocyPackHelper::getStringValue(it, "");
-    auto aqlCollection = getAqlCollectionFromName(v);
+    auto& aqlCollection = getAqlCollectionFromName(v);
     addVertexCollection(aqlCollection);
   }
 
@@ -421,12 +417,12 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   TRI_ASSERT(base.hasKey("tmpObjVarNode"));
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
-  _tmpObjVarNode = new AstNode(plan->getAst(), base.get("tmpObjVarNode"));
+  _tmpObjVarNode = plan->getAst()->createNode(base.get("tmpObjVarNode"));
 
   TRI_ASSERT(base.hasKey("tmpIdNode"));
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
-  _tmpIdNode = new AstNode(plan->getAst(), base.get("tmpIdNode"));
+  _tmpIdNode = plan->getAst()->createNode(base.get("tmpIdNode"));
 
   VPackSlice opts = base.get("options");
   if (!opts.isObject()) {
@@ -458,11 +454,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* voc
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _defaultDirection(defaultDirection),
-      _directions(std::move(directions)),
-      _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(false),
-      _isDisjoint(false) {
+      _isDisjoint(false),
+      _directions(std::move(directions)),
+      _options(std::move(options)) {
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
 }
 
@@ -476,7 +472,7 @@ void GraphNode::setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeCol
   _graphInfo.close();
 
   for (auto& it : vertexColls) {
-    addVertexCollection(it);
+    addVertexCollection(*it);
   }
 }
 
@@ -491,11 +487,11 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _defaultDirection(other._defaultDirection),
-      _directions(other._directions),
-      _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
       _isDisjoint(other.isDisjoint()),
+      _directions(other._directions),
+      _options(std::move(options)),
       _collectionToShard(other._collectionToShard) {
   setGraphInfoAndCopyColls(other.edgeColls(), other.vertexColls());
 }
@@ -512,7 +508,9 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
   }
 
   auto found = _collectionToShard.find(collName);
-  TRI_ASSERT(found != _collectionToShard.cend());
+  if (found == _collectionToShard.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "unable to find shard '" + collName + "' in query shard map");
+  }
   return found->second;
 }
 
@@ -553,7 +551,13 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
-      nodes.add(VPackValue(collectionToShardName(e->name())));
+      auto const& shard = collectionToShardName(e->name());
+      // if the mapped shard for a collection is empty, it means that
+      // we have an edge collection that is only relevant on some of the
+      // target servers
+      if (!shard.empty()) {
+        nodes.add(VPackValue(shard));
+      }
     }
   }
 
@@ -561,7 +565,13 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
-      nodes.add(VPackValue(collectionToShardName(v->name())));
+      // if the mapped shard for a collection is empty, it means that
+      // we have a vertex collection that is only relevant on some of the
+      // target servers
+      auto const& shard = collectionToShardName(v->name());
+      if (!shard.empty()) {
+        nodes.add(VPackValue(shard));
+      }
     }
   }
 
@@ -575,11 +585,11 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   }
 
   // Out variables
-  if (usesVertexOutVariable()) {
+  if (isVertexOutVariableUsedLater()) {
     nodes.add(VPackValue("vertexOutVariable"));
     vertexOutVariable()->toVelocyPack(nodes);
   }
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableUsedLater()) {
     nodes.add(VPackValue("edgeOutVariable"));
     edgeOutVariable()->toVelocyPack(nodes);
   }
@@ -652,6 +662,15 @@ std::unordered_map<ServerID, aql::EngineId> const* GraphNode::engines() const {
   return &_engines;
 }
 
+/// @brief Clears the graph Engines. (CLUSTER ONLY)
+/// NOTE: Use with care, if you do not refill
+/// the engines this graph node cannot communicate.
+/// and will yield no results.
+void GraphNode::clearEngines() {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  _engines.clear();
+}
+
 BaseOptions* GraphNode::options() const { return _options.get(); }
 
 AstNode* GraphNode::getTemporaryRefNode() const { return _tmpObjVarNode; }
@@ -671,14 +690,14 @@ Collection const* GraphNode::collection() const {
   return _edgeColls.front();
 }
 
-void GraphNode::injectVertexCollection(aql::Collection* other) {
+void GraphNode::injectVertexCollection(aql::Collection& other) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This is a workaround to inject all unknown aql collections into
   // this node, that should be list of unique values!
   for (auto const& v : _vertexColls) {
-    TRI_ASSERT(v->name() != other->name());
+    TRI_ASSERT(v->name() != other.name());
   }
 #endif
   addVertexCollection(other);
@@ -694,20 +713,38 @@ void GraphNode::enhanceEngineInfo(VPackBuilder& builder) const {
 }
 #endif
 
-void GraphNode::addEdgeCollection(aql::Collection* collection, TRI_edge_direction_e dir) {
-  TRI_ASSERT(collection != nullptr);
-  auto const& n = collection->name();
+void GraphNode::addEdgeCollection(Collections const& collections, std::string const& name,
+                                  TRI_edge_direction_e dir) {
+  auto aqlCollection = collections.get(name);
+  if (aqlCollection != nullptr) {
+    addEdgeCollection(*aqlCollection, dir);
+  } else {
+    std::string msg = "Edge collection `";
+    msg += name;
+    msg += "` could not be found";
+    if (_graphObj != nullptr) {
+      msg += ", but is part of graph `";
+      msg += _graphObj->name();
+      msg += "`";
+    }
+    msg += ".";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
+  }
+}
+
+void GraphNode::addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir) {
+  auto const& n = collection.name();
   if (_isSmart) {
     if (n.compare(0, 6, "_from_") == 0) {
       if (dir != TRI_EDGE_IN) {
         _directions.emplace_back(TRI_EDGE_OUT);
-        _edgeColls.emplace_back(collection);
+        _edgeColls.emplace_back(&collection);
       }
       return;
     } else if (n.compare(0, 4, "_to_") == 0) {
       if (dir != TRI_EDGE_OUT) {
         _directions.emplace_back(TRI_EDGE_IN);
-        _edgeColls.emplace_back(collection);
+        _edgeColls.emplace_back(&collection);
       }
       return;
     }
@@ -715,20 +752,41 @@ void GraphNode::addEdgeCollection(aql::Collection* collection, TRI_edge_directio
 
   if (dir == TRI_EDGE_ANY) {
     _directions.emplace_back(TRI_EDGE_OUT);
-    _edgeColls.emplace_back(collection);
+    _edgeColls.emplace_back(&collection);
 
     _directions.emplace_back(TRI_EDGE_IN);
-    _edgeColls.emplace_back(collection);
+    _edgeColls.emplace_back(&collection);
   } else {
     _directions.emplace_back(dir);
-    _edgeColls.emplace_back(collection);
+    _edgeColls.emplace_back(&collection);
   }
 }
 
-void GraphNode::addVertexCollection(aql::Collection* collection) {
-  TRI_ASSERT(collection != nullptr);
-  _vertexColls.emplace_back(collection);
+void GraphNode::addVertexCollection(Collections const& collections, std::string const& name) {
+  auto aqlCollection = collections.get(name);
+  if (aqlCollection != nullptr) {
+    addVertexCollection(*aqlCollection);
+  } else {
+    std::string msg = "Vertex collection `";
+    msg += name;
+    msg += "` could not be found";
+    // If we have vertex collections, _graphObj should never be nullptr.
+    // But let's stay on the side that's obviously safe without any context.
+    if (_graphObj != nullptr) {
+      msg += ", but is part of graph `";
+      msg += _graphObj->name();
+      msg += "`";
+    }
+    msg += ".";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
+  }
 }
+
+#ifndef USE_ENTERPRISE
+void GraphNode::addVertexCollection(aql::Collection& collection) {
+  _vertexColls.emplace_back(&collection);
+}
+#endif
 
 std::vector<aql::Collection const*> GraphNode::collections() const {
   std::unordered_set<aql::Collection const*> set;
@@ -758,7 +816,7 @@ Variable const* GraphNode::vertexOutVariable() const {
   return _vertexOutVariable;
 }
 
-bool GraphNode::usesVertexOutVariable() const {
+bool GraphNode::isVertexOutVariableUsedLater() const {
   return _vertexOutVariable != nullptr && _options->produceVertices();
 }
 
@@ -768,7 +826,7 @@ void GraphNode::setVertexOutput(Variable const* outVar) {
 
 Variable const* GraphNode::edgeOutVariable() const { return _edgeOutVariable; }
 
-bool GraphNode::usesEdgeOutVariable() const {
+bool GraphNode::isEdgeOutVariableUsedLater() const {
   return _edgeOutVariable != nullptr && _options->produceEdges();
 }
 

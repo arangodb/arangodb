@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H 1
+#pragma once
 
 #include <mutex>
 #include <map>
@@ -70,7 +69,6 @@ struct RocksDBMetadata final {
  public:
   RocksDBMetadata();
 
- public:
   /**
    * @brief Place a blocker to allow proper commit/serialize semantics
    *
@@ -112,11 +110,12 @@ struct RocksDBMetadata final {
   /// @brief returns the largest safe seq to squash updates against
   rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
 
-  /// @brief get the current count, ONLY use in recovery
-  DocCount& countUnsafe() { return _count; }
-
   /// @brief buffer a counter adjustment
   void adjustNumberDocuments(rocksdb::SequenceNumber seq, RevisionId revId, int64_t adj);
+
+  /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less memory
+  void adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
+                                       RevisionId revId, int64_t adj);
 
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,
@@ -128,15 +127,18 @@ struct RocksDBMetadata final {
   
   void loadInitialNumberDocuments();
 
-  uint64_t numberDocuments() const {
+  uint64_t numberDocuments() const noexcept {
     return _numberDocuments.load(std::memory_order_acquire);
   }
 
-  RevisionId revisionId() const {
+  rocksdb::SequenceNumber countCommitted() const noexcept {
+    return _count._committedSeq;
+  }
+
+  RevisionId revisionId() const noexcept {
     return _revisionId.load(std::memory_order_acquire);
   }
 
-public:
   // static helper methods to modify collection meta entries in rocksdb
 
   /// @brief load collection document count
@@ -148,15 +150,17 @@ public:
   /// @brief remove collection index estimate
   static Result deleteIndexEstimate(rocksdb::DB*, uint64_t objectId);
 
+  /// @brief check if there is blocker with a seq number lower or equal to
+  /// the specified number
+  bool hasBlockerUpTo(rocksdb::SequenceNumber seq) const;
+
  private:
   /// @brief apply counter adjustments, only call from sync thread
   bool applyAdjustments(rocksdb::SequenceNumber commitSeq);
 
- private:
-  // TODO we should probably use flat_map or abseils Swiss Tables
-
   mutable arangodb::basics::ReadWriteLock _blockerLock;
   /// @brief blocker identifies a transaction being committed
+  // TODO we should probably use flat_map or abseils Swiss Tables
   std::map<TransactionId, rocksdb::SequenceNumber> _blockers;
   std::set<std::pair<rocksdb::SequenceNumber, TransactionId>> _blockersBySeq;
 
@@ -182,4 +186,3 @@ public:
 };
 }  // namespace arangodb
 
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +21,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_WORKER_H
-#define ARANGODB_PREGEL_WORKER_H 1
+#pragma once
 
 #include "Basics/Common.h"
-
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -36,6 +33,7 @@
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
+#include "Reports.h"
 #include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;
@@ -45,6 +43,8 @@ namespace arangodb {
 class RestPregelHandler;
 
 namespace pregel {
+  
+class PregelFeature;
 
 class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
@@ -90,7 +90,8 @@ class Worker : public IWorker {
     DONE         // after calling finished
   };
 
-  WorkerState _state = WorkerState::DEFAULT;
+  PregelFeature& _feature;
+  std::atomic<WorkerState> _state = WorkerState::DEFAULT;
   WorkerConfig _config;
   uint64_t _expectedGSS = 0;
   uint32_t _messageBatchSize = 500;
@@ -126,6 +127,7 @@ class Worker : public IWorker {
 
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
+  ReportManager _reports;
   /// valid after _finishedProcessing was called
   uint64_t _activeCount = 0;
   /// current number of running threads
@@ -147,7 +149,7 @@ class Worker : public IWorker {
                                   std::function<void(VPackSlice slice)> handle);
 
  public:
-  Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm, VPackSlice params);
+  Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm, VPackSlice params, PregelFeature& feature);
   ~Worker();
 
   // ====== called by rest handler =====
@@ -167,4 +169,3 @@ class Worker : public IWorker {
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

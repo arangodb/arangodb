@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_H
-#define ARANGOD_GRAPH_TRAVERSER_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
@@ -56,6 +55,7 @@ class Query;
 }  // namespace aql
 
 namespace graph {
+class WeightedEnumerator;
 class BreadthFirstEnumerator;
 class NeighborsEnumerator;
 class TraverserCache;
@@ -74,17 +74,6 @@ class TraversalPath {
   TraversalPath() : _readDocuments(0) {}
 
   virtual ~TraversalPath() = default;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds the complete path as VelocyPack
-  ///        Has the format:
-  ///        {
-  ///           vertices: [<vertex-as-velocypack>],
-  ///           edges: [<edge-as-velocypack>]
-  ///        }
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void pathToVelocyPack(transaction::Methods*, arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge on the path as VelocyPack
@@ -115,6 +104,7 @@ class TraversalPath {
 
 class Traverser {
   friend class arangodb::graph::BreadthFirstEnumerator;
+  friend class arangodb::graph::WeightedEnumerator;
   friend class DepthFirstEnumerator;
   friend class arangodb::graph::NeighborsEnumerator;
 #ifdef USE_ENTERPRISE
@@ -134,10 +124,12 @@ class Traverser {
     virtual ~VertexGetter() = default;
 
     virtual bool getVertex(arangodb::velocypack::Slice,
-                           std::vector<arangodb::velocypack::StringRef>&);
+                           arangodb::traverser::EnumeratedPath& path);
 
     virtual bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
                                  uint64_t, arangodb::velocypack::StringRef&);
+
+    virtual bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth);
 
     virtual void reset(arangodb::velocypack::StringRef const&);
 
@@ -157,10 +149,12 @@ class Traverser {
     ~UniqueVertexGetter() = default;
 
     bool getVertex(arangodb::velocypack::Slice,
-                   std::vector<arangodb::velocypack::StringRef>&) override;
+                   arangodb::traverser::EnumeratedPath& path) override;
 
     bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
                          uint64_t, arangodb::velocypack::StringRef&) override;
+
+    bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
 
     void reset(arangodb::velocypack::StringRef const&) override;
 
@@ -216,9 +210,9 @@ class Traverser {
  protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  ///        Also appends the _id value of the vertex in the given vector
+  ///        Also appends the _id value of the vertex to the given path.
   virtual bool getVertex(arangodb::velocypack::Slice,
-                         std::vector<arangodb::velocypack::StringRef>&) = 0;
+                         arangodb::traverser::EnumeratedPath& path) = 0;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
@@ -226,6 +220,8 @@ class Traverser {
                                arangodb::velocypack::StringRef sourceVertexId,
                                uint64_t depth,
                                arangodb::velocypack::StringRef& targetVertexId) = 0;
+
+  virtual bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) = 0;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -269,11 +265,11 @@ class Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t getAndResetReadDocuments();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of HTTP requests made
   //////////////////////////////////////////////////////////////////////////////
-  
+
   size_t getAndResetHttpRequests();
 
   TraverserOptions* options() { return _opts; }
@@ -326,4 +322,3 @@ class Traverser {
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CSV_H
-#define ARANGODB_BASICS_CSV_H 1
+#pragma once
 
 #include <cstdlib>
 
 #include "Basics/Common.h"
+#include "ErrorCode.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parser states
@@ -118,6 +118,5 @@ void TRI_UseBackslashCsvParser(TRI_csv_parser_t* parser, bool value);
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseCsvString(TRI_csv_parser_t*, char const*, size_t);
+ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length);
 
-#endif

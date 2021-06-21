@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__DEADLINE_H
-#define ARANGODB_V8_V8__DEADLINE_H 1
+#pragma once
 
 #include <chrono>
 #include <v8.h>
@@ -36,4 +35,3 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::millise
 
 void TRI_InitV8Deadline(v8::Isolate* isolate);
 
-#endif

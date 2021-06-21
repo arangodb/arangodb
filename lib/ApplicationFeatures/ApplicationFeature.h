@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -149,6 +148,9 @@ class ApplicationFeature {
   // start the feature
   virtual void start();
 
+  // notify the feature about a soft shutdown request
+  virtual void initiateSoftShutdown();
+
   // notify the feature about a shutdown request
   virtual void beginShutdown();
 
@@ -167,6 +169,9 @@ class ApplicationFeature {
   std::unordered_set<std::type_index> const& startsBefore() const {
     return _startsBefore;
   }
+
+  std::type_index registration() const;
+  void setRegistration(std::type_index registration);
 
  protected:
   void setOptional() { setOptional(true); }
@@ -225,6 +230,9 @@ class ApplicationFeature {
   // pointer to application server
   ApplicationServer& _server;
 
+  // type registration for lookup within the ApplicationServer
+  std::type_index _registration;
+
   // name of feature
   std::string const _name;
 
@@ -262,4 +270,3 @@ class ApplicationFeature {
 }  // namespace application_features
 }  // namespace arangodb
 
-#endif

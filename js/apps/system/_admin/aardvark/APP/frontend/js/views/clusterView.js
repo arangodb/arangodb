@@ -59,7 +59,6 @@
     render: function () {
       var self = this;
       this.$el.html(this.template.render({}));
-      // this.initValues()
 
       if (!this.initDone) {
         if (this.coordinators.first() !== undefined) {
@@ -76,6 +75,8 @@
         self.rerenderValues(data);
       };
       this.getCoordStatHistory(callback);
+
+      arangoHelper.buildClusterSubNav('Dashboard');
     },
 
     waitForCoordinators: function () {
@@ -172,57 +173,24 @@
       self.renderNodes();
 
       // Connections
-      this.renderValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
-      this.renderValue('#clusterConnectionsAvg', Math.round(data.clientConnections15M));
+      arangoHelper.renderStatisticsBoxValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
+      arangoHelper.renderStatisticsBoxValue('#clusterConnectionsAvg', Math.round(data.clientConnections15M));
 
       // RAM
       var totalMem = data.physicalMemory;
       var usedMem = data.residentSizeCurrent;
-      this.renderValue('#clusterRam', [usedMem, totalMem]);
-    },
-
-    renderValue: function (id, value, error, warning) {
-      if (typeof value === 'number') {
-        $(id).html(value);
-      } else if ($.isArray(value)) {
-        var a = value[0]; 
-        var b = value[1];
-
-        var percent = 1 / (b / a) * 100;
-        if (percent > 90) {
-          error = true;
-        } else if (percent > 70 && percent < 90) {
-          warning = true;
-        }
-        if (isNaN(percent)) {
-          $(id).html('n/a');
-        } else {
-          $(id).html(percent.toFixed(1) + ' %');
-        }
-      } else if (typeof value === 'string') {
-        $(id).html(value);
-      }
-
-      if (error) {
-        $(id).addClass('negative');
-        $(id).removeClass('warning');
-        $(id).removeClass('positive');
-      } else if (warning) {
-        $(id).addClass('warning');
-        $(id).removeClass('positive');
-        $(id).removeClass('negative');
-      } else {
-        $(id).addClass('positive');
-        $(id).removeClass('negative');
-        $(id).removeClass('warning');
-      }
+      arangoHelper.renderStatisticsBoxValue('#clusterRam', [usedMem, totalMem]);
     },
 
     renderNodes: function () {
       var self = this;
       var callbackFunction = function (data) {
-        var coords = 0; var coordsErrors = 0;
-        var dbs = 0; var dbsErrors = 0;
+        let coords = 0;
+        let coordsErrors = 0;
+        let dbs = 0;
+        let dbsErrors = 0;
+        let agents = 0;
+        let agentsErrors = 0;
 
         _.each(data, function (node) {
           if (node.Role === 'Coordinator') {
@@ -235,37 +203,40 @@
             if (node.Status !== 'GOOD') {
               dbsErrors++;
             }
+          } else if (node.Role === 'Agent') {
+            agents++;
+            if (node.Status !== 'GOOD') {
+              agentsErrors++;
+            }
           }
         });
 
         if (coordsErrors > 0) {
-          this.renderValue('#clusterCoordinators', coords - coordsErrors + '/' + coords, true);
+          arangoHelper.renderStatisticsBoxValue('#clusterCoordinators', coords - coordsErrors + '/' + coords, true);
         } else {
-          this.renderValue('#clusterCoordinators', coords);
+          arangoHelper.renderStatisticsBoxValue('#clusterCoordinators', coords);
         }
 
         if (dbsErrors > 0) {
-          this.renderValue('#clusterDBServers', dbs - dbsErrors + '/' + dbs, true);
+          arangoHelper.renderStatisticsBoxValue('#clusterDBServers', dbs - dbsErrors + '/' + dbs, true);
         } else {
-          this.renderValue('#clusterDBServers', dbs);
+          arangoHelper.renderStatisticsBoxValue('#clusterDBServers', dbs);
         }
+
+        if (agentsErrors > 0) {
+          arangoHelper.renderStatisticsBoxValue('#clusterAgentServers', agents - agentsErrors + '/' + agents, true);
+        } else {
+          arangoHelper.renderStatisticsBoxValue('#clusterAgentServers', agents);
+        }
+
       }.bind(this);
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-        contentType: 'application/json',
-        processData: false,
-        async: true,
-        success: function (data) {
-          callbackFunction(data.Health);
-        },
-        error: function () {
-          self.renderValue('#clusterCoordinators', 'N/A', true);
-          self.renderValue('#clusterDBServers', 'N/A', true);
-        }
-      });
+      if (window.App && window.App.lastHealthCheckResult) {
+        callbackFunction(window.App.lastHealthCheckResult.Health);
+      } else {
+        arangoHelper.renderStatisticsBoxValue('#clusterCoordinators', 'N/A', true);
+        arangoHelper.renderStatisticsBoxValue('#clusterDBServers', 'N/A', true);
+      }
     },
 
     initValues: function () {
@@ -288,6 +259,37 @@
       },
       http: [],
       average: []
+    },
+
+    insertDummyElements: function () {
+      // method to push dummy values in case of initialization
+      // reason: make the graph more human readable in init case.
+      var self = this;
+      _.each(self.chartsOptions, function (val1, key1) {
+        _.each(val1.options, function (val2, key2) {
+          if (val2.values.length < self.maxValues - 1) {
+            let dummyElementsToInsert =  self.maxValues - val2.values.length;
+            let initTimeToUse;
+            try {
+              initTimeToUse = self.chartsOptions[key1].options[key2].values[0].x;
+            } catch (ignore) {
+              // format to write here timestamp like: 1615569682 (10 chars)
+              // Date.now() gives => 1615569844407 (13 chars)
+              initTimeToUse = (Date.now() / 1000).toFixed(0);
+            }
+
+            for (let counter = 0; counter < dummyElementsToInsert; counter++) {
+              let time = initTimeToUse - ((self.interval / 1000) * counter);
+              time = parseInt(time);
+              self.chartsOptions[key1].options[key2].values.unshift({
+                x: time,
+                y: 0.00
+              });
+            }
+          }
+        });
+      });
+
     },
 
     checkArraySizes: function () {
@@ -315,9 +317,11 @@
           self.chartsOptions[1].options[0].values.push({x: time, y: self.calcTotalHttp(data.http, key)});
 
           // AVERAGE
-          self.chartsOptions[2].options[0].values.push({x: time, y: data.avgRequestTime[key] / self.coordinators.length});
+          self.chartsOptions[2].options[0].values.push({x: time, y: data.avgRequestTime[key]});
         });
         self.historyInit = true;
+        // will insert zero entries in case we're below max history array size
+        self.insertDummyElements();
       } else {
         self.checkArraySizes();
 
@@ -338,7 +342,7 @@
         // AVERAGE
         self.chartsOptions[2].options[0].values.push({
           x: data.times[data.times.length - 1],
-          y: data.avgRequestTime[data.bytesSentPerSecond.length - 1] / self.coordinators.length
+          y: data.avgRequestTime[data.bytesSentPerSecond.length - 1]
         });
       }
     },
@@ -501,6 +505,12 @@
       }
 
       var self = this; var data; var lines;
+
+      if (Object.keys(input).length === 0) {
+        // data not ready yet, need to wait one more iteration.
+        return;
+      }
+
       this.formatDataForGraph(input);
 
       _.each(self.chartsOptions, function (c) {

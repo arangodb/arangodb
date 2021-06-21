@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include <rocksdb/utilities/transaction_db.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -58,6 +59,10 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
   _cmp = cf->GetComparator();
 
   _iter.reset(db->NewIterator(_readOptions, cf));
+  TRI_ASSERT(_iter != nullptr);
+  if (_iter == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build RocksDBRevisionReplicationIterator for snapshot");
+  }
   _iter->Seek(_bounds.start());
 }
 
@@ -78,6 +83,9 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
   _cmp = cf->GetComparator();
 
   _iter = methods->NewIterator(_readOptions, cf);
+  if (_iter == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build RocksDBRevisionReplicationIterator for transaction");
+  }
   _iter->Seek(_bounds.start());
 }
 

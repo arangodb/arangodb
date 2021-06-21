@@ -39,7 +39,7 @@ extern "C" {
 #include <smmintrin.h> // for _mm_testc_si128
 #endif
 
-NS_LOCAL
+namespace {
 
 bool all_equal(
     const uint32_t* RESTRICT begin,
@@ -117,11 +117,11 @@ void unpack(const uint32_t* RESTRICT encoded,
   }
 }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(encode)
-NS_BEGIN(bitpack)
+namespace iresearch {
+namespace encode {
+namespace bitpack {
 
 void read_block_simd(
     data_input& in,
@@ -255,8 +255,8 @@ uint32_t write_block_simd(
   return bits;
 }
 
-NS_END // encode
-NS_END // bitpack
-NS_END // ROOT
+} // encode
+} // bitpack
+} // ROOT
 
 #endif // IRESEARCH_SSE2

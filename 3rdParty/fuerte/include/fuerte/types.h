@@ -53,6 +53,7 @@ StatusCode constexpr StatusMethodNotAllowed = 405;
 StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
+StatusCode constexpr StatusMisdirectedRequest = 421;
 StatusCode constexpr StatusInternalError = 500;
 StatusCode constexpr StatusServiceUnavailable = 503;
 StatusCode constexpr StatusVersionNotSupported = 505;
@@ -169,6 +170,18 @@ enum class ContentType : uint8_t {
 };
 ContentType to_ContentType(std::string const& val);
 std::string to_string(ContentType type);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   ContentEncoding
+// -----------------------------------------------------------------------------
+
+enum class ContentEncoding : uint8_t {
+  Identity = 0,
+  Deflate = 1,
+  Gzip = 2
+};
+ContentEncoding to_ContentEncoding(std::string const& val);
+std::string to_string(ContentEncoding type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AuthenticationType

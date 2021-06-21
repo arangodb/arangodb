@@ -96,6 +96,11 @@
   cursor: default !important;
 }
 
+// Ligatures can cause issues with the cursor on a few systems
+.ace_editor {
+  font-variant-ligatures: none !important;
+}
+
 //still in use???
 .container {
   margin-left: 20px;

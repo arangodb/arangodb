@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DEBUGGING_H
-#define ARANGODB_BASICS_DEBUGGING_H 1
+#pragma once
 
 #include <stdlib.h>
 #include <ostream>
@@ -95,15 +94,6 @@ inline constexpr bool TRI_CanUseFailurePointsDebugging() { return true; }
 inline constexpr bool TRI_CanUseFailurePointsDebugging() { return false; }
 #endif
 
-/// @brief appends a backtrace to the string provided
-void TRI_GetBacktrace(std::string& btstr);
-
-/// @brief prints a backtrace on stderr
-void TRI_PrintBacktrace();
-
-/// @brief logs a backtrace in log level warning
-void TRI_LogBacktrace();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container traits
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,6 +126,8 @@ struct is_associative {
 
 }  // namespace container_traits
 
+namespace arangodb {
+
 template <class T>
 struct remove_cvref {
   typedef std::remove_cv_t<std::remove_reference_t<T>> type;
@@ -158,17 +150,6 @@ template <typename T>
 struct is_associative
     : std::conditional<container_traits::is_container<T>::value && container_traits::is_associative<T>::value,
                        std::true_type, std::false_type>::type {};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief no std::enable_if_t in c++11
-////////////////////////////////////////////////////////////////////////////////
-
-#if __cplusplus <= 201103L
-namespace std {
-template <bool B, class T = void>
-using enable_if_t = typename std::enable_if<B, T>::type;
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief forward declaration for pair output below
@@ -218,29 +199,31 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
   return o;
 }
 
+}  // namespace arangodb
+
 /// @brief assert
 #ifndef TRI_ASSERT
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr)                                                   \
-  do {                                                                     \
-    if (!(ADB_LIKELY(expr))) {                                             \
-      arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, #expr); \
-    }                                                                      \
-  } while (0)
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                             \
+  do {                                                                                   \
+    if (!(ADB_LIKELY(expr))) {                                                           \
+      arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, __FUNCTION__, #expr); \
+    } else {                                                                             \
+    }                                                                                    \
+  } while (false)
 
 #else
 
-#define TRI_ASSERT(expr) \
-  while (0) {            \
-    (void)(expr);        \
-  }                      \
-  do {                   \
-  } while (0)
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/ \
+  do {                                       \
+    if (false) {                             \
+      (void)(expr);                          \
+    }                                        \
+  } while (false)
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #endif  // #ifndef TRI_ASSERT
 
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_FEATURE_H
-#define ARANGODB_LOGGER_LOGGER_FEATURE_H 1
+#pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -61,10 +61,12 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> _output;
   std::vector<std::string> _levels;
   std::string _prefix;
+  std::string _hostname;
   std::string _file;
   std::string _fileMode;
   std::string _fileGroup;
   std::string _timeFormatString;
+  uint32_t _maxEntryLength = 128U * 1048576U;
   bool _useJson = false;
   bool _useLocalTime = false;
   bool _useColor = true;
@@ -91,4 +93,3 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

@@ -45,7 +45,7 @@ describe ArangoDB do
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
     end
     
-    it "returns an error if _key is a number" do
+    it "returns an error if _key is a number 1" do
       cmd = "/_api/document?collection=#{@cn}"
       body = "{ \"_key\" : 12 }"
       doc = ArangoDB.log_post("#{prefix}-number", cmd, :body => body)
@@ -57,7 +57,7 @@ describe ArangoDB do
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
     end
     
-    it "returns an error if _key is a number" do
+    it "returns an error if _key is a number 2" do
       cmd = "/_api/document?collection=#{@cn}"
       body = "{ \"_key\" : 12.554 }"
       doc = ArangoDB.log_post("#{prefix}-number", cmd, :body => body)

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,8 +57,6 @@ EndpointFeature::EndpointFeature(application_features::ApplicationServer& server
 void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.backlog-size", "tcp.backlog-size");
   options->addOldOption("server.reuse-address", "tcp.reuse-address");
-
-  options->addSection("server", "Server features");
 
   options->addOption("--server.endpoint",
                      "endpoint for client requests (e.g. "

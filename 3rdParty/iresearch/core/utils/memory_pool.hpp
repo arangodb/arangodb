@@ -32,8 +32,8 @@
 #include "noncopyable.hpp"
 #include "memory.hpp"
 
-NS_ROOT
-NS_BEGIN(memory)
+namespace iresearch {
+namespace memory {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class freelist
@@ -743,7 +743,7 @@ template<
   return !(lhs == rhs);
 }
 
-NS_END // memory
-NS_END // ROOT
+} // memory
+} // ROOT
 
 #endif // IRESEARCH_MEMORY_POOL_H

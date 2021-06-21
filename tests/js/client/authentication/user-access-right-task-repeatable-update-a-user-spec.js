@@ -33,7 +33,7 @@
 
 const expect = require('chai').expect;
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const users = require('@arangodb/users');
 const internal = require('internal');
 const helper = require('@arangodb/testutils/user-helper');

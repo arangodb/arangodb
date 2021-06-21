@@ -59,6 +59,10 @@
       'row_general-writeConcern'
     ],
 
+    potentiallyNeededSmartGraphRows: [
+      'smartGraphInfoOneShard'
+    ],
+
     // rows that needs to be added while creating smarties
     neededSmartGraphRows: [
       'smartGraphInfo',
@@ -95,11 +99,36 @@
       });
     },
 
+    checkSmartGraphOneShardInfoHint: function () {
+      var self = this;
+
+      let showOneShardInfoHint = (result) => {
+        if (result.sharding === 'single') {
+          $('#' + self.potentiallyNeededSmartGraphRows[0]).show();
+        }
+      };
+
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/database/current'),
+        contentType: 'application/json',
+        processData: false,
+        async: true,
+        success: function (data) {
+          showOneShardInfoHint(data.result);
+        },
+        error: function (ignore) {
+        }
+      });
+    },
+
     setSmartGraphRows: function (cache) {
       $('#createGraph').addClass('active');
       this.setCacheModeState(cache);
 
       this.hideGeneralGraphRows();
+      this.checkSmartGraphOneShardInfoHint();
       _.each(this.neededSmartGraphRows, function (rowId) {
         $('#' + rowId).show();
       });
@@ -107,6 +136,9 @@
 
     hideSmartGraphRows: function () {
       _.each(this.neededSmartGraphRows, function (rowId) {
+        $('#' + rowId).hide();
+      });
+      _.each(this.potentiallyNeededSmartGraphRows, function (rowId) {
         $('#' + rowId).hide();
       });
     },

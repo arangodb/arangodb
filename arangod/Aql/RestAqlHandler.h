@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,11 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REST_AQL_HANDLER_H
-#define ARANGOD_AQL_REST_AQL_HANDLER_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "RestServer/VocbaseContext.h"
 
 struct TRI_vocbase_t;
 
@@ -54,11 +52,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
    public:
     static auto execute() -> const char* { return "/_api/aql/execute"; }
   };
-
- public:
-  // DELETE method for /_api/aql/kill/<queryId>, (internal)
-  bool killQuery(std::string const& idString);
-
+  
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "execute", "getSome", "skipSome" "initializeCursor" or
@@ -151,4 +145,3 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

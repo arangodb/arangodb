@@ -47,7 +47,8 @@
 
 extern const char* ARGV0;  // defined in main.cpp
 
-NS_LOCAL
+namespace {
+
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
@@ -58,7 +59,7 @@ bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
       "{ }");
 
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                             bindVars, options);
+                             bindVars, options->slice());
 
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
@@ -167,7 +168,7 @@ std::vector<std::string> optimizerOptionsAvailable = {
 };
 
 constexpr size_t disabledDnfOptimizationStart = 2;
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

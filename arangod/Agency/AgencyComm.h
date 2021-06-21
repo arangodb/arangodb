@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,11 +22,8 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_AGENCY_COMM_H
-#define ARANGOD_CLUSTER_AGENCY_COMM_H 1
+#pragma once
 
-#include <deque>
-#include <list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -40,15 +37,19 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/PathComponent.h"
+#include "AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
-#include "GeneralServer/GeneralDefinitions.h"
+#include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/Metrics.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace arangodb {
 class Endpoint;
+
+namespace application_features {
+class ApplicationServer;
+}
 
 namespace velocypack {
 class Builder;
@@ -189,12 +190,14 @@ class AgencyCommHelper {
   static void initialize(std::string const& prefix);
   static void shutdown();
 
-  static std::string path();
+  static std::string const& path() noexcept;
   static std::string path(std::string const&);
   static std::string path(std::string const&, std::string const&);
   static std::vector<std::string> slicePath(std::string const&);
 
   static std::string generateStamp();
+
+  static network::Timeout defaultTimeout();
 };
 
 // -----------------------------------------------------------------------------
@@ -292,7 +295,7 @@ class AgencyOperation {
 class AgencyCommResult {
  public:
   AgencyCommResult() = default;
-  AgencyCommResult(int code, std::string message);
+  AgencyCommResult(rest::ResponseCode code, std::string message);
 
   ~AgencyCommResult() = default;
 
@@ -303,15 +306,18 @@ class AgencyCommResult {
   AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
  public:
-  void set(int code, std::string message);
+  void set(rest::ResponseCode code, std::string message);
 
-  [[nodiscard]] bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
+  [[nodiscard]] bool successful() const {
+    auto const statusCode = static_cast<int>(_statusCode);
+    return statusCode >= 200 && statusCode <= 299;
+  }
 
   [[nodiscard]] bool connected() const;
 
-  [[nodiscard]] int httpCode() const;
+  [[nodiscard]] rest::ResponseCode httpCode() const;
 
-  [[nodiscard]] int errorCode() const;
+  [[nodiscard]] ErrorCode errorCode() const;
 
   [[nodiscard]] std::string errorMessage() const;
 
@@ -337,14 +343,14 @@ class AgencyCommResult {
 
   [[nodiscard]] VPackBuilder toVelocyPack() const;
 
-  [[nodiscard]] std::optional<std::pair<int, std::string_view>> parseBodyError() const;
+  [[nodiscard]] std::pair<std::optional<ErrorCode>, std::optional<std::string_view>> parseBodyError() const;
 
  public:
   std::string _location = "";
   std::string _message = "";
 
   std::unordered_map<std::string, AgencyCommResultEntry> _values = {};
-  int _statusCode = 0;
+  rest::ResponseCode _statusCode{};
   bool _connected = false;
   bool _sent = false;
 
@@ -370,57 +376,6 @@ class AgencyTransaction {
   virtual bool validate(AgencyCommResult const& result) const = 0;
   virtual char const* typeName() const = 0;
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          AgencyGeneralTransaction
-// -----------------------------------------------------------------------------
-
-/*struct AgencyGeneralTransaction : public AgencyTransaction {
-
-  typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
-
-  explicit AgencyGeneralTransaction(AgencyOperation const& op,
-                                    AgencyPrecondition const& pre) :
-    clientId(to_string(boost::uuids::random_generator()())) {
-    transactions.emplace_back(
-    TransactionType(std::vector<AgencyOperation>(1, op),
-                    std::vector<AgencyPrecondition>(1, pre)));
-  }
-
-  explicit AgencyGeneralTransaction(
-    std::vector<std::pair<AgencyOperation,AgencyPrecondition>> const& trxs) :
-    clientId(to_string(boost::uuids::random_generator()())) {
-    for (const auto& trx : trxs) {
-      transactions.emplace_back(
-        TransactionType(std::vector<AgencyOperation>(1,trx.first),
-                        std::vector<AgencyPrecondition>(1,trx.second)));
-
-    }
-  }
-
-  AgencyGeneralTransaction() = default;
-
-  std::vector<TransactionType> transactions;
-
-  void toVelocyPack(
-    arangodb::velocypack::Builder& builder) const override final;
-
-  void push_back(AgencyOperation const& op);
-  void push_back(std::pair<AgencyOperation, AgencyPrecondition> const&);
-
-  inline virtual std::string const& path() const override final {
-    return AgencyTransaction::TypeUrl[2];
-  }
-
-  inline virtual std::string getClientId() const override final {
-    return clientId;
-  }
-
-  virtual bool validate(AgencyCommResult const& result) const override final;
-  char const* typeName() const override { return "AgencyGeneralTransaction"; }
-  std::string clientId;
-
-};*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            AgencyWriteTransaction
@@ -575,11 +530,6 @@ class AgencyComm {
   static uint64_t const INITIAL_SLEEP_TIME = 5000; // microseconds
   static uint64_t const MAX_SLEEP_TIME = 50000; // microseconds
 
-#ifdef DEBUG_SYNC_REPLICATION
- public:
-  static bool syncReplDebug;
-#endif
-
  public:
   explicit AgencyComm(application_features::ApplicationServer&);
 
@@ -666,5 +616,3 @@ class AgencyComm {
 namespace std {
 ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
 }
-
-#endif

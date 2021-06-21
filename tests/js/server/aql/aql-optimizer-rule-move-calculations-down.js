@@ -45,8 +45,6 @@ function optimizerRuleTestSuite () {
   var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
-
-
   const RulesCombinator = function*(listOfRules) {
     const RuleOnOff = function* (rule) {
       yield `-${rule}`;
@@ -119,8 +117,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function (query) {
-        var result = AQL_EXPLAIN(query, {}, paramNone);
-        assertEqual([], result.plan.rules, query);
+        let result = AQL_EXPLAIN(query, {}, paramNone);
+        assertEqual([], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
       });
     },
 
@@ -157,8 +155,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function (query) {
-        var result = AQL_EXPLAIN(query, {}, paramEnabled);
-        assertEqual([], result.plan.rules, query);
+        let result = AQL_EXPLAIN(query, {}, paramEnabled);
+        assertEqual([], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
       });
     },
 
@@ -187,8 +185,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function (query) {
-        var result = AQL_EXPLAIN(query, {}, paramEnabled);
-        assertEqual([ruleName], result.plan.rules, query);
+        let result = AQL_EXPLAIN(query, {}, paramEnabled);
+        assertEqual([ruleName], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
       });
     },
 
@@ -291,7 +289,9 @@ function optimizerRuleTestSuite () {
             "EnumerateListNode",
             "CalculationNode",
             "FilterNode",
-            "SubqueryNode",
+            "SubqueryStartNode",
+            "CalculationNode",
+            "SubqueryEndNode",
             "ReturnNode",
           ],
         ],
@@ -305,7 +305,9 @@ function optimizerRuleTestSuite () {
             "FilterNode",
             "CalculationNode",
             "FilterNode",
-            "SubqueryNode",
+            "SubqueryStartNode",
+            "CalculationNode",
+            "SubqueryEndNode",
             "ReturnNode",
           ],
         ],
@@ -318,7 +320,9 @@ function optimizerRuleTestSuite () {
             "CalculationNode",
             "FilterNode",
             "LimitNode",
-            "SubqueryNode",
+            "SubqueryStartNode",
+            "CalculationNode",
+            "SubqueryEndNode",
             "ReturnNode",
           ],
         ],
@@ -329,7 +333,9 @@ function optimizerRuleTestSuite () {
             "CalculationNode",
             "EnumerateListNode",
             "LimitNode",
-            "SubqueryNode",
+            "SubqueryStartNode",
+            "CalculationNode",
+            "SubqueryEndNode",
             "ReturnNode",
           ],
         ],
@@ -341,7 +347,9 @@ function optimizerRuleTestSuite () {
             "EnumerateListNode",
             "LimitNode",
             "CalculationNode",
-            "SubqueryNode",
+            "SubqueryStartNode",
+            "CalculationNode",
+            "SubqueryEndNode",
             "ReturnNode",
           ],
         ],
@@ -352,7 +360,9 @@ function optimizerRuleTestSuite () {
             "CalculationNode",
             "EnumerateListNode",
             "SortNode",
-            "SubqueryNode",
+            "SubqueryStartNode",
+            "CalculationNode",
+            "SubqueryEndNode",
             "ReturnNode",
           ],
         ],
@@ -363,16 +373,20 @@ function optimizerRuleTestSuite () {
             "CalculationNode",
             "EnumerateListNode",
             "LimitNode",
-            "SubqueryNode",
-            "SubqueryNode",
+            "SubqueryStartNode",
+            "CalculationNode",
+            "SubqueryEndNode",
+            "SubqueryStartNode",
+            "CalculationNode",
+            "SubqueryEndNode",
             "ReturnNode",
           ],
         ],
       ];
 
       plans.forEach(function (plan) {
-        var result = AQL_EXPLAIN(plan[0], {}, paramEnabled);
-        assertEqual([ruleName], result.plan.rules, plan[0]);
+        let result = AQL_EXPLAIN(plan[0], {}, paramEnabled);
+        assertEqual([ruleName], result.plan.rules.filter((r) => r !== "splice-subqueries"), plan[0]);
         assertEqual(
           plan[1],
           helper.getCompactPlan(result).map(function (node) {
@@ -683,7 +697,6 @@ function optimizerRuleTestSuite () {
           )
           RETURN outerSubquery`;
       for (const params of RulesCombinator([
-        "splice-subqueries",
         "move-calculations-down",
       ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);
@@ -712,7 +725,6 @@ function optimizerRuleTestSuite () {
           LIMIT 1, 2
           RETURN outerSubquery`;
       for (const params of RulesCombinator([
-        "splice-subqueries",
         "move-calculations-down",
       ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);
@@ -742,7 +754,6 @@ function optimizerRuleTestSuite () {
           LIMIT 1, 2
           RETURN outerSubquery`;
       for (const params of RulesCombinator([
-        "splice-subqueries",
         "move-calculations-down",
       ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);
@@ -769,7 +780,6 @@ function optimizerRuleTestSuite () {
           LIMIT 1, 2
           RETURN outerSubquery`;
       for (const params of RulesCombinator([
-        "splice-subqueries",
         "move-calculations-down",
       ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);

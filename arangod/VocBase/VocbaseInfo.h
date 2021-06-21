@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,14 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_VOCBASEINFO_H
-#define ARANGOD_VOCBASE_VOCBASEINFO_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
@@ -69,7 +69,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  explicit CreateDatabaseInfo(application_features::ApplicationServer&);
+  CreateDatabaseInfo(application_features::ApplicationServer&, ExecContext const&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -122,6 +122,9 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_valid);
     return _sharding;
   }
+  void sharding(std::string const& sharding) {
+    _sharding = sharding;
+  }
 
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
@@ -134,6 +137,7 @@ class CreateDatabaseInfo {
 
  private:
   application_features::ApplicationServer& _server;
+  ExecContext const& _context;
 
   std::uint64_t _id = 0;
   std::string _name = "";
@@ -162,4 +166,3 @@ void addClusterOptions(velocypack::Builder& builder, std::string const& sharding
 void addClusterOptions(velocypack::Builder&, VocbaseOptions const&);
 
 }  // namespace arangodb
-#endif

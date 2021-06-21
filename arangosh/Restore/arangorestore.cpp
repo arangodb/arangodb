@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<CommunicationFeaturePhase>();
     server.addFeature<GreetingsFeaturePhase>(true);
 
-    server.addFeature<ClientFeature, HttpEndpointProvider>(false);
+    server.addFeature<ClientFeature, HttpEndpointProvider>(true);
     server.addFeature<ConfigFeature>("arangorestore");
     server.addFeature<LoggerFeature>(false);
     server.addFeature<RandomFeature>();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -101,18 +100,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief simple query by example path
   static std::string const SIMPLE_QUERY_BY_EXAMPLE;
-
-  /// @brief simple query first example path
-  static std::string const SIMPLE_FIRST_EXAMPLE;
-
-  /// @brief simple query remove by example path
-  static std::string const SIMPLE_REMOVE_BY_EXAMPLE;
-
-  /// @brief simple query replace by example path
-  static std::string const SIMPLE_REPLACE_BY_EXAMPLE;
-
-  /// @brief simple query replace by example path
-  static std::string const SIMPLE_UPDATE_BY_EXAMPLE;
 
   /// @brief simple batch document lookup path
   static std::string const SIMPLE_LOOKUP_PATH;
@@ -200,13 +187,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                                 std::string const& key = "",
                                 RevisionId rid = RevisionId::none());
 
-  /// @brief generate an error message for a transaction error
-  void generateTransactionError(std::string const& collectionName,
-                                Result const& res, std::string const& key,
-                                RevisionId rid = RevisionId::none()) {
-    generateTransactionError(collectionName, OperationResult(res), key, rid);
-  }
-  
   /// @brief extracts the revision. "header" must be lowercase.
   RevisionId extractRevision(char const* header, bool& isValid) const;
 
@@ -227,7 +207,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * locking or a leased transaction.
    */
   std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
-                                                          AccessMode::Type mode) const;
+                                                          AccessMode::Type mode,
+                                                          OperationOptions const& opOptions) const;
   
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;
@@ -242,4 +223,3 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
 }  // namespace arangodb
 
-#endif

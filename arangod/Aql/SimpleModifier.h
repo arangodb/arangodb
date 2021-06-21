@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SIMPLE_MODIFIER_H
-#define ARANGOD_AQL_SIMPLE_MODIFIER_H
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ModificationExecutorAccumulator.h"
@@ -104,6 +103,7 @@ class SimpleModifier {
   explicit SimpleModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
         _completion(infos),
+        _results(Result(), infos._options),
         _resultsIterator(VPackArrayIterator::Empty{}),
         _batchSize(ExecutionBlock::DefaultBatchSize) {}
   ~SimpleModifier() = default;
@@ -156,4 +156,3 @@ using UpdateReplaceModifier = SimpleModifier<UpdateReplaceModifierCompletion>;
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

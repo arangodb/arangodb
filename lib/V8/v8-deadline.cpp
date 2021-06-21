@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -91,7 +91,7 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::millise
   }
 
   time_point now = std::chrono::system_clock::now();
-  milliseconds durationWhen(static_cast<int>(epochDoubleWhen * 1000));
+  milliseconds durationWhen(static_cast<int64_t>(epochDoubleWhen * 1000));
   time_point<system_clock> timepointWhen(durationWhen);
 
   milliseconds delta = duration_cast<milliseconds>(now - timepointWhen);

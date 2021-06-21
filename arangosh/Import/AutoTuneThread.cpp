@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,56 +77,57 @@ void AutoTuneThread::beginShutdown() {
 }
 
 void AutoTuneThread::run() {
+  constexpr uint64_t period = 2; // seconds
+
   while (!isStopping()) {
     {
       CONDITION_LOCKER(guard, _condition);
-      guard.wait(std::chrono::seconds(10));
+      guard.wait(std::chrono::seconds(period));
     }
     if (!isStopping()) {
       // getMaxUploadSize() is per thread
-      uint64_t current_max = _importHelper.getMaxUploadSize();
-      current_max *= _importHelper.getThreadCount();
-      uint64_t ten_second_actual = _importHelper.rotatePeriodByteCount();
-      uint64_t new_max;
+      uint64_t currentMax = _importHelper.getMaxUploadSize();
+      currentMax *= _importHelper.getThreadCount();
+      uint64_t periodActual = _importHelper.rotatePeriodByteCount();
+      uint64_t newMax;
 
-      // is current_max way too big
-      if (ten_second_actual < current_max && 10 < ten_second_actual) {
-        new_max = ten_second_actual / 10;
-      } else if (ten_second_actual <= 10) {
-        new_max = current_max / 10;
+      // is currentMax way too big
+      if (periodActual < currentMax && period < periodActual) {
+        newMax = periodActual / period;
+      } else if (periodActual <= period) {
+        newMax = currentMax / period;
       } else {
-        new_max = (current_max + ten_second_actual / 10) / 2;
+        newMax = (currentMax + periodActual / period) / 2;
       }
 
-      // grow number slowly if possible (20%)
-      new_max += new_max / 5;
+      // grow number slowly (25%)
+      newMax += newMax / 4;
 
       // make "per thread"
-      new_max /= _importHelper.getThreadCount();
+      newMax /= _importHelper.getThreadCount();
 
       // notes in Import mention an internal limit of 768MBytes
-      if ((arangodb::import::ImportHelper::MaxBatchSize) < new_max) {
-        new_max = arangodb::import::ImportHelper::MaxBatchSize;
+      if ((arangodb::import::ImportHelper::MaxBatchSize) < newMax) {
+        newMax = arangodb::import::ImportHelper::MaxBatchSize;
       }
 
       LOG_TOPIC("e815e", DEBUG, arangodb::Logger::FIXME)
-          << "Current: " << current_max << ", ten_sec: " << ten_second_actual
-          << ", new_max: " << new_max;
+          << "current: " << currentMax << ", period: " << periodActual << ", new: " << newMax;
 
-      _importHelper.setMaxUploadSize(new_max);
+      _importHelper.setMaxUploadSize(newMax);
     }
   }
 }
 
 void AutoTuneThread::paceSends() {
   auto now = std::chrono::steady_clock::now();
-  bool next_reset(false);
+  bool nextReset = false;
 
   // has _nextSend time_point already passed?
   //  if so, move to next increment of _pace to force wait
   while (_nextSend <= now) {
     _nextSend += _pace;
-    next_reset = true;
+    nextReset = true;
   }
 
   std::this_thread::sleep_until(_nextSend);
@@ -134,9 +135,10 @@ void AutoTuneThread::paceSends() {
   // if the previous send thread thread was found really quickly,
   //  assume arangodb is absorbing data faster than current rate.
   //  try doubling rate by halfing pace time for subsequent send.
-  if (!next_reset && _pace / 2 < _nextSend - now)
+  if (!nextReset && _pace / 2 < _nextSend - now) {
     _nextSend = _nextSend + _pace / 2;
-  else
+  } else {
     _nextSend = _nextSend + _pace;
+  }
 
 }  // AutoTuneThread::paceSends

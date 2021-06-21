@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_REBALANCER_H
-#define ARANGODB_CACHE_REBALANCER_H
+#pragma once
 
 #include "Manager.h"
 
@@ -38,7 +37,7 @@ class Rebalancer {
   explicit Rebalancer(Manager* manager);
 
   // Rebalance the manager.
-  int rebalance();
+  ErrorCode rebalance();
 
  private:
   Manager* _manager;
@@ -47,4 +46,3 @@ class Rebalancer {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

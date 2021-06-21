@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TTL_INDEX_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -53,13 +52,14 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
  protected:
   // special override method that extracts a timestamp value from the index attribute
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const& doc,
-                OperationOptions& options) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options,
+                bool performChecks) override;
 
   // special override method that extracts a timestamp value from the index attribute
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                velocypack::Slice doc) override;
 
  private:
   /// @brief extract a timestamp value from the index attribute value
@@ -73,4 +73,3 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
 
 }
 
-#endif

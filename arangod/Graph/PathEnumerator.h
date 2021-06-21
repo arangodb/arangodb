@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,19 +21,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOCBASE_PATHENUMERATOR_H
-#define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
-
-#include <vector>
+#pragma once
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
 
 #include <velocypack/Slice.h>
+#include <vector>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 struct AqlValue;
+class PruneExpressionEvaluator;
 }
 
 namespace velocypack {
@@ -48,10 +49,31 @@ namespace traverser {
 class Traverser;
 struct TraverserOptions;
 
-struct EnumeratedPath {
-  std::vector<graph::EdgeDocumentToken> edges;
-  std::vector<arangodb::velocypack::StringRef> vertices;
-  EnumeratedPath() {}
+class EnumeratedPath {
+ public:
+  explicit EnumeratedPath(arangodb::ResourceMonitor& resourceMonitor);
+  ~EnumeratedPath();
+
+  void pushVertex(arangodb::velocypack::StringRef const& v);
+  void pushEdge(graph::EdgeDocumentToken const& e);
+  void popVertex() noexcept;
+  void popEdge() noexcept;
+  void clear();
+  size_t numVertices() const noexcept;
+  size_t numEdges() const noexcept;
+  std::vector<arangodb::velocypack::StringRef> const& vertices() const noexcept;
+  std::vector<graph::EdgeDocumentToken> const& edges() const noexcept;
+  arangodb::velocypack::StringRef const& lastVertex() const noexcept;
+  graph::EdgeDocumentToken const& lastEdge() const noexcept;
+
+ private:
+  template <typename T>
+  void growStorage(std::vector<T>& data);
+
+ private: 
+  arangodb::ResourceMonitor& _resourceMonitor;
+  std::vector<graph::EdgeDocumentToken> _edges;
+  std::vector<arangodb::velocypack::StringRef> _vertices;
 };
 
 class PathEnumerator {
@@ -114,6 +136,12 @@ class PathEnumerator {
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
 
+
+  /// @brief validate post filter statement
+  /// returns true if the path should be returned
+  /// returns false if the path should not be returned
+  bool usePostFilter(aql::PruneExpressionEvaluator* evaluator);
+
   /// @brief return number of HTTP requests made, and reset it to 0
   size_t getAndResetHttpRequests() {
     size_t value = _httpRequests;
@@ -160,9 +188,8 @@ class DepthFirstEnumerator final : public PathEnumerator {
  private:
   bool shouldPrune();
 
-  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result);
+  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result, bool fromPrune);
 };
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

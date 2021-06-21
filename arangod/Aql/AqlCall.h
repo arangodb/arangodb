@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_CALL_H
-#define ARANGOD_AQL_AQL_CALL_H 1
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Basics/Common.h"
@@ -81,20 +80,20 @@ struct AqlCall {
   AqlCall() = default;
   // Replacements for struct initialization
   // cppcheck-suppress *
-  explicit constexpr AqlCall(size_t offset, Limit softLimit = Infinity{},
-                             Limit hardLimit = Infinity{}, bool fullCount = false)
-      : offset{offset}, softLimit{softLimit}, hardLimit{hardLimit}, fullCount{fullCount} {}
+  explicit constexpr AqlCall(size_t off, Limit soft = Infinity{},
+                             Limit hard = Infinity{}, bool fc = false)
+      : offset{off}, softLimit{soft}, hardLimit{hard}, fullCount{fc} {}
 
   enum class LimitType { SOFT, HARD };
   // cppcheck-suppress *
-  constexpr AqlCall(size_t offset, bool fullCount, Infinity)
-      : offset{offset}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fullCount} {}
+  constexpr AqlCall(size_t off, bool fc, Infinity)
+      : offset{off}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fc} {}
   // cppcheck-suppress *
-  constexpr AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
-      : offset{offset},
+  constexpr AqlCall(size_t off, bool fc, size_t limit, LimitType limitType)
+      : offset{off},
         softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},
         hardLimit{limitType == LimitType::HARD ? Limit{limit} : Limit{Infinity{}}},
-        fullCount{fullCount} {}
+        fullCount{fc} {}
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCall>;
   void toVelocyPack(velocypack::Builder&) const;
@@ -237,18 +236,37 @@ constexpr bool operator<(AqlCall::Limit const& a, size_t b) {
   return std::get<size_t>(a) < b;
 }
 
-constexpr bool operator<(size_t a, AqlCall::Limit const& b) { return !(b < a); }
+constexpr bool operator<(size_t a, AqlCall::Limit const& b) {
+  if (std::holds_alternative<AqlCall::Infinity>(b)) {
+    return true;
+  }
+  return a < std::get<size_t>(b);
+}
+
+constexpr bool operator>(size_t a, AqlCall::Limit const& b) {
+  return b < a;
+}
+
+constexpr bool operator>(AqlCall::Limit const& a, size_t b) {
+  return b < a;
+}
 
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
-  return std::visit(overload{[n](size_t const& i) -> AqlCall::Limit {
-                               return i + n;
-                             },
-                             [](auto inf) -> AqlCall::Limit { return inf; }},
-                    a);
+  return std::visit(
+      overload{[n](size_t const& i) -> AqlCall::Limit { return i + n; },
+               [](AqlCall::Infinity inf) -> AqlCall::Limit { return inf; }},
+      a);
 }
 
 constexpr AqlCall::Limit operator+(size_t n, AqlCall::Limit const& a) {
   return a + n;
+}
+
+constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, AqlCall::Limit const& b) {
+  return std::visit(
+      overload{[&a](size_t const& b_) -> AqlCall::Limit { return a + b_; },
+               [](AqlCall::Infinity inf) -> AqlCall::Limit { return inf; }},
+      a);
 }
 
 constexpr bool operator==(AqlCall::Limit const& a, size_t n) {
@@ -289,5 +307,3 @@ auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::LimitPrinter& l
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;
 
 }  // namespace arangodb::aql
-
-#endif

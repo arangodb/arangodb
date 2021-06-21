@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,8 +36,12 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -57,7 +61,7 @@ std::string fixEndpointProto(std::string const& endpoint) {
   return endpoint;
 }
 
-void writeError(int code, arangodb::GeneralResponse* response) {
+void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
   response->setResponseCode(arangodb::GeneralResponse::responseCode(code));
 
   VPackBuffer<uint8_t> buffer;
@@ -69,16 +73,14 @@ void writeError(int code, arangodb::GeneralResponse* response) {
   builder.add(arangodb::StaticStrings::Code, VPackValue(static_cast<int>(response->responseCode())));
   builder.close();
 
-  VPackOptions options(VPackOptions::Defaults);
-  options.escapeUnicode = true;
   response->setPayload(std::move(buffer), VPackOptions::Defaults);
 }
 } // namespace
 
 
-namespace arangodb {
+DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "(DC-2-DC only) Number of times the database and collection overviews have been requested.");
 
-ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
+namespace arangodb {
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
@@ -89,12 +91,19 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
       _syncByRevision(true),
+      _connectionCache{server, httpclient::ConnectionCache::Options{5}},
       _parallelTailingInvocations(0),
-      _maxParallelTailingInvocations(0) {
+      _maxParallelTailingInvocations(0),
+      _quickKeysLimit(1000000),
+      _inventoryRequests(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_replication_cluster_inventory_requests_total{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<DatabaseFeature>();
+  startsAfter<RocksDBEngine>();
+  startsAfter<RocksDBRecoveryManager>();
+  startsAfter<ServerIdFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 }
@@ -102,14 +111,13 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
 ReplicationFeature::~ReplicationFeature() = default;
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("replication", "Configure the replication");
+  options->addSection("replication", "replication");
   options->addOption("--replication.auto-start",
                      "switch to enable or disable the automatic start "
                      "of replication appliers",
                      new BooleanParameter(&_replicationApplierAutoStart),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
@@ -136,6 +144,12 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      "Default timeout value for replication requests (in seconds)",
                      new DoubleParameter(&_requestTimeout))
                      .setIntroducedIn(30409).setIntroducedIn(30504);
+
+  options->addOption("--replication.quick-keys-limit",
+                     "Limit at which 'quick' calls to the replication keys API return only the document count for second run",
+                     new UInt64Parameter(&_quickKeysLimit),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30709);
 
   options
       ->addOption(
@@ -174,13 +188,11 @@ void ReplicationFeature::prepare() {
     setEnabled(false);
     return;
   }
-
-  INSTANCE = this;
 }
 
 void ReplicationFeature::start() {
-  _globalReplicationApplier.reset(
-      new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
+  _globalReplicationApplier = std::make_unique<GlobalReplicationApplier>(
+      GlobalReplicationApplier::loadConfiguration(server()));
 
   try {
     _globalReplicationApplier->loadState();
@@ -213,6 +225,7 @@ void ReplicationFeature::stop() {
   try {
     if (_globalReplicationApplier != nullptr) {
       _globalReplicationApplier->stop();
+      _globalReplicationApplier->stopAndJoin();
     }
   } catch (...) {
     // ignore any error
@@ -224,6 +237,10 @@ void ReplicationFeature::unprepare() {
     _globalReplicationApplier->stopAndJoin();
   }
   _globalReplicationApplier.reset();
+}
+
+httpclient::ConnectionCache& ReplicationFeature::connectionCache() {
+  return _connectionCache;
 }
   
 /// @brief track the number of (parallel) tailing operations
@@ -320,9 +337,8 @@ double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
 void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
                                            arangodb::ServerState::Mode mode) {
   std::string endpoint;
-  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-  if (replication != nullptr && replication->isActiveFailoverEnabled()) {
-    GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+  if (isActiveFailoverEnabled()) {
+    GlobalReplicationApplier* applier = globalReplicationApplier();
     if (applier != nullptr) {
       endpoint = applier->endpoint();
       // replace tcp:// with http://, and ssl:// with https://

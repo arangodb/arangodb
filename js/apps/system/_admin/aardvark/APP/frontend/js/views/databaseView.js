@@ -428,10 +428,10 @@
       //if enterprise
       if (window.App.isCluster && frontendConfig.isEnterprise && !frontendConfig.forceOneShard) {
         var sharding = [ { value : "",
-                           label : "flexible"
+                           label : "Sharded"
                          },
                          { value : "single",
-                           label : "single"
+                           label : "OneShard"
                          }
                        ];
 
@@ -440,7 +440,7 @@
             'newSharding',
             'Sharding',
             'flexible',
-            'Selects the default sharding setup for new collections in this database. *flexible* means that shards of different collections by default will be randomly distributed to database servers. *single* means that collections by default will use the same sharding setup (number of shards and shard distribution) as one of the system collections.',
+            'Selects the default sharding setup for new collections in this database.\n*Sharded* means that collections can have any number of shards, and that shards will be randomly distributed to database servers.\n*OneShard* means that all collections in the database will have only have a single but are all distributed to the same database server. This enables performance optimizations, e.g. pushing down entire queries to database servers. Use *OneShard* when it is known that the dataset fits on a single instance, and *Sharded* for larger datasets.',
             sharding
           )
         );

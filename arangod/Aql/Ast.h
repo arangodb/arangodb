@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AST_H
-#define ARANGOD_AQL_AST_H 1
+#pragma once
 
 #include <functional>
 #include <iterator>
@@ -43,6 +42,7 @@
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Containers/HashSet.h"
+#include "Graph/ShortestPathType.h"
 #include "VocBase/AccessMode.h"
 
 namespace arangodb {
@@ -57,13 +57,21 @@ class Slice;
 }
 
 namespace aql {
-
 class BindParameters;
 class QueryContext;
 class AqlFunctionsInternalCache;
 struct Variable;
 
 typedef std::unordered_map<Variable const*, std::unordered_set<std::string>> TopLevelAttributes;
+
+/// @brief type for Ast flags
+using AstPropertiesFlagsType = uint32_t;
+
+/// @brief flags for customizing Ast building process
+enum AstPropertyFlag : AstPropertiesFlagsType {
+  AST_FLAG_DEFAULT = 0x00000000,     // Regular Ast     
+  NON_CONST_PARAMETERS = 0x00000001  // Parameters are considered non-const
+};
 
 /// @brief the AST
 class Ast {
@@ -74,7 +82,7 @@ class Ast {
   Ast& operator=(Ast const&) = delete;
 
   /// @brief create the AST
-  explicit Ast(QueryContext&);
+  explicit Ast(QueryContext&, AstPropertiesFlagsType flags = AstPropertyFlag::AST_FLAG_DEFAULT);
 
   /// @brief destroy the AST
   ~Ast();
@@ -134,6 +142,9 @@ class Ast {
 
   /// @brief find the bottom-most expansion subnodes (if any)
   AstNode const* findExpansionSubNode(AstNode const*) const;
+  
+  /// @brief create a node from the velocypack data
+  AstNode* createNode(arangodb::velocypack::Slice slice);
 
   /// @brief create an AST passthru node
   /// note: this type of node is only used during parsing and optimized away
@@ -210,6 +221,11 @@ class Ast {
   
   /// @brief create an AST limit node
   AstNode* createNodeLimit(AstNode const*, AstNode const*);
+  
+  /// @brief create an AST window node
+  AstNode* createNodeWindow(AstNode const* spec,
+                            AstNode const* rangeVar,
+                            AstNode const* assignments);
 
   /// @brief create an AST assign node
   AstNode* createNodeAssign(char const*, size_t, AstNode const*);
@@ -308,6 +324,9 @@ class Ast {
   /// @brief create an AST string value node
   AstNode* createNodeValueString(char const*, size_t);
 
+  /// @brief create an AST string value node with forced non-constness
+  AstNode* createNodeValueMutableString(char const*, size_t);
+
   /// @brief create an AST array node
   AstNode* createNodeArray();
 
@@ -357,13 +376,17 @@ class Ast {
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeKShortestPaths(AstNode const*, AstNode const*);
+  AstNode* createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type type, AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
-  AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments);
+  AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments,
+                                  bool allowInternalFunctions);
 
   AstNode* createNodeFunctionCall(char const* functionName, size_t length,
-                                  AstNode const* arguments);
+                                  AstNode const* arguments, bool allowInternalFunctions);
+
+  /// @brief create an AST function call node for aggregate functions
+  AstNode* createNodeAggregateFunctionCall(char const* functionName, AstNode const* arguments);
 
   /// @brief create an AST range node
   AstNode* createNodeRange(AstNode const*, AstNode const*);
@@ -382,7 +405,12 @@ class Ast {
                             arangodb::CollectionNameResolver const& resolver);
 
   /// @brief replace variables
-  static AstNode* replaceVariables(AstNode*, std::unordered_map<VariableId, Variable const*> const&);
+  ///        the unlock parameter will unlock the variable node before it replaces the variable.
+  ///        This unlock is potentially dangerous if the Node is linked somewhere else, so use with care
+  ///        and only if you are sure that you hold the ONLY reference to this node.
+  static AstNode* replaceVariables(AstNode* node,
+                                   std::unordered_map<VariableId, Variable const*> const&,
+                                   bool unlockNodes = false);
 
   /// @brief replace a variable reference in the expression with another
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
@@ -566,6 +594,11 @@ class Ast {
   /// the subnodes
   void copyPayload(AstNode const* node, AstNode* copy) const;
 
+  bool hasFlag(AstPropertyFlag flag) const noexcept {
+    return ((_astFlags & static_cast<decltype(_astFlags)>(flag)) != 0);
+  }
+
+
  public:
   /// @brief negated comparison operators
   static std::unordered_map<int, AstNodeType> const NegatedOperators;
@@ -645,9 +678,11 @@ class Ast {
   };
 
   SpecialNodes const _specialNodes;
+    
+  /// @brief ast flags
+  AstPropertiesFlagsType _astFlags;
 };
 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

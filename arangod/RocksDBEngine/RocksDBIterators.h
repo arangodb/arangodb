@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,16 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATORS_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATORS_H 1
+#pragma once
 
-#include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
-#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include <rocksdb/options.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+
+#include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 
 namespace rocksdb {
 class Iterator;
@@ -101,7 +101,7 @@ typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& valu
 
 class RocksDBGenericIterator {
  public:
-  RocksDBGenericIterator(rocksdb::ReadOptions& options,
+  RocksDBGenericIterator(rocksdb::TransactionDB* db, rocksdb::ReadOptions& options,
                          RocksDBKeyBounds const& bounds);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
@@ -133,4 +133,3 @@ class RocksDBGenericIterator {
 RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx,
                                                   LogicalCollection* col);
 }  // namespace arangodb
-#endif

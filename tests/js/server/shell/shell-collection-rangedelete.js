@@ -95,7 +95,7 @@ function CollectionRangeDeleteSuite () {
 
       internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
       // should not fire
-      c.truncate();
+      c.truncate({ compact: false });
       
       assertEqual(0, c.count());
     },
@@ -109,7 +109,7 @@ function CollectionRangeDeleteSuite () {
       assertEqual(100, c.count());
       internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
       // should not fire
-      c.truncate();
+      c.truncate({ compact: false });
       assertEqual(0, c.count());
       
       for (let i = 0; i < 100; ++i) {

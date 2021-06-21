@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,14 +33,19 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the manager
-AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor,
+AqlItemBlockManager::AqlItemBlockManager(arangodb::ResourceMonitor& resourceMonitor,
                                          SerializationFormat format)
-    : _resourceMonitor(resourceMonitor), _format(format) {
-  TRI_ASSERT(resourceMonitor != nullptr);
-}
+    : _resourceMonitor(resourceMonitor), _format(format) {}
 
 /// @brief destroy the manager
-AqlItemBlockManager::~AqlItemBlockManager() = default;
+AqlItemBlockManager::~AqlItemBlockManager() {
+  delete _constValueBlock;
+}
+
+void AqlItemBlockManager::initializeConstValueBlock(RegisterCount nrRegs) {
+  TRI_ASSERT(_constValueBlock == nullptr);
+  _constValueBlock = new AqlItemBlock(*this, 1, nrRegs);
+}
 
 /// @brief request a block with the specified size
 SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, RegisterCount numRegisters) {
@@ -69,14 +74,19 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, Register
   if (block == nullptr) {
     block = new AqlItemBlock(*this, numRows, numRegisters);
   } else {
-    block->rescale(numRows, numRegisters);
+    try {
+      block->rescale(numRows, numRegisters);
+    } catch (...) {
+      delete block;
+      throw;
+    }
   }
 
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->numRows() == numRows);
   TRI_ASSERT(block->numRegisters() == numRegisters);
   TRI_ASSERT(block->numEntries() == targetSize);
-  TRI_ASSERT(block->numEffectiveEntries() == 0);
+  TRI_ASSERT(block->maxModifiedRowIndex() == 0);
   TRI_ASSERT(block->getRefCount() == 0);
   TRI_ASSERT(block->hasShadowRows() == false);
 
@@ -123,7 +133,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocyp
   auto const nrItemsSigned =
       VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
   auto const nrRegs =
-      VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
+      VelocyPackHelper::getNumericValue<RegisterCount>(slice, "nrRegs", 0);
   if (nrItemsSigned <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
@@ -138,7 +148,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocyp
   return block;
 }
 
-ResourceMonitor* AqlItemBlockManager::resourceMonitor() const noexcept {
+arangodb::ResourceMonitor& AqlItemBlockManager::resourceMonitor() const noexcept {
   return _resourceMonitor;
 }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H 1
+#pragma once
 
 #include "Aql/QueryResult.h"
 #include "Basics/Common.h"
@@ -68,7 +67,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override;
 
   void cancel() override final;
-  void handleError(basics::Exception const&) override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -85,7 +83,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// in AQL we can post a handler calling this function again.
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus processQuery(bool continuation);
+  RestStatus processQuery();
 
   /// @brief returns the short id of the server which should handle this request
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
@@ -200,17 +198,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   bool _queryKilled;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the finalize operation is allowed to further process
-  /// the request data. this will not work if the original request cannot be
-  /// parsed successfully. this is used by RestCursorHandler::finalizeExecute
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _isValidForFinalize;
-
-  /// @brief whether or not an audit message has already been logged
-  bool _auditLogged;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid
   ///        to reparse and set default options
   //////////////////////////////////////////////////////////////////////////////
@@ -218,4 +205,3 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

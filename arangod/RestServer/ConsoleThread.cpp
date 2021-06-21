@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,7 +63,9 @@ static char const* USER_ABORTED = "user aborted";
 void ConsoleThread::run() {
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-  bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
+  bool v8Enabled = _server.hasFeature<V8DealerFeature>() &&
+                   _server.isEnabled<V8DealerFeature>() &&
+                   _server.getFeature<V8DealerFeature>().isEnabled();
   if (!v8Enabled) {
     LOG_TOPIC("4a00f", FATAL, arangodb::Logger::FIXME) << "V8 engine is not enabled";
     FATAL_ERROR_EXIT();

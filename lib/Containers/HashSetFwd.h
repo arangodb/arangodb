@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINERS_HASH_SET_FWD_H
-#define ARANGODB_CONTAINERS_HASH_SET_FWD_H
+#pragma once
 
 #include <functional>
 
@@ -53,4 +52,3 @@ using HashSet = emilib::HashSet<KeyT, HashT, EqT>;
 }  // namespace containers
 }  // namespace arangodb
 
-#endif  // ARANGODB_CONTAINERS_HASH_SET_FWD_H

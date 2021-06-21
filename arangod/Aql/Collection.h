@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTION_H
-#define ARANGOD_AQL_COLLECTION_H 1
+#pragma once
 
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/CountCache.h"
@@ -85,7 +84,7 @@ struct Collection {
   std::unordered_set<std::string> responsibleServers() const;
 
   /// @brief returns the "distributeShardsLike" attribute for the collection
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
 
   /// @brief fills the set with the responsible servers for the collection
   /// returns the number of responsible servers found for the collection
@@ -155,7 +154,7 @@ struct Collection {
   
  private:
   /// @brief throw if the underlying collection has not been set
-  void ensureCollection() const;
+  void checkCollection() const;
 
  private:
   // _collection will only be populated here in the constructor, and not later.
@@ -184,4 +183,3 @@ struct Collection {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

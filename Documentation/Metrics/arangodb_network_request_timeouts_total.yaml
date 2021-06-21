@@ -1,0 +1,21 @@
+name: arangodb_network_request_timeouts_total
+renamedFrom: arangodb_network_request_timeouts
+introducedIn: "3.8.0"
+help: |
+  Number of internal requests that have timed out.
+unit: number
+type: counter
+category: Network
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of internal requests that have timed out. This metric is increased
+  whenever any cluster-internal request executed in the underlying connection
+  pool runs into a timeout.
+troubleshoot: |
+  Request timeouts can be caused by the destination servers being overloaded
+  and thus slow to respond, or by network errors. If this counter increases,
+  it is advised to check network connectivity and server loads.

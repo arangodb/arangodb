@@ -1,5 +1,8 @@
 project(nghttp2 C CXX)
 
+add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-implicit-function-declaration)
+add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-implicit-function-declaration)
+
 # add_subdirectory(lib/includes)
 
 set(NGHTTP2_INCLUDES

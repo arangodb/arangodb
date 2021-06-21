@@ -361,19 +361,8 @@ Users.prototype._validateIdentifier = function (identifier, allowObject) {
 // //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setup = function (options) {
-  var journalSize,
-    createOptions;
-
-  if (typeof options === 'object' && options.hasOwnProperty('journalSize')) {
-    journalSize = options.journalSize;
-  }
-
-  createOptions = {
-    journalSize: journalSize || 2 * 1024 * 1024
-  };
-
   if (!db._collection(this._collectionName)) {
-    db._create(this._collectionName, createOptions);
+    db._create(this._collectionName);
   }
 
   this.storage().ensureIndex({ type: 'hash', fields: [ 'identifier' ], sparse: true });
@@ -691,19 +680,8 @@ Sessions.prototype._toObject = function (session) {
 // //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.setup = function (options) {
-  var journalSize,
-    createOptions;
-
-  if (typeof options === 'object' && options.hasOwnProperty('journalSize')) {
-    journalSize = options.journalSize;
-  }
-
-  createOptions = {
-    journalSize: journalSize || 4 * 1024 * 1024
-  };
-
   if (!db._collection(this._collectionName)) {
-    db._create(this._collectionName, createOptions);
+    db._create(this._collectionName);
   }
 
   this.storage().ensureIndex({ type: 'hash', fields: ['identifier']});

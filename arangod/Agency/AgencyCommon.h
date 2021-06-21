@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENCY_COMMON_H
-#define ARANGOD_CONSENSUS_AGENCY_COMMON_H 1
+#pragma once
 
 #include <chrono>
 
@@ -110,6 +109,7 @@ struct log_t {
   std::string clientId;                 // Client ID
   std::chrono::milliseconds timestamp;  // Timestamp
 
+  /// @brief creates a log entry, fully copying it from the buffer
   log_t(index_t idx, term_t t, buffer_t const& e,
         std::string const& clientId,
         uint64_t const& m = 0)
@@ -117,7 +117,28 @@ struct log_t {
         term(t),
         entry(std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
         clientId(clientId),
-        timestamp(m) {
+        timestamp(m) {}
+  
+  /// @brief creates a log entry, taking over the buffer
+  log_t(index_t idx, term_t t, buffer_t&& e,
+        std::string const& clientId,
+        uint64_t const& m = 0)
+      : index(idx),
+        term(t),
+        entry(std::move(e)),
+        clientId(clientId),
+        timestamp(m) {}
+
+  void toVelocyPack(velocypack::Builder& builder) const {
+    builder.openObject();
+
+    builder.add("index", VPackValue(index));
+    builder.add("term", VPackValue(term));
+    builder.add("query", VPackSlice(entry->data()));
+    builder.add("clientId", VPackValue(clientId));
+    builder.add("timestamp", VPackValue(timestamp.count()));
+    
+    builder.close();
   }
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
@@ -142,4 +163,3 @@ inline std::ostream& operator<<(std::ostream& o, arangodb::consensus::log_t cons
   return o;
 }
 
-#endif

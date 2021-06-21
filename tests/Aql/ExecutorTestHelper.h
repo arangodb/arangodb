@@ -281,8 +281,6 @@ struct ExecutorTestHelper {
   }
 
   auto run(bool const loop = false) -> void {
-    ResourceMonitor monitor;
-
     auto inputBlock = generateInputRanges(_itemBlockManager);
 
     auto skippedTotal = SkipResult{};

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_MAP_H
-#define VELOCYPACK_MAP_H
+
+#pragma once
+
 #include "plan-executor.h"
 #include "utilities.h"
 #include "vpack-types.h"
@@ -107,4 +108,3 @@ struct deserialize_plan_executor<map_deserializer<D, C, K, F>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_MAP_H

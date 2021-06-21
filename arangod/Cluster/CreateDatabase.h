@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_CREATE_DATABASE_H
-#define ARANGODB_MAINTENANCE_CREATE_DATABASE_H
+#pragma once
 
 #include "ActionBase.h"
 
@@ -43,4 +42,3 @@ class CreateDatabase : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

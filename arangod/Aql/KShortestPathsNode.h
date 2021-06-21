@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,11 +22,11 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_KSHORTEST_PATHS_NODE_H
-#define ARANGOD_AQL_KSHORTEST_PATHS_NODE_H 1
+#pragma once
 
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
+#include "Graph/ShortestPathType.h"
 
 namespace arangodb {
 
@@ -37,13 +37,13 @@ class Builder;
 namespace graph {
 struct BaseOptions;
 struct ShortestPathOptions;
+struct IndexAccessor;
 }  // namespace graph
 namespace aql {
 
 /// @brief class KShortestPathsNode
 class KShortestPathsNode : public virtual GraphNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  protected:
@@ -55,6 +55,7 @@ class KShortestPathsNode : public virtual GraphNode {
 
  public:
   KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+                     arangodb::graph::ShortestPathType::Type shortestPathType,
                      AstNode const* direction, AstNode const* start,
                      AstNode const* target, AstNode const* graph,
                      std::unique_ptr<graph::BaseOptions> options);
@@ -65,6 +66,7 @@ class KShortestPathsNode : public virtual GraphNode {
 
   /// @brief Internal constructor to clone the node.
   KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+                     arangodb::graph::ShortestPathType::Type shortestPathType,
                      std::vector<Collection*> const& edgeColls,
                      std::vector<Collection*> const& vertexColls,
                      TRI_edge_direction_e defaultDirection,
@@ -122,23 +124,18 @@ class KShortestPathsNode : public virtual GraphNode {
   }
 
   std::string const getTargetVertex() const { return _targetVertexId; }
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> vars;
-    TRI_ASSERT(_pathOutVariable != nullptr);
-    vars.emplace_back(_pathOutVariable);
-    return vars;
-  }
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const override {
-    if (_inStartVariable != nullptr) {
-      vars.emplace(_inStartVariable);
-    }
-    if (_inTargetVariable != nullptr) {
-      vars.emplace(_inTargetVariable);
-    }
+  void getVariablesUsedHere(VarSet& vars) const override;
+
+  /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
+  arangodb::graph::ShortestPathType::Type shortestPathType() const {
+    return _shortestPathType;
   }
 
   /// @brief Compute the shortest path options containing the expressions
@@ -146,6 +143,10 @@ class KShortestPathsNode : public virtual GraphNode {
   ///        of blocks.
   void prepareOptions() override;
 
+  std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
+
+  std::vector<arangodb::graph::IndexAccessor> buildReverseUsedIndexes() const;
+  
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
   auto options() const -> graph::ShortestPathOptions*;
@@ -155,6 +156,9 @@ class KShortestPathsNode : public virtual GraphNode {
                                  bool withProperties) const;
 
  private:
+  /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
+  arangodb::graph::ShortestPathType::Type _shortestPathType;
+
   /// @brief path output variable
   Variable const* _pathOutVariable;
 
@@ -180,4 +184,3 @@ class KShortestPathsNode : public virtual GraphNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

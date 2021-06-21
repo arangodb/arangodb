@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,9 +48,8 @@ using namespace arangodb::aql;
 
 static const AqlValue EmptyValue;
 
-SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
+SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
     : groupLength(0),
-      count(count),
       infos(infos),
       _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _builder(_buffer) {
@@ -126,7 +125,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    velocypack::Options const* opts, bool count)
+    velocypack::Options const* opts)
     : _aggregateTypes(std::move(aggregateTypes)),
       _aggregateRegisters(std::move(aggregateRegisters)),
       _groupRegisters(std::move(groupRegisters)),
@@ -134,18 +133,17 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _expressionRegister(expressionRegister),
       _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
-      _vpackOptions(opts),
-      _count(count) {}
+      _vpackOptions(opts) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
-    : _infos(infos), _currentGroup(infos.getCount(), infos) {
+    : _infos(infos), _currentGroup(infos) {
   // reserve space for the current row
   _currentGroup.initialize(_infos.getGroupRegisters().size());
   // reset and recreate new group
   // Initialize group with invalid input
   InputAqlItemRow emptyInput{CreateInvalidInputRowHint{}};
   _currentGroup.reset(emptyInput);
-};
+}
 
 void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) {
   // remember the last valid row we had
@@ -157,7 +155,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
     TRI_ASSERT(!this->aggregators.empty());
     TRI_ASSERT(infos.getAggregatedRegisters().size() > j);
     RegisterId const reg = infos.getAggregatedRegisters()[j].second;
-    if (reg != RegisterPlan::MaxRegisterId) {
+    if (reg.value() != RegisterId::maxRegisterId) {
       it->reduce(input.getValue(reg));
     } else {
       it->reduce(EmptyValue);
@@ -167,11 +165,8 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
   TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
-    if (count) {
-      // increase the count
-      groupLength++;
-    } else if (infos.getExpressionVariable() != nullptr) {
+  if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+    if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
       input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder,
                                                                  /*resolveExternals*/false,
@@ -267,22 +262,16 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   }
 
   // set the group values
-  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
-    if (infos.getCount()) {
-      // only set group count in result register
-      output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,
-                            AqlValue(AqlValueHintUInt(static_cast<uint64_t>(this->groupLength))));
-    } else {
-      TRI_ASSERT(_builder.isOpenArray());
-      _builder.close();
+  if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+    TRI_ASSERT(_builder.isOpenArray());
+    _builder.close();
 
-      AqlValue val(std::move(_buffer)); // _buffer still usable after
-      AqlValueGuard guard{val, true};
-      TRI_ASSERT(_buffer.size() == 0);
-      _builder.clear(); // necessary
+    AqlValue val(std::move(_buffer)); // _buffer still usable after
+    AqlValueGuard guard{val, true};
+    TRI_ASSERT(_buffer.size() == 0);
+    _builder.clear(); // necessary
 
-      output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
-    }
+    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
   }
 
   output.advanceRow();
@@ -321,7 +310,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   AqlCall clientCall = output.getClientCall();
   TRI_ASSERT(clientCall.offset == 0);
 
-  size_t rowsProduces = 0;
   bool pendingGroup = false;
 
   while (!output.isFull()) {
@@ -336,7 +324,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       if (_infos.getGroupRegisters().empty()) {
         // by definition we need to emit one collect row
         _currentGroup.writeToOutput(output, InputAqlItemRow{CreateInvalidInputRowHint{}});
-        rowsProduces += 1;
       }
       break;
     }
@@ -368,7 +355,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         INTERNAL_LOG_SC << "input is new group, writing old group";
         // Write the current group.
         // Start a new group from input
-        rowsProduces += 1;
         _currentGroup.writeToOutput(output, input);
 
         if (output.isFull()) {
@@ -395,7 +381,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
 
     if (state == ExecutorState::DONE) {
-      rowsProduces += 1;
       _currentGroup.writeToOutput(output, input);
       _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
       break;

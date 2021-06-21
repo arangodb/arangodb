@@ -35,8 +35,8 @@
 #include "utils/type_limits.hpp"
 #include "index/index_tests.hpp"
 
-NS_BEGIN(tests)
-NS_BEGIN(sort)
+namespace tests {
+namespace sort {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class boost
@@ -85,10 +85,6 @@ struct boost : public irs::sort {
     const std::function<bool(score_t, score_t)>* less_;
   }; // sort::boost::prepared
 
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::boostsort";
-  }
-
   DECLARE_FACTORY();
   typedef irs::boost_t score_t;
   boost() : sort(irs::type<boost>::get()) {}
@@ -101,10 +97,6 @@ struct boost : public irs::sort {
 /// @brief expose sort functionality through overidable lambdas
 //////////////////////////////////////////////////////////////////////////////
 struct custom_sort: public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::custom_sort";
-  }
-
   class prepared: public irs::prepared_sort_base<irs::doc_id_t, void> {
    public:
     class field_collector :  public irs::sort::field_collector {
@@ -332,10 +324,6 @@ struct custom_sort: public irs::sort {
 /// @brief order by frequency, then if equal order by doc_id_t
 //////////////////////////////////////////////////////////////////////////////
 struct frequency_sort: public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::frequency_sort";
-  }
-
   struct score_t {
     irs::doc_id_t id;
     double value;
@@ -544,7 +532,7 @@ struct frequency_sort: public irs::sort {
   }
 }; // sort::frequency_sort
 
-NS_END // sort
+} // sort
 
 class filter_test_case_base : public index_test_base {
  protected:
@@ -586,11 +574,19 @@ class filter_test_case_base : public index_test_base {
     auto prepared_order = order.prepare();
     auto prepared_filter = filter.prepare(rdr, prepared_order);
     auto score_less = [&prepared_order](
-        const irs::bytes_ref& lhs,
-        const irs::bytes_ref& rhs)->bool {
-      return prepared_order.less(lhs.c_str(), rhs.c_str());
+        const std::pair<irs::bstring, irs::doc_id_t>& lhs,
+        const std::pair<irs::bstring, irs::doc_id_t>& rhs)->bool {
+      if (prepared_order.less(lhs.first.c_str(), rhs.first.c_str())) {
+        return true;
+      }
+
+      if (prepared_order.less(rhs.first.c_str(), lhs.first.c_str())) {
+        return false;
+      }
+
+      return lhs.second < rhs.second;
     };
-    std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
+    std::multiset<std::pair<irs::bstring, irs::doc_id_t>, decltype(score_less)> scored_result(score_less);
 
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
@@ -609,14 +605,17 @@ class filter_test_case_base : public index_test_base {
 
         if (score && !score->is_default()) {
           scored_result.emplace(
-            irs::bytes_ref{ score->evaluate(), prepared_order.score_size() },
-            docs->value());
+            irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+            docs->value()
+          );
         } else {
           scored_result.emplace(
-            irs::bytes_ref::EMPTY,
-            docs->value());
+            irs::bstring(prepared_order.score_size(), 0),
+            docs->value()
+          );
         }
       }
+      ASSERT_FALSE(docs->next());
     }
 
     std::vector<irs::doc_id_t> result;
@@ -654,6 +653,7 @@ class filter_test_case_base : public index_test_base {
         // put score attributes to iterator
         result.push_back(docs->value());
       }
+      ASSERT_FALSE(docs->next());
     }
   }
 };
@@ -750,6 +750,6 @@ class empty_filter_visitor : public irs::filter_visitor {
   size_t visit_calls_counter_ = 0;
 }; // empty_filter_visitor
 
-NS_END // tests
+} // tests
 
 #endif // IRESEARCH_FILTER_TEST_CASE_BASE

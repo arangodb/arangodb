@@ -2271,13 +2271,15 @@
 
       // check if async query is finished
       var checkQueryStatus = function (cursorID) {
+        var method = 'PUT';
         var url = arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(queryID));
         if (cursorID) {
+          method = 'POST';
           url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(cursorID));
         }
 
         $.ajax({
-          type: 'PUT',
+          type: method,
           url: url,
           contentType: 'application/json',
           processData: false,

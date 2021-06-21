@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,15 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include <cstdint>
 #include <string>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
-
-#ifndef ARANGODB_PREGEL_AGGREGATOR_H
-#define ARANGODB_PREGEL_AGGREGATOR_H 1
 
 namespace arangodb {
 namespace pregel {
@@ -42,7 +41,7 @@ class IAggregator {
   IAggregator& operator=(const IAggregator&) = delete;
 
  public:
-  IAggregator() {}
+  IAggregator() = default;
   virtual ~IAggregator() = default;
 
   /// @brief Used when updating aggregator value locally
@@ -58,6 +57,7 @@ class IAggregator {
                          arangodb::velocypack::Builder& builder) const = 0;
 
   virtual void reset() = 0;
+
   virtual bool isConverging() const = 0;
 };
 
@@ -183,4 +183,3 @@ struct BoolOrAggregator : public IAggregator {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

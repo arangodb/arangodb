@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_LOGICAL_COLLECTION_H
-#define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -89,6 +88,23 @@ class LogicalCollection : public LogicalDataSource {
 
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
+  /*
+   * @brief Available types of internal validators. These validators
+   * are managed by the database, and bound to features of collections.
+   * They cannot be modified by the user, and should therefore not be exposed.
+   * Mostly used for Enterprise/Smart collection types which have
+   * some specialities over community collections.
+   * This enum is used to generate bitmap entries. So whenever you
+   * add a new value make sure it is the next free 2^n value.
+   * For Backwards Compatibility a value can never be reused.
+   */
+  enum InternalValidatorType {
+    None = 0,
+    LogicalSmartEdge = 1,
+    LocalSmartEdge = 2,
+    RemoteSmartEdge = 4,
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
   //////////////////////////////////////////////////////////////////////////////
@@ -149,7 +165,6 @@ class LogicalCollection : public LogicalDataSource {
 #endif
   bool usesRevisionsAsDocumentIds() const;
   void setUsesRevisionsAsDocumentIds(bool);
-  RevisionId minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
 
@@ -168,7 +183,7 @@ class LogicalCollection : public LogicalDataSource {
   size_t numberOfShards() const;
   size_t replicationFactor() const;
   size_t writeConcern() const;
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
   std::vector<std::string> const& avoidServers() const;
   bool isSatellite() const;
   bool usesDefaultShardKeys() const;
@@ -180,12 +195,14 @@ class LogicalCollection : public LogicalDataSource {
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
+                                bool docComplete, std::string& shardID);
+  ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
 
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                          std::string& shardID, bool& usesDefaultShardKeys,
-                          arangodb::velocypack::StringRef const& key =
-                          arangodb::velocypack::StringRef());
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                std::string& shardID, bool& usesDefaultShardKeys,
+                                arangodb::velocypack::StringRef const& key =
+                                    arangodb::velocypack::StringRef());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
@@ -234,6 +251,8 @@ class LogicalCollection : public LogicalDataSource {
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
                                          Serialization context) const;
 
+  void toVelocyPackForInventory(velocypack::Builder&) const;
+
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
                                                bool isReady, bool allInSync) const;
 
@@ -242,10 +261,11 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures(bool details) const;
+  virtual futures::Future<OperationResult> figures(bool details,
+                                                   OperationOptions const& options) const;
 
   /// @brief closes an open collection
-  int close();
+  ErrorCode close();
 
   // SECTION: Indexes
 
@@ -265,18 +285,11 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Index access (local only)
 
-  /// @brief reads an element from the document collection
-  Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& mdr);
-
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);
 
   /// @brief compact-data operation
-  Result compact();
-
-  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, RevisionId>& result) const;
+  void compact();
 
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options);
@@ -291,12 +304,6 @@ class LogicalCollection : public LogicalDataSource {
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
                 OperationOptions& options, ManagedDocumentResult& previousMdr);
-
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result) const;
-
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb) const;
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully
@@ -315,8 +322,8 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
   void schemaToVelocyPack(VPackBuilder&) const;
-  Result validate(VPackSlice newDoc, VPackOptions const*) const; // insert
-  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const; // update / replace
+  Result validate(VPackSlice newDoc, VPackOptions const*) const;  // insert
+  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const;  // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -330,14 +337,30 @@ class LogicalCollection : public LogicalDataSource {
   bool syncByRevision() const;
   /// @brief sets the value of _syncByRevision
   void setSyncByRevision(bool);
-  
+
   /// @brief returns the value of _syncByRevision, but only for "real" collections with data backing.
   /// returns false for all collections with no data backing.
   bool useSyncByRevision() const;
 
+  /// @brief set the internal validator types. This should be handled with care
+  /// and be set before the collection is persisted into the Agency.
+  /// The value should not be modified at runtime.
+  // (Technically no issue but will have side-effects on shards)
+  void setInternalValidatorTypes(uint64_t type);
+
+  bool isShard() const noexcept;
+
+  bool isLocalSmartEdgeCollection() const noexcept;
+
+  bool isRemoteSmartEdgeCollection() const noexcept;
+
+  bool isSmartEdgeCollection() const noexcept;
+
  protected:
+  void addInternalValidator(std::unique_ptr<arangodb::ValidatorBase>);
+
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
-                                           Serialization context) const override;
+                                            Serialization context) const override;
 
   Result updateSchema(VPackSlice schema);
 
@@ -348,7 +371,9 @@ class LogicalCollection : public LogicalDataSource {
 
   bool determineSyncByRevision() const;
 
-  transaction::CountCache _countCache;
+  void decorateWithInternalValidators();
+
+  void decorateWithInternalEEValidators();
 
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
@@ -368,14 +393,14 @@ class LogicalCollection : public LogicalDataSource {
   TRI_col_type_e const _type;
 
   // @brief Current state of this colletion
-  TRI_vocbase_col_status_e _status;
+  std::atomic<TRI_vocbase_col_status_e> _status;
 
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
 
 #ifdef USE_ENTERPRISE
-  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition only)
-  // can only be true if _isSmart is also true
+  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition
+  // only) can only be true if _isSmart is also true
   bool const _isDisjoint;
   // @brief Flag if this collection is a smart one. (Enterprise Edition only)
   bool const _isSmart;
@@ -384,17 +409,17 @@ class LogicalCollection : public LogicalDataSource {
 #endif
 
   // SECTION: Properties
-  bool _waitForSync;
+  std::atomic<bool> _waitForSync;
 
   bool const _allowUserKeys;
 
   std::atomic<bool> _usesRevisionsAsDocumentIds;
-  
+
   std::atomic<bool> _syncByRevision;
 
-  RevisionId const _minRevision;
-
   std::string _smartJoinAttribute;
+
+  transaction::CountCache _countCache;
 
   // SECTION: Key Options
 
@@ -417,8 +442,12 @@ class LogicalCollection : public LogicalDataSource {
   // `_schema` must be used with atomic accessors only!!
   // We use relaxed access (load/store) as we only care about atomicity.
   std::shared_ptr<arangodb::ValidatorBase> _schema;
+
+  // This is a bitmap entry of InternalValidatorType entries.
+  uint64_t _internalValidatorTypes;
+
+  std::vector<std::unique_ptr<arangodb::ValidatorBase>> _internalValidators;
 };
 
 }  // namespace arangodb
 
-#endif

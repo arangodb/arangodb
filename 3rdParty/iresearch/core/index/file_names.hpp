@@ -28,7 +28,7 @@
 
 #include <memory>
 
-NS_ROOT
+namespace iresearch {
 
 // returns string in the following format : _{gen}
 std::string file_name(uint64_t gen);
@@ -43,6 +43,6 @@ void IRESEARCH_API file_name(std::string& out, const string_ref& name, const str
 // returns string in the following format : {name}.{gen}.{ext}
 std::string IRESEARCH_API file_name(const string_ref& name, uint64_t gen, const string_ref& ext);
 
-NS_END
+}
 
 #endif

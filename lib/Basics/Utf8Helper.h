@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_UTF8HELPER_H
-#define ARANGODB_BASICS_UTF8HELPER_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
@@ -235,4 +234,3 @@ static inline int TRI_compare_utf8(char const* left, size_t leftLength,
 
 char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength);
 
-#endif

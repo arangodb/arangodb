@@ -33,7 +33,6 @@ const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
 const request = require('@arangodb/request');
-const ERRORS = require('internal').errors;
 
 function AuthSuite() {
   'use strict';

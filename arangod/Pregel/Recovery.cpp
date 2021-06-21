@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -91,8 +91,8 @@ void RecoveryManager::monitorCollections(DatabaseID const& database,
   }
 }
 
-int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
-                                       std::vector<ServerID>& goodServers) {
+ErrorCode RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
+                                             std::vector<ServerID>& goodServers) {
   // TODO I could also use ClusterInfo::failedServers
   AgencyCommResult result = _agency.getValues("Supervision/Health");
   if (result.successful()) {

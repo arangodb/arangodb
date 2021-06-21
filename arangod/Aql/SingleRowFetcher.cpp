@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,10 +66,10 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
     TRI_ASSERT(block != nullptr);
     return {state, skipped,
             AqlItemBlockInputRange{ExecutorState::HASMORE,
-                                   skipped.getSkipCount(), block, start}};
+                                   skipped.getSkipCount(), std::move(block), start}};
   }
   return {state, skipped,
-          AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(), block, start}};
+          AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(), std::move(block), start}};
 }
 
 

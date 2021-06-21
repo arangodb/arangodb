@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,8 +59,8 @@ bool Identifier::operator>=(Identifier const& other) const {
   return _id >= other._id;
 }
 
-}  // namespace arangodb::basics
-
 std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i) {
   return s << std::to_string(i.id());
 }
+
+}  // namespace arangodb::basics

@@ -25,9 +25,9 @@
 
 #include "search/cost.hpp"
 #include "search/filter.hpp"
-#include "utils/bitset.hpp"
+#include "search/states_cache.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct multiterm_state
@@ -48,18 +48,20 @@ struct multiterm_state {
     float_t boost{ no_boost() };
   };
 
+  using unscored_term_state = seek_term_iterator::seek_cookie::ptr;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if state is empty
   //////////////////////////////////////////////////////////////////////////////
   bool empty() const noexcept {
-    return !scored_states_estimation && unscored_docs.none();
+    return scored_states.empty() && unscored_terms.empty();
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return total cost of execution
   //////////////////////////////////////////////////////////////////////////////
   cost::cost_t estimation() const noexcept {
-    return scored_states_estimation + unscored_docs.count();
+    return scored_states_estimation + unscored_states_estimation;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -73,16 +75,21 @@ struct multiterm_state {
   std::vector<term_state> scored_states;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief matching doc_ids that may have been skipped
+  /// @brief matching terms that may have been skipped
   ///        while collecting statistics and should not be
   ///        scored by the disjunction
   //////////////////////////////////////////////////////////////////////////////
-  bitset unscored_docs;
+  std::vector<unscored_term_state> unscored_terms;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief estimated cost of scored states
   //////////////////////////////////////////////////////////////////////////////
   cost::cost_t scored_states_estimation{};
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief estimated cost of unscored states
+  //////////////////////////////////////////////////////////////////////////////
+  cost::cost_t unscored_states_estimation{};
 }; // multiterm_state
 
 //////////////////////////////////////////////////////////////////////////////
@@ -135,6 +142,6 @@ class multiterm_query : public filter::prepared {
   sort::MergeType merge_type_;
 }; // multiterm_query
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_MULTITERM_QUERY_H

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_SHELL_COLORS_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_SHELL_COLORS_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -61,6 +60,9 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
   static char const* SHELL_COLOR_BLINK;
   static char const* SHELL_COLOR_BRIGHT;
   static char const* SHELL_COLOR_RESET;
+  static char const* SHELL_COLOR_LINK_START;
+  static char const* SHELL_COLOR_LINK_MIDDLE;
+  static char const* SHELL_COLOR_LINK_END;
 
  private:
   bool _initialized;
@@ -68,4 +70,3 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
 
 }  // namespace arangodb
 
-#endif

@@ -25,10 +25,12 @@
 
 #include "scorers.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class tfidf_sort : public sort {
 public:
+  using score_t = float_t;
+
   static constexpr string_ref type_name() noexcept {
     return "tfidf";
   }
@@ -37,23 +39,38 @@ public:
     return false;
   }
 
+  static constexpr bool BOOST_AS_SCORE() noexcept {
+    return false;
+  }
+
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY();
+  static sort::ptr make(
+    bool normalize = WITH_NORMS(),
+    bool boost_as_score = BOOST_AS_SCORE());
 
-  typedef float_t score_t;
-
-  explicit tfidf_sort(bool normalize = WITH_NORMS()) noexcept;
+  explicit tfidf_sort(
+    bool normalize = WITH_NORMS(),
+    bool boost_as_score = BOOST_AS_SCORE()) noexcept;
 
   static void init(); // for trigering registration in a static build
   bool normalize() const noexcept { return normalize_; }
   void normalize(bool value) noexcept { normalize_ = value; }
 
+  // use boost as score even if frequency is not set
+  bool use_boost_as_score() const noexcept {
+    return boost_as_score_;
+  }
+  void use_boost_as_score(bool use) noexcept {
+    boost_as_score_ = use;
+  }
+
   virtual sort::prepared::ptr prepare() const override;
 
-private:
+ private:
   bool normalize_;
+  bool boost_as_score_;
 }; // tfidf_sort
 
-NS_END
+}
 
 #endif

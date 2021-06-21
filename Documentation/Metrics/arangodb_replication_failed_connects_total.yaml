@@ -1,0 +1,39 @@
+name: arangodb_replication_failed_connects_total
+renamedFrom: arangodb_replication_failed_connects
+introducedIn: "3.8.0"
+help: |
+  Number of failed connection attempts and response errors during initial asynchronous replication.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  During initial replication the existing data from the leader is copied asynchronously
+  over to new shards. Whenever there is a communication issue between the follower and
+  the leader of the shard it will be counted here for the follower. This communication
+  issues cover failed connections or http errors, but they also cover invalid or
+  unexpected data formats received on the follower.
+threshold: |
+  In ideal situation this counter should be 0. It is expected to increase if there is
+  server or network outage. However it is not guaranteed that this metric increases
+  in such a situation.
+troubleshoot: |
+  If this counter increases this typically indicates an issue with the communication
+  between servers. If it is just occasionally an increase of one, it can be a simple
+  network hiccup, if you see constant increases here that indicates serious issues.
+  This also indicates that there is a shard trying to get into sync with the existing
+  data, which cannot make progress. So you have only replicationFactor - 1 copies of
+  the data right now. If more servers suffer outage you may lose data in this case.
+  * First thing to check: Network connectivity, make sure all servers are online
+    and the machines can communicate to one-another.
+  * Second: Check ArangoDB logs of this server for more details, most likely
+    you will see WARN or ERROR messages in "replication" log topic. If you contact
+    ArangoDB support for this issue, it will help to include this servers logs as well.
+  * Third: (Unlikely) If the logs contain unexpected format or value entries
+    please check if you are running all ArangoDB Database servers within the same
+    version of ArangoDB. Only upgrades of one minor version at a time are supported
+    in general, so if you are running one server with a much newer / older version
+    please upgrade all servers to the newest version.
+  * Forth: If none of the above applies, please contact ArangoDB Support.

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TERMINAL__UTILS_H
-#define ARANGODB_BASICS_TERMINAL__UTILS_H 1
+#pragma once
 
 #include "Basics/operating-system.h"
 
@@ -53,4 +52,3 @@ TRI_TerminalSize TRI_DefaultTerminalSize();
 
 void TRI_SetStdinVisibility(bool);
 
-#endif

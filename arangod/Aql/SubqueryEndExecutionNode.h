@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H
-#define ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -60,7 +59,7 @@ class SubqueryEndNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
-  void getVariablesUsedHere(VarSet& usedVars) const final {
+  void getVariablesUsedHere(VarSet& usedVars) const override final {
     if (_inVariable != nullptr) {
       usedVars.emplace(_inVariable);
     }
@@ -85,4 +84,3 @@ class SubqueryEndNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

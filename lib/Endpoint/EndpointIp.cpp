@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -409,30 +409,4 @@ void EndpointIp::disconnect() {
     TRI_CLOSE_SOCKET(_socket);
     TRI_invalidatesocket(&_socket);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief init an incoming connection
-////////////////////////////////////////////////////////////////////////////////
-
-bool EndpointIp::initIncoming(TRI_socket_t incoming) {
-  // disable nagle's algorithm
-  int n = 1;
-  int res = TRI_setsockopt(incoming, IPPROTO_TCP, TCP_NODELAY, (char*)&n, sizeof(n));
-
-  if (res != 0) {
-    char const* pErr;
-    char errBuf[256];
-#ifdef _WIN32
-    char windowsErrorBuf[256];
-#endif
-
-    pErr = STR_ERROR();
-    snprintf(errBuf, sizeof(errBuf), "setsockopt failed with #%d - %s", errno, pErr);
-
-    _errorMessage = errBuf;
-    return false;
-  }
-
-  return setSocketFlags(incoming);
 }

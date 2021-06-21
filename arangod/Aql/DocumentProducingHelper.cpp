@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -286,6 +286,11 @@ bool DocumentProducingFunctionContext::checkFilter(
 }
 
 bool DocumentProducingFunctionContext::checkFilter(ExpressionContext& ctx) {
+  _killCheckCounter = (_killCheckCounter + 1) % 1024;
+  if (ADB_UNLIKELY(_killCheckCounter == 0 && _query.killed())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _filter->execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);

@@ -37,8 +37,8 @@
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -91,18 +91,18 @@ class CalculationExecutorTest
   CalculationExecutorInfos executorInfos;
 
   CalculationExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         ast(*fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
         var("a", 0, false),
         a(::initializeReference(ast, var)),
         node(ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
-        plan(&ast),
+        plan(&ast, false),
         expr(&ast, node),
         outRegID(1),
         inRegID(0),
         registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
-                      RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
+                      1 /*in width*/, 2 /*out width*/,
                       RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/),
         executorInfos(outRegID /*out reg*/, *fakedQuery.get() /*query*/, expr /*expression*/,
                       std::vector<Variable const*>{&var} /*expression input variables*/,

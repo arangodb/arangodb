@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_OPTIMIZER_RULES_H
-#define ARANGOD_AQL_OPTIMIZER_RULES_H 1
+#pragma once
 
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -43,6 +42,10 @@ class QueryContext;
 struct Collection;
 /// Helper
 Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context);
+
+void insertDistributeInputCalculation(ExecutionPlan& plan);
+
+void enableAsyncPrefetching(ExecutionPlan& plan);
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
@@ -293,6 +296,10 @@ void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule
 /// @brief parallelize Gather nodes (cluster-only)
 void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
+/// @brief allows execution nodes to asynchronously prefetch the next batch from their
+/// upstream node.
+void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
@@ -330,4 +337,3 @@ auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, Subqu
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

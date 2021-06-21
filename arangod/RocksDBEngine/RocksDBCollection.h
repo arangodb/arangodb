@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +21,9 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
+#pragma once
 
+#include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -36,9 +36,11 @@ namespace arangodb {
 namespace cache {
 class Cache;
 }
+
 class LogicalCollection;
 class ManagedDocumentResult;
 class RocksDBPrimaryIndex;
+class RocksDBSavePoint;
 class RocksDBVPackIndex;
 class LocalDocumentId;
 
@@ -63,7 +65,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
-  int close() override;
+  ErrorCode close() override;
   void load() override;
   void unload() override;
 
@@ -104,14 +106,14 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                       RevisionId& revisionId) const;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result) override;
+              IndexIterator::DocumentCallback const& cb) const override;
+  
+  /// @brief lookup with callback, not thread-safe on same transaction::Context
+  Result read(transaction::Methods* trx, LocalDocumentId const& token,
+              IndexIterator::DocumentCallback const& cb) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
-
-  /// @brief lookup with callback, not thread-safe on same transaction::Context
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options) override;
@@ -132,18 +134,15 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
+  bool hasDocuments() override;
+
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;
 
-  Result upgrade() override;
-  bool didPartialUpgrade() override;
-  Result cleanupAfterUpgrade() override;
-
- protected:
+ private:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                 RevisionId expectedRev, ManagedDocumentResult& previous,
                 OperationOptions& options);
 
- private:
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
@@ -157,16 +156,20 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   }
 
   arangodb::Result insertDocument(arangodb::transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
+                                  arangodb::velocypack::Slice doc,
+                                  OperationOptions const& options) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
+                                  arangodb::velocypack::Slice doc,
+                                  OperationOptions const& options) const;
 
-  arangodb::Result updateDocument(transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
+  arangodb::Result updateDocument(transaction::Methods* trx, 
+                                  RocksDBSavePoint& savepoint,
+                                  LocalDocumentId const& oldDocumentId,
                                   arangodb::velocypack::Slice const& oldDoc,
                                   LocalDocumentId const& newDocumentId,
                                   arangodb::velocypack::Slice const& newDoc,
@@ -180,11 +183,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                        rocksdb::PinnableSlice& ps,
                                        bool readCache,
                                        bool fillCache) const;
-  
-  bool lookupDocumentVPack(transaction::Methods*,
-                           LocalDocumentId const& documentId,
-                           IndexIterator::DocumentCallback const& cb,
-                           bool withCache) const;
+  Result lookupDocumentVPack(transaction::Methods*, LocalDocumentId const& documentId,
+                             IndexIterator::DocumentCallback const& cb, bool withCache) const;
 
   /// @brief create hash-cache
   void createCache() const;
@@ -209,9 +209,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  bool _cacheEnabled;
+  std::atomic<bool> _cacheEnabled;
   /// @brief number of index creations in progress
   std::atomic<int> _numIndexCreations;
+  arangodb::TransactionStatistics& _statistics;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
@@ -228,4 +229,3 @@ inline RocksDBCollection* toRocksDBCollection(LogicalCollection& logical) {
 
 }  // namespace arangodb
 
-#endif

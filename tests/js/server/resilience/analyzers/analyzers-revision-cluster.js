@@ -404,7 +404,12 @@ function analyzersRevisionTestSuite () {
       let dbName = "testDbName";
       try { db._dropDatabase(dbName); } catch (e) {}
       try {
-        analyzers.save("SystemTestAnalyzer", "identity");
+        try {
+          analyzers.save("SystemTestAnalyzer", "identity");
+        } catch(ee) {
+          console.error("Trouble in creating SystemTestAnalyzer: ", JSON.stringify(ee));
+          throw ee;
+        }
         db._createDatabase(dbName);
         db._useDatabase(dbName);
         internal.debugClearFailAt();

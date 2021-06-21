@@ -1,0 +1,19 @@
+name: rocksdb_num_live_versions
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "rocksdb-num-live-versions"
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "rocksdb-num-live-versions".
+  It shows the number of live versions. `Version` is an internal data
+  structure. See `version_set.h` in the RocksDB source for details. More
+  live versions often mean more SST files are held from being deleted,
+  by iterators or unfinished compactions. This number is the number
+  summed up over all column families.

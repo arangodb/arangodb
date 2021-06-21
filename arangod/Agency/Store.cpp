@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -184,7 +185,7 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
     }
 
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(30000,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
                                    "Agency request syntax is [[<queries>]]");
   }
 
@@ -368,12 +369,12 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                       << url << "(no response, " << fuerte::to_string(r.error)
                       << "): " << r.slice().toJson();
                 } else {
-                  if (r.response->statusCode() >= 400) {
+                  if (r.statusCode() >= 400) {
                     LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
-                        << url << "(" << r.response->statusCode() << ", "
+                        << url << "(" << r.statusCode() << ", "
                         << fuerte::to_string(r.error) << "): " << r.slice().toJson();
 
-                    if (r.response->statusCode() == 404 && _agent != nullptr) {
+                    if (r.statusCode() == 404 && _agent != nullptr) {
                       LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY)
                           << "dropping dead callback at " << url;
                       agent->trashStoreCallback(url, VPackSlice(buffer->data()));
@@ -984,18 +985,6 @@ std::multimap<TimePoint, std::string>& Store::timeTable() {
 std::multimap<TimePoint, std::string> const& Store::timeTable() const {
   _storeLock.assertLockedByCurrentThread();
   return _timeTable;
-}
-
-/// Observer table
-std::unordered_multimap<std::string, std::string>& Store::observerTable() {
-  _storeLock.assertLockedByCurrentThread();
-  return _observerTable;
-}
-
-/// Observer table
-std::unordered_multimap<std::string, std::string> const& Store::observerTable() const {
-  _storeLock.assertLockedByCurrentThread();
-  return _observerTable;
 }
 
 /// Observed table

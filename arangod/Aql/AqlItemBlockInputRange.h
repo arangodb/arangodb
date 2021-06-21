@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H
-#define ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -48,6 +47,9 @@ class AqlItemBlockInputRange {
                          arangodb::aql::SharedAqlItemBlockPtr&&,
                          std::size_t startIndex) noexcept;
 
+  void reset() noexcept { _block.reset(nullptr); }
+  bool hasBlock() const noexcept { return _block.get() != nullptr; }
+  
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
   ExecutorState upstreamState() const noexcept;
@@ -78,6 +80,8 @@ class AqlItemBlockInputRange {
 
   size_t skipAllRemainingDataRows();
 
+  size_t skipAllShadowRowsOfDepth(size_t depth);
+
   // Subtract up to this many rows from the local `_skipped` state; return
   // the number actually skipped. Does not skip data rows.
   [[nodiscard]] auto skip(std::size_t) noexcept -> std::size_t;
@@ -102,6 +106,12 @@ class AqlItemBlockInputRange {
 
   [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
 
+  /**
+   * @brief Skip over all remaining data rows until the next shadow row.
+   * Count how many rows are skipped
+   */
+  [[nodiscard]] auto countAndSkipAllRemainingDataRows() -> std::size_t;
+
  private:
   bool isIndexValid(std::size_t index) const noexcept;
 
@@ -122,4 +132,3 @@ class AqlItemBlockInputRange {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H

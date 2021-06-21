@@ -5,10 +5,10 @@
 const _ = require('lodash');
 const fs = require('fs');
 const internal = require('internal');
-const rp = require('@arangodb/result-processing');
+const rp = require('@arangodb/testutils/result-processing');
 const yaml = require('js-yaml');
 
-const optionsDefaults = require('@arangodb/testing').optionsDefaults;
+const optionsDefaults = require('@arangodb/testutils/testing').optionsDefaults;
 
 /* Constants: */
 const BLUE = internal.COLORS.COLOR_BLUE;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -133,8 +133,10 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
       if (!newField) {
         continue;
       }
+      // cppcheck-suppress accessMoved
       sc.fields.emplace_back(fieldName, std::move(field));
       columnLength += fieldName.size() + 1; // + 1 for FIELDS_DELIMITER
+      // cppcheck-suppress accessMoved
       fieldNames.emplace_back(std::move(fieldName));
     }
     // skip empty column

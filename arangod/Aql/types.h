@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TYPES_H
-#define ARANGOD_AQL_TYPES_H 1
+#pragma once
 
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/RegisterId.h"
 #include "Basics/debugging.h"
 
-#include <Basics/debugging.h>
 #include <Containers/HashSetFwd.h>
 
 #include <map>
@@ -60,9 +59,6 @@ struct Collection;
 /// @brief type for variable ids
 typedef uint32_t VariableId;
 
-/// @brief type for register numbers/ids
-typedef unsigned RegisterId;
-typedef size_t RegisterCount;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;
@@ -109,4 +105,3 @@ enum class ExplainRegisterPlan {
 
 }  // namespace arangodb
 
-#endif

@@ -537,7 +537,9 @@ exports.checkAvailableVersions = function() {
     log = internal.print;
   }
 
+  let isStable = true;
   if (version.match(/beta|alpha|preview|milestone|devel/) !== null) {
+    isStable = false;
     if (internal.quiet !== true) {
       log(
         "You are using a milestone/alpha/beta/preview version ('" +
@@ -545,8 +547,14 @@ exports.checkAvailableVersions = function() {
           "') of ArangoDB"
       );
     }
-  } else if (internal.isEnterprise()) {
-    // don't check for version updates in the Enterprise Edition
+  } 
+
+  if (isServer && internal.isEnterprise()) {
+    // don't check for version updates in arangod in Enterprise Edition
+    return;
+  }
+  if (!isServer && internal.isEnterprise() && isStable) {
+    // don't check for version updates in arangosh in stable Enterprise Edition
     return;
   }
   

@@ -20,6 +20,7 @@ build
 
 *.deb
 *.rpm
+*.user
 
 .DS_Store
 *.swp
@@ -115,3 +116,5 @@ last_compiled_version.sha
 scripts/perfanalysis
 perf*
 callgrind*
+
+Documentation/Metrics/allMetrics.yaml

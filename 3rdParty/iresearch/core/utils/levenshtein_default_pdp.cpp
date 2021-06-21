@@ -25,7 +25,7 @@
 #include "levenshtein_utils.hpp"
 #include "std.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 const irs::parametric_description& default_pdp(
     irs::byte_type distance,
@@ -44,4 +44,4 @@ const irs::parametric_description& default_pdp(
   return irs::irstd::static_lazy_array<builder, 9>::at(idx);
 }
 
-NS_END
+}

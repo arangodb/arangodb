@@ -5,7 +5,7 @@
 
         <div class="pure-u-1-2 pure-u-md-1-3">
           <div class="valueWrapper">
-            <div id="info-mode-id" class="value"><%=info.state%></div>
+            <div id="info-state-id" class="value"><%=info.state%></div>
             <div class="graphLabel">State</div>
           </div>
         </div>
@@ -20,9 +20,9 @@
         <div class="pure-u-1-2 pure-u-md-1-3">
           <div class="valueWrapper">
             <% if (info.role === 'follower' && mode !== 3) { %>
-              <div id="info-role-id" class="value">Slave</div>
+              <div id="info-role-id" class="value">Follower</div>
             <% } else if (info.role === 'leader' && mode !== 3) { %>
-              <div id="info-role-id" class="value">Master</div>
+              <div id="info-role-id" class="value">Leader</div>
             <% } else { %>
               <div id="info-role-id" class="value"><%=info.role%></div>
             <% } %>
@@ -74,7 +74,7 @@
                 </td>
               </tr>
                 <tr>
-                  <td><div>This node is not replicating from any other node. Also there are no active slaves or followers found. </br>Please visit our <a href="https://www.arangodb.com/docs/stable/architecture-replication.html">Documentation</a> to find out how to setup replication.</div></td>
+                  <td><div>This node is not replicating from any other node. Also there are no active followers found. </br>Please visit our <a href="https://www.arangodb.com/docs/stable/architecture-replication.html">Documentation</a> to find out how to setup replication.</div></td>
                 </tr>
             </tbody>
         </table>
@@ -102,11 +102,7 @@
                 <% if (mode === 3) { %>
                   <td id="info-role-id"><%=info.role%></td>
                 <% } else { %>
-                  <% if (info.role === 'follower') { %>
-                    <td id="info-role-id">Slave</td>
-                  <% } else { %>
-                    <td id="info-role-id">Master</td>
-                  <% } %>
+                  <td id="info-role-id">Follower</td>
                 <% } %>
               </tr>
             </tbody>
@@ -168,11 +164,7 @@
     <% if (info.role === 'leader') { %>
       <div class="repl-logger">
         <div class="categoryBar">
-          <% if (mode === 3) { %>
-            <h4>Leader State</h4>
-          <% } else { %>
-            <h4>Master State</h4>
-          <% } %>
+          <h4>Leader State</h4>
         </div>
         <table class="pure-table">
             <tbody>
@@ -194,11 +186,7 @@
 
       <div class="repl-logger-clients">
         <div class="categoryBar">
-          <% if (mode === 3) { %>
-            <h4>Follower States</h4>
-          <% } else { %>
-            <h4>Slave States</h4>
-          <% } %>
+          <h4>Follower States</h4>
         </div>
         <table class="pure-table" id="repl-logger-clients">
             <thead>
@@ -219,11 +207,7 @@
     <% if (info.role === 'follower') { %>
       <div class="repl-applier">
         <div class="categoryBar">
-          <% if (mode === 3) { %>
-            <h4>Follower States</h4>
-          <% } else { %>
-            <h4>Slave States</h4>
-          <% } %>
+          <h4>Follower States</h4>
         </div>
 
         <table id="repl-follower-table" class="pure-table" style="width: 100%">

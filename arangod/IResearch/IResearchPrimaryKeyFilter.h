@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H
-#define ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H 1
+#pragma once
 
 #include "IResearchDocument.h"
 #include "VocBase/voc-types.h"
@@ -32,6 +31,7 @@
 #include "utils/type_limits.hpp"
 
 namespace arangodb {
+class StorageEngine;
 namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -46,10 +46,10 @@ class PrimaryKeyFilter final
     return "arangodb::iresearch::PrimaryKeyFilter";
   }
 
-  static irs::type_info type();
+  static irs::type_info type(StorageEngine& engine);
 
-  explicit PrimaryKeyFilter(arangodb::LocalDocumentId const& value) noexcept
-      : irs::filter(PrimaryKeyFilter::type()),
+  PrimaryKeyFilter(StorageEngine& engine, arangodb::LocalDocumentId const& value) noexcept
+      : irs::filter(PrimaryKeyFilter::type(engine)),
         _pk(DocumentPrimaryKey::encode(value)),
         _pkSeen(false) {}
 
@@ -131,8 +131,8 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   PrimaryKeyFilterContainer(PrimaryKeyFilterContainer&&) = default;
   PrimaryKeyFilterContainer& operator=(PrimaryKeyFilterContainer&&) = default;
 
-  PrimaryKeyFilter& emplace(arangodb::LocalDocumentId const& value) {
-    _filters.emplace_back(value);
+  PrimaryKeyFilter& emplace(StorageEngine& engine, arangodb::LocalDocumentId const& value) {
+    _filters.emplace_back(engine, value);
 
     return _filters.back();
   }
@@ -154,4 +154,3 @@ class PrimaryKeyFilterContainer final : public irs::filter {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H

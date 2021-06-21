@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H
-#define ARANGOD_VOC_BASE_TRAVERSER_OPTIONS_H 1
+#pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
@@ -63,6 +62,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
  public:
   enum UniquenessLevel { NONE, PATH, GLOBAL };
+  enum class Order { DFS, BFS, WEIGHTED };
 
  protected:
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
@@ -77,14 +77,19 @@ struct TraverserOptions : public graph::BaseOptions {
   ///        The Node keeps responsibility
   std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
 
-  bool _producePaths{true};
+  /// @brief The condition given for PostFilters (might be empty)
+  ///        The Node keeps responsibility
+  ///        This is used to avoid producing paths if the last vertex or edge do not match.
+  std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterExpression;
+
+  bool _producePathsVertices{true};
+  bool _producePathsEdges{true};
+  bool _producePathsWeights{true};  // only used by WeightedEnumerator
 
  public:
   uint64_t minDepth;
 
   uint64_t maxDepth;
-
-  bool useBreadthFirst;
 
   bool useNeighbors;
 
@@ -92,17 +97,21 @@ struct TraverserOptions : public graph::BaseOptions {
 
   UniquenessLevel uniqueEdges;
 
+  Order mode;
+
+  std::string weightAttribute;
+
+  double defaultWeight;
+
   std::vector<std::string> vertexCollections;
 
   std::vector<std::string> edgeCollections;
 
   explicit TraverserOptions(arangodb::aql::QueryContext& query);
 
-  TraverserOptions(arangodb::aql::QueryContext& query,
-                   arangodb::velocypack::Slice definition);
+  TraverserOptions(arangodb::aql::QueryContext& query, arangodb::velocypack::Slice definition);
 
-  TraverserOptions(arangodb::aql::QueryContext&,
-                   arangodb::velocypack::Slice info,
+  TraverserOptions(arangodb::aql::QueryContext& query, arangodb::velocypack::Slice info,
                    arangodb::velocypack::Slice collections);
 
   /// @brief This copy constructor is only working during planning phase.
@@ -139,6 +148,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool hasEdgeFilter(int64_t, size_t) const;
 
+  bool hasWeightAttribute() const;
+
   bool hasVertexCollectionRestrictions() const;
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
@@ -158,19 +169,51 @@ struct TraverserOptions : public graph::BaseOptions {
                      std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
                      size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
 
+  void activatePostFilter(std::vector<aql::Variable const*> vars,
+                          std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
+                          size_t edgeVarIdx, aql::Expression* expr);
+
   bool usesPrune() const { return _pruneExpression != nullptr; }
+  bool usesPostFilter() const { return _postFilterExpression != nullptr; }
+
+  bool isUseBreadthFirst() const { return mode == Order::BFS; }
+
+  bool isUniqueGlobalVerticesAllowed() const {
+    return mode == Order::BFS || mode == Order::WEIGHTED;
+  }
+
+  double weightEdge(VPackSlice edge) const;
 
   aql::PruneExpressionEvaluator* getPruneEvaluator() {
     TRI_ASSERT(usesPrune());
     return _pruneExpression.get();
   }
 
+  aql::PruneExpressionEvaluator* getPostFilterEvaluator() {
+    TRI_ASSERT(usesPostFilter());
+    return _postFilterExpression.get();
+  }
+
   auto estimateDepth() const noexcept -> uint64_t override;
 
-  auto setProducePaths(bool value) -> void { _producePaths = value; }
+  auto setProducePaths(bool vertices, bool edges, bool weights) noexcept -> void {
+    _producePathsVertices = vertices;
+    _producePathsEdges = edges;
+    _producePathsWeights = weights;
+  }
 
-  auto producePaths() -> bool { return _producePaths; }
+  auto producePathsVertices() const noexcept -> bool {
+    return _producePathsVertices;
+  }
+  auto producePathsEdges() const noexcept -> bool { return _producePathsEdges; }
+  auto producePathsWeights() const noexcept -> bool {
+    return _producePathsWeights && mode == Order::WEIGHTED;
+  }
+
+  auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
+
+ private:
+  void readProduceInfo(VPackSlice obj);
 };
 }  // namespace traverser
 }  // namespace arangodb
-#endif

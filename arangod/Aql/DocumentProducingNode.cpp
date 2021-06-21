@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "DocumentProducingNode.h"
 
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -61,7 +62,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
-    setFilter(std::make_unique<Expression>(ast, new AstNode(ast, p)));
+    setFilter(std::make_unique<Expression>(ast, ast->createNode(p)));
   }
 
   _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count", false);

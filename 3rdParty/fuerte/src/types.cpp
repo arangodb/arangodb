@@ -281,6 +281,38 @@ std::string to_string(ContentType type) {
   throw std::logic_error("unknown content type");
 }
 
+const std::string fu_content_encoding_identity("identity");
+const std::string fu_content_encoding_deflate("deflate");
+const std::string fu_content_encoding_gzip("gzip");
+
+ContentEncoding to_ContentEncoding(std::string const& val) {
+  if (val.empty()) {
+    return ContentEncoding::Identity;
+  } else if (val.compare(0, fu_content_encoding_gzip.size(),
+                         fu_content_encoding_gzip) == 0) {
+    return ContentEncoding::Gzip;
+  } else if (val.compare(0, fu_content_encoding_deflate.size(),
+                         fu_content_encoding_deflate) == 0) {
+    return ContentEncoding::Deflate;
+  } else if (val.compare(0, fu_content_encoding_identity.size(),
+                         fu_content_encoding_identity) == 0) {
+    return ContentEncoding::Identity;
+  }
+  return ContentEncoding::Identity;
+}
+
+std::string to_string(ContentEncoding type) {
+  switch (type) {
+    case ContentEncoding::Deflate:
+      return fu_content_encoding_deflate;
+    case ContentEncoding::Gzip:
+      return fu_content_encoding_gzip;
+    case ContentEncoding::Identity:
+    default:
+      return fu_content_encoding_identity;
+  }
+}
+
 std::string to_string(AuthenticationType type) {
   switch (type) {
     case AuthenticationType::None:

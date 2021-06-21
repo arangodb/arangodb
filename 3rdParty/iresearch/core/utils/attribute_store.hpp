@@ -29,7 +29,7 @@
 #include "shared.hpp"
 #include "utils/attributes.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief common interface for attribute storage implementations
@@ -275,6 +275,6 @@ class IRESEARCH_API attribute_store
 static_assert(std::is_move_constructible<attribute_store>::value,
               "default move constructor expected");
 
-NS_END
+}
 
 #endif // IRESEARCH_ATTRIBUTE_STORE_H

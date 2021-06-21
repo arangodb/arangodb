@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXPLAIN */
+/*global AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for cost estimation
@@ -28,9 +28,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var helper = require("@arangodb/aql-helper");
+const jsunity = require("jsunity");
+const {assertEqual} = jsunity.jsUnity.assertions;
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -193,14 +194,183 @@ function optimizerCostsTestSuite () {
       assertEqual(4, node.estimatedNrItems);
       
       // find the subquery node of the plan
-      node = helper.findExecutionNodes(plan, "SubqueryNode")[0];
+      node = helper.findExecutionNodes(plan, "SubqueryEndNode")[0];
       // subquery always produces one result
       assertEqual(1, node.estimatedNrItems);
 
       // find the enumeratelistnode in the subquery
-      node = helper.findExecutionNodes(node.subquery, "EnumerateListNode")[0];
+      node = helper.findExecutionNodes(plan, "EnumerateListNode")[0];
       assertEqual(4, node.estimatedNrItems);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that spliced subqueries restore the number of lines at their end
+///        node correctly.
+////////////////////////////////////////////////////////////////////////////////
+
+    testSplicedSubquery : function () {
+      const query = `
+        FOR i IN 1..3
+          LET sq = (
+            FOR k IN 1..5
+              RETURN {i, k}
+          )
+          RETURN sq
+      `;
+
+      const explain = AQL_EXPLAIN(query);
+      const nodes = explain.plan.nodes;
+      const nodeTypes = nodes.map(n => n.type);
+
+      // Check the rough outline first for a better overview in case of a failure
+      // of the plan.
+      assertEqual(["SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "SubqueryStartNode", "EnumerateListNode", "CalculationNode", "SubqueryEndNode", "ReturnNode"],
+nodeTypes);
+
+      let node, prevNode;
+      // SingletonNode
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      assertEqual(1, node.estimatedNrItems);
+      assertEqual(1, node.estimatedCost);
+      // CalculationNode
+      prevNode = node;
+      node = nodes[1];
+      assertEqual("CalculationNode", node.type);
+      assertEqual(1, node.estimatedNrItems);
+      assertEqual(1 + prevNode.estimatedCost, node.estimatedCost);
+      // CalculationNode
+      prevNode = node;
+      node = nodes[2];
+      assertEqual("CalculationNode", node.type);
+      assertEqual(1, node.estimatedNrItems);
+      assertEqual(1 + prevNode.estimatedCost, node.estimatedCost);
+      // EnumerateListNode
+      prevNode = node;
+      node = nodes[3];
+      assertEqual("EnumerateListNode", node.type);
+      assertEqual(3, node.estimatedNrItems);
+      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
+      // SubqueryStartNode
+      prevNode = node;
+      node = nodes[4];
+      assertEqual("SubqueryStartNode", node.type);
+      assertEqual(3, node.estimatedNrItems);
+      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
+      // EnumerateListNode
+      prevNode = node;
+      node = nodes[5];
+      assertEqual("EnumerateListNode", node.type);
+      assertEqual(15, node.estimatedNrItems);
+      assertEqual(15 + prevNode.estimatedCost, node.estimatedCost);
+      // CalculationNode
+      prevNode = node;
+      node = nodes[6];
+      assertEqual("CalculationNode", node.type);
+      assertEqual(15, node.estimatedNrItems);
+      assertEqual(15 + prevNode.estimatedCost, node.estimatedCost);
+      // SubqueryEndNode
+      prevNode = node;
+      node = nodes[7];
+      assertEqual("SubqueryEndNode", node.type);
+      assertEqual(3, node.estimatedNrItems);
+      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
+      // ReturnNode
+      prevNode = node;
+      node = nodes[8];
+      assertEqual("ReturnNode", node.type);
+      assertEqual(3, node.estimatedNrItems);
+      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
+    },
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that in spliced subquerys NoResult blocks ask their parent for
+///        cost estimates. Otherwise the subquery end will pop from an empty stack
+////////////////////////////////////////////////////////////////////////////////
+
+    testSplicedSubqueryNoResults : function () {
+      const query = `
+        FOR i IN 1..3
+          LET sq = (
+            FOR k IN 1..5
+              FILTER false
+              RETURN {i, k}
+          )
+          RETURN sq
+      `;
+
+      const explain = AQL_EXPLAIN(query);
+      const nodes = explain.plan.nodes;
+      const nodeTypes = nodes.map(n => n.type);
+
+      // Check the rough outline first for a better overview in case of a failure
+      // of the plan.
+      assertEqual(["SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "SubqueryStartNode", "EnumerateListNode", "CalculationNode", "NoResultsNode", "SubqueryEndNode", "ReturnNode"],
+          nodeTypes);
+
+      let node, prevNode;
+      // SingletonNode
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      assertEqual(1, node.estimatedNrItems);
+      assertEqual(1, node.estimatedCost);
+      // CalculationNode
+      prevNode = node;
+      node = nodes[1];
+      assertEqual("CalculationNode", node.type);
+      assertEqual(1, node.estimatedNrItems);
+      assertEqual(1 + prevNode.estimatedCost, node.estimatedCost);
+      // CalculationNode
+      prevNode = node;
+      node = nodes[2];
+      assertEqual("CalculationNode", node.type);
+      assertEqual(1, node.estimatedNrItems);
+      assertEqual(1 + prevNode.estimatedCost, node.estimatedCost);
+      // EnumerateListNode
+      prevNode = node;
+      node = nodes[3];
+      assertEqual("EnumerateListNode", node.type);
+      assertEqual(3, node.estimatedNrItems);
+      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
+      // SubqueryStartNode
+      prevNode = node;
+      node = nodes[4];
+      assertEqual("SubqueryStartNode", node.type);
+      assertEqual(3, node.estimatedNrItems);
+      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
+      // EnumerateListNode
+      prevNode = node;
+      node = nodes[5];
+      assertEqual("EnumerateListNode", node.type);
+      assertEqual(15, node.estimatedNrItems);
+      assertEqual(15 + prevNode.estimatedCost, node.estimatedCost);
+      // CalculationNode
+      prevNode = node;
+      node = nodes[6];
+      assertEqual("CalculationNode", node.type);
+      assertEqual(15, node.estimatedNrItems);
+      assertEqual(15 + prevNode.estimatedCost, node.estimatedCost);
+      // NoResultsNode
+      prevNode = node;
+      node = nodes[7];
+      assertEqual("NoResultsNode", node.type);
+      assertEqual(0, node.estimatedNrItems);
+      assertEqual(0.5, node.estimatedCost);
+      // SubqueryEndNode
+      prevNode = node;
+      node = nodes[8];
+      assertEqual("SubqueryEndNode", node.type);
+      assertEqual(3, node.estimatedNrItems);
+      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
+      // ReturnNode
+      prevNode = node;
+      node = nodes[9];
+      assertEqual("ReturnNode", node.type);
+      assertEqual(3, node.estimatedNrItems);
+      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
+    },
 
   };
 }

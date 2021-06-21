@@ -287,14 +287,14 @@ function optimizerRuleTestSuite() {
         var result;
         result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
         assertEqual([ IndexesRule, FilterRemoveRule ], 
-          removeAlwaysOnClusterRules(result.plan.rules), query);
+          removeAlwaysOnClusterRules(result.plan.rules).filter((r) => r !== "splice-subqueries"), query);
         hasNoFilterNode(result);
 
         hasIndexNodeWithRanges(result);
 
         result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
         assertEqual([ IndexesRule, FilterRemoveRule, SortRemoveRule ], 
-          removeAlwaysOnClusterRules(result.plan.rules), query);
+          removeAlwaysOnClusterRules(result.plan.rules).filter((r) => r !== "splice-subqueries"), query);
         hasNoFilterNode(result);
         hasIndexNodeWithRanges(result);
 
@@ -380,7 +380,7 @@ function optimizerRuleTestSuite() {
 
         result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
         assertEqual([ IndexesRule, FilterRemoveRule ], 
-          removeAlwaysOnClusterRules(result.plan.rules), query);
+          removeAlwaysOnClusterRules(result.plan.rules).filter((r) => r !== "splice-subqueries"), query);
         hasNoFilterNode(result);
         hasIndexNodeWithRanges(result);
 
@@ -461,13 +461,13 @@ function optimizerRuleTestSuite() {
       
       var result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
       assertEqual([ FilterRemoveRule, IndexesRule ].sort(), 
-        removeAlwaysOnClusterRules(result.plan.rules).sort(), query);
+        removeAlwaysOnClusterRules(result.plan.rules).sort().filter((r) => r !== "splice-subqueries"), query);
       hasIndexNodeWithRanges(result);
       hasNoFilterNode(result);
 
       result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
       assertEqual([ FilterRemoveRule, IndexesRule ].sort(), 
-        removeAlwaysOnClusterRules(result.plan.rules).sort(), query);
+        removeAlwaysOnClusterRules(result.plan.rules).sort().filter((r) => r !== "splice-subqueries"), query);
       hasIndexNodeWithRanges(result);
       hasNoFilterNode(result);
     },

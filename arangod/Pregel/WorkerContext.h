@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_WORKER_CONTEXT_H
-#define ARANGODB_PREGEL_WORKER_CONTEXT_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -40,6 +40,7 @@ class WorkerContext {
   uint64_t _vertexCount, _edgeCount;
   AggregatorHandler* _readAggregators;
   AggregatorHandler* _writeAggregators;
+  ReportManager* _reports;
 
  protected:
   template <typename T>
@@ -53,10 +54,18 @@ class WorkerContext {
     return (T*)_readAggregators->getAggregatedValue(name);
   }
 
+  AggregatorHandler& getWriteAggregators() {
+    return *_writeAggregators;
+  }
+
   virtual void preApplication() {}
   virtual void preGlobalSuperstep(uint64_t gss) {}
+  virtual void preGlobalSuperstepMasterMessage(VPackSlice msg) {}
   virtual void postGlobalSuperstep(uint64_t gss) {}
+  virtual void postGlobalSuperstepMasterMessage(VPackBuilder& msg) {}
   virtual void postApplication() {}
+
+  ReportManager& getReportManager() const { return *_reports; }
 
  public:
   WorkerContext()
@@ -72,4 +81,3 @@ class WorkerContext {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

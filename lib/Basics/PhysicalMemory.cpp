@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
+#include "ProgramOptions/Parameters.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -98,19 +99,9 @@ struct PhysicalMemoryCache {
     std::string value;
     if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY", value)) {
       if (!value.empty()) {
-        uint64_t multiplier = 1;
-        if (value.back() == 'G' || value.back() == 'g') {
-          multiplier = 1024*1024*1024;
-          value.pop_back();
-        } else if (value.back() == 'M' || value.back() == 'm') {
-          multiplier = 1024 * 1024;
-          value.pop_back();
-        } else if (value.back() == 'K' || value.back() == 'k') {
-          multiplier = 1024;
-          value.pop_back();
-        }
-        uint64_t v = arangodb::basics::StringUtils::uint64(value) * multiplier;
+        uint64_t v = arangodb::options::fromString<uint64_t>(value);
         if (v != 0) {
+          // value in environment variable must always be > 0
           cachedValue = v;
           overridden = true;
         }

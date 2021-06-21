@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECT_OPTIONS_H
-#define ARANGOD_AQL_COLLECT_OPTIONS_H 1
+#pragma once
 
 #include <string>
 
@@ -32,9 +31,10 @@ class Builder;
 class Slice;
 }
 namespace aql {
+struct Variable;
 
 /// @brief CollectOptions
-struct CollectOptions {
+struct CollectOptions final {
   /// @brief selected aggregation method
   enum class CollectMethod { UNDEFINED, HASH, SORTED, DISTINCT, COUNT };
 
@@ -66,7 +66,17 @@ struct CollectOptions {
   CollectMethod method;
 };
 
+struct GroupVarInfo final {
+  Variable const* outVar;
+  Variable const* inVar;
+};
+
+struct AggregateVarInfo final {
+  Variable const* outVar;
+  Variable const* inVar;
+  std::string type;
+};
+
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

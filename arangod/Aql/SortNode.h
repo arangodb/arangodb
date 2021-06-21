@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORT_NODE_H
-#define ARANGOD_AQL_SORT_NODE_H 1
+#pragma once
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
@@ -43,12 +42,10 @@ class StringBuffer;
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
-class RedundantCalculationsReplacer;
 
 /// @brief class SortNode
 class SortNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   enum SorterType { Standard, ConstrainedHeap };
@@ -93,6 +90,8 @@ class SortNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -144,4 +143,3 @@ class SortNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

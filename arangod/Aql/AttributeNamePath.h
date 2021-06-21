@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ATTRIBUTE_NAME_PATH_H
-#define ARANGOD_AQL_ATTRIBUTE_NAME_PATH_H 1
+#pragma once
 
 #include <functional>
 #include <string>
@@ -120,4 +119,3 @@ struct equal_to<arangodb::aql::AttributeNamePath> {
 
 } // namespace std
 
-#endif

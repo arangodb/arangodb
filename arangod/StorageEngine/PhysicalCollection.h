@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
-#define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
+#pragma once
 
 #include <set>
 
@@ -68,7 +67,7 @@ class PhysicalCollection {
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
-  virtual int close() = 0;
+  virtual ErrorCode close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
 
@@ -79,6 +78,13 @@ class PhysicalCollection {
   virtual size_t memory() const = 0;
 
   void drop();
+
+  /// recalculate counts for collection in case of failure, blocking
+  virtual uint64_t recalculateCounts();
+
+  /// @brief whether or not the collection contains any documents. this
+  /// function is allowed to return true even if there are no documents
+  virtual bool hasDocuments();
 
   ////////////////////////////////////
   // -- SECTION Indexes --
@@ -122,7 +128,8 @@ class PhysicalCollection {
                        std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures(bool details);
+  virtual futures::Future<OperationResult> figures(bool details,
+                                                   OperationOptions const& options);
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
@@ -151,7 +158,7 @@ class PhysicalCollection {
   virtual Result truncate(transaction::Methods& trx, OperationOptions& options) = 0;
 
   /// @brief compact-data operation
-  virtual Result compact() = 0;
+  virtual void compact() {}
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -163,16 +170,17 @@ class PhysicalCollection {
                            std::pair<LocalDocumentId, RevisionId>&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result) = 0;
+                      IndexIterator::DocumentCallback const& cb) const = 0;
+  
+  /// @brief read a documument referenced by token (internal method)
+  virtual Result read(transaction::Methods* trx,
+                    LocalDocumentId const& token,
+                    IndexIterator::DocumentCallback const& cb) const = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
-  virtual bool readDocumentWithCallback(transaction::Methods* trx,
-                                        LocalDocumentId const& token,
-                                        IndexIterator::DocumentCallback const& cb) const = 0;
   /**
    * @brief Perform document insert, may generate a '_key' value
    * If (options.returnNew == false && !options.silent) result might
@@ -207,6 +215,7 @@ class PhysicalCollection {
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId);
+  virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(uint64_t batchId);
 
   virtual Result rebuildRevisionTree();
 
@@ -214,10 +223,6 @@ class PhysicalCollection {
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
   RevisionId newRevisionId() const;
-
-  virtual Result upgrade();
-  virtual bool didPartialUpgrade();
-  virtual Result cleanupAfterUpgrade();
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
@@ -255,9 +260,9 @@ class PhysicalCollection {
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;
+  mutable std::atomic<std::thread::id> _indexesLockWriteOwner;  // current thread owning '_indexesLock'
   IndexContainerType _indexes;
 };
 
 }  // namespace arangodb
 
-#endif

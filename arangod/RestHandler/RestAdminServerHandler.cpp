@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,10 @@
 #include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -104,8 +108,8 @@ void RestAdminServerHandler::handleRole() {
   }
   auto state = ServerState::instance();
   bool hasFailover = false;
-  if (ReplicationFeature::INSTANCE != nullptr &&
-      ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
+  if (server().hasFeature<ReplicationFeature>() &&
+      server().getFeature<ReplicationFeature>().isActiveFailoverEnabled()) {
     hasFailover = true;
   }
   VPackBuilder builder;
@@ -131,9 +135,28 @@ void RestAdminServerHandler::handleAvailability() {
 
   bool available = false;
   switch (ServerState::mode()) {
-    case ServerState::Mode::DEFAULT:
+    case ServerState::Mode::DEFAULT: {
       available = !server().isStopping();
+      Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+      if (available && scheduler) {
+        // if the scheduler's queue is more than x% full, render
+        // the server unavailable
+        double unavailabilityFillGrade = scheduler->unavailabilityQueueFillGrade();
+        if (unavailabilityFillGrade > 0.0) {
+          double fillGrade = scheduler->approximateQueueFillGrade();
+          if (fillGrade >= unavailabilityFillGrade) {
+            // oops, queue is relatively full
+            available = false;
+          }
+        }
+      }
+      if (available) {
+        // also ask storage engine for its health
+        StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+        available = engine.healthCheck().res.ok();
+      }
       break;
+    }
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
     case ServerState::Mode::TRYAGAIN:
@@ -230,10 +253,10 @@ void RestAdminServerHandler::handleDatabaseDefaults() {
 void RestAdminServerHandler::handleTLS() {
   auto const requestType = _request->requestType();
   VPackBuilder builder;
-  auto* sslServerFeature = arangodb::SslServerFeature::SSL;
+  auto& sslServerFeature = server().getFeature<SslServerFeature>();
   if (requestType == rest::RequestType::GET) {
     // Put together a TLS-based cocktail:
-    sslServerFeature->dumpTLSData(builder);
+    sslServerFeature.dumpTLSData(builder);
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else if (requestType == rest::RequestType::POST) {
 
@@ -245,12 +268,13 @@ void RestAdminServerHandler::handleTLS() {
       return;
     }
 
-    Result res = GeneralServerFeature::reloadTLS();
+    auto& gs = server().getFeature<GeneralServerFeature>();
+    Result res = gs.reloadTLS();
     if (res.fail()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
       return;
     }
-    sslServerFeature->dumpTLSData(builder);
+    sslServerFeature.dumpTLSData(builder);
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);

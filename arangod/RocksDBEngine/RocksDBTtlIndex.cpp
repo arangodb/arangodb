@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,7 +67,8 @@ void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
 /// @brief inserts a document into the index
 Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice const& doc, OperationOptions& options) {
+                               velocypack::Slice doc, OperationOptions const& options,
+                               bool performChecks) {
   double timestamp = getTimestamp(doc);
   if (timestamp < 0) {
     // index attribute not present or invalid. nothing to do 
@@ -77,14 +78,14 @@ Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
   leased->openObject();
   leased->add(getAttribute(), VPackValue(timestamp));
   leased->close();
-  return RocksDBVPackIndex::insert(trx, mthds, documentId, leased->slice(), options);
+
+  return RocksDBVPackIndex::insert(trx, mthds, documentId, leased->slice(), options, performChecks);
 }
 
 /// @brief removes a document from the index
 Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice const& doc,
-                               Index::OperationMode mode) {
+                               velocypack::Slice doc) {
   double timestamp = getTimestamp(doc);
   if (timestamp < 0) {
     // index attribute not present or invalid. nothing to do 
@@ -94,7 +95,7 @@ Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
   leased->openObject();
   leased->add(getAttribute(), VPackValue(timestamp));
   leased->close(); 
-  return RocksDBVPackIndex::remove(trx, mthds, documentId, leased->slice(), mode);
+  return RocksDBVPackIndex::remove(trx, mthds, documentId, leased->slice());
 }
  
 double RocksDBTtlIndex::getTimestamp(arangodb::velocypack::Slice const& doc) const {

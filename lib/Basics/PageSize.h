@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PAGE_SIZE_H
-#define ARANGODB_BASICS_PAGE_SIZE_H 1
+#pragma once
 
 namespace arangodb {
 namespace PageSize {
@@ -33,4 +32,3 @@ int getValue();
 }
 }  // namespace arangodb
 
-#endif

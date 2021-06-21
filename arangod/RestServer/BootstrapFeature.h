@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H
-#define APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -38,10 +37,12 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 
   static std::string const& name() noexcept;
 
-  bool isReady() const { return _isReady; }
+  bool isReady() const;
 
  private:
   void waitForHealthEntry();
+  /// @brief wait for databases to appear in Plan and Current
+  void waitForDatabases() const;
  
  private:
   bool _isReady;
@@ -50,4 +51,3 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

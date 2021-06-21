@@ -32,7 +32,7 @@ const optionsDocumentation = [
   '   - `skipFoxxQueues`: omit the test for the Foxx queues'
 ];
 
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 
 const testPaths = {

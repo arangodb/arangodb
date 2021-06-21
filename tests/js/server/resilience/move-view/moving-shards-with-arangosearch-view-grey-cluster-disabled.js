@@ -35,7 +35,8 @@ const internal = require("internal");
 const wait = internal.wait;
 const request = require("@arangodb/request");
 const cluster = require("@arangodb/cluster");
-const supervisionState = cluster.supervisionState;
+const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
+const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function getDBServers() {
@@ -140,8 +141,11 @@ function MovingShardsWithViewSuite (options) {
           s => global.ArangoClusterInfo.getCollectionInfoCurrent(
             database, c[i].name(), s)
         );
-        let replicas = ccinfo.map(s => s.servers.length);
-        if (_.every(replicas, x => x === replFactor)) {
+        var replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
+        if (replicas.every(x => x[0] === replFactor && x[0] === x[1])) {
+          // This also checks that there are as many failoverCandidates
+          // as there are followers in sync. This should eventually be
+          // reached.
           console.info("Replication up and running!");
           break;
         }
@@ -326,7 +330,7 @@ function MovingShardsWithViewSuite (options) {
     // Now wait until the job we triggered is finished:
     var count = 1200;   // seconds
     while (true) {
-      var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(result.json.id);
       console.info("Status of cleanOutServer job:", job.status);
       if (job.error === false && job.status === "Finished") {
         return result;
@@ -417,7 +421,7 @@ function MovingShardsWithViewSuite (options) {
     // Now wait until the job we triggered is finished:
     var count = 600;   // seconds
     while (true) {
-      var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(result.json.id);
       console.info("Status of moveShard job:", job.status);
       if (job.error === false && job.status === "Finished") {
         return result;

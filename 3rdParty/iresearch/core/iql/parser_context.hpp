@@ -25,14 +25,16 @@
 #define IRESEARCH_IQL_PARSER_CONTEXT_H
 
 #include <deque>
-#include <unordered_map>
 #include <vector>
+
+#include <absl/container/flat_hash_map.h>
+
 #include "parser_common.hpp"
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable: 4146))) // unary minus operator applied to unsigned type, result still unsigned
 
-  #include "iql/parser.hh"
+#include "iql/parser.hh"
 
 MSVC_ONLY(__pragma(warning(pop)))
 
@@ -133,7 +135,7 @@ namespace iresearch {
       std::pair<bool, size_t> m_limit;
       size_t m_nNext;
       std::deque<query_node> m_nodes; // a type that allows O(1) random access and does not invalidate on resize // FIXME seperate into different type vectors?
-      std::unordered_map<size_t, size_t> m_negatedNodeCache;
+      absl::flat_hash_map<size_t, size_t> m_negatedNodeCache;
       std::vector<std::pair<size_t, bool>> m_order;
       enum StateType { NONE, SINGLE, DOUBLE } m_eState;
 
@@ -143,8 +145,7 @@ namespace iresearch {
       function_type const* find_best_function(
         std::string const& sName,
         size_t nArgsCount,
-        std::unordered_multimap<std::string, function_type> const& fns
-      ) const;
+        std::unordered_multimap<std::string, function_type> const& fns) const;
       query_node& find_node(parser::semantic_type const& value);
       parser::token_type next();
       parser::token_type nextKeyword();

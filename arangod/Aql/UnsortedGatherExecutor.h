@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
-#define ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionState.h"
@@ -115,4 +114,3 @@ class UnsortedGatherExecutor {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H

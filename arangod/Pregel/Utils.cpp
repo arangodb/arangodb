@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,15 +56,18 @@ std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::algorithmKey = "algorithm";
 std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
+std::string const Utils::edgeCollectionRestrictionsKey = "edgeCollectionRestrictions";
 std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::userParametersKey = "userparams";
 std::string const Utils::asyncModeKey = "asyncMode";
-std::string const Utils::useMemoryMaps = "useMemoryMaps";
+std::string const Utils::useMemoryMapsKey = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
+std::string const Utils::activateAllKey = "reset-all-active";
 
 std::string const Utils::globalSuperstepKey = "gss";
+std::string const Utils::phaseFirstStepKey = "phase-first-step";
 std::string const Utils::vertexCountKey = "vertexCount";
 std::string const Utils::edgeCountKey = "edgeCount";
 std::string const Utils::shardIdKey = "shrdId";
@@ -80,15 +83,21 @@ std::string const Utils::enterNextGSSKey = "nextGSS";
 
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
+std::string const Utils::reportsKey = "reports";
+
+std::string const Utils::workerToMasterMessagesKey = "workerToMasterMessages";
+std::string const Utils::masterToWorkerMessagesKey = "masterToWorkerMessages";
+
 
 std::string Utils::baseUrl(std::string const& prefix) {
   return Utils::apiPrefix + prefix + "/";
 }
 
-int Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
-                        std::string const& collectionName, std::string const& shardKey,
-                        VPackStringRef vertexKey, std::string& responsibleShard) {
-  if (ServerState::instance()->isRunningInCluster() == false) {
+ErrorCode Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
+                              std::string const& collectionName,
+                              std::string const& shardKey, VPackStringRef vertexKey,
+                              std::string& responsibleShard) {
+  if (!ServerState::instance()->isRunningInCluster()) {
     responsibleShard = collectionName;
     return TRI_ERROR_NO_ERROR;
   }

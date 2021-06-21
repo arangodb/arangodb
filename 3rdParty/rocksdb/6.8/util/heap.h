@@ -72,7 +72,9 @@ class BinaryHeap {
 
   void pop() {
     assert(!empty());
-    data_.front() = std::move(data_.back());
+    if (data_.size() > 1) {
+      data_.front() = std::move(data_.back());
+    }
     data_.pop_back();
     if (!empty()) {
       downheap(get_root());

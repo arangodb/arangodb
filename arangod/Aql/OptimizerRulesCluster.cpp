@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Basics/StaticStrings.h"
+#include "Indexes/Index.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -319,6 +320,27 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
         keyVar = updateReplaceNode->inKeyVariable();
       }
     }
+    
+    auto isArrayInput = [&](Variable const* variable) {
+      if (variable == nullptr) {
+        return false;
+      }
+
+      ExecutionNode* setter = plan->getVarSetBy(variable->id);
+      if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+        CalculationNode const* calc = ExecutionNode::castTo<CalculationNode*>(setter);
+        AstNode const* expr = calc->expression()->node();
+        if (expr->isArray()) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (isArrayInput(keyVar) || isArrayInput(update)) {
+      // cannot handle arrays as inputs here
+      continue;
+    }
 
     ExecutionNode* cursor = node;
     CalculationNode* calc = nullptr;
@@ -348,11 +370,12 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
         bool foundKey = false;
         for (std::size_t i = 0; i < expr->numMembers(); i++) {
           auto* anode = expr->getMemberUnchecked(i);
-          if (anode->getString() == StaticStrings::KeyString) {
-            key = anode->getMember(0)->getString();
+          if (anode->getStringRef() == StaticStrings::KeyString) {
+            if (anode->getMember(0)->isStringValue()) {
+              key = anode->getMember(0)->getString();
+            }
             foundKey = true;
-          }
-          if (anode->getString() == StaticStrings::RevString) {
+          } else if (anode->getStringRef() == StaticStrings::RevString) {
             foundKey = false;  // decline if _rev is in the game
             break;
           }

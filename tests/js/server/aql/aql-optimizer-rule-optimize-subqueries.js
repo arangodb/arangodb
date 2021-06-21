@@ -37,7 +37,7 @@ const ruleName = "optimize-subqueries";
 function optimizerRuleTestSuite () {
   // various choices to control the optimizer: 
   const paramNone = { optimizer: { rules: [ "-all" ] } };
-  const paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] }, inspectSimplePlans: true };
+  const paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   const paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
   const cn = "UnitTestsAhuacatlSubqueries";
 

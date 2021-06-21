@@ -25,16 +25,17 @@
 #define IRESEARCH_MEMORYDIRECTORY_H
 
 #include "directory.hpp"
+
+#include <mutex>
+
+#include <absl/container/flat_hash_map.h>
+
 #include "directory_attributes.hpp"
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/async_utils.hpp"
 
-#include <mutex>
-#include <unordered_map>
-#include <unordered_set>
-
-NS_ROOT
+namespace iresearch {
 
 // <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
 MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector<
@@ -308,8 +309,8 @@ class IRESEARCH_API memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
-  typedef std::unordered_map<std::string, std::unique_ptr<memory_file>> file_map; // unique_ptr because of rename
-  typedef std::unordered_set<std::string> lock_map;
+  using file_map = absl::flat_hash_map<std::string, std::unique_ptr<memory_file>>; // unique_ptr because of rename
+  using lock_map = absl::flat_hash_set<std::string>;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const memory_allocator* alloc_;
@@ -348,6 +349,6 @@ struct IRESEARCH_API memory_output {
   memory_index_output stream{ file };
 }; // memory_output
 
-NS_END
+}
 
 #endif

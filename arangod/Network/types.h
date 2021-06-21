@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_TYPES_H
-#define ARANGOD_NETWORK_TYPES_H 1
+#pragma once
 
 #include <fuerte/types.h>
 #include <chrono>
@@ -40,10 +39,8 @@ struct EndpointSpec {
   std::string shardId;
   std::string serverId;
   std::string endpoint;
-
 };
 
 }  // namespace network
 }  // namespace arangodb
 
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_H
-#define ARANGODB_ENDPOINT_ENDPOINT_H 1
+#pragma once
 
 #include <ostream>
 #include <string>
@@ -57,8 +56,8 @@ class Endpoint {
   static std::string unifiedForm(std::string const&);
   static Endpoint* serverFactory(std::string const&, int, bool reuseAddress);
   static Endpoint* clientFactory(std::string const&);
-  static Endpoint* factory(const EndpointType type, std::string const&, int, bool);
-  static std::string const defaultEndpoint(TransportType);
+  static Endpoint* factory(EndpointType type, std::string const&, int, bool);
+  static std::string defaultEndpoint(TransportType);
 
  public:
   bool operator==(Endpoint const&) const;
@@ -71,11 +70,11 @@ class Endpoint {
   virtual TRI_socket_t connect(double, double) = 0;
   virtual void disconnect() = 0;
 
-  virtual bool initIncoming(TRI_socket_t) = 0;
   virtual bool setTimeout(TRI_socket_t, double);
   virtual bool isConnected() const { return _connected; }
   virtual bool setSocketFlags(TRI_socket_t);
   virtual DomainType domainType() const { return _domainType; }
+  virtual bool isBroadcastBind() const { return false; }
 
   virtual int domain() const = 0;
   virtual int port() const = 0;
@@ -105,4 +104,3 @@ std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EndpointType);
 std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EncryptionType);
 std::ostream& operator<<(std::ostream&, arangodb::Endpoint::DomainType);
 
-#endif

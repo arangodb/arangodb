@@ -30,6 +30,7 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/voc-errors.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -39,9 +40,12 @@
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
 
+#include "Mocks/Servers.h"
 #include "MockScheduler.h"
+
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 struct ThreadGuard {
   ThreadGuard(ThreadGuard&&) = default;
@@ -72,7 +76,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 128 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -85,7 +91,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   std::atomic<bool> doneRebalancing(false);
   auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
     while (!doneRebalancing) {
-      int status = rebalancer.rebalance();
+      auto status = rebalancer.rebalance();
       if (status != TRI_ERROR_ARANGO_BUSY) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
       } else {
@@ -194,7 +200,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 128 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -207,7 +215,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
   bool doneRebalancing = false;
   auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
     while (!doneRebalancing) {
-      int status = rebalancer.rebalance();
+      auto status = rebalancer.rebalance();
       if (status != TRI_ERROR_ARANGO_BUSY) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
       } else {

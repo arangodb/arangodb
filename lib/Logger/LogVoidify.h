@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_VOIDIFY_H
-#define ARANGODB_LOGGER_LOG_VOIDIFY_H 1
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper class for macros
@@ -39,4 +38,3 @@ class LogVoidify {
 
 }  // namespace arangodb
 
-#endif

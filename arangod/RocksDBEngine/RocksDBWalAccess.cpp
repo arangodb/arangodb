@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,15 +21,15 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Basics/StaticStrings.h"
 #include "Replication/TailingSyncer.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -41,9 +41,11 @@
 
 using namespace arangodb;
 
+RocksDBWalAccess::RocksDBWalAccess(RocksDBEngine& engine) : _engine(engine) {}
+
 /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
 Result RocksDBWalAccess::tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const {
-  rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
+  rocksdb::TransactionDB* tdb = _engine.db();
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
   if (!s.ok()) {
@@ -65,8 +67,8 @@ Result RocksDBWalAccess::tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& mi
 ///  }}
 ///
 TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
-  rocksutils::globalRocksEngine()->flushWal(false, false, false);
-  return rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+  _engine.flushWal(false, false);
+  return _engine.db()->GetLatestSequenceNumber();
 }
 
 /// should return the list of transactions started, but not committed in that
@@ -99,13 +101,16 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   };
 
  public:
-  MyWALDumper(WalAccess::Filter const& filter,
-              WalAccess::MarkerCallback const& f, 
-              size_t maxResponseSize)
-      : WalAccessContext(filter, f),
-        _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
-        _documentsCF(RocksDBColumnFamily::documents()->GetID()),
-        _primaryCF(RocksDBColumnFamily::primary()->GetID()),
+  MyWALDumper(RocksDBEngine& engine, WalAccess::Filter const& filter,
+              WalAccess::MarkerCallback const& f, size_t maxResponseSize)
+      : WalAccessContext(engine.server(), filter, f),
+        _engine(engine),
+        _definitionsCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+                           ->GetID()),
+        _documentsCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                         ->GetID()),
+        _primaryCF(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex)
+                       ->GetID()),
         _maxResponseSize(maxResponseSize),
         _startSequence(0),
         _currentSequence(0),
@@ -535,7 +540,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       _removedDocRid = RevisionId::none();
 
       uint64_t objectId = RocksDBKey::objectId(key);
-      auto dbCollPair = rocksutils::mapObjectToCollection(objectId);
+      auto dbCollPair = _engine.mapObjectToCollection(objectId);
       TRI_voc_tick_t const dbid = dbCollPair.first;
       DataSourceId const cid = dbCollPair.second;
 
@@ -588,7 +593,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     TRI_ASSERT(_state != TRANSACTION || _trxDbId != 0);
 
     uint64_t objectId = RocksDBKey::objectId(key);
-    auto triple = rocksutils::mapObjectToIndex(objectId);
+    auto triple = _engine.mapObjectToIndex(objectId);
     TRI_voc_tick_t const dbid = std::get<0>(triple);
     DataSourceId const cid = std::get<1>(triple);
 
@@ -750,6 +755,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   }
 
  private:
+  RocksDBEngine& _engine;
   uint32_t const _definitionsCF;
   uint32_t const _documentsCF;
   uint32_t const _primaryCF;
@@ -777,7 +783,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
                                        MarkerCallback const& func) const {
   TRI_ASSERT(filter.transactionIds.empty());  // not supported in any way
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::TransactionDB* db = _engine.db();
 
   if (chunkSize < 16384) {  // we need to have some sensible minimum
     chunkSize = 16384;
@@ -786,7 +792,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   // pre 3.4 breaking up write batches is not supported
   size_t maxTrxChunkSize = filter.tickLastScanned > 0 ? chunkSize : SIZE_MAX;
 
-  MyWALDumper dumper(filter, func, maxTrxChunkSize);
+  MyWALDumper dumper(_engine, filter, func, maxTrxChunkSize);
   const uint64_t since = dumper.safeBeginTick();
   TRI_ASSERT(since <= filter.tickStart);
   TRI_ASSERT(since <= filter.tickEnd);
@@ -797,7 +803,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   uint64_t latestTick = db->GetLatestSequenceNumber();
 
   // prevent purging of WAL files while we are in here
-  RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
+  RocksDBFilePurgePreventer purgePreventer(_engine.disallowPurging());
 
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
   // no need verifying the WAL contents

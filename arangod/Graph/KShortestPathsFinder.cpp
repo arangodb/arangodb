@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -267,6 +267,7 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
     result._edges.emplace_back(it->_edge);
     it = right._frontier.find(it->_pred);
     TRI_ASSERT(it != nullptr);  // should run into 0 weight before
+    // cppcheck-suppress nullPointerRedundantCheck
     result._weights.emplace_back(startToJoin + (joinToEnd - it->_weight));
   }
 
@@ -407,7 +408,7 @@ bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result)
 
     result.add("vertices", VPackValue(VPackValueType::Array));
     for (auto const& it : _tempPath._vertices) {
-      _options.cache()->insertVertexIntoResult(it, result);
+      _options.cache()->appendVertex(it, result);
     }
     result.close();  // Array
     if (_options.useWeight()) {

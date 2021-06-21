@@ -1,0 +1,16 @@
+name: rocksdb_estimate_live_data_size
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "rocksdb-estimate-live-data-size" - sum over all column families
+unit: bytes
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "rocksdb-estimate-live-data-size".
+  It shows an estimate of the amount of live data in bytes, summed over
+  all column families.

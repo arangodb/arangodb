@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,12 +25,16 @@
 #include "DropDatabase.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/ExecContext.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Methods/Databases.h"
 
 using namespace arangodb::application_features;
@@ -51,7 +55,7 @@ DropDatabase::DropDatabase(MaintenanceFeature& feature, ActionDescription const&
 
   if (!error.str().empty()) {
     LOG_TOPIC("103f0", ERR, Logger::MAINTENANCE) << "DropDatabase: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -63,22 +67,25 @@ bool DropDatabase::first() {
   LOG_TOPIC("22779", DEBUG, Logger::MAINTENANCE) << "DropDatabase: dropping " << database;
 
   try {
-    DatabaseGuard guard("_system");
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, StaticStrings::SystemDatabase);
     auto vocbase = &guard.database();
 
-    _result = Databases::drop(vocbase, database);
-    if (!_result.ok() && _result.errorNumber() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+    auto res = Databases::drop(ExecContext::current(), vocbase, database);
+    result(res);
+    if (!res.ok() && res.errorNumber() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
       LOG_TOPIC("f46b7", ERR, Logger::AGENCY) << "DropDatabase: dropping database " << database
-                                     << " failed: " << _result.errorMessage();
+                                     << " failed: " << res.errorMessage();
       return false;
     }
+    _feature.removeDBError(database);
+    _feature.removeReplicationError(database);
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
 
-  notify();
   return false;
 }

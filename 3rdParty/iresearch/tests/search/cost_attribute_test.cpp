@@ -28,10 +28,8 @@
 #include <limits>
 
 TEST(cost_attribute_test, consts) {
-  ASSERT_EQ(
-    (std::numeric_limits<irs::cost::cost_t>::max)(),
-    irs::cost::cost_t(irs::cost::MAX)
-  );
+  static_assert("iresearch::cost" == irs::type<irs::cost>::name());
+  static_assert((std::numeric_limits<irs::cost::cost_t>::max)() == irs::cost::MAX);
 }
 
 TEST(cost_attribute_test, ctor) {
@@ -49,7 +47,7 @@ TEST(cost_attribute_test, estimation) {
 
     // set estimation value and check
     {
-      cost.value(est);
+      cost.reset(est);
       ASSERT_EQ(est, cost.estimate());
     }
   }
@@ -59,7 +57,7 @@ TEST(cost_attribute_test, estimation) {
     auto evaluated = false;
     auto est = 7;
   
-    cost.rule([&evaluated, est]() {
+    cost.reset([&evaluated, est]() {
       evaluated = true;
       return est;
     });
@@ -79,7 +77,7 @@ TEST(cost_attribute_test, lazy_estimation) {
   // set estimation function and evaluate
   {
     evaluated = false;
-    cost.rule([&evaluated, est]() {
+    cost.reset([&evaluated, est]() {
       evaluated = true;
       return est;
     });
@@ -98,7 +96,7 @@ TEST(cost_attribute_test, lazy_estimation) {
   // change estimation func
   {
     evaluated = false;
-    cost.rule([&evaluated, est]() {
+    cost.reset([&evaluated, est]() {
       evaluated = true;
       return est+1;
     });
@@ -110,7 +108,7 @@ TEST(cost_attribute_test, lazy_estimation) {
   // set value directly
   {
     evaluated = false;
-    cost.value(est+2);
+    cost.reset(est+2);
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est+2, cost.estimate());
     ASSERT_FALSE(evaluated);
@@ -142,7 +140,7 @@ TEST(cost_attribute_test, extract) {
 
   // set estimation function and evaluate
   {
-    cost.rule([&evaluated, est]() {
+    cost.reset([&evaluated, est]() {
       evaluated = true;
       return est;
     });
@@ -154,7 +152,7 @@ TEST(cost_attribute_test, extract) {
   // change estimation func
   {
     evaluated = false;
-    cost.rule([&evaluated, est]() {
+    cost.reset([&evaluated, est]() {
       evaluated = true;
       return est+1;
     });

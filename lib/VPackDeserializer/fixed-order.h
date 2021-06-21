@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_FIXED_ORDER_H
-#define VELOCYPACK_FIXED_ORDER_H
+
+#pragma once
+
 #include "deserialize-with.h"
 #include "plan-executor.h"
 #include "utilities.h"
@@ -174,4 +175,3 @@ struct deserialize_plan_executor<fixed_order_deserializer<Ds...>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_FIXED_ORDER_H

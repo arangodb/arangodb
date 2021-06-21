@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_ENGINE_H
-#define ARANGOD_CLUSTER_ENGINE_CLUSTER_ENGINE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -62,6 +61,8 @@ class ClusterEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void start() override;
+  
+  HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
@@ -74,7 +75,7 @@ class ClusterEngine final : public StorageEngine {
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) override;
 
-  void getStatistics(velocypack::Builder& builder) const override;
+  void getStatistics(velocypack::Builder& builder, bool v2) const override;
 
   // inventory functionality
   // -----------------------
@@ -85,10 +86,11 @@ class ClusterEngine final : public StorageEngine {
                          arangodb::velocypack::Builder& result,
                          bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
-  int getCollectionsAndIndexes(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-                               bool wasCleanShutdown, bool isUpgrade) override;
+  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+                                     arangodb::velocypack::Builder& result,
+                                     bool wasCleanShutdown, bool isUpgrade) override;
 
-  int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
+  ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override {
     // the cluster engine does not have any versioning information
@@ -106,19 +108,20 @@ class ClusterEngine final : public StorageEngine {
   void cleanupReplicationContexts() override {}
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                         int& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(int& status) override;
-  int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override {
+                                                         ErrorCode& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(ErrorCode& status) override;
+  ErrorCode removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int removeReplicationApplierConfiguration() override {
+  ErrorCode removeReplicationApplierConfiguration() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                          velocypack::Slice slice, bool doSync) override {
+  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                velocypack::Slice slice, bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override {
+  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
+                                                bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
@@ -152,15 +155,16 @@ class ClusterEngine final : public StorageEngine {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override {
-    return {TRI_ERROR_NO_ERROR};
+  Result flushWal(bool waitForSync, bool waitForCollector) override {
+    return {};
   }
+
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
                                                       bool isUpgrade) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&& info,
-                                                int& status) override;
+                                                ErrorCode& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
@@ -214,7 +218,11 @@ class ClusterEngine final : public StorageEngine {
   static std::string const FeatureName;
 
   // mock mode
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   static bool Mocking;
+#else
+  static constexpr bool Mocking = false;
+#endif
 
  private:
   /// path to arangodb data dir
@@ -224,4 +232,3 @@ class ClusterEngine final : public StorageEngine {
 
 }  // namespace arangodb
 
-#endif

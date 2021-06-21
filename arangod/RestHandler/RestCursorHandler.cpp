@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,9 +56,7 @@ RestCursorHandler::RestCursorHandler(application_features::ApplicationServer& se
       _queryRegistry(queryRegistry),
       _cursor(nullptr),
       _hasStarted(false),
-      _queryKilled(false),
-      _isValidForFinalize(false),
-      _auditLogged(false) {}
+      _queryKilled(false) {}
 
 RestCursorHandler::~RestCursorHandler() {
   if (_cursor) {
@@ -73,7 +71,12 @@ RestStatus RestCursorHandler::execute() {
   rest::RequestType const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
-    return createQueryCursor();
+    if (_request->suffixes().size() == 0) {
+      // POST /_api/cursor
+      return createQueryCursor();
+    }
+    // POST /_api/cursor/cursor-id
+    return modifyQueryCursor();
   } else if (type == rest::RequestType::PUT) {
     return modifyQueryCursor();
   } else if (type == rest::RequestType::DELETE_REQ) {
@@ -94,12 +97,17 @@ RestStatus RestCursorHandler::continueExecute() {
 
   if (_query != nullptr) {  // non-stream query
     if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
-      return processQuery(/*continuation*/ true);
+      return processQuery();
     }
   } else if (_cursor) {  // stream cursor query
-
     if (type == rest::RequestType::POST) {
-      return generateCursorResult(rest::ResponseCode::CREATED);
+      if (_request->suffixes().size() == 0) {
+        // POST /_api/cursor
+        return generateCursorResult(rest::ResponseCode::CREATED);
+      } else {
+        // POST /_api/cursor/cursor-id
+        return generateCursorResult(ResponseCode::OK);
+      }
     } else if (type == rest::RequestType::PUT) {
       if (_request->requestPath() == SIMPLE_QUERY_ALL_PATH) {
         // RestSimpleQueryHandler::allDocuments uses PUT for cursor creation
@@ -131,7 +139,8 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   }
   
   // only trace create cursor requests
-  if (_request->requestType() != rest::RequestType::POST) {
+  if (_request->requestType() != rest::RequestType::POST ||
+      _request->suffixes().size() > 0) {
     return;
   }
   
@@ -139,44 +148,11 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   // this is needed because the context is managing resources (e.g. leases
   // for a managed transaction) that we want to free as early as possible
   _queryResult.context.reset();
-
-  if (!_isValidForFinalize || _auditLogged) {
-    // set by RestCursorHandler before
-    return;
-  }
-  
-  try {
-    bool success = true;
-    VPackSlice body = parseVPackBody(success);
-    if (success) {
-      events::QueryDocument(*_request, _response.get(), body);
-    }
-    _auditLogged = true;
-  } catch (...) {
-  }
 }
 
 void RestCursorHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
   return cancelQuery();
-}
-
-void RestCursorHandler::handleError(basics::Exception const& ex) {
-  TRI_DEFER(RestVocbaseBaseHandler::handleError(ex));
-
-  if (!_isValidForFinalize || _auditLogged) {
-    return;
-  }
-
-  try {
-    bool success = true;
-     VPackSlice body = parseVPackBody(success);
-     if (success) {
-       events::QueryDocument(*_request, _response.get(), body);
-     }
-    _auditLogged = true;
-  } catch (...) {
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +188,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
   std::shared_ptr<VPackBuilder> bindVarsBuilder;
   if (!bindVars.isNone()) {
-    bindVarsBuilder = std::make_unique<VPackBuilder>(bindVars);
+    bindVarsBuilder = std::make_shared<VPackBuilder>(bindVars);
   }
 
   TRI_ASSERT(_options == nullptr);
@@ -233,7 +209,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   const AccessMode::Type mode = AccessMode::Type::WRITE;
   auto query = std::make_unique<aql::Query>(createTransactionContext(mode),
       arangodb::aql::QueryString(querySlice.copyString()),
-      bindVarsBuilder, _options);
+      bindVarsBuilder, opts);
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -246,6 +222,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
     _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
+    // Throws if soft shutdown is ongoing!
     _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
     
     return generateCursorResult(rest::ResponseCode::CREATED);
@@ -267,7 +244,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   }
 
   registerQuery(std::move(query));
-  return processQuery(/*continuation*/false);
+  return processQuery();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -276,7 +253,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 /// in AQL we can post a handler calling this function again.
 //////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::processQuery(bool continuation) {
+RestStatus RestCursorHandler::processQuery() {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -289,6 +266,7 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
 
     // continue handler is registered earlier
     auto state = _query->execute(_queryResult);
+
     if (state == aql::ExecutionState::WAITING) {
       guard.cancel();
       return RestStatus::WAITING;
@@ -302,6 +280,7 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
 
 // non stream case, result is complete
 RestStatus RestCursorHandler::handleQueryResult() {
+  TRI_ASSERT(_query == nullptr);
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
@@ -336,7 +315,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     options.buildUnindexedObjects = true;
 
     // conservatively allocate a few bytes per value to be returned
-    int res;
+    auto res = TRI_ERROR_NO_ERROR;
     if (n >= 10000) {
       res = _response->reservePayload(128 * 1024);
     } else if (n >= 1000) {
@@ -381,6 +360,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     // can send back the query result to the client and the client can make follow-up
     // requests on the same transaction (e.g. trx.commit()) without the server code for
     // freeing the resources and the client code racing for who's first
+
     return RestStatus::DONE;
   } else {
     // result is bigger than batchSize, and a cursor will be created
@@ -389,6 +369,8 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
     _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
+    // throws if a coordinator soft shutdown is ongoing
+
     return generateCursorResult(rest::ResponseCode::CREATED);
   }
 }
@@ -401,7 +383,13 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
   }
 
   rest::RequestType const type = _request->requestType();
-  if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
+  if (type != rest::RequestType::POST &&
+      type != rest::RequestType::PUT && 
+      type != rest::RequestType::DELETE_REQ) {
+    // request forwarding only exists for
+    // POST /_api/cursor/cursor-id
+    // PUT /_api/cursor/cursor-id
+    // DELETE /_api/cursor/cursor-id
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -432,6 +420,7 @@ void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> quer
   }
 
   TRI_ASSERT(_query == nullptr);
+  TRI_ASSERT(query != nullptr);
   _query = std::move(query);
 }
 
@@ -440,6 +429,9 @@ void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> quer
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::unregisterQuery() {
+  TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
+    _query->debugKillQuery();
+  }
   MUTEX_LOCKER(mutexLocker, _queryLock);
   _query.reset();
 }
@@ -569,20 +561,22 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   builder.openObject(/*unindexed*/true);
 
   auto const [state, r] = _cursor->dump(builder);
+
   if (state == aql::ExecutionState::WAITING) {
     builder.clear();
     TRI_ASSERT(r.ok());
     return RestStatus::WAITING;
   }
 
-  builder.add(StaticStrings::Error, VPackValue(false));
-  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-  builder.close();
-
   if (r.ok()) {
+    builder.add(StaticStrings::Error, VPackValue(false));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+    builder.close();
+
     _response->setContentType(rest::ContentType::JSON);
     generateResult(code, std::move(buffer), std::move(ctx));
   } else {
+    // builder can be in a broken state here. simply return the error
     generateError(r);
   }
   
@@ -615,10 +609,6 @@ RestStatus RestCursorHandler::createQueryCursor() {
     return RestStatus::DONE;
   }
 
-  // tell RestCursorHandler::finalizeExecute that the request
-  // could be parsed successfully and that it may look at it
-  _isValidForFinalize = true;
-
   TRI_ASSERT(_query == nullptr);
   return registerQueryOrCursor(body);
 }
@@ -632,7 +622,7 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting PUT /_api/cursor/<cursor-id>");
+                  "expecting POST /_api/cursor/<cursor-id>");
     return RestStatus::DONE;
   }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H
-#define ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H 1
+#pragma once
 
 #include "SmartContext.h"
 
@@ -59,4 +58,3 @@ struct StandaloneContext final : public SmartContext {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -142,10 +142,10 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
   auto writableOutputRegisters = RegIdSet{};
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -234,10 +234,10 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
 
   auto readableInputRegisters = RegIdSet{inputRegister};
   auto writableOutputRegisters = RegIdSet{};
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -286,6 +286,10 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+  
+void InsertNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
@@ -319,6 +323,15 @@ void UpdateReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : UpdateReplaceNode(plan, base) {}
 
+void UpdateReplaceNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inDocVariable != nullptr) {
+    _inDocVariable = Variable::replace(_inDocVariable, replacements);
+  }
+  if (_inKeyVariable != nullptr) {
+    _inKeyVariable = Variable::replace(_inKeyVariable, replacements);
+  }
+}
+
 /// @brief toVelocyPack
 void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                     std::unordered_set<ExecutionNode const*>& seen) const {
@@ -342,14 +355,14 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
-  if (inKeyRegister < RegisterPlan::MaxRegisterId) {
+  if (inKeyRegister.isValid()) {
     readableInputRegisters.emplace(inKeyRegister);
   }
   auto writableOutputRegisters = RegIdSet{};
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -373,6 +386,10 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
     return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
+}
+
+void RemoveNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -429,14 +446,14 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
-  if (inKeyRegister < RegisterPlan::MaxRegisterId) {
+  if (inKeyRegister.isValid()) {
     readableInputRegisters.emplace(inKeyRegister);
   }
   auto writableOutputRegisters = RegIdSet{};;
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -543,10 +560,10 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   auto readableInputRegisters = RegIdSet{inDoc, insert, update};
   auto writableOutputRegisters = RegIdSet{};;
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -597,5 +614,18 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+
+void UpsertNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inDocVariable != nullptr) {
+    _inDocVariable = Variable::replace(_inDocVariable, replacements);
+  }
+  if (_insertVariable != nullptr) {
+    _insertVariable = Variable::replace(_insertVariable, replacements);
+  }
+  if (_updateVariable != nullptr) {
+    _updateVariable = Variable::replace(_updateVariable, replacements);
+  }
+}
+
 }  // namespace aql
 }  // namespace arangodb

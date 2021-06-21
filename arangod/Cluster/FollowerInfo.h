@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_FOLLOWER_INFO_H
-#define ARANGOD_CLUSTER_FOLLOWER_INFO_H 1
+#pragma once
 
 #include "ClusterInfo.h"
 
@@ -48,12 +47,12 @@ class Slice;
 
 class FollowerInfo {
   // This is the list of real local followers
-  std::shared_ptr<std::vector<ServerID> const> _followers;
+  std::shared_ptr<std::vector<ServerID>> _followers;
   // This is the list of followers that have been insync BEFORE we
   // triggered a failover to this server.
   // The list is filled only temporarily, and will be deleted as
   // soon as we can guarantee at least so many followers locally.
-  std::shared_ptr<std::vector<ServerID> const> _failoverCandidates;
+  std::shared_ptr<std::vector<ServerID>> _failoverCandidates;
 
   // The agencyMutex is used to synchronise access to the agency.
   // the _dataLock is used to sync the access to local data.
@@ -85,6 +84,8 @@ class FollowerInfo {
     // This should also disable satellite tracking.
   }
 
+  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
   ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +110,7 @@ class FollowerInfo {
   ///        before a failover to this server has happened
   ///        The second parameter may be nullptr. It is an additional list
   ///        of declared to be insync followers. If it is nullptr the follower
-  ///        list is initialised empty.
+  ///        list is initialized empty.
   ////////////////////////////////////////////////////////////////////////////////
 
   void takeOverLeadership(std::vector<ServerID> const& previousInsyncFollowers,
@@ -177,12 +178,12 @@ class FollowerInfo {
     return _theLeaderTouched;
   }
 
-  bool allowedToWrite() {
+  WriteState allowedToWrite() {
     {
-      auto engine = arangodb::EngineSelectorFeature::ENGINE;
-      TRI_ASSERT(engine != nullptr);
-      if (engine->inRecovery()) {
-        return true;
+      auto& engine =
+          _docColl->vocbase().server().getFeature<EngineSelectorFeature>().engine();
+      if (engine.inRecovery()) {
+        return WriteState::ALLOWED;
       }
       READ_LOCKER(readLocker, _canWriteLock);
       if (_canWrite) {
@@ -196,16 +197,17 @@ class FollowerInfo {
         // needs to be at least writeConcern.
         TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
 #endif
-        return _canWrite;
+        return WriteState::ALLOWED;
       }
       READ_LOCKER(readLockerData, _dataLock);
       TRI_ASSERT(_docColl != nullptr);
+
       if (!_theLeaderTouched) {
         // prevent writes before `TakeoverShardLeadership` has run
         LOG_TOPIC("7c1d4", INFO, Logger::REPLICATION)
             << "Shard "
             << _docColl->name() << " is temporarily in read-only mode, since we have not yet run TakeoverShardLeadership since the last restart.";
-        return false;
+        return WriteState::STARTUP;
       }
       if (_followers->size() + 1 < _docColl->writeConcern()) {
         // We know that we still do not have enough followers
@@ -213,7 +215,7 @@ class FollowerInfo {
             << "Shard " << _docColl->name() << " is temporarily in read-only mode, since we have less than writeConcern ("
             << basics::StringUtils::itoa(_docColl->writeConcern())
             << ") replicas in sync.";
-        return false;
+        return WriteState::FORBIDDEN;
       }
     }
     bool res = updateFailoverCandidates();
@@ -222,7 +224,7 @@ class FollowerInfo {
           << "Shard "
           << _docColl->name() << " is temporarily in read-only mode, since we could not update the failover candidates in the agency.";
     }
-    return res;
+    return res ? WriteState::ALLOWED : WriteState::FORBIDDEN;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -246,5 +248,3 @@ class FollowerInfo {
   arangodb::velocypack::Builder newShardEntry(arangodb::velocypack::Slice oldValue) const;
 };
 }  // end namespace arangodb
-
-#endif

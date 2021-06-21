@@ -36,11 +36,19 @@ var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 var db = require("org/arangodb").db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
-function ahuacatlMiscFunctionsTestSuite () { return {
+function ahuacatlMiscFunctionsTestSuite () { 
+  return {
+    
+    testInternalFunction : function () {
+      try {
+        // an internal function cannot be used from a query directly.
+        // AQL will always pretend that the function does not exist.
+        db._query("RETURN INTERNAL()");
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, err.errorNum);
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test parse identifier function
@@ -699,11 +707,10 @@ function ahuacatlMiscFunctionsTestSuite () { return {
         assertEqual({ date: parts[1], count: parts[2] }, result[0], parts);
       });
     },
-};} // ahuacatlMiscFunctionsTestSuite
+  };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+} // ahuacatlMiscFunctionsTestSuite
+
 
 function ahuacatlCollectionCountTestSuite () {
   var c;
@@ -736,8 +743,7 @@ function ahuacatlCollectionCountTestSuite () {
       try {
         AQL_EXECUTE("RETURN LENGTH(" + cnot + ")");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },
@@ -771,8 +777,7 @@ function ahuacatlCollectionCountTestSuite () {
       try {
         AQL_EXECUTE("FOR doc IN " + cn + " REMOVE doc IN " + cn + " RETURN LENGTH(" + cn + ")");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, err.errorNum);
       }
       assertEqual(1000, c.count());
@@ -787,10 +792,6 @@ function ahuacatlCollectionCountTestSuite () {
     }
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlMiscFunctionsTestSuite);
 jsunity.run(ahuacatlCollectionCountTestSuite);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H
-#define ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -51,7 +50,7 @@ class RestHandlerFactory {
                                                       GeneralRequest*, GeneralResponse*, void* data);
 
   // cppcheck-suppress *
-  RestHandlerFactory() {}
+  RestHandlerFactory() = default;
 
   // creates a new handler
   std::shared_ptr<RestHandler> createHandler(application_features::ApplicationServer&,
@@ -74,4 +73,3 @@ class RestHandlerFactory {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

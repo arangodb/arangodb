@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,22 +21,18 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_AGENCY_FEATURE_H
-#define ARANGOD_AGENCY_AGENCY_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
 namespace consensus {
-
 class Agent;
 }
 
 class AgencyFeature : public application_features::ApplicationFeature {
  public:
-  static consensus::Agent* AGENT;
-
   explicit AgencyFeature(application_features::ApplicationServer& server);
   ~AgencyFeature();
 
@@ -47,6 +43,10 @@ class AgencyFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+
+  bool activated() const noexcept { return _activated; }
+
+  consensus::Agent* agent() const;
 
  private:
   bool _activated;
@@ -68,13 +68,8 @@ class AgencyFeature : public application_features::ApplicationFeature {
   bool _cmdLineTimings;
   std::string _recoveryId;
 
- public:
-  consensus::Agent* agent() const { return _agent.get(); }
-
- private:
   std::unique_ptr<consensus::Agent> _agent;
 };
 
 }  // namespace arangodb
 
-#endif

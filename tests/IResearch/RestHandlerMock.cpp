@@ -50,6 +50,11 @@ void GeneralRequestMock::setPayload(arangodb::velocypack::Buffer<uint8_t> buffer
   _payload.clear();
 }
 
+void GeneralRequestMock::setData(VPackSlice slice) {
+  _payload.clear();
+  _payload.add(slice);
+}
+
 arangodb::Endpoint::TransportType GeneralRequestMock::transportType() {
   return arangodb::Endpoint::TransportType::HTTP; // arbitrary value
 }

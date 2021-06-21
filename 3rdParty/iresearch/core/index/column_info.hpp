@@ -28,7 +28,7 @@
 
 #include <functional>
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class column_info
@@ -55,7 +55,7 @@ class column_info {
 
 typedef std::function<column_info(const string_ref)> column_info_provider_t;
 
-NS_END
+}
 
 #endif // IRESEARCH_COLUMN_INFO_H
 

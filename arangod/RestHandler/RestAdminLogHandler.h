@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -45,10 +44,10 @@ class RestAdminLogHandler : public RestBaseHandler {
 
  private:
   arangodb::Result verifyPermitted();
-  void reportLogs();
-  void setLogLevel();
+  void clearLogs();
+  RestStatus reportLogs(bool newFormat);
+  void handleLogLevel();
 
 };
 }  // namespace arangodb
 
-#endif

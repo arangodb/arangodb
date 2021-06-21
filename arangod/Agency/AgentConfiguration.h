@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_CONFIGURATION_H
-#define ARANGOD_CONSENSUS_AGENT_CONFIGURATION_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/ReadWriteLock.h"
@@ -258,4 +257,3 @@ struct config_t {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

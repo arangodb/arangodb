@@ -30,7 +30,7 @@
 #include <errno.h>
 #include <io.h>
 
-NS_LOCAL
+namespace {
 
 DWORD page_protection(int prot) noexcept {
   switch (prot) {
@@ -82,7 +82,7 @@ DWORD file_protection(int prot) noexcept {
   return access;
 }
 
-NS_END
+} //namespace
 
 void* mmap(void* /*addr*/, size_t len, int prot, int flags, int fd, OffsetType off) {
   const OffsetType maxSize = off + static_cast<OffsetType>(len);

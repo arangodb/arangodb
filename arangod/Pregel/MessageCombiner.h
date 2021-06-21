@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +21,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include <cstdint>
 
-#ifndef ARANGODB_PREGEL_COMBINER_H
-#define ARANGODB_PREGEL_COMBINER_H 1
 namespace arangodb {
 namespace pregel {
 
@@ -56,4 +56,3 @@ struct SumCombiner : public MessageCombiner<M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

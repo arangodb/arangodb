@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,6 +44,8 @@ class AcceptorUnixDomain final : public Acceptor {
 
  private:
   asio_ns::local::stream_protocol::acceptor _acceptor;
+  /// @brief protects the _asioSocket
+  std::mutex _mutex;
   std::unique_ptr<AsioSocket<SocketType::Unix>> _asioSocket;
 };
 }  // namespace rest

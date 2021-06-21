@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/ScriptFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
 
 namespace arangodb {
 namespace application_features {
@@ -39,6 +40,7 @@ FinalFeaturePhase::FinalFeaturePhase(ApplicationServer& server)
   startsAfter<ConsoleFeature>();
   startsAfter<ScriptFeature>();
   startsAfter<ShutdownFeature>();
+  startsAfter<SoftShutdownFeature>();
 }
 
 }  // namespace application_features

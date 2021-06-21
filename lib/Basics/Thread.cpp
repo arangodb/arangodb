@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,7 +100,6 @@ void Thread::startThread(void* arg) {
   } catch (std::exception const& ex) {
     LOG_TOPIC("6784f", WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
-    ptr->crashNotification(ex);
     throw;
   }
 }
@@ -225,7 +224,7 @@ void Thread::shutdown() {
 
       // we still have to wait here until the thread has terminated, but this should
       // happen immediately after _state has been set to STOPPED!
-      int ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
+      auto ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
 #else
       auto ret = TRI_JoinThreadWithTimeout(&_thread, _terminationTimeout);
 #endif
@@ -242,7 +241,7 @@ void Thread::shutdown() {
 }
 
 /// @brief checks if the current thread was asked to stop
-bool Thread::isStopping() const {
+bool Thread::isStopping() const noexcept {
   auto state = _state.load(std::memory_order_relaxed);
 
   return state == ThreadState::STOPPING || state == ThreadState::STOPPED;
@@ -300,7 +299,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   return ok;
 }
 
-void Thread::markAsStopped() {
+void Thread::markAsStopped() noexcept {
   // TODO - marked as stopped before accessing finishedCondition?
   _state.store(ThreadState::STOPPED);
 
@@ -321,14 +320,12 @@ void Thread::runMe() {
     if (!isSilent()) {
       LOG_TOPIC("3a30c", ERR, Logger::THREADS)
           << "exception caught in thread '" << _name << "': " << ex.what();
-      Logger::flush();
     }
     throw;
   } catch (...) {
     if (!isSilent()) {
       LOG_TOPIC("83582", ERR, Logger::THREADS)
           << "unknown exception caught in thread '" << _name << "'";
-      Logger::flush();
     }
     throw;
   }

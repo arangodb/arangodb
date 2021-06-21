@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_PLAN_EXECUTOR_H
-#define VELOCYPACK_PLAN_EXECUTOR_H
+
+#pragma once
 
 namespace arangodb {
 namespace velocypack {
@@ -47,4 +47,3 @@ struct plan_result_tuple {
 }  // namespace deserializer::executor
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_PLAN_EXECUTOR_H

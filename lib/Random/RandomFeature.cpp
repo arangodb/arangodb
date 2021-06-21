@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,7 @@ RandomFeature::RandomFeature(application_features::ApplicationServer& server)
 }
 
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("random", "Configure the random generator");
+  options->addSection("random", "random generator");
 
 #ifdef _WIN32
   std::unordered_set<uint32_t> generators = {1, 5};

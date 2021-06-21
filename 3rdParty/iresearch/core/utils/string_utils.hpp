@@ -30,8 +30,8 @@
   #define snprintf _snprintf
 #endif
 
-NS_ROOT
-NS_BEGIN(string_utils)
+namespace iresearch {
+namespace string_utils {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resize string to the full capacity of resize to the specified size
@@ -92,7 +92,7 @@ inline std::string to_string(const char* format, Args&&... args) {
   return buf;
 }
 
-NS_END // string_utils
-NS_END
+} // string_utils
+}
 
 #endif

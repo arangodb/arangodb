@@ -201,7 +201,7 @@ function indexSelectivitySuite() {
       
       query = "FOR doc IN @@collection FILTER doc.a == @value && doc.b == @value RETURN doc";
       plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
-      assertIndexUsed(["a", "b"], plan);
+      assertIndexUsed(["a", "b", "c"], plan);
     },
     
     testTwoCompositeIndexesMultipleFieldsPartialLookupOtherIndexCreationOrder: function () {
@@ -224,7 +224,7 @@ function indexSelectivitySuite() {
       
       query = "FOR doc IN @@collection FILTER doc.a == @value && doc.b == @value RETURN doc";
       plan = AQL_EXPLAIN(query, { "@collection": cn, value: 2 }).plan;
-      assertIndexUsed(["a", "b"], plan);
+      assertIndexUsed(["a", "b", "c"], plan);
     },
     
   };

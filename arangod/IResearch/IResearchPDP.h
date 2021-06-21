@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_PDP_H
-#define ARANGOD_IRESEARCH__IRESEARCH_PDP_H 1
+#pragma once
 
 #include "types.hpp"
 #include "Basics/Result.h"
@@ -44,5 +43,4 @@ const irs::parametric_description& getParametricDescription(
 } // iresearch
 } // arangodb
 
-#endif // ARANGOD_IRESEARCH__IRESEARCH_PDP_H
 

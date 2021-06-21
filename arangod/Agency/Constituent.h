@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_CONSTITUENT_H
-#define ARANGOD_CONSENSUS_CONSTITUENT_H 1
+#pragma once
 
 #include "AgencyCommon.h"
 
@@ -159,7 +158,9 @@ class Constituent : public Thread {
   // if the time since _lastHeartbeatSeen is greater than a random timeout:
   std::atomic<double> _lastHeartbeatSeen;
 
-  role_t _role;           // My role
+  std::atomic<role_t> _role;           // My role
+  // We use this to read off leadership without acquiring a lock.
+  // It is still only changed under _termVoteLock.
   Agent* _agent;          // My boss
   std::string _votedFor;  // indicates whether or not we have voted for
                           // anybody in this term, we will always reset
@@ -196,4 +197,3 @@ class Constituent : public Thread {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

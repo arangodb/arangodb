@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,8 @@
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
+
+#pragma once
 
 namespace arangodb::iresearch::pdd30{
 constexpr size_t PDD_RAW_LEN = 58001;

@@ -1,0 +1,18 @@
+name: arangodb_process_statistics_virtual_memory_size
+introducedIn: "3.6.1"
+help: |
+  Virtual memory size
+unit: bytes
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  On Windows, this figure contains the total amount of memory that the
+  memory manager has committed for the arangod process. On other systems,
+  this figure contains the size of the virtual memory the process is
+  using.

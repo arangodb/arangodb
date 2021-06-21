@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 params=("$@")
 
+ulimit -H -n 131072 || true
+ulimit -S -n 131072 || true
+
 rm -rf cluster
 if [ -d cluster-init ];then
   echo "== creating cluster directory from existing cluster-init directory"
@@ -121,7 +124,7 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
         ARANGOD="rr ${BUILD}/bin/arangod"
-        CO_ARANGOD="$ARANGOD --console"
+        CO_ARANGOD="$ARANGOD"
         echo Running cluster in rr with --console.
     fi
 else
@@ -150,12 +153,11 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --database.directory cluster/data$PORT \
           --javascript.enabled false \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --server.statistics false \
           --log.role true \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
-          --javascript.allow-admin-execute true \
+          --server.descriptors-minimum 0 \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -178,12 +180,11 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --database.directory cluster/data$PORT \
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --server.statistics false \
         --log.role true \
         --log.file cluster/$PORT.log \
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
-        --javascript.allow-admin-execute true \
+        --server.descriptors-minimum 0 \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -240,6 +241,7 @@ start() {
           --javascript.app-path cluster/apps$PORT \
           --log.force-direct false \
           --log.level $LOG_LEVEL_CLUSTER \
+          --server.descriptors-minimum 0 \
           --javascript.allow-admin-execute true \
           $SYSTEM_REPLICATION_FACTOR \
           $STORAGE_ENGINE \
@@ -266,6 +268,7 @@ start() {
         --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
+        --server.descriptors-minimum 0 \
         --javascript.allow-admin-execute true \
         $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \

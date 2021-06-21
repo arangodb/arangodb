@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_EXTERNALS_H
-#define ARANGOD_V8_SERVER_V8_EXTERNALS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -50,4 +49,3 @@ static int32_t const WRP_VOCBASE_VIEW_TYPE = 3;
 /// - SLOT_CLASS
 static int32_t const WRP_IRESEARCH_ANALYZER_TYPE = 4;
 
-#endif

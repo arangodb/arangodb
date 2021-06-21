@@ -161,7 +161,7 @@ class index_profile_test_case : public tests::index_test_base {
             }
 
             if (count >= writer_batch_size) {
-              TRY_SCOPED_LOCK_NAMED(commit_mutex, commit_lock);
+              auto commit_lock = irs::make_unique_lock(commit_mutex, std::try_to_lock);
 
               // break commit chains by skipping commit if one is already in progress
               if (!commit_lock) {
@@ -275,7 +275,7 @@ class index_profile_test_case : public tests::index_test_base {
             }
 
             if (count >= writer_batch_size) {
-              TRY_SCOPED_LOCK_NAMED(commit_mutex, commit_lock);
+              auto commit_lock = irs::make_unique_lock(commit_mutex, std::try_to_lock);
 
               // break commit chains by skipping commit if one is already in progress
               if (!commit_lock) {

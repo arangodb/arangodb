@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FUNCTION_UTILS_H
-#define ARANGODB_BASICS_FUNCTION_UTILS_H 1
+#pragma once
 
 #include <algorithm>
 #include <chrono>
@@ -85,4 +84,3 @@ bool retryUntilTimeout(std::function<bool()> fn, LogTopic& topic, std::string co
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

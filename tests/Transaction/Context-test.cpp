@@ -129,7 +129,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   bindVars->close();
 
   {
-    arangodb::aql::Query query(ctx, queryString, bindVars, nullptr);
+    arangodb::aql::Query query(ctx, queryString, bindVars);
 
     auto qres = query.executeSync();
     ASSERT_TRUE(qres.ok());
@@ -145,7 +145,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   ASSERT_TRUE(result2.ok());
 
   {
-    arangodb::aql::Query query(ctx, queryString, bindVars, nullptr);
+    arangodb::aql::Query query(ctx, queryString, bindVars);
 
     auto qres = query.executeSync();
     ASSERT_TRUE(qres.ok());

@@ -27,9 +27,8 @@
 #include "utils/attributes.hpp"
 #include "utils/bitset.hpp"
 
-NS_ROOT
-
-NS_BEGIN(version10)
+namespace iresearch {
+namespace version10 {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class documents
@@ -45,10 +44,10 @@ struct documents final : attribute {
   bitset value;
 }; // documents
 
-struct term_meta final : irs::term_meta {
-  term_meta(): e_skip_start(0) {} // GCC 4.9 does not initialize unions properly
+struct term_meta : irs::term_meta {
+  term_meta() noexcept : e_skip_start(0) {} // GCC 4.9 does not initialize unions properly
 
-  void clear() override {
+  void clear() noexcept {
     irs::term_meta::clear();
     doc_start = pos_start = pay_start = 0;
     pos_end = type_limits<type_t::address_t>::invalid();
@@ -64,12 +63,12 @@ struct term_meta final : irs::term_meta {
   };
 }; // term_meta
 
-NS_END // version10
+} // version10
 
 // use base irs::term_meta type for ancestors
 template<>
 struct type<version10::term_meta> : type<irs::term_meta> { };
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_FORMAT_10_ATTRIBUTES

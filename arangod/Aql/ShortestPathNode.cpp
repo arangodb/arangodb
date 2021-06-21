@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -205,16 +205,15 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
   TRI_ASSERT(base.hasKey("fromCondition"));
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
-  _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
+  _fromCondition = plan->getAst()->createNode(base.get("fromCondition"));
 
   TRI_ASSERT(base.hasKey("toCondition"));
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
-  _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
+  _toCondition = plan->getAst()->createNode(base.get("toCondition"));
 }
 
 void ShortestPathNode::setStartInVariable(Variable const* inVariable) {
-  TRI_ASSERT(_inStartVariable == nullptr);
   _inStartVariable = inVariable;
   _startVertexId = "";
 }
@@ -270,14 +269,14 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 
   auto outputRegisters = RegIdSet{};
   std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> outputRegisterMapping;
-  if (usesVertexOutVariable()) {
+  if (isVertexOutVariableUsedLater()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
                                       it->second.registerId);
     outputRegisters.emplace(it->second.registerId);
   }
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableUsedLater()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::EDGE,
@@ -328,7 +327,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
 
 void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
                                                bool withProperties) const {
-  if (usesVertexOutVariable()) {
+  if (isVertexOutVariableUsedLater()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
       vertexOutVariable = plan.getAst()->variables()->createVariable(vertexOutVariable);
@@ -337,7 +336,7 @@ void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPath
     c.setVertexOutput(vertexOutVariable);
   }
 
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableUsedLater()) {
     auto edgeOutVariable = _edgeOutVariable;
     if (withProperties) {
       edgeOutVariable = plan.getAst()->variables()->createVariable(edgeOutVariable);
@@ -354,6 +353,38 @@ void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPath
   // Filter Condition Parts
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
+}
+  
+void ShortestPathNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inStartVariable != nullptr) {
+   _inStartVariable = Variable::replace(_inStartVariable, replacements);
+  }
+
+  if (_inTargetVariable != nullptr) {
+    _inTargetVariable = Variable::replace(_inTargetVariable, replacements);
+  }
+}
+
+/// @brief getVariablesSetHere
+std::vector<Variable const*> ShortestPathNode::getVariablesSetHere() const {
+  std::vector<Variable const*> vars;
+  if (isVertexOutVariableUsedLater()) {
+    vars.emplace_back(vertexOutVariable());
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    vars.emplace_back(edgeOutVariable());
+  }
+  return vars;
+}
+
+/// @brief getVariablesUsedHere, modifying the set in-place
+void ShortestPathNode::getVariablesUsedHere(VarSet& vars) const {
+  if (_inStartVariable != nullptr) {
+    vars.emplace(_inStartVariable);
+  }
+  if (_inTargetVariable != nullptr) {
+    vars.emplace(_inTargetVariable);
+  }
 }
 
 void ShortestPathNode::prepareOptions() {

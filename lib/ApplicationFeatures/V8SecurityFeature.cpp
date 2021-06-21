@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -179,7 +178,7 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
 }
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the JavaScript engine");
+  options->addSection("javascript", "JavaScript engine and execution");
   options
       ->addOption("--javascript.allow-port-testing",
                   "allow testing of ports from within JavaScript actions",
@@ -421,6 +420,12 @@ bool V8SecurityFeature::isInternalContext(v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   return v8g->_securityContext.isInternal();
+}
+
+bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
+  TRI_GET_GLOBALS();
+  TRI_ASSERT(v8g != nullptr);
+  return v8g->_securityContext.isAdminScript() || v8g->_securityContext.isRestAdminScript();
 }
 
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,

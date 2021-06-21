@@ -25,17 +25,21 @@
 #include "analysis/text_token_stemming_stream.hpp"
 #include "utils/locale_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 class text_token_stemming_stream_tests: public ::testing::Test { };
 
-NS_END // NS_LOCAL
+} // namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 #ifndef IRESEARCH_DLL
+
+TEST_F(text_token_stemming_stream_tests, consts) {
+  static_assert("stem" == irs::type<irs::analysis::text_token_stemming_stream>::name());
+}
 
 TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // test stemming (locale irs::string_ref::NIL)
@@ -44,6 +48,7 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
     irs::string_ref data("running");
     irs::analysis::text_token_stemming_stream stream(
         irs::locale_utils::locale(irs::string_ref::NIL));
+    ASSERT_EQ(irs::type<irs::analysis::text_token_stemming_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* payload = irs::get<irs::payload>(stream);
@@ -197,10 +202,4 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_text) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ("ru", actual);
-}
-
-TEST_F(text_token_stemming_stream_tests, test_make_config_invalid_format) {
-  std::string config = "ru_RU.utfF-8";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::csv>::get(), config));
 }

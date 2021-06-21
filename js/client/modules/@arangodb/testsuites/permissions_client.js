@@ -30,8 +30,8 @@ const time = require('internal').time;
 const fs = require('fs');
 const yaml = require('js-yaml');
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const toArgv = require('internal').toArgv;
 const executeScript = require('internal').executeScript;

@@ -1,0 +1,15 @@
+name: arangodb_replication_dump_requests_total
+renamedFrom: arangodb_replication_dump_requests
+introducedIn: "3.8.0"
+help: |
+  Number of requests used in initial asynchronous replication phase.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  During initial replication the existing data from the leader is copied asynchronously
+  over to new shards. The amount of data transported to this server, as a replica for
+  a shard, is counted here.

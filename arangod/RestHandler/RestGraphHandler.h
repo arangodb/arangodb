@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_GRAPH_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_GRAPH_HANDLER_H
+#pragma once
 
 #include <optional>
 
@@ -57,11 +56,10 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   RequestLane lane() const override;
 
  private:
+  Result returnError(ErrorCode errorNumber);
 
-  Result returnError(int errorNumber);
+  Result returnError(ErrorCode errorNumber, std::string_view message);
 
-  Result returnError(int errorNumber, char const* message);
-  
   arangodb::Result executeGharial();
 
   // /_api/gharial
@@ -223,4 +221,3 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif  // ARANGOD_REST_HANDLER_REST_GRAPH_HANDLER_H

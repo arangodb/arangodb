@@ -26,7 +26,7 @@
 #include "shared.hpp"
 #include "index_reader.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common implementation for readers composied of multiple other readers
@@ -79,6 +79,6 @@ class composite_reader : public index_reader {
   uint64_t docs_max_;
 }; // composite_reader
 
-NS_END
+}
 
 #endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +79,7 @@ std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>> T
 
 std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const& name,
                                        TRI_vocbase_t* vocbase, std::string const& command,
-                                       bool allowUseDatabase, int& ec) {
+                                       bool allowUseDatabase, ErrorCode& ec) {
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
 
@@ -115,7 +115,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
   return task;
 }
 
-int Task::unregisterTask(std::string const& id, bool cancel) {
+ErrorCode Task::unregisterTask(std::string const& id, bool cancel) {
   if (id.empty()) {
     return TRI_ERROR_TASK_INVALID_ID;
   }
@@ -218,7 +218,15 @@ void Task::removeTasksForDatabase(std::string const& name) {
   }
 }
 
-bool Task::tryCompile(v8::Isolate* isolate, std::string const& command) {
+bool Task::tryCompile(application_features::ApplicationServer& server,
+                      v8::Isolate* isolate, std::string const& command) {
+  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>() ||
+      !server.getFeature<V8DealerFeature>().isEnabled()) {
+    return false;
+  }
+
+  TRI_ASSERT(isolate != nullptr);
+
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
@@ -364,6 +372,11 @@ void Task::start() {
 }
 
 bool Task::queue(std::chrono::microseconds offset) {
+  auto& server = _dbGuard->database().server();
+  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>()) {
+    return false;
+  }
+
   MUTEX_LOCKER(lock, _taskHandleMutex);
   bool queued = false;
   std::tie(queued, _taskHandle) =

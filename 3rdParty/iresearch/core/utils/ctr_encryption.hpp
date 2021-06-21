@@ -25,7 +25,7 @@
 
 #include "encryption.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class cipher
@@ -70,7 +70,7 @@ class IRESEARCH_API ctr_encryption : public encryption {
   const cipher* cipher_;
 }; // ctr_encryption
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_CTR_ENCRYPTION_H
 

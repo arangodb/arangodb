@@ -64,22 +64,20 @@ class FlushFeatureTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  // required for MMFilesWalRecoverState constructor
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector, false);
+    selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
 
 #if USE_ENTERPRISE
     features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
-
-    arangodb::DatabaseFeature::DATABASE =
-        &server.getFeature<arangodb::DatabaseFeature>();
 
     for (auto& f : features) {
       f.first.prepare();
@@ -93,6 +91,8 @@ class FlushFeatureTest
   }
 
   ~FlushFeatureTest() {
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
+
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
@@ -103,8 +103,6 @@ class FlushFeatureTest
     for (auto& f : features) {
       f.first.unprepare();
     }
-
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };
 
@@ -114,7 +112,7 @@ class FlushFeatureTest
 
 TEST_F(FlushFeatureTest, test_subscription_retention) {
   struct TestFlushSubscripion : arangodb::FlushSubscription {
-    TRI_voc_tick_t tick() const noexcept { return _tick; }
+    TRI_voc_tick_t tick() const noexcept override { return _tick; }
 
     TRI_voc_tick_t _tick{};
   };

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H
-#define ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H 1
+#pragma once
 
 #include <velocypack/StringRef.h>
 
@@ -78,10 +77,10 @@ class ClusterCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
-  futures::Future<OperationResult> figures(bool details) override;
+  futures::Future<OperationResult> figures(bool details, OperationOptions const& options) override;
 
   /// @brief closes an open collection
-  int close() override;
+  ErrorCode close() override;
   void load() override;
   void unload() override;
 
@@ -114,22 +113,19 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
   
-  /// @brief compact-data operation
-  Result compact() override;
-
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
                    std::pair<LocalDocumentId, RevisionId>& result) const override;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& result) override;
+              IndexIterator::DocumentCallback const& cb) const override;
+  
+  Result read(transaction::Methods* trx, LocalDocumentId const& token,
+            IndexIterator::DocumentCallback const& cb) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const override;
-
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result, OperationOptions& options) override;
@@ -161,4 +157,3 @@ class ClusterCollection final : public PhysicalCollection {
 
 }  // namespace arangodb
 
-#endif

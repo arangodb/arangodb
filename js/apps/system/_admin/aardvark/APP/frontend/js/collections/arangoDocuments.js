@@ -141,32 +141,21 @@
     },
 
     moveDocument: function (key, fromCollection, toCollection, callback) {
-      var querySave;
-      var queryRemove;
-      var bindVars = {
-        '@collection': fromCollection,
-        'filterid': key
-      };
-      var queryObj1;
-      var queryObj2;
-
-      querySave = 'FOR x IN @@collection';
-      querySave += ' FILTER x._key == @filterid';
-      querySave += ' INSERT x IN ';
-      querySave += toCollection;
-
-      queryRemove = 'FOR x in @@collection';
-      queryRemove += ' FILTER x._key == @filterid';
-      queryRemove += ' REMOVE x IN @@collection';
-
-      queryObj1 = {
-        query: querySave,
-        bindVars: bindVars
+      var queryObj1 = {
+        query: 'FOR x IN @@fromCollection FILTER x._key == @filterid INSERT x IN @@toCollection',
+        bindVars: {
+          '@fromCollection': fromCollection,
+          '@toCollection': toCollection,
+          'filterid': key
+        }
       };
 
-      queryObj2 = {
-        query: queryRemove,
-        bindVars: bindVars
+      var queryObj2 = {
+        query: 'FOR x in @@collection FILTER x._key == @filterid REMOVE x IN @@collection',
+        bindVars: {
+          '@collection': fromCollection,
+          'filterid': key
+        }
       };
 
       window.progressView.show();
@@ -232,7 +221,8 @@
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
       if (this.getTotal() < this.MAX_SORT && this.getSort() !== '') {
-        query += ' SORT x.' + this.getSort();
+        query += ' SORT x.@sortAttribute';
+        bindVars.sortAttribute = this.getSort();
       }
 
       if (bindVars.count !== 'all') {
@@ -267,16 +257,14 @@
               if (data.extra && data.extra.stats && data.extra.stats.fullCount !== undefined) {
                 self.setTotal(data.extra.stats.fullCount);
               }
-              if (self.getTotal() !== 0) {
-                _.each(data.result, function (v) {
-                  self.add({
-                    'id': v._id,
-                    'rev': v._rev,
-                    'key': v._key,
-                    'content': v
-                  });
+              _.each(data.result, function (v) {
+                self.add({
+                  'id': v._id,
+                  'rev': v._rev,
+                  'key': v._key,
+                  'content': v
                 });
-              }
+              });
               self.lastQuery = queryObj;
 
               callback(false, data);
@@ -345,8 +333,9 @@
       query = 'FOR x in @@collection';
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.getTotal() < this.MAX_SORT && this.getSort().length > 0) {
-        query += ' SORT x.' + this.getSort();
+      if (this.getTotal() < this.MAX_SORT && this.getSort() !== '') {
+        query += ' SORT x.@sortAttribute';
+        bindVars.sortAttribute = this.getSort();
       }
 
       query += ' RETURN x';

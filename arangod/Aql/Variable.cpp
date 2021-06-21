@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,16 +45,18 @@ char const* const Variable::NAME_CURRENT = "$CURRENT";
 Variable::Variable(std::string name, VariableId id, bool isDataFromCollection)
     : id(id), 
       name(std::move(name)), 
-      value(nullptr), 
       isDataFromCollection(isDataFromCollection) {}
 
 Variable::Variable(arangodb::velocypack::Slice const& slice)
-    : Variable(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice, "name"),
-               arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice, "id"),
-               arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "isDataFromCollection", false)) {}
+    : id(arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice, "id")),
+      name(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
+      isDataFromCollection(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "isDataFromCollection", false)),
+      _constantValue(slice.get("constantValue")) {}
 
 /// @brief destroy the variable
-Variable::~Variable() = default;
+Variable::~Variable() {
+  _constantValue.destroy();
+}
   
 Variable* Variable::clone() const { 
   return new Variable(name, id, isDataFromCollection); 
@@ -79,6 +81,11 @@ void Variable::toVelocyPack(VPackBuilder& builder) const {
   builder.add("id", VPackValue(id));
   builder.add("name", VPackValue(name));
   builder.add("isDataFromCollection", VPackValue(isDataFromCollection));
+  if (type() == Variable::Type::Const) {
+    builder.add(VPackValue("constantValue"));
+    _constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
+                                /*allowUnindexed*/ true);
+  }
 }
 
 /// @brief replace a variable by another
@@ -117,3 +124,14 @@ bool Variable::isEqualTo(Variable const& other) const {
   return (id == other.id) && (name == other.name);
 }
 
+Variable::Type Variable::type() const noexcept {
+  if (_constantValue.isNone()) {
+    return Variable::Type::Regular;
+  }
+  return Variable::Type::Const;
+}
+
+void Variable::setConstantValue(AqlValue value) noexcept {
+  _constantValue.destroy();
+  _constantValue = value;
+}

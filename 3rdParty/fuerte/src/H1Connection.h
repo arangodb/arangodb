@@ -105,18 +105,20 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
 
   fuerte::Error translateError(asio_ns::error_code const& e,
                                fuerte::Error c) const {
+#ifdef _WIN32
     if (this->_timeoutOnReadWrite && (c == Error::ReadError ||
                                       c == Error::WriteError)) {
       return Error::RequestTimeout;
     }
+#endif
     
     if (e == asio_ns::error::misc_errors::eof ||
         e == asio_ns::error::connection_reset) {
       return fuerte::Error::ConnectionClosed;
-    } else if (e == asio_ns::error::operation_aborted ||
-               e == asio_ns::error::connection_aborted) {
+    } else if (e == asio_ns::error::operation_aborted) {
       // keepalive timeout may have expired
-      return fuerte::Error::ConnectionCanceled;
+      return this->_timeoutOnReadWrite ? fuerte::Error::RequestTimeout :
+                                         fuerte::Error::ConnectionCanceled;
     }
     return c;
   }

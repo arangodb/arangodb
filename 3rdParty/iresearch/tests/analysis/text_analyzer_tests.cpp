@@ -33,7 +33,7 @@
 
 #include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
-NS_LOCAL
+namespace {
 
 std::basic_string<wchar_t> utf_to_utf(const irs::bytes_ref& value) {
   auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
@@ -46,7 +46,7 @@ std::basic_string<wchar_t> utf_to_utf(const irs::bytes_ref& value) {
   return result;
 }
 
-NS_END // NS_LOCAL
+} // namespace {
 
 namespace tests {
 
@@ -99,6 +99,10 @@ using namespace irs::analysis;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
+TEST_F(TextAnalyzerParserTestSuite, consts) {
+  static_assert("text" == irs::type<irs::analysis::text_token_stream>::name());
+}
+
 TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   irs::analysis::text_token_stream::options_t options;
 
@@ -110,6 +114,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   std::string data;
   ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
   irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
+  ASSERT_EQ(irs::type<irs::analysis::text_token_stream >::id(), stream.type());
 
   ASSERT_TRUE(stream.reset(data));
 
@@ -389,7 +394,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.explicit_stopwords = std::unordered_set<std::string>({ "a", "of", "and" });
+      options.explicit_stopwords = { "a", "of", "and" };
       options.locale = irs::locale_utils::locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
@@ -1050,12 +1055,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ("ru", actual);
-}
-
-TEST_F(TextAnalyzerParserTestSuite, test_make_config_invalid_format) {
-  std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true}";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "text", irs::type<irs::text_format::csv>::get(), config));
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_deterministic_stopwords_order) {

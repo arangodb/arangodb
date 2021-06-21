@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_TABLE_H
-#define ARANGODB_CACHE_TABLE_H
+#pragma once
 
 #include "Basics/ReadWriteSpinLock.h"
 #include "Cache/BucketState.h"
@@ -144,7 +143,7 @@ class Table : public std::enable_shared_from_this<Table> {
   std::uint64_t memoryUsage() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Returns the number of buckets in the table.
+  /// @brief Returns the number of buckets in the table. At most 2^32.
   //////////////////////////////////////////////////////////////////////////////
   std::uint64_t size() const;
 
@@ -261,4 +260,3 @@ class Table : public std::enable_shared_from_this<Table> {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

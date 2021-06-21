@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,31 +37,27 @@ QueryWarnings::QueryWarnings()
   : _maxWarningCount(std::numeric_limits<size_t>::max()),
     _failOnWarning(false) {}
 
-/// @brief register an error, with an optional parameter inserted into printf
+/// @brief register an error
 /// this also makes the query abort
-void QueryWarnings::registerError(int code, char const* details) {
+void QueryWarnings::registerError(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
-  if (details == nullptr) {
+  if (details.data() == nullptr) {
     THROW_ARANGO_EXCEPTION(code);
   }
 
-  THROW_ARANGO_EXCEPTION_PARAMS(code, details);
-}
-
-void QueryWarnings::registerWarning(int code, std::string const& details) {
-  registerWarning(code, details.c_str());
+  THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
 }
 
 /// @brief register a warning
-void QueryWarnings::registerWarning(int code, char const* details) {
+void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   
   std::lock_guard<std::mutex> guard(_mutex);
 
   if (_failOnWarning) {
     // make an error from each warning if requested
-    if (details == nullptr) {
+    if (details.data() == nullptr) {
       THROW_ARANGO_EXCEPTION(code);
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
@@ -71,7 +67,7 @@ void QueryWarnings::registerWarning(int code, char const* details) {
     return;
   }
 
-  if (details == nullptr) {
+  if (details.data() == nullptr) {
     _list.emplace_back(code, TRI_errno_string(code));
   } else {
     _list.emplace_back(code, details);
@@ -104,8 +100,11 @@ void QueryWarnings::updateOptions(QueryOptions const& opts) {
   _failOnWarning = opts.failOnWarning;
 }
 
-
-std::vector<std::pair<int, std::string>> QueryWarnings::all() const {
+std::vector<std::pair<ErrorCode, std::string>> QueryWarnings::all() const {
   std::lock_guard<std::mutex> guard(_mutex);
   return _list;
+}
+
+std::string QueryWarnings::buildFormattedString(ErrorCode code, char const* details) {
+  return arangodb::basics::Exception::FillExceptionString(code, details);
 }

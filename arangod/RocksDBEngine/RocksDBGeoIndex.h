@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_GEO_INDEX_H
-#define ARANGOD_ROCKSDB_GEO_INDEX_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 
@@ -76,17 +75,16 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const& doc,
-                arangodb::OperationOptions& options) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                arangodb::OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const& docs,
-                arangodb::Index::OperationMode mode) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc) override;
 
  private:
   std::string const _typeName;
 };
 }  // namespace arangodb
 
-#endif

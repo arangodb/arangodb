@@ -1,0 +1,17 @@
+name: arangodb_v8_context_max
+introducedIn: "3.6.7"
+help: |
+  Maximum number of concurrent V8 contexts
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This is the maximum number of concurrent V8 contexts. This is limited
+  by a server option, since V8 contexts can use a lot of RAM. V8 contexts
+  are created and destroyed as needed up to the limit shown in this metric.

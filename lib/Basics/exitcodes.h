@@ -90,9 +90,16 @@ constexpr int TRI_EXIT_UNSUPPORTED_STORAGE_ENGINE                               
 /// invalid. Check for an incorrectly set ICU_DATA environment variable
 constexpr int TRI_EXIT_ICU_INITIALIZATION_FAILED                                = 26;
 
+/// 27: EXIT_TZDATA_INITIALIZATION_FAILED
+/// failed to locate tzdata
+/// Will be returned if tzdata is not found
+constexpr int TRI_EXIT_TZDATA_INITIALIZATION_FAILED                             = 27;
 
-/// register all exit codes for ArangoDB
-void TRI_InitializeExitMessages();
+/// 28: EXIT_RESOURCES_TOO_LOW
+/// the system restricts resources below what is required to start arangod
+/// Will be returned if i.e. ulimit is too restrictive
+constexpr int TRI_EXIT_RESOURCES_TOO_LOW                                        = 28;
+
 
 #endif
 

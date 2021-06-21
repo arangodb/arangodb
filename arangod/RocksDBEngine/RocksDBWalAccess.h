@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +21,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_WAL_ACCESS_H
-#define ARANGOD_ROCKSDB_ENGINE_WAL_ACCESS_H 1
+#pragma once
 
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/WalAccess.h"
 
 namespace arangodb {
@@ -32,7 +32,7 @@ namespace arangodb {
 /// TODO: add methods for _admin/wal/ and get rid of engine specific handlers
 class RocksDBWalAccess final : public WalAccess {
  public:
-  RocksDBWalAccess() {}
+  explicit RocksDBWalAccess(RocksDBEngine&);
   virtual ~RocksDBWalAccess() = default;
 
   /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
@@ -55,7 +55,9 @@ class RocksDBWalAccess final : public WalAccess {
   /// Tails the wall, this will already sanitize the
   WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
                        MarkerCallback const&) const override;
+
+ private:
+  RocksDBEngine& _engine;
 };
 }  // namespace arangodb
 
-#endif

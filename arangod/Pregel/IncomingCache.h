@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IN_MESSAGE_CACHE_H
-#define ARANGODB_IN_MESSAGE_CACHE_H 1
+#pragma once
 
 #include <velocypack/Slice.h>
 
@@ -131,4 +130,3 @@ class CombiningInCache : public InCache<M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

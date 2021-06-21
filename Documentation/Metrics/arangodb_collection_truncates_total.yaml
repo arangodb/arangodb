@@ -1,0 +1,17 @@
+name: arangodb_collection_truncates_total
+renamedFrom: arangodb_collection_truncates
+introducedIn: "3.8.0"
+help: |
+  Total number of collection truncate operations (excl. synchronous replication).
+unit: number
+type: counter
+category: Transactions
+complexity: simple
+exposedBy:
+  - agent
+  - dbserver
+  - single
+description: |
+  Total number of collection truncate operations on leaders (excl. synchronous
+  replication). Note that this metric is only present when the command
+  line option `--server.export-read-write-metrics` is set to `true`.

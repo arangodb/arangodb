@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -910,16 +910,15 @@ std::string urlEncode(char const* src, size_t const len) {
   return result;
 }
 
-std::string encodeURIComponent(char const* src, size_t len) {
+void encodeURIComponent(std::string& result, char const* src, size_t len) {
   char const* end = src + len;
 
   // cppcheck-suppress unsignedPositive
-  if (len >= (SIZE_MAX - 1) / 3) {
+  if (result.size() + len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  std::string result;
-  result.reserve(3 * len);
+  result.reserve(result.size() + 3 * len);
 
   for (; src < end; ++src) {
     if (*src == '-' || *src == '_' || *src == '.' || *src == '!' ||
@@ -936,7 +935,11 @@ std::string encodeURIComponent(char const* src, size_t len) {
       result.push_back(::hexValuesUpper[c % 16]);
     }
   }
+}
 
+std::string encodeURIComponent(char const* src, size_t len) {
+  std::string result;
+  encodeURIComponent(result, src, len);
   return result;
 }
 
@@ -1045,14 +1048,6 @@ std::vector<uint32_t> characterCodes(char const* s, size_t length) {
   }
 
   return charNums;
-}
-
-std::vector<uint32_t> characterCodes(std::string const& str) {
-  return characterCodes(str.data(), str.size());
-}
-
-unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
-  return levenshteinDistance(str1.data(), str1.size(), str2.data(), str2.size());
 }
 
 // .............................................................................
@@ -1704,6 +1699,10 @@ std::string encodeBase64(std::string const& str) {
   return encodeBase64(str.data(), str.size());
 }
 
+std::string encodeBase64(std::string_view str) {
+  return encodeBase64(str.data(), str.size());
+}
+
 std::string decodeBase64(std::string const& source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
@@ -1877,78 +1876,6 @@ std::string correctPath(std::string const& incorrectPath) {
 #endif
 }
 
-// In a list str = "xx,yy,zz ...", entry(n,str,',') returns the nth entry of the
-// list delimited
-// by ','. E.g entry(2,str,',') = 'yy'
-
-std::string entry(size_t const pos, std::string const& sourceStr, std::string const& delimiter) {
-  size_t delLength = delimiter.length();
-  size_t sourceLength = sourceStr.length();
-
-  if (pos == 0) {
-    return "";
-  }
-
-  if (delLength == 0 || sourceLength == 0) {
-    return sourceStr;
-  }
-
-  size_t k = 0;
-  size_t offSet = 0;
-
-  while (true) {
-    size_t delPos = sourceStr.find(delimiter, offSet);
-
-    if ((delPos == sourceStr.npos) || (delPos >= sourceLength) || (offSet >= sourceLength)) {
-      return sourceStr.substr(offSet);
-    }
-
-    ++k;
-
-    if (k == pos) {
-      return sourceStr.substr(offSet, delPos - offSet);
-    }
-
-    offSet = delPos + delLength;
-  }
-
-  return sourceStr;
-}
-
-/// Determines the number of entries in a list str = "xx,yyy,zz,www".
-/// numEntries(str,',') = 4.
-
-size_t numEntries(std::string const& sourceStr, std::string const& delimiter) {
-  size_t delLength = delimiter.length();
-  size_t sourceLength = sourceStr.length();
-
-  if (sourceLength == 0) {
-    return (0);
-  }
-
-  if (delLength == 0) {
-    return (1);
-  }
-
-  size_t k = 1;
-
-  for (size_t j = 0; j < sourceLength; ++j) {
-    bool match = true;
-    for (size_t i = 0; i < delLength; ++i) {
-      if (sourceStr[j + i] != delimiter[i]) {
-        match = false;
-        break;
-      }
-    }
-    if (match) {
-      j += (delLength - 1);
-      ++k;
-      continue;
-    }
-  }
-  return k;
-}
-
 std::string encodeHex(char const* value, size_t length) {
   std::string result;
   result.reserve(length * 2);
@@ -2034,6 +1961,37 @@ std::string escapeRegexParams(std::string const& in) {
   std::string out;
   escapeRegexParams(out, in.data(), in.size());
   return out;
+}
+
+std::string formatSize(uint64_t value) {
+  std::string out, label;
+  if (value < 1000) {
+    if (value == 1) {
+      out = "1";
+      label ="byte";
+    } else {
+      out = std::to_string(value);
+      label = "bytes";
+    }
+  } else if (value < 1000'000ULL) {
+    out = std::to_string((double) value / double(1000));
+    label = "KB";
+  } else if (value < 1'000'000'000ULL) {
+    out = std::to_string((double) value / 1e6);
+    label = "MB";
+  } else if (value < 1'000'000'000'000ULL) {
+    out = std::to_string((double) value / 1e9);
+    label = "GB";
+  } else if (value < 1'000'000'000'000'000ULL) {
+    out = std::to_string((double) value / 1e12);
+    label = "TB";
+  }
+  out = arangodb::basics::StringUtils::replace(out, ",", ".");
+  auto pos = out.find('.');
+  if (pos != std::string::npos) {
+    out = out.substr(0, pos + 2);
+  }
+  return out + ' ' + label;
 }
 
 }  // namespace StringUtils

@@ -24,13 +24,11 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // contains common code for aql-profiler* tests
-const profHelper = require("@arangodb/aql-profiler-test-helper");
+const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 
 const _ = require('lodash');
 const {db, aql} = require('@arangodb');
-const console = require('console');
 const { getResponsibleServers } = global.ArangoClusterInfo;
 const internal = require('internal');
 const jsunity = require('jsunity');
@@ -55,13 +53,13 @@ function ahuacatlProfilerTestSuite () {
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
+    TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
-#define ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
+#pragma once
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -39,6 +38,8 @@
 #include <unordered_set>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace transaction {
 class Methods;
 }
@@ -54,7 +55,8 @@ class SingleRowFetcher;
 class DistinctCollectExecutorInfos {
  public:
   DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
-                               velocypack::Options const* opts);
+                               velocypack::Options const* opts,
+                               arangodb::ResourceMonitor& resourceMonitor);
 
   DistinctCollectExecutorInfos() = delete;
   DistinctCollectExecutorInfos(DistinctCollectExecutorInfos&&) = default;
@@ -64,6 +66,7 @@ class DistinctCollectExecutorInfos {
  public:
   [[nodiscard]] std::pair<RegisterId, RegisterId> const& getGroupRegister() const;
   velocypack::Options const* vpackOptions() const;
+  arangodb::ResourceMonitor& getResourceMonitor() const;
 
  private:
   /// @brief pairs, consisting of out register and in register
@@ -71,6 +74,8 @@ class DistinctCollectExecutorInfos {
 
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 /**
@@ -113,6 +118,7 @@ class DistinctCollectExecutor {
  private:
   Infos const& infos() const noexcept;
   void destroyValues();
+  size_t memoryUsageForGroup(AqlValue const& value) const;
 
  private:
   Infos const& _infos;
@@ -122,4 +128,3 @@ class DistinctCollectExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

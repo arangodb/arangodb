@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTIONNODEID_H
-#define ARANGOD_AQL_EXECUTIONNODEID_H
+#pragma once
 
 #include "Basics/Identifier.h"
 
@@ -43,4 +42,3 @@ class ExecutionNodeId : public basics::Identifier {
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::aql::ExecutionNodeId)
 
-#endif  // ARANGOD_AQL_EXECUTIONNODEID_H

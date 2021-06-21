@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,15 +95,13 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
                          std::string const& result)
       : GraphFormat<ECValue, int8_t>(server), _resultField(result) {}
 
-  size_t estimatedEdgeSize() const override { return 0; };
+  size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                      ECValue& targetPtr) override {}
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/, ECValue& /*targetPtr*/,
+                      uint64_t& /*vertexIdRange*/) override {}
 
-  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
-
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, const ECValue* ptr,
-                           size_t size) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, ECValue const* ptr) const override {
     size_t numVerticesReachable = 0;
     size_t sumLengths = 0;
     for (size_t i = 1; i < ptr->shortestPaths.size(); i++) {
@@ -119,11 +117,6 @@ struct ECGraphFormat : public GraphFormat<ECValue, int8_t> {
     }
     b.add(_resultField, VPackValue(closeness));
     return true;
-  }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
-                         size_t size) const override {
-    return false;
   }
 };
 

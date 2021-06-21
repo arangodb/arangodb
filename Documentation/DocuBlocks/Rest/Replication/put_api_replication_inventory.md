@@ -15,12 +15,24 @@ Include all databases in the response. Only works on `_system` The default value
 @RESTQUERYPARAM{batchId,number,required}
 A valid batchId is required for this API call
 
-@RESTDESCRIPTION
-Returns the array of collections and indexes available on the server. This
-array can be used by replication clients to initiate an initial sync with the
-server.
+@RESTQUERYPARAM{collection,string,optional}
+If this parameter is set, the response will be restricted to a single collection (the one
+specified), and no views will be returned. This can be used as an optimization to reduce
+the size of the response.
 
-The response will contain a JSON object with the *collection* and *state* and
+@RESTDESCRIPTION
+Returns the array of collections and their indexes, and the array of views available. These
+arrays can be used by replication clients to initiate an initial synchronization with the
+server. 
+The response will contain all collections, their indexes and views in the requested database
+if *global* is not set, and all collections, indexes and views in all databases if *global*
+is set.
+In case *global* is not set, it is possible to restrict the response to a single collection
+by setting the *collection* parameter. In this case the response will contain only information
+about the requested collection in the *collections* array, and no information about views
+(i.e. the *views* response attribute will be an empty array).
+
+The response will contain a JSON object with the *collections*, *views*, *state* and
 *tick* attributes.
 
 *collections* is an array of collections with the following sub-attributes:
@@ -39,6 +51,8 @@ contains the following sub-attributes:
 - *lastLogTick*: the value of the last tick the replication logger has written
 
 - *time*: the current time on the server
+
+*views* is an array of available views.
 
 Replication clients should note the *lastLogTick* value returned. They can then
 fetch collections' data using the dump method up to the value of lastLogTick, and

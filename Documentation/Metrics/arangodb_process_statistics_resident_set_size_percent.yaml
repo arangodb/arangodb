@@ -1,0 +1,29 @@
+name: arangodb_process_statistics_resident_set_size_percent
+introducedIn: "3.6.1"
+help: |
+  Resident set size as fraction of system memory
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The relative size of the number of pages the process has in real
+  memory compared to system memory. This is just the pages which count
+  toward text, data, or stack space. This does not include pages which
+  have not been demand-loaded in, or which are swapped out. The value is a
+  ratio between 0.00 and 1.00.
+threshold: |
+  This value can be consistently relatively high, even when not under load,
+  due to different caches like the RocksDB block cache or the edge cache. There
+  should be some safety margin left, so it should not get too close to 1.
+troubleshooting: |
+  If the memory is nearly full, this can lead to performance degradation, errors
+  because queries can't be executed, or the process being killed by the
+  operating system to free memory. This can be mitigated by adding more memory,
+  decreasing the size of caches if they aren't much needed, or restricting the
+  amount of memory AQL queries may use.

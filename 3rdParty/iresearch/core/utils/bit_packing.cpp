@@ -27,7 +27,7 @@
 #include <cassert>
 #include <cstring>
 
-NS_LOCAL
+namespace {
 
 #if defined(_MSC_VER)
   __pragma(warning(push))
@@ -83,7 +83,7 @@ void __fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
 
 template<>
 void __fastpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
-  std::memcpy(out, in, sizeof(uint32_t)*iresearch::packed::BLOCK_SIZE_32);
+  std::memcpy(out, in, sizeof(uint32_t)*irs::packed::BLOCK_SIZE_32);
 }
 
 template<int N>
@@ -159,7 +159,7 @@ void __fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
 
 template<>
 FORCE_INLINE void __fastpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
-  std::memcpy(out, in, sizeof(uint64_t)*iresearch::packed::BLOCK_SIZE_64);
+  std::memcpy(out, in, sizeof(uint64_t)*irs::packed::BLOCK_SIZE_64);
 }
 
 template<int N>
@@ -202,7 +202,7 @@ void __fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept 
 
 template<>
 FORCE_INLINE void __fastunpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
-  std::memcpy(out, in, sizeof(uint32_t)*iresearch::packed::BLOCK_SIZE_32);
+  std::memcpy(out, in, sizeof(uint32_t)*irs::packed::BLOCK_SIZE_32);
 }
 
 template<int N>
@@ -277,7 +277,7 @@ void __fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept 
 
 template<>
 FORCE_INLINE void __fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
-  std::memcpy(out, in, sizeof(uint64_t)*iresearch::packed::BLOCK_SIZE_64);
+  std::memcpy(out, in, sizeof(uint64_t)*irs::packed::BLOCK_SIZE_64);
 }
 
 template<int N, int I>
@@ -551,10 +551,10 @@ uint64_t __fastpack_at(const uint64_t* in, const size_t i, const uint32_t bits) 
 }
 MSVC_ONLY(__pragma(warning(push)))
 
-NS_END // NS_LOCAL
+} // namespace {
 
-NS_ROOT
-NS_BEGIN(packed)
+namespace iresearch {
+namespace packed {
 
 void pack_block(const uint32_t* RESTRICT in,
                 uint32_t* RESTRICT out,
@@ -828,5 +828,5 @@ void unpack(uint64_t* first, uint64_t* last,
   }
 }
 
-NS_END // packed
-NS_END
+} // packed
+}

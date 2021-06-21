@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SOCKET__UTILS_H
-#define ARANGODB_BASICS_SOCKET__UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 
 #include "Basics/Common.h"
 #include "Basics/operating-system.h"
+#include "ErrorCode.h"
 
 #ifdef TRI_HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -230,7 +230,7 @@ bool TRI_SetCloseOnExecSocket(TRI_socket_t);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton4(char const* src, unsigned char* dst);
+ErrorCode TRI_InetPton4(char const* src, unsigned char* dst);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translates for IPv6 address
@@ -238,6 +238,5 @@ int TRI_InetPton4(char const* src, unsigned char* dst);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton6(char const* src, unsigned char* dst);
+ErrorCode TRI_InetPton6(char const* src, unsigned char* dst);
 
-#endif

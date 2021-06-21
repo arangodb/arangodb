@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,9 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LoggerFeature.h"
@@ -49,15 +51,16 @@ LogBuffer::LogBuffer()
     : _id(0), 
       _level(LogLevel::DEFAULT), 
       _topicId(0), 
-      _timestamp(0) {
+      _timestamp(0.0) {
   memset(&_message[0], 0, sizeof(_message));
 }
 
 /// @brief logs to a fixed size ring buffer in memory
 class LogAppenderRingBuffer final : public LogAppender {
  public:
-  LogAppenderRingBuffer() 
+  explicit LogAppenderRingBuffer(LogLevel minLogLevel) 
       : LogAppender(),
+        _minLogLevel(minLogLevel),
         _id(0) {
     MUTEX_LOCKER(guard, _lock);
     _buffer.resize(LogBufferFeature::BufferSize);
@@ -65,13 +68,12 @@ class LogAppenderRingBuffer final : public LogAppender {
 
  public:
   void logMessage(LogMessage const& message) override {
-    if (message._level == LogLevel::FATAL) {
-      // no need to track FATAL messages here, as the process will go down
-      // anyway
+    if (message._level > _minLogLevel) {
+      // logger not configured to log these messages
       return;
     }
 
-    auto timestamp = time(nullptr);
+    double timestamp = TRI_microtime();
 
     MUTEX_LOCKER(guard, _lock);
 
@@ -86,16 +88,30 @@ class LogAppenderRingBuffer final : public LogAppender {
                    sizeof(ptr._message) - 1);
   }
 
+  void clear() {
+    MUTEX_LOCKER(guard, _lock);
+    _id = 0;
+    _buffer.clear();
+    _buffer.resize(LogBufferFeature::BufferSize);
+  }
+
   std::string details() const override {
     return std::string();
   }
 
   /// @brief return all buffered log entries
-  std::vector<LogBuffer> entries(LogLevel level, uint64_t start, bool upToLevel) {
+  std::vector<LogBuffer> entries(LogLevel level, uint64_t start, bool upToLevel,
+                                 std::string const& searchString) {
     std::vector<LogBuffer> result;
+    result.reserve(16);
     
     uint64_t s = 0;
     uint64_t n;
+  
+    std::string search;
+    if (!searchString.empty()) {
+      search = arangodb::basics::StringUtils::tolower(searchString);
+    } 
 
     MUTEX_LOCKER(guard, _lock);
 
@@ -110,13 +126,18 @@ class LogAppenderRingBuffer final : public LogAppender {
       LogBuffer const& p = _buffer[i];
 
       if (p._id >= start) {
-        if (upToLevel) {
-          if (static_cast<int>(p._level) <= static_cast<int>(level)) {
-            result.emplace_back(p);
-          }
-        } else {
-          if (p._level == level) {
-            result.emplace_back(p);
+        bool matches = (search.empty() ||
+                        arangodb::basics::StringUtils::tolower(p._message).find(search) != std::string::npos);
+
+        if (matches) {
+          if (upToLevel) {
+            if (static_cast<int>(p._level) <= static_cast<int>(level)) {
+              result.emplace_back(p);
+            }
+          } else {
+            if (p._level == level) {
+              result.emplace_back(p);
+            }
           }
         }
       }
@@ -133,6 +154,7 @@ class LogAppenderRingBuffer final : public LogAppender {
 
  private:
   Mutex _lock;
+  LogLevel const _minLogLevel;
   uint64_t _id;
   std::vector<LogBuffer> _buffer;
 };
@@ -184,6 +206,7 @@ class LogAppenderEventLog final : public LogAppender {
 
 LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "LogBuffer"),
+      _minInMemoryLogLevel("info"),
       _useInMemoryAppender(true) {
   setOptional(true);
   startsAfter<LoggerFeature>();
@@ -201,25 +224,48 @@ void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
       ->addOption("--log.in-memory", "use in-memory log appender, which can be queried via API and web UI",
                   new BooleanParameter(&_useInMemoryAppender),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                  .setIntroducedIn(30701);
+                  .setIntroducedIn(30800);
+  
+  std::unordered_set<std::string> const logLevels = { "fatal", "error", "err", "warning", "warn", "info", "debug", "trace" };
+  options
+      ->addOption("--log.in-memory-level", "use in-memory log appender only for this log level and higher",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_minInMemoryLogLevel, logLevels),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                  .setIntroducedIn(30709);
 }
 
 void LogBufferFeature::prepare() {
+  TRI_ASSERT(_inMemoryAppender == nullptr);
+
   if (_useInMemoryAppender) {
     // only create the in-memory appender when we really need it. if we created it
     // in the ctor, we would waste a lot of memory in case we don't need the in-memory
     // appender. this is the case for simple command such as `--help` etc.
-    _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>();
+    LogLevel level;
+    bool isValid = Logger::translateLogLevel(_minInMemoryLogLevel, true, level);
+    if (!isValid) {
+      level = LogLevel::INFO;
+    }
+
+    _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>(level);
     LogAppender::addGlobalAppender(Logger::defaultLogGroup(), _inMemoryAppender);
   }
 }
 
-std::vector<LogBuffer> LogBufferFeature::entries(LogLevel level, uint64_t start, bool upToLevel) {
+void LogBufferFeature::clear() {
+  if (_inMemoryAppender != nullptr) {
+    static_cast<LogAppenderRingBuffer*>(_inMemoryAppender.get())->clear();
+  }
+}
+
+std::vector<LogBuffer> LogBufferFeature::entries(LogLevel level, uint64_t start, bool upToLevel, 
+                                                 std::string const& searchString) {
   if (_inMemoryAppender == nullptr) {
     return std::vector<LogBuffer>();
   }
   TRI_ASSERT(_useInMemoryAppender);
-  return static_cast<LogAppenderRingBuffer*>(_inMemoryAppender.get())->entries(level, start, upToLevel);
+  return static_cast<LogAppenderRingBuffer*>(_inMemoryAppender.get())->entries(level, start, upToLevel, searchString);
 }
 
 }  // namespace arangodb

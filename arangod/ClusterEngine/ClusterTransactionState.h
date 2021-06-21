@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_STATE_H
-#define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_STATE_H 1
+#pragma once
 
 #include "StorageEngine/TransactionState.h"
 
@@ -43,10 +42,12 @@ class ClusterTransactionState final : public TransactionState {
 
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
+  
+  /// @brief return number of commits, including intermediate commits
+  uint64_t numCommits() const override;
 
   bool hasFailedOperations() const override { return false; }
 };
 
 }  // namespace arangodb
 
-#endif

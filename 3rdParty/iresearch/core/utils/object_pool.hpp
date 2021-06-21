@@ -35,8 +35,7 @@
 #include "misc.hpp"
 #include "noncopyable.hpp"
 
-
-NS_ROOT
+namespace iresearch {
 
 template<typename T>
 class atomic_shared_ptr_helper {
@@ -48,17 +47,17 @@ class atomic_shared_ptr_helper {
     atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) noexcept { return *this; }
 
     std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
-      SCOPED_LOCK(mutex_);
+      auto lock = irs::make_lock_guard(mutex_);
       return std::atomic_exchange(p, r);
     }
 
     void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
-      SCOPED_LOCK(mutex_);
+      auto lock = irs::make_lock_guard(mutex_);
       std::atomic_store(p, r);
     }
 
     std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const {
-      SCOPED_LOCK(mutex_);
+      auto lock = irs::make_lock_guard(mutex_);
       return std::atomic_load(p);
     }
 
@@ -91,7 +90,8 @@ class concurrent_stack : private util::noncopyable {
 
   struct node_type {
     element_type value{};
-    node_type* next{};
+    // next needs to be atomic because nodes are kept in a free-list and reused!
+    std::atomic<node_type*> next{};
   };
 
   explicit concurrent_stack(node_type* head = nullptr) noexcept
@@ -118,12 +118,12 @@ class concurrent_stack : private util::noncopyable {
   }
 
   bool empty() const noexcept {
-    VALGRIND_ONLY(SCOPED_LOCK(mutex_);) // suppress valgrind false-positives related to std::atomic_*
+    VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     return nullptr == head_.load().node;
   }
 
   node_type* pop() noexcept {
-    VALGRIND_ONLY(SCOPED_LOCK(mutex_);) // suppress valgrind false-positives related to std::atomic_*
+    VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     concurrent_node head = head_.load();
     concurrent_node new_head;
 
@@ -132,7 +132,7 @@ class concurrent_stack : private util::noncopyable {
         return nullptr;
       }
 
-      new_head.node = head.node->next;
+      new_head.node = head.node->next.load(std::memory_order_relaxed);
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(head, new_head));
 
@@ -140,12 +140,12 @@ class concurrent_stack : private util::noncopyable {
   }
 
   void push(node_type& new_node) noexcept {
-    VALGRIND_ONLY(SCOPED_LOCK(mutex_);) // suppress valgrind false-positives related to std::atomic_*
+    VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     concurrent_node head = head_.load();
     concurrent_node new_head;
 
     do {
-      new_node.next = head.node;
+      new_node.next.store(head.node, std::memory_order_relaxed);
 
       new_head.node = &new_node;
       new_head.version = head.version + 1;
@@ -358,10 +358,12 @@ class bounded_object_pool {
 
  private:
   void wait_for_free_slots() const {
-    SCOPED_LOCK_NAMED(mutex_, lock);
+    using namespace std::chrono_literals;
+
+    auto lock = make_unique_lock(mutex_);
 
     if (free_list_.empty()) {
-      cond_.wait_for(lock, std::chrono::milliseconds(1000));
+      cond_.wait_for(lock, 1000ms);
     }
   }
 
@@ -627,7 +629,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
 
 }; // unbounded_object_pool
 
-NS_BEGIN(detail)
+namespace detail {
 
 template<typename Pool>
 struct pool_generation {
@@ -639,7 +641,7 @@ struct pool_generation {
   Pool* owner; // current owner
 }; // pool_generation
 
-NS_END // detail
+} // detail
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class unbounded_object_pool_volatile
@@ -839,6 +841,6 @@ class unbounded_object_pool_volatile
   generation_ptr_t gen_; // current generation
 }; // unbounded_object_pool_volatile
 
-NS_END
+}
 
 #endif

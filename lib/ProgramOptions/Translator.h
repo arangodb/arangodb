@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H
-#define ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include <string>
@@ -35,4 +34,3 @@ std::string EnvironmentTranslator(std::string const& value, char const* binaryPa
 }  // namespace options
 }  // namespace arangodb
 
-#endif

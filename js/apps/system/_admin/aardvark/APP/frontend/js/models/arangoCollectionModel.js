@@ -1,4 +1,4 @@
-/* global window, Backbone, $, arangoHelper */
+/* global window, Backbone, $, arangoHelper, frontendConfig */
 (function () {
   'use strict';
   window.arangoCollectionModel = Backbone.Model.extend({
@@ -31,6 +31,21 @@
         }
       });
     },
+    getShards: function (callback) {
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/shards?details=true'),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          callback(false, data);
+        },
+        error: function () {
+          callback(true);
+        }
+      });
+    },
     getFigures: function (callback) {
       $.ajax({
         type: 'GET',
@@ -46,6 +61,48 @@
         }
       });
     },
+    getFiguresCombined: function (callback, isCluster) {
+      var self = this;
+      var shardsCallback = function (error, data) {
+        if (error) {
+          callback(true);
+        } else {
+          var figures = data;
+          if (isCluster) {
+            self.getShards(function (error, data) {
+              if (error) {
+                callback(true);
+              } else {
+                callback(false, Object.assign(figures, { shards: data.shards }));
+              }
+            });
+          } else {
+            callback(false, figures);
+          }
+        }
+      };
+      this.getFigures(shardsCallback);
+    },
+
+    getShardCounts: function (callback) {
+      if (!frontendConfig.isCluster) {
+        return;
+      }
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/count?details=true'),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          callback(false, data);
+        },
+        error: function () {
+          callback(true);
+        }
+      });
+    },
+
     getRevision: function (callback, figures) {
       $.ajax({
         type: 'GET',

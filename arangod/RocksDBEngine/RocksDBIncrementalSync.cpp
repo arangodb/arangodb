@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
@@ -76,7 +77,8 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 
   if (!res.ok()) {
     return Result(res.errorNumber(),
-                  std::string("unable to start transaction: ") + res.errorMessage());
+                  basics::StringUtils::concatT("unable to start transaction: ",
+                                               res.errorMessage()));
   }
 
   VPackSlice chunk = chunkSlice.at(0);
@@ -179,9 +181,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
-  options.indexOperationMode = Index::OperationMode::internal;
+  options.indexOperationMode = IndexOperationMode::internal;
   options.waitForSync = false;
   options.validate = false;
+  options.checkUniqueConstraintsInPreflight = true;
 
   if (!syncer._state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
@@ -214,24 +217,32 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     ++stats.numKeysRequests;
 
     if (replutils::hasFailed(response.get())) {
+      ++stats.numFailedConnects;
       return replutils::buildHttpError(response.get(), url, syncer._state.connection);
     }
   }
 
   TRI_ASSERT(response != nullptr);
 
+  if (response->hasContentLength()) {
+    stats.numSyncBytesReceived += response->getContentLength();
+  }
+
   VPackBuilder builder;
   Result r = replutils::parseResponse(builder, response.get());
   response.reset();  // not needed anymore
 
   if (r.fail()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      syncer._state.leader.endpoint + ": " + r.errorMessage());
+                  basics::StringUtils::concatT(
+                      "got invalid response from leader at ",
+                      syncer._state.leader.endpoint, ": ", r.errorMessage()));
   }
 
   VPackSlice const responseBody = builder.slice();
   if (!responseBody.isArray()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       syncer._state.leader.endpoint + ": response is no array");
@@ -239,6 +250,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
   size_t const numKeys = static_cast<size_t>(responseBody.length());
   if (numKeys == 0) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       syncer._state.leader.endpoint +
@@ -257,6 +269,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
   for (VPackSlice pair : VPackArrayIterator(responseBody)) {
     if (!pair.isArray() || pair.length() != 2) {
+      ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from leader at ") +
                         syncer._state.leader.endpoint +
@@ -266,6 +279,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     // key
     VPackSlice const keySlice = pair.at(0);
     if (!keySlice.isString()) {
+      ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from leader at ") +
                         syncer._state.leader.endpoint +
@@ -363,6 +377,16 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     // nothing to do
     return Result();
   }
+  
+  // determine number of unique indexes. we may need it later
+  std::size_t numUniqueIndexes = [&]() {
+    std::size_t numUnique = 0;
+    for (auto const& idx : coll->getIndexes()) {
+      numUnique += idx->unique() ? 1 : 0;
+    }
+    return numUnique;
+  }();
+
 
   LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
       << "will refetch " << toFetch.size() << " documents for this chunk";
@@ -377,7 +401,6 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   std::string const keyJsonString(keyBuilder->slice().toJson());
 
   size_t offsetInChunk = 0;
-
   while (true) {
     std::unique_ptr<httpclient::SimpleHttpResult> response;
 
@@ -404,30 +427,41 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       ++stats.numDocsRequests;
 
       if (replutils::hasFailed(response.get())) {
+        ++stats.numFailedConnects;
         return replutils::buildHttpError(response.get(), url, syncer._state.connection);
       }
     }
 
     TRI_ASSERT(response != nullptr);
 
+    if (response->hasContentLength()) {
+      stats.numSyncBytesReceived += response->getContentLength();
+    }
+
     transaction::BuilderLeaser docsBuilder(trx);
     docsBuilder->clear();
     Result r = replutils::parseResponse(*docsBuilder.get(), response.get());
 
     if (r.fail()) {
+      ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                        syncer._state.leader.endpoint +
-                        ": " + r.errorMessage());
+                    basics::StringUtils::concatT(
+                        "got invalid response from leader at ",
+                        syncer._state.leader.endpoint, ": ", r.errorMessage()));
     }
 
     VPackSlice const slice = docsBuilder->slice();
     if (!slice.isArray()) {
+      ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from leader at ") +
                         syncer._state.leader.endpoint +
                         ": response is no array");
     }
+      
+    syncer.setProgress(std::string("applying documents chunk ") +
+                       std::to_string(chunkId) + " (" + std::to_string(toFetch.size()) +
+                       " keys) for collection '" + collectionName + "'");
 
     size_t foundLength = slice.length();
 
@@ -438,6 +472,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       }
 
       if (!it.isObject()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           syncer._state.leader.endpoint +
@@ -447,6 +482,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       VPackSlice const keySlice = it.get(StaticStrings::KeyString);
 
       if (!keySlice.isString()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           syncer._state.leader.endpoint +
@@ -456,13 +492,14 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       VPackSlice const revSlice = it.get(StaticStrings::RevString);
 
       if (!revSlice.isString()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           syncer._state.leader.endpoint +
                           ": document revision is invalid");
       }
 
-      auto removeConflict = [&](std::string const& conflictingKey) -> Result {
+      auto removeConflict = [&](auto const& conflictingKey) -> Result {
         keyBuilder->clear();
         keyBuilder->add(VPackValue(conflictingKey));
 
@@ -475,68 +512,57 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         return res;
       };
 
+      // check if target _key already exists
       std::pair<LocalDocumentId, RevisionId> lookupResult;
-      if (physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        // key does not yet exist
-        // INSERT
-        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
-
-        Result res = physical->insert(trx, it, mdr, options);
+      bool mustInsert = physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
         
-        if (res.fail()) {
-          if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.copyString()) {
-            // remove conflict and retry
-            // errorMessage() is this case contains the conflicting key
-            auto inner = removeConflict(res.errorMessage());
-            if (inner.fail()) {
-              return res;
-            }
-
-            options.indexOperationMode = Index::OperationMode::normal;
-            res = physical->insert(trx, it, mdr, options);
-            
-            options.indexOperationMode = Index::OperationMode::internal;
-            if (res.fail()) {
-              return res;
-            }
-            // fall-through
-          } else {
-            int errorNumber = res.errorNumber();
-            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
-            return res;
-          }
+      TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
+     
+      // there exists the problem of secondary unique index violations when we insert
+      // documents here.
+      // we may need as many retries as there are unique indexes here.
+      std::size_t tries = 1 + numUniqueIndexes;
+      while (tries-- > 0) {
+        if (tries == 0) {
+          options.indexOperationMode = arangodb::IndexOperationMode::normal;
         }
 
-        ++stats.numDocsInserted;
-      } else {
-        // REPLACE
-        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
-
-        Result res = physical->replace(trx, it, mdr, options, previous);
-        
-        if (res.fail()) {
-          if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.copyString()) {
-            // remove conflict and retry
-            // errorMessage() is this case contains the conflicting key
-            auto inner = removeConflict(res.errorMessage());
-            if (inner.fail()) {
-              return res;
-            }
-            options.indexOperationMode = Index::OperationMode::normal;
-            res = physical->replace(trx, it, mdr, options, previous);
-            
-            options.indexOperationMode = Index::OperationMode::internal;
-            if (res.fail()) {
-              return res;
-            }
-            // fall-through
-          } else {
-            int errorNumber = res.errorNumber();
-            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
-            return res;
+        Result res;
+        if (mustInsert) {
+          res = physical->insert(trx, it, mdr, options);
+          if (res.ok()) {
+            ++stats.numDocsInserted;
           }
+        } else {
+          res = physical->replace(trx, it, mdr, options, previous);
+          // do NOT count up stats.numDocsInserted, as this will influence the 
+          // persisted document count later!!
+        }
+        
+        options.indexOperationMode = arangodb::IndexOperationMode::internal;
+        
+        if (res.ok()) {
+          // all good, we can exit the retry loop now!
+          break;
+        }
+       
+        if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+          res.errorMessage() <= keySlice.stringView()) {
+
+          auto errorNumber = res.errorNumber();
+          res.reset(errorNumber,
+                    basics::StringUtils::concatT(TRI_errno_string(errorNumber),
+                                                 ": ", res.errorMessage()));
+          return res;
+        }
+
+        // unique constraint violation!
+            
+        // remove conflict and retry
+        // errorMessage() is this case contains the conflicting key
+        auto inner = removeConflict(res.errorMessage());
+        if (inner.fail()) {
+          return res;
         }
       }
     }
@@ -594,27 +620,36 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     stats.waitedForInitial += TRI_microtime() - t;
 
     if (replutils::hasFailed(response.get())) {
+      ++stats.numFailedConnects;
       return replutils::buildHttpError(response.get(), url, syncer._state.connection);
     }
   }
 
   TRI_ASSERT(response != nullptr);
 
+  if (response->hasContentLength()) {
+    stats.numSyncBytesReceived += response->getContentLength();
+  }
+
   VPackBuilder builder;
   Result r = replutils::parseResponse(builder, response.get());
 
   if (r.fail()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      syncer._state.leader.endpoint + ": " + r.errorMessage());
+                  basics::StringUtils::concatT(
+                      "got invalid response from leader at ",
+                      syncer._state.leader.endpoint, ": ", r.errorMessage()));
   }
 
   VPackSlice const chunkSlice = builder.slice();
 
   if (!chunkSlice.isArray()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from leader at ") +
-                      syncer._state.leader.endpoint + ": response is no array");
+                  basics::StringUtils::concatT(
+                      "got invalid response from leader at ",
+                      syncer._state.leader.endpoint, ": response is no array"));
   }
 
   OperationOptions options;
@@ -656,8 +691,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      return Result(res.errorNumber(),
-                    std::string("unable to start transaction: ") + res.errorMessage());
+      return Result(res.errorNumber(),basics::StringUtils::concatT(
+                        "unable to start transaction: ", res.errorMessage()));
     }
 
     // We do not take responsibility for the index.
@@ -765,8 +800,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
               tempBuilder.clear();
               // use a temporary char buffer for building to rid string
-              char ridBuffer[21];
-              tempBuilder.add(docRev.toValuePair(&ridBuffer[0]));
+              char ridBuffer[arangodb::basics::maxUInt64StringSize];
+              tempBuilder.add(docRev.toValuePair(ridBuffer));
               localHash ^= tempBuilder.slice().hashString();  // revision as string
 
               if (cmp2 == 0) {  // found highKey
@@ -814,11 +849,11 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
             // for collections that do not have the revisionId in the value
             auto documentId = RocksDBValue::documentId(rocksValue);  // we want probably to do this instead
-            col->readDocumentWithCallback(&trx, documentId,
-                                          [&docRev](LocalDocumentId const&, VPackSlice doc) {
-                                            docRev = RevisionId::fromSlice(doc);
-                                            return true;
-                                          });
+            physical->read(&trx, documentId,
+                           [&docRev](LocalDocumentId const&, VPackSlice doc) {
+                             docRev = RevisionId::fromSlice(doc);
+                             return true;
+                           });
           }
           compareChunk(docKey, docRev);
           return true;
@@ -861,7 +896,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
-        auto seq = rocksutils::latestSequenceNumber();
+        RocksDBEngine& engine =
+            col->vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+        auto seq = engine.db()->GetLatestSequenceNumber();
         static_cast<RocksDBCollection*>(trx.documentCollection()->getPhysical())
             ->meta()
             .adjustNumberDocuments(seq, RevisionId::none(), diff);
@@ -877,16 +914,17 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   
   syncer.setProgress(
       std::string("incremental sync statistics for collection '") + col->name() +
-      "': " + "keys requests: " + std::to_string(stats.numKeysRequests) + ", " +
-      "docs requests: " + std::to_string(stats.numDocsRequests) + ", " +
-      "number of documents requested: " + std::to_string(stats.numDocsRequested) +
-      ", " + "number of documents inserted: " + std::to_string(stats.numDocsInserted) +
-      ", " + "number of documents removed: " + std::to_string(stats.numDocsRemoved) +
-      ", " + "waited for initial: " + std::to_string(stats.waitedForInitial) +
-      " s, " + "waited for keys: " + std::to_string(stats.waitedForKeys) +
-      " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
-      " s, " + "waited for insertions: " + std::to_string(stats.waitedForInsertions) +
-      " s, " + "total time: " + std::to_string(TRI_microtime() - startTime) +
+      "': keys requests: " + std::to_string(stats.numKeysRequests) +
+      ", docs requests: " + std::to_string(stats.numDocsRequests) +
+      ", bytes received: " + std::to_string(stats.numSyncBytesReceived) +
+      ", number of documents requested: " + std::to_string(stats.numDocsRequested) +
+      ", number of documents inserted: " + std::to_string(stats.numDocsInserted) +
+      ", number of documents removed: " + std::to_string(stats.numDocsRemoved) +
+      ", waited for initial: " + std::to_string(stats.waitedForInitial) +
+      " s, waited for keys: " + std::to_string(stats.waitedForKeys) +
+      " s, waited for docs: " + std::to_string(stats.waitedForDocs) +
+      " s, waited for insertions: " + std::to_string(stats.waitedForInsertions) +
+      " s, total time: " + std::to_string(TRI_microtime() - startTime) +
       " s");
 
   return Result();

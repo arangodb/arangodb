@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,11 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
-#define ARANGOD_AQL_EXECUTION_BLOCK_H 1
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionNodeStats.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Result.h"
 
@@ -110,7 +110,7 @@ class ExecutionBlock {
   ///          * DONE: Here is some data, and there will be no further data available.
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
-  virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) = 0;
+  virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) = 0;
   
   virtual void collectExecStats(ExecutionStats&) const;
   [[nodiscard]] bool isInSplicedSubquery() const noexcept;
@@ -135,14 +135,6 @@ class ExecutionBlock {
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
-  
-  /// @brief profiling level
-  uint16_t _profile;
-
-  /// @brief if this is set, we are done, this is reset to false by execute()
-  bool _done;
-
-  bool _isInSplicedSubquery;
 
   /// @brief our corresponding ExecutionNode node
   ExecutionNode const* _exeNode;  // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
@@ -156,9 +148,14 @@ class ExecutionBlock {
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
   
   ExecutionNodeStats _execNodeStats;
+  
+  /// @brief profiling level
+  ProfileLevel _profileLevel;
+
+  /// @brief if this is set, we are done, this is reset to false by execute()
+  bool _done;
 };
 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

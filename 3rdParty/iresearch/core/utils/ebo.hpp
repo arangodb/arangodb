@@ -27,7 +27,7 @@
 
 #include "shared.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class compact (empty base optimization)
@@ -252,6 +252,6 @@ compact_pair<T0, T1> make_compact_pair(T0&& v0, T1&& v1) {
   return compact_pair<T0, T1>(std::forward<T0>(v0), std::forward<T1>(v1));
 }
 
-NS_END
+}
 
 #endif

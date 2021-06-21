@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_META_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_META_H 1
+#pragma once
 
 #include <locale>
 #include <unordered_set>
@@ -224,4 +223,3 @@ struct IResearchViewMetaState {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

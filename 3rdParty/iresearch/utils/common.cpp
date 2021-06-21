@@ -30,7 +30,7 @@
 #include <unordered_map>
 #include <functional>
 
-NS_LOCAL
+namespace {
 
 typedef std::function<irs::directory::ptr(const std::string&)> factory_f;
 
@@ -45,7 +45,7 @@ const std::unordered_map<std::string, factory_f> FACTORIES {
   }
 };
 
-NS_END
+}
 
 irs::directory::ptr create_directory(
     const std::string& type,

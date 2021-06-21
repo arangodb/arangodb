@@ -362,7 +362,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "rolls back in case of violation" do
+      it "rolls back in case of violation update" do
         cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\" ] }"
         doc = ArangoDB.log_post("#{prefix}-update1", cmd, :body => body)
@@ -451,7 +451,7 @@ describe ArangoDB do
         doc.parsed_response['_rev'].should_not eq(rev2)
       end
 
-      it "rolls back in case of violation, sparse index" do
+      it "rolls back in case of violation, sparse index update" do
         cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\" ], \"sparse\" : true }"
         doc = ArangoDB.log_post("#{prefix}-update1", cmd, :body => body)

@@ -26,7 +26,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_wildcard;
 struct filter_visitor;
@@ -76,10 +76,6 @@ struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
 class IRESEARCH_API by_wildcard final
     : public filter_base<by_wildcard_options> {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_wildcard";
-  }
-
   DECLARE_FACTORY();
 
   static prepared::ptr prepare(
@@ -105,9 +101,9 @@ class IRESEARCH_API by_wildcard final
   }
 }; // by_wildcard
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::iresearch::by_wildcard_options> {
@@ -116,6 +112,6 @@ struct hash<::iresearch::by_wildcard_options> {
   }
 };
 
-NS_END
+}
 
 #endif // IRESEARCH_WILDCARD_FILTER_H

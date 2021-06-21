@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_REGISTRY_H
-#define ARANGODB_PREGEL_REGISTRY_H 1
+#pragma once
 
 #include <string>
 #include "Algorithm.h"
@@ -33,18 +32,21 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace pregel {
 
+class PregelFeature;
+
 struct AlgoRegistry {
   static IAlgorithm* createAlgorithm(application_features::ApplicationServer& server,
                                      std::string const& algorithm, VPackSlice userParams);
-  static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase, VPackSlice body);
+  static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase, VPackSlice body,
+                                               PregelFeature& feature);
 
  private:
   template <typename V, typename E, typename M>
   static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
-                                               Algorithm<V, E, M>* algo, VPackSlice body);
+                                               Algorithm<V, E, M>* algo, VPackSlice body,
+                                               PregelFeature& feature);
 };
 
 }  // namespace pregel
 }  // namespace arangodb
 
-#endif

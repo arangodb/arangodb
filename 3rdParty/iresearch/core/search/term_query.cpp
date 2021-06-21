@@ -25,7 +25,7 @@
 #include "index/index_reader.hpp"
 #include "search/score.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         term_query implementation
@@ -84,4 +84,4 @@ doc_iterator::ptr term_query::execute(
   return docs;
 }
 
-NS_END // ROOT
+} // ROOT

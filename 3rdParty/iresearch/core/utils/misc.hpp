@@ -23,18 +23,39 @@
 #ifndef IRESEARCH_MISC_H
 #define IRESEARCH_MISC_H
 
-#include "math_utils.hpp"
+#include "utils/math_utils.hpp"
+#include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SFINAE
+////////////////////////////////////////////////////////////////////////////////
+#define DEFINE_HAS_MEMBER(member)                                            \
+  template<typename T>                                                       \
+  class has_member_##member {                                                \
+   private:                                                                  \
+    using yes_type = char;                                                   \
+    using no_type = long;                                                    \
+    using type = std::remove_reference_t<std::remove_cv_t<T>>;               \
+    template<typename U> static yes_type test(decltype(&U::member));         \
+    template<typename U> static no_type  test(...);                          \
+   public:                                                                   \
+    static constexpr bool value = sizeof(test<type>(0)) == sizeof(yes_type); \
+  };                                                                         \
+  template<typename T>                                                       \
+  inline constexpr auto has_member_##member##_v = has_member_##member<T>::value
+
+#define HAS_MEMBER(type, member) has_member_##member##_v<type>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cross-platform 'COUNTOF' implementation
 ////////////////////////////////////////////////////////////////////////////////
 #if __cplusplus >= 201103L || _MSC_VER >= 1900 || IRESEARCH_COMPILER_HAS_FEATURE(cxx_constexpr) // C++ 11 implementation
-  NS_BEGIN(detail)
+  namespace detail {
   template <typename T, std::size_t N>
   constexpr std::size_t countof(T const (&)[N]) noexcept { return N; }
-  NS_END // detail
+  } // detail
   #define IRESEARCH_COUNTOF(x) ::iresearch::detail::countof(x)
 #elif _MSC_VER // Visual C++ fallback
   #define IRESEARCH_COUNTOF(x) _countof(x)
@@ -48,6 +69,14 @@ NS_ROOT
 #else
   #define IRESEARCH_COUNTOF(x) sizeof(x) / sizeof(x[0])
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile-time type identifier
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+constexpr string_ref ctti() noexcept {
+  return { IRESEARCH_CURRENT_FUNCTION };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convenient helper for simulating 'try/catch/finally' semantic
@@ -94,6 +123,6 @@ move_on_copy<T> make_move_on_copy(T&& value) noexcept {
   return move_on_copy<T>(std::move(value));
 }
 
-NS_END
+}
 
 #endif

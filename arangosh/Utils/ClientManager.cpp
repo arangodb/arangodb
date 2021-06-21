@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <fuerte/jwt.h>
+
 namespace {
 
 arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* result) {
@@ -44,7 +46,7 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     return {TRI_ERROR_INTERNAL, "no response from server!"};
   }
 
-  int code = TRI_ERROR_NO_ERROR;
+  auto code = TRI_ERROR_NO_ERROR;
   // set base message
   std::string message("got error from server: HTTP " + itoa(result->getHttpReturnCode()) +
                       " (" + result->getHttpReturnMessage() + ")");
@@ -54,12 +56,12 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
     VPackSlice const body = parsedBody->slice();
 
-    int serverCode = VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
+    auto serverCode = VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
     std::string const& serverMessage =
         VelocyPackHelper::getStringValue(body, "errorMessage", "");
 
     if (serverCode > 0) {
-      code = serverCode;
+      code = ErrorCode{serverCode};
       message.append(": ArangoError " + itoa(serverCode) + ": " + serverMessage);
     }
   } catch (...) {
@@ -94,9 +96,12 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
   std::string dbName = client.databaseName();
   httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
   httpClient->params().setUserNamePassword("/", client.username(), client.password());
+  if (!client.jwtSecret().empty()) {
+    httpClient->params().setJwt(fuerte::jwt::generateInternalToken(client.jwtSecret(), client.endpoint()));
+  }
 
   // now connect by retrieving version
-  int errorCode;
+  ErrorCode errorCode = TRI_ERROR_NO_ERROR;
   std::string const versionString = httpClient->getServerVersion(&errorCode);
   if (TRI_ERROR_NO_ERROR != errorCode) {
     if (!quiet && (TRI_ERROR_ARANGO_DATABASE_NOT_FOUND != errorCode || logDatabaseNotFound)) {

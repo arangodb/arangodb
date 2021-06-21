@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VELOCY_PACK_HELPER_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VELOCY_PACK_HELPER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -209,8 +208,8 @@ inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice) noexcept
 //////////////////////////////////////////////////////////////////////////////
 template <typename T>
 inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice,
-                      std::string const& fieldName, bool& seen, T fallback) noexcept {
-  seen = slice.hasKey(fieldName);
+                      std::string_view fieldName, bool& seen, T fallback) noexcept {
+  seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
     buf = fallback;
@@ -226,9 +225,9 @@ inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice,
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
 inline bool getString(std::string& buf, arangodb::velocypack::Slice const& slice,
-                      std::string const& fieldName, bool& seen,
+                      std::string_view fieldName, bool& seen,
                       std::string const& fallback) noexcept {
-  seen = slice.hasKey(fieldName);
+  seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
     buf = fallback;
@@ -252,9 +251,9 @@ inline bool getString(std::string& buf, arangodb::velocypack::Slice const& slice
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
 inline bool getString(irs::string_ref& buf, arangodb::velocypack::Slice const& slice,
-                      std::string const& fieldName, bool& seen,
+                      std::string_view fieldName, bool& seen,
                       irs::string_ref const& fallback) noexcept {
-  seen = slice.hasKey(fieldName);
+  seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
     buf = fallback;
@@ -324,16 +323,6 @@ bool mergeSliceSkipOffsets(arangodb::velocypack::Builder& builder,
 /// @brief represents of value of the iterator
 ////////////////////////////////////////////////////////////////////////////
 struct IteratorValue {
-  explicit IteratorValue(VPackValueType type) noexcept : type(type) {}
-
-  void reset(uint8_t const* start) noexcept {
-    // whether or not we're in the context of array or object
-    VPackValueLength const isArray = VPackValueType::Array != type;
-
-    key = VPackSlice(start);
-    value = VPackSlice(start + isArray * key.byteSize());
-  }
-
   ///////////////////////////////////////////////////////////////////////////
   /// @brief type of the current level (Array or Object)
   ///////////////////////////////////////////////////////////////////////////
@@ -342,7 +331,7 @@ struct IteratorValue {
   ///////////////////////////////////////////////////////////////////////////
   /// @brief position at the current level
   ///////////////////////////////////////////////////////////////////////////
-  VPackValueLength pos{};
+  VPackValueLength pos;
 
   ///////////////////////////////////////////////////////////////////////////
   /// @brief current key at the current level
@@ -358,118 +347,22 @@ struct IteratorValue {
 
 class Iterator {
  public:
-  explicit Iterator(VPackSlice const& slice)
-      : _slice(slice), _size(slice.length()), _value(slice.type()) {
-    reset();
-  }
+  explicit Iterator(VPackSlice slice);
 
   // returns true if iterator exhausted
   bool next() noexcept;
-  void reset();
-
-  VPackSlice slice() const noexcept { return _slice; }
+  bool valid() const noexcept { return 0 != _length; }
 
   IteratorValue const& value() const noexcept { return operator*(); }
 
   IteratorValue const& operator*() const noexcept { return _value; }
 
-  bool valid() const noexcept { return _value.pos < _size; }
-
-  bool operator==(Iterator const& rhs) const noexcept {
-    return _slice.start() == rhs._slice.start() && _value.pos == rhs._value.pos;
-  }
-
-  bool operator!=(Iterator const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
  private:
-  VPackSlice _slice;
-  VPackValueLength const _size;
+  VPackValueLength _length;
+  uint8_t const* _begin;
   IteratorValue _value;
 };  // Iterator
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class ObjectIterator
-/// @return allows to traverse VPack objects in a unified way
-//////////////////////////////////////////////////////////////////////////////
-class ObjectIterator {
- public:
-  ObjectIterator() = default;
-  explicit ObjectIterator(VPackSlice const& slice);
-
-  /////////////////////////////////////////////////////////////////////////////
-  /// @brief prefix increment operator
-  /////////////////////////////////////////////////////////////////////////////
-  ObjectIterator& operator++();
-
-  /////////////////////////////////////////////////////////////////////////////
-  /// @brief postfix increment operator
-  /////////////////////////////////////////////////////////////////////////////
-  ObjectIterator operator++(int) {
-    ObjectIterator tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-  /// @return reference to the value at the topmost level of the hierarchy
-  /////////////////////////////////////////////////////////////////////////////
-  IteratorValue const& operator*() const noexcept {
-    TRI_ASSERT(valid());
-    return *_stack.back();
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-  /// @return true, if iterator is valid, false otherwise
-  /////////////////////////////////////////////////////////////////////////////
-  bool valid() const noexcept { return !_stack.empty(); }
-
-  /////////////////////////////////////////////////////////////////////////////
-  /// @return current hierarchy depth
-  /////////////////////////////////////////////////////////////////////////////
-  size_t depth() const noexcept { return _stack.size(); }
-
-  /////////////////////////////////////////////////////////////////////////////
-  /// @return value at the specified hierarchy depth
-  /////////////////////////////////////////////////////////////////////////////
-  IteratorValue const& value(size_t depth) const noexcept {
-    TRI_ASSERT(depth < _stack.size());
-    return *_stack[depth];
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-  /// @brief visits each level of the current hierarchy
-  /////////////////////////////////////////////////////////////////////////////
-  template <typename Visitor>
-  void visit(Visitor visitor) const {
-    for (auto& it : _stack) {
-      visitor(*it);
-    }
-  }
-
-  bool operator==(ObjectIterator const& rhs) const noexcept {
-    return _stack == rhs._stack;
-  }
-
-  bool operator!=(ObjectIterator const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
- private:
-  Iterator& top() noexcept {
-    TRI_ASSERT(!_stack.empty());
-    return _stack.back();
-  }
-
-  // it's important to return by value here
-  // since stack may grow
-  VPackSlice topValue() noexcept { return top().value().value; }
-
-  std::vector<Iterator> _stack;
-};  // ObjectIterator
 
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

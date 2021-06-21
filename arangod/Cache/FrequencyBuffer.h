@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_FREQUENCY_BUFFER_H
-#define ARANGODB_CACHE_FREQUENCY_BUFFER_H
+#pragma once
 
 #include <algorithm>
 #include <atomic>
@@ -32,7 +31,8 @@
 #include <utility>
 #include <vector>
 
-#include "Basics/SharedPRNG.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace cache {
@@ -53,6 +53,7 @@ class FrequencyBuffer {
   static_assert(sizeof(std::atomic<T>) == sizeof(T), "");
 
  private:
+  SharedPRNGFeature& _sharedPRNG;
   std::size_t _capacity;
   std::size_t _mask;
   std::vector<std::atomic<T>> _buffer;
@@ -73,8 +74,9 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
   //////////////////////////////////////////////////////////////////////////////
-  explicit FrequencyBuffer(std::size_t capacity)
-      : _capacity(powerOf2(capacity)),
+  explicit FrequencyBuffer(SharedPRNGFeature& sharedPRNG, std::size_t capacity)
+      : _sharedPRNG(sharedPRNG),
+        _capacity(powerOf2(capacity)),
         _mask(_capacity - 1),
         _buffer(_capacity),
         _cmp(),
@@ -102,7 +104,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   void insertRecord(T record) {
     // we do not care about the order in which threads insert their values
-    _buffer[basics::SharedPRNG::rand() & _mask].store(record, std::memory_order_relaxed);
+    _buffer[_sharedPRNG.rand() & _mask].store(record, std::memory_order_relaxed);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -158,4 +160,3 @@ class FrequencyBuffer {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

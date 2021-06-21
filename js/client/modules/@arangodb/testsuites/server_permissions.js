@@ -30,8 +30,8 @@ const time = require('internal').time;
 const fs = require('fs');
 const yaml = require('js-yaml');
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const toArgv = require('internal').toArgv;
 const executeScript = require('internal').executeScript;
@@ -84,6 +84,9 @@ function startParameterTest(options, testpath, suiteName) {
       }
       if (runSetup) {
         delete paramsSecondRun.runSetup;
+        if (options.extremeVerbosity) {
+          print(paramsFirstRun);
+        }
         instanceInfo = pu.startInstance(options.protocol, options, paramsFirstRun, suiteName, rootDir); // first start
         pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
         try {
@@ -106,6 +109,12 @@ function startParameterTest(options, testpath, suiteName) {
           return;
         }
         if (pu.shutdownInstance(instanceInfo, clonedOpts, false)) {                                                     // stop
+          instanceInfo.arangods.forEach(function(arangod) {
+            arangod.pid = null;
+          });
+          if (options.extremeVerbosity) {
+            print(paramsSecondRun);
+          }
           pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
         }
         else {

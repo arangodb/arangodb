@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats_test_case_base.hpp"
+#include "formats/format_utils.hpp"
 #include "utils/lz4compression.hpp"
 
 namespace tests {
@@ -577,7 +578,7 @@ TEST_P(format_test_case, fields_read_write) {
     resource("fst_prefixes.json"),
     [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
 
@@ -1862,7 +1863,7 @@ TEST_P(format_test_case, columns_rw_typed) {
     [&values](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
 
@@ -1871,19 +1872,19 @@ TEST_P(format_test_case, columns_rw_typed) {
     } else if (data.is_null()) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_bool() && data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_bool() && !data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_number()) {
@@ -1892,7 +1893,7 @@ TEST_P(format_test_case, columns_rw_typed) {
       // 'value' can be interpreted as a double
       doc.insert(std::make_shared<tests::double_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(dValue);
       values.emplace_back(field.name(), field.value());
     }
@@ -3166,7 +3167,7 @@ TEST_P(format_test_case, columns_meta_rw) {
 }
 
 TEST_P(format_test_case, document_mask_rw) {
-  const std::unordered_set<irs::doc_id_t> mask_set = { 1, 4, 5, 7, 10, 12 };
+  const irs::document_mask mask_set = { 1, 4, 5, 7, 10, 12 };
   irs::segment_meta meta("_1", nullptr);
   meta.version = 42;
 
@@ -3186,6 +3187,94 @@ TEST_P(format_test_case, document_mask_rw) {
       EXPECT_EQ(1, expected.erase(id));
     }
     EXPECT_TRUE(expected.empty());
+  }
+}
+
+TEST_P(format_test_case, format_utils_checksum) {
+  {
+    auto stream = dir().create("file");
+    ASSERT_NE(nullptr, stream);
+    irs::format_utils::write_header(*stream, "test", 42);
+    irs::format_utils::write_footer(*stream);
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+
+    int64_t expected_checksum;
+    {
+      auto dup = stream->dup();
+      ASSERT_NE(nullptr, dup);
+      expected_checksum = dup->checksum(dup->length() - sizeof(int64_t));
+    }
+
+    ASSERT_EQ(expected_checksum, irs::format_utils::checksum(*stream));
+  }
+
+  {
+    auto stream = dir().create("empty_file");
+    ASSERT_NE(nullptr, stream);
+  }
+
+  {
+    auto stream = dir().open("empty_file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_THROW(irs::format_utils::checksum(*stream), irs::index_error);
+  }
+}
+
+TEST_P(format_test_case, format_utils_header_footer) {
+  {
+    auto stream = dir().create("file");
+    ASSERT_NE(nullptr, stream);
+    irs::format_utils::write_header(*stream, "test", 42);
+    irs::format_utils::write_footer(*stream);
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+
+    int64_t expected_checksum;
+    {
+      auto dup = stream->dup();
+      ASSERT_NE(nullptr, dup);
+      expected_checksum = dup->checksum(dup->length() - sizeof(int64_t));
+    }
+
+    ASSERT_EQ(42, irs::format_utils::check_header(*stream, "test", 41, 43));
+    ASSERT_EQ(expected_checksum, irs::format_utils::check_footer(*stream, expected_checksum));
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(42, irs::format_utils::check_header(*stream, "test", 41, 43));
+    ASSERT_THROW(irs::format_utils::check_footer(*stream, 0), irs::index_error);
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_THROW(irs::format_utils::check_header(*stream, "invalid", 41, 43), irs::index_error);
+  }
+
+  {
+    auto stream = dir().open("file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_THROW(irs::format_utils::check_header(*stream, "test", 43, 43), irs::index_error);
+  }
+
+  {
+    auto stream = dir().create("empty_file");
+    ASSERT_NE(nullptr, stream);
+  }
+
+  {
+    auto stream = dir().open("empty_file", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream);
+    ASSERT_THROW(irs::format_utils::check_header(*stream, "invalid", 41, 43), irs::index_error);
   }
 }
 

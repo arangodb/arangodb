@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,7 @@
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
@@ -87,10 +88,13 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
 
 RocksDBFulltextIndex::RocksDBFulltextIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                            arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
+    : RocksDBIndex(iid, collection, info,
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex),
+                   false),
       _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
   TRI_ASSERT(iid.isSet());
-  TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext());
+  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
+                        RocksDBColumnFamilyManager::Family::FulltextIndex));
 
   VPackSlice const value = info.get("minLength");
 
@@ -211,8 +215,9 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 
 Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                     LocalDocumentId const& documentId,
-                                    velocypack::Slice const& doc,
-                                    OperationOptions& options) {
+                                    velocypack::Slice doc,
+                                    OperationOptions const& /*options*/,
+                                    bool /*performChecks*/) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 
@@ -245,8 +250,7 @@ Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* m
 
 Result RocksDBFulltextIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                     LocalDocumentId const& documentId,
-                                    velocypack::Slice const& doc,
-                                    Index::OperationMode mode) {
+                                    velocypack::Slice doc) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 
@@ -277,12 +281,12 @@ Result RocksDBFulltextIndex::remove(transaction::Methods& trx, RocksDBMethods* m
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in
 ///        list.
 static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
-                         size_t minWordLength, int level) {
+                         int minWordLength, int level) {
   if (value.isString()) {
     // extract the string value for the indexed attribute
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, value.stringRef(),
-                                                             minWordLength, FulltextIndexLimits::maxWordLength,
+                                                             (size_t)minWordLength, FulltextIndexLimits::maxWordLength,
                                                              true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed

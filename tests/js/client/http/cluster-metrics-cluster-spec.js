@@ -80,13 +80,13 @@ class BucketWatcher extends Watcher{
 }
 
 const MetricNames = {
-  QUERY_TIME: "arangodb_aql_total_query_time_msec",
+  QUERY_TIME: "arangodb_aql_total_query_time_msec_total",
   PHASE_1_BUCKET: "arangodb_maintenance_phase1_runtime_msec_bucket",
   PHASE_1_COUNT: "arangodb_maintenance_phase1_runtime_msec_count",
   PHASE_2_BUCKET: "arangodb_maintenance_phase2_runtime_msec_bucket",
   PHASE_2_COUNT: "arangodb_maintenance_phase2_runtime_msec_count",
-  SHARD_COUNT: "arangodb_shards_total_count",
-  SHARD_LEADER_COUNT: "arangodb_shards_leader_count",
+  SHARD_COUNT: "arangodb_shards_number",
+  SHARD_LEADER_COUNT: "arangodb_shards_leader_number",
   HEARTBEAT_BUCKET: "arangodb_heartbeat_send_time_msec_bucket",
   HEARTBEAT_COUNT: "arangodb_heartbeat_send_time_msec_count",
   HEARTBEAT_FAILURES: "arangodb_heartbeat_failures",
@@ -424,14 +424,12 @@ describe('_admin/metrics', () => {
         // We ignore other labels for now.
         res[key] = parseFloat(count);
       }
-
     }
     return res;
   };
 
   const loadMetrics = (role, idx) =>  {
-    const url = `${servers.get(role)[idx]}/_admin/metrics`;
-
+    const url = `${servers.get(role)[idx]}/_admin/metrics/v2`;
     const res = request({
       json: true,
       method: 'GET',

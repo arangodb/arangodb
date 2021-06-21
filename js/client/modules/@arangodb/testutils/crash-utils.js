@@ -34,7 +34,7 @@ const executeExternalAndWait = internal.executeExternalAndWait;
 const statusExternal = internal.statusExternal;
 const killExternal = internal.killExternal;
 const sleep = internal.sleep;
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 
 const abortSignal = 6;
 const termSignal = 15;
@@ -239,10 +239,10 @@ function calculateMonitorValues(options, instanceInfo, pid, cmd) {
     if (process.env.hasOwnProperty('WORKSPACE') &&
         fs.isDirectory(fs.join(process.env['WORKSPACE'], 'core'))) {
       let spcmd = fs.normalize(cmd).split(fs.pathSeparator);
-      let executeable = spcmd[spcmd.length - 1];
+      let executable = spcmd[spcmd.length - 1];
       instanceInfo.coreFilePattern = fs.join(process.env['WORKSPACE'],
                                              'core',
-                                             executeable + '.' + pid.toString() + '.dmp');
+                                             executable + '.' + pid.toString() + '.dmp');
     }
   }
 }

@@ -25,7 +25,7 @@
 
 #include <functional>
 
-NS_ROOT
+namespace iresearch {
 
 // #define RTLD_LAZY   1
 // #define RTLD_NOW    2
@@ -40,6 +40,6 @@ void load_libraries(
   const std::string& suffix
 );
 
-NS_END
+}
 
 #endif // IRESEARCH_SO_UTILS_H

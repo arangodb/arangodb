@@ -69,7 +69,7 @@ function CollectionTruncateFailuresSuite() {
     testTruncateFailsAfterAllCommits: function () {
       internal.debugSetFailAt("FailAfterAllCommits");
       try {
-        c.truncate();
+        c.truncate({ compact: false });
         fail();
       } catch (e) {
         // Validate that we died with debug

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_LOG_VALUE_H
-#define ARANGO_ROCKSDB_ROCKSDB_LOG_VALUE_H 1
+#pragma once
 
 #include <rocksdb/slice.h>
 
@@ -127,7 +126,7 @@ class RocksDBLogValue {
   rocksdb::Slice slice() const { return rocksdb::Slice(_buffer); }
 
  private:
-  explicit RocksDBLogValue() {}
+  explicit RocksDBLogValue() = default;
   RocksDBLogValue(RocksDBLogType, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t);
@@ -140,4 +139,3 @@ class RocksDBLogValue {
 
 }  // namespace arangodb
 
-#endif

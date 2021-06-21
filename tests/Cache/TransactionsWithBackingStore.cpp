@@ -30,16 +30,19 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
+#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 #include "TransactionalStore.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 struct ThreadGuard {
   ThreadGuard(ThreadGuard&& other) noexcept = default;
@@ -99,7 +102,9 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_readonly_hotset_workload_LongR
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 16 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t hotsetSize = 50000;
@@ -148,7 +153,9 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 256 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 256 * 1024 * 1024);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t batchSize = 1000;
@@ -235,7 +242,9 @@ TEST(CacheWithBackingStoreTest, test_transactionality_for_mixed_workload_LongRun
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 256 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 256 * 1024 * 1024);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t writeBatchSize = 1000;
@@ -318,7 +327,9 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 16 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
   TransactionalStore store1(&manager);
   TransactionalStore store2(&manager);
@@ -334,7 +345,7 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   bool doneRebalancing = false;
   auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
     while (!doneRebalancing) {
-      int status = rebalancer.rebalance();
+      auto status = rebalancer.rebalance();
       if (status != TRI_ERROR_ARANGO_BUSY) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
       } else {

@@ -24,17 +24,17 @@
 #ifndef IRESEARCH_TESTS_SHARED_H
 #define IRESEARCH_TESTS_SHARED_H
 
-#include "gtest/gtest.h"
-
-#include "../core/shared.hpp"
 #include <memory>
 #include <cstdio>
 
+#include <gtest/gtest.h>
+
+#include "shared.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_BEGIN(cmdline)
+namespace cmdline {
 class parser;
-NS_END // cmdline
+} // cmdline
 
 class test_env {
  public:

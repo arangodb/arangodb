@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SHARDING_SHARDING_STRATEGY_H
-#define ARANGOD_SHARDING_SHARDING_STRATEGY_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
@@ -71,11 +70,10 @@ class ShardingStrategy {
   /// `_key` is the one and only sharding attribute.
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                                  ShardID& shardID, bool& usesDefaultShardKeys,
-                                  arangodb::velocypack::StringRef const& key) = 0;
+  virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                        ShardID& shardID, bool& usesDefaultShardKeys,
+                                        arangodb::velocypack::StringRef const& key) = 0;
 };
 
 }  // namespace arangodb
 
-#endif

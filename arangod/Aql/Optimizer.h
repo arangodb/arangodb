@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_OPTIMIZER_H
-#define ARANGOD_AQL_OPTIMIZER_H 1
+#pragma once
 
 #include "Aql/ExecutionPlan.h"
 #include "Basics/Common.h"
@@ -49,7 +48,7 @@ class Optimizer {
 
     ::arangodb::containers::RollingVector<Entry> list;
 
-    PlanList() { list.reserve(8); }
+    PlanList() { list.reserve(4); }
 
     /// @brief constructor with a plan
     PlanList(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule) {
@@ -79,16 +78,6 @@ class Optimizer {
 
     /// @brief swaps the two lists
     void swap(PlanList& b) { list.swap(b.list); }
-
-    /// @brief appends all the plans to the target and clears *this at the same
-    /// time
-    void appendTo(PlanList& target) {
-      while (list.size() > 0) {
-        auto p = std::move(list.front());
-        list.pop_front();
-        target.push_back(std::move(p.first), p.second);
-      }
-    }
 
     /// @brief clear, deletes all plans contained
     void clear() { list.clear(); }
@@ -182,6 +171,11 @@ class Optimizer {
   Stats _stats;
 
  private:
+ 
+  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
+  void finalizePlans();
+  void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
+ 
   /// @brief the current set of plans to be optimized
   PlanList _plans;
 
@@ -204,4 +198,3 @@ class Optimizer {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

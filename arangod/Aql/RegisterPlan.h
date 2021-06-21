@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGISTER_PLAN_H
-#define ARANGOD_AQL_REGISTER_PLAN_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -60,7 +59,6 @@ struct VarInfo {
 template <typename T>
 struct RegisterPlanT;
 
-
 using RegVarMap = std::unordered_map<RegisterId, Variable const*>;
 using RegVarMapStack = std::vector<RegVarMap>;
 
@@ -89,12 +87,12 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T, WalkerUniqueness::NonU
         explain(explainRegisterPlan == ExplainRegisterPlan::Yes) {}
   virtual ~RegisterPlanWalkerT() noexcept = default;
 
-  void after(T* eb) final;
-  bool enterSubquery(T*, T*) final {
+  void after(T* eb) override final;
+  bool enterSubquery(T*, T*) override final {
     return false;  // do not walk into subquery
   }
 
-  using RegCountStack = std::stack<RegisterCount>;
+  using RegCountStack = std::stack<RegisterCount, std::vector<RegisterCount>>;
 
   RegIdOrderedSetStack unusedRegisters{{}};
   RegIdSetStack regsToKeepStack{{}};
@@ -120,23 +118,21 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   // have the same length:
   std::vector<RegisterCount> nrRegs;
 
-  // We collect the subquery nodes to deal with them at the end:
-  std::vector<T*> subQueryNodes;
+  RegisterCount nrConstRegs = 0;
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = RegisterId{1000};
+  static constexpr RegisterId MaxRegisterId = RegisterId(RegisterId::maxRegisterId);
+  // TODO - remove MaxRegisterId in favor of RegisterId::maxRegisterId
 
   /// @brief Only used when the register plan is being explained
   std::map<ExecutionNodeId, RegIdOrderedSetStack> unusedRegsByNode;
-  /// @brief Only used when the reister plan is being explained
+  /// @brief Only used when the register plan is being explained
   std::map<ExecutionNodeId, RegVarMapStack> regVarMapStackByNode;
 
  public:
   RegisterPlanT();
   RegisterPlanT(arangodb::velocypack::Slice slice, unsigned int depth);
-  // Copy constructor used for a subquery:
-  RegisterPlanT(RegisterPlan const& v, unsigned int newdepth);
   ~RegisterPlanT() = default;
 
   std::shared_ptr<RegisterPlanT> clone();
@@ -144,12 +140,13 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   RegisterId registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
   void increaseDepth();
   auto addRegister() -> RegisterId;
-  void addSubqueryNode(T* subquery);
+  void shrink(T* start);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
   auto variableToRegisterId(Variable const* variable) const -> RegisterId;
+  auto variableToOptionalRegisterId(VariableId varId) const -> RegisterId;
 
   auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
                       std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
@@ -163,4 +160,3 @@ std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r);
 
 }  // namespace arangodb::aql
 
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_TIMER_H
-#define ARANGODB_UTILITIES_TIMER_H 1
+#pragma once
 
 #include <Logger/Logger.h>
 #include <chrono>
@@ -64,4 +63,3 @@ struct timer {
 
 }  // namespace Utilities
 }  // namespace arangodb
-#endif

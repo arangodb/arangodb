@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,8 +46,6 @@ MaxMapCountFeature::MaxMapCountFeature(application_features::ApplicationServer& 
 }
 
 void MaxMapCountFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("server", "Server Options");
-
   options->addObsoleteOption(
       "--server.check-max-memory-mappings",
       "check the maximum number of memory mappings at startup", true);

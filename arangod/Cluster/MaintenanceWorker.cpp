@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,10 +42,7 @@ MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
       _curAction(nullptr),
       _loopState(eFIND_ACTION),
       _directAction(false),
-      _labels(labels) {
-  return;
-
-}  // MaintenanceWorker::MaintenanceWorker
+      _labels(labels) {}
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
                                      std::shared_ptr<Action>& directAction)
@@ -53,70 +50,88 @@ MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
       _feature(feature),
       _curAction(directAction),
       _loopState(eRUN_FIRST),
-      _directAction(true) {
-  return;
-
-}  // MaintenanceWorker::MaintenanceWorker
+      _directAction(true) {}
 
 void MaintenanceWorker::run() {
   bool more(false);
 
   while (eSTOP != _loopState && !_feature.isShuttingDown()) {
-    if (!_feature.isPaused()) {
-      try {
-        switch (_loopState) {
-          case eFIND_ACTION:
-            _curAction = _feature.findReadyAction(_labels);
-            more = (bool)_curAction;
-            break;
+    try {
+      if (!_feature.isPaused()) {
+        try {
+          switch (_loopState) {
+            case eFIND_ACTION:
+              _curAction = _feature.findReadyAction(_labels);
+              more = (bool)_curAction;
+              break;
 
-          case eRUN_FIRST:
-            _curAction->startStats();
-            more = _curAction->first();
-            break;
+            case eRUN_FIRST:
+              if (_curAction->getState() == READY) {
+                _curAction->setState(EXECUTING);
+              }
+              _curAction->startStats();
+              more = _curAction->first();
+              break;
 
-          case eRUN_NEXT:
-            more = _curAction->next();
-            break;
+            case eRUN_NEXT:
+              more = _curAction->next();
+              break;
 
-          default:
-            _loopState = eSTOP;
-            LOG_TOPIC("dc389", ERR, Logger::CLUSTER)
-                << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
+            default:
+              _loopState = eSTOP;
+              LOG_TOPIC("dc389", ERR, Logger::CLUSTER)
+                  << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
 
-        }  // switch
+          }  // switch
+        
+          // determine next loop state
+          nextState(more);
 
-      } catch (std::exception const& ex) {
-        if (_curAction) {
-          LOG_TOPIC("dd8e8", ERR, Logger::CLUSTER)
-              << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
-              << " state:" << _loopState << " action:" << *_curAction;
+        } catch (std::exception const& ex) {
+          if (_curAction) {
+            LOG_TOPIC("dd8e8", ERR, Logger::CLUSTER)
+                << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
+                << " state:" << _loopState << " action:" << *_curAction;
 
-          _curAction->setState(FAILED);
-        } else {
-          LOG_TOPIC("16d4c", ERR, Logger::CLUSTER)
-              << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
-              << " state:" << _loopState;
+            try {
+              _curAction->setState(FAILED);
+            } catch (...) {
+              // even setState() can fail, e.g. with OOM
+              // there is not much we can do in this case
+            }
+          } else {
+            LOG_TOPIC("16d4c", ERR, Logger::CLUSTER)
+                << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
+                << " state:" << _loopState;
+          }
+        } catch (...) {
+          if (_curAction) {
+            LOG_TOPIC("ac2a2", ERR, Logger::CLUSTER)
+                << "MaintenanceWorkerRun: caught error, state: " << _loopState
+                << " state:" << _loopState << " action:" << *_curAction;
+
+            try {
+              _curAction->setState(FAILED);
+            } catch (...) {
+              // even setState() can fail, e.g. with OOM
+              // there is not much we can do in this case
+            }
+          } else {
+            LOG_TOPIC("88771", ERR, Logger::CLUSTER)
+                << "MaintenanceWorkerRun: caught error, state: " << _loopState
+                << " state:" << _loopState;
+          }
         }
-      } catch (...) {
-        if (_curAction) {
-          LOG_TOPIC("ac2a2", ERR, Logger::CLUSTER)
-              << "MaintenanceWorkerRun: caught error, state: " << _loopState
-              << " state:" << _loopState << " action:" << *_curAction;
 
-          _curAction->setState(FAILED);
-        } else {
-          LOG_TOPIC("88771", ERR, Logger::CLUSTER)
-              << "MaintenanceWorkerRun: caught error, state: " << _loopState
-              << " state:" << _loopState;
-        }
+      } else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
-
-      // determine next loop state
-      nextState(more);
-
-    } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("56021", WARN, Logger::CLUSTER)
+          << "caught exception in Maintenance worker thread: " << ex.what();
+    } catch (...) {
+      LOG_TOPIC("2d64f", WARN, Logger::CLUSTER)
+          << "caught unknown exception in Maintenance worker thread";
     }
 
   }  // while

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +26,15 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Cluster/ClusterTypes.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 #include <algorithm>
 
@@ -60,7 +65,7 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 
 void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> const& state) {
   MUTEX_LOCKER(guard, _mutex);
-        
+
   LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)
       << "updating reboot server state from " << _rebootIds << " to " << state;
 
@@ -100,7 +105,7 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
       TRI_ASSERT(oldRebootId <= newRebootId);
       if (oldRebootId < newRebootId) {
         LOG_TOPIC("88857", INFO, Logger::CLUSTER)
-            << "Server " << serverId << " rebooted, aborting its old jobs now.";
+            << "Server " << serverId << " gone or rebooted, aborting its old jobs now.";
         // Try to schedule all callbacks for serverId older than newRebootId.
         // If that didn't throw, erase the entry.
         scheduleCallbacksFor(serverId, newRebootId);
@@ -318,38 +323,25 @@ RebootTracker::CallbackId RebootTracker::getNextCallbackId() noexcept {
 
 void RebootTracker::queueCallback(DescriptedCallback callback) {
   queueCallbacks({std::make_shared<std::unordered_map<CallbackId, DescriptedCallback>>(
-      std::unordered_map<CallbackId, DescriptedCallback>{
-          std::make_pair(getNextCallbackId(), std::move(callback))})});
+      std::unordered_map<CallbackId, DescriptedCallback>{ { getNextCallbackId(), std::move(callback) } }
+  )});
+}
+    
+void RebootTracker::PeerState::toVelocyPack(velocypack::Builder& builder) const {
+  builder.openObject();
+  builder.add(StaticStrings::AttrCoordinatorId, VPackValue(_serverId));
+  builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(_rebootId.value()));
+  builder.close();
 }
 
-CallbackGuard::CallbackGuard() : _callback(nullptr) {}
+RebootTracker::PeerState RebootTracker::PeerState::fromVelocyPack(velocypack::Slice slice) {
+  TRI_ASSERT(slice.isObject());
+  VPackSlice serverIdSlice = slice.get(StaticStrings::AttrCoordinatorId);
+  VPackSlice rebootIdSlice = slice.get(StaticStrings::AttrCoordinatorRebootId);
 
-CallbackGuard::CallbackGuard(std::function<void(void)> callback)
-    : _callback(std::move(callback)) {}
-
-// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-CallbackGuard::CallbackGuard(CallbackGuard&& other)
-    : _callback(std::move(other._callback)) {
-  other._callback = nullptr;
-}
-
-// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-CallbackGuard& CallbackGuard::operator=(CallbackGuard&& other) {
-  call();
-  _callback = std::move(other._callback);
-  other._callback = nullptr;
-  return *this;
-}
-
-CallbackGuard::~CallbackGuard() { call(); }
-
-void CallbackGuard::callAndClear() {
-  call();
-  _callback = nullptr;
-}
-
-void CallbackGuard::call() {
-  if (_callback) {
-    _callback();
+  if (!serverIdSlice.isString() || !rebootIdSlice.isInteger()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid reboot id");
   }
+  
+  return { serverIdSlice.copyString(), RebootId(rebootIdSlice.getUInt()) };
 }

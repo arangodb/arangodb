@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_CONNECTION_POOL_H
-#define ARANGOD_NETWORK_CONNECTION_POOL_H 1
+#pragma once
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteSpinLock.h"
+#include "Basics/ReadWriteLock.h"
 #include "Containers/SmallVector.h"
 #include "Network/types.h"
+#include "RestServer/MetricsFeature.h"
 #include "VocBase/voc-types.h"
 
 #include <fuerte/loop.h>
@@ -62,13 +62,14 @@ class ConnectionPool final {
  public:
   struct Config {
     ClusterInfo* clusterInfo;
-    uint64_t minOpenConnections = 1;       /// minimum number of open connections
-    uint64_t maxOpenConnections = 1024;    /// max number of connections
-    uint64_t idleConnectionMilli = 60000;  /// unused connection lifetime
-    unsigned int numIOThreads = 1;         /// number of IO threads
+    MetricsFeature& metricsFeature;
+    uint64_t maxOpenConnections = 1024;     /// max number of connections
+    uint64_t idleConnectionMilli = 120000;  /// unused connection lifetime
+    unsigned int numIOThreads = 1;          /// number of IO threads
     bool verifyHosts = false;
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
     char const* name = "";
+    Config(MetricsFeature& metricsFeature) : metricsFeature(metricsFeature) {}
   };
 
  public:
@@ -78,7 +79,7 @@ class ConnectionPool final {
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
   /// is always the same, we do not do any post-processing
-  ConnectionPtr leaseConnection(std::string const& endpoint);
+  ConnectionPtr leaseConnection(std::string const& endpoint, bool& isFromPool);
 
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
@@ -115,7 +116,7 @@ class ConnectionPool final {
 
   /// @brief endpoint bucket
   struct Bucket {
-    std::mutex mutex;
+    mutable std::mutex mutex;
     // TODO statistics ?
     //    uint64_t bytesSend;
     //    uint64_t bytesReceived;
@@ -125,16 +126,24 @@ class ConnectionPool final {
   };
 
   TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
-  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket);
+  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket, bool& isFromPool);
   
  private:
   Config const _config;
 
-  mutable basics::ReadWriteSpinLock _lock;
+  mutable basics::ReadWriteLock _lock;
   std::unordered_map<std::string, std::unique_ptr<Bucket>> _connections;
 
   /// @brief contains fuerte asio::io_context
   fuerte::EventLoopService _loop;
+
+  Gauge<uint64_t>& _totalConnectionsInPool;
+  Counter& _successSelect;
+  Counter& _noSuccessSelect;
+  Counter& _connectionsCreated;
+
+  Histogram<log_scale_t<float>>& _leaseHistMSec;
+
 };
 
 class ConnectionPtr {
@@ -158,4 +167,3 @@ class ConnectionPtr {
 }  // namespace network
 }  // namespace arangodb
 
-#endif

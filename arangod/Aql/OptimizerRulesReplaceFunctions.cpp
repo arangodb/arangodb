@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -282,7 +282,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   argsArray->addMember(accessNodeLon);
   argsArray->addMember(params.latitude);
   argsArray->addMember(params.longitude);
-  auto* funDist = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray);
+  auto* funDist = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray, true);
 
   AstNode* expressionAst = funDist;
 
@@ -351,7 +351,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
     argsArrayMerge->addMember(obj);
 
     auto* funMerge =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("MERGE"), argsArrayMerge);
+        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("MERGE"), argsArrayMerge, true);
 
     Variable* calcMergeOutVariable = ast->variables()->createTemporaryVariable();
     auto calcMergeExpr = std::make_unique<Expression>(ast, funMerge);
@@ -465,7 +465,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
       fargs->addMember(arr);
     }
   }
-  AstNode* fcall = ast->createNodeFunctionCall("GEO_CONTAINS", fargs);
+  AstNode* fcall = ast->createNodeFunctionCall("GEO_CONTAINS", fargs, true);
 
   // FILTER part
   AstNode* filterNode = ast->createNodeFilter(fcall);

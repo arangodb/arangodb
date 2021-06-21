@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H
-#define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
+#pragma once
 
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
@@ -123,7 +122,8 @@ class InputAqlItemRow {
    * @brief Clone a new ItemBlock from this row
    */
   SharedAqlItemBlockPtr cloneToBlock(AqlItemBlockManager& manager,
-                                     RegIdFlatSet const& registers, size_t newNrRegs) const;
+                                     RegIdFlatSet const& registers,
+                                     RegisterCount newNrRegs) const;
 
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
@@ -152,4 +152,3 @@ class InputAqlItemRow {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

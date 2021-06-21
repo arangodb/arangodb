@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,9 @@
 #include <v8.h>
 #include "Transactions.h"
 
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
@@ -42,19 +44,36 @@
 
 namespace arangodb {
 
+bool allowTransactions(v8::Isolate* isolate) {
+  TRI_GET_GLOBALS();
+
+  V8DealerFeature& v8Dealer = v8g->_server.getFeature<V8DealerFeature>();
+  if (v8Dealer.allowJavaScriptTransactions()) {
+    // JavaScript transactions are not turned off, so allow them
+    return true;
+  }
+  // JavaScript transactions are turned off. However, we must still allow our internal ones
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  return (v8security.isInternalContext(isolate) || v8security.isAdminScriptContext(isolate));
+}
+
 Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
                           std::atomic<bool>& canceled, VPackSlice slice,
-                          std::string portType, VPackBuilder& builder) {
+                          std::string const& portType, VPackBuilder& builder) {
   // YOU NEED A TRY CATCH BLOCK like:
   //    TRI_V8_TRY_CATCH_BEGIN(isolate);
   //    TRI_V8_TRY_CATCH_END
   // outside of this function!
+  
+  Result rv;
+  
+  if (!allowTransactions(isolate)) {
+    return rv.reset(TRI_ERROR_FORBIDDEN, "JavaScript transactions are disabled");
+  }
 
   READ_LOCKER(readLock, lock);
-  Result rv;
   if (canceled) {
-    rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
-    return rv;
+    return rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
   }
 
   v8::HandleScope scope(isolate);
@@ -67,7 +86,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   v8::Handle<v8::Object> request = v8::Object::New(isolate);
   v8::Handle<v8::Value> jsPortTypeKey =
       TRI_V8_ASCII_STRING(isolate, "portType");
-  v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STRING(isolate, portType.c_str());
+  v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STD_STRING(isolate, portType);
   if (!request->Set(context, jsPortTypeKey, jsPortTypeValue).FromMaybe(false)) {
     rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
     return rv;
@@ -125,9 +144,11 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
 
 Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& arg,
                             v8::Handle<v8::Value>& result, v8::TryCatch& tryCatch) {
-  auto context = TRI_IGETC;
   Result rv;
-  auto& vocbase = GetContextVocBase(isolate);
+
+  if (!allowTransactions(isolate)) {
+    return rv.reset(TRI_ERROR_FORBIDDEN, "JavaScript transactions are disabled");
+  }
 
   // treat the value as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(arg);
@@ -138,6 +159,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
 
   // do extra validity checking for user facing APIs, parsing
   // is performed in `transaction::Options::fromVelocyPack`
+  auto context = TRI_IGETC;
   if (TRI_HasProperty(context, isolate, object, "lockTimeout")) {
     auto lockTimeout = object->Get(context, TRI_V8_ASCII_STRING(isolate, "lockTimeout"));
     if (!lockTimeout.IsEmpty() &&
@@ -351,17 +373,33 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     return rv;
   }
 
-  auto ctx = std::make_shared<transaction::V8Context>(vocbase, embed);
+  auto& vocbase = GetContextVocBase(isolate);
+  transaction::V8Context ctx(vocbase, embed);
 
   // start actual transaction
-  auto trx = std::make_unique<transaction::Methods>(ctx, readCollections, writeCollections,
-                                                    exclusiveCollections, trxOptions);
-  trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  transaction::Methods trx(
+    std::shared_ptr<transaction::Context>(std::shared_ptr<transaction::Context>(), &ctx),
+    readCollections, writeCollections,
+    exclusiveCollections, trxOptions);
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (ServerState::instance()->isCoordinator()) {
+    // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and potentialy reroll it.
+    trx.addHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
+  }
 
-  rv = trx->begin();
+  rv = trx.begin();
 
   if (rv.fail()) {
     return rv;
+  }
+  
+  auto guard = scopeGuard([&ctx] {
+    ctx.exitV8Context();
+  });
+  if (transaction::V8Context::isEmbedded()) { // do not enter context if already embedded
+    guard.cancel();
+  } else {
+    ctx.enterV8Context();
   }
 
   try {
@@ -370,7 +408,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     result = action->Call(TRI_IGETC, current, 1, &arguments).FromMaybe(v8::Local<v8::Value>());
 
     if (tryCatch.HasCaught()) {
-      trx->abort();
+      trx.abort();
 
       std::tuple<bool, bool, Result> rvTuple =
           extractArangoError(isolate, tryCatch, TRI_ERROR_TRANSACTION_INTERNAL);
@@ -393,7 +431,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     rv.reset(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
   }
 
-  rv = trx->finish(rv);
+  rv = trx.finish(rv);
 
   // if we do not remove unused V8Cursors, V8Context might not reset global
   // state

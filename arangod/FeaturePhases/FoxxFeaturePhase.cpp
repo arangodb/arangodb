@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/FrontendFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 
 namespace arangodb {
 namespace application_features {
@@ -37,7 +37,7 @@ FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
   startsAfter<ServerFeaturePhase>();
 
   startsAfter<BootstrapFeature>();
-  startsAfter<FoxxQueuesFeature>();
+  startsAfter<FoxxFeature>();
   startsAfter<FrontendFeature>();
 }
 

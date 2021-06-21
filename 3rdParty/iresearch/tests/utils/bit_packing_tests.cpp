@@ -39,13 +39,13 @@ TEST(bit_packing_tests, const_check) {
 TEST(bit_packing_tests, bits_required) {
   // check the number of bits required to store value
   // 32
-  ASSERT_EQ(32U, packed::bits_required_32(integer_traits<uint32_t>::const_max));
+  ASSERT_EQ(32U, packed::bits_required_32(std::numeric_limits<uint32_t>::max()));
   ASSERT_EQ(25U, packed::bits_required_32(18874368U));
   ASSERT_EQ(20U, packed::bits_required_32(789547U));
   ASSERT_EQ(0, packed::bits_required_32(0U));
 
   // 64
-  ASSERT_EQ(64U, packed::bits_required_64(integer_traits<uint64_t>::const_max));
+  ASSERT_EQ(64U, packed::bits_required_64(std::numeric_limits<uint64_t>::max()));
   ASSERT_EQ(58U, packed::bits_required_64(144115188109676544UL));
   ASSERT_EQ(25U, packed::bits_required_64(18874368UL));
   ASSERT_EQ(20U, packed::bits_required_64(789547UL));

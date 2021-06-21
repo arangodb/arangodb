@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_ENVIRONMENT_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_ENVIRONMENT_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -40,4 +39,3 @@ class EnvironmentFeature final : public application_features::ApplicationFeature
 
 }  // namespace arangodb
 
-#endif

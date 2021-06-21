@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,13 +28,18 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlValueGroupHash::AqlValueGroupHash(size_t num)
-    : _num(num) {}
+AqlValueGroupHash::AqlValueGroupHash([[maybe_unused]] size_t num)
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    : _num(num)
+#endif
+{}
 
 size_t AqlValueGroupHash::operator()(const std::vector<AqlValue>& value) const {
   uint64_t hash = 0x12345678;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(value.size() == _num);
+#endif
 
   for (AqlValue const& it : value) {
     // we must use the slow hash function here, because a value may have
@@ -49,6 +54,11 @@ size_t AqlValueGroupHash::operator()(const std::vector<AqlValue>& value) const {
 size_t AqlValueGroupHash::operator()(AqlValue const& value) const {
   uint64_t hash = 0x12345678;
   return value.hash(hash);
+}
+
+size_t AqlValueGroupHash::operator()(HashedAqlValueGroup const& value) const noexcept {
+  TRI_ASSERT(operator()(value.values) == value.hash);
+  return value.hash;
 }
 
 AqlValueGroupEqual::AqlValueGroupEqual(velocypack::Options const* opts)
@@ -71,4 +81,13 @@ bool AqlValueGroupEqual::operator()(const std::vector<AqlValue>& lhs,
 
 bool AqlValueGroupEqual::operator()(AqlValue const& lhs, AqlValue const& rhs) const {
   return AqlValue::Compare(_vpackOptions, lhs, rhs, false) == 0;
+}
+
+bool AqlValueGroupEqual::operator()(HashedAqlValueGroup const& lhs, HashedAqlValueGroup const& rhs) const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  AqlValueGroupHash hasher(lhs.values.size());
+  TRI_ASSERT(hasher(lhs.values) == lhs.hash);
+  TRI_ASSERT(hasher(rhs.values) == rhs.hash);
+#endif
+  return lhs.hash == rhs.hash && operator()(lhs.values, rhs.values);
 }

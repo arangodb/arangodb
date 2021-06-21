@@ -14,83 +14,6 @@ target_include_directories(
 )
 
 ################################################################################
-### MurMurHash library
-################################################################################
-
-set(MurMurHash_sources
-  ${CMAKE_CURRENT_SOURCE_DIR}/MurmurHash/MurmurHash3.cpp ${CMAKE_CURRENT_SOURCE_DIR}/MurmurHash/MurmurHash3.h
-)
-
-add_library(
-  ${IResearch_TARGET_NAME}-murmurhash
-  OBJECT
-  ${MurMurHash_sources}
-)
-
-set_ipo(${IResearch_TARGET_NAME}-murmurhash)
-
-# setup CRT
-if(MSVC)
-  add_library(
-    ${IResearch_TARGET_NAME}-murmurhash-scrt
-    OBJECT
-    ${MurMurHash_sources}
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-murmurhash-scrt)
-endif()
-
-target_compile_features(
-  ${IResearch_TARGET_NAME}-murmurhash
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-# setup CRT
-if(MSVC)
-  target_compile_features(
-    ${IResearch_TARGET_NAME}-murmurhash-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-endif()
-
-if (MSVC)
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-murmurhash
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-murmurhash-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-else()
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-murmurhash
-    PRIVATE "-Wno-all"
-    PRIVATE "-fPIC"
-  )
-endif()
-
-target_include_directories(
-  ${IResearch_TARGET_NAME}-murmurhash
-  SYSTEM
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/murmurhash
-)
-
-# setup CRT
-if(MSVC)
-  target_include_directories(
-    ${IResearch_TARGET_NAME}-murmurhash-scrt
-    SYSTEM
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/murmurhash
-  )
-endif()
-
-################################################################################
 ### OpenFST + Kaldi library
 ################################################################################
 
@@ -123,49 +46,14 @@ add_library(
 
 set_ipo(${IResearch_TARGET_NAME}-ofst)
 
-# setup CRT
-if(MSVC)
-  add_library(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    OBJECT
-    ${OpenFST_sources}
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-ofst-scrt)
-endif()
-
 target_compile_definitions(
   ${IResearch_TARGET_NAME}-ofst
   PUBLIC "FST_NO_DYNAMIC_LINKING"
 )
 
-# setup CRT
-if(MSVC)
-  target_compile_definitions(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    PUBLIC "FST_NO_DYNAMIC_LINKING"
-  )
-endif()
-
-target_compile_features(
-  ${IResearch_TARGET_NAME}-ofst
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-# setup CRT
-if(MSVC)
-  target_compile_features(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-endif()
-
 # disable warnings for 3rd-party libs for a cleaner build
 if (MSVC)
+  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
     # MSVC2015-2017 require "/bigobj" to compile debug build
@@ -185,29 +73,6 @@ if (MSVC)
     PRIVATE "/wd4512"
     PRIVATE "/wd4610"
     PRIVATE "/wd4706"
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    # MSVC2015-2017 require "/bigobj" to compile debug build
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-    # MSVC requires listing each warning code individually
-    # /W0 and /w cannot be used because the produce a single warning themselves
-    PRIVATE "/wd4018"
-    PRIVATE "/wd4100"
-    PRIVATE "/wd4127"
-    PRIVATE "/wd4244"
-    PRIVATE "/wd4245"
-    PRIVATE "/wd4267"
-    PRIVATE "/wd4291"
-    PRIVATE "/wd4305"
-    PRIVATE "/wd4389"
-    PRIVATE "/wd4510"
-    PRIVATE "/wd4512"
-    PRIVATE "/wd4610"
-    PRIVATE "/wd4706"
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
   )
 else()
   target_compile_options(
@@ -223,16 +88,6 @@ target_include_directories(
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/openfst
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src
 )
-
-# setup CRT
-if(MSVC)
-  target_include_directories(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    SYSTEM
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/openfst
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src
-  )
-endif()
 
 ################################################################################
 ### RapidJSON library
@@ -275,3 +130,30 @@ target_include_directories(
 ################################################################################
 
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
+
+################################################################################
+### absl library
+################################################################################
+
+add_subdirectory(absl)
+
+################################################################################
+### unicorn library
+################################################################################
+
+add_subdirectory(unicorn)
+
+################################################################################
+### velocypack library
+################################################################################
+if (NOT TARGET velocypack)
+  if ("${VPACK_ROOT}" STREQUAL "")
+    set(VPACK_ROOT "$ENV{VPACK_ROOT}")
+  endif()
+
+  if (NOT ("${VPACK_ROOT}" STREQUAL ""))
+    add_subdirectory(${VPACK_ROOT}
+                    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
+                    EXCLUDE_FROM_ALL)
+  endif()
+endif()

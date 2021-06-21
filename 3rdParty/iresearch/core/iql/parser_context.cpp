@@ -21,14 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef _MSC_VER
-  #include <string.h>
-#endif
-
-#include <stdint.h>
-#include <unordered_map>
-#include <unordered_set>
 #include "parser_context.hpp"
+
+#ifndef _MSC_VER
+#include <string.h>
+#endif
+#include <stdint.h>
+
+#include <absl/container/flat_hash_set.h>
+
+#include <frozen/unordered_map.h>
+#include <frozen/string.h>
 
 using namespace iresearch::iql;
 
@@ -37,8 +40,8 @@ using namespace iresearch::iql;
 // -----------------------------------------------------------------------------
 
 namespace {
-  const parser::semantic_type UNKNOWN = 0; // no known value
-  const parser::semantic_type TRUE = 1; // expression evaluating to true
+constexpr parser::semantic_type UNKNOWN = 0; // no known value
+constexpr parser::semantic_type TRUE = 1; // expression evaluating to true
 }
 
 // -----------------------------------------------------------------------------
@@ -931,12 +934,11 @@ void parser_context::print(
 /// @brief add a child to children, ensuring there are no duplicates or overlaps
 ////////////////////////////////////////////////////////////////////////////////
 void parser_context::add_child(
-  std::vector<size_t>& children,
-  parser::semantic_type const& child,
-  bool bRemoveSuperset
-) {
+    std::vector<size_t>& children,
+    parser::semantic_type const& child,
+    bool bRemoveSuperset) {
   auto& node = find_node(child);
-  std::unordered_set<size_t> subChildren; // only for bRemoveSuperset
+  absl::flat_hash_set<size_t> subChildren; // only for bRemoveSuperset
 
   if (bRemoveSuperset) {
     if (query_node::NodeType::INTERSECTION == node.type) {
@@ -1131,22 +1133,22 @@ parser::token_type parser_context::next() {
     parser::token_type::IQL_SEQUENCE : parser::token_type::IQL_UNKNOWN;
 }
 
+constexpr frozen::unordered_map<frozen::string, parser::token_type, 7> KEYWORDS = {
+  { "NOT",   parser::token_type::IQL_NOT },
+  { "AND",   parser::token_type::IQL_AND },
+  { "OR",    parser::token_type::IQL_OR },
+  { "ORDER", parser::token_type::IQL_ORDER },
+  { "ASC",   parser::token_type::IQL_ASC },
+  { "DESC",  parser::token_type::IQL_DESC },
+  { "LIMIT", parser::token_type::IQL_LIMIT },
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read next token as a keyword
 ///        do not modify m_nNext if IQL_UNKNOWN
 /// @return token type or IQL_UNKNOWN if not a keyword
 ////////////////////////////////////////////////////////////////////////////////
 parser::token_type parser_context::nextKeyword() {
-  static const std::unordered_map<std::string, parser::token_type> keywords = {
-    { "NOT",   parser::token_type::IQL_NOT },
-    { "AND",   parser::token_type::IQL_AND },
-    { "OR",    parser::token_type::IQL_OR },
-    { "ORDER", parser::token_type::IQL_ORDER },
-    { "ASC",   parser::token_type::IQL_ASC },
-    { "DESC",  parser::token_type::IQL_DESC },
-    { "LIMIT", parser::token_type::IQL_LIMIT },
-  };
-
   size_t nEnd = m_nNext;
 
   // find end of token
@@ -1161,9 +1163,9 @@ parser::token_type parser_context::nextKeyword() {
 
   std::transform(sValue.begin(), sValue.end(), sValue.begin(), ::toupper);
 
-  auto itr = keywords.find(sValue);
+  const auto itr = KEYWORDS.find(frozen::string{sValue.c_str(), sValue.size()});
 
-  if (itr == keywords.end()) {
+  if (itr == KEYWORDS.end()) {
     return parser::token_type::IQL_UNKNOWN;
   }
 
@@ -1171,6 +1173,22 @@ parser::token_type parser_context::nextKeyword() {
 
   return itr->second;
 }
+
+
+// ...........................................................................
+// single char operators
+// ...........................................................................
+constexpr frozen::unordered_map<char, parser::token_type, 9> OPERATORS1C = {
+  { ',', parser::token_type::IQL_COMMA },
+  { '*', parser::token_type::IQL_ASTERISK },
+  { '<', parser::token_type::IQL_LCHEVRON },
+  { '>', parser::token_type::IQL_RCHEVRON },
+  { '!', parser::token_type::IQL_EXCLAIM },
+  { '(', parser::token_type::IQL_LPAREN },
+  { ')', parser::token_type::IQL_RPAREN },
+  { '[', parser::token_type::IQL_LSBRACKET },
+  { ']', parser::token_type::IQL_RSBRACKET },
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read next token as an operator
@@ -1215,24 +1233,9 @@ parser::token_type parser_context::nextOperator() {
     }
   }
 
-  // ...........................................................................
-  // single char operators
-  // ...........................................................................
-  static const std::unordered_map<char, parser::token_type> operators1c = {
-    { ',', parser::token_type::IQL_COMMA },
-    { '*', parser::token_type::IQL_ASTERISK },
-    { '<', parser::token_type::IQL_LCHEVRON },
-    { '>', parser::token_type::IQL_RCHEVRON },
-    { '!', parser::token_type::IQL_EXCLAIM },
-    { '(', parser::token_type::IQL_LPAREN },
-    { ')', parser::token_type::IQL_RPAREN },
-    { '[', parser::token_type::IQL_LSBRACKET },
-    { ']', parser::token_type::IQL_RSBRACKET },
-  };
+  const auto itr = OPERATORS1C.find(m_sData[m_nNext]);
 
-  auto itr = operators1c.find(m_sData[m_nNext]);
-
-  if (itr != operators1c.end()) {
+  if (itr != OPERATORS1C.end()) {
     ++m_nNext;
 
     return itr->second;

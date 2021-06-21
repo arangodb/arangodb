@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UTIL_GEOMETRY_S2MULTIPOINTREGION_H__
-#define UTIL_GEOMETRY_S2MULTIPOINTREGION_H__
+#pragma once
 
 #include <s2/s2region.h>
 
@@ -58,4 +57,3 @@ class S2MultiPointRegion final : public S2Region {
   S2Point* points_;
 };
 
-#endif  // UTIL_GEOMETRY_S2POINTREGION_H__

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,8 +46,7 @@
 /// USE OR OTHER DEALINGS IN THE SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__BUFFER_H
-#define ARANGODB_V8_V8__BUFFER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -286,8 +285,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   void* _callbackHint;
 };
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the buffer module

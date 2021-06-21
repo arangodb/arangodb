@@ -23,7 +23,7 @@
 
 #include "hash_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // hashed_basic_string_ref
@@ -36,4 +36,4 @@ template class IRESEARCH_API hashed_basic_string_ref<byte_type>;
 
 #endif
 
-NS_END
+}

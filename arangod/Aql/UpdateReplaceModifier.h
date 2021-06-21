@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REPLACE_MODIFIER_H
-#define ARANGOD_AQL_REPLACE_MODIFIER_H
+#pragma once
 
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
@@ -53,4 +52,3 @@ class UpdateReplaceModifierCompletion {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

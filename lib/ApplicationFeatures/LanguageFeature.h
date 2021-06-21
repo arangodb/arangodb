@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H 1
+#pragma once
 
 #include <unicode/locid.h>
 #include <memory>
@@ -48,9 +47,9 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void start() override final;
   static void* prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath,
                           std::string& path, std::string const& binaryName);
-  static LanguageFeature* instance();
-  icu::Locale& getLocale() { return _locale; }
-  std::string const& getDefaultLanguage() const { return _language; }
+  icu::Locale& getLocale();
+  std::string const& getDefaultLanguage() const;
+  bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
   void resetDefaultLanguage(std::string const& language);
 
@@ -59,8 +58,8 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   std::string _language;
   char const* _binaryPath;
   void* _icuDataPtr;
+  bool _forceLanguageCheck;
 };
 
 }  // namespace arangodb
 
-#endif

@@ -25,7 +25,7 @@
 
 #include "fs_directory.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class mmap_directory
@@ -40,6 +40,6 @@ class IRESEARCH_API mmap_directory : public fs_directory {
   ) const noexcept override final;
 }; // mmap_directory
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_MMAP_DIRECTORY_H

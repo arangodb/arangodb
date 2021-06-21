@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,48 +164,33 @@ size_t SortCondition::coveredAttributes(
     Variable const* reference,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& indexAttributes) const {
   size_t numCovered = 0;
+  size_t indexPosition = 0;
   size_t fieldsPosition = 0;
+  // iterate over all fields of the sort condition
+  while (fieldsPosition < _fields.size() && indexPosition < indexAttributes.size()) {
+    auto const& field = _fields[fieldsPosition];
 
-  // iterate over all fields of the index definition
-  size_t const n = indexAttributes.size();
-
-  for (size_t i = 0; i < n; /* no hoisting */) {
-    if (fieldsPosition >= _fields.size()) {
-      // done
+    if (reference != field.variable) {
       break;
     }
 
-    auto const& field = _fields[fieldsPosition];
-
-    // ...and check if the field is present in the index definition too
-    if (reference == field.variable &&
-        arangodb::basics::AttributeName::isIdentical(field.attributes,
-                                                     indexAttributes[i], false)) {
-      // field match
+    // check if the field is present in the index definition too
+    if (arangodb::basics::AttributeName::isIdentical(field.attributes,
+                                                     indexAttributes[indexPosition], false)) {
+      ++indexPosition;
       ++fieldsPosition;
       ++numCovered;
-      ++i;  // next index field
-      continue;
-    }
-
-    // no match
-    if (isContained(indexAttributes, field.attributes) &&
-        isContained(_constAttributes, field.attributes)) {
-      // no field match, but a constant attribute
+    } else if (isContained(indexAttributes, field.attributes) &&
+               isContained(_constAttributes, field.attributes)) {
       ++fieldsPosition;
       ++numCovered;
-      continue;
+    } else if (isContained(_constAttributes, indexAttributes[indexPosition])) {
+      ++indexPosition;
+    } else {
+      break;
     }
-
-    if (isContained(_constAttributes, indexAttributes[i])) {
-      // no field match, but a constant attribute
-      ++i;  // next index field
-      continue;
-    }
-
-    break;
   }
-
+   
   TRI_ASSERT(numCovered <= _fields.size());
   return numCovered;
 }

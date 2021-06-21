@@ -340,22 +340,10 @@ ArangoDatabase.prototype._collection = function (id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._create = function (name, properties, type, options) {
-  let body = {
+  let body = Object.assign(properties !== undefined ? properties : {}, {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT
-  };
-
-  if (properties !== undefined) {
-    [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
-      'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
-      'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'minReplicationFactor', 'writeConcern', 'shardingStrategy', 'smartGraphAttribute',
-      'smartJoinAttribute', 'avoidServers', 'cacheEnabled', 'schema'].forEach(function (p) {
-      if (properties.hasOwnProperty(p)) {
-        body[p] = properties[p];
-      }
-    });
-  }
+  });
 
   if (typeof type === 'object') {
     options = type;
@@ -1088,6 +1076,7 @@ ArangoDatabase.prototype._useDatabase = function (name) {
     this._queryProperties(true);
     this._flushCache();
   } catch (err) {
+    this._flushCache();
     this._connection.setDatabaseName(old);
 
     if (err.hasOwnProperty('errorNum')) {

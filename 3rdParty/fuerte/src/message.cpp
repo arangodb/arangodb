@@ -30,6 +30,10 @@
 
 #include "debugging.h"
 
+namespace {
+static std::string const emptyString;
+}
+
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
 ///////////////////////////////////////////////
@@ -39,7 +43,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 void MessageHeader::setMeta(StringMap map) {
   if (!this->_meta.empty()) {
     for (auto& pair : map) {
-      this->addMeta(pair.first, pair.second);
+      this->addMeta(std::move(pair.first), std::move(pair.second));
     }
   } else {
     this->_meta = std::move(map);
@@ -49,15 +53,14 @@ void MessageHeader::setMeta(StringMap map) {
 // Get value for header metadata key, returns empty string if not found.
 std::string const& MessageHeader::metaByKey(std::string const& key,
                                             bool& found) const {
-  static std::string emptyString("");
   if (_meta.empty()) {
     found = false;
-    return emptyString;
+    return ::emptyString;
   }
   auto const& it = _meta.find(key);
   if (it == _meta.end()) {
     found = false;
-    return emptyString;
+    return ::emptyString;
   } else {
     found = true;
     return it->second;
@@ -107,6 +110,10 @@ void RequestHeader::parseArangoPath(std::string const& p) {
 ///////////////////////////////////////////////
 // class Message
 ///////////////////////////////////////////////
+
+ContentEncoding Message::contentEncoding() const {
+  return messageHeader().contentEncoding();
+}
 
 // content-type header accessors
 

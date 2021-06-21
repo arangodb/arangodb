@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_REPLICATION_METRICS_FEATURE_H
-#define ARANGOD_REPLICATION_REPLICATION_METRICS_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/Metrics.h"
@@ -66,7 +65,6 @@ class ReplicationMetricsFeature final : public application_features::Application
     // total time spent for locally applying dump markers
     double waitedForDumpApply = 0.0;
 
-    
     // total number of requests to /_api/replication/keys?type=keys
     uint64_t numKeysRequests = 0;
     // total number of requests to /_api/replication/keys?type=docs
@@ -77,6 +75,10 @@ class ReplicationMetricsFeature final : public application_features::Application
     uint64_t numDocsInserted = 0;
     // total number of remove operations performed during sync
     uint64_t numDocsRemoved = 0;
+    // total number of bytes received for keys and docs
+    uint64_t numSyncBytesReceived = 0;
+    // total number of failed connection attempts
+    uint64_t numFailedConnects = 0;
     // total time spent waiting on response for initial call to
     // /_api/replication/keys
     double waitedForInitial = 0.0;
@@ -86,7 +88,6 @@ class ReplicationMetricsFeature final : public application_features::Application
     double waitedForDocs = 0.0;
     double waitedForInsertions = 0.0;
     double waitedForRemovals = 0.0;
-    double waitedForKeyLookups = 0.0;
 
     bool autoPublish;
   };
@@ -117,12 +118,16 @@ class ReplicationMetricsFeature final : public application_features::Application
     uint64_t numProcessedRemovals = 0;
     // total number of bytes received for tailing requests
     uint64_t numTailingBytesReceived = 0;
+    uint64_t numFailedConnects = 0;
     double waitedForTailing = 0.0;
     double waitedForTailingApply = 0.0;
 
     bool autoPublish;
   };
-  
+
+  Counter& synchronousTimeTotal();
+  Counter& synchronousOpsTotal();
+
  private:
   // dump statistics
   
@@ -149,6 +154,8 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _numSyncDocsInserted;
   // total number of remove operations performed during sync
   Counter& _numSyncDocsRemoved;
+  // total number of bytes received for keys and docs requests
+  Counter& _numSyncBytesReceived;
   // total time spent waiting on response for initial call to
   // /_api/replication/keys
   Counter& _waitedForSyncInitial;
@@ -158,7 +165,6 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _waitedForSyncDocs;
   Counter& _waitedForSyncInsertions;
   Counter& _waitedForSyncRemovals;
-  Counter& _waitedForSyncKeyLookups;
   
   // tailing statistics
   
@@ -174,12 +180,20 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _numTailingProcessedRemovals;
   // total number of bytes received for tailing requests
   Counter& _numTailingBytesReceived;
+  // total number of failed connection attempts during tailing syncing
+  Counter& _numFailedConnects;
   // total time spent waiting for tail requests
   Counter& _waitedForTailing;
   // total time spent waiting for applying tailing markers
   Counter& _waitedForTailingApply;
+
+  // synchronous statistics
+
+  // total time spent doing synchronous replication operations
+  Counter& _syncTimeTotal;
+  // total number of synchronous replication operations
+  Counter& _syncOpsTotal;
 };
 
 } // namespace arangodb
 
-#endif

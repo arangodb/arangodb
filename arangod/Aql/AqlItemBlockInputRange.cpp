@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -149,6 +149,40 @@ size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {
   return 0;
 }
 
+size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() {
+  size_t skipped = 0;
+  while (hasDataRow()) {
+    ++_rowIndex;
+    ++skipped;
+  }
+  return skipped;
+}
+
+size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
+  size_t skipped = 0;
+  while (hasValidRow()) {
+    if (hasDataRow()) {
+      _rowIndex++;
+    } else {
+      ShadowAqlItemRow row{_block, _rowIndex};
+      auto d = row.getDepth();
+      if (d > depth) {
+        // We found a row, that we should not skip
+        // Keep it and stay there;
+        return skipped;
+      }
+      // We throw away this row
+      _rowIndex++;
+      if (d == depth) {
+        // We skipped
+        skipped++;
+      }
+    }
+  }
+  return skipped;
+}
+
+
 template <AqlItemBlockInputRange::LookAhead doPeek, AqlItemBlockInputRange::RowType type>
 ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
   size_t testRowIndex = _rowIndex;
@@ -197,8 +231,7 @@ auto AqlItemBlockInputRange::countDataRows() const noexcept -> std::size_t {
   if (_block == nullptr) {
     return 0;
   }
-  auto const& block = getBlock();
-  auto total = block->numRows();
+  auto total = _block->numRows();
   if (_rowIndex >= total) {
     return 0;
   }
@@ -209,7 +242,7 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
   if (_block == nullptr) {
     return 0;
   }
-  auto [shadowRowsBegin, shadowRowsEnd] = getBlock()->getShadowRowIndexesFrom(0);
+  auto [shadowRowsBegin, shadowRowsEnd] = _block->getShadowRowIndexesFrom(0);
   return std::count_if(std::lower_bound(shadowRowsBegin, shadowRowsEnd, _rowIndex), shadowRowsEnd,
                        [&](auto r) -> bool { return r >= _rowIndex; });
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_EXPORT_EXPORT_FEATURE_H
-#define ARANGODB_EXPORT_EXPORT_FEATURE_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -76,14 +75,15 @@ class ExportFeature final : public application_features::ApplicationFeature,
   std::string _typeExport;
   std::string _csvFieldOptions;
   std::vector<std::string> _csvFields;
-  bool _xgmmlLabelOnly;
-
   std::string _outputDirectory;
+  double _queryMaxRuntime;
+  bool _useMaxRuntime; 
+  bool _xgmmlLabelOnly;
   bool _overwrite;
   bool _progress;
   bool _useGzip;
-
   bool _firstLine;
+  uint64_t _documentsPerBatch;
   uint64_t _skippedDeepNested;
   uint64_t _httpRequestsDone;
   std::string _currentCollection;
@@ -95,4 +95,3 @@ class ExportFeature final : public application_features::ApplicationFeature,
 
 }  // namespace arangodb
 
-#endif

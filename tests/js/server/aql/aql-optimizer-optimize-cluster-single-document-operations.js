@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for single operation nodes in cluster
@@ -159,6 +159,42 @@ function optimizerClusterSingleDocumentTestSuite () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
+    },
+
+    testNumericKeyInsert : function () {
+      try {
+        db._query("INSERT { _key: 1234 } INTO " + cn1);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
+      }
+    },
+    
+    testNumericKeyUpdate : function () {
+      try {
+        db._query("UPDATE { _key: 1234 } WITH { value: 1 } IN " + cn1);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, err.errorNum);
+      }
+    },
+    
+    testNumericKeyReplace : function () {
+      try {
+        db._query("REPLACE { _key: 1234 } WITH { value: 1 } IN " + cn1);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, err.errorNum);
+      }
+    },
+    
+    testNumericKeyRemove : function () {
+      try {
+        db._query("REMOVE { _key: 1234 } IN " + cn1);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, err.errorNum);
+      }
     },
 
     testFetchDocumentWithOldAttribute : function() {
@@ -455,6 +491,34 @@ function optimizerClusterSingleDocumentTestSuite () {
         "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE 'foo' IN @@cn1",
         "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE 'foo' IN " + cn2,
         "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE one IN " + cn2,
+
+        "INSERT [] INTO @@cn1",
+        "INSERT [ {} ] INTO @@cn1",
+        "INSERT [{ foo: 1 }] INTO @@cn1",
+        "INSERT [] INTO @@cn1 RETURN NEW",
+        "INSERT [ {} ] INTO @@cn1 RETURN NEW",
+        "INSERT [{ foo: 2 }] INTO @@cn1 RETURN NEW",
+
+        "UPDATE [] IN @@cn1",
+        "UPDATE [ {} ] IN @@cn1",
+        "UPDATE [{ foo: 3 }] IN @@cn1",
+        "UPDATE [] IN @@cn1 RETURN OLD",
+        "UPDATE [ {} ] IN @@cn1 RETURN OLD",
+        "UPDATE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+        
+        "REPLACE [] IN @@cn1",
+        "REPLACE [ {} ] IN @@cn1",
+        "REPLACE [{ foo: 3 }] IN @@cn1",
+        "REPLACE [] IN @@cn1 RETURN OLD",
+        "REPLACE [ {} ] IN @@cn1 RETURN OLD",
+        "REPLACE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+
+        "REMOVE [] IN @@cn1",
+        "REMOVE [ {} ] IN @@cn1",
+        "REMOVE [{ foo: 3 }] IN @@cn1",
+        "REMOVE [] IN @@cn1 RETURN OLD",
+        "REMOVE [ {} ] IN @@cn1 RETURN OLD",
+        "REMOVE [{ foo: 4 }] IN @@cn1 RETURN OLD",
       ];
 
       queries.forEach(function(query) {

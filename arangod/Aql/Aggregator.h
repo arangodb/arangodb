@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AGGREGATOR_H
-#define ARANGOD_AQL_AGGREGATOR_H 1
+#pragma once
+
+#include "Aql/AqlValue.h"
 
 #include <functional>
 #include <memory>
@@ -36,20 +37,28 @@ struct Options;
 
 namespace aql {
 
-struct AqlValue;
-
 struct Aggregator {
   Aggregator() = delete;
   Aggregator(Aggregator const&) = delete;
   Aggregator& operator=(Aggregator const&) = delete;
   
-  using Factory = std::function<std::unique_ptr<Aggregator>(velocypack::Options const*)> const*;
+  struct Factory {
+    virtual ~Factory() = default;
+    virtual std::unique_ptr<Aggregator> operator()(velocypack::Options const*) const = 0;
+    virtual void createInPlace(void*, velocypack::Options const*) const = 0;
+    virtual std::size_t getAggregatorSize() const = 0;
+  };
 
   explicit Aggregator(velocypack::Options const* opts) : _vpackOptions(opts) {}
   virtual ~Aggregator() = default;
   virtual void reset() = 0;
   virtual void reduce(AqlValue const&) = 0;
-  virtual AqlValue stealValue() = 0;
+  virtual AqlValue get() const = 0;
+  AqlValue stealValue() {
+    AqlValue r = this->get();
+    this->reset();
+    return r;
+  }
 
   /// @brief creates an aggregator from a name string
   static std::unique_ptr<Aggregator> fromTypeString(velocypack::Options const*,
@@ -62,12 +71,11 @@ struct Aggregator {
 
   /// @brief return a pointer to an aggregator factory for an aggregator type
   /// throws if the aggregator cannot be found
-  static Factory factoryFromTypeString(
-      std::string const& type);
+  static Factory const& factoryFromTypeString(std::string const& type);
 
   /// @brief translates an alias to an actual aggregator name
   /// returns the original value if the name was not an alias
-  static std::string translateAlias(std::string const& name);
+  static std::string const& translateAlias(std::string const& name);
 
   /// @brief name/type of aggregator to use for the DB server part of the
   /// aggregation when a COLLECT is pushed from coordinator to DB server. for
@@ -101,4 +109,3 @@ struct Aggregator {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

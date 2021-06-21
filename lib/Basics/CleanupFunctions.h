@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CLEANUPFUNCTIONS_H
-#define ARANGODB_BASICS_CLEANUPFUNCTIONS_H 1
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -88,4 +87,3 @@ class CleanupFunctions {
 }  // namespace basics
 }  // namespace arangodb
 
-#endif

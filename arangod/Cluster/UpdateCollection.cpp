@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
@@ -45,7 +46,8 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -54,16 +56,10 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
-
-  if (!desc.has(SHARD)) {
-    error << "shard must be specified. ";
+  
+  if (!ShardDefinition::isValid()) {
+    error << "database and shard must be specified. ";
   }
-  TRI_ASSERT(desc.has(SHARD));
-
-  if (!desc.has(DATABASE)) {
-    error << "database must be specified. ";
-  }
-  TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(FOLLOWERS_TO_DROP)) {
     error << "followersToDrop must be specified. ";
@@ -73,7 +69,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   if (!error.str().empty()) {
     LOG_TOPIC("a6e4c", ERR, Logger::MAINTENANCE)
         << "UpdateCollection: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -81,14 +77,16 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
 UpdateCollection::~UpdateCollection() = default;
 
 bool UpdateCollection::first() {
-  auto const& database = _description.get(DATABASE);
+  auto const& database = getDatabase();
   auto const& collection = _description.get(COLLECTION);
-  auto const& shard = _description.get(SHARD);
+  auto const& shard = getShard();
   auto const& followersToDrop = _description.get(FOLLOWERS_TO_DROP);
   auto const& props = properties();
+  Result res;
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
     
     std::shared_ptr<LogicalCollection> coll;
@@ -105,6 +103,12 @@ bool UpdateCollection::first() {
       // from the local list of followers. Will be reported
       // to Current in due course.
       if (!followersToDrop.empty()) {
+        TRI_IF_FAILURE("Maintenance::doNotRemoveUnPlannedFollowers") {
+          LOG_TOPIC("de342", ERR, Logger::MAINTENANCE)
+              << "Skipping check for followers not in Plan because of failure "
+                 "point.";
+          return false;
+        }
         auto& followers = coll->followers();
         std::vector<std::string> ftd =
             arangodb::basics::StringUtils::split(followersToDrop, ',');
@@ -112,20 +116,23 @@ bool UpdateCollection::first() {
           followers->remove(s);
         }
       }
-      _result = Collections::updateProperties(*coll, props);
+      OperationOptions options(ExecContext::current());
+      res.reset(Collections::updateProperties(*coll, props, options));
+      result(res);
 
-      if (!_result.ok()) {
+      if (!res.ok()) {
         LOG_TOPIC("c3733", ERR, Logger::MAINTENANCE)
             << "failed to update properties"
                " of collection "
-            << shard << ": " << _result.errorMessage();
+            << shard << ": " << res.errorMessage();
       }
       
     } else {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << "in database " + database;
       LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();
-      _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      result(res);
     }
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -133,21 +140,20 @@ bool UpdateCollection::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("79442", WARN, Logger::MAINTENANCE)
         << "UpdateCollection: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    res.reset(TRI_ERROR_INTERNAL, error.str());
+    result(res);
   }
 
-  if (_result.fail()) {
+  if (res.fail()) {
     _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), _result);
+                             _description.get(SERVER_ID), res);
   }
-
-  notify();
 
   return false;
 }
 void UpdateCollection::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    _feature.unlockShard(_description.get(SHARD));
+    _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
 }

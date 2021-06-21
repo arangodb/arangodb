@@ -29,8 +29,8 @@
 
 #include "shared.hpp"
 
-NS_ROOT
-NS_BEGIN(map_utils)
+namespace iresearch {
+namespace map_utils {
 
 ////////////////////////////////////////////////////////////////////////////
 /// @brief helper to update key after insertion of value
@@ -64,7 +64,7 @@ inline std::pair<typename Container::iterator, bool> try_emplace_update_key(
   return res;
 }
 
-NS_END // map_utils
-NS_END // NS_ROOT
+} // map_utils
+} // namespace iresearch {
 
 #endif

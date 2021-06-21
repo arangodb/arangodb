@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ASYNC_EXECUTOR_H
-#define ARANGOD_AQL_ASYNC_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
@@ -57,7 +56,7 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   // moved into some AsyncExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, AsyncNode const* node);
 
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) override;
  
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
@@ -88,4 +87,3 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

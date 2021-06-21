@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +33,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "Transaction/Methods.h"
-#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -64,7 +64,6 @@ Collection::Collection(std::string const& name,
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
-      //ensureCollection(); // will throw if collection does not exist
     }
   } else if (hint == Hint::Shard) {
     if (ServerState::instance()->isCoordinator()) {
@@ -72,7 +71,6 @@ Collection::Collection(std::string const& name,
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
-      //ensureCollection(); // will throw if collection does not exist
     }
   } else if (hint == Hint::None) {
     // nothing special to do here
@@ -97,7 +95,8 @@ TRI_col_type_e Collection::type() const { return getCollection()->type(); }
 
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx, transaction::CountType type) const {
-  OperationResult res = trx->count(_name, type); 
+  OperationOptions options;  // TODO get from trx?
+  OperationResult res = trx->count(_name, type, options);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }
@@ -129,7 +128,7 @@ size_t Collection::responsibleServers(std::unordered_set<std::string>& result) c
   return n;
 }
 
-std::string Collection::distributeShardsLike() const {
+std::string const& Collection::distributeShardsLike() const {
   return getCollection()->distributeShardsLike();
 }
 
@@ -281,8 +280,7 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
 
 /// @brief use the already set collection 
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
-  ensureCollection();
-  TRI_ASSERT(_collection != nullptr);
+  checkCollection();
   return _collection;
 }
   
@@ -293,7 +291,7 @@ bool Collection::hasCollectionObject() const noexcept {
 }
 
 /// @brief throw if the underlying collection has not been set
-void Collection::ensureCollection() const {
+void Collection::checkCollection() const {
   if (_collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ": " + _name);

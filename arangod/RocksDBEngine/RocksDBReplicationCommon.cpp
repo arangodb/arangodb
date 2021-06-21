@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,11 +25,11 @@
 
 using namespace arangodb;
 
-RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber, uint64_t maxTick)
+RocksDBReplicationResult::RocksDBReplicationResult(ErrorCode errorNumber, uint64_t maxTick)
     : _result(errorNumber), _maxTick(maxTick), _lastScannedTick(0), _minTickIncluded(false) {}
 
-RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber, char const* errorMessage,
-                                                   uint64_t maxTick)
+RocksDBReplicationResult::RocksDBReplicationResult(ErrorCode errorNumber,
+                                                   char const* errorMessage, uint64_t maxTick)
     : _result(errorNumber, errorMessage),
       _maxTick(maxTick),
       _lastScannedTick(0),

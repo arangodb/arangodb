@@ -39,10 +39,10 @@ using days = date::days;
 using weeks = date::weeks;
 
 using years = std::chrono::duration
-    <int, std::ratio_multiply<std::ratio<10631, 30>, days::period>>;
+    <int, date::detail::ratio_multiply<std::ratio<10631, 30>, days::period>>;
 
 using months = std::chrono::duration
-    <int, std::ratio_divide<years::period, std::ratio<12>>>;
+    <int, date::detail::ratio_divide<years::period, std::ratio<12>>>;
 
 // time_point
 
@@ -253,7 +253,7 @@ public:
     CONSTCD14 year& operator+=(const years& y) NOEXCEPT;
     CONSTCD14 year& operator-=(const years& y) NOEXCEPT;
 
-    CONSTCD11 bool is_leap() const NOEXCEPT;
+    CONSTCD14 bool is_leap() const NOEXCEPT;
 
     CONSTCD11 explicit operator int() const NOEXCEPT;
     CONSTCD11 bool ok() const NOEXCEPT;
@@ -866,7 +866,7 @@ inline
 std::basic_ostream<CharT, Traits>&
 operator<<(std::basic_ostream<CharT, Traits>& os, const day& d)
 {
-    date::detail::save_stream<CharT, Traits> _(os);
+    date::detail::save_ostream<CharT, Traits> _(os);
     os.fill('0');
     os.flags(std::ios::dec | std::ios::right);
     os.width(2);
@@ -1046,7 +1046,7 @@ CONSTCD14 inline year year::operator--(int) NOEXCEPT {auto tmp(*this); --(*this)
 CONSTCD14 inline year& year::operator+=(const years& y) NOEXCEPT {*this = *this + y; return *this;}
 CONSTCD14 inline year& year::operator-=(const years& y) NOEXCEPT {*this = *this - y; return *this;}
 
-CONSTCD11
+CONSTCD14
 inline
 bool
 year::is_leap() const NOEXCEPT
@@ -1177,7 +1177,7 @@ inline
 std::basic_ostream<CharT, Traits>&
 operator<<(std::basic_ostream<CharT, Traits>& os, const year& y)
 {
-    date::detail::save_stream<CharT, Traits> _(os);
+    date::detail::save_ostream<CharT, Traits> _(os);
     os.fill('0');
     os.flags(std::ios::dec | std::ios::internal);
     os.width(4 + (y < year{0}));
@@ -2236,7 +2236,7 @@ inline
 std::basic_ostream<CharT, Traits>&
 operator<<(std::basic_ostream<CharT, Traits>& os, const year_month_day& ymd)
 {
-    date::detail::save_stream<CharT, Traits> _(os);
+    date::detail::save_ostream<CharT, Traits> _(os);
     os.fill('0');
     os.flags(std::ios::dec | std::ios::right);
     os << ymd.year() << '-';

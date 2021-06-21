@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_SHAPE_CONTAINER_H
-#define ARANGOD_GEO_SHAPE_CONTAINER_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
 
 #include <s2/s2point.h>
+#include <s2/s2latlng.h>
 
 #include "Basics/Result.h"
 
@@ -71,13 +71,18 @@ class ShapeContainer final {
   ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}*/
   ~ShapeContainer();
 
+  ShapeContainer& operator=(ShapeContainer&&) noexcept;
+
  public:
   /// Parses a coordinate pair
   Result parseCoordinates(velocypack::Slice const& json, bool geoJson);
 
   void reset(std::unique_ptr<S2Region> ptr, Type tt) noexcept;
   void reset(S2Region* ptr, Type tt) noexcept;
-  void resetCoordinates(double lat, double lon);
+  void resetCoordinates(S2LatLng ll);
+  void resetCoordinates(double lat, double lon) {
+    resetCoordinates(S2LatLng::FromDegrees(lat, lon));
+  }
 
   Type type() const { return _type; }
   inline bool empty() const { return _type == Type::EMPTY; }
@@ -142,4 +147,3 @@ class ShapeContainer final {
 }  // namespace geo
 }  // namespace arangodb
 
-#endif

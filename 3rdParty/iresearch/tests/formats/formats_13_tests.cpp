@@ -21,7 +21,7 @@
 #include "formats_test_case_base.hpp"
 #include "store/directory_attributes.hpp"
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          format 13 specific tests
@@ -99,7 +99,7 @@ TEST_P(format_13_test_case, fields_read_write_wrong_encryption) {
     resource("fst_prefixes.json"),
     [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
         ));
 
@@ -508,4 +508,4 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 
-NS_END
+}

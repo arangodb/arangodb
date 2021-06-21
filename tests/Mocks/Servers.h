@@ -31,6 +31,7 @@
 
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
@@ -54,6 +55,7 @@ class ApplicationFeature;
 namespace tests {
 namespace mocks {
 
+/// @brief mock application server with no features added
 class MockServer {
  public:
   MockServer();
@@ -86,6 +88,15 @@ class MockServer {
     return _server.addFeature<Type, As>(std::forward<Args>(args)...);
   }
 
+  // make previously added feature untracked.
+  // useful for successors of base mock servers
+  // that want to exclude some standart features from
+  // bootstrapping
+  template <typename Type>
+  void untrackFeature() {
+    _features.erase(&getFeature<Type>());
+  }
+
   // convenience method to fetch feature, equivalent to server().getFeature....
   template <typename T>
   T& getFeature() {
@@ -100,16 +111,31 @@ class MockServer {
   void stopFeatures();
 
  protected:
-  arangodb::application_features::ApplicationServer::State _oldApplicationServerState;
+  arangodb::application_features::ApplicationServer::State _oldApplicationServerState =
+      arangodb::application_features::ApplicationServer::State::UNINITIALIZED;
   arangodb::application_features::ApplicationServer _server;
   StorageEngineMock _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
   std::string _testFilesystemPath;
+  arangodb::RebootId _oldRebootId;
 
  private:
   bool _started;
 };
 
+/// @brief a server with almost no features added (Metrics are available
+/// though)
+class MockMetricsServer : public MockServer,
+                          public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                          public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                          public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                          public IResearchLogSuppressor {
+ public:
+  MockMetricsServer(bool startFeatures = true);
+};
+
+/// @brief a server with features added that allow to execute V8 code
+/// and bindings
 class MockV8Server : public MockServer,
                      public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
                      public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
@@ -117,8 +143,10 @@ class MockV8Server : public MockServer,
                      public IResearchLogSuppressor {
  public:
   MockV8Server(bool startFeatures = true);
+  ~MockV8Server();
 };
 
+/// @brief a server with features added that allow to execute AQL queries
 class MockAqlServer : public MockServer,
                       public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
                       public LogSuppressor<Logger::CLUSTER, LogLevel::ERR>,
@@ -126,20 +154,36 @@ class MockAqlServer : public MockServer,
                       public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
                       public IResearchLogSuppressor {
  public:
-  MockAqlServer(bool startFeatures = true);
-  ~MockAqlServer();
+  explicit MockAqlServer(bool startFeatures = true);
+  ~MockAqlServer() override;
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
-  std::unique_ptr<arangodb::aql::Query> createFakeQuery(bool activateTracing = false, std::string queryString = "") const;
+  // runBeforePrepare gives an entry point to modify the list of collections one want to use within the Query.
+  std::unique_ptr<arangodb::aql::Query> createFakeQuery(
+      bool activateTracing = false, std::string queryString = "",
+      std::function<void(arangodb::aql::Query&)> runBeforePrepare =
+          [](arangodb::aql::Query&) {}) const;
 };
 
+/// @brief a server with features added that allow to execute RestHandler
+/// code
 class MockRestServer : public MockServer,
                        public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
                        public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
                        public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
                        public IResearchLogSuppressor {
  public:
-  MockRestServer(bool startFeatures = true);
+  explicit MockRestServer(bool startFeatures = true);
+};
+
+class MockRestAqlServer : public MockServer,
+                          public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                          public LogSuppressor<Logger::CLUSTER, LogLevel::ERR>,
+                          public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                          public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                          public IResearchLogSuppressor {
+ public:
+  explicit MockRestAqlServer();
 };
 
 class MockClusterServer : public MockServer,
@@ -153,39 +197,61 @@ class MockClusterServer : public MockServer,
   virtual void dropDatabase(std::string const& name) = 0;
   void startFeatures() override;
 
+  // Create a clusterWide Collection.
+  // This does NOT create Shards.
+  std::shared_ptr<LogicalCollection> createCollection(
+      std::string const& dbName, std::string collectionName,
+      std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
+      TRI_col_type_e type);
+
   // You can only create specialized types
  protected:
-  MockClusterServer();
+  MockClusterServer(bool useAgencyMockConnection);
   ~MockClusterServer();
 
  protected:
   // Implementation knows the place when all features are included
   consensus::index_t agencyTrx(std::string const& key, std::string const& value);
   void agencyCreateDatabase(std::string const& name);
-  void agencyDropDatabase(std::string const& name);
+  
+  // creation of collection is separated
+  // as for DBerver at first maintenance should
+  // create database and only after collections
+  // will be populated in plan.
+  void agencyCreateCollections(std::string const& name);
 
+  void agencyDropDatabase(std::string const& name);
+protected:
+  std::unique_ptr<arangodb::network::ConnectionPool> _pool;
  private:
+  bool _useAgencyMockPool;
   arangodb::ServerState::RoleEnum _oldRole;
-  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
   int _dummy;
 };
 
 class MockDBServer : public MockClusterServer {
  public:
-  MockDBServer(bool startFeatures = true);
+  MockDBServer(bool startFeatures = true, bool useAgencyMockConnection = true);
   ~MockDBServer();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
+
+  void createShard(std::string const& dbName, std::string shardName,
+                   LogicalCollection& clusterCollection);
 };
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator(bool startFeatures = true);
+  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true);
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
+
+  std::pair<std::string, std::string> registerFakedDBServer(std::string const& serverName);
+
+  arangodb::network::ConnectionPool* getPool();
 };
 
 }  // namespace mocks

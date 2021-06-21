@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER
-#define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER 1
+#pragma once
 
 #include "Aql/Expression.h"
 #include "IResearch/IResearchExpressionContext.h"
@@ -133,4 +132,3 @@ class ByExpression final : public irs::filter {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER

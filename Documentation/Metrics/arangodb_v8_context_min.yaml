@@ -1,0 +1,17 @@
+name: arangodb_v8_context_min
+introducedIn: "3.6.7"
+help: |
+  Minimum number of concurrent V8 contexts
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This is the minimum number of concurrent V8 contexts. This is limited
+  by a server option. V8 contexts are created and destroyed as needed
+  but there are never fewer than the limit shown in this metric.

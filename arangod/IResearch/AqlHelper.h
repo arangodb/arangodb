@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
@@ -31,9 +33,6 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 #include "Cluster/ClusterInfo.h"
-
-#ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
-#define ARANGOD_IRESEARCH__AQL_HELPER_H 1
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -476,6 +475,17 @@ inline bool findReference(aql::AstNode const& root, aql::Variable const& ref) no
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes input binary comparison node (<, <=, >, >=) containing
+///        GEO_DISTANCE fcall and fills the specified struct
+/// @returns true if the specified 'in' nodes has been successfully normalized,
+///          false otherwise
+////////////////////////////////////////////////////////////////////////////////
+bool normalizeGeoDistanceCmpNode(
+  aql::AstNode const& in,
+  aql::Variable const& ref,
+  NormalizedCmpNode& out);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes input binary comparison node (==, !=, <, <=, >, >=) and
 ///        fills the specified struct
 /// @returns true if the specified 'in' nodes has been successfully normalized,
@@ -512,9 +522,3 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
-
-#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

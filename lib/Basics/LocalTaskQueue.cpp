@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,12 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+
 #include "LocalTaskQueue.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/debugging.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace basics {
@@ -40,12 +38,15 @@ namespace basics {
 LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue)
     : _queue(queue) {}
 
+LocalTask::~LocalTask() = default;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch this task to the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-void LocalTask::dispatch() {
-  _queue->post([self = shared_from_this(), this]() {
+bool LocalTask::dispatch() {
+  // only called once by _queue, while _queue->_mutex is held
+  return _queue->post([self = shared_from_this(), this]() {
     _queue->startTask();
     try {
       run();
@@ -57,36 +58,16 @@ void LocalTask::dispatch() {
     return true;
   });
 }
+  
+LambdaTask::LambdaTask(std::shared_ptr<LocalTaskQueue> const& queue,
+                       std::function<Result()>&& fn)
+    : LocalTask(queue), _fn(std::move(fn)) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a callback task tied to the specified queue
-////////////////////////////////////////////////////////////////////////////////
-
-LocalCallbackTask::LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue,
-                                     std::function<void()> const& cb)
-    : _queue(queue), _cb(cb) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run the callback and join
-////////////////////////////////////////////////////////////////////////////////
-
-void LocalCallbackTask::run() {
-  try {
-    _cb();
-  } catch (...) {
+void LambdaTask::run() {
+  Result res = _fn();
+  if (res.fail()) {
+    _queue->setStatus(res);
   }
-  _queue->join();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatch the callback task to the scheduler
-////////////////////////////////////////////////////////////////////////////////
-
-void LocalCallbackTask::dispatch() {
-  _queue->post([self = shared_from_this(), this]() { 
-    run(); 
-    return true;
-  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,12 +78,12 @@ LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, 
     : _server(server),
       _poster(poster),
       _queue(),
-      _callbackQueue(),
       _condition(),
       _mutex(),
-      _missing(0),
+      _dispatched(0),
+      _concurrency(std::numeric_limits<std::size_t>::max()),
       _started(0),
-      _status(TRI_ERROR_NO_ERROR) {}
+      _status() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the queue.
@@ -111,13 +92,20 @@ LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, 
 LocalTaskQueue::~LocalTaskQueue() = default;
 
 void LocalTaskQueue::startTask() {
-  CONDITION_LOCKER(guard, _condition);
-  ++_started;
+  _started.fetch_add(1, std::memory_order_relaxed);
 }
 
 void LocalTaskQueue::stopTask() {
-  CONDITION_LOCKER(guard, _condition);
-  --_started;
+  std::size_t old = _started.fetch_sub(1, std::memory_order_relaxed);
+  TRI_ASSERT(old > 0);
+  old = _dispatched.fetch_sub(1, std::memory_order_release);
+  TRI_ASSERT(old > 0);
+
+  // Notify the dispatching thread that new tasks can be scheduled.
+  // Note: we are deliberately not using a mutex here to avoid contention, but that means that
+  // the notification can potentially be missed. However, this should only happen very rarely
+  // and the dispatching thread is only waiting for a limited time.
+  _condition.notify_one();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -125,18 +113,8 @@ void LocalTaskQueue::stopTask() {
 //////////////////////////////////////////////////////////////////////////////
 
 void LocalTaskQueue::enqueue(std::shared_ptr<LocalTask> task) {
-  MUTEX_LOCKER(locker, _mutex);
-  _queue.push(task);
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief enqueue a callback task to be run after all normal tasks finish;
-/// useful for cleanup tasks
-//////////////////////////////////////////////////////////////////////////////
-
-void LocalTaskQueue::enqueueCallback(std::shared_ptr<LocalCallbackTask> task) {
-  MUTEX_LOCKER(locker, _mutex);
-  _callbackQueue.push(task);
+  std::unique_lock<std::mutex> guard(_mutex);
+  _queue.push(std::move(task));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -144,24 +122,7 @@ void LocalTaskQueue::enqueueCallback(std::shared_ptr<LocalCallbackTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-void LocalTaskQueue::post(std::function<bool()> fn) { 
-  bool result = _poster(fn); 
-  if (!result) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief join a single task. reduces the number of waiting tasks and wakes
-/// up the queue's dispatchAndWait() routine
-////////////////////////////////////////////////////////////////////////////////
-
-void LocalTaskQueue::join() {
-  CONDITION_LOCKER(guard, _condition);
-  TRI_ASSERT(_missing > 0);
-  --_missing;
-  _condition.signal();
-}
+bool LocalTaskQueue::post(std::function<bool()>&& fn) { return _poster(std::move(fn)); }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch all tasks, including those that are queued while running,
@@ -171,61 +132,65 @@ void LocalTaskQueue::join() {
 
 void LocalTaskQueue::dispatchAndWait() {
   // regular task loop
-  if (!_queue.empty()) {
-    while (true) {
-      CONDITION_LOCKER(guard, _condition);
-
-      {
-        MUTEX_LOCKER(locker, _mutex);
-        // dispatch all newly queued tasks
-        if (_status == TRI_ERROR_NO_ERROR) {
-          while (!_queue.empty()) {
-            auto task = _queue.front();
-            task->dispatch();
-            _queue.pop();
-            ++_missing;
-          }
-        }
-      }
-
-      if (_missing == 0) {
-        break;
-      }
-
-      if (_missing > 0 && _started == 0 && _server.isStopping()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-      }
-
-      guard.wait(100000);
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
+    if (_queue.empty()) {
+      return;
     }
   }
 
-  // callback task loop
-  if (!_callbackQueue.empty()) {
-    while (true) {
-      CONDITION_LOCKER(guard, _condition);
+  while (true) {
+    std::unique_lock<std::mutex> guard(_mutex);
 
-      {
-        MUTEX_LOCKER(locker, _mutex);
-        // dispatch all newly queued callbacks
-        while (!_callbackQueue.empty()) {
-          auto task = _callbackQueue.front();
-          task->dispatch();
-          _callbackQueue.pop();
-          ++_missing;
+    // dispatch all newly queued tasks
+    if (_status.ok()) {
+      while (_dispatched.load(std::memory_order_acquire) < _concurrency && !_queue.empty()) {
+        // all your task are belong to us
+        auto task = std::move(_queue.front());
+        _queue.pop();
+
+        // increase _dispatched by one, now. if dispatching fails, we will count it
+        // down again
+        _dispatched.fetch_add(1, std::memory_order_release);
+        bool dispatched = false;
+        try {
+          dispatched = task->dispatch();
+        } catch (basics::Exception const& ex) {
+          TRI_ASSERT(!dispatched);
+          _status.reset({ex.code(), ex.what()});
+        } catch (std::exception const& ex) {
+          TRI_ASSERT(!dispatched);
+          _status.reset({TRI_ERROR_INTERNAL, ex.what()});
+        } catch (...) {
+          TRI_ASSERT(!dispatched);
+          _status.reset({TRI_ERROR_QUEUE_FULL, "could not post task"});
+        }
+
+        if (!dispatched) {
+          // dispatching the task has failed.
+          // count down _dispatched again
+          std::size_t old = _dispatched.fetch_sub(1, std::memory_order_release);;
+          TRI_ASSERT(old > 0);
+          
+          if (_status.ok()) {
+            // now register an error in the queue
+           _status.reset({TRI_ERROR_QUEUE_FULL, "could not post task"});
+          }
         }
       }
-
-      if (_missing == 0) {
-        break;
-      }
-
-      if (_missing > 0 && _started == 0 && _server.isStopping()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-      }
-
-      guard.wait(100000);
     }
+
+    if (_server.isStopping() && _started.load() == 0) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    if (_dispatched.load(std::memory_order_acquire) == 0) {
+      break;
+    }
+
+    // We must only wait for a limited time here, since the notify operation in stopTask
+    // does not use a mutex, so there is a (rare) chance that we might miss a notification.
+    _condition.wait_for(guard, std::chrono::milliseconds(50));
   }
 }
 
@@ -233,8 +198,8 @@ void LocalTaskQueue::dispatchAndWait() {
 /// @brief set status of queue
 //////////////////////////////////////////////////////////////////////////////
 
-void LocalTaskQueue::setStatus(int status) {
-  MUTEX_LOCKER(locker, _mutex);
+void LocalTaskQueue::setStatus(Result status) {
+  std::unique_lock<std::mutex> guard(_mutex);
   _status = status;
 }
 
@@ -242,9 +207,16 @@ void LocalTaskQueue::setStatus(int status) {
 /// @brief return overall status of queue tasks
 //////////////////////////////////////////////////////////////////////////////
 
-int LocalTaskQueue::status() {
-  MUTEX_LOCKER(locker, _mutex);
+Result LocalTaskQueue::status() {
+  std::unique_lock<std::mutex> guard(_mutex);
   return _status;
+}
+
+void LocalTaskQueue::setConcurrency(std::size_t input) {
+  std::unique_lock<std::mutex> guard(_mutex);
+  if (input > 0) {
+    _concurrency = input;
+  }
 }
 
 }  // namespace basics

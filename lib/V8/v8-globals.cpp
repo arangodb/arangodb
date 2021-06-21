@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "v8-globals.h"
 
 #include "Basics/debugging.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
 
 TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServer& server,
@@ -221,6 +222,7 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
   ValueKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "value"));
   VersionKeyHidden.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "*version"));
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "waitForSync"));
+  CompactKey.Reset(isolate, TRI_V8_ASCII_STD_STRING(isolate, arangodb::StaticStrings::Compact));
 
   _DbCacheKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "__dbcache__"));
   _DbNameKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_dbName"));
@@ -364,4 +366,28 @@ bool TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
       ->Global()
       ->DefineOwnProperty(TRI_IGETC, name, value, v8::ReadOnly)
       .FromMaybe(false);
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<std::string_view>(v8::Isolate* isolate,
+                                                             std::string_view const& arg) {
+  return v8Utf8StringFactory(isolate, arg.data(), arg.size());
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<std::string>(v8::Isolate* isolate,
+                                                        std::string const& arg) {
+  return v8Utf8StringFactory(isolate, arg.data(), arg.size());
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<char const*>(v8::Isolate* isolate,
+                                                        char const* const& arg) {
+  return v8Utf8StringFactory(isolate, arg, strlen(arg));
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<arangodb::basics::StringBuffer>(
+    v8::Isolate* isolate, arangodb::basics::StringBuffer const& arg) {
+  return v8Utf8StringFactory(isolate, arg.data(), arg.size());
 }

@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
 
+# we use of xxx_ROOT variables for modules sources search
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 OLD)
+endif()
+
 ################################################################################
 ### set required standard version
 ################################################################################
@@ -82,6 +87,7 @@ option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
+option(USE_MICRO_BENCHMARCH "Build micro-benchmark project" OFF)
 
 set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
 
@@ -96,6 +102,9 @@ if (MSVC)
   # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
   # MSVC2017.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  
+  # min/max macros interferes with our codebase
+  add_definitions(-DNOMINMAX)
 
   if (MSVC_BUILD_THREADS)
     set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
@@ -168,9 +177,7 @@ endif()
 ################################################################################
 
 # find Boost
-find_package(BoostLocal
-  REQUIRED
-)
+find_package(BoostLocal REQUIRED)
 
 # set pthread library
 if (NOT MSVC)
@@ -331,6 +338,10 @@ if (USE_PVS_STUDIO)
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
+endif()
+
+if (USE_MICRO_BENCHMARCH)
+  add_subdirectory(microbench)
 endif()
 
 if (USE_TESTS)

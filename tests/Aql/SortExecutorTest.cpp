@@ -27,8 +27,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlExecutorTestCase.h"
-
-#include "fakeit.hpp"
+#include "TestLambdaExecutor.h"
 
 #include "RowFetcherHelper.h"
 
@@ -37,11 +36,12 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Aql/SubqueryStartExecutor.h"
 #include "Aql/Variable.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -67,12 +67,17 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     return split;
   }
 
-  auto makeRegisterInfos() -> RegisterInfos {
+  auto makeRegisterInfos(size_t nestingLevel = 1) -> RegisterInfos {
     SortElement sl{&sortVar, true};
     SortRegister sortReg{0, sl};
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
-    return RegisterInfos(RegIdSet{sortReg.reg}, {}, 1, 1, {}, {RegIdSet{0}});
+    TRI_ASSERT(nestingLevel > 0);
+    RegIdSetStack toKeepStack{};
+    for (size_t i = 0; i < nestingLevel; ++i) {
+      toKeepStack.emplace_back(RegIdSet{0});
+    }
+    return RegisterInfos(RegIdSet{sortReg.reg}, {}, 1, 1, {}, std::move(toKeepStack));
   }
 
   auto makeExecutorInfos() -> SortExecutorInfos {
@@ -82,7 +87,42 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     sortRegisters.emplace_back(std::move(sortReg));
     return SortExecutorInfos(1, 1, {}, std::move(sortRegisters),
                              /*limit (ignored for default sort)*/ 0, manager(),
-                             vpackOptions, false);
+                             vpackOptions, monitor, false);
+  }
+
+  auto makeSubqueryRegisterInfos(size_t nestingLevel) -> RegisterInfos {
+    TRI_ASSERT(nestingLevel > 0);
+    RegIdSetStack toKeepStack{};
+    for (size_t i = 0; i < nestingLevel; ++i) {
+      toKeepStack.emplace_back(RegIdSet{0});
+    }
+    return RegisterInfos(RegIdSet{0}, {}, 1, 1, {}, std::move(toKeepStack));
+  }
+
+  auto dropAllLambdaExecutorInfos() -> TestLambdaSkipExecutor::Infos {
+    auto dropAll = [](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+        -> std::tuple<ExecutorState, TestLambdaSkipExecutor::Stats, AqlCall> {
+      while (input.hasDataRow() && !output.isFull()) {
+        auto const [state, row] = input.nextDataRow();
+        // Just drop!
+      }
+      NoStats stats{};
+      // Fetch all
+      AqlCall call{};
+      return {input.upstreamState(), stats, call};
+    };
+    auto dropSkipAll = [](AqlItemBlockInputRange& input, AqlCall& inCall)
+        -> std::tuple<ExecutorState, TestLambdaSkipExecutor::Stats, size_t, AqlCall> {
+      while (input.hasDataRow()) {
+        auto const [state, row] = input.nextDataRow();
+        // Just drop!
+      }
+      NoStats stats{};
+      AqlCall call{};
+
+      return {input.upstreamState(), stats, 0, call};
+    };
+    return TestLambdaSkipExecutor::Infos{dropAll, dropSkipAll};
   }
 
  private:
@@ -207,6 +247,26 @@ TEST_P(SortExecutorTest, skip_too_much) {
       .expectOutput({0}, {})
       .setCall(call)
       .expectSkipped(5)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_P(SortExecutorTest, skip_nested_subquery_no_data) {
+  // Take a double nested subquery-fetch all Stack
+  AqlCallStack callStack{AqlCallList{AqlCall{}}};
+  callStack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+  callStack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SubqueryStartExecutor>(makeSubqueryRegisterInfos(2), makeSubqueryRegisterInfos(2), ExecutionNode::SUBQUERY_START)
+      .addConsumer<TestLambdaSkipExecutor>(makeSubqueryRegisterInfos(2), dropAllLambdaExecutorInfos(), ExecutionNode::FILTER)
+      .addConsumer<SubqueryStartExecutor>(makeSubqueryRegisterInfos(3), makeSubqueryRegisterInfos(3), ExecutionNode::SUBQUERY_START)
+      .addConsumer<SortExecutor>(makeRegisterInfos(3), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputValue({{1}})
+      .expectOutput({0}, {{1}}, {{0, 1}})
+      .setCallStack(callStack)
+      .expectSkipped(0, 0, 0)
       .expectedState(ExecutionState::DONE)
       .run();
 }

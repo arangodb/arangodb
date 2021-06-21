@@ -35,7 +35,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
                     const irs::parametric_description& description,
                     const irs::bytes_ref& target) {
     auto acceptor = irs::make_levenshtein_automaton(description, target);
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
 
     for (auto& segment : reader) {
       auto fields = segment.fields();

@@ -6,7 +6,6 @@
 @RESTDESCRIPTION
 The creation of a graph requires the name of the graph and a
 definition of its edges.
-[See also edge definitions](../../Manual/Graphs/GeneralGraphs/Management.html#edge-definitions).
 
 @RESTQUERYPARAMETERS
 
@@ -128,11 +127,10 @@ ArangoDB error number for the error that occurred.
 A message created for this error.
 
 @RESTRETURNCODE{409}
-Returned if there is a conflict storing the graph.  This can occur
+Returned if there is a conflict storing the graph. This can occur
 either if a graph with this name is already stored, or if there is one
-edge definition with a the same
-[edge collection](../../Manual/Appendix/Glossary.html#edge-collection) but a
-different signature used in any other graph.
+edge definition with a the same edge collection but a different signature
+used in any other graph.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).

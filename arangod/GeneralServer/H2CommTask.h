@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_H2_COMM_TASK_H
-#define ARANGOD_GENERAL_SERVER_H2_COMM_TASK_H 1
+#pragma once
 
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
@@ -34,6 +33,9 @@
 
 namespace arangodb {
 class HttpRequest;
+
+/// @brief maximum number of concurrent streams
+static constexpr uint32_t H2MaxConcurrentStreams = 32;
 
 namespace rest {
 
@@ -97,6 +99,8 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   /// handle stream request in arangodb
   void processStream(Stream& strm);
+  
+  void processRequest(Stream& stream, std::unique_ptr<HttpRequest> req);
 
   /// should close connection
   bool shouldStop() const;
@@ -111,10 +115,13 @@ class H2CommTask final : public GeneralCommTask<T> {
   Stream* findStream(int32_t sid);
 
  private:
+
+  /// @brief used to generate the full url for debugging
+  std::string url(HttpRequest const* req) const;
+
   velocypack::Buffer<uint8_t> _outbuffer;
 
-  // no more than 64 streams allowed
-  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<32>> _responses;
+  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<H2MaxConcurrentStreams>> _responses;
 
   std::map<int32_t, Stream> _streams;
 
@@ -123,8 +130,8 @@ class H2CommTask final : public GeneralCommTask<T> {
   std::atomic<unsigned> _numProcessing{0};
 
   std::atomic<bool> _signaledWrite{false};
+
 };
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

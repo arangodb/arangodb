@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
@@ -47,8 +48,9 @@ RestShutdownHandler::RestShutdownHandler(application_features::ApplicationServer
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestShutdownHandler::execute() {
-  if (_request->requestType() != rest::RequestType::DELETE_REQ) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  if (_request->requestType() != rest::RequestType::DELETE_REQ &&
+      _request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -68,6 +70,21 @@ RestStatus RestShutdownHandler::execute() {
     }
   }
 
+  auto const& softShutdownFeature{server().getFeature<SoftShutdownFeature>()};
+  auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
+
+  if (_request->requestType() == rest::RequestType::GET) {
+    if (!ServerState::instance()->isCoordinator()) {
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+          TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      return RestStatus::DONE;
+    }
+    VPackBuilder builder;
+    softShutdownTracker.toVelocyPack(builder);
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
+  }
+
   bool removeFromCluster;
   std::string const& remove = _request->value("remove_from_cluster", removeFromCluster);
   removeFromCluster = removeFromCluster && remove == "1";
@@ -81,7 +98,7 @@ RestStatus RestShutdownHandler::execute() {
     builder.add(VPackValue(true));
     AgencyCommResult result = agency.setValue("Shutdown", builder.slice(), 0.0);
     if (!result.successful()) {
-      generateError(rest::ResponseCode::SERVER_ERROR, 500);
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
       return RestStatus::DONE;
     }
     removeFromCluster = true;
@@ -89,6 +106,16 @@ RestStatus RestShutdownHandler::execute() {
   if (removeFromCluster) {
     ClusterFeature& clusterFeature = server().getFeature<ClusterFeature>();
     clusterFeature.setUnregisterOnShutdown(true);
+  }
+
+  bool soft = _request->parsedValue("soft", false);
+
+  if (ServerState::instance()->isCoordinator() && soft) {
+    softShutdownTracker.initiateSoftShutdown();
+    VPackBuilder result;
+    result.add(VPackValue("OK"));
+    generateResult(rest::ResponseCode::OK, result.slice());
+    return RestStatus::DONE;
   }
 
   auto self = shared_from_this();

@@ -51,7 +51,7 @@ class ExecutionNodeTest : public ::testing::Test {
   ExecutionNodeTest()
     : fakedQuery(server.createFakeQuery()),
       ast(*fakedQuery.get()),
-      plan(&ast){};
+      plan(&ast, false) {}
 };
 
 TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {

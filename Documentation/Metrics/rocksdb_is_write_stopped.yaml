@@ -1,0 +1,20 @@
+name: rocksdb_is_write_stopped
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "rocksdb-is-write-stopped"
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "rocksdb-is-write-stopped".
+  It shows 1 if writing to RocksDB has been stopped, and otherwise 0.
+  If 1 is shown, this usually means that there are too many uncompacted
+  files and the RocksDB background threads have not managed to keep up
+  with their compaction work. This situation should be avoided, since
+  nasty delays in database operations are incurred. If in doubt,
+  contact ArangoDB support.

@@ -43,14 +43,14 @@
 #include <fstream>
 #include <iostream>
 
-NS_LOCAL
+namespace {
 
 const std::string HELP = "help";
 const std::string INDEX_DIR = "index-dir";
 const std::string DIR_TYPE = "dir-type";
 const std::string OUTPUT = "out";
 
-NS_END
+}
 
 int dump(
     const std::string& path,

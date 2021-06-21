@@ -53,13 +53,12 @@ std::string const stateToString(ExecutorState state) {
 
 template <typename Range>
 class InputRangeTest : public AqlExecutorTestCase<> {
- private:
+ protected:
   // Used to holdData for InputMatrixTests
   AqlItemMatrix _matrix{1};
   // Picked a random number of dependencies for MultiInputRanges
   size_t _numberDependencies{3};
 
- protected:
   auto buildRange(ExecutorState state, SharedAqlItemBlockPtr block) -> Range {
     if constexpr (std::is_same_v<Range, AqlItemBlockInputRange>) {
       return AqlItemBlockInputRange{state, 0, block, 0};
@@ -100,7 +99,7 @@ class InputRangeTest : public AqlExecutorTestCase<> {
             // Simulate that shadowRows have been "moved"  by clearing their dataRegisters
             for (size_t i = 0; i < copiedBlock->numRows(); ++i) {
               if (copiedBlock->isShadowRow(i)) {
-                for (RegisterId r = 0; r < copiedBlock->numRegisters(); ++r) {
+                for (RegisterId::value_t r = 0; r < copiedBlock->numRegisters(); ++r) {
                   copiedBlock->destroyValue(i, r);
                 }
 
@@ -136,8 +135,28 @@ TYPED_TEST_CASE_P(InputRangeTest);
 TYPED_TEST_P(InputRangeTest, test_default_initializer) {
   std::vector<ExecutorState> states{ExecutorState::DONE, ExecutorState::HASMORE};
   for (auto const& finalState : states) {
+    if (std::is_same_v<AqlItemBlockInputMatrix, TypeParam> &&
+        finalState == ExecutorState::DONE) {
+      // The AqlItemBlockInputMatrix may not be instantiated with DONE
+      continue;
+    }
     SCOPED_TRACE("Testing state: " + stateToString(finalState));
-    TypeParam testee{finalState};
+    auto testee = std::invoke([&]() {
+      if constexpr (std::is_same_v<TypeParam, AqlItemBlockInputMatrix>) {
+        if (finalState == ExecutorState::HASMORE) {
+          return TypeParam{finalState};
+        } else {
+          TRI_ASSERT(finalState == ExecutorState::DONE);
+          // AqlItemBlockInputMatrix may not be instantiated with DONE and
+          // without a matrix, thus this conditionals.
+          return TypeParam{finalState, &this->_matrix};
+        }
+      } else {
+        return TypeParam{finalState};
+      }
+    });
+    // assert is just for documentation
+    static_assert(std::is_same_v<decltype(testee), TypeParam>);
     if constexpr (std::is_same_v<decltype(testee), MultiAqlItemBlockInputRange>) {
       // Default has only 1 dependency
       EXPECT_EQ(testee.upstreamState(0), finalState);
@@ -180,7 +199,14 @@ TYPED_TEST_P(InputRangeTest, test_block_only_datarows) {
       EXPECT_EQ(testee.upstreamState(), ExecutorState::HASMORE);
     }
 
-    EXPECT_TRUE(testee.hasDataRow());
+    if constexpr (std::is_same_v<decltype(testee), AqlItemBlockInputMatrix>) {
+      // The AqlItemBlockInputMatrix may only report it has a data row when it
+      // knows it has consumed all input (of the current subquery iteration, if
+      // applicable).
+      EXPECT_EQ(testee.hasDataRow(), finalState == ExecutorState::DONE);
+    } else {
+      EXPECT_TRUE(testee.hasDataRow());
+    }
     EXPECT_FALSE(testee.hasShadowRow());
 
     // Required for expected Number Of Rows

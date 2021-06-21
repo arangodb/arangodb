@@ -20,19 +20,19 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "utils/register.hpp"
+#include "formats.hpp"
 
 // list of statically loaded formats via init()
 #ifndef IRESEARCH_DLL
   #include "formats_10.hpp"
 #endif
 
-#include "formats.hpp"
-#include "utils/type_limits.hpp"
+#include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/type_limits.hpp"
+#include "utils/register.hpp"
 
-NS_LOCAL
+namespace {
 
 const std::string FILENAME_PREFIX("libformat-");
 
@@ -70,12 +70,12 @@ class format_register :
   }
 }; // format_register
 
-iresearch::columnstore_reader::values_reader_f INVALID_COLUMN =
+irs::columnstore_reader::values_reader_f INVALID_COLUMN =
   [] (irs::doc_id_t, irs::bytes_ref&) { return false; };
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 /* static */ const columnstore_reader::values_reader_f& columnstore_reader::empty_reader() {
   return INVALID_COLUMN;
@@ -123,7 +123,6 @@ NS_ROOT
     return factory ? factory() : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting a format instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -206,4 +205,4 @@ format_registrar::operator bool() const noexcept {
   return registered_;
 }
 
-NS_END
+}

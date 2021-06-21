@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,12 +32,14 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -69,25 +71,20 @@ std::string stripServerPrefix(std::string const& destination) {
 
 TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
                                                  ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
-
-  if (!desc.has(DATABASE)) {
-    error << "database must be specified";
-  }
-  TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(COLLECTION)) {
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
-
-  if (!desc.has(SHARD)) {
-    error << "shard must be specified";
+  
+  if (!ShardDefinition::isValid()) {
+    error << "database and shard must be specified. ";
   }
-  TRI_ASSERT(desc.has(SHARD));
 
   if (!desc.has(THE_LEADER)) {
     error << "leader must be specified. ";
@@ -104,7 +101,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
   if (!error.str().empty()) {
     LOG_TOPIC("2aa85", ERR, Logger::MAINTENANCE)
         << "TakeoverLeadership: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
@@ -160,7 +157,7 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
   for (auto const& res : responses) {
     if (res.hasValue() && res.get().ok()) {
       auto& result = res.get();
-      if (result.response && result.response->statusCode() == fuerte::StatusOK) {
+      if (result.statusCode() == fuerte::StatusOK) {
         realInsyncFollowers->push_back(::stripServerPrefix(result.destination));
       }
     }
@@ -189,18 +186,18 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
           ci.getCollectionCurrent(databaseName,
                                   std::to_string(collection.planId().id()));
       if (currentInfo == nullptr) {
-        // Collection has been dropped we cannot continue here.
+        // Collection has been dropped. we cannot continue here.
         return;
       }
       TRI_ASSERT(currentInfo != nullptr);
       std::vector<ServerID> currentServers = currentInfo->servers(collection.name());
       std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
 
-      if (currentServers.size() > 0) {
-        std::string& oldLeader = currentServers.at(0);
+      if (!currentServers.empty()) {
+        std::string& oldLeader = currentServers[0];
         // Check if the old leader has resigned and stopped all write
         // (if so, we can assume that all servers are still in sync)
-        if (oldLeader.at(0) == '_') {
+        if (!oldLeader.empty() && oldLeader[0] == '_') {
           // remove the underscore from the list as it is useless anyway
           oldLeader = oldLeader.substr(1);
 
@@ -244,16 +241,18 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
 }
 
 bool TakeoverShardLeadership::first() {
-  std::string const& database = _description.get(DATABASE);
+  std::string const& database = getDatabase();
   std::string const& collection = _description.get(COLLECTION);
-  std::string const& shard = _description.get(SHARD);
+  std::string const& shard = getShard();
   std::string const& plannedLeader = _description.get(THE_LEADER);
   std::string const& localLeader = _description.get(LOCAL_LEADER);
   std::string const& planRaftIndex = _description.get(PLAN_RAFT_INDEX);
   uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
+  Result res;
 
   try {
-    DatabaseGuard guard(database);
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
 
     std::shared_ptr<LogicalCollection> coll;
@@ -273,7 +272,8 @@ bool TakeoverShardLeadership::first() {
       error << "TakeoverShardLeadership: failed to lookup local collection "
             << shard << "in database " + database;
       LOG_TOPIC("65342", ERR, Logger::MAINTENANCE) << error.str();
-      _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      result(res);
     }
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -281,21 +281,21 @@ bool TakeoverShardLeadership::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC("79443", WARN, Logger::MAINTENANCE)
         << "TakeoverShardLeadership: " << error.str();
-    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    res.reset(TRI_ERROR_INTERNAL, error.str());
+    result(res);
   }
 
-  if (_result.fail()) {
+  if (res.fail()) {
     _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), _result);
+                             _description.get(SERVER_ID), res);
   }
 
-  notify();
   return false;
 }
 
 void TakeoverShardLeadership::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    _feature.unlockShard(_description.get(SHARD));
+    _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
 }

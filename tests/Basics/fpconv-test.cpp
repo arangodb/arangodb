@@ -29,7 +29,6 @@
 #include "gtest/gtest.h"
 
 #include "Basics/fpconv.h"
-#include "Basics/json.h"
 #include "Basics/StringBuffer.h"
 
 using namespace arangodb::basics;
@@ -252,27 +251,6 @@ TEST(CFpconvTest, tst_value_mchacki2) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test one third roundtrip
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(CFpconvTest, tst_value_mchacki2_roundtrip) {
-  double value;
-
-  value = 56.94837631946843;
-
-  TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer);
-
-  auto json = TRI_CreateNumberJson(value);
-  TRI_StringifyJson(&buffer, json);
-
-  EXPECT_EQ(std::string("56.94837631946843"), std::string(buffer._buffer, buffer._current - buffer._buffer));
-
-  TRI_FreeJson(json);
-  TRI_DestroyStringBuffer(&buffer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test one third
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -292,27 +270,6 @@ TEST(CFpconvTest, tst_one_third) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test one third roundtrip
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(CFpconvTest, tst_one_third_roundtrip) {
-  double value;
-
-  value = 1.0 / 3.0;
-
-  TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer);
-
-  auto json = TRI_CreateNumberJson(value);
-  TRI_StringifyJson(&buffer, json);
-
-  EXPECT_EQ(std::string("0.3333333333333333"), std::string(buffer._buffer, buffer._current - buffer._buffer));
-
-  TRI_FreeJson(json);
-  TRI_DestroyStringBuffer(&buffer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test 0.4
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -329,67 +286,4 @@ TEST(CFpconvTest, tst_04) {
   StringBuffer buf(true);
   buf.appendDecimal(value);
   EXPECT_EQ(std::string("0.4"), std::string(buf.c_str(), buf.length()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test 0.4
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(CFpconvTest, tst_04_roundtrip) {
-  double value;
-
-  value = 0.1 + 0.3;
-
-  TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer);
-
-  auto json = TRI_CreateNumberJson(value);
-  TRI_StringifyJson(&buffer, json);
-
-  EXPECT_EQ(std::string("0.4"), std::string(buffer._buffer, buffer._current - buffer._buffer));
-  
-  TRI_FreeJson(json);
-  TRI_DestroyStringBuffer(&buffer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test big roundtrip
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(CFpconvTest, tst_value_high_roundtrip) {
-  double value;
-
-  value = 4.32e261;
-
-  TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer);
-
-  auto json = TRI_CreateNumberJson(value);
-  TRI_StringifyJson(&buffer, json);
-
-  EXPECT_EQ(std::string("4.32e+261"), std::string(buffer._buffer, buffer._current - buffer._buffer));
-  
-  TRI_FreeJson(json);
-  TRI_DestroyStringBuffer(&buffer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test small roundtrip
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(CFpconvTest, tst_value_low_roundtrip) {
-  double value;
-
-  value = -4.32e261;
-
-  TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer);
-
-  auto json = TRI_CreateNumberJson(value);
-  TRI_StringifyJson(&buffer, json);
-
-  EXPECT_EQ(std::string("-4.32e+261"), std::string(buffer._buffer, buffer._current - buffer._buffer));
-
-  TRI_FreeJson(json);
-  TRI_DestroyStringBuffer(&buffer);
 }

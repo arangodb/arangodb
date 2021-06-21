@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_RANDOM_RANDOM_GENERATOR_H
-#define ARANGODB_RANDOM_RANDOM_GENERATOR_H 1
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -48,11 +47,11 @@ class RandomDevice {
   int32_t interval(int32_t left, int32_t right);
   uint32_t interval(uint32_t left, uint32_t right);
 
- public:
   static unsigned long seed();
 
- private:
   int32_t random(int32_t left, int32_t right);
+
+ private:
   int32_t power2(int32_t left, uint32_t right);
   int32_t other(int32_t left, uint32_t right);
 };
@@ -89,6 +88,11 @@ class RandomGenerator {
   static uint16_t interval(uint16_t);
   static uint32_t interval(uint32_t);
   static uint64_t interval(uint64_t);
+  
+  // exposed only for testing
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  static int32_t random(int32_t left, int32_t right);
+#endif
 
  private:
   static RandomType _type;
@@ -96,4 +100,3 @@ class RandomGenerator {
 };
 }  // namespace arangodb
 
-#endif

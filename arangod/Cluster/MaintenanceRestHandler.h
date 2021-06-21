@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER
-#define ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER 1
+#pragma once
 
 #include "Cluster/Action.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -43,7 +42,7 @@ class MaintenanceRestHandler : public RestBaseHandler {
   char const* name() const override { return "MaintenanceRestHandler"; }
 
   RequestLane lane() const override final {
-    return RequestLane::CLUSTER_INTERNAL;
+    return RequestLane::CLIENT_FAST;
   }
 
   /// @brief Performs routing of request to appropriate subroutines
@@ -86,4 +85,3 @@ class MaintenanceRestHandler : public RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

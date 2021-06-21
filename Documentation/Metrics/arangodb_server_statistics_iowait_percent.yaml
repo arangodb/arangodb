@@ -1,0 +1,17 @@
+name: arangodb_server_statistics_iowait_percent
+introducedIn: "3.8.0"
+help: |
+  Percentage of time that the system CPUs have been waiting for I/O
+unit: percentage
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Percentage of time that the system CPUs have been waiting for I/O, as
+  a value between 0 and 100, and as reported by the operating system.
+  This metric is only reported on some operating systems.

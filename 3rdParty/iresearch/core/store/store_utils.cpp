@@ -28,7 +28,7 @@
 #include "utils/string_utils.hpp"
 #include "utils/memory.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -82,9 +82,9 @@ FORCE_INLINE void unpack_block(
   packed::unpack_block(encoded + bits, decoded + packed::BLOCK_SIZE_64, bits);
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               read/write helpers
@@ -175,8 +175,8 @@ double_t read_zvdouble(data_input& in) {
 // --SECTION--                                              bit packing helpers
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(encode)
-NS_BEGIN(bitpack)
+namespace encode {
+namespace bitpack {
 
 void skip_block32(index_input& in, uint32_t size) {
   assert(size);
@@ -468,8 +468,8 @@ uint32_t write_block(
   return bits;
 }
 
-NS_END // bitpack
-NS_END // encode
+} // bitpack
+} // encode
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                   bytes_ref_input implementation
@@ -509,4 +509,4 @@ int64_t bytes_ref_input::checksum(size_t offset) const {
   return crc.checksum();
 }
 
-NS_END
+}

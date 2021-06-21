@@ -25,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -53,8 +55,10 @@ class NgramMatchFunctionTest : public ::testing::Test {
     arangodb::tests::init();
 
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::methods::Collections::createSystem(server.getSystemDatabase(), arangodb::tests::AnalyzerCollectionName,
-      false, unused);
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(server.getSystemDatabase(), options,
+                                                 arangodb::tests::AnalyzerCollectionName,
+                                                 false, unused);
 
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -76,11 +80,13 @@ class NgramMatchFunctionTest : public ::testing::Test {
     std::set<int>* warnings = nullptr) {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
-    fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([warnings](int c, char const*) {
+    fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([warnings](ErrorCode c, char const*) {
       if (warnings) {
-        warnings->insert(c);
+        warnings->insert(static_cast<int>(c));
       }});
     auto trx = server.createFakeTransaction();
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysReturn(*trx);
+    fakeit::When(Method(expressionContextMock, vocbase)).AlwaysReturn(trx->vocbase());
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{ arena };
     if (Attribute) {
@@ -95,7 +101,12 @@ class NgramMatchFunctionTest : public ::testing::Test {
     if (analyzer) {
       params.emplace_back(*analyzer);
     }
-    return Functions::NgramMatch(&expressionContext, trx.get(), params);
+  
+    arangodb::aql::Function f("NGRAM_MATCH", &Functions::NgramMatch);
+    arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+    node.setData(static_cast<void const*>(&f));
+
+    return Functions::NgramMatch(&expressionContext, node, params);
   }
 
   void assertNgramMatchFail(size_t line,
@@ -140,9 +151,9 @@ TEST_F(NgramMatchFunctionTest, test) {
     AqlValue const ValidThreshold{ AqlValueHintDouble{0.5} };
     AqlValue const ValidString{ "ValidString" };
     AqlValue const ValidAnalyzerName{ "TestAnalyzer" };
-    const std::set<int> badParamWarning{ TRI_ERROR_BAD_PARAMETER };
-    const std::set<int> typeMismatchWarning{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH };
-    const std::set<int> invalidArgsCount{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH };
+    const std::set<int> badParamWarning{ static_cast<int>(TRI_ERROR_BAD_PARAMETER) };
+    const std::set<int> typeMismatchWarning{ static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) };
+    const std::set<int> invalidArgsCount{ static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) };
 
     //invalid args count
     assertNgramMatchFail(__LINE__, invalidArgsCount, &ValidString, &ValidString, nullptr, nullptr);

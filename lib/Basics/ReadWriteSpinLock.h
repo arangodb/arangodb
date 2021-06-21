@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_READ_WRITE_SPIN_LOCK_H
-#define ARANGO_READ_WRITE_SPIN_LOCK_H 1
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -63,4 +62,3 @@ class ReadWriteSpinLock {
 
 }  // namespace arangodb::basics
 
-#endif

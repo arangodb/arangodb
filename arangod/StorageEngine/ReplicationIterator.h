@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_REPLICATION_ITERATOR_H
-#define ARANGOD_STORAGE_ENGINE_REPLICATION_ITERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -77,4 +76,3 @@ class RevisionReplicationIterator : public ReplicationIterator {
 };
 
 }  // namespace arangodb
-#endif

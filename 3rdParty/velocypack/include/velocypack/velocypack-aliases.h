@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "velocypack/velocypack-common.h"
@@ -82,6 +80,7 @@ template<typename T> using VPackBuffer = arangodb::velocypack::Buffer<T>;
 using VPackSink = arangodb::velocypack::Sink;
 using VPackCharBufferSink = arangodb::velocypack::CharBufferSink;
 using VPackStringSink = arangodb::velocypack::StringSink;
+using VPackStringLengthSink = arangodb::velocypack::StringLengthSink;
 using VPackStringStreamSink = arangodb::velocypack::StringStreamSink;
 #endif
 #endif
@@ -111,6 +110,13 @@ using VPackDumper = arangodb::velocypack::Dumper;
 #ifndef VELOCYPACK_ALIAS_EXCEPTION
 #define VELOCYPACK_ALIAS_EXCEPTION
 using VPackException = arangodb::velocypack::Exception;
+#endif
+#endif
+
+#ifdef VELOCYPACK_HASHED_STRINGREF_H
+#ifndef VELOCYPACK_ALIAS_HASHED_STRINGREF
+#define VELOCYPACK_ALIAS_HASHED_STRINGREF
+using VPackHashedStringRef = arangodb::velocypack::HashedStringRef;
 #endif
 #endif
 

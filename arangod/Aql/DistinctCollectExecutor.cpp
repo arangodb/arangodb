@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,8 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Logger/LogMacros.h"
 
 #include <utility>
@@ -42,8 +44,11 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
-                                                           velocypack::Options const* opts)
-    : _groupRegister(std::move(groupRegister)), _vpackOptions(opts) {}
+                                                           velocypack::Options const* opts,
+                                                           arangodb::ResourceMonitor& resourceMonitor)
+    : _groupRegister(std::move(groupRegister)), 
+      _vpackOptions(opts),
+      _resourceMonitor(resourceMonitor) {}
 
 std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupRegister() const {
   return _groupRegister;
@@ -51,6 +56,10 @@ std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupR
 
 velocypack::Options const* DistinctCollectExecutorInfos::vpackOptions() const {
   return _vpackOptions;
+}
+
+arangodb::ResourceMonitor& DistinctCollectExecutorInfos::getResourceMonitor() const {
+  return _resourceMonitor;
 }
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher&, Infos& infos)
@@ -75,11 +84,14 @@ void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
 }
 
 void DistinctCollectExecutor::destroyValues() {
+  size_t memoryUsage = 0;
   // destroy all AqlValues captured
   for (auto& value : _seen) {
+    memoryUsage += memoryUsageForGroup(value);
     const_cast<AqlValue*>(&value)->destroy();
   }
   _seen.clear();
+  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
 }
 
 const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noexcept {
@@ -98,8 +110,6 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
   INTERNAL_LOG_DC << output.getClientCall();
 
-  AqlValue groupValue;
-
   while (inputRange.hasDataRow()) {
     INTERNAL_LOG_DC << "output.isFull() = " << std::boolalpha << output.isFull();
 
@@ -114,15 +124,21 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
     // for hashing simply re-use the aggregate registers, without cloning
     // their contents
-    groupValue = input.getValue(_infos.getGroupRegister().second);
+    AqlValue groupValue = input.getValue(_infos.getGroupRegister().second);
 
     // now check if we already know this group
     bool newGroup = _seen.find(groupValue) == _seen.end();
     if (newGroup) {
+      size_t memoryUsage = memoryUsageForGroup(groupValue);
+      arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsage);
+
       output.cloneValueInto(_infos.getGroupRegister().first, input, groupValue);
       output.advanceRow();
 
       _seen.emplace(groupValue.clone());
+
+      // now we are responsible for memory tracking
+      guard.steal();
     }
   }
 
@@ -139,7 +155,6 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutorState state = ExecutorState::HASMORE;
 
-  AqlValue groupValue;
   size_t skipped = 0;
 
   INTERNAL_LOG_DC << call;
@@ -157,17 +172,31 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
 
     // for hashing simply re-use the aggregate registers, without cloning
     // their contents
-    groupValue = input.getValue(_infos.getGroupRegister().second);
+    AqlValue groupValue = input.getValue(_infos.getGroupRegister().second);
 
     // now check if we already know this group
     bool newGroup = _seen.find(groupValue) == _seen.end();
     if (newGroup) {
       skipped += 1;
       call.didSkip(1);
+      
+      size_t memoryUsage = memoryUsageForGroup(groupValue);
+      arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsage);
 
       _seen.emplace(groupValue.clone());
+      
+      // now we are responsible for memory tracking
+      guard.steal();
     }
   }
 
   return {inputRange.upstreamState(), {}, skipped, {}};
+}
+
+size_t DistinctCollectExecutor::memoryUsageForGroup(AqlValue const& value) const {
+  size_t memoryUsage = 3 * sizeof(void*) + sizeof(AqlValue);
+  if (value.requiresDestruction()) {
+    memoryUsage += value.memoryUsage();
+  }
+  return memoryUsage;
 }

@@ -30,7 +30,7 @@
 #include <algorithm>
 #include <vector>
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class external_heap_iterator
@@ -98,6 +98,10 @@ class external_heap_iterator : private compact<0, Context> {
     return heap_.back();
   }
 
+  size_t size() const noexcept {
+    return heap_.size();
+  }
+
  private:
   bool remove_lead(std::vector<size_t>::iterator it) {
     if (&*it != &heap_.back()) {
@@ -115,7 +119,7 @@ class external_heap_iterator : private compact<0, Context> {
   size_t lead_{};
 }; // external_heap_iterator
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_PQ_ITERATOR_H
 

@@ -185,6 +185,19 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Maintain index selectivity estimates:</th>
+                  <th>
+                    <input id="newPersistentEstimates" type="checkbox" name="newPersistentEstimates" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Maintain index selectivity estimates for this index. This option can be turned off for non-unique-indexes to improve efficiency of write operations, but will lead to the optimizer being unaware of the data distribution inside this index">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Create in background:</th>
                   <th>
                     <input id="newPersistentBackground" type="checkbox" name="newPersistentBackground" value="true">
@@ -257,6 +270,19 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Maintain index selectivity estimates:</th>
+                  <th>
+                    <input id="newHashEstimates" type="checkbox" name="newHashEstimates" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Maintain index selectivity estimates for this index. This option can be turned off for non-unique-indexes to improve efficiency of write operations, but will lead to the optimizer being unaware of the data distribution inside this index">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -386,6 +412,19 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Maintain index selectivity estimates:</th>
+                  <th>
+                    <input id="newSkiplistEstimates" type="checkbox" name="newSkiplistEstimates" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Maintain index selectivity estimates for this index. This option can be turned off for non-unique-indexes to improve efficiency of write operations, but will lead to the optimizer being unaware of the data distribution inside this index">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>

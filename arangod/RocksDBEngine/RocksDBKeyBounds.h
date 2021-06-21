@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H
-#define ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -313,4 +312,3 @@ std::ostream& operator<<(std::ostream&, RocksDBKeyBounds const&);
 
 }  // namespace arangodb
 
-#endif

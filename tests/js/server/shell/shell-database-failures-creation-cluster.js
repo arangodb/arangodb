@@ -45,7 +45,6 @@ const expectedSystemCollections = [
   "_appbundles",
   "_apps",
   "_aqlfunctions",
-  "_fishbowl",
   "_graphs",
   "_jobs",
   "_queues"

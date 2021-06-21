@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@ namespace iresearch {
 void ResourceMutex::reset() {
   if (get()) {
     irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     _resource.store(nullptr);
   }
 }

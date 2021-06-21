@@ -39,8 +39,6 @@ function runSetup () {
   db._drop('UnitTestsRecovery1');
   var c = db._create('UnitTestsRecovery1', {
     waitForSync: true,
-    journalSize: 8 * 1024 * 1024,
-    doCompact: false
   });
   c.save({ value1: 1, value2: [ 'the',
       'quick',
@@ -58,8 +56,6 @@ function runSetup () {
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2', {
     waitForSync: false,
-    journalSize: 16 * 1024 * 1024,
-    doCompact: true,
   });
   c.save({ value1: { 'some': 'rubbish' } });
   c.ensureSkiplist('value1');
@@ -67,8 +63,6 @@ function runSetup () {
   db._drop('UnitTestsRecovery3');
   c = db._createEdgeCollection('UnitTestsRecovery3', {
     waitForSync: false,
-    journalSize: 32 * 1024 * 1024,
-    doCompact: true
   });
 
   c.save('UnitTestsRecovery1/foo', 'UnitTestsRecovery2/bar', { value1: { 'some': 'rubbish' } });

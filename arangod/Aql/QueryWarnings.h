@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +21,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_WARNINGS_H
-#define ARANGOD_AQL_QUERY_WARNINGS_H 1
+#pragma once
 
+#include <Basics/ErrorCode.h>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -46,30 +46,28 @@ public:
   explicit QueryWarnings();
   ~QueryWarnings() = default;
 
-  /// @brief register an error, with an optional parameter inserted into printf
+  /// @brief register an error
   /// this also makes the query abort
-  void registerError(int, char const* = nullptr);
-
+  [[noreturn]] void registerError(ErrorCode code, std::string_view details = {});
   /// @brief register a warning
-  void registerWarning(int, char const* = nullptr);
+  void registerWarning(ErrorCode code, std::string_view details = {});
 
-  /// @brief register a warning (convenience overload)
-  void registerWarning(int code, std::string const& details);
-      
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
   
   bool empty() const;
   
   void updateOptions(QueryOptions const&);
   
-  std::vector<std::pair<int, std::string>> all() const;
-  
+  std::vector<std::pair<ErrorCode, std::string>> all() const;
+
+  static std::string buildFormattedString(ErrorCode code, char const* details);
+
  private:
   
   mutable std::mutex _mutex;
   
   /// @brief warnings collected during execution
-  std::vector<std::pair<int, std::string>> _list;
+  std::vector<std::pair<ErrorCode, std::string>> _list;
   
   size_t _maxWarningCount;
   bool _failOnWarning;
@@ -78,4 +76,3 @@ public:
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

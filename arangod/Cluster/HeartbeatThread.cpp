@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include <map>
 
 #include <Agency/AsyncAgencyComm.h>
+#include <Basics/application-exit.h>
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -55,6 +56,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
+#include "Utils/Events.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -62,20 +64,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
 std::atomic<bool> HeartbeatThread::HasRunOnce(false);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief static object to record thread crashes.  it is static so that
-///        it can contain information about threads that crash before
-///        HeartbeatThread starts (i.e. HeartbeatThread starts late).  this list
-///        is intentionally NEVER PURGED so that it can be reposted to logs
-///        regularly
-////////////////////////////////////////////////////////////////////////////////
-
-static std::multimap<std::chrono::system_clock::time_point /* when */, const std::string /* threadName */> deadThreads;
-
-static std::chrono::system_clock::time_point deadThreadsPosted;  // defaults to epoch
-
-static arangodb::Mutex deadThreadsMutex;
 
 namespace arangodb {
 
@@ -87,6 +75,7 @@ class HeartbeatBackgroundJobThread : public Thread {
         _heartbeatThread(heartbeatThread),
         _stop(false),
         _sleeping(false),
+        _anotherRun(true),
         _backgroundJobsLaunched(0) {}
 
   ~HeartbeatBackgroundJobThread() { shutdown(); }
@@ -128,7 +117,10 @@ class HeartbeatBackgroundJobThread : public Thread {
           _sleeping.store(true, std::memory_order_release);
 
           while (true) {
-            _condition.wait(guard);
+
+            if(_condition.wait_for(guard, std::chrono::seconds(5)) == std::cv_status::timeout) {
+              _anotherRun = true;
+            }
 
             if (_stop) {
               return;
@@ -146,9 +138,13 @@ class HeartbeatBackgroundJobThread : public Thread {
       // execute schmutz here
       uint64_t jobNr = ++_backgroundJobsLaunched;
       LOG_TOPIC("9ec42", DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
-      {
+      try {
         auto& job = _heartbeatThread->agencySync();
         job.work();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("1c9a4", ERR, Logger::HEARTBEAT) << "caught exception during agencySync: " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("659a8", ERR, Logger::HEARTBEAT) << "caught unknown exception during agencySync";
       }
       LOG_TOPIC("71f07", DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
     }
@@ -192,10 +188,16 @@ class HeartbeatBackgroundJobThread : public Thread {
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
+struct HeartbeatScale {
+  static log_scale_t<uint64_t> scale() { return {2, 4, 8000, 10}; }
+};
+DECLARE_COUNTER(arangodb_heartbeat_failures_total, "Counting failed heartbeat transmissions");
+DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale, "Time required to send heartbeat [ms]");
+
 HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server,
                                  AgencyCallbackRegistry* agencyCallbackRegistry,
                                  std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning)
-    : CriticalThread(server, "Heartbeat"),
+    : Thread(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
       _agency(server),
@@ -216,14 +218,14 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _invalidateCoordinators(true),
       _lastPlanVersionNoticed(0),
       _lastCurrentVersionNoticed(0),
-      _DBServerUpdateCounter(0),
+      _updateCounter(0),
+      _updateDBServers(false),
+      _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(_server, this),
-      _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
-          StaticStrings::HeartbeatSendTimeMs, log_scale_t<uint64_t>(2, 4, 8000, 10),
-          "Time required to send heartbeat [ms]")),
-      _heartbeat_failure_counter(server.getFeature<arangodb::MetricsFeature>().counter(
-          StaticStrings::HeartbeatFailureCounter, 0,
-          "Counting failed heartbeat transmissions")) {}
+      _heartbeat_send_time_ms(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_send_time_msec{})),
+      _heartbeat_failure_counter(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_failures_total{})) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -248,6 +250,49 @@ HeartbeatThread::~HeartbeatThread() {
 void HeartbeatThread::run() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
+  std::unordered_map<std::string, std::shared_ptr<AgencyCallback>> serverCallbacks{};
+  if (ServerState::instance()->isCoordinator(role) ||
+      ServerState::instance()->isDBServer(role) ||
+      (ServerState::instance()->isSingleServer(role) &&
+       _server.getFeature<ReplicationFeature>().isActiveFailoverEnabled())) {
+    std::function<bool(VPackSlice const& result)> updbs = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("fe092", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current db servers";
+      self->updateDBServers();
+      return true;
+    };
+    std::vector<std::string> const dbServerAgencyPaths{
+      "Current/DBServers", "Target/FailedServers", "Target/CleanedServers", "Target/ToBeCleanedServers"};
+    for (auto const& path : dbServerAgencyPaths) {
+      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, updbs, true, false));
+    }
+    std::function<bool(VPackSlice const& result)> upsrv = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("2e09f", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current servers and rebootIds";
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadServers();
+      return true;
+    };
+    std::vector<std::string> const serverAgencyPaths{
+      "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown",
+      "Current/ServersKnown/" + ServerState::instance()->getId()};
+    for (auto const& path : serverAgencyPaths) {
+      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
+    }
+    std::function<bool(VPackSlice const& result)> upcrd = [self = shared_from_this()] (VPackSlice const& result) {
+      LOG_TOPIC("2f09e", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current coordinators";
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadCurrentCoordinators();
+      return true;
+    };
+    std::string const path = "Current/Coordinators";
+    serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upcrd, true, false));
+
+    for (auto const& cb : serverCallbacks) {
+      auto res = _agencyCallbackRegistry->registerCallback(cb.second);
+      if (!res.ok()) {
+        LOG_TOPIC("97aa8", WARN, Logger::HEARTBEAT)
+          << "Failed to register agency cache callback to " << cb.first << " degrading performance";
+      }
+    }
+  }
+
   // mop: the heartbeat thread itself is now ready
   setReady();
   // mop: however we need to wait for the rest server here to come up
@@ -266,7 +311,7 @@ void HeartbeatThread::run() {
     }
   }
 
-  LOG_TOPIC("9788a", TRACE, Logger::HEARTBEAT)
+  LOG_TOPIC("978a8", TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
   if (ServerState::instance()->isCoordinator(role)) {
@@ -274,15 +319,19 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isDBServer(role)) {
     runDBServer();
   } else if (ServerState::instance()->isSingleServer(role)) {
-    if (ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
+    if (_server.getFeature<ReplicationFeature>().isActiveFailoverEnabled()) {
       runSingleServer();
     }
   } else if (ServerState::instance()->isAgent(role)) {
-    runSimpleServer();
+    runAgent();
   } else {
     LOG_TOPIC("8291e", ERR, Logger::HEARTBEAT)
         << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
+  }
+
+  for (auto const& acb : serverCallbacks) {
+    _agencyCallbackRegistry->unregisterCallback(acb.second);
   }
 
   LOG_TOPIC("eab40", TRACE, Logger::HEARTBEAT)
@@ -369,10 +418,24 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
                 << "Found greater Current/Version in agency.";
           }
         }
-        notify();
       }
     }
   }
+
+  // Periodical or event-based update of DBServers and pruning of
+  // agency comm connection pool:
+  auto updateDBServers = _updateDBServers.exchange(false);
+  if (updateDBServers || ++_updateCounter >= 60) {
+    auto& clusterFeature = server().getFeature<ClusterFeature>();
+    auto& ci = clusterFeature.clusterInfo();
+    ci.loadCurrentDBServers();
+    _updateCounter = 0;
+    clusterFeature.pruneAsyncAgencyConnectionPool();
+  }
+}
+
+void HeartbeatThread::updateDBServers() {
+  _updateDBServers.store(true);
 }
 
 DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
@@ -383,74 +446,25 @@ DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
 
 void HeartbeatThread::runDBServer() {
 
-    using namespace std::chrono_literals;
+  using namespace std::chrono_literals;
 
-  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+  while (!isStopping() && !server().getFeature<DatabaseFeature>().started()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    LOG_TOPIC("eec21", DEBUG, Logger::HEARTBEAT)
+        << "Waiting for database feature to finish start up";
+  }
+
   if (!_maintenanceThread->start()) {
     // WHAT TO DO NOW?
     LOG_TOPIC("12cee", ERR, Logger::HEARTBEAT)
         << "Failed to start dedicated thread for maintenance";
   }
 
-  std::function<bool(VPackSlice const& result)> updatePlan = [=](VPackSlice const& result) {
-    if (!result.isNumber()) {
-      LOG_TOPIC("f0d86", ERR, Logger::HEARTBEAT)
-          << "Plan Version is not a number! " << result.toJson();
-      return false;
-    }
-
-    uint64_t version = result.getNumber<uint64_t>();
-    bool doSync = false;
-
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      if (version > _desiredVersions->plan) {
-        _desiredVersions->plan = version;
-        LOG_TOPIC("7085e", DEBUG, Logger::HEARTBEAT)
-            << "Desired Plan Version is now " << _desiredVersions->plan;
-        doSync = true;
-      }
-    }
-
-    if (doSync) {
-      notify();
-    }
-
-    return true;
-  };
-
-  std::function<bool(VPackSlice const& result)> updateCurrent = [=](VPackSlice const& result) {
-    if (!result.isNumber()) {
-      LOG_TOPIC("e8f34", ERR, Logger::HEARTBEAT)
-          << "Plan Version is not a number! " << result.toJson();
-      return false;
-    }
-
-    uint64_t version = result.getNumber<uint64_t>();
-    bool doSync = false;
-
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      if (version > _desiredVersions->current) {
-        _desiredVersions->current = version;
-        LOG_TOPIC("aff8c", DEBUG, Logger::HEARTBEAT)
-            << "Desired Current Version is now " << _desiredVersions->plan;
-        doSync = true;
-      }
-    }
-
-    if (doSync) {
-      notify();
-    }
-
-    return true;
-  };
-
   // The following helps to synchronize between a background read
   // operation run in a scheduler thread and a the heartbeat
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
-  std::shared_ptr<std::atomic<int>> getNewsRunning(new std::atomic<int>(0));
+  auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
 
   // Loop priorities / goals
   // 0. send state to agency server
@@ -466,7 +480,6 @@ void HeartbeatThread::runDBServer() {
   while (!isStopping()) {
     try {
       auto const start = std::chrono::steady_clock::now();
-      logThreadDeaths();
       // send our state to the agency.
       sendServerState();
 
@@ -497,8 +510,6 @@ void HeartbeatThread::runDBServer() {
       if (isStopping()) {
         break;
       }
-
-      notify();
 
       CONDITION_LOCKER(locker, _condition);
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
@@ -572,9 +583,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     VPackSlice foxxmasterQueueupdateSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Current", "FoxxmasterQueueupdate"}));
 
-    if (foxxmasterQueueupdateSlice.isBool()) {
-      ServerState::instance()->setFoxxmasterQueueupdate(
-          foxxmasterQueueupdateSlice.getBool());
+    if (foxxmasterQueueupdateSlice.isBool() && foxxmasterQueueupdateSlice.getBool()) {
+      ServerState::instance()->setFoxxmasterQueueupdate(true);
     }
 
     VPackSlice foxxmasterSlice = result[0].get(std::vector<std::string>(
@@ -671,14 +681,13 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
 
-      std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
-      if (prgl) {
-        pregel::RecoveryManager* mngr = prgl->recoveryManager();
+      if (_server.hasFeature<pregel::PregelFeature>()) {
+        auto& pregel = _server.getFeature<pregel::PregelFeature>();
+        pregel::RecoveryManager* mngr = pregel.recoveryManager();
         if (mngr != nullptr) {
           mngr->updatedFailedServers(failedServers);
         }
       }
-
     } else {
       LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
@@ -697,9 +706,11 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   _invalidateCoordinators = !_invalidateCoordinators;
 
   // Periodically update the list of DBServers:
-  if (++_DBServerUpdateCounter >= 60) {
+  if (++_updateCounter >= 60) {
     ci.loadCurrentDBServers();
-    _DBServerUpdateCounter = 0;
+    _updateCounter = 0;
+    auto& clusterFeature = server().getFeature<ClusterFeature>();
+    clusterFeature.pruneAsyncAgencyConnectionPool();
   }
 }
 
@@ -710,10 +721,9 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 void HeartbeatThread::runSingleServer() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-  TRI_ASSERT(replication != nullptr);
+  ReplicationFeature& replication = _server.getFeature<ReplicationFeature>();
 
-  GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+  GlobalReplicationApplier* applier = replication.globalReplicationApplier();
   TRI_ASSERT(applier != nullptr && _server.hasFeature<ClusterFeature>());
   ClusterInfo& ci = _server.getFeature<ClusterFeature>().clusterInfo();
 
@@ -728,8 +738,6 @@ void HeartbeatThread::runSingleServer() {
   uint64_t lastSentVersion = 0;
   auto start = std::chrono::steady_clock::now();
   while (!isStopping()) {
-    logThreadDeaths();
-
     {
       CONDITION_LOCKER(locker, _condition);
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
@@ -752,7 +760,8 @@ void HeartbeatThread::runSingleServer() {
       // check current local version of database objects version, and bump
       // the global version number in the agency in case it changed. this
       // informs other listeners about our local DDL changes
-      uint64_t currentVersion = DatabaseFeature::DATABASE->versionTracker()->current();
+      uint64_t currentVersion =
+          _server.getFeature<DatabaseFeature>().versionTracker()->current();
       if (currentVersion != lastSentVersion) {
         AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
         AgencyWriteTransaction trx(incrementVersion);
@@ -838,7 +847,7 @@ void HeartbeatThread::runSingleServer() {
         if (result.successful()) {  // successful leadership takeover
           leader = myIdBuilder.slice();
           // intentionally falls through to case 2
-        } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+        } else if (result.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
           // we did not become leader, someone else is, response contains
           // current value in agency
           LOG_TOPIC("7cf85", INFO, Logger::HEARTBEAT)
@@ -877,7 +886,7 @@ void HeartbeatThread::runSingleServer() {
         }
         // we are leader now. make sure the applier drops its previous state
         applier->forget();
-        lastTick = EngineSelectorFeature::ENGINE->currentTick();
+        lastTick = _server.getFeature<EngineSelectorFeature>().engine().currentTick();
 
         // put the leader in optional read-only mode
         auto readOnlySlice = response.get(
@@ -928,7 +937,8 @@ void HeartbeatThread::runSingleServer() {
         TRI_ASSERT(!applier->isActive());
         applier->forget();  // make sure applier is doing a resync
 
-        Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
+        auto& gs = _server.getFeature<GeneralServerFeature>();
+        Result res = gs.jobManager().clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC("e0817", WARN, Logger::HEARTBEAT)
               << "could not cancel all async jobs " << res.errorMessage();
@@ -1020,6 +1030,12 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC("9a79c", ERR, Logger::HEARTBEAT)
           << "got an unknown exception in single server heartbeat";
     }
+    // Periodically prune the connection pool
+    if (++_updateCounter >= 60) {
+      _updateCounter = 0;
+      auto& clusterFeature = server().getFeature<ClusterFeature>();
+      clusterFeature.pruneAsyncAgencyConnectionPool();
+    }
   }
 }
 
@@ -1046,7 +1062,6 @@ void HeartbeatThread::runCoordinator() {
   while (!isStopping()) {
     try {
       auto const start = std::chrono::steady_clock::now();
-      logThreadDeaths();
       // send our state to the agency.
       sendServerState();
 
@@ -1092,25 +1107,26 @@ void HeartbeatThread::runCoordinator() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop, agent and sole db version
+/// @brief heartbeat main loop, agent version
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::runSimpleServer() {
+void HeartbeatThread::runAgent() {
   // simple loop to post dead threads every hour, no other tasks today
   while (!isStopping()) {
-    logThreadDeaths();
-
-    {
+    try {
       CONDITION_LOCKER(locker, _condition);
       if (!isStopping()) {
         locker.wait(std::chrono::hours(1));
       }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("e6761", ERR, Logger::HEARTBEAT)
+          << "Got an exception in agent heartbeat: " << ex.what();
+    } catch (...) {
+      LOG_TOPIC("e1dbc", ERR, Logger::HEARTBEAT)
+          << "Got an unknown exception in agent heartbeat";
     }
-  }  // while
-
-  logThreadDeaths(true);
-
-}  // HeartbeatThread::runSimpleServer
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the heartbeat
@@ -1122,11 +1138,40 @@ bool HeartbeatThread::init() {
   if (ServerState::instance()->isClusterRole() && !sendServerState()) {
     return false;
   }
-
+  if (ServerState::instance()->isDBServer()) {
+    // the maintenanceThread is only required by DB server instances, but we deliberately
+    // initialize it here instead of in runDBServer because the ClusterInfo::SyncerThread
+    // uses HeartbeatThread::notify to notify this thread, but that SyncerThread is started
+    // before runDBServer is called. So in order to prevent a data race we should initialize
+    // _maintenanceThread before that SyncerThread is started.
+    _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
+  }
   return true;
 }
 
 void HeartbeatThread::beginShutdown() {
+  // First shut down the maintenace thread:
+  if (_maintenanceThread != nullptr) {
+    _maintenanceThread->stop();
+
+    // Wait until maintenance thread has terminated:
+    size_t counter = 0;
+    auto start = std::chrono::steady_clock::now();
+    while (_maintenanceThread->isRunning()) {
+      if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
+        LOG_TOPIC("d8a5c", FATAL, Logger::CLUSTER)
+        << "exiting prematurely as we failed terminating the maintenance thread";
+        FATAL_ERROR_EXIT();
+      }
+      if (++counter % 50 == 0) {
+        LOG_TOPIC("acaaa", WARN, arangodb::Logger::CLUSTER)
+        << "waiting for maintenance thread to finish";
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+  }
+
+  // And now the heartbeat thread:
   CONDITION_LOCKER(guard, _condition);
 
   // set the shutdown state in parent class
@@ -1134,6 +1179,7 @@ void HeartbeatThread::beginShutdown() {
 
   // break _condition.wait() in runDBserver
   _condition.signal();
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1145,12 +1191,12 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   MUTEX_LOCKER(mutexLocker, *_statusLock);
   if (result.success) {
     LOG_TOPIC("ce0db", DEBUG, Logger::HEARTBEAT)
-        << "Sync request successful. Now have Plan " << result.planVersion
-        << ", Current " << result.currentVersion;
+      << "Sync request successful. Now have Plan index " << result.planIndex
+      << ", Current index " << result.currentIndex;
     _currentVersions = AgencyVersions(result);
   } else {
     LOG_TOPIC("b72a6", ERR, Logger::HEARTBEAT)
-        << "Sync request failed: " << result.errorMessage;
+      << "Sync request failed: " << result.errorMessage;
   }
 }
 
@@ -1186,7 +1232,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         continue;
       }
 
-      arangodb::CreateDatabaseInfo info(_server);
+      arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
       TRI_ASSERT(options.value.get("name").isString());
       // when loading we allow system database names
       auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
@@ -1206,6 +1252,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
         // create a local database object...
         Result res = databaseFeature.createDatabase(std::move(info), vocbase);
+        events::CreateDatabase(dbName, res, ExecContext::current());
 
         if (res.fail()) {
           LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
@@ -1233,7 +1280,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        databaseFeature.dropDatabase(id, true);
+        TRI_vocbase_t* db = databaseFeature.useDatabase(id);
+        TRI_ASSERT(db);
+        std::string dbName = db ? db->name() : "n/a";
+        if (db) {
+          db->release();
+        }
+        Result res = databaseFeature.dropDatabase(id, true);
+        events::DropDatabase(dbName, res, ExecContext::current());
       }
     }
 
@@ -1287,7 +1341,8 @@ bool HeartbeatThread::sendServerState() {
   if (isStopping()) {
     timeout = 5.0;
   }
-  const AgencyCommResult result = _agency.sendServerState(timeout);
+
+  AgencyCommResult const result = _agency.sendServerState(timeout);
 
   if (result.successful()) {
     _numFails = 0;
@@ -1339,48 +1394,3 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
         << "Cannot find an agency persisted in RAFT 8|";
   }
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief record the death of a thread, adding
-/// std::chrono::system_clock::now().
-///        This is a static function because HeartbeatThread might not have
-///        started yet
-//////////////////////////////////////////////////////////////////////////////
-
-void HeartbeatThread::recordThreadDeath(const std::string& threadName) {
-  MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
-
-  deadThreads.insert(std::pair<std::chrono::system_clock::time_point, const std::string>(
-      std::chrono::system_clock::now(), threadName));
-}  // HeartbeatThread::recordThreadDeath
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief post list of deadThreads to current log.  Called regularly, but only
-///        posts to log roughly every 60 minutes
-//////////////////////////////////////////////////////////////////////////////
-
-void HeartbeatThread::logThreadDeaths(bool force) {
-  bool doLogging(force);
-
-  MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
-
-  if (std::chrono::hours(1) < (std::chrono::system_clock::now() - deadThreadsPosted)) {
-    doLogging = true;
-  }  // if
-
-  if (doLogging) {
-    deadThreadsPosted = std::chrono::system_clock::now();
-
-    LOG_TOPIC("500ff", DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
-    std::string buffer;
-    buffer.reserve(40);
-
-    for (auto const& it : deadThreads) {
-      buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
-
-      LOG_TOPIC("1d632", ERR, Logger::HEARTBEAT)
-          << "Prior crash of thread " << it.second << " occurred at " << buffer;
-    }  // for
-  }    // if
-
-}  // HeartbeatThread::logThreadDeaths

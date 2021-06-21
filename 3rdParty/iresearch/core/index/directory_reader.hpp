@@ -28,7 +28,7 @@
 #include "index_reader.hpp"
 #include "utils/object_pool.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief representation of the metadata of a directory_reader
@@ -146,6 +146,6 @@ inline bool operator!=(std::nullptr_t, const directory_reader& rhs) noexcept {
   return rhs != nullptr;
 }
 
-NS_END
+}
 
 #endif

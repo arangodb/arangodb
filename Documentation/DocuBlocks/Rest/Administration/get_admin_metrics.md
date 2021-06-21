@@ -4,6 +4,12 @@
 
 @RESTHEADER{GET /_admin/metrics, Read the metrics, getMetrics}
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{serverId,string,optional}
+Returns metrics of the specified server. If no serverId is given, the asked 
+server will reply. This parameter is only meaningful on Coordinators.
+
 @RESTDESCRIPTION
 Returns the instance's current metrics in Prometheus format. The
 returned document collects all instance metrics, which are measured

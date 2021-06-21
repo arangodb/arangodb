@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_INDEX_H
-#define ARANGOD_INDEXES_INDEX_H 1
+#pragma once
 
 #include <iosfwd>
 
@@ -105,9 +104,6 @@ class Index {
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX
   };
-
-  /// @brief: mode to signal how operation should behave
-  enum OperationMode { normal, internal, rollback };
   
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering
@@ -126,7 +122,7 @@ class Index {
     
     static FilterCosts zeroCosts();
 
-    static FilterCosts defaultCosts(size_t itemsInIndex);
+    static FilterCosts defaultCosts(size_t itemsInIndex, size_t numLookups = 1);
   };
   
   /// @brief: helper struct returned by index methods that determine the costs
@@ -143,7 +139,7 @@ class Index {
     
     static SortCosts zeroCosts(size_t coveredAttributes);
     
-    static SortCosts defaultCosts(size_t itemsInIndex, bool isPersistent);
+    static SortCosts defaultCosts(size_t itemsInIndex);
   };
 
  public:
@@ -290,11 +286,9 @@ class Index {
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
-
-  /// @brief whether or not the index is persistent (storage on durable media)
-  /// or not (RAM only)
-  virtual bool isPersistent() const = 0;
+  static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
+                      velocypack::Slice const& rhs,
+                      std::string const& dbname);
 
   virtual bool canBeDropped() const = 0;
 
@@ -443,8 +437,8 @@ class Index {
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, int code,
-                                std::string const& key = "") {
+  arangodb::Result& addErrorMsg(Result& r, ErrorCode code,
+                                std::string const& key = "") const {
     if (code != TRI_ERROR_NO_ERROR) {
       r.reset(code);
       return addErrorMsg(r, key);
@@ -454,7 +448,8 @@ class Index {
 
   /// @brief generate error result
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
+  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "") const;
+  void addErrorMsg(result::Error& err, std::string const& key) const;
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified
@@ -502,4 +497,3 @@ struct AttributeAccessParts {
 std::ostream& operator<<(std::ostream&, arangodb::Index const*);
 std::ostream& operator<<(std::ostream&, arangodb::Index const&);
 
-#endif

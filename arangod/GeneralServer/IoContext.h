@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,12 +21,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GENERAL_SERVER_IO_CONTEXT_H
-#define ARANGOD_GENERAL_SERVER_IO_CONTEXT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
 #include "Basics/asio_ns.h"
+
+#include <atomic>
 
 namespace arangodb {
 namespace application_features {
@@ -85,4 +86,3 @@ class IoContext {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

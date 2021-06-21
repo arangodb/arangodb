@@ -13,7 +13,7 @@ It is considered as deprecated from version 3.4.0 on.
 @RESTDESCRIPTION
 Returns an array of all configured endpoints the server is listening on.
 
-The result is a JSON array of JSON objects, each with `"entrypoint"' as
+The result is a JSON array of JSON objects, each with `"entrypoint"` as
 the only attribute, and with the value being a string describing the
 endpoint.
 

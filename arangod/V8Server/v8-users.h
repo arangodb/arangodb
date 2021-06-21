@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_USERS_H
-#define ARANGOD_V8_SERVER_V8_USERS_H 1
+#pragma once
 
 #include <v8.h>
 
@@ -32,4 +31,3 @@ struct TRI_v8_global_t;
 void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                      TRI_v8_global_t* v8g, v8::Isolate* isolate);
 
-#endif

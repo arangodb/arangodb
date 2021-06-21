@@ -34,7 +34,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ResourceUsage.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_INITIAL_SYNCER_H
-#define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -45,7 +44,7 @@ class InitialSyncer : public Syncer {
   ~InitialSyncer();
 
  public:
-  virtual Result run(bool incremental) = 0;
+  virtual Result run(bool incremental, char const* context = nullptr) = 0;
 
   /// @brief return the last log tick of the leader at start
   TRI_voc_tick_t getLastLogTick() const { return _state.leader.lastLogTick; }
@@ -70,4 +69,3 @@ class InitialSyncer : public Syncer {
 };
 }  // namespace arangodb
 
-#endif

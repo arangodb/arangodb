@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Statistics/RequestStatistics.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -84,10 +85,13 @@ void RestActionHandler::executeAction() {
     if (suffixes.empty() ||
         (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
       // request to just /
-      _response->setResponseCode(rest::ResponseCode::MOVED_PERMANENTLY);
+      auto& gs = server().getFeature<GeneralServerFeature>();
+      _response->setResponseCode(gs.permanentRootRedirect()
+				 ? rest::ResponseCode::MOVED_PERMANENTLY
+				 : rest::ResponseCode::FOUND);
       _response->setHeaderNC(StaticStrings::Location,
                              "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
-                                 "/_admin/aardvark/index.html");
+			     gs.redirectRootTo());
       return;
     }
   }

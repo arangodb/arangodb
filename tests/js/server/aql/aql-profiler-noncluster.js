@@ -24,14 +24,12 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // contains common code for aql-profiler* tests
-const profHelper = require("@arangodb/aql-profiler-test-helper");
+const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 
 const _ = require('lodash');
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @file test suite for AQL tracing/profiling: noncluster tests
@@ -51,13 +49,13 @@ function ahuacatlProfilerTestSuite () {
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
+    TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { AsyncBlock, CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
@@ -89,7 +87,7 @@ function ahuacatlProfilerTestSuite () {
     /*testEnumerateCollectionBlock1: function () {
       const col = db._create(colName);
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = () => ({'@col': colName});
@@ -116,7 +114,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       col.ensureIndex({ type: "hash", fields: [ "value" ] });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = (rows) => ({'@col': colName, rows});
@@ -151,7 +149,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       col.ensureIndex({ type: "hash", fields: [ "value" ] });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = (rows) => ({'@col': colName, rows});
@@ -201,12 +199,13 @@ function ahuacatlProfilerTestSuite () {
       const prepare = (rows) => {
         profHelper.createBinaryTree(col, edgeCol, rows);
       };
-      const query = `FOR v IN 0..@rows OUTBOUND @root @@edgeCol RETURN v`;
+      const query = `WITH @@vertexCol FOR v IN 0..@rows OUTBOUND @root @@edgeCol RETURN v`;
       const rootNodeId = `${colName}/1`;
       const bind = rows => ({
         rows: rows,
         root: rootNodeId,
         '@edgeCol': edgeColName,
+        '@vertexCol': colName,
       });
 
       const genNodeList = (rows, batches) => {
@@ -231,7 +230,7 @@ function ahuacatlProfilerTestSuite () {
       const prepare = (rows) => {
         profHelper.createBinaryTree(col, edgeCol, rows);
       };
-      const query = `FOR v IN 0..@depth OUTBOUND @root @@edgeCol RETURN v`;
+      const query = `WITH @@vertexCol FOR v IN 0..@depth OUTBOUND @root @@edgeCol RETURN v`;
       const rootNodeId = `${colName}/1`;
       // actual tree depth:
       // const treeDepth = rows => Math.ceil(Math.log2(rows));
@@ -243,6 +242,7 @@ function ahuacatlProfilerTestSuite () {
         depth: depth(rows),
         root: rootNodeId,
         '@edgeCol': edgeColName,
+        '@vertexCol': colName,
       });
       const visitedNodes = rows => Math.pow(2, depth(rows)+1)-1;
 
@@ -270,7 +270,7 @@ function ahuacatlProfilerTestSuite () {
       const prepare = (rows) => {
         profHelper.createBinaryTree(col, edgeCol, rows);
       };
-      const query = `FOR v IN @depth..@rows OUTBOUND @root @@edgeCol RETURN v`;
+      const query = `WITH @@vertexCol FOR v IN @depth..@rows OUTBOUND @root @@edgeCol RETURN v`;
       const rootNodeId = `${colName}/1`;
       // actual tree depth:
       // const treeDepth = rows => Math.ceil(Math.log2(rows));
@@ -283,6 +283,7 @@ function ahuacatlProfilerTestSuite () {
         depth: depth(rows),
         root: rootNodeId,
         '@edgeCol': edgeColName,
+        '@vertexCol': colName,
       });
       const skippedNodes = rows => Math.pow(2, depth(rows))-1;
       const visitedNodes = rows => rows - skippedNodes(rows);
@@ -354,7 +355,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = () => ({'@view': viewName});
@@ -387,7 +388,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = () => ({'@view': viewName});
@@ -421,7 +422,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = () => ({'@view': viewName});

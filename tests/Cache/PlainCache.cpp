@@ -29,22 +29,27 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/xoroshiro128plus.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
 #include "Random/RandomGenerator.h"
 
+#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 // long-running
 
 TEST(CachePlainCacheTest, test_basic_cache_creation) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024);
   auto cache1 = manager.createCache(CacheType::Plain, false, 256 * 1024);
   ASSERT_TRUE(true);
   auto cache2 = manager.createCache(CacheType::Plain, false, 512 * 1024);
@@ -61,7 +66,9 @@ TEST(CachePlainCacheTest, test_basic_cache_creation) {
 TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -112,7 +119,9 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
 TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -173,7 +182,9 @@ TEST(CachePlainCacheTest, verify_that_cache_can_indeed_grow_when_it_runs_out_of_
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
   auto cache = manager.createCache(CacheType::Plain);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
@@ -200,7 +211,9 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache = manager.createCache(CacheType::Plain);
 
@@ -292,7 +305,9 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
 TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   std::uint64_t cacheLimit = 256 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cacheMiss = manager.createCache(CacheType::Plain, true, cacheLimit);
   auto cacheHit = manager.createCache(CacheType::Plain, true, cacheLimit);
   auto cacheMixed = manager.createCache(CacheType::Plain, true, cacheLimit);

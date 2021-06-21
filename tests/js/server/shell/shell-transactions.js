@@ -113,9 +113,11 @@ function transactionFailuresSuite () {
     },
 
     testCommitTransactionWithRemovalsFailure : function () {
+      let docs = [];
       for (var i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        docs.push({ _key: "test" + i });
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       
       internal.debugSetFailAt("TransactionCommitFail");
@@ -1789,7 +1791,7 @@ function transactionOperationsSuite () {
           write: [ cn1 ]
         },
         action: function () {
-          c1.truncate();
+          c1.truncate({ compact: false });
           return true;
         }
       };
@@ -1817,7 +1819,7 @@ function transactionOperationsSuite () {
           write: [ cn1 ]
         },
         action: function () {
-          c1.truncate();
+          c1.truncate({ compact: false });
           return true;
         }
       };
@@ -1845,7 +1847,7 @@ function transactionOperationsSuite () {
           write: [ cn1 ]
         },
         action: function () {
-          c1.truncate();
+          c1.truncate({ compact: false });
           c1.save({ _key: 'foo' });
           return true;
         }
@@ -3259,10 +3261,10 @@ function transactionCountSuite () {
           c1.remove(d2);
           assertEqual(1, c1.count());
 
-          c1.truncate();
+          c1.truncate({ compact: false });
           assertEqual(0, c1.count());
 
-          c1.truncate();
+          c1.truncate({ compact: false });
           assertEqual(0, c1.count());
 
           return true;

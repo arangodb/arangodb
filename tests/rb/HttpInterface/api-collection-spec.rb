@@ -912,21 +912,6 @@ describe ArangoDB do
         doc.parsed_response['keyOptions']['type'].should eq("traditional")
         doc.parsed_response['keyOptions']['allowUserKeys'].should eq(true)
 
-        body = "{ \"doCompact\" : false }"
-        doc = ArangoDB.log_put("#{prefix}-identifier-properties-no-compact", cmd, :body => body)
-
-        doc.code.should eq(200)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['id'].should eq(cid)
-        doc.parsed_response['name'].should eq(cn)
-        doc.parsed_response['status'].should eq(3)
-        doc.parsed_response['waitForSync'].should eq(false)
-        doc.parsed_response['isSystem'].should eq(false)
-        doc.parsed_response['keyOptions']['type'].should eq("traditional")
-        doc.parsed_response['keyOptions']['allowUserKeys'].should eq(true)
-
         ArangoDB.drop_collection(cn)
       end
 

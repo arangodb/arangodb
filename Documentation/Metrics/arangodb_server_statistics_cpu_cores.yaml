@@ -1,0 +1,17 @@
+name: arangodb_server_statistics_cpu_cores
+introducedIn: "3.8.0"
+help: |
+  Number of CPU cores visible to the arangod process
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of CPU cores visible to the arangod process, unless the
+  environment variable `ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES`
+  is set. In that case, the environment variable's value will be reported.

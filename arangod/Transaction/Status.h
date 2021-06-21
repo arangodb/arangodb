@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_STATUS_H
-#define ARANGOD_TRANSACTION_STATUS_H 1
+#pragma once
 
 #include <cstdint>
 #include <iosfwd>
@@ -63,9 +62,9 @@ static inline char const* statusString(Status status) {
 
 Status statusFromString(char const* str, size_t len);
 
+std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
+
 }  // namespace transaction
 }  // namespace arangodb
 
-std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
 
-#endif

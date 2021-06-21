@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORTED_COLLECT_EXECUTOR_H
-#define ARANGOD_AQL_SORTED_COLLECT_EXECUTOR_H
+#pragma once
 
 #include "Aql/Aggregator.h"
 #include "Aql/AqlValueGroup.h"
@@ -59,7 +58,7 @@ class SortedCollectExecutorInfos {
                              std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<std::string, RegisterId>>&& variables,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             velocypack::Options const*, bool count);
+                             velocypack::Options const*);
 
   SortedCollectExecutorInfos() = delete;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;
@@ -76,7 +75,6 @@ class SortedCollectExecutorInfos {
   std::vector<std::string> const& getAggregateTypes() const {
     return _aggregateTypes;
   }
-  bool getCount() const noexcept { return _count; };
   velocypack::Options const* getVPackOptions() const { return _vpackOptions; }
   RegisterId getCollectRegister() const noexcept { return _collectRegister; };
   RegisterId getExpressionRegister() const noexcept {
@@ -118,9 +116,6 @@ class SortedCollectExecutorInfos {
   
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
-
-  /// @brief COUNTing node?
-  bool _count;
 };
 
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;
@@ -137,7 +132,6 @@ class SortedCollectExecutor {
     std::vector<AqlValue> groupValues;
     AggregateValuesType aggregators;
     size_t groupLength;
-    bool const count;
     Infos& infos;
     InputAqlItemRow _lastInputRow;
     arangodb::velocypack::Buffer<uint8_t> _buffer;
@@ -148,7 +142,7 @@ class SortedCollectExecutor {
     CollectGroup(CollectGroup const&) = delete;
     CollectGroup& operator=(CollectGroup const&) = delete;
 
-    explicit CollectGroup(bool count, Infos& infos);
+    explicit CollectGroup(Infos& infos);
     ~CollectGroup();
 
     void initialize(size_t capacity);
@@ -216,4 +210,3 @@ class SortedCollectExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

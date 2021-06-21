@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_COMPACTOR_H
-#define ARANGOD_CONSENSUS_COMPACTOR_H 1
+#pragma once
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/ConditionVariable.h"
@@ -68,4 +67,3 @@ class Compactor : public arangodb::Thread {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

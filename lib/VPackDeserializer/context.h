@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef DESERIALIZER_CONTEXT_H
-#define DESERIALIZER_CONTEXT_H
+
+#pragma once
 #include "plan-executor.h"
 #include "utilities.h"
 
@@ -65,4 +65,3 @@ struct deserialize_plan_executor<context::context_modify_plan<D, Q>, H> {
 }  // namespace velocypack
 }  // namespace arangodb
 
-#endif  // DESERIALIZER_CONTEXT_H

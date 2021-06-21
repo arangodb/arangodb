@@ -61,7 +61,7 @@ namespace tests {
     ASSERT_EQ(term_features, terms.meta().features);
 
     for (auto term_itr = terms.iterator(); term_itr->next();) {
-      auto itr = expected_terms.find(term_itr->value());
+      auto itr = expected_terms.find(static_cast<T>(term_itr->value()));
 
       ASSERT_NE(expected_terms.end(), itr);
 
@@ -128,7 +128,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
   doc1.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc1.indexed.back<tests::int_field>();
-    field.name(irs::string_ref("doc_int"));
+    field.name("doc_int");
     field.value(42 * 1);
   }
   doc1.insert(
@@ -139,14 +139,14 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   doc2.insert(std::make_shared<tests::int_field>());
   {
     auto& field = doc2.indexed.back<tests::int_field>();
-    field.name(irs::string_ref("doc_int"));
+    field.name("doc_int");
     field.value(42 * 2);
   }
 
   doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3));
   doc3.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc3.indexed.back<tests::int_field>();
-    field.name(irs::string_ref("doc_int"));
+    field.name("doc_int");
     field.value(42 * 3);
   }
 
@@ -538,7 +538,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   doc1.insert(std::make_shared<tests::int_field>()); 
   {
     auto& field = doc1.indexed.back<tests::int_field>();
-    field.name(irs::string_ref("doc_int"));
+    field.name("doc_int");
     field.value(42 * 1);
   }
   doc1.insert(std::make_shared<tests::templates::string_field>("doc_string", string1));
@@ -546,7 +546,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2));
   doc2.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc2.indexed.back<tests::int_field>();
-    field.name(irs::string_ref("doc_int"));
+    field.name("doc_int");
     field.value(42 * 2);
   }
   
@@ -554,7 +554,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   doc3.insert(std::make_shared<tests::int_field>()); 
   {
     auto& field = doc3.indexed.back<tests::int_field>();
-    field.name(irs::string_ref("doc_int"));
+    field.name("doc_int");
     field.value(42 * 3);
   }
 
@@ -920,25 +920,25 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   // norm for 'doc_bytes' in 'doc1' : 1/sqrt(4)
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
-    field.name(irs::string_ref("doc_bytes"));
+    field.name("doc_bytes");
     field.value(bytes1);
     field.features().add<irs::norm>();
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
-    field.name(irs::string_ref("doc_bytes"));
+    field.name("doc_bytes");
     field.value(bytes1);
     field.features().add<irs::norm>();
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
-    field.name(irs::string_ref("doc_bytes"));
+    field.name("doc_bytes");
     field.value(bytes1);
     field.features().add<irs::norm>();
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
-    field.name(irs::string_ref("doc_bytes"));
+    field.name("doc_bytes");
     field.value(bytes1);
     field.features().add<irs::norm>();
   }
@@ -946,87 +946,87 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   // do not track norms for 'doc_bytes' in 'doc2'
   doc2.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc2.indexed.back<tests::binary_field>();
-    field.name(irs::string_ref("doc_bytes"));
+    field.name("doc_bytes");
     field.value(bytes2);
   }
   doc2.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc2.indexed.back<tests::binary_field>();
-    field.name(irs::string_ref("doc_bytes"));
+    field.name("doc_bytes");
     field.value(bytes2);
   }
 
   // norm for 'doc_bytes' in 'doc3' : 1/sqrt(2)
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
-    field.name(irs::string_ref("doc_bytes"));
+    field.name("doc_bytes");
     field.value(bytes3);
     field.features().add<irs::norm>();
   }
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
-    field.name(irs::string_ref("doc_bytes"));
+    field.name("doc_bytes");
     field.value(bytes3);
     field.features().add<irs::norm>();
   }
 
   doc1.insert(std::make_shared<tests::double_field>()); {
     auto& field = doc1.indexed.back<tests::double_field>();
-    field.name(irs::string_ref("doc_double"));
+    field.name("doc_double");
     field.value(2.718281828 * 1);
   }
   doc2.insert(std::make_shared<tests::double_field>()); {
     auto& field = doc2.indexed.back<tests::double_field>();
-    field.name(irs::string_ref("doc_double"));
+    field.name("doc_double");
     field.value(2.718281828 * 2);
   }
   doc3.insert(std::make_shared<tests::double_field>()); {
     auto& field = doc3.indexed.back<tests::double_field>();
-    field.name(irs::string_ref("doc_double"));
+    field.name("doc_double");
     field.value(2.718281828 * 3);
   }
   doc1.insert(std::make_shared<tests::float_field>()); {
     auto& field = doc1.indexed.back<tests::float_field>();
-    field.name(irs::string_ref("doc_float"));
+    field.name("doc_float");
     field.value(3.1415926535f * 1);
   }
   doc2.insert(std::make_shared<tests::float_field>()); {
     auto& field = doc2.indexed.back<tests::float_field>();
-    field.name(irs::string_ref("doc_float"));
+    field.name("doc_float");
     field.value(3.1415926535f * 2);
   }
   doc3.insert(std::make_shared<tests::float_field>()); {
     auto& field = doc3.indexed.back<tests::float_field>();
-    field.name(irs::string_ref("doc_float"));
+    field.name("doc_float");
     field.value(3.1415926535f * 3);
   }
   doc1.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc1.indexed.back<tests::int_field>();
-    field.name(irs::string_ref("doc_int"));
+    field.name("doc_int");
     field.value(42 * 1);
   }
   doc2.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc2.indexed.back<tests::int_field>();
-    field.name(irs::string_ref("doc_int"));
+    field.name("doc_int");
     field.value(42 * 2);
   }
   doc3.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc3.indexed.back<tests::int_field>();
-    field.name(irs::string_ref("doc_int"));
+    field.name("doc_int");
     field.value(42 * 3);
   }
   doc1.insert(std::make_shared<tests::long_field>()); {
     auto& field = doc1.indexed.back<tests::long_field>();
-    field.name(irs::string_ref("doc_long"));
+    field.name("doc_long");
     field.value(12345 * 1);
   }
   doc2.insert(std::make_shared<tests::long_field>()); {
     auto& field = doc2.indexed.back<tests::long_field>();
-    field.name(irs::string_ref("doc_long"));
+    field.name("doc_long");
     field.value(12345 * 2);
   }
   doc3.insert(std::make_shared<tests::long_field>()); {
     auto& field = doc3.indexed.back<tests::long_field>();
-    field.name(irs::string_ref("doc_long"));
+    field.name("doc_long");
     field.value(12345 * 3);
   }
   doc1.insert(std::make_shared<tests::templates::string_field>("doc_string", string1));

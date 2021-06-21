@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_LIMIT_STATS_H
-#define ARANGOD_AQL_LIMIT_STATS_H
+#pragma once
 
 #include "ExecutionStats.h"
 
@@ -61,4 +60,3 @@ auto operator==(LimitStats const&, LimitStats const&) noexcept -> bool;
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_LIMIT_STATS_H

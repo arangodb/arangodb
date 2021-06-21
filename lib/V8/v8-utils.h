@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__UTILS_H
-#define ARANGODB_V8_V8__UTILS_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
 #include <string>
 
 #include <v8.h>
+
+#include "Basics/ErrorCode.h"
 
 namespace arangodb {
 class Result;
@@ -121,12 +122,6 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes all files from a directory in a local context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteLocalJavaScriptDirectory(v8::Isolate* isolate, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -146,7 +141,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber);
+// void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::Result
@@ -157,8 +152,8 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const&);
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                           std::string const& message, bool autoPrepend);
+void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
+                           std::string_view message, bool autoPrepend);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a v8 object
@@ -191,4 +186,3 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args);
 
-#endif

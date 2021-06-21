@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_SYNCER_H
-#define ARANGOD_REPLICATION_SYNCER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -38,8 +37,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace httpclient {
-class GeneralClientConnection;
-class SimpleHttpClient;
 class SimpleHttpResult;
 }  // namespace httpclient
 
@@ -189,10 +186,14 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   void reloadUsers();
 
   /// @brief apply a single marker from the collection dump
+  /// If the returned Result is TRI_ERROR_ARANGO_TRY_AGAIN,
+  /// conflictingDocumentKey will be set to the key of the conflicting document.
+  /// Otherwise, it will be untouched.
   // TODO worker-safety
   Result applyCollectionDumpMarker(transaction::Methods&, LogicalCollection* coll,
                                    TRI_replication_operation_e,
-                                   arangodb::velocypack::Slice const&);
+                                   arangodb::velocypack::Slice const&,
+                                   std::string& conflictingDocumentKey);
 
   /// @brief creates a collection, based on the VelocyPack provided
   // TODO worker safety - create/drop phase
@@ -237,4 +238,3 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
 }  // namespace arangodb
 
-#endif

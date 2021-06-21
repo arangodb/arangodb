@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE_IDENTIFIERS_SERVER_ID_H
-#define ARANGOD_VOCBASE_IDENTIFIERS_SERVER_ID_H 1
+#pragma once
 
 #include "Basics/Identifier.h"
 
@@ -51,4 +50,3 @@ static_assert(sizeof(ServerId) == sizeof(ServerId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::ServerId)
 
-#endif

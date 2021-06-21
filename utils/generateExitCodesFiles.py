@@ -106,31 +106,6 @@ FunctionEnd
 
   return impl.replace("\r", "\r\n")
 
-# generate C implementation file from errors
-def genCFile(errors, filename):
-
-  headerfile = os.path.splitext(filename)[0] + ".h"
-
-  impl = prologue\
-         + "#include \"Basics/Common.h\"\n"\
-         + "#include \"Basics/exitcodes.h\"\n"\
-         + "\n"\
-         + "/// helper macro to define an exit code string\n"\
-         + "#define REG_EXIT(id, label) TRI_set_exitno_string(TRI_ ## id, label);\n"\
-         + "\n"\
-         + "void TRI_InitializeExitMessages() {\n"
-
-  # print individual errors
-  for e in errors:
-    msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
-    impl = impl\
-           + "  REG_EXIT(" + e[0] + ", \"" + msg + "\");\n"
-
-  impl = impl\
-       + "}\n"
-
-  return impl
-
 
 # generate C header file from errors
 def genCHeaderFile(errors):
@@ -155,9 +130,6 @@ def genCHeaderFile(errors):
            + "\n"
 
   header = header\
-         + "\n"\
-         + "/// register all exit codes for ArangoDB\n"\
-         + "void TRI_InitializeExitMessages();\n"\
          + "\n"\
          + "#endif\n"\
          + "\n"
@@ -208,8 +180,6 @@ if extension == ".js":
   out = genJsFile(errorsList)
 elif extension == ".h":
   out = genCHeaderFile(errorsList)
-elif extension == ".cpp":
-  out = genCFile(errorsList, filename)
 elif extension == ".nsh":
   out = genNSISFile(errorsList, filename)
 else:

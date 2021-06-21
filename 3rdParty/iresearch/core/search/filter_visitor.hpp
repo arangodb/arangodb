@@ -25,7 +25,7 @@
 
 #include "shared.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct sub_reader;
 struct term_reader;
@@ -51,6 +51,6 @@ struct IRESEARCH_API filter_visitor {
   virtual void visit(boost_t boost) = 0;
 }; // filter_visitor
 
-NS_END
+}
 
 #endif // IRESEARCH_FILTER_VISITOR_H

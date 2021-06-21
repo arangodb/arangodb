@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,19 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_AGENCY_STRINGS_H
-#define ARANGOD_AGENCY_AGENCY_STRINGS_H
+#pragma once
 
 #include <string>
 
 namespace arangodb {
 namespace consensus {
 
-constexpr char const* DATABASES = "Databases";
+
+
+constexpr char const* ANALYZERS = "Analyzers";
 constexpr char const* COLLECTIONS = "Collections";
+constexpr char const* DATABASES = "Databases";
+constexpr char const* VIEWS = "Views";
 constexpr char const* RECONFIGURE = ".agency";
 constexpr char const* VERSION = "Version";
 
@@ -43,6 +46,8 @@ constexpr char const* PLAN = "Plan";
 constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
+constexpr char const* PLAN_VIEWS = "Plan/Views/";
+constexpr char const* PLAN_ANALYZERS = "Plan/Analyzers/";
 
 constexpr char const* HOTBACKUP_KEY = "/Target/HotBackup/Create";
 
@@ -62,4 +67,3 @@ constexpr char const* OP_CMP = "cmp";
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

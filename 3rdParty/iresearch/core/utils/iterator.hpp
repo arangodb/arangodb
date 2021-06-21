@@ -31,7 +31,7 @@
 #include <cassert>
 #include <boost/iterator/iterator_facade.hpp>
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             Java style iterators 
@@ -100,7 +100,7 @@ template<
 // --SECTION--                                              C++ style iterators 
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(detail)
+namespace detail {
 
 template<typename SmartPtr>
 struct extract_element_type {
@@ -116,7 +116,7 @@ struct extract_element_type<const SmartPtr> {
   typedef const typename SmartPtr::element_type* pointer;
 };
 
-NS_END
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class const_ptr_iterator
@@ -214,6 +214,6 @@ class ptr_iterator
   IteratorImpl it_;
 };
 
-NS_END
+}
 
 #endif

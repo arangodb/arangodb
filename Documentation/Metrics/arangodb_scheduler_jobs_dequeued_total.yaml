@@ -1,0 +1,21 @@
+name: arangodb_scheduler_jobs_dequeued_total
+introducedIn: "3.8.0"
+help: |
+  Total number of jobs dequeued.
+unit: number
+type: counter
+category: Scheduler
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The total number of jobs dequeued from all scheduler queues.
+  Calculating the difference between arangodb_scheduler_jobs_submitted_total
+  and arangodb_scheduler_jobs_dequeued_total gives the total number of
+  currently queued jobs.
+  Calculating the difference between arangodb_scheduler_jobs_dequeued_total
+  and arangodb_scheduler_jobs_done_total gives the number of jobs currently
+  being processed.

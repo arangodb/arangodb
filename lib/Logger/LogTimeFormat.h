@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_TIME_FORMAT_H
-#define ARANGODB_LOGGER_LOG_TIME_FORMAT_H 1
+#pragma once
 
-#include <iosfwd>
+#include <chrono>
 #include <string>
 #include <unordered_set>
 
@@ -59,11 +58,13 @@ std::unordered_set<std::string> getAvailableFormatNames();
 /// @brief derive the time format from the name
 TimeFormat formatFromName(std::string const& name);
 
-/// @brief writes the current time into the given buffer,
+/// @brief writes the given time into the given buffer,
 /// in the specified format
-void writeTime(std::string& out, TimeFormat format);
+void writeTime(std::string& out, 
+               TimeFormat format, 
+               std::chrono::system_clock::time_point tp,
+               std::chrono::system_clock::time_point startTp = std::chrono::system_clock::time_point());
 
 }  // namespace LogTimeFormats
 }  // namespace arangodb
 
-#endif

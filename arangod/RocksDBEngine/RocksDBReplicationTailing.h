@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_TAILING_H
-#define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_TAILING_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Replication/common-defines.h"
@@ -49,4 +48,3 @@ arangodb::TRI_replication_operation_e convertLogType(RocksDBLogType t);
 }  // namespace rocksutils
 }  // namespace arangodb
 
-#endif

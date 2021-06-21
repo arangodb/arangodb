@@ -905,10 +905,6 @@ Status CTREncryptionProvider::CreateCipherStream(
   // If the prefix is smaller than twice the block size, we would below read a
   // very large chunk of the file (and very likely read over the bounds)
   if (prefix.size() < 2 * blockSize) {
-    if (prefix.size() == 0) {
-      return CreateCipherStreamFromPrefix(fname, options, 0, rocksdb::Slice(), prefix, result);
-    }
-
     return Status::Corruption("Unable to read from file " + fname +
                               ": read attempt would read beyond file bounds");
   }

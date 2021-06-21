@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_CLUSTER_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_CLUSTER_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestBaseHandler.h"
 
@@ -46,7 +45,9 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
 
   /// _api/cluster/agency-cache
   void handleAgencyCache();
+
+  /// _api/cluster/cluster-info
+  void handleClusterInfo();
 };
 }  // namespace arangodb
 
-#endif

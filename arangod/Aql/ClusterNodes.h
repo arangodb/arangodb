@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CLUSTER_NODES_H
-#define ARANGOD_AQL_CLUSTER_NODES_H 1
+#pragma once
 
 #include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
@@ -194,25 +193,12 @@ class ScatterNode : public ExecutionNode {
 /// @brief class DistributeNode
 class DistributeNode final : public ScatterNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with an id
  public:
   DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                  ScatterNode::ScatterType type, Collection const* collection,
-                 Variable const* variable, Variable const* alternativeVariable,
-                 bool createKeys, bool allowKeyConversionToObject, bool fixupGraphInput)
-      : ScatterNode(plan, id, type),
-        CollectionAccessingNode(collection),
-        _variable(variable),
-        _alternativeVariable(alternativeVariable),
-        _createKeys(createKeys),
-        _allowKeyConversionToObject(allowKeyConversionToObject),
-        _allowSpecifiedKeys(false),
-        _fixupGraphInput(fixupGraphInput) {
-    // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
-    TRI_ASSERT(!_fixupGraphInput || !_createKeys);
-  }
+                 Variable const* variable, ExecutionNodeId targetNodeId);
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -230,66 +216,33 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
-    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
-                                              collection(), _variable,
-                                              _alternativeVariable, _createKeys,
-                                              _allowKeyConversionToObject,
-                                              _fixupGraphInput);
-    c->copyClients(clients());
-    CollectionAccessingNode::cloneInto(*c);
-
-    return cloneHelper(std::move(c), withDependencies, withProperties);
-  }
+                       bool withProperties) const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  void variable(Variable const* variable) { _variable = variable; }
-
-  void alternativeVariable(Variable const* variable) {
-    _alternativeVariable = variable;
-  }
-
-  /// @brief set createKeys
-  void setCreateKeys(bool b) { _createKeys = b; }
-
-  /// @brief set allowKeyConversionToObject
-  void setAllowKeyConversionToObject(bool b) {
-    _allowKeyConversionToObject = b;
-  }
-
-  /// @brief set _allowSpecifiedKeys
-  void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
+  Variable const* getVariable() const noexcept { return _variable; }
+  
+  void setVariable(Variable const* var) noexcept { _variable = var; }
+  
+  ExecutionNodeId getTargetNodeId() const noexcept { return _targetNodeId; }
 
  private:
   /// @brief the variable we must inspect to know where to distribute
   Variable const* _variable;
-
-  /// @brief an optional second variable we must inspect to know where to
-  /// distribute
-  Variable const* _alternativeVariable;
-
-  /// @brief the node is responsible for creating document keys
-  bool _createKeys;
-
-  /// @brief allow conversion of key to object
-  bool _allowKeyConversionToObject;
-
-  /// @brief allow specified keys in input even in the non-default sharding case
-  bool _allowSpecifiedKeys;
-
-  /// @brief required to fixup graph input
-  bool _fixupGraphInput;
+  
+  /// @brief the id of the target ExecutionNode this DistributeNode belongs to.
+  ExecutionNodeId _targetNodeId;
 };
 
 /// @brief class GatherNode
 class GatherNode final : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   enum class SortMode : uint32_t { MinElement, Heap, Default };
@@ -340,9 +293,11 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief get Variables used here including ASC/DESC
   SortElementVector const& elements() const { return _elements; }
@@ -387,7 +342,6 @@ class GatherNode final : public ExecutionNode {
 /// @brief class RemoteNode
 class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
   friend class SingleRemoteOperationBlock;
   /// @brief constructor with an id
  public:
@@ -432,10 +386,10 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
-  virtual std::vector<Variable const*> getVariablesSetHere() const override final;
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -466,4 +420,3 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_DESERIALIZE_WITH_H
-#define VELOCYPACK_DESERIALIZE_WITH_H
+
+#pragma once
 
 #include "errors.h"
 #include "gadgets.h"
@@ -175,4 +175,3 @@ auto deserialize_with_context(::arangodb::velocypack::deserializer::slice_type s
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_DESERIALIZE_WITH_H

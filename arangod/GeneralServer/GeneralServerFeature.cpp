@@ -1,7 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,7 +83,6 @@
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestRedirectHandler.h"
-#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -121,14 +120,12 @@ namespace arangodb {
 
 static uint64_t const _maxIoThreads = 64;
 
-rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
-rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
-GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
-
 GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true),
+      _permanentRootRedirect(true),
+      _redirectRootTo("/_admin/aardvark/index.html"),
       _numIoThreads(0) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
@@ -145,8 +142,6 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
 }
 
 void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
-
   options->addOldOption("server.allow-method-override",
                         "http.allow-method-override");
   options->addOldOption("server.hide-product-header",
@@ -160,12 +155,13 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_numIoThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addSection("http", "HttpServer features");
+  options->addSection("http", "HTTP server features");
 
   options->addOption("--http.allow-method-override",
                      "allow HTTP method override using special headers",
                      new BooleanParameter(&_allowMethodOverride),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30800);
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
@@ -174,13 +170,22 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption(
       "--http.hide-product-header",
       "do not expose \"Server: ArangoDB\" header in HTTP responses",
-      new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
+      new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
+      .setDeprecatedIn(30800);
 
   options->addOption("--http.trusted-origin",
                      "trusted origin URLs for CORS requests with credentials",
                      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
 
-  options->addSection("frontend", "Frontend options");
+  options->addOption("--http.redirect-root-to",
+                    "redirect of root URL",
+                    new StringParameter(&_redirectRootTo))
+                    .setIntroducedIn(30712);
+
+  options->addOption("--http.permanently-redirect-root",
+                    "if true, use a permanent redirect. If false, use a temporary",
+                    new BooleanParameter(&_permanentRootRedirect))
+                    .setIntroducedIn(30712);
 
   options->addOption("--frontend.proxy-request-check",
                      "enable proxy request checking",
@@ -241,23 +246,24 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void GeneralServerFeature::prepare() {
   ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
-  GENERAL_SERVER = this;
 }
 
 void GeneralServerFeature::start() {
   _jobManager.reset(new AsyncJobManager);
 
-  JOB_MANAGER = _jobManager.get();
-
   _handlerFactory.reset(new RestHandlerFactory());
-
-  HANDLER_FACTORY = _handlerFactory.get();
 
   defineHandlers();
   buildServers();
 
   for (auto& server : _servers) {
     server->startListening();
+  }
+}
+
+void GeneralServerFeature::initiateSoftShutdown() {
+  if (_jobManager != nullptr) {
+    _jobManager->initiateSoftShutdown();
   }
 }
 
@@ -280,10 +286,51 @@ void GeneralServerFeature::unprepare() {
   }
   _servers.clear();
   _jobManager.reset();
+}
 
-  GENERAL_SERVER = nullptr;
-  JOB_MANAGER = nullptr;
-  HANDLER_FACTORY = nullptr;
+double GeneralServerFeature::keepAliveTimeout() const {
+  return _keepAliveTimeout;
+}
+
+bool GeneralServerFeature::proxyCheck() const { return _proxyCheck; }
+
+std::vector<std::string> GeneralServerFeature::trustedProxies() const {
+  return _trustedProxies;
+}
+
+bool GeneralServerFeature::allowMethodOverride() const {
+  return _allowMethodOverride;
+}
+
+std::vector<std::string> const& GeneralServerFeature::accessControlAllowOrigins() const {
+  return _accessControlAllowOrigins;
+}
+
+Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
+  Result res;
+  for (auto& up : _servers) {
+    Result res2 = up->reloadTLS();
+    if (res2.fail()) {
+      res = res2;  // yes, we only report the last error if there is one
+    }
+  }
+  return res;
+}
+
+bool GeneralServerFeature::permanentRootRedirect() const {
+  return _permanentRootRedirect;
+}
+
+std::string GeneralServerFeature::redirectRootTo() const {
+  return _redirectRootTo;
+}
+
+rest::RestHandlerFactory& GeneralServerFeature::handlerFactory() {
+  return *_handlerFactory;
+}
+
+rest::AsyncJobManager& GeneralServerFeature::jobManager() {
+  return *_jobManager;
 }
 
 void GeneralServerFeature::buildServers() {
@@ -302,7 +349,7 @@ void GeneralServerFeature::buildServers() {
       FATAL_ERROR_EXIT();
     }
     SslServerFeature& ssl = server().getFeature<SslServerFeature>();
-    ssl.SSL->verifySslOptions();
+    ssl.verifySslOptions();
   }
 
   auto server = std::make_unique<GeneralServer>(*this, _numIoThreads);
@@ -391,8 +438,11 @@ void GeneralServerFeature::defineHandlers() {
                                     RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
                                     queryRegistry);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
-                                    RestHandlerCreator<RestTasksHandler>::createNoData);
+  if (server().isEnabled<V8DealerFeature>()) {
+    // the tasks feature depends on V8. only enable it if JavaScript is enabled
+    _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
+                                      RestHandlerCreator<RestTasksHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                                     RestHandlerCreator<RestUploadHandler>::createNoData);
@@ -414,6 +464,7 @@ void GeneralServerFeature::defineHandlers() {
                                     RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
   if (server().isEnabled<V8DealerFeature>()) {
+    // the AQL UDfs feature depends on V8. only enable it if JavaScript is enabled
     _handlerFactory->addPrefixHandler("/_api/aqlfunction",
                                       RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
   }
@@ -467,7 +518,9 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/auth/reload",
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
 
-  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+  if (server().hasFeature<V8DealerFeature>() &&
+      server().getFeature<V8DealerFeature>().allowAdminExecute()) {
+    // the /_admin/execute API depends on V8. only enable it if JavaScript is enabled
     _handlerFactory->addHandler("/_admin/execute",
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }
@@ -522,6 +575,7 @@ void GeneralServerFeature::defineHandlers() {
                                     RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
   if (server().isEnabled<V8DealerFeature>()) {
+    // the routing feature depends on V8. only enable it if JavaScript is enabled
     _handlerFactory->addPrefixHandler("/_admin/routing",
                                       RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
   }
@@ -549,16 +603,11 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/statistics",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_admin/metrics",
+  _handlerFactory->addPrefixHandler("/_admin/metrics",
                               RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
-
-  if (cluster.isEnabled()) {
-    _handlerFactory->addPrefixHandler("/_admin/repair",
-                                      RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
-  }
 
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {
@@ -599,9 +648,8 @@ void GeneralServerFeature::defineHandlers() {
 
 
   // engine specific handlers
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  engine->addRestHandlers(*_handlerFactory);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  engine.addRestHandlers(*_handlerFactory);
 }
 
 }  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,8 +52,7 @@
 // If you wish to unlink (remove) or replace a node you should do it by using
 // one of the plans operations.
 
-#ifndef ARANGOD_AQL_EXECUTION_NODE_H
-#define ARANGOD_AQL_EXECUTION_NODE_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -92,7 +91,6 @@ class ExecutionNode;
 class ExecutionPlan;
 class RegisterInfos;
 class Expression;
-class RedundantCalculationsReplacer;
 template<typename T> struct RegisterPlanWalkerT;
 using RegisterPlanWalker = RegisterPlanWalkerT<ExecutionNode>;
 template<typename T> struct RegisterPlanT;
@@ -118,8 +116,6 @@ struct SortElement {
 };
 
 typedef std::vector<SortElement> SortElementVector;
-
-using VariableIdSet = std::set<VariableId>;
 
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {
@@ -166,6 +162,7 @@ class ExecutionNode {
     MATERIALIZE = 31,
     ASYNC = 32,
     MUTEX = 33,
+    WINDOW = 34,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -196,6 +193,10 @@ class ExecutionNode {
   /// @brief factory from JSON
   static ExecutionNode* fromVPackFactory(ExecutionPlan* plan,
                                          arangodb::velocypack::Slice const& slice);
+
+  /// @brief remove registers right of (greater than) the specified register
+  /// from the internal maps
+  void removeRegistersGreaterThan(RegisterId maxRegister);
 
   /// @brief cast an ExecutionNode to a specific sub-type
   /// in maintainer mode, this function will perform a dynamic_cast and abort
@@ -338,6 +339,10 @@ class ExecutionNode {
   // clone register plan of dependency, needed when inserting nodes after planning
   void cloneRegisterPlan(ExecutionNode* dependency);
 
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  virtual void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements);
+
   /// @brief check equality of ExecutionNodes
   virtual bool isEqualTo(ExecutionNode const& other) const;
 
@@ -442,7 +447,7 @@ class ExecutionNode {
   ExecutionPlan* plan();
 
   /// @brief static analysis
-  void planRegisters(ExecutionNode* super = nullptr, ExplainRegisterPlan = ExplainRegisterPlan::No);
+  void planRegisters(ExplainRegisterPlan = ExplainRegisterPlan::No);
 
   /// @brief get RegisterPlan
   std::shared_ptr<RegisterPlan> getRegisterPlan() const;
@@ -465,11 +470,17 @@ class ExecutionNode {
   bool isInSplicedSubquery() const noexcept;
 
   void setIsInSplicedSubquery(bool) noexcept;
+  
+  bool isAsyncPrefetchEnabled() const noexcept { return _isAsyncPrefetchEnabled; }
+
+  void setIsAsyncPrefetchEnabled(bool v) noexcept { _isAsyncPrefetchEnabled = v; }
 
   [[nodiscard]] static bool isIncreaseDepth(NodeType type);
   [[nodiscard]] bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
+  
+  auto getRegsToKeepStack() const -> RegIdSetStack;
 
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
@@ -487,8 +498,6 @@ class ExecutionNode {
   /// @brief toVelocyPackHelper, for a generic node
   void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, unsigned flags,
                                  std::unordered_set<ExecutionNode const*>& seen) const;
-
-  auto getRegsToKeepStack() const -> RegIdSetStack;
 
   RegisterId variableToRegisterId(Variable const*) const;
 
@@ -534,6 +543,9 @@ class ExecutionNode {
   bool _varUsageValid;
 
   bool _isInSplicedSubquery;
+  
+  /// @brief whether or not asynchronous prefetching is enabled for this node
+  bool _isAsyncPrefetchEnabled{false};
 
   /// @brief _plan, the ExecutionPlan object
   ExecutionPlan* _plan;
@@ -648,7 +660,6 @@ class EnumerateCollectionNode : public ExecutionNode,
 class EnumerateListNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -674,6 +685,8 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief the cost of an enumerate list node
   CostEstimate estimateCost() const override final;
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -749,7 +762,6 @@ class LimitNode : public ExecutionNode {
 class CalculationNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -783,6 +795,8 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -801,6 +815,10 @@ class CalculationNode : public ExecutionNode {
 };
 
 /// @brief class SubqueryNode
+/// in 3.8, SubqueryNodes are only used during query planning and optimization, but
+/// will finally be replaced with SubqueryStartNode and SubqueryEndNode nodes by the
+/// splice-subqueries optimizer rule. In addition, any query execution plan from 3.7
+/// may contain this node type. We can clean this up in 3.9.
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
@@ -872,7 +890,6 @@ class SubqueryNode : public ExecutionNode {
 /// @brief class FilterNode
 class FilterNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
  public:
@@ -898,6 +915,8 @@ class FilterNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -931,7 +950,6 @@ struct SortInformation {
 /// @brief class ReturnNode
 class ReturnNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
  public:
@@ -960,6 +978,8 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -1156,5 +1176,3 @@ MaterializeNode* createMaterializeNode(ExecutionPlan* plan,
 }  // namespace materialize
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

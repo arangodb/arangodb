@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_INDEXES_H
-#define ARANGOD_VOC_BASE_API_INDEXES_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -53,7 +52,8 @@ struct Indexes {
 
   static arangodb::Result createIndex(LogicalCollection*, Index::IndexType,
                                       std::vector<std::string> const&,
-                                      bool unique, bool sparse);
+                                      bool unique, bool sparse,
+                                      bool estimates);
 
   static arangodb::Result ensureIndex(LogicalCollection* collection,
                                       velocypack::Slice const& definition,
@@ -83,4 +83,3 @@ struct Indexes {
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

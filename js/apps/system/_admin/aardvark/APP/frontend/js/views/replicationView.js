@@ -384,12 +384,7 @@
         });
       }
 
-      var leader;
-      if (self.mode === 3) {
-        leader = 'Leader';
-      } else {
-        leader = 'Master';
-      }
+      var leader = 'Leader';
 
       var graphDataTime = {
         leader: {
@@ -416,13 +411,7 @@
         var colorCount = 0;
         _.each(data.clients, function (client) {
           if (!graphDataTime[client.serverId]) {
-            var key;
-            if (self.mode === 3) {
-              key = 'Follower (' + client.serverId + ')';
-            } else {
-              key = 'Slave (' + client.serverId + ')';
-            }
-
+            var key = 'Follower (' + client.serverId + ')';
             graphDataTime[client.serverId] = {
               key: key,
               color: self.colors[colorCount],
@@ -615,15 +604,15 @@
               self.info.mode = 'Active Failover';
               self.info.level = 'Server';
             } else if (self.mode === 2) {
-              self.info.mode = 'Master/Slave';
+              self.info.mode = 'Leader/Follower';
               self.info.level = 'Server';
             } else if (self.mode === 1) {
-              self.info.mode = 'Master/Slave';
+              self.info.mode = 'Leader/Follower';
               if (self.info.role === 'follower') {
                 self.info.level = 'Database';
               } else {
                 // self.info.level = 'Database/Server';
-                self.info.level = 'Check slaves for details';
+                self.info.level = 'Check followers for details';
               }
             }
           }

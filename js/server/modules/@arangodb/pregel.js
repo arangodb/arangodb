@@ -29,17 +29,12 @@ const internal = require('internal');
 // //////////////////////////////////////////////////////////////////////////////
 var startExecution = function(algo, data, params) {
   if (typeof algo !== 'string' || !data) {
-    throw "Invalid parameters: pregel(algorithm, graph, params)" +
+    throw "Invalid parameters: _pregelStart(algorithm, graph, params)" +
           "<graph> can be either {vertexCollections:['',..], edgeCollection: ''}" +
           " or {graphName:'<graph>'} or graph name";
     ;
   }
 
-  // check start vertex
-  // -----------------------------------------
-  if (!algo || typeof algo !== 'string') {
-    throw "Invalid parameters: pregel(<algorithm>, <graph>, <params>)";
-  }
   params = params || {};
 
   let db = internal.db;  
@@ -83,6 +78,25 @@ var startExecution = function(algo, data, params) {
       vertexCollections.push(vcs[key].name());
     }
     let edges = graph._edgeCollections();
+    if (!params.hasOwnProperty('edgeCollectionRestrictions')) {
+      let restrictions = {};
+      (graph.__edgeDefinitions || []).forEach((ed) => {
+        let edgeCollection = ed.collection;
+        let from = ed.from;
+        if (Array.isArray(from) && from.length > 0) {
+          from.forEach((f) => {
+            if (!restrictions[from]) {
+              restrictions[from] = {};
+            }
+            restrictions[from][edgeCollection] = 1;
+          });
+        }
+      });
+      Object.keys(restrictions).forEach((v) => {
+        restrictions[v] = Object.keys(restrictions[v]);
+      });
+      params.edgeCollectionRestrictions = restrictions;
+    }
     if (edges.length > 0) {
       var edgeCollections = edges.map(e => e.name());
       return db._pregelStart(algo, vertexCollections,
@@ -91,7 +105,7 @@ var startExecution = function(algo, data, params) {
       throw "No edge collection specified";
     }
   } else {
-    throw 'invalid graphname';
+    throw 'invalid graph name';
   }
 };
 

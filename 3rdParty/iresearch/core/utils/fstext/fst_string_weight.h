@@ -40,7 +40,7 @@
 
 #include <string>
 
-NS_BEGIN(fst)
+namespace fst {
 
 template <typename Label>
 class StringLeftWeight;
@@ -171,6 +171,10 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return str_.c_str();
   }
 
+  void Resize(size_t size) noexcept {
+    str_.resize(size);
+  }
+
   bool Empty() const noexcept {
     return str_.empty();
   }
@@ -208,11 +212,14 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return str_;
   }
 
+  // intentionally implicit
+  operator std::basic_string<Label>() && noexcept {
+    return std::move(str_);
+  }
+
  private:
   str_t str_;
 }; // StringLeftWeight
-
-
 
 template <typename Label>
 /*static*/ const StringLeftWeight<Label>& StringLeftWeightTraits<Label>::Zero() {
@@ -608,6 +615,6 @@ inline StringLeftWeight<irs::byte_type> Divide(
   return StringLeftWeight<irs::byte_type>(DivideLeft(lhs, rhs));
 }
 
-NS_END // fst
+} // fst
 
 #endif  // IRESEARCH_FST_STRING_WEIGHT_H

@@ -203,8 +203,8 @@ function aqlVPackExternalsModifyTestSuite () {
     testExternalAttributeAccess: function () {
       let coll = db._collection(collName);
       let ecoll = db._collection(edgeColl);
-      coll.truncate();
-      ecoll.truncate();
+      coll.truncate({ compact: false });
+      ecoll.truncate({ compact: false });
       coll.insert({ _key: "a", w: 1});
       coll.insert({ _key: "b", w: 2});
       coll.insert({ _key: "c", w: 3});
@@ -221,8 +221,8 @@ function aqlVPackExternalsModifyTestSuite () {
     testIdAccessInMinMax: function () {
       let coll = db._collection(collName);
       let ecoll = db._collection(edgeColl);
-      coll.truncate();
-      ecoll.truncate();
+      coll.truncate({ compact: false });
+      ecoll.truncate({ compact: false });
       
       coll.insert({ _key: "a", w: 1});
       coll.insert({ _key: "b", w: 2});
@@ -241,8 +241,8 @@ function aqlVPackExternalsModifyTestSuite () {
     testExternalAttributeAccess2: function () {
       let coll = db._collection(collName);
       let ecoll = db._collection(edgeColl);
-      coll.truncate();
-      ecoll.truncate();
+      coll.truncate({ compact: false });
+      ecoll.truncate({ compact: false });
 
       for (var i = 0; i < 100; ++i) {
         coll.insert({ _key: "test" + i, username: "test" + i });

@@ -1,0 +1,22 @@
+name: arangodb_process_statistics_major_page_faults_total
+renamedFrom: arangodb_process_statistics_major_page_faults
+introducedIn: "3.8.0"
+help: |
+  Number of major page faults
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  On Windows, this figure contains the total number of page faults.
+  On other system, this figure contains the number of major faults the
+  process has made which have required loading a memory page from disk.
+troubleshooting: |
+  If the rate of this is high, i.e. it increases fast, it could be an indication
+  that the memory usage is too high, or the memory is too low, or paging is done
+  too aggressively (for Linux, this see sysctl and vm.swappiness).

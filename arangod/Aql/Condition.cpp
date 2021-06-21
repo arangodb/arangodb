@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,8 +36,9 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
@@ -562,7 +563,7 @@ std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::v
 
   if (slice.isObject() && slice.length() != 0) {
     // note: the AST is responsible for freeing the AstNode later!
-    AstNode* node = new AstNode(plan->getAst(), slice);
+    AstNode* node = plan->getAst()->createNode(slice);
     condition->andCombine(node);
   }
 
@@ -624,7 +625,7 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
   
   size_t itemsInIndex;
   if (!collectionName.empty() && collectionName[0] == '_' &&
-      collectionName.compare(0, 11, "_statistics", 11) == 0) {
+      collectionName.compare(0, 11, StaticStrings::StatisticsCollection, 11) == 0) {
     // use hard-coded number of items in index, because we are dealing with
     // the statistics collection here. this saves a roundtrip to the DB servers
     // for statistics queries that do not need a fully accurate collection count
@@ -1554,7 +1555,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
             (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
           clearAttributeAccess(result);
 
-          if (lhs->isAttributeAccessForVariable(result, isFromTraverser)) {
+          if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+              result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
             if (temp == me.attributeName) {
@@ -1578,7 +1580,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           clearAttributeAccess(result);
 
-          if (rhs->isAttributeAccessForVariable(result, isFromTraverser)) {
+          if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
+              result.first == me.variable) {
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
             if (temp == me.attributeName) {
@@ -1591,9 +1594,15 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
                 }
               }
               // non-constant condition
-              else if (me.operatorType == operand->type &&
-                       normalize(me.valueNode) == normalize(lhs)) {
-                return true;
+              else {
+                auto opType = operand->type;
+                if (arangodb::aql::Ast::IsReversibleOperator(opType)) {
+                  opType = arangodb::aql::Ast::ReverseOperator(opType);
+                }
+                if (me.operatorType == opType &&
+                    normalize(me.valueNode) == normalize(lhs)) {
+                  return true;
+                }
               }
             }
           }

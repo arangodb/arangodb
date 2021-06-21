@@ -145,6 +145,7 @@ SET(LIBSTEM_ALGORITHMS
   finnish french german hungarian indonesian
   irish italian norwegian porter portuguese
   romanian russian spanish swedish tamil turkish
+  yiddish
 )
 SET(KOI8_ALGORITHMS russian)
 SET(ISO_8859_1_ALGORITHMS

@@ -27,9 +27,14 @@
 #include <cstdint>
 #include <memory>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Cache/FrequencyBuffer.h"
 
+#include "Mocks/Servers.h"
+
+using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 TEST(CacheFrequencyBufferTest, test_buffer_with_uint8_entries) {
   std::uint8_t zero = 0;
@@ -39,7 +44,9 @@ TEST(CacheFrequencyBufferTest, test_buffer_with_uint8_entries) {
   // check that default construction is as expected
   ASSERT_EQ(std::uint8_t(), zero);
 
-  FrequencyBuffer<std::uint8_t> buffer(1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  FrequencyBuffer<std::uint8_t> buffer(sharedPRNG, 1024);
   ASSERT_EQ(buffer.memoryUsage(), sizeof(FrequencyBuffer<std::uint8_t>) + 1024);
 
   for (std::size_t i = 0; i < 512; i++) {
@@ -52,10 +59,24 @@ TEST(CacheFrequencyBufferTest, test_buffer_with_uint8_entries) {
   auto frequencies = buffer.getFrequencies();
   ASSERT_EQ(static_cast<std::uint64_t>(2), frequencies.size());
   ASSERT_EQ(one, frequencies[0].first);
+  // the lower bound compare values here depend a lot on the quality of the
+  // PRNG values used by the FrequencyBuffer.
+  // Values are recorded in a random slot in the FrequencyBuffer, and the
+  // slot is determined by a PRNG value. So when we inserted 256 values into
+  // a FrequencyBuffer with 1024 slots, we may see only 1 slot used (worst
+  // case), or 256 different slots (perfect distribution). In reality, we
+  // will get something in between.
+  // Apparently not only does this depend on the quality of the PRNG values,
+  // but also on the _state_ that the PRNG has when we get here. The state
+  // may have been influenced by any tests that ran before, so it is not
+  // really possible to predict the exact outcomes here.
   ASSERT_TRUE(static_cast<std::uint64_t>(150) <= frequencies[0].second);
   ASSERT_TRUE(static_cast<std::uint64_t>(256) >= frequencies[0].second);
   ASSERT_EQ(two, frequencies[1].first);
-  ASSERT_TRUE(static_cast<std::uint64_t>(300) <= frequencies[1].second);
+
+  // same here. we inserted a value 512 times, and these values can be all
+  // in one slot or in 512 different ones.
+  ASSERT_TRUE(static_cast<std::uint64_t>(275) <= frequencies[1].second);
   ASSERT_TRUE(static_cast<std::uint64_t>(512) >= frequencies[1].second);
 
   for (std::size_t i = 0; i < 8192; i++) {

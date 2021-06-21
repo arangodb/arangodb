@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_PATHCOMPONENT_H
-#define ARANGOD_CLUSTER_PATHCOMPONENT_H
+#pragma once
 
 #include <functional>
 #include <iosfwd>
@@ -82,7 +81,7 @@ class StaticComponent : public std::enable_shared_from_this<T> /* (sic) */, publ
 
   StaticComponent() = delete;
 
-  void forEach(std::function<void(char const* component)> const& callback) const final {
+  void forEach(std::function<void(char const* component)> const& callback) const override final {
     parent().forEach(callback);
     callback(child().component());
   }
@@ -126,7 +125,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
 
   DynamicComponent() = delete;
 
-  void forEach(std::function<void(char const* component)> const& callback) const final {
+  void forEach(std::function<void(char const* component)> const& callback) const override final {
     parent().forEach(callback);
     callback(child().component());
   }
@@ -176,4 +175,3 @@ std::ostream& operator<<(std::ostream& stream, Path const& path);
 }  // namespace cluster
 }  // namespace arangodb
 
-#endif  // ARANGOD_CLUSTER_PATHCOMPONENT_H

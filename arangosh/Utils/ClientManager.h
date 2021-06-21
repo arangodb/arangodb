@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_UTILS_CLIENT_MANAGER_H
-#define ARANGOSH_UTILS_CLIENT_MANAGER_H 1
+#pragma once
 
 #include <memory>
 #include <string>
@@ -36,7 +35,6 @@ class ApplicationServer;
 }
 namespace httpclient {
 class SimpleHttpClient;
-class SimpleHttpResult;
 }  // namespace httpclient
 
 /**
@@ -119,4 +117,3 @@ class ClientManager {
 };
 }  // namespace arangodb
 
-#endif

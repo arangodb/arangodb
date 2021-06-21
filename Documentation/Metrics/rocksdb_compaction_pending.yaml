@@ -1,0 +1,16 @@
+name: rocksdb_compaction_pending
+introducedIn: "3.6.1"
+help: |
+  RocksDB metric "compaction-pending" - sum over column families
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the RocksDB metric "compaction-pending".
+  It shows the number of column families for which at least one compaction
+  is pending.

@@ -35,8 +35,8 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

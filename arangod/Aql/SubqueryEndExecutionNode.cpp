@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -91,7 +91,7 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   auto outputRegisters = RegIdSet{};
 
   auto inReg = variableToRegisterOptionalId(_inVariable);
-  if (inReg != RegisterPlan::MaxRegisterId) {
+  if (inReg.value() != RegisterId::maxRegisterId) {
     inputRegisters.emplace(inReg);
   }
   auto outReg = variableToRegisterId(_outVariable);
@@ -101,7 +101,7 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
 
   auto const& vpackOptions = engine.getQuery().vpackOptions();
   auto executorInfos =
-      SubqueryEndExecutorInfos(&vpackOptions, inReg, outReg);
+      SubqueryEndExecutorInfos(&vpackOptions, engine.getQuery().resourceMonitor(), inReg, outReg);
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -131,6 +131,11 @@ CostEstimate SubqueryEndNode::estimateCost() const {
   TRI_ASSERT(_dependencies.size() == 1);
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
+
+  // Restore the nrItems that were saved at the corresponding SubqueryStartNode.
+  estimate.restoreEstimatedNrItems();
+
+  estimate.estimatedCost += estimate.estimatedNrItems;
 
   return estimate;
 }

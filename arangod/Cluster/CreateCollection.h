@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_CREATE_COLLECTION_H
-#define ARANGODB_MAINTENANCE_CREATE_COLLECTION_H
+#pragma once
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
@@ -33,7 +32,7 @@
 namespace arangodb {
 namespace maintenance {
 
-class CreateCollection : public ActionBase {
+class CreateCollection : public ActionBase, public ShardDefinition {
  public:
   CreateCollection(MaintenanceFeature&, ActionDescription const& d);
 
@@ -50,4 +49,3 @@ class CreateCollection : public ActionBase {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

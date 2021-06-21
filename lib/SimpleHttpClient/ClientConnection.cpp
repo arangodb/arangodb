@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -133,7 +133,7 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 #endif
 
   if (status < 0) {
-    TRI_set_errno(errno);
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     disconnect();
     return false;
   } else if (status == 0) {

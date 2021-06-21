@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortStringStorage.h"
-#include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 
@@ -32,7 +32,7 @@
 using namespace arangodb::aql;
 
 /// @brief create a short string storage instance
-ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t blockSize)
+ShortStringStorage::ShortStringStorage(arangodb::ResourceMonitor& resourceMonitor, size_t blockSize)
     : _resourceMonitor(resourceMonitor),
       _blockSize(blockSize),
       _current(nullptr),
@@ -42,10 +42,7 @@ ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t 
 
 /// @brief destroy a short string storage instance
 ShortStringStorage::~ShortStringStorage() {
-  for (auto& it : _blocks) {
-    _resourceMonitor->decreaseMemoryUsage(_blockSize);
-    delete[] it;
-  }
+  _resourceMonitor.decreaseMemoryUsage(_blocks.size() * _blockSize);
 }
 
 /// @brief register a short string
@@ -94,21 +91,16 @@ char* ShortStringStorage::unescape(char const* p, size_t length, size_t* outLeng
 
 /// @brief allocate a new block of memory
 void ShortStringStorage::allocateBlock() {
-  char* buffer = new char[_blockSize];
+  {
+    ResourceUsageScope scope(_resourceMonitor, _blockSize);
 
-  try {
-    _resourceMonitor->increaseMemoryUsage(_blockSize);
-    try {
-      _blocks.emplace_back(buffer);
-    } catch (...) {
-      // rollback
-      _resourceMonitor->decreaseMemoryUsage(_blockSize);
-      throw;
-    }
-    _current = buffer;
-    _end = _current + _blockSize;
-  } catch (...) {
-    delete[] buffer;
-    throw;
+    _blocks.emplace_back(std::make_unique<char[]>(_blockSize));
+  
+    // now we are responsible for memory usage tracking
+    scope.steal();
   }
+
+  TRI_ASSERT(!_blocks.empty());
+  _current = _blocks.back().get();
+  _end = _current + _blockSize;
 }

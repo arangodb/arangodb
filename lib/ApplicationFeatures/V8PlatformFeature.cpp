@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -161,7 +161,7 @@ V8PlatformFeature::V8PlatformFeature(application_features::ApplicationServer& se
 }
 
 void V8PlatformFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the JavaScript engine");
+  options->addSection("javascript", "JavaScript engine and execution");
 
   options->addOption("--javascript.v8-options", "options to pass to v8",
                      new VectorParameter<StringParameter>(&_v8Options),

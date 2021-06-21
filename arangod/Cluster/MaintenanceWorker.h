@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_MAINTENANCE_WORKER
-#define ARANGOD_CLUSTER_MAINTENANCE_WORKER 1
+#pragma once
 
 #include "Basics/Thread.h"
 #include "Cluster/Action.h"
@@ -93,4 +92,3 @@ class MaintenanceWorker : public Thread {
 }  // namespace maintenance
 }  // namespace arangodb
 
-#endif

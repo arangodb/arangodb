@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -104,7 +104,7 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
 /// @brief waits for a thread to finish
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThread(TRI_thread_t* thread) {
+ErrorCode TRI_JoinThread(TRI_thread_t* thread) {
   return TRI_JoinThreadWithTimeout(thread, INFINITE);
 }
 
@@ -112,7 +112,7 @@ int TRI_JoinThread(TRI_thread_t* thread) {
 /// @brief waits for a thread to finish within the specified timeout (in ms).
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
+ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
   TRI_ASSERT(thread != nullptr);
   DWORD result = WaitForSingleObject(*thread, timeout);
 
@@ -146,7 +146,7 @@ int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
 /// @brief detaches a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DetachThread(TRI_thread_t* thread) {
+bool TRI_DetachThread(TRI_thread_t* thread) {
   // If the function succeeds, the return value is nonzero.
   // If the function fails, the return value is zero. To get extended error
   // information, call GetLastError.
@@ -156,10 +156,10 @@ int TRI_DetachThread(TRI_thread_t* thread) {
   if (res == 0) {
     DWORD result = GetLastError();
     LOG_TOPIC("333c2", ERR, arangodb::Logger::THREADS) << "cannot detach thread: " << result;
-    return TRI_ERROR_INTERNAL;
+    return false;
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,8 @@
 
 #include "RestDebugHandler.h"
 
+#include "Basics/DebugRaceController.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -37,43 +39,86 @@ RestStatus RestDebugHandler::execute() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   size_t const len = suffixes.size();
 
-  if (len == 0 || len > 2 || suffixes[0] != "failat") {
-    generateNotImplemented("ILLEGAL /_admin/debug/failat");
+  if (len == 0 || len > 2) {
+    generateNotImplemented(
+        "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
     return RestStatus::DONE;
   }
 
-  // execute one of the CRUD methods
-  switch (type) {
-    case rest::RequestType::GET: {
-      VPackBuilder result;
-      result.add(VPackValue(TRI_CanUseFailurePointsDebugging()));
-      generateResult(rest::ResponseCode::OK, result.slice());
-      return RestStatus::DONE;
-    }
-    case rest::RequestType::DELETE_REQ:
-      if (len == 1) {
-        TRI_ClearFailurePointsDebugging();
-      } else {
-        TRI_RemoveFailurePointDebugging(suffixes[1].c_str());
+  if (suffixes[0] == "failat") {
+    // execute one of the CRUD methods
+    switch (type) {
+      case rest::RequestType::GET: {
+        VPackBuilder result;
+        result.add(VPackValue(TRI_CanUseFailurePointsDebugging()));
+        generateResult(rest::ResponseCode::OK, result.slice());
+        return RestStatus::DONE;
       }
-      break;
-    case rest::RequestType::PUT:
-      if (len == 2) {
-        TRI_AddFailurePointDebugging(suffixes[1].c_str());
-      } else {
+      case rest::RequestType::DELETE_REQ:
+        if (len == 1) {
+          TRI_ClearFailurePointsDebugging();
+        } else {
+          TRI_RemoveFailurePointDebugging(suffixes[1].c_str());
+        }
+        break;
+      case rest::RequestType::PUT:
+        if (len == 2) {
+          TRI_AddFailurePointDebugging(suffixes[1].c_str());
+        } else {
+          generateNotImplemented("ILLEGAL /_admin/debug/failat");
+        }
+        break;
+      default:
         generateNotImplemented("ILLEGAL /_admin/debug/failat");
-      }
-      break;
-    default:
-      generateNotImplemented("ILLEGAL /_admin/debug/failat");
+        return RestStatus::DONE;
+    }
+    try {
+      VPackBuilder result;
+      result.add(VPackValue(true));
+      generateResult(rest::ResponseCode::OK, result.slice());
+    } catch (...) {
+      // Ignore this error
+    }
+    return RestStatus::DONE;
+  } else if (suffixes[0] == "raceControl") {
+    // execute one of the CRUD methods
+    switch (type) {
+      case rest::RequestType::DELETE_REQ:
+        if (len == 1) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          basics::DebugRaceController::sharedInstance().reset();
+          try {
+            generateResult(rest::ResponseCode::OK, VPackSlice::trueSlice());
+          } catch (...) {
+            // Ignore this error
+          }
+          return RestStatus::DONE;
+#else
+          generateNotImplemented(
+              "ILLEGAL /_admin/debug/raceControl only available in Maintainer "
+              "Build");
+#endif
+        }
+        break;
+      default:
+        break;
+        // Fall through
+    }
+  } else if (suffixes[0] == "crash") {
+    if (type == rest::RequestType::PUT) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      TRI_TerminateDebugging("crashing server by REST call");
       return RestStatus::DONE;
+#else
+      generateNotImplemented(
+          "ILLEGAL /_admin/debug/crash only available in Maintainer "
+          "Build");
+#endif
+    } else {
+      generateNotImplemented("ILLEGAL /_admin/debug/crash supports only PUT");
+    }
   }
-  try {
-    VPackBuilder result;
-    result.add(VPackValue(true));
-    generateResult(rest::ResponseCode::OK, result.slice());
-  } catch (...) {
-    // Ignore this error
-  }
+  generateNotImplemented(
+      "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
   return RestStatus::DONE;
 }

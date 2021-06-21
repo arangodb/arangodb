@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,8 +30,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
@@ -92,7 +90,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   auto avoidServersSlice = info.get("avoidServers");
   if (avoidServersSlice.isArray()) {
-    for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
+    for (VPackSlice i : VPackArrayIterator(avoidServersSlice)) {
       if (i.isString()) {
         _avoidServers.push_back(i.copyString());
       } else {
@@ -175,7 +173,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     _shardKeys.emplace_back(StaticStrings::KeyString);
   } else {
     if (shardKeysSlice.isArray()) {
-      for (auto const& sk : VPackArrayIterator(shardKeysSlice)) {
+      for (VPackSlice sk : VPackArrayIterator(shardKeysSlice)) {
         if (sk.isString()) {
           velocypack::StringRef key = sk.stringRef();
           // remove : char at the beginning or end (for enterprise)
@@ -342,7 +340,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
   _shardingStrategy->toVelocyPack(result);
 }
 
-std::string ShardingInfo::distributeShardsLike() const {
+std::string const& ShardingInfo::distributeShardsLike() const {
   return _distributeShardsLike;
 }
 
@@ -480,9 +478,10 @@ void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
   _shardIds = map;
 }
 
-int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
-                                      ShardID& shardID, bool& usesDefaultShardKeys,
-                                      VPackStringRef const& key) {
+ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
+                                            bool docComplete, ShardID& shardID,
+                                            bool& usesDefaultShardKeys,
+                                            VPackStringRef const& key) {
   return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
                                                 usesDefaultShardKeys, key);
 }

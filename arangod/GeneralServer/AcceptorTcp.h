@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,12 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_ACCEPTORTCP_H
-#define ARANGOD_SCHEDULER_ACCEPTORTCP_H 1
+#pragma once
 
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/AsioSocket.h"
+
+#include <mutex>
 
 namespace arangodb {
 namespace rest {
@@ -47,9 +48,7 @@ class AcceptorTcp final : public Acceptor {
 
  private:
   asio_ns::ip::tcp::acceptor _acceptor;
-  std::unique_ptr<AsioSocket<T>> _asioSocket;
 };
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

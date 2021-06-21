@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 
 #include <algorithm>
 
@@ -41,14 +42,13 @@ namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
   auto const nrRegs = block->numRegisters();
-  for (arangodb::aql::RegisterId i = 0; i < nrRegs; i++) {
+  for (arangodb::aql::RegisterId::value_t i = 0; i < nrRegs; i++) {
     block->destroyValue(row, i);
   }
 }
 
 }  // namespace
 
-/// @brief OurLessThan
 class arangodb::aql::ConstrainedLessThan {
  public:
   ConstrainedLessThan(velocypack::Options const* options,
@@ -82,11 +82,7 @@ class arangodb::aql::ConstrainedLessThan {
   std::vector<arangodb::aql::SortRegister> const& _sortRegisters;
 };  // ConstrainedLessThan
 
-arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
-  using arangodb::aql::AqlItemBlock;
-  using arangodb::aql::AqlValue;
-  using arangodb::aql::RegisterId;
-
+void ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
   size_t dRow = _rowsPushed;
 
   if (dRow >= _infos.limit()) {
@@ -111,11 +107,9 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) 
 
   // now restore heap condition
   std::push_heap(_rows.begin(), _rows.end(), *_cmpHeap);
-
-  return TRI_ERROR_NO_ERROR;
 }
 
-bool ConstrainedSortExecutor::compareInput(size_t const& rowPos,
+bool ConstrainedSortExecutor::compareInput(size_t rowPos,
                                            InputAqlItemRow const& row) const {
   for (auto const& reg : _infos.sortRegisters()) {
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
@@ -138,7 +132,7 @@ namespace {
 auto initRegsToKeep(RegisterCount size) -> RegIdFlatSetStack {
   auto regsToKeepStack = RegIdFlatSetStack{};
   auto& regsToKeep = regsToKeepStack.emplace_back();
-  for (RegisterId i = 0; i < size; i++) {
+  for (RegisterId::value_t i = 0; i < size; i++) {
     regsToKeep.emplace(i);
   }
   return regsToKeepStack;
@@ -159,11 +153,22 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
       _regsToKeep(initRegsToKeep(_infos.numberOfOutputRegisters())),
       _heapOutputRow{_heapBuffer, _outputRegister, _regsToKeep, _infos.registersToClear()} {
   TRI_ASSERT(_infos.limit() > 0);
-  _rows.reserve(infos.limit());
+
+  {
+    arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForSort());
+
+    _rows.reserve(infos.limit());
+    
+    // now we are responsible for memory tracking
+    guard.steal(); 
+  }
+
   _cmpHeap->setBuffer(_heapBuffer.get());
 }
 
-ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
+ConstrainedSortExecutor::~ConstrainedSortExecutor() {
+  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsageForSort());
+}
 
 bool ConstrainedSortExecutor::doneProducing() const noexcept {
   // must not get strictly larger
@@ -262,15 +267,14 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   }
 
   while (call.needSkipMore() && !doneSkipping()) {
-    // unlikely, but for backwardscompatibility.
+    auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
+    // unlikely, but for backwards compatibility.
     if (call.getOffset() > 0) {
-      auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
       auto const skipNum = (std::min)(call.getOffset(), rowsLeftToSkip);
       call.didSkip(skipNum);
       _skippedAfter += skipNum;
     } else {
       // Fullcount
-      auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
       call.didSkip(rowsLeftToSkip);
       _skippedAfter += rowsLeftToSkip;
       TRI_ASSERT(doneSkipping());
@@ -304,4 +308,8 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
     return std::min(call.getLimit(), totalRows - _returnNext);
   }
   return totalRows - _returnNext;
+}
+
+size_t ConstrainedSortExecutor::memoryUsageForSort() const noexcept {
+  return _infos.limit() * sizeof(decltype(_rows)::value_type);
 }

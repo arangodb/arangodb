@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ACTIONS_ACTIONS_H
-#define ARANGOD_ACTIONS_ACTIONS_H 1
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -113,4 +112,3 @@ void TRI_CleanupActions();
 /// @brief visit all actions
 void TRI_VisitActions(std::function<void(TRI_action_t*)> const& visitor);
 
-#endif

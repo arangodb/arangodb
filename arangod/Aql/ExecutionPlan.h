@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTION_PLAN_H
-#define ARANGOD_AQL_EXECUTION_PLAN_H 1
+#pragma once
 
 #include <array>
 
@@ -54,14 +53,19 @@ class QueryContext;
 class ExecutionPlan {
  public:
   /// @brief create the plan
-  explicit ExecutionPlan(Ast*);
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  explicit ExecutionPlan(Ast* ast, bool trackMemoryUsage);
+  /// @brief whether or not memory usage should be tracked for this plan.
 
   /// @brief destroy the plan, frees all assigned nodes
   ~ExecutionPlan();
 
  public:
   /// @brief create an execution plan from an AST
-  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*);
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*, bool trackMemoryUsage);
 
   /// @brief process the list of collections in a VelocyPack
   static void getCollectionsFromVelocyPack(aql::Collections&, arangodb::velocypack::Slice const);
@@ -76,10 +80,6 @@ class ExecutionPlan {
 
   /// @brief clone the plan by recursively cloning starting from the root
   ExecutionPlan* clone();
-
-  /// @brief create an execution plan identical to this one
-  ///   keep the memory of the plan on the query object specified.
-//  ExecutionPlan* clone(Query const&);
 
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose,
@@ -150,10 +150,6 @@ class ExecutionPlan {
   /// plan is temporarily in an invalid state
   inline void setValidity(bool value) { _planValid = value; }
 
-  /// @brief returns true if a plan is so simple that optimizations would
-  /// probably cost more than simply executing the plan
-  bool isDeadSimple() const;
-
 /// @brief show an overview over the plan
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void show() const;
@@ -169,6 +165,10 @@ class ExecutionPlan {
     return (_excludeFromScatterGather.find(node) != _excludeFromScatterGather.end());
   }
 
+  void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
+  
+  bool isAsyncPrefetchEnabled() const noexcept { return _isAsyncPrefetchEnabled; }
+  
   /// @brief get the node where variable with id <id> is introduced . . .
   ExecutionNode* getVarSetBy(VariableId id) const {
     auto it = _varSetBy.find(id);
@@ -346,13 +346,6 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST COLLECT node
   ExecutionNode* fromNodeCollect(ExecutionNode*, AstNode const*);
 
-  /// @brief create an execution plan element from an AST COLLECT node, COUNT
-  ExecutionNode* fromNodeCollectCount(ExecutionNode*, AstNode const*);
-
-  /// @brief create an execution plan element from an AST COLLECT node,
-  /// AGGREGATE
-  ExecutionNode* fromNodeCollectAggregate(ExecutionNode*, AstNode const*);
-
   /// @brief create an execution plan element from an AST LIMIT node
   ExecutionNode* fromNodeLimit(ExecutionNode*, AstNode const*);
 
@@ -373,9 +366,14 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST UPSERT node
   ExecutionNode* fromNodeUpsert(ExecutionNode*, AstNode const*);
+  
+  /// @brief create an execution plan element from an AST WINDOW node
+  ExecutionNode* fromNodeWindow(ExecutionNode*, AstNode const*);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
+  
+  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous, AstNode const* node);
 
  private:
   /// @brief map from node id to the actual node
@@ -393,6 +391,11 @@ class ExecutionPlan {
   /// @brief which optimizer rules were disabled for a plan
   ::arangodb::containers::HashSet<int> _disabledRules;
 
+  /// @brief whether or not memory usage should be tracked for this plan.
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  bool const _trackMemoryUsage;
+
   /// @brief if the plan is supposed to be in a valid state
   /// this will always be true, except while a plan is handed to
   /// the optimizer while applying optimizer rules
@@ -401,6 +404,10 @@ class ExecutionPlan {
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
 
+  /// @brief flag to indicate whether the postprocessing step to enable async
+  /// prefetching on the node level should be executed.
+  bool _isAsyncPrefetchEnabled{false};
+  
   /// @brief current nesting level while building the plan
   int _nestingLevel;
 
@@ -433,4 +440,3 @@ Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
   return ExecutionNode::castTo<Node*>(registerNode(std::move(node)));
 }
 
-#endif

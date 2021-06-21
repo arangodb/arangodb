@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_BUILDER_INDEX_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_BUILDER_INDEX_H 1
+#pragma once
 
 #include "RocksDBEngine/RocksDBIndex.h"
 
@@ -82,17 +81,18 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, OperationOptions& options) override;
+                arangodb::velocypack::Slice slice, OperationOptions const& options,
+                bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, OperationMode mode) override;
+                arangodb::velocypack::Slice slice) override;
 
   /// @brief get index estimator, optional
-  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override {
+  RocksDBCuckooIndexEstimatorType* estimator() override {
     return _wrapped->estimator();
   }
-  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override {
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override {
     TRI_ASSERT(false);
   }
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
@@ -120,4 +120,3 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 };
 }  // namespace arangodb
 
-#endif

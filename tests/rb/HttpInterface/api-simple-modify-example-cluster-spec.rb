@@ -155,7 +155,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "finds the examples" do
+      it "finds the examples skip" do
         body = "{ \"someAttribute\" : \"someValue\", \"someOtherAttribute\" : \"someOtherValue\" }"
         doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
         doc.code.should eq(202)

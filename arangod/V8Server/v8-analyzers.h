@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_ANALYZERS_H
-#define ARANGOD_V8_SERVER_V8_ANALYZERS_H 1
+#pragma once
 
 #include <v8.h>
 
@@ -41,4 +40,3 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate);
 } // iresearch
 } // arangodb
 
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_METADATA_H
-#define ARANGODB_CACHE_METADATA_H
+#pragma once
 
 #include "Basics/ReadWriteSpinLock.h"
 
@@ -147,4 +146,3 @@ struct Metadata {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

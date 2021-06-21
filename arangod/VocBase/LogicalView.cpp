@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -423,9 +423,9 @@ Result LogicalView::rename(std::string&& newName) {
                         "invalid builder provided for LogicalView definition"));
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
-
-    if (!engine) {
+    auto& server = view.vocbase().server();
+    if (!server.hasFeature<EngineSelectorFeature>() ||
+        !server.getFeature<EngineSelectorFeature>().selected()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failed to find a storage engine while "
                                 "querying definition of view '") +

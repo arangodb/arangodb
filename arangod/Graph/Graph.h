@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_GRAPH_H
-#define ARANGOD_GRAPH_GRAPH_H
+#pragma once
 
 #include <velocypack/Buffer.h>
 #include <chrono>
@@ -324,4 +323,3 @@ void setUnion(std::set<T>& set, C const& container) {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif  // ARANGOD_GRAPH_GRAPH_H

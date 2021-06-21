@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/OutgoingCache.h"
+#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"
@@ -31,8 +32,8 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "Network/NetworkFeature.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -43,8 +44,7 @@ using namespace arangodb::pregel;
 
 template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
-    : _config(state), _format(format),
-      _baseUrl(Utils::baseUrl(Utils::workerPrefix)) {}
+    : _config(state), _format(format), _baseUrl(Utils::baseUrl(Utils::workerPrefix)) {}
 
 // ================= ArrayOutCache ==================
 
@@ -60,7 +60,8 @@ void ArrayOutCache<M>::_removeContainedMessages() {
 }
 
 template <typename M>
-void ArrayOutCache<M>::appendMessage(PregelShard shard, VPackStringRef const& key, M const& data) {
+void ArrayOutCache<M>::appendMessage(PregelShard shard,
+                                     VPackStringRef const& key, M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {  // I use the global cache, we need locking
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -70,7 +71,7 @@ void ArrayOutCache<M>::appendMessage(PregelShard shard, VPackStringRef const& ke
       this->_sendCount++;
     }
   } else {
-    _shardMap[shard][key].push_back(data);
+    _shardMap[shard][key.toString()].push_back(data);
     if (++(this->_containedMessages) >= this->_batchSize) {
       flushMessages();
     }
@@ -83,8 +84,8 @@ void ArrayOutCache<M>::flushMessages() {
     return;
   }
 
-  // LOG_TOPIC("7af7f", INFO, Logger::PREGEL) << "Beginning to send messages to other
-  // machines";
+  // LOG_TOPIC("7af7f", INFO, Logger::PREGEL) << "Beginning to send messages to
+  // other machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS) {
     gss += 1;
@@ -92,11 +93,11 @@ void ArrayOutCache<M>::flushMessages() {
   VPackOptions options = VPackOptions::Defaults;
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
-    
+
   application_features::ApplicationServer& server = this->_config->vocbase()->server();
   auto const& nf = server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = this->_config->database();
   reqOpts.skipScheduler = true;
@@ -104,7 +105,7 @@ void ArrayOutCache<M>::flushMessages() {
   std::vector<futures::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
-    std::unordered_map<VPackStringRef, std::vector<M>> const& vertexMessageMap = it.second;
+    std::unordered_map<std::string, std::vector<M>> const& vertexMessageMap = it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }
@@ -118,11 +119,10 @@ void ArrayOutCache<M>::flushMessages() {
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValuePair(vertexMessagePair.first.data(),
-                              vertexMessagePair.first.size(),
-                              VPackValueType::String));      // key
+      data.add(VPackValue(vertexMessagePair.first));   // key
       data.add(VPackValue(VPackValueType::Array, true));  // message array
       for (M const& val : vertexMessagePair.second) {
+
         this->_format->addValue(data, val);
         if (this->_sendToNextGSS) {
           this->_sendCountNextGSS++;
@@ -136,13 +136,14 @@ void ArrayOutCache<M>::flushMessages() {
     data.close();
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
-    
+
     responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
-                                                this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
+                                                this->_baseUrl + Utils::messagesPath,
+                                                std::move(buffer), reqOpts));
   }
-  
+
   futures::collectAll(responses).wait();
-  
+
   this->_removeContainedMessages();
 }
 
@@ -179,7 +180,8 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
     std::unordered_map<VPackStringRef, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
-      _combiner->combine(vertexMap[key], data);
+      auto& ref = (*it).second; // will be modified by combine(...)
+      _combiner->combine(ref, data);
     } else {  // first message for this vertex
       vertexMap.try_emplace(key, data);
 
@@ -228,7 +230,7 @@ void CombiningOutCache<M>::flushMessages() {
     for (auto const& vertexMessagePair : vertexMessageMap) {
       data.add(VPackValuePair(vertexMessagePair.first.data(),
                               vertexMessagePair.first.size(),
-                              VPackValueType::String));            // key
+                              VPackValueType::String));         // key
       this->_format->addValue(data, vertexMessagePair.second);  // value
 
       if (this->_sendToNextGSS) {
@@ -241,24 +243,23 @@ void CombiningOutCache<M>::flushMessages() {
     data.close();
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
-    
+
     network::RequestOptions reqOpts;
     reqOpts.database = this->_config->database();
     reqOpts.timeout = network::Timeout(180);
     reqOpts.skipScheduler = true;
-    
+
     responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
-                                                this->_baseUrl + Utils::messagesPath, std::move(buffer),
-                                                reqOpts));
+                                                this->_baseUrl + Utils::messagesPath,
+                                                std::move(buffer), reqOpts));
   }
-  
+
   futures::collectAll(responses).wait();
-  
+
   _removeContainedMessages();
 }
 
 // template types to create
-
 template class arangodb::pregel::OutCache<int64_t>;
 template class arangodb::pregel::OutCache<uint64_t>;
 template class arangodb::pregel::OutCache<float>;
@@ -276,12 +277,20 @@ template class arangodb::pregel::CombiningOutCache<double>;
 template class arangodb::pregel::OutCache<SenderMessage<uint64_t>>;
 template class arangodb::pregel::ArrayOutCache<SenderMessage<uint64_t>>;
 template class arangodb::pregel::CombiningOutCache<SenderMessage<uint64_t>>;
+
 template class arangodb::pregel::OutCache<SenderMessage<double>>;
 template class arangodb::pregel::ArrayOutCache<SenderMessage<double>>;
 template class arangodb::pregel::CombiningOutCache<SenderMessage<double>>;
+
 template class arangodb::pregel::OutCache<DMIDMessage>;
 template class arangodb::pregel::ArrayOutCache<DMIDMessage>;
 template class arangodb::pregel::CombiningOutCache<DMIDMessage>;
+
 template class arangodb::pregel::OutCache<HLLCounter>;
 template class arangodb::pregel::ArrayOutCache<HLLCounter>;
 template class arangodb::pregel::CombiningOutCache<HLLCounter>;
+
+using namespace arangodb::pregel::algos::accumulators;
+template class arangodb::pregel::OutCache<MessageData>;
+template class arangodb::pregel::ArrayOutCache<MessageData>;
+template class arangodb::pregel::CombiningOutCache<MessageData>;

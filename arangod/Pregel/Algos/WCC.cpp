@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,19 +76,21 @@ struct WCCComputation : public VertexComputation<uint64_t, uint64_t, SenderMessa
         voteActive();
       }
     }
-        
-    SenderMessage<uint64_t> message(pregelId(), currentComponent);    
-    RangeIterator<Edge<uint64_t>> edges = this->getEdges();
-    for (; edges.hasMore(); ++edges) {
-      Edge<uint64_t>* edge = *edges;
-      if (edge->toKey() == this->key()) {
-        continue; // no need to send message to self
-      }
-    
-      // remember the value we send
-      edge->data() = currentComponent;
+       
+    if (this->getEdgeCount() > 0) {
+      SenderMessage<uint64_t> message(pregelId(), currentComponent);    
+      RangeIterator<Edge<uint64_t>> edges = this->getEdges();
+      for (; edges.hasMore(); ++edges) {
+        Edge<uint64_t>* edge = *edges;
+        if (edge->toKey() == this->key()) {
+          continue; // no need to send message to self
+        }
+      
+        // remember the value we send
+        edge->data() = currentComponent;
 
-      sendMessage(edge, message);
+        sendMessage(edge, message);
+      }
     }
   }
 };
@@ -103,24 +105,20 @@ struct WCCGraphFormat final : public GraphFormat<uint64_t, uint64_t> {
   size_t estimatedVertexSize() const override { return sizeof(uint64_t); }
   size_t estimatedEdgeSize() const override { return sizeof(uint64_t); }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                      uint64_t& targetPtr) override {
-    targetPtr = _vertexIdRange++;
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/,
+                      uint64_t& targetPtr, uint64_t& vertexIdRange) override {
+    targetPtr = vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice document, uint64_t& targetPtr) override {
+  void copyEdgeData(arangodb::velocypack::Options const&,
+                    arangodb::velocypack::Slice /*document*/, uint64_t& targetPtr) override {
     targetPtr = std::numeric_limits<uint64_t>::max();
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, const uint64_t* ptr,
-                           size_t size) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, uint64_t const* ptr) const override {
     b.add(_resultField, arangodb::velocypack::Value(*ptr));
     return true;
-  }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const uint64_t* ptr,
-                         size_t size) const override {
-    return false;
   }
 };
 }

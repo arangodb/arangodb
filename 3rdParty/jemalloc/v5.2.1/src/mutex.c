@@ -1,4 +1,3 @@
-#define JEMALLOC_MUTEX_C_
 #include "jemalloc/internal/jemalloc_preamble.h"
 #include "jemalloc/internal/jemalloc_internal_includes.h"
 
@@ -46,7 +45,7 @@ JEMALLOC_EXPORT int	_pthread_mutex_init_calloc_cb(pthread_mutex_t *mutex,
 void
 malloc_mutex_lock_slow(malloc_mutex_t *mutex) {
 	mutex_prof_data_t *data = &mutex->prof_data;
-	nstime_t before = NSTIME_ZERO_INITIALIZER;
+	nstime_t before;
 
 	if (ncpus == 1) {
 		goto label_spin_done;
@@ -68,7 +67,7 @@ malloc_mutex_lock_slow(malloc_mutex_t *mutex) {
 		return;
 	}
 label_spin_done:
-	nstime_update(&before);
+	nstime_init_update(&before);
 	/* Copy before to after to avoid clock skews. */
 	nstime_t after;
 	nstime_copy(&after, &before);
@@ -104,8 +103,8 @@ label_spin_done:
 static void
 mutex_prof_data_init(mutex_prof_data_t *data) {
 	memset(data, 0, sizeof(mutex_prof_data_t));
-	nstime_init(&data->max_wait_time, 0);
-	nstime_init(&data->tot_wait_time, 0);
+	nstime_init_zero(&data->max_wait_time);
+	nstime_init_zero(&data->tot_wait_time);
 	data->prev_owner = NULL;
 }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PROCESS__UTILS_H
-#define ARANGODB_BASICS_PROCESS__UTILS_H 1
+#pragma once
 
 #include <string>
 #include <vector>
@@ -171,7 +170,7 @@ void TRI_SetProcessTitle(char const* title);
 
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
-                               std::vector<std::string> additionalEnv,
+                               std::vector<std::string> const& additionalEnv,
                                bool usePipes, ExternalId* pid);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,4 +211,3 @@ bool TRI_ContinueExternalProcess(ExternalId pid);
 
 void TRI_ShutdownProcess();
 
-#endif

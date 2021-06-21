@@ -1,6 +1,7 @@
 - [Other Licenses](#other-licenses)
   * [C/C++ Libraries](#cc-libraries)
   * [Programs](#programs)
+  * [Data files](#data-files)
   * [JavaScript](#javascript)
     + [Node core modules](#node-core-modules)
     + [Bundled NPM modules](#bundled-npm-modules)
@@ -46,8 +47,8 @@ _Enterprise Edition only_
 ### date
 
 * Name: date
-* Version: 2.4.0
-* Date: 2017-12-29 20:21:36Z
+* Version: 3.0.0
+* Date: 2020-06-03
 * Project Home: https://github.com/HowardHinnant/date
 * License: https://raw.githubusercontent.com/HowardHinnant/date/master/LICENSE.txt
 * License Name: MIT License
@@ -72,6 +73,16 @@ _Enterprise Edition only_
 * License: https://raw.githubusercontent.com/eranpeer/FakeIt/master/LICENSE
 * License Name: MIT License
 * License Id: MIT
+
+### fastvalidate-utf8
+
+* Name: fastvalidate-utf8
+* Version: (none)
+* Date: 2017-02-28 13:11:35Z 
+* Project Home: https://github.com/lemire/fastvalidate-utf-8
+* License: https://raw.githubusercontent.com/lemire/fastvalidate-utf-8/master/LICENSE-APACHE
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
 
 ### fpconv_dtoa
 
@@ -357,8 +368,8 @@ _Enterprise Edition only_
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.1
-* Date: 2019-08-05 20:41:17Z
+* Version: 5.2.1-dev, commit 12cd13cd418512d9e7596921ccdb62e25a103f87
+* Date: 2021-03-30 15:20:30 -0700
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -376,8 +387,8 @@ _Enterprise Edition only_
 ### libunwind
 
 * Name: libunwind
-* Version: 1.4
-* Date: 2020-03-31 16:12:36Z
+* Version: 1.5
+* Date: 2020-11-10 16:16:31Z
 * Project Home: https://github.com/libunwind/libunwind
 * License: https://raw.githubusercontent.com/libunwind/libunwind/master/LICENSE
 * License Name: MIT License
@@ -413,6 +424,15 @@ _Enterprise Edition only_
 * License Name: BSD 2-clause "Simplified" License
 * License Id: BSD-2-Clause
 
+### libmusl
+
+* Name: libmusl
+* Version: Alpine 3.13
+* Project Home: https://git.musl-libc.org/
+* License: https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT
+* License Name: MIT License
+* License Id: MIT
+
 ### nghttp2
 
 * Name: nghttp2
@@ -422,6 +442,24 @@ _Enterprise Edition only_
 * License: https://raw.githubusercontent.com/nghttp2/nghttp2/master/COPYING
 * License Name: MIT License
 * License Id: MIT
+
+### OpenLDAP
+
+* Name: OpenLDAP
+* Version: 2.4.58
+* Date: 2021-03-16
+* License: https://www.openldap.org/software/release/copyright.html
+* License Name: BSD Style License
+* License Id: OpenLDAP
+
+### OpenSSL
+
+* Name: OpenSSL
+* Version: 1.1.1
+* Date: 2021-05-25
+* License: https://spdx.org/licenses/OpenSSL.html
+* License Name: Apache Style License
+* License Id: OpenSSL
 
 ### RocksDB
 
@@ -456,8 +494,8 @@ _Enterprise Edition only_
 ### snappy
 
 * Name: snappy
-* Version: 1.1.7
-* Date: 2017-08-25 00:37:10Z
+* Version: 1.1.9
+* Date: 2021-05-04 22:28:33Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -483,11 +521,21 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### wyhash
+
+* Name: wyhash
+* Version: commit 896d7c57f68d96938f718c0695c44866d14b48d6
+* Date: 2021-04-02 20:34:24 +08:00
+* GitHub: https://github.com/wangyi-fudan/wyhash/
+* License: https://github.com/wangyi-fudan/wyhash/blob/master/LICENSE
+* License Name: Unlicense
+* License Id: Unlicense
+
 ### xxHash
 
 * Name: xxHash
-* Version: 0.7.3 (unreleased)
-* Date: 2019-10-28 12:52:58Z
+* Version: 0.8.0
+* Date: 2021-03-17 17:51:40 +01:00
 * GitHub: https://github.com/Cyan4973/xxHash/
 * License: https://raw.githubusercontent.com/Cyan4973/xxHash/master/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -537,11 +585,33 @@ _Enterprise Edition only_
 
 * Name: flex
 * Version: 2.5.35
-* Date: 2008-02-26 00:00:00Z
+* Date: 2008-02-26
 * Project Home: https://github.com/westes/flex
 * License: https://raw.githubusercontent.com/westes/flex/master/COPYING
 * License Comment: free as-is license (BSD-2-Clause variant),
   only used to generate code, not part of the distribution
+
+## Data files
+
+#### IANA Time Zone Database (tzdata)
+
+Name: Time Zone Database
+Version: 2020f
+Date: 2020-12-29
+Project https://www.iana.org/time-zones
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/tzdata/LICENSE
+License Name: Public Domain
+License Id: -
+
+#### Unicode CLDR Project (windowsZones.xml)
+
+Name: Unicode CLDR Project
+Version: 38.1
+Date: 2020-11-19
+Project Home: https://github.com/unicode-org/cldr
+License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
+License Name: ICU License
+License Id: ICU
 
 ## JavaScript
 
@@ -565,6 +635,15 @@ _Enterprise Edition only_
 * License Id: MIT
 
 ### Backend libraries
+
+#### AsciiTable
+
+* Name ascii-table
+* Version: 0.0.8
+* GitHub: https://github.com/sorensen/ascii-table
+* License: https://github.com/sorensen/ascii-table/blob/master/license
+* License Name: MIT License
+* License Id: MIT
 
 #### JSUnity
 

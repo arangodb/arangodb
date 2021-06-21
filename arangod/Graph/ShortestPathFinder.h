@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_SHORTEST_PATH_FINDER_H
-#define ARANGODB_GRAPH_SHORTEST_PATH_FINDER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -74,4 +73,3 @@ class ShortestPathFinder {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif

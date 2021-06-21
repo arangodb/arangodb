@@ -354,7 +354,7 @@ function ReplicationLoggerSuite () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
-      c.properties({ waitForSync: true, journalSize: 2097152 });
+      c.properties({ waitForSync: true });
 
       var entry = getLogEntries(tick, 2003)[0];
 

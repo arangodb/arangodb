@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@
 
 #include "Cache/Manager.h"
 
-#include "Basics/SharedPRNG.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/voc-errors.h"
@@ -62,17 +62,19 @@ const std::uint64_t Manager::minCacheAllocation =
     Manager::cacheRecordOverhead;
 const std::chrono::milliseconds Manager::rebalancingGracePeriod(10);
 
-Manager::Manager(PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats)
-    : _lock(),
+Manager::Manager(SharedPRNGFeature& sharedPRNG, 
+                 PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats)
+    : _sharedPRNG(sharedPRNG),
+      _lock(),
       _shutdown(false),
       _shuttingDown(false),
       _resizing(false),
       _rebalancing(false),
-      _accessStats((globalLimit >= (1024 * 1024 * 1024))
+      _accessStats(sharedPRNG, 
+                   (globalLimit >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::uint64_t))
                        : (globalLimit / (1024 * sizeof(std::uint64_t)))),
       _enableWindowedStats(enableWindowedStats),
-      _findStats(nullptr),
       _findHits(),
       _findMisses(),
       _caches(),
@@ -96,11 +98,11 @@ Manager::Manager(PostFn schedulerPost, std::uint64_t globalLimit, bool enableWin
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (enableWindowedStats) {
     try {
-      _findStats.reset(new Manager::FindStatBuffer(16384));
+      _findStats = std::make_unique<Manager::FindStatBuffer>(sharedPRNG, 16384);
       _fixedAllocation += _findStats->memoryUsage();
       _globalAllocation = _fixedAllocation;
     } catch (std::bad_alloc const&) {
-      _findStats.reset(nullptr);
+      _findStats.reset();
       _enableWindowedStats = false;
     }
   }
@@ -420,7 +422,7 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(Cache* cache, std::
 }
 
 void Manager::reportAccess(std::uint64_t id) {
-  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) == 0) {
+  if ((_sharedPRNG.rand() & static_cast<unsigned long>(7)) == 0) {
     _accessStats.insertRecord(id);
   }
 }
@@ -495,7 +497,19 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
   _outstandingTasks--;
 }
 
-int Manager::rebalance(bool onlyCalculate) {
+/// TODO Improve rebalancing algorithm
+/// Currently our allocations are heavily based on usage frequency, which can
+/// lead to widly oscillating sizes and significant thrashing via background
+/// free memory tasks. Also, we currently do not attempt to shrink tables, just
+/// free memory from them. It may behoove us to revisit the algorithm. A
+/// discussion some years ago ended with the idea to institute a system inspired
+/// by redistributive taxation. At the beginning of each rebalancing period,
+/// ask each cache what limit it would like: if it needs more space, could give
+/// up some space, or if it is happy. If at least one cache says it needs more
+/// space, then collect a tax from each cache, say 5% of its current allocation.
+/// Then, given the pool of memory, and the expressed needs of each cache,
+/// attempt to allocate memory evenly, up to the additional amount requested.
+ErrorCode Manager::rebalance(bool onlyCalculate) {
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
 
   if (!onlyCalculate) {

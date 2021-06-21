@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_RECOVERY_H
-#define ARANGODB_PREGEL_RECOVERY_H 1
+#pragma once
 
 #include <map>
 #include <set>
@@ -59,7 +58,7 @@ class RecoveryManager {
   void monitorCollections(DatabaseID const& database,
                           std::vector<CollectionID> const& collections, Conductor* listener);
   void stopMonitoring(Conductor*);
-  int filterGoodServers(std::vector<ServerID> const& servers,
+  ErrorCode filterGoodServers(std::vector<ServerID> const& servers,
                         std::vector<ServerID>& goodServers);
   void updatedFailedServers(std::vector<ServerID> const& failedServers);
   // bool allServersAvailable(std::vector<ServerID> const& dbServers);
@@ -87,4 +86,3 @@ class CheckpointingManager {
 };*/
 }  // namespace pregel
 }  // namespace arangodb
-#endif

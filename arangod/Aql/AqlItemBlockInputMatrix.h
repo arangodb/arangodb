@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
-#define ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlItemMatrix.h"
@@ -38,13 +37,14 @@ class AqlItemBlockInputMatrix {
  public:
   explicit AqlItemBlockInputMatrix(ExecutorState state);
 
-  AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const&);
-
   AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix);
 
   std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
   ShadowAqlItemRow peekShadowRow() const;
 
+  void reset() noexcept { _lastRange.reset(); }
+  bool hasBlock() const noexcept { return _lastRange.hasBlock(); }
+  
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
   bool hasValidRow() const noexcept;
@@ -60,6 +60,9 @@ class AqlItemBlockInputMatrix {
   ExecutorState upstreamState() const noexcept;
   bool upstreamHasMore() const noexcept;
   size_t skipAllRemainingDataRows();
+
+  size_t skipAllShadowRowsOfDepth(size_t depth);
+
 
   // Will return HASMORE if we were able to increase the row index.
   // Otherwise will return DONE.
@@ -83,7 +86,9 @@ class AqlItemBlockInputMatrix {
   [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
 
  private:
-  arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
+  void advanceBlockIndexAndShadowRow() noexcept;
+
+ private:
   ExecutorState _finalState{ExecutorState::HASMORE};
 
   // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and
@@ -96,4 +101,3 @@ class AqlItemBlockInputMatrix {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H

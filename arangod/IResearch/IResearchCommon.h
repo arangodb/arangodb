@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_COMMON_H
-#define ARANGOD_IRESEARCH__IRESEARCH_COMMON_H 1
+#pragma once
 
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
@@ -43,6 +42,11 @@ ADB_IGNORE_UNUSED extern arangodb::LogTopic TOPIC;
 ///        e.g. which how data is stored in iresearch
 ////////////////////////////////////////////////////////////////////////////////
 size_t const LATEST_VERSION = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the storage format used with IResearch index
+////////////////////////////////////////////////////////////////////////////////
+constexpr std::string_view LATEST_FORMAT = "1_3simd";
 
 struct StaticStrings {
   ////////////////////////////////////////////////////////////////////////////////
@@ -104,9 +108,14 @@ struct StaticStrings {
   ///        stored values
   ////////////////////////////////////////////////////////////////////////////////
   static std::string const StoredValuesField;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch Link definition denoting the
+  ///        corresponding collection name in cluster (not shard name!)
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::string const CollectionNameField;
 };
 
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

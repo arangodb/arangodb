@@ -133,10 +133,10 @@ class RestAnalyzerHandlerTest
     // create system vocbase
     {
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::methods::Collections::createSystem(server.getSystemDatabase(),
+      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::methods::Collections::createSystem(server.getSystemDatabase(), options,
                                                    arangodb::tests::AnalyzerCollectionName,
-                                                   false,
-                                                   unused);
+                                                   false, unused);
     }
     createAnalyzers();
 
@@ -178,8 +178,10 @@ class RestAnalyzerHandlerTest
                {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW}});
 
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::Result res = arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
-                                                     arangodb::tests::AnalyzerCollectionName,
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::Result res =
+        arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
+                                                     options, arangodb::tests::AnalyzerCollectionName,
                                                      false, ignored);
 
     ASSERT_TRUE(res.ok());
@@ -257,7 +259,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_non_object_body) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_BAD_PARAMETER ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_no_name) {
@@ -291,7 +293,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_name) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_BAD_PARAMETER ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_no_permission) {
@@ -325,7 +327,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_permission) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_FORBIDDEN ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
@@ -359,7 +361,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_BAD_PARAMETER ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 // TODO: is this the smae test as above?
@@ -394,7 +396,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols_2) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_BAD_PARAMETER ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_name_collision) {
@@ -430,7 +432,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_name_collision) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_BAD_PARAMETER ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
@@ -497,7 +499,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_not_authorized) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_FORBIDDEN ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_success) {
@@ -593,7 +595,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_static_unknown) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_get_known) {
@@ -714,7 +716,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known_not_authorized) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_FORBIDDEN ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_get_unknown_authorized) {
@@ -744,7 +746,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_authorized) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_get_unknown_not_authorized) {
@@ -773,7 +775,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_not_authorized) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_FORBIDDEN ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_authorized) {
@@ -805,7 +807,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_author
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_not_authorized) {
@@ -837,7 +839,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_not_au
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_FORBIDDEN ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_list_system_database_authorized) {
@@ -1217,7 +1219,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_invalid_params) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_BAD_PARAMETER ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 // unknown analyzer
@@ -1248,7 +1250,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_unknown_analyzer) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 // not authorised
@@ -1279,7 +1281,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_not_authorized) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_FORBIDDEN ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 
   // Check it's not gone
   auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
@@ -1321,7 +1323,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_CONFLICT ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   // Check it's not gone

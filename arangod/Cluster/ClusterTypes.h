@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTERTYPES_H
-#define ARANGOD_CLUSTER_CLUSTERTYPES_H
+#pragma once
 
 #include <limits>
 #include <string>
@@ -166,7 +165,7 @@ struct QueryAnalyzerRevisions {
   /// @brief Gets analyzers revision to be used with specified database
   /// @param vocbase database name
   /// @return analyzers revision
-  AnalyzersRevision::Revision getVocbaseRevision(DatabaseID const& vocbase) const noexcept;
+  AnalyzersRevision::Revision getVocbaseRevision(std::string_view vocbase) const noexcept;
 
   static QueryAnalyzerRevisions QUERY_LATEST;
 
@@ -175,9 +174,7 @@ struct QueryAnalyzerRevisions {
   AnalyzersRevision::Revision systemDbRevision{ AnalyzersRevision::MIN};
 };
 
-}  // namespace arangodb
-
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
 std::ostream& operator<<(std::ostream& o, arangodb::QueryAnalyzerRevisions const& r);
 
-#endif  // ARANGOD_CLUSTER_CLUSTERTYPES_H
+}  // namespace arangodb

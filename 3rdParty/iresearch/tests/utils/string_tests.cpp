@@ -49,6 +49,8 @@ TEST(string_ref_tests, create) {
     EXPECT_TRUE(ref.null());
     EXPECT_TRUE(ref.empty());
     EXPECT_EQ(irs::string_ref::NIL, ref);
+    EXPECT_EQ(ref.begin(), ref.end());
+    EXPECT_EQ(ref.rbegin(), ref.rend());
   }
 
   // create empty reference
@@ -59,6 +61,8 @@ TEST(string_ref_tests, create) {
     EXPECT_EQ(0, ref.size());
     EXPECT_FALSE(ref.null());
     EXPECT_TRUE(ref.empty());
+    EXPECT_EQ(ref.begin(), ref.end());
+    EXPECT_EQ(ref.rbegin(), ref.rend());
   }
 
   // create reference to string
@@ -70,6 +74,15 @@ TEST(string_ref_tests, create) {
       EXPECT_EQ(s.size(), ref.size());
       EXPECT_FALSE(ref.null());
       EXPECT_FALSE(ref.empty());
+      EXPECT_NE(ref.begin(), ref.end());
+      EXPECT_NE(ref.rbegin(), ref.rend());
+
+      auto rbegin = ref.rbegin();
+      for (size_t i = 0; i < ref.size(); ++i) {
+        EXPECT_EQ(&ref[ref.size() - i - 1], &*rbegin);
+        ++rbegin;
+      }
+      EXPECT_EQ(rbegin, ref.rend());
     }
 
     {
@@ -151,7 +164,7 @@ TEST(string_ref_tests, compare) {
     const string_ref ref0(s0.c_str(), s0.size());
 
     const std::string s1 = "over the lazy ";
-    const  string_ref ref1(s1.c_str(), s1.size());
+    const string_ref ref1(s1.c_str(), s1.size());
 
     EXPECT_EQ(ref0 == ref1, s0 == s1);
     EXPECT_EQ(ref0 != ref1, s0 != s1);

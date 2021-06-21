@@ -1,5 +1,4 @@
 /* jshint strict: false */
-/* global ArangoAgency */
 
 'use strict';
 

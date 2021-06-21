@@ -23,8 +23,8 @@
 #include "shared.hpp"
 #include "formats_10_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(version10)
+namespace iresearch {
+namespace version10 {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         documents
@@ -36,5 +36,5 @@ REGISTER_ATTRIBUTE(documents);
 // --SECTION--                                                         term_meta
 // -----------------------------------------------------------------------------
 
-NS_END // version10
-NS_END // ROOT
+} // version10
+} // ROOT

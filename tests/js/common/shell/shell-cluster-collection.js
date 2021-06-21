@@ -303,8 +303,8 @@ function ClusterCollectionSuite () {
 
       try {
         db._collection("UnitTestsClusterCrud").properties({
-          replicationFactor: 3,
-          minReplicationFactor: 3
+          replicationFactor: 5,
+          minReplicationFactor: 5
         });
         fail();
       } catch (err) {
@@ -653,6 +653,46 @@ function ClusterCollectionSuite () {
       }
     },
 
+    testCreateFailureWhenRemovingIsBuilding : function () {
+      if (!isServer) {
+        console.info('Skipping client test');
+        return;
+      }
+      let setFailAt;
+      let removeFailAt;
+      if (internal.debugCanUseFailAt()) {
+        setFailAt = internal.debugSetFailAt;
+        removeFailAt = internal.debugRemoveFailAt;
+      }
+      if (!setFailAt) {
+        console.info('Failure tests disabled, skipping...');
+        return;
+      }
+
+      const failurePoint = 'ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding';
+      try {
+        setFailAt(failurePoint);
+        const colName = "UnitTestClusterShouldNotBeCreated1";
+        let threw = false;
+        try {
+          db._create(colName);
+        } catch (e) {
+          threw = true;
+          assertTrue(e instanceof ArangoError);
+          assertEqual(503, e.errorNum);
+        } finally {
+          // we need to wait for the collecion to show up before the drop can work.
+          while (!db._collection(colName)) {
+            require("internal").sleep(0.1);
+          }
+          db._drop(colName);
+        }
+        assertTrue(threw);
+      } finally {
+        removeFailAt(failurePoint);
+      }
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replicationFactor
 ////////////////////////////////////////////////////////////////////////////////
@@ -756,7 +796,7 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateProperties3 : function () {
-      var c = db._create("UnitTestsClusterCrud", { journalSize: 1048576 });
+      var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
       assertEqual(3, c.status());

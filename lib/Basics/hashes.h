@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_HASHES_H
-#define ARANGODB_BASICS_HASHES_H 1
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -42,7 +41,7 @@ uint64_t TRI_FnvHashString(char const*);
 /// @brief computes a FNV hash for POD types
 template <typename T>
 std::enable_if_t<std::is_pod_v<T>, uint64_t> TRI_FnvHashPod(T input) {
-  return TRI_FnvHashPointer(&input, sizeof(T));
+  return TRI_FnvHashBlock(0xcbf29ce484222325ULL, &input, sizeof(T));
 }
 
 /// @brief computes a initial FNV for blocks
@@ -77,4 +76,3 @@ uint32_t TRI_Crc32HashPointer(void const*, size_t);
 /// the polynomial used is 0x1EDC6F41.
 uint32_t TRI_Crc32HashString(char const*);
 
-#endif

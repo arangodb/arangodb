@@ -2394,6 +2394,24 @@ function complexFilteringSuite() {
       }
     },
 
+    // Regression test for https://github.com/arangodb/arangodb/issues/12372
+    // While subqueries in PRUNE should have already been forbidden, there was
+    // a place in the grammar where the subquery wasn't correctly flagged.
+    testPruneWithSubquery2: function () {
+      // The additional parentheses in LENGTH are important for this test!
+      let query = `FOR v,e,p IN 1..100 OUTBOUND @start @ecol PRUNE 2 <= LENGTH((FOR w IN p.vertices FILTER w._id == v._id RETURN 1)) RETURN p`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.Tri1
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    },
+
     testVertexEarlyPruneHighDepth: function () {
       var query = `WITH ${vn}
       FOR v, e, p IN 100 OUTBOUND @start @@eCol
@@ -4037,7 +4055,7 @@ function optimizeNonVertexCentricIndexesSuite() {
     testUniqueHashIndex: () => {
       var idx = db[en].ensureIndex({type: 'hash', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
-      let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
+      let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
       internal.waitForEstimatorSync(); // make sure estimates are consistent
@@ -4061,7 +4079,7 @@ function optimizeNonVertexCentricIndexesSuite() {
     testUniqueSkiplistIndex: () => {
       var idx = db[en].ensureIndex({type: 'skiplist', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
-      let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
+      let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
       internal.waitForEstimatorSync(); // make sure estimates are consistent
@@ -4085,7 +4103,7 @@ function optimizeNonVertexCentricIndexesSuite() {
     testAllUniqueHashIndex: () => {
       var idx = db[en].ensureIndex({type: 'hash', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
-      let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
+      let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[*].foo ALL == 'A'
       RETURN v._id`;
 
@@ -4108,7 +4126,7 @@ function optimizeNonVertexCentricIndexesSuite() {
     testAllUniqueSkiplistIndex: () => {
       var idx = db[en].ensureIndex({type: 'skiplist', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
-      let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
+      let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[*].foo ALL == 'A'
       RETURN v._id`;
 
@@ -4252,6 +4270,82 @@ function pruneTraversalSuite() {
 
   // We have identical tests for all traversal options.
   const appendTests = (testObj, name, opts) => {
+    
+    testObj['testRenameConditionVariablesNested'] = () => {
+      const q = `
+        WITH ${vn}
+        LET sub = NOOPT({ value: 'C' })
+        LET sub2 = sub.value
+        LET sub3 = sub.value
+        LET sub4 = sub.value
+          FOR v, e, p IN 1..3 ANY "${vertex.B}" ${en}
+            PRUNE v._key == 'C'
+            OPTIONS ${JSON.stringify(opts)}
+            FILTER p.edges[*]._key ALL != sub2 
+            FILTER p.edges[*]._key ALL != sub3 
+            FILTER p.edges[*]._key ALL != sub4 
+            FILTER p.vertices[*]._key ALL != sub2 
+            FILTER p.vertices[*]._key ALL != sub3
+            FILTER p.vertices[*]._key ALL != sub4
+            FILTER p.edges[0]._key != sub2 
+            FILTER p.edges[0]._key != sub3 
+            FILTER p.edges[0]._key != sub4 
+            FILTER p.vertices[0]._key != sub2 
+            FILTER p.vertices[0]._key != sub3
+            FILTER p.vertices[0]._key != sub4
+            RETURN v._key
+      `;
+      const res = db._query(q);
+
+      if (name === "Neighbors") {
+        assertEqual(res.count(), 3, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'E', 'F'].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      }
+    };
+    
+    testObj['testRenamePruneVariablesNested'] = () => {
+      const q = `
+        WITH ${vn}
+        LET sub = (FOR s IN ['C'] RETURN s)
+        FOR sub2 IN sub
+          FOR v IN 1..3 ANY "${vertex.B}" ${en}
+            PRUNE v._key == sub2
+            OPTIONS ${JSON.stringify(opts)}
+            RETURN v._key
+      `;
+      const res = db._query(q);
+
+      if (name === "Neighbors") {
+        assertEqual(res.count(), 4, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      }
+    };
+
+    testObj['testPruneVariableReferringToOuter'] = () => {
+      const q = `
+        WITH ${vn}
+        LET sub = (FOR s IN ['C'] RETURN s)
+        FOR v IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE v._key IN sub 
+          OPTIONS ${JSON.stringify(opts)}
+          RETURN v._key
+      `;
+      const res = db._query(q);
+
+      if (name === "Neighbors") {
+        assertEqual(res.count(), 4, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      }
+    };
 
     testObj[`testAllowPruningOnV${name}`] = () => {
       const q = `
@@ -4500,8 +4594,6 @@ function unusedVariableSuite() {
     },
   };
 }
-
-
 
 jsunity.run(invalidStartVertexSuite);
 jsunity.run(simpleInboundOutboundSuite);
