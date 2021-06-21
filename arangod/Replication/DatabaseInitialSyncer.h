@@ -202,12 +202,6 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result fetchCollectionSyncByKeys(arangodb::LogicalCollection*,
                                    std::string const& leaderColl, TRI_voc_tick_t);
 
-  /// @brief incrementally fetch data from a collection using revisions as the
-  /// primary document identifier, not supported by all engines/collections
-  // TODO worker safety
-  Result fetchCollectionSyncByRevisions(arangodb::LogicalCollection*,
-                                        std::string const& leaderColl, TRI_voc_tick_t);
-
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
   Result changeCollection(arangodb::LogicalCollection*, arangodb::velocypack::Slice const&);

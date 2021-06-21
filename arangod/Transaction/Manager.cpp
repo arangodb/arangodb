@@ -40,6 +40,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -91,7 +92,8 @@ Manager::Manager(ManagerFeature& feature)
       _nrReadLocked(0),
       _disallowInserts(false),
       _writeLockHeld(false),
-      _streamingLockTimeout(feature.streamingLockTimeout()) {}
+      _streamingLockTimeout(feature.streamingLockTimeout()),
+      _softShutdownOngoing(false) {}
 
 void Manager::registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction,
                                   bool isFollowerTransaction) {
@@ -300,6 +302,11 @@ bool ExtractCollections(VPackSlice collections, std::vector<std::string>& reads,
 }  // namespace
 
 ResultT<TRI_voc_tid_t> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSlice trxOpts) {
+
+  if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
+    return Result{TRI_ERROR_SHUTTING_DOWN, "Soft shutdown ongoing."};
+  }
+
   Result res;
   // parse the collections to register
   if (!trxOpts.isObject() || !trxOpts.get("collections").isObject()) {

@@ -664,10 +664,25 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
 //////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
-  // if the agency is not initialized, there is no point in continuing.
-  if (!checkIfAgencyInitialized(comm, role)) {
-    return false;
-  }
+
+  // if the agency is not initialized, we'll give the bunch a little time to get their
+  // act together before calling it a day.
+
+  using namespace std::chrono;
+  using clock = steady_clock;
+  auto registrationTimeout = clock::now() + seconds(300);
+  auto backoff = milliseconds(75);
+  do {
+    if (checkIfAgencyInitialized(comm, role)) {
+      break;
+    } else if (clock::now() >= registrationTimeout) {
+      return false;
+    }
+    std::this_thread::sleep_for(backoff);
+    if (backoff < seconds(1)) {
+      backoff += backoff;
+    }
+  } while (!_server.isStopping());
 
   std::string const agencyListKey = roleToAgencyListKey(role);
   std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
