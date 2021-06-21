@@ -90,10 +90,10 @@ class IResearchInvertedIndex : public Index {
   }
 
   bool inProgress() const override {
-    // We will be in that state until we have chance to initialize analyzers
+    // We should be in that state until we have chance to initialize analyzers
     // in case of usage  custom ones
-    // FIXME: implement leaving inProgress
-    return true;
+    // FIXME: implement entering/leaving inProgress
+    return false;
   }
 
   size_t memory() const override {

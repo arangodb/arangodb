@@ -555,11 +555,36 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
 
   if (!mask || mask->_fields) {  // fields are not inherited from parent
     velocypack::Builder fieldsBuilder;
-    Mask fieldMask(true); // output all non-matching fields
-    auto subDefaults = *this; // make modifable copy
+    if (forInvertedIndex) {
+      fieldsBuilder.openArray();
+      TRI_ASSERT(!_fields.empty());
+      for (auto& entry : _fields) {
+        VPackObjectBuilder fieldObject(&fieldsBuilder);
+        auto subFieldBegin = entry.value().get()->_fields.begin();
+        auto subFieldEnd = entry.value().get()->_fields.end();
+        std::string name(entry.key().c_str(), entry.key().size());
+        TRI_ASSERT(entry.value().get()->_analyzers.size() < 2);
+        std::string const* analyzerNamePtr = !entry.value().get()->_analyzers.empty()?
+                                             &entry.value().get()->_analyzers.front()._shortName:
+                                             nullptr;
+        FieldMeta const* last = entry.value().get();
+        for (;subFieldBegin != subFieldEnd; ++subFieldBegin) {
+          name.append(".");
+          name.append(subFieldBegin.key().c_str(), subFieldBegin.key().size());
+          TRI_ASSERT(subFieldBegin.value().get()->_analyzers.size() < 2);
+          last = entry.value().get();
+        }
+        fieldsBuilder.add("name", VPackValue(name));
+        if (!last->_analyzers.empty()) {
+          fieldsBuilder.add("analyzer", VPackValue(last->_analyzers.front()._pool->name()));
+        }
+      }
+    } else {
+      Mask fieldMask(true); // output all non-matching fields
+      auto subDefaults = *this; // make modifable copy
 
-    subDefaults._fields.clear(); // do not inherit fields and overrides from this field
-    fieldsBuilder.openObject();
+      subDefaults._fields.clear(); // do not inherit fields and overrides from this field
+      fieldsBuilder.openObject();
 
       for (auto& entry : _fields) {
         fieldMask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
@@ -573,7 +598,7 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
 
         fieldsBuilder.close();
       }
-
+    }
     fieldsBuilder.close();
     builder.add("fields", fieldsBuilder.slice());
   }
