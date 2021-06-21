@@ -27,6 +27,7 @@
 #include <velocypack/Value.h>
 
 #include <Basics/StringUtils.h>
+#include <Basics/StaticStrings.h>
 
 #include <Basics/VelocyPackHelper.h>
 #include <chrono>
@@ -75,6 +76,10 @@ void LogEntry::setInsertTp(clock::time_point tp) noexcept {
 }
 auto LogEntry::insertTp() const noexcept -> clock::time_point {
   return _insertTp;
+}
+
+auto LogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
+  return TermIndexPair{_logTerm, _logIndex};
 }
 
 auto LogTerm::operator<=(LogTerm other) const -> bool {
@@ -126,4 +131,29 @@ auto replication2::to_string(LogTerm term) -> std::string {
 
 auto replication2::to_string(LogIndex index) -> std::string {
   return std::to_string(index.value);
+}
+
+
+auto replication2::operator<=(replication2::TermIndexPair const& left,
+                                replication2::TermIndexPair const& right) noexcept -> bool {
+  if (left.term < right.term) {
+    return true;
+  } else if (left.term == right.term) {
+    return left.index <= right.index;
+  } else {
+    return false;
+  }
+}
+
+void replication2::TermIndexPair::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Term, VPackValue(term.value));
+  builder.add(StaticStrings::Index, VPackValue(index.value));
+}
+
+auto replication2::TermIndexPair::fromVelocyPack(velocypack::Slice slice) -> TermIndexPair {
+  TermIndexPair pair;
+  pair.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<size_t>()};
+  pair.index = LogIndex{slice.get(StaticStrings::Index).getNumericValue<size_t>()};
+  return pair;
 }

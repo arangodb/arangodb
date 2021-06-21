@@ -93,6 +93,24 @@ struct LogTerm : implement_compare<LogTerm> {
 auto to_string(LogTerm term) -> std::string;
 auto to_string(LogIndex index) -> std::string;
 
+struct TermIndexPair : implement_compare<TermIndexPair> {
+  LogTerm term{};
+  LogIndex index{};
+
+  friend auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept
+  -> bool;
+
+  TermIndexPair(LogTerm term, LogIndex index) : term(term), index(index) {}
+  TermIndexPair() = default;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
+
+  friend auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream& {
+    return os << '(' << pair.term << ':' << pair.index << ')';
+  }
+};
+
 struct LogPayload {
   explicit LogPayload(VPackBufferUInt8 dummy) : dummy(std::move(dummy)) {}
   explicit LogPayload(VPackSlice slice);
@@ -120,6 +138,7 @@ class LogEntry {
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto logPayload() const noexcept -> LogPayload const&;
+  [[nodiscard]] auto logTermIndexPair() const noexcept -> TermIndexPair;
   [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
   void setInsertTp(clock::time_point) noexcept;
 

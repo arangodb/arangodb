@@ -55,19 +55,6 @@ enum class AppendEntriesErrorReason {
   COMMUNICATION_ERROR,
 };
 
-struct TermIndexPair : implement_compare<TermIndexPair> {
-  LogTerm term{};
-  LogIndex index{};
-
-  friend auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept
-      -> bool;
-
-  TermIndexPair(LogTerm term, LogIndex index) : term(term), index(index) {}
-  TermIndexPair() = default;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
-};
 
 struct LogStatistics {
   TermIndexPair spearHead{};

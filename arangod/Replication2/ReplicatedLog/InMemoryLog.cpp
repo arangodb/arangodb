@@ -84,7 +84,7 @@ auto replicated_log::InMemoryLog::splice(LogIndex from, LogIndex to) const
 auto replicated_log::InMemoryLog::getFirstIndexOfTerm(LogTerm term) const noexcept -> std::optional<LogIndex> {
   auto it = std::lower_bound(_log.begin(), _log.end(), term,
                              [](auto const& entry, auto const& term) {
-                               return term < entry.logTerm();
+                               return term > entry.logTerm();
                              });
 
   if (it != _log.end() && it->logTerm() == term) {
@@ -228,4 +228,18 @@ auto replicated_log::InMemoryLog::back() const noexcept -> decltype(_log)::const
 
 auto replicated_log::InMemoryLog::empty() const noexcept -> bool {
   return _log.empty();
+}
+
+auto replicated_log::InMemoryLog::getLastEntry() const noexcept -> std::optional<LogEntry> {
+  if (_log.empty()) {
+    return std::nullopt;
+  }
+  return _log.back();
+}
+
+auto replicated_log::InMemoryLog::getFirstEntry() const noexcept -> std::optional<LogEntry> {
+  if (_log.empty()) {
+    return std::nullopt;
+  }
+  return _log.front();
 }

@@ -22,6 +22,7 @@
 
 #include "LogFollower.h"
 
+#include "Algorithms.h"
 #include "LogContextKeys.h"
 #include "ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
@@ -121,21 +122,13 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
 
   if (req.prevLogIndex > LogIndex{0}) {
-    auto entry = self->_inMemoryLog.getEntryByIndex(req.prevLogIndex);
-    if (!entry.has_value() || entry->logTerm() != req.prevLogTerm) {
-      // TODO If desired, the protocol can be optimized to reduce the number
-      //      of rejected AppendEntries RPCs. For example, when rejecting
-      //      an AppendEntries request, the follower can include the term
-      //      of the conflicting entry and the first index it stores for
-      //      that term. With this information, the leader can decrement
-      //      nextIndex to bypass all of the conflicting entries in that
-      //      term; one AppendEntries RPC will be required for each term
-      //      with conflicting entries, rather than one RPC per entry.
-      // from raft-pdf page 7-8
-      LOG_CTX("1e86a", TRACE, _logContext)
-          << "reject append entries - prev log index/term not matching";
-      return AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                 AppendEntriesErrorReason::NO_PREV_LOG_MATCH, req.messageId};
+    if (auto conflict = algorithms::detectConflict(self->_inMemoryLog,
+                                       TermIndexPair{req.prevLogTerm, req.prevLogIndex});
+        conflict.has_value()) {
+      auto [reason, next] = *conflict;
+
+      LOG_CTX("5971a", DEBUG, _logContext) << "reject append entries - prev log did not match: " << to_string(reason);
+      return AppendEntriesResult{_currentTerm, req.messageId, next};
     }
   }
 

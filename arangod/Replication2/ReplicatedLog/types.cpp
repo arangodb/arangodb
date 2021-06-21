@@ -84,6 +84,12 @@ void replicated_log::AppendEntriesResult::toVelocyPack(velocypack::Builder& buil
     builder.add("errorCode", VPackValue(errorCode));
     builder.add("reason", VPackValue(int(reason)));
     builder.add("messageId", VPackValue(messageId.value));
+    if (conflict.has_value()) {
+      TRI_ASSERT(errorCode == TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      TRI_ASSERT(reason == AppendEntriesErrorReason::NO_PREV_LOG_MATCH);
+      builder.add(VPackValue("conflict"));
+      conflict->toVelocyPack(builder);
+    }
   }
 }
 
@@ -93,6 +99,13 @@ auto replicated_log::AppendEntriesResult::fromVelocyPack(velocypack::Slice slice
   auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
   auto reason = AppendEntriesErrorReason{slice.get("reason").extract<int>()};
   auto messageId = MessageId{slice.get("messageId").extract<uint64_t>()};
+
+  if (reason == AppendEntriesErrorReason::NO_PREV_LOG_MATCH) {
+    TRI_ASSERT(errorCode == TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+    auto conflict = slice.get("conflict");
+    TRI_ASSERT(conflict.isObject());
+    return AppendEntriesResult{logTerm, messageId, TermIndexPair::fromVelocyPack(conflict)};
+  }
 
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
              reason != replicated_log::AppendEntriesErrorReason::NONE);
@@ -107,6 +120,14 @@ replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorC
 }
 replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, MessageId id)
     : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NONE, id) {}
+
+replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm term,
+                                                         replicated_log::MessageId id,
+                                                         TermIndexPair conflict)
+    : AppendEntriesResult(term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                          AppendEntriesErrorReason::NO_PREV_LOG_MATCH, id) {
+  this->conflict = conflict;
+}
 
 void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
   {
@@ -146,30 +167,6 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
   return AppendEntriesRequest{leaderTerm,        leaderId,     prevLogTerm,
                               prevLogIndex,      leaderCommit, messageId,
                               waitForSync, std::move(entries)};
-}
-
-auto replicated_log::operator<=(replicated_log::TermIndexPair const& left,
-                                replicated_log::TermIndexPair const& right) noexcept -> bool {
-  if (left.term < right.term) {
-    return true;
-  } else if (left.term == right.term) {
-    return left.index <= right.index;
-  } else {
-    return false;
-  }
-}
-
-void replicated_log::TermIndexPair::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::Term, VPackValue(term.value));
-  builder.add(StaticStrings::Index, VPackValue(index.value));
-}
-
-auto replicated_log::TermIndexPair::fromVelocyPack(velocypack::Slice slice) -> TermIndexPair {
-  TermIndexPair pair;
-  pair.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<size_t>()};
-  pair.index = LogIndex{slice.get(StaticStrings::Index).getNumericValue<size_t>()};
-  return pair;
 }
 
 void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {

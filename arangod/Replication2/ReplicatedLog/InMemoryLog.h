@@ -68,6 +68,8 @@ struct InMemoryLog {
 
   [[nodiscard]] auto getLastIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getLastTerm() const noexcept -> LogTerm;
+  [[nodiscard]] auto getLastEntry() const noexcept -> std::optional<LogEntry>;
+  [[nodiscard]] auto getFirstEntry() const noexcept -> std::optional<LogEntry>;
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept
       -> std::optional<LogEntry>;

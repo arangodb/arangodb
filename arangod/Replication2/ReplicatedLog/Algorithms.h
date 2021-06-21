@@ -28,6 +28,7 @@
 
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "InMemoryLog.h"
 
 namespace arangodb::replication2::algorithms {
 
@@ -42,5 +43,17 @@ auto checkReplicatedLog(DatabaseID const& database, agency::LogPlanSpecification
                         agency::LogCurrent const& current,
                         std::unordered_map<ParticipantId, ParticipantRecord> const& info)
     -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection>;
+
+enum class ConflictReason {
+  LOG_ENTRY_AFTER_END,
+  LOG_ENTRY_BEFORE_BEGIN,
+  LOG_EMPTY,
+  LOG_ENTRY_NO_MATCH,
+};
+
+auto to_string(ConflictReason r) noexcept -> std::string_view;
+
+auto detectConflict(replicated_log::InMemoryLog const& log, TermIndexPair prevLog) noexcept
+    -> std::optional<std::pair<ConflictReason, TermIndexPair>>;
 
 }  // namespace arangodb::replication2::algorithms

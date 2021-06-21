@@ -159,7 +159,7 @@ LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t, VPackSlice slice) 
   term = slice.get(StaticStrings::Term).extract<LogTerm>();
 }
 
-LogCurrentLocalState::LogCurrentLocalState(LogTerm term, replicated_log::TermIndexPair spearhead) noexcept
+LogCurrentLocalState::LogCurrentLocalState(LogTerm term, TermIndexPair spearhead) noexcept
     : term(term), spearhead(spearhead) {}
 
 auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {

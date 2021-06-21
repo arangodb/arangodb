@@ -70,11 +70,14 @@ struct AppendEntriesResult {
   AppendEntriesErrorReason const reason = AppendEntriesErrorReason::NONE;
   MessageId messageId;
 
+  std::optional<TermIndexPair> conflict;
+
   [[nodiscard]] auto isSuccess() const noexcept -> bool {
     return errorCode == TRI_ERROR_NO_ERROR;
   }
 
-  explicit AppendEntriesResult(LogTerm, MessageId);
+  AppendEntriesResult(LogTerm, MessageId, TermIndexPair conflict);
+  AppendEntriesResult(LogTerm, MessageId);
   AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
                       AppendEntriesErrorReason reason, MessageId);
   void toVelocyPack(velocypack::Builder& builder) const;

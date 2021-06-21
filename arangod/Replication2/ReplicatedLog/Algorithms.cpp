@@ -78,7 +78,7 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
       election.term = spec.currentTerm ? spec.currentTerm->term : LogTerm{0};
 
       auto newLeaderSet = std::vector<replication2::ParticipantId>{};
-      auto bestTermIndex = replication2::replicated_log::TermIndexPair{};
+      auto bestTermIndex = replication2::TermIndexPair{};
       auto numberOfAvailableParticipants = std::size_t{0};
 
       for (auto const& [participant, status] : current.localState) {
@@ -149,4 +149,58 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
   }
 
   return std::monostate{};
+}
+
+auto algorithms::to_string(ConflictReason r) noexcept -> std::string_view {
+  switch (r) {
+    case ConflictReason::LOG_ENTRY_AFTER_END:
+      return "prev log is located after the last log entry";
+    case ConflictReason::LOG_ENTRY_BEFORE_BEGIN:
+      return "prev log is located before the first entry";
+    case ConflictReason::LOG_EMPTY:
+      return "the replicated log is empty";
+    case ConflictReason::LOG_ENTRY_NO_MATCH:
+      return "term mismatch";
+  }
+}
+
+auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermIndexPair prevLog) noexcept
+    -> std::optional<std::pair<ConflictReason, TermIndexPair>> {
+  /*
+   * There are three situations to handle here:
+   *  - We don't have that log entry
+   *    - It is behind our last entry
+   *    - It is before out first entry
+   *  - The term does not match.
+   */
+  auto entry = log.getEntryByIndex(prevLog.index);
+  if (entry.has_value()) {
+    // check if the term matches
+    if (entry->logTerm() != prevLog.term) {
+      auto conflict = std::invoke([&] {
+        if (auto idx = log.getFirstIndexOfTerm(entry->logTerm()); idx.has_value()) {
+          return TermIndexPair{entry->logTerm(), *idx};
+        }
+        return TermIndexPair{};
+      });
+
+      return std::make_pair(ConflictReason::LOG_ENTRY_NO_MATCH, conflict);
+    }
+  } else {
+    auto lastEntry = log.getLastEntry();
+    if (!lastEntry.has_value()) {
+      return std::make_pair(ConflictReason::LOG_EMPTY, TermIndexPair{});
+    } else if (prevLog.index > lastEntry->logIndex()) {
+      // the given entry is too far ahead
+      return std::make_pair(ConflictReason::LOG_ENTRY_AFTER_END, entry->logTermIndexPair());
+    } else {
+      TRI_ASSERT(false);  // TODO this can only happen if we drop log entries
+      TRI_ASSERT(prevLog.index < lastEntry->logIndex());
+      TRI_ASSERT(prevLog.index < log.getFirstEntry()->logIndex());
+      // the given index too old, reset to (0, 0)
+      return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN, TermIndexPair{});
+    }
+  }
+
+  return std::nullopt;
 }

@@ -68,7 +68,7 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
     std::transform(info.begin(), info.end(), std::inserter(current.localState, current.localState.end()), [&](auto const& info) {
       auto state = agency::LogCurrentLocalState{};
       state.term = term;
-      state.spearhead = replicated_log::TermIndexPair{spearheadTerm, spearhead};
+      state.spearhead = TermIndexPair{spearheadTerm, spearhead};
       return std::make_pair(info.first, state);
     });
     return current;
@@ -233,9 +233,9 @@ TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
   spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
   spec.currentTerm->config.writeConcern = 2;
   auto current = makeLogCurrent();
-  current.localState["A"] = agency::LogCurrentLocalState{LogTerm{2}, replicated_log::TermIndexPair{LogTerm{1}, LogIndex{1}}};
-  current.localState["B"] = agency::LogCurrentLocalState{LogTerm{1}, replicated_log::TermIndexPair{LogTerm{1}, LogIndex{1}}};
-  current.localState["C"] = agency::LogCurrentLocalState{LogTerm{2}, replicated_log::TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["A"] = agency::LogCurrentLocalState{LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["B"] = agency::LogCurrentLocalState{LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["C"] = agency::LogCurrentLocalState{LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
   // only C is available, because it is healthy and it has confirmed term 2
 
   auto v = checkReplicatedLog("db", spec, current, participants);

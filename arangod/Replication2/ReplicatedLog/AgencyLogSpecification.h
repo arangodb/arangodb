@@ -81,12 +81,12 @@ struct LogPlanSpecification {
 
 struct LogCurrentLocalState {
   LogTerm term{};
-  replicated_log::TermIndexPair spearhead{};
+  TermIndexPair spearhead{};
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrentLocalState() = default;
   LogCurrentLocalState(from_velocypack_t, VPackSlice);
-  LogCurrentLocalState(LogTerm, replicated_log::TermIndexPair) noexcept;
+  LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
 };
 
 
