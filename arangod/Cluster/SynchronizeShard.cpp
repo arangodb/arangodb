@@ -1060,11 +1060,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     if (!res.ok()) {
       auto errorMessage = StringUtils::concatT(
           "SynchronizeShard: error in startReadLockOnLeader (soft):", res.errorMessage());
-      if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-        return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_CLUSTER_NOT_LEADER, std::move(errorMessage));
-      } else {
-        return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, std::move(errorMessage));
-      }
+      return ResultT<TRI_voc_tick_t>::error(res.errorNumber(), std::move(errorMessage));
     }
 
     auto readLockGuard = arangodb::scopeGuard([&, this]() {
@@ -1152,11 +1148,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   if (!res.ok()) {
     auto errorMessage = StringUtils::concatT(
         "SynchronizeShard: error in startReadLockOnLeader (hard):", res.errorMessage());
-    if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-      return {TRI_ERROR_CLUSTER_NOT_LEADER, std::move(errorMessage)};
-    } else {
-      return {TRI_ERROR_INTERNAL, std::move(errorMessage)};
-    }
+    return {res.errorNumber(), std::move(errorMessage)};
   }
   auto readLockGuard = arangodb::scopeGuard([&, this]() {
     // Always cancel the read lock.

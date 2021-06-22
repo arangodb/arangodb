@@ -120,7 +120,8 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
     return rocksdb::Status::OK();
   }
   rocksdb::Status RollbackToWriteBatchSavePoint() override {
-    return rocksdb::Status::OK();
+    // simply relay to the general method (which in this derived class does nothing)
+    return RollbackToSavePoint();
   }
   void PopSavePoint() override {}
 
@@ -191,7 +192,8 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
     return rocksdb::Status::OK();
   }
   rocksdb::Status RollbackToWriteBatchSavePoint() override {
-    return rocksdb::Status::OK();
+    // simply relay to the general method (which in this derived class does nothing)
+    return RollbackToSavePoint();
   }
   void PopSavePoint() override {}
 
@@ -225,7 +227,8 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
     return rocksdb::Status::OK();
   }
   rocksdb::Status RollbackToWriteBatchSavePoint() override {
-    return rocksdb::Status::OK();
+    // simply relay to the general method (which in this derived class does nothing)
+    return RollbackToSavePoint();
   }
   void PopSavePoint() override {}
 

@@ -1037,9 +1037,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // This failure point is to test the case that a former leader has
     // resigned in the meantime but still gets an insert request from
     // a coordinator who does not know this yet. That is, the test sets
@@ -1069,6 +1066,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
 
       replicationType = ReplicationType::LEADER;
+      followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -1091,7 +1089,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     }
   }  // isDBServer - early block
     
-  TRI_ASSERT(replicationType != ReplicationType::LEADER || followers != nullptr);
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
   TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER || followers->empty());
 
   VPackBuilder resultBuilder;
@@ -1175,7 +1173,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
           prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
-        TRI_ASSERT(res.ok());
         buildDocumentIdentity(collection.get(), resultBuilder, cid,
                               value.get(StaticStrings::KeyString).stringRef(),
                               prevDocResult.revisionId(), RevisionId::none(),
@@ -1380,9 +1377,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1401,6 +1395,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       }
 
       replicationType = ReplicationType::LEADER;
+      followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -1423,7 +1418,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     }
   }  // isDBServer - early block
   
-  TRI_ASSERT(replicationType != ReplicationType::LEADER || followers != nullptr);
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
   TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER || followers->empty());
 
   // Update/replace are a read and a write, let's get the write lock already
@@ -1609,8 +1604,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
 
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
@@ -1630,6 +1623,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
 
       replicationType = ReplicationType::LEADER;
+      followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -1652,7 +1646,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     }
   }  // isDBServer - early block
   
-  TRI_ASSERT(replicationType != ReplicationType::LEADER || followers != nullptr);
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
   TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER || followers->empty());
 
   VPackBuilder resultBuilder;
@@ -1892,6 +1886,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     }
   }  // isDBServer - early block
 
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
   Result res = collection->truncate(*this, options);
@@ -1901,11 +1896,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
   }
 
   // Now see whether or not we have to do synchronous replication:
-  if (replicationType == ReplicationType::LEADER) {
-    TRI_ASSERT(followers != nullptr);
-
-    TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL));
-
+  if (replicationType == ReplicationType::LEADER && !followers->empty()) {
     // Now replicate the good operations on all followers:
     NetworkFeature const& nf = vocbase().server().getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
