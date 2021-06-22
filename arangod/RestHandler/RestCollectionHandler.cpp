@@ -35,6 +35,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
@@ -527,6 +528,15 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     if (res.fail()) {
       generateError(res);
       _activeTrx.reset();
+      return RestStatus::DONE;
+    }
+  
+    if (ServerState::instance()->isDBServer() &&
+        _activeTrx->state()->collection(coll->name(), AccessMode::Type::EXCLUSIVE) == nullptr) {
+      // make sure that the current transaction includes the collection that we want to
+      // write into. this is not necessarily the case for follower transactions that
+      // are started lazily. in this case, we must reject the request.
+      generateError(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION));
       return RestStatus::DONE;
     }
 
