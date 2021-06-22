@@ -106,8 +106,16 @@ arangodb::iresearch::IResearchInvertedIndex::IResearchInvertedIndex(
     IResearchInvertedIndexMeta&& meta) : _meta(meta) {
 }
 
-void arangodb::iresearch::IResearchInvertedIndex::toVelocyPack(
-    VPackBuilder& builder, std::underlying_type<Index::Serialize>::type flags) const {
+void IResearchInvertedIndex::toVelocyPack(
+    application_features::ApplicationServer& server,
+    TRI_vocbase_t const* defaultVocbase,
+    velocypack::Builder& builder,
+    bool forPersistence) const {
+  if (_meta.json(server, defaultVocbase, builder, forPersistence).fail()) {
+    THROW_ARANGO_EXCEPTION(Result(
+        TRI_ERROR_INTERNAL,
+        std::string("Failed to generate inverted index definition")));
+  }
 }
 
 std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iteratorForCondition(
@@ -190,7 +198,7 @@ std::shared_ptr<Index> IResearchInvertedIndexFactory::instantiate(LogicalCollect
                                                                   bool isClusterConstructor) const {
   IResearchInvertedIndexMeta meta;
   // FIXME: for cluster  - where to get actual collection name? Pre-store in definition I guess!
-  auto res = meta.init(_server, nullptr, definition, isClusterConstructor);
+  auto res = meta.init(_server, &collection.vocbase(), definition, isClusterConstructor);
   if (res.fail()) {
         LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
              << "Filed to create index '" << id.id()
@@ -288,6 +296,22 @@ Result IResearchInvertedIndexMeta::normalize(
   return {};
 }
 
+// Analyzer names storing
+//  - forPersistence ::<analyzer> from system and <analyzer> for local and definitions are stored.
+//  - For user -> database-name qualified names. No definitions are stored
+Result IResearchInvertedIndexMeta::json(application_features::ApplicationServer & server,
+                                        TRI_vocbase_t const * defaultVocbase,
+                                        velocypack::Builder & builder,
+                                        bool forPersistence) const
+{
+  if (_indexMeta.json(builder, nullptr, nullptr) &&
+    _fieldsMeta.json(server, builder, forPersistence, nullptr, defaultVocbase, nullptr, true)) {
+    return {};
+  } else {
+    return Result(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
 std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndexMeta::fields() const {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
   traverseMetaFields(_fieldsMeta, res);
@@ -299,6 +323,25 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(IndexId id, Logical
     RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
     meta._objectId, false),
   IResearchInvertedIndex(std::move(meta)) {}
+
+void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
+                                                 std::underlying_type<Index::Serialize>::type flags) const {
+  auto const forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
+  VPackObjectBuilder objectBuilder(&builder);
+  IResearchInvertedIndex::toVelocyPack(collection().vocbase().server(),
+                                       &collection().vocbase(), builder, forPersistence);
+  if (Index::hasFlag(flags, Index::Serialize::Internals)) {
+    TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
+    builder.add("objectId", VPackValue(std::to_string(objectId())));
+  }
+  // can't use Index::toVelocyPack as it will try to output 'fields'
+  // but we have custom storage format
+  builder.add(arangodb::StaticStrings::IndexId,
+              arangodb::velocypack::Value(std::to_string(_iid.id())));
+  builder.add(arangodb::StaticStrings::IndexType,
+              arangodb::velocypack::Value(oldtypeName(type())));
+  builder.add(arangodb::StaticStrings::IndexName, arangodb::velocypack::Value(name()));
+}
 
 } // namespace iresearch
 } // namespace arangodb

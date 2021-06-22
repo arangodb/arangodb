@@ -44,6 +44,10 @@ struct IResearchInvertedIndexMeta {
                           TRI_vocbase_t const* defaultVocbase,
                           velocypack::Builder& normalized, velocypack::Slice definition);
 
+  Result json(application_features::ApplicationServer& server,
+              TRI_vocbase_t const* defaultVocbase,
+              velocypack::Builder& builder, bool forPersistence) const;
+
   std::vector<std::vector<arangodb::basics::AttributeName>> fields() const;
 
   std::string _name;
@@ -57,8 +61,9 @@ class IResearchInvertedIndex {
  public:
   explicit IResearchInvertedIndex(IResearchInvertedIndexMeta&& meta);
 
-  void toVelocyPack(VPackBuilder& builder,
-                    std::underlying_type<Index::Serialize>::type flags) const;
+  void toVelocyPack(application_features::ApplicationServer& server,
+                    TRI_vocbase_t const* defaultVocbase,
+                    velocypack::Builder& builder, bool forPersistence) const;
 
   bool isSorted() const {
     return false; // FIXME: sometimes we can be sorted
@@ -102,6 +107,9 @@ class IResearchRocksDBInvertedIndex : public RocksDBIndex, IResearchInvertedInde
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta);
 
   Index::IndexType type() const override { return  Index::TRI_IDX_TYPE_SEARCH_INDEX; }
+
+  void toVelocyPack(VPackBuilder& builder,
+                    std::underlying_type<Index::Serialize>::type flags) const override;
 
   size_t memory() const override {
     // FIXME return in memory size
