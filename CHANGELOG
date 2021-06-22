@@ -1,5 +1,9 @@
 devel
 -----
+
+* Improve usability of hidden options: `--help` mentions that these exist
+  and how to display them.
+
 * Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
   iterator.
 
