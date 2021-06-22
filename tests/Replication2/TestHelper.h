@@ -100,8 +100,10 @@ struct AsyncMockLog : MockLog {
   std::mutex _mutex;
   std::vector<std::shared_ptr<QueueEntry>> _queue;
   std::condition_variable _cv;
-  std::thread _asyncWorker;
   std::atomic<bool> _stopping = false;
+  // _asyncWorker *must* be initialized last, otherwise starting the thread
+  // races with initializing the coordination variables.
+  std::thread _asyncWorker;
 };
 
 struct DelayedFollowerLog : AbstractFollower {
