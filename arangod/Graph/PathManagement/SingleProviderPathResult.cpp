@@ -127,7 +127,6 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntr
     // content of step
     _provider.addVertexToBuilder(step.getVertex(), result);
 
-    // _provider.addVertexToBuilder(_step.getVertex(), result);
     _provider.addEdgeToBuilder(step.getEdge(), result);
   };  // TODO: Create method instead of lambda
 
