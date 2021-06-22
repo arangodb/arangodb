@@ -608,8 +608,6 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         if (type == rest::RequestType::POST) {
           handleCommandHoldReadLockCollection();
-        } else if (type == rest::RequestType::PUT) {
-          handleCommandCheckHoldReadLockCollection();
         } else if (type == rest::RequestType::DELETE_REQ) {
           handleCommandCancelHoldReadLockCollection();
         } else if (type == rest::RequestType::GET) {
@@ -2423,6 +2421,25 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "'readLockId' is not a string or empty");
     return;
   }
+ 
+  auto cleanup = scopeGuard([&body, this]() {
+    // untrack the (async) replication client, so the WAL may be cleaned
+    arangodb::ServerId const serverId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
+    SyncerId const syncerId = SyncerId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+    std::string const clientInfo =
+        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
+
+    try {
+      _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
+    } catch (std::exception const& ex) {
+      // not much we can do here except logging
+      LOG_TOPIC("312ff", WARN, Logger::REPLICATION) 
+        << "unable to remove progress tracker: " << ex.what();
+    }
+  });
+
   LOG_TOPIC("23b9f", DEBUG, Logger::REPLICATION)
       << "Try add follower with documents";
   // previous versions < 3.3x might not send the checksum, if mixed clusters
@@ -2463,17 +2480,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (res.fail()) {
     // this will create an error response with the appropriate message
     THROW_ARANGO_EXCEPTION(res);
-  }
-
-  {  // untrack the (async) replication client, so the WAL may be cleaned
-    arangodb::ServerId const serverId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
-    SyncerId const syncerId = SyncerId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
-    std::string const clientInfo =
-        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
-
-    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
   }
 
   VPackBuilder b;
@@ -2718,7 +2724,6 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   TRI_ASSERT(isLockHeld(id).ok());
-  TRI_ASSERT(isLockHeld(id).get() == true);
 
   VPackBuilder b;
   {
@@ -2730,50 +2735,6 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
       << "Shard: " << _vocbase.name() << "/" << col->name()
       << " is now locked with type: " << (doSoftLock ? "soft" : "hard")
       << " lock id: " << id;
-  generateResult(rest::ResponseCode::OK, b.slice());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check the holding of a read lock on a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
-  TRI_ASSERT(ServerState::instance()->isDBServer());
-
-  bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
-  if (!success) {
-    // error already created
-    return;
-  }
-
-  if (!body.isObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "body needs to be an object with attribute 'id'");
-    return;
-  }
-  VPackSlice const idSlice = body.get("id");
-  if (!idSlice.isString()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'id' needs to be a string");
-    return;
-  }
-  TransactionId id = ExtractReadlockId(idSlice);
-  LOG_TOPIC("05a75", DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
-  auto res = isLockHeld(id);
-  if (!res.ok()) {
-    generateError(std::move(res).result());
-    return;
-  }
-
-  VPackBuilder b;
-  {
-    VPackObjectBuilder bb(&b);
-    b.add(StaticStrings::Error, VPackValue(false));
-    b.add("lockHeld", VPackValue(res.get()));
-  }
-  LOG_TOPIC("ca554", DEBUG, Logger::REPLICATION)
-      << "Lock " << id << " is " << (res.get() ? "still active." : "gone.");
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -3487,17 +3448,16 @@ Result RestReplicationHandler::createBlockingTransaction(
   }
 
   TRI_ASSERT(isLockHeld(id).ok());
-  TRI_ASSERT(isLockHeld(id).get() == true);
 
   return Result();
 }
 
-ResultT<bool> RestReplicationHandler::isLockHeld(TransactionId id) const {
+Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   // The query is only hold for long during initial locking
   // there it should return false.
   // In all other cases it is released quickly.
   if (_vocbase.isDropped()) {
-    return ResultT<bool>::error(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -3505,11 +3465,11 @@ ResultT<bool> RestReplicationHandler::isLockHeld(TransactionId id) const {
 
   transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
   if (stats == transaction::Status::UNDEFINED) {
-    return ResultT<bool>::error(TRI_ERROR_HTTP_NOT_FOUND,
-                                "no hold read lock job found for id " + std::to_string(id.id()));
+    return Result(TRI_ERROR_HTTP_NOT_FOUND,
+                  "no hold read lock job found for id " + std::to_string(id.id()));
   }
   
-  return ResultT<bool>::success(true);
+  return {};
 }
 
 ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(TransactionId id) const {
