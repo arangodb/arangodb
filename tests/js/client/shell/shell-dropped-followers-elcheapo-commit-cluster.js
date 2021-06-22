@@ -74,8 +74,22 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
       }
       internal.wait(1);
     }
+    // Now we have to wait until the Plan has only one follower again, otherwise
+    // the second moveShard operation can fail and thus the test would be
+    // vulnerable to bad timing (as has been seen on Windows):
+    start = internal.time();
+    while (true) {
+      if (internal.time() - start > 120) {
+        assertTrue(false, "timeout waiting for shards being in sync");
+        return;
+      }
+      plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
+      if (plan[shards[1]].followers.length === 1) {
+        break;
+      }
+      internal.wait(1);
+    }
   }
-  plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
   // Make followers the same:
   if (follower !== plan[shards[1]].followers[0]) {
     let moveShardJob = {
