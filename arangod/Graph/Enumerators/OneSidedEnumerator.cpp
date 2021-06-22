@@ -105,6 +105,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
   if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
     // Include it in results.
     _results.push_back(&step);
+  } else {
+    _stats.incrFiltered();
   }
 
   // only expand if we're responsible
@@ -238,8 +240,13 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
 
 template <class Configuration>
 auto OneSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
-  aql::TraversalStats stats = _provider.stealStats();
-  return stats;
+  _stats += _provider.stealStats();
+
+  auto t = _stats;
+  // Placement new of stats, do not reallocate space.
+  _stats.~TraversalStats();
+  new (&_stats) aql::TraversalStats{};
+  return t;
 }
 
 /* SingleServerProvider Section */

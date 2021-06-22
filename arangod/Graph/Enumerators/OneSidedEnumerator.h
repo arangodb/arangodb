@@ -28,6 +28,7 @@
 
 #include "Basics/ResourceUsage.h"
 
+#include "Aql/TraversalStats.h"
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
@@ -36,10 +37,6 @@
 #include <set>
 
 namespace arangodb {
-
-namespace aql {
-class TraversalStats;
-}
 
 namespace velocypack {
 class Builder;
@@ -147,6 +144,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   GraphOptions _options;
   ResultList _results{};
   bool _resultsFetched{false};
+  aql::TraversalStats _stats{};
 
   // The next elements to process
   typename Configuration::Queue _queue;
