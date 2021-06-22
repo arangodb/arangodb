@@ -756,7 +756,7 @@ auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
 auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesRequest const request)
     -> futures::Future<AppendEntriesResult> {
   auto const startTime = std::chrono::steady_clock::now();
-  auto measureTime = DeferredAction{[startTime, &metrics = _self._logMetrics]() noexcept {
+  auto measureTime = DeferredAction{[startTime, metrics = _self._logMetrics]() noexcept {
     auto const endTime = std::chrono::steady_clock::now();
     auto const duration =
         std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);

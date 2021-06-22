@@ -216,6 +216,7 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   auto stats = std::get<LeaderStatus>(data.log->getStatus()).local;
   EXPECT_LE(LogIndex{8000}, stats.commitIndex);
   EXPECT_LE(stats.commitIndex, stats.spearHead.index);
+  stopAsyncMockLogs();
 }
 
 TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {

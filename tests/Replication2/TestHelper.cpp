@@ -123,6 +123,7 @@ auto AsyncMockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, 
 
   {
     std::unique_lock guard(_mutex);
+    TRI_ASSERT(!_stopping);
     _queue.emplace_back(entry);
     _cv.notify_all();
   }
@@ -131,15 +132,16 @@ auto AsyncMockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, 
 }
 
 void AsyncMockLog::runWorker() {
-  while (!_stopping.load()) {
+  bool cont = true;
+  while (cont) {
     std::vector<std::shared_ptr<QueueEntry>> queue;
     {
       std::unique_lock guard(_mutex);
       if (_queue.empty()) {
-        _cv.wait(guard);
         if (_stopping.load()) {
           return;
         }
+        _cv.wait(guard);
       } else {
         std::swap(queue, _queue);
       }
