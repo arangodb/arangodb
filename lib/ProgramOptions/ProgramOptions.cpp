@@ -99,21 +99,47 @@ void ProgramOptions::printUsage() const {
 // hidden
 void ProgramOptions::printHelp(std::string const& search) const {
   bool const colors = (isatty(STDOUT_FILENO) != 0);
-  printUsage();
-
   TRI_TerminalSize ts = TRI_DefaultTerminalSize();
   size_t const tw = ts.columns;
   size_t const ow = optionsWidth();
 
+  std::string normalized = search;
+  if (normalized == "uncommon" || normalized == "hidden") {
+    normalized = ".";
+  }
+
+  bool showHidden = normalized == ".";
+
+  printUsage();
+
+  if (!showHidden) {
+    std::cout << "Common options (excluding hidden options) are:" << std::endl;
+    std::cout << std::endl;
+  }
+
   for (auto const& it : _sections) {
-    if (search == "*" || search == "." || search == it.second.name) {
+    if (normalized == "*" || showHidden || normalized == it.second.name) {
       it.second.printHelp(search, tw, ow, colors);
     }
   }
 
-  if (search == "*") {
+  if (normalized == "*") {
     printSectionsHelp();
   }
+  
+  std::cout << std::endl;
+  if (!showHidden) {
+    char const* colorStart = "";
+    char const* colorEnd = "";
+
+    if (isatty(STDOUT_FILENO)) {
+      colorStart = ShellColorsFeature::SHELL_COLOR_BRIGHT;
+      colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
+    }
+    std::cout << "More uncommon options are not shown by default. " 
+              << "To show these options, use  " << colorStart << "--help-uncommon" << colorEnd << std::endl;
+  }
+  std::cout << std::endl;
 }
 
 // prints the names for all section help options

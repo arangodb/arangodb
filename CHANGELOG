@@ -1,3 +1,10 @@
+v3.8.1 (XXXX-XX-XX)
+-------------------
+
+* Improve usability of hidden options: `--help` mentions that these exist
+  and how to display them.
+
+
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
