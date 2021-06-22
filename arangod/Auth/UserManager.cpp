@@ -87,10 +87,7 @@ auth::UserManager::UserManager(application_features::ApplicationServer& server)
     : _server(server), _globalVersion(1), _internalVersion(0) {}
 #else
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
-    : _server(server),
-      _globalVersion(1),
-      _internalVersion(0),
-      _authHandler(nullptr) {}
+    : _server(server), _globalVersion(1), _internalVersion(0), _authHandler(nullptr) {}
 
 auth::UserManager::UserManager(application_features::ApplicationServer& server,
                                std::unique_ptr<auth::Handler> handler)
@@ -129,7 +126,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
   if (vocbase == nullptr) {
     LOG_TOPIC("b8c47", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "system database is unknown";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "system database is unknown");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "system database is unknown");
   }
 
   // we cannot set this execution context, otherwise the transaction
@@ -138,8 +136,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*vocbase),
-                             arangodb::aql::QueryString(queryStr),
-                             emptyBuilder, emptyBuilder);
+                             arangodb::aql::QueryString(queryStr), emptyBuilder,
+                             emptyBuilder);
 
   query.queryOptions().cache = false;
   query.queryOptions().ttl = 30;
@@ -156,7 +154,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
-                                   "Error executing user query: " + queryResult.result.errorMessage());
+                                   "Error executing user query: " +
+                                       queryResult.result.errorMessage());
   }
 
   VPackSlice usersSlice = queryResult.data->slice();
@@ -332,7 +331,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       // user was outdated, we should trigger a reload
       triggerLocalReload();
       LOG_TOPIC("cf922", DEBUG, Logger::AUTHENTICATION)
-      << "Cannot update user : '" << res.errorMessage() << "'";
+          << "Cannot update user : '" << res.errorMessage() << "'";
     }
   }
   return res;
@@ -350,7 +349,8 @@ void auth::UserManager::createRootUser() {
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
-    LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION) << "\"root\" already exists";
+    LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION)
+        << "\"root\" already exists";
     return;
   }
   TRI_ASSERT(_userCache.empty());
@@ -375,7 +375,8 @@ void auth::UserManager::createRootUser() {
         << "unable to create user \"root\": " << ex.what();
   } catch (...) {
     // No action
-    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
+    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION)
+        << "unable to create user \"root\"";
   }
 
   triggerGlobalReload();
@@ -497,20 +498,20 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
       }
     }
   }
-  
+
   bool triggerUpdate = !toUpdate.empty();
-  
+
   Result res;
   do {
     auto it = toUpdate.begin();
-    while(it != toUpdate.end()) {
+    while (it != toUpdate.end()) {
       WRITE_LOCKER(writeGuard, _userCacheLock);
-      res = storeUserInternal(*it, /*replace*/true);
-      
+      res = storeUserInternal(*it, /*replace*/ true);
+
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && retryOnConflict) {
         res.reset();
         writeGuard.unlock();
-        loadFromDB(); // should be noop iff nothing changed
+        loadFromDB();  // should be noop iff nothing changed
         writeGuard.lock();
         UserMap::iterator it2 = _userCache.find(it->username());
         if (it2 != _userCache.end()) {
@@ -722,7 +723,8 @@ bool auth::UserManager::checkPassword(std::string const& username, std::string c
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (it != _userCache.end() && (it->second.source() == auth::Source::Local)) {
     if (af != nullptr && !af->localAuthentication()) {
-      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
+      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION)
+          << "Local users are forbidden";
       return false;
     }
     auth::User const& user = it->second;
@@ -806,6 +808,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   return level;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
@@ -813,3 +816,4 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());
 }
+#endif
