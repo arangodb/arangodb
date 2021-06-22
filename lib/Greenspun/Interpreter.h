@@ -43,8 +43,7 @@
 namespace arangodb::greenspun {
 
 using VariableBindings =
-    ::immer::map<std::string, VPackSlice, std::hash<std::string>,
-                 std::equal_to<std::string>, arangodb::immer::arango_memory_policy>;
+    ::immer::map<std::string, VPackSlice, std::hash<std::string>, std::equal_to<>, arangodb::immer::arango_memory_policy>;
 
 struct StackFrame {
   VariableBindings bindings;
