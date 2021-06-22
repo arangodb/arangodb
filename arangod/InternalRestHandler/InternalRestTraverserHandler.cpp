@@ -236,7 +236,10 @@ void InternalRestTraverserHandler::queryEngine() {
     eng->smartSearchNew(body, result);
 
     // TODO: Move this commentary into testsuite + write tests
-    /*auto printSchreier = [](std::string const label, VPackSlice result) -> void {
+    /*
+     VPackBuilder old;
+     eng->smartSearch(body, old);
+     auto printSchreier = [](std::string const label, VPackSlice result) -> void {
       result = result.get("result").at(0);
       std::vector<std::pair<size_t, VPackSlice>> data {};
 
@@ -251,11 +254,15 @@ void InternalRestTraverserHandler::queryEngine() {
       std::function<std::string(size_t)> printPath = [&] (size_t index) -> std::string {
         TRI_ASSERT(index < data.size());
         auto const& [prev, entry] = data.at(index);
+        VPackSlice vertex = entry.at(4);
+        if (vertex.isObject()) {
+          vertex = vertex.get("key");
+        }
         if (index == 0) {
-          return entry.at(4).get("key").toJson();
+          return vertex.toJson();
         } else {
           TRI_ASSERT(prev < index);
-          return printPath(prev) + "->" +  entry.at(4).get("key").toJson();
+          return printPath(prev) + "->" +  vertex.toJson();
         }
       };
 
@@ -264,9 +271,10 @@ void InternalRestTraverserHandler::queryEngine() {
         LOG_DEVEL << printPath(i);
       }
       LOG_DEVEL << "end of: " << label;
-    };*/
-    //printSchreier("old", result.slice());
-    //printSchreier("new", result.slice());
+    };
+    printSchreier("OLD", old.slice());
+    printSchreier("NEW", result.slice());*/
+
 
   } else if (option == "smartSearchBFS") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
