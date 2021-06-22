@@ -51,3 +51,13 @@ TEST(LogIndexTest, compareOperators) {
   EXPECT_FALSE(two <= one);
   EXPECT_TRUE(two >= one);
 }
+
+TEST(TermIndexPair, compare_operator) {
+  auto A = TermIndexPair{LogTerm{1}, LogIndex{1}};
+  auto B = TermIndexPair{LogTerm{1}, LogIndex{5}};
+  auto C = TermIndexPair{LogTerm{2}, LogIndex{2}};
+
+  EXPECT_TRUE(A < B);
+  EXPECT_TRUE(B < C);
+  EXPECT_TRUE(A < C);
+}

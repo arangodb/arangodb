@@ -595,6 +595,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
             follower.numErrorsSinceLastAnswer = 0;
             TRI_ASSERT(response.conflict.has_value());
             follower.lastAckedIndex = response.conflict.value().index;
+            LOG_CTX("33c6d", DEBUG, follower.logContext)
+                << "reset last acked index to " << follower.lastAckedIndex;
             if (follower.lastAckedIndex > LogIndex{0}) {
               follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
             }
