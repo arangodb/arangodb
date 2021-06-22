@@ -202,7 +202,7 @@ function BaseChaosSuite(testOpts) {
           if (logAllOps) {
             console.info(msg);
           }
-        }
+        };
         const ops = isTransaction ? Math.floor(Math.random() * 5) + 1 : 1;
         for (let op = 0; op < ops; ++op) {
           try {
