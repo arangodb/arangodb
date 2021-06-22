@@ -299,6 +299,6 @@ for (let i = 0; i < (1 << params.length); ++i) {
 
 // ATM we only create a single suite with all options except Truncate, because there are still known issues.
 // Later we probably want to have all possible combinations, at least for the nightly builds.
-addSuite([true, true, false, true, false]);
+addSuite([true, true, false, true, true]);
 
 return jsunity.done();
