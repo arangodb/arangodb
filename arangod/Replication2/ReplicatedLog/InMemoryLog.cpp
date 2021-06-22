@@ -93,13 +93,14 @@ auto replicated_log::InMemoryLog::getFirstIndexOfTerm(LogTerm term) const noexce
     return std::nullopt;
   }
 }
+
 auto replicated_log::InMemoryLog::getLastIndexOfTerm(LogTerm term) const noexcept
     -> std::optional<LogIndex> {
   // Note that we're using reverse iterators
   auto it = std::lower_bound(_log.rbegin(), _log.rend(), term,
                              [](auto const& entry, auto const& term) {
                                // Note that this is flipped
-                               return entry.logTerm() < term;
+                               return entry.logTerm() > term;
                              });
 
   if (it != _log.rend() && it->logTerm() == term) {

@@ -245,10 +245,9 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
       number_of_runs += 1;
     }
     // AppendEntries with prevLogIndex 2 -> success = false
-    // AppendEntries with prevLogIndex 1 -> success = false
     // AppendEntries with prevLogIndex 0 -> success = true
     // AppendEntries with new commitIndex
-    EXPECT_EQ(number_of_runs, 4);
+    EXPECT_EQ(number_of_runs, 3);
   }
 
   {

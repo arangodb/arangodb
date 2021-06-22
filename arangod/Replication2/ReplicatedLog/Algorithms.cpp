@@ -185,14 +185,19 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
       });
 
       return std::make_pair(ConflictReason::LOG_ENTRY_NO_MATCH, conflict);
+    } else {
+      // No conflict
+      return std::nullopt;
     }
   } else {
     auto lastEntry = log.getLastEntry();
     if (!lastEntry.has_value()) {
+      // The log is empty, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_EMPTY, TermIndexPair{});
     } else if (prevLog.index > lastEntry->logIndex()) {
       // the given entry is too far ahead
-      return std::make_pair(ConflictReason::LOG_ENTRY_AFTER_END, entry->logTermIndexPair());
+      return std::make_pair(ConflictReason::LOG_ENTRY_AFTER_END,
+                            TermIndexPair{lastEntry->logTerm(), lastEntry->logIndex() + 1});
     } else {
       TRI_ASSERT(false);  // TODO this can only happen if we drop log entries
       TRI_ASSERT(prevLog.index < lastEntry->logIndex());
@@ -201,6 +206,4 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
       return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN, TermIndexPair{});
     }
   }
-
-  return std::nullopt;
 }

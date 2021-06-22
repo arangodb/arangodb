@@ -67,12 +67,12 @@ TEST_F(AppendEntriesBatchTest, test_with_two_batches) {
       num_requests += 1;
     }
 
-    // 1999 AppendEntries to decrement the follower spearhead to 0
+    // 0. Decrement lastAckedIndex to 0
     // 1. AppendEntries 1..1000
     // 2. AppendEntries 2..2000
     // 3. AppendEntries CommitIndex
     // TODO fix this insanity
-    EXPECT_EQ(num_requests, 3 + 1999);
+    EXPECT_EQ(num_requests, 3 + 1);
   }
 
   {

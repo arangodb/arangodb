@@ -593,6 +593,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         switch (response.reason) {
           case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
             follower.numErrorsSinceLastAnswer = 0;
+            TRI_ASSERT(response.conflict.has_value());
+            follower.lastAckedIndex = response.conflict.value().index;
             if (follower.lastAckedIndex > LogIndex{0}) {
               follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
             }
