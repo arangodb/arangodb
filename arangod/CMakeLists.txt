@@ -1020,6 +1020,7 @@ target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
 target_link_libraries(arango_replication arango_vocbase)
 
+target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
 target_link_libraries(arango_replication2 arango_network)
 
