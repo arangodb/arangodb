@@ -140,9 +140,9 @@ class ClusterProvider {
       return _localSchreierIndex != std::numeric_limits<size_t>::max();
     }
 
-    std::size_t getLocalSchreierIndex() const {
-      return _localSchreierIndex;
-    }
+    std::size_t getLocalSchreierIndex() const { return _localSchreierIndex; }
+
+    bool isResponsible(transaction::Methods* trx) const;
 
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
@@ -153,7 +153,7 @@ class ClusterProvider {
     Vertex _vertex;
     Edge _edge;
     bool _fetched;
-    size_t _localSchreierIndex = std::numeric_limits<size_t>::max(); // to be removed later
+    size_t _localSchreierIndex = std::numeric_limits<size_t>::max();  // to be removed later
   };
 
  public:

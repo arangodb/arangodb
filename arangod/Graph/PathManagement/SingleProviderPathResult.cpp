@@ -108,8 +108,7 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
 
 template <class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntry(
-    arangodb::velocypack::Builder& result, size_t& currentLength)
-    -> void {
+    arangodb::velocypack::Builder& result, size_t& currentLength) -> void {
   size_t prevIndex = 0;
 
   auto writeStepToBuilder = [&](Step& step) {
@@ -119,28 +118,18 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntr
 
     // Index position of previous step
     result.add(VPackValue(prevIndex));
+    // The depth of the current step
     result.add(VPackValue(step.getDepth()));
 
-    // TODO require the Step to know if the Vertex isOpen or not.
-    /*
-     * tmp messy workaround for isOpen
-     */
-    VPackBuilder tmpResult;
-    _provider.addVertexToBuilder(step.getVertex(), tmpResult);
-
-    // is loose end
-    if (!step.isFirst() && tmpResult.slice().isNull()) {
-      result.add(VPackValue(true));
-    } else {
-      result.add(VPackValue(false));
-    }
+    // A vertex is a loose end, if this server is not responsible.
+    result.add(VPackValue(!step.isResponsible(_provider.trx())));
 
     // content of step
-    result.add(tmpResult.slice());
+    _provider.addVertexToBuilder(step.getVertex(), result);
 
     // _provider.addVertexToBuilder(_step.getVertex(), result);
     _provider.addEdgeToBuilder(step.getEdge(), result);
-  }; // TODO: Create method instead of lambda
+  };  // TODO: Create method instead of lambda
 
   std::vector<Step*> toWrite{};
 
