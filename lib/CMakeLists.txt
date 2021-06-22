@@ -155,6 +155,7 @@ add_library(arango STATIC
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
   Containers/MerkleTree.cpp
+  Containers/ImmerMemoryPolicy.h
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp

@@ -22,6 +22,7 @@
 
 #include "messages.h"
 
+#include <Containers/ImmerMemoryPolicy.h>
 #include <Logger/LogMacros.h>
 
 using namespace arangodb;

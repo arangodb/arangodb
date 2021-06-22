@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright $YEAR-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <optional>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -31,38 +30,34 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
-#include <immer/flex_vector.hpp>
-#include <immer/flex_vector_transient.hpp>
+#include <immer/heap/cpp_heap.hpp>
+#include <immer/heap/heap_policy.hpp>
+#include <immer/memory_policy.hpp>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
 
-#include "Common.h"
+namespace arangodb::immer {
 
-namespace arangodb::replication2::replicated_log {
+// This is like free_list_heap_policy, but omits the global free_list_heap
+// which sits there between the thread_local_free_list_heap and the Heap
+// argument.
+// We're using this because the free_list_heap is currently *not* thread safe,
+// see https://github.com/arximboldi/immer/issues/182 for details.
+template <typename Heap, std::size_t Limit = ::immer::default_free_list_size>
+struct thread_local_free_list_heap_policy {
+  using type = ::immer::debug_size_heap<Heap>;
 
-class ReplicatedLogIterator : public LogIterator {
- public:
-  using log_type = ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy>;
-
-  explicit ReplicatedLogIterator(log_type container)
-      : _container(std::move(container)),
-        _begin(_container.begin()),
-        _end(_container.end()) {}
-
-  auto next() -> std::optional<LogEntry> override {
-    if (_begin != _end) {
-      auto const& res = *_begin;
-      ++_begin;
-      return res;
-    }
-    return std::nullopt;
-  }
-
- private:
-  log_type _container;
-  log_type::const_iterator _begin;
-  log_type::const_iterator _end;
+  template <std::size_t Size>
+  struct optimized {
+    using type =
+        ::immer::split_heap<Size, ::immer::with_free_list_node<::immer::thread_local_free_list_heap<Size, Limit, ::immer::debug_size_heap<Heap>>>,
+                            ::immer::debug_size_heap<Heap>>;
+  };
 };
 
-}  // namespace arangodb::replication2::replicated_log
+using arango_heap_policy = thread_local_free_list_heap_policy<::immer::cpp_heap>;
+using arango_memory_policy =
+    ::immer::memory_policy<arango_heap_policy, ::immer::default_refcount_policy>;
+
+}  // namespace arangodb::immer

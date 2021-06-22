@@ -29,6 +29,7 @@
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
 #include <Basics/debugging.h>
+#include <Containers/ImmerMemoryPolicy.h>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -73,8 +74,7 @@ auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noex
   return e;
 }
 
-auto replicated_log::InMemoryLog::splice(LogIndex from, LogIndex to) const
-    -> immer::flex_vector<LogEntry> {
+auto replicated_log::InMemoryLog::splice(LogIndex from, LogIndex to) const -> log_type {
   from = LogIndex{std::max<decltype(from.value)>(from.value, 1)};
   auto res = _log.take(to.value - 1).drop(from.value - 1);
   TRI_ASSERT(res.size() == to.value - from.value);
@@ -122,8 +122,7 @@ replicated_log::InMemoryLog::InMemoryLog(LogContext const& logContext,
   _log = std::move(log).persistent();
 }
 
-replicated_log::InMemoryLog::InMemoryLog(immer::flex_vector<LogEntry> log)
-    : _log(std::move(log)) {}
+replicated_log::InMemoryLog::InMemoryLog(log_type log) : _log(std::move(log)) {}
 
 replicated_log::InMemoryLog::InMemoryLog(replicated_log::InMemoryLog&& other) noexcept try
     : _log(std::move(other._log)) {
@@ -207,8 +206,7 @@ auto replicated_log::InMemoryLog::appendInPlace(LogContext const& logContext,
 }
 
 auto replicated_log::InMemoryLog::append(LogContext const& logContext,
-                                         immer::flex_vector<LogEntry> entries) const
-    -> InMemoryLog {
+                                         log_type entries) const -> InMemoryLog {
   auto transient = _log.transient();
   transient.append(std::move(entries).transient());
   return InMemoryLog{std::move(transient).persistent()};
@@ -219,11 +217,11 @@ auto replicated_log::InMemoryLog::takeSnapshotUpToAndIncluding(LogIndex until) c
   return InMemoryLog(_log.take(until.value));
 }
 
-auto replicated_log::InMemoryLog::copyFlexVector() const -> immer::flex_vector<LogEntry> {
+auto replicated_log::InMemoryLog::copyFlexVector() const -> log_type {
   return _log;
 }
 
-auto replicated_log::InMemoryLog::back() const noexcept -> decltype(_log)::const_reference {
+auto replicated_log::InMemoryLog::back() const noexcept -> log_type::const_reference {
   return _log.back();
 }
 

@@ -31,6 +31,7 @@
 #include "Replication2/LogContext.h"
 
 #include <Basics/Guarded.h>
+#include <Containers/ImmerMemoryPolicy.h>
 
 #include <cstddef>
 #include <map>
@@ -96,7 +97,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
 
-  [[nodiscard]] auto getReplicatedLogSnapshot() const -> immer::flex_vector<LogEntry>;
+  [[nodiscard]] auto getReplicatedLogSnapshot() const -> InMemoryLog::log_type;
 
   [[nodiscard]] auto readReplicatedEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>;
 
@@ -167,7 +168,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   struct ResolvedPromiseSet {
     WaitForQueue _set;
     std::shared_ptr<QuorumData> _quorum;
-    immer::flex_vector<LogEntry> _commitedLogEntries;
+    ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy> _commitedLogEntries;
   };
 
   struct alignas(128) GuardedLeaderData {

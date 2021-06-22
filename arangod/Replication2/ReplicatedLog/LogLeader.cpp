@@ -37,6 +37,7 @@
 #include <Basics/debugging.h>
 #include <Basics/system-compiler.h>
 #include <Basics/voc-errors.h>
+#include <Containers/ImmerMemoryPolicy.h>
 #include <Futures/Future.h>
 #include <Futures/Try.h>
 #include <Logger/LogMacros.h>
@@ -506,7 +507,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   {
     // TODO maybe put an iterator into the request?
     auto it = getLogIterator(follower.lastAckedIndex);
-    auto transientEntries = immer::flex_vector_transient<LogEntry>{};
+    auto transientEntries = decltype(req.entries)::transient_type{};
     while (auto entry = it->next()) {
       transientEntries.push_back(*std::move(entry));
       if (transientEntries.size() >= 1000) {
@@ -705,8 +706,7 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(replicated_log::
                                                                 InMemoryLog inMemoryLog)
     : _self(self), _inMemoryLog(std::move(inMemoryLog)) {}
 
-auto replicated_log::LogLeader::getReplicatedLogSnapshot() const
-    -> immer::flex_vector<LogEntry> {
+auto replicated_log::LogLeader::getReplicatedLogSnapshot() const -> InMemoryLog::log_type {
   auto [log, commitIndex] = _guardedLeaderData.doUnderLock([](auto const& leaderData) {
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);

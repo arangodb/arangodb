@@ -33,7 +33,7 @@ struct DetectConflictTest : ::testing::Test {
 };
 
 struct TestInMemoryLog : InMemoryLog {
-  TestInMemoryLog(immer::flex_vector<LogEntry> log) : InMemoryLog(std::move(log)) {}
+  TestInMemoryLog(InMemoryLog::log_type log) : InMemoryLog(std::move(log)) {}
 };
 
 TEST_F(DetectConflictTest, log_empty) {

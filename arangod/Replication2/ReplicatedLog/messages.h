@@ -27,6 +27,7 @@
 
 #include <Basics/ErrorCode.h>
 #include <Basics/voc-errors.h>
+#include <Containers/ImmerMemoryPolicy.h>
 
 #include <string>
 #include <utility>
@@ -87,10 +88,21 @@ struct AppendEntriesResult {
 auto to_string(AppendEntriesErrorReason reason) -> std::string;
 
 struct AppendEntriesRequest {
+  // TODO reorder members for a more efficient layout
+  LogTerm leaderTerm;
+  ParticipantId leaderId;
+  // TODO assert index == 0 <=> term == 0
+  LogTerm prevLogTerm;
+  LogIndex prevLogIndex;
+  LogIndex leaderCommit;
+  MessageId messageId;
+  bool waitForSync;
+  ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy> entries{};
+
   AppendEntriesRequest() = default;
   AppendEntriesRequest(LogTerm leaderTerm, ParticipantId leaderId, LogTerm prevLogTerm,
-                       LogIndex prevLogIndex, LogIndex leaderCommit, MessageId messageId,
-                       bool waitForSync, immer::flex_vector<LogEntry> entries)
+                       LogIndex prevLogIndex, LogIndex leaderCommit,
+                       MessageId messageId, bool waitForSync, decltype(entries) entries)
       : leaderTerm(leaderTerm),
         leaderId(std::move(leaderId)),
         prevLogTerm(prevLogTerm),
@@ -105,17 +117,6 @@ struct AppendEntriesRequest {
   auto operator=(AppendEntriesRequest&& other) noexcept -> AppendEntriesRequest&;
   auto operator=(AppendEntriesRequest const& other) -> AppendEntriesRequest& = default;
   ~AppendEntriesRequest() noexcept = default;
-
-  // TODO reorder members for a more efficient layout
-  LogTerm leaderTerm;
-  ParticipantId leaderId;
-  // TODO assert index == 0 <=> term == 0
-  LogTerm prevLogTerm;
-  LogIndex prevLogIndex;
-  LogIndex leaderCommit;
-  MessageId messageId;
-  bool waitForSync;
-  immer::flex_vector<LogEntry> entries{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;

@@ -27,6 +27,7 @@
 #include <Basics/StaticStrings.h>
 #include <Basics/overload.h>
 #include <Basics/voc-errors.h>
+#include <Containers/ImmerMemoryPolicy.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -158,7 +159,7 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
   auto waitForSync = slice.get("waitForSync").extract<bool>();
   auto entries = std::invoke([&] {
     auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
-    auto transientEntries = immer::flex_vector_transient<LogEntry>{};
+    auto transientEntries = decltype(AppendEntriesRequest::entries)::transient_type{};
     std::transform(entriesVp.begin(), entriesVp.end(), std::back_inserter(transientEntries),
                    [](auto const& it) { return LogEntry::fromVelocyPack(it); });
     return std::move(transientEntries).persistent();

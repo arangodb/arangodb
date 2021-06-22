@@ -38,6 +38,7 @@
 #pragma warning(pop)
 #endif
 
+#include "Containers/ImmerMemoryPolicy.h"
 #include "Logger/LogMacros.h"
 
 namespace arangodb {
@@ -85,12 +86,11 @@ struct LogContext {
   }
 
   LogTopic const topic;
-  immer::flex_vector<std::shared_ptr<LoggableValue>> const values = {};
- private:
-  LogContext(immer::flex_vector<std::shared_ptr<LoggableValue>> values,
-                         LogTopic topic)
-      : topic(std::move(topic)), values(std::move(values)) {}
+  ::immer::flex_vector<std::shared_ptr<LoggableValue>, arangodb::immer::arango_memory_policy> const values = {};
 
+ private:
+  LogContext(decltype(values) values, LogTopic topic)
+      : topic(std::move(topic)), values(std::move(values)) {}
 };
 }
 

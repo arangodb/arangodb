@@ -25,6 +25,8 @@
 #include "Replication2/LogContext.h"
 #include "Replication2/ReplicatedLog/Common.h"
 
+#include <Containers/ImmerMemoryPolicy.h>
+
 #include <optional>
 
 #if (_MSC_VER >= 1)
@@ -51,8 +53,11 @@ class ReplicatedLogIterator;
  * instance), this is restored from the persisted log.
  */
 struct InMemoryLog {
+ public:
+  using log_type = ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy>;
+
  private:
-  immer::flex_vector<LogEntry> _log{};
+  log_type _log{};
 
  public:
   InMemoryLog() = delete;
@@ -73,8 +78,7 @@ struct InMemoryLog {
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept
       -> std::optional<LogEntry>;
-  [[nodiscard]] auto splice(LogIndex from, LogIndex to) const
-      -> immer::flex_vector<LogEntry>;
+  [[nodiscard]] auto splice(LogIndex from, LogIndex to) const -> log_type;
 
   // TODO Add unit tests for getFirstIndexOfTerm and getLastIndexOfTerm
   [[nodiscard]] auto getFirstIndexOfTerm(LogTerm term) const noexcept
@@ -89,17 +93,17 @@ struct InMemoryLog {
   auto appendInPlace(LogContext const& logContext, LogEntry&& entry) -> void;
   auto appendInPlace(LogContext const& logContext, LogEntry const& entry) -> void;
 
-  [[nodiscard]] auto append(LogContext const& logContext,
-                            immer::flex_vector<LogEntry> entries) const -> InMemoryLog;
+  [[nodiscard]] auto append(LogContext const& logContext, log_type entries) const
+      -> InMemoryLog;
 
   [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<LogIterator>;
 
   [[nodiscard]] auto takeSnapshotUpToAndIncluding(LogIndex until) const -> InMemoryLog;
 
-  [[nodiscard]] auto copyFlexVector() const -> immer::flex_vector<LogEntry>;
+  [[nodiscard]] auto copyFlexVector() const -> log_type;
 
  protected:
-  explicit InMemoryLog(immer::flex_vector<LogEntry> log);
+  explicit InMemoryLog(log_type log);
 };
 
 }  // namespace arangodb::replication2::replicated_log
