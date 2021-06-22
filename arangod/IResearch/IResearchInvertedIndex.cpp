@@ -26,6 +26,7 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "Basics/AttributeNameParser.h"
 #include "Cluster/ServerState.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 
 namespace {
@@ -35,7 +36,7 @@ using namespace arangodb::iresearch;
 struct CheckFieldsAccess {
   CheckFieldsAccess(QueryContext const& ctx,
                     aql::Variable const& ref,
-                    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
+                    std::vector<std::vector<basics::AttributeName>> const& fields)
     : _ctx(ctx), _ref(ref) {
     _fields.insert(std::begin(fields), std::end(fields));
   }
@@ -49,7 +50,7 @@ struct CheckFieldsAccess {
             << "Attribute '" << name << "' is not covered by index";
         return false;
       }
-    } catch (arangodb::basics::Exception const& ex) {
+    } catch (basics::Exception const& ex) {
       // we can`t handle expansion in ArangoSearch index
       LOG_TOPIC("2ec9a", TRACE, arangodb::iresearch::TOPIC)
           << "Failed to parse attribute access: " << ex.message();
@@ -61,19 +62,48 @@ struct CheckFieldsAccess {
   mutable std::vector<arangodb::basics::AttributeName> _parsed;
   QueryContext const& _ctx;
   aql::Variable const& _ref;
-  using atr_ref = std::reference_wrapper<std::vector<arangodb::basics::AttributeName> const>;
+  using atr_ref = std::reference_wrapper<std::vector<basics::AttributeName> const>;
   std::unordered_set<atr_ref,
-                     std::hash<std::vector<arangodb::basics::AttributeName>>,
-                     std::equal_to<std::vector<arangodb::basics::AttributeName>>> _fields;
+                     std::hash<std::vector<basics::AttributeName>>,
+                     std::equal_to<std::vector<basics::AttributeName>>> _fields;
 };
+
+template<bool first>
+void traverseFields(
+    irs::hashed_string_ref const myName,
+    FieldMeta const& meta, std::vector<basics::AttributeName> current, // intentional copy
+    std::vector<std::vector<basics::AttributeName>>& total) {
+  if constexpr (!first) {
+     current.push_back(
+         basics::AttributeName(
+           velocypack::StringRef(myName.c_str(), myName.size()), false));
+  }
+  if (meta._fields.empty()) {
+    // reached the bottom
+    total.push_back(current);
+    return;
+  }
+  for (auto const& f : meta._fields) {
+    traverseFields<false>(f.key(),  *f.value().get(), current, total);
+  }
+}
+
+void traverseMetaFields(
+    FieldMeta const& meta,
+    std::vector<std::vector<basics::AttributeName>>& total) {
+  total.clear();
+  if (!meta._fields.empty()) {
+    std::vector<basics::AttributeName> current;
+    traverseFields<true>(irs::hashed_string_ref(0, irs::string_ref::NIL), meta,  current, total);
+  }
+}
 } // namespace
 
 namespace arangodb {
 namespace iresearch {
 
 arangodb::iresearch::IResearchInvertedIndex::IResearchInvertedIndex(
-    IndexId id, LogicalCollection& collection, IResearchInvertedIndex::IResearchInvertedIndexMeta&& meta)
-  : Index(id, collection, meta._name, meta.fields(), false, true), _meta(meta) {
+    IResearchInvertedIndexMeta&& meta) : _meta(meta) {
 }
 
 void arangodb::iresearch::IResearchInvertedIndex::toVelocyPack(
@@ -81,31 +111,33 @@ void arangodb::iresearch::IResearchInvertedIndex::toVelocyPack(
 }
 
 std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iteratorForCondition(
-    transaction::Methods* trx, aql::AstNode const* node, aql::Variable const* reference,
+    LogicalCollection* collection, transaction::Methods* trx, aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
-  return std::make_unique<EmptyIndexIterator>(&collection(), trx);
+  return std::make_unique<EmptyIndexIterator>(collection, trx);
 }
 
 Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
-  return SortCosts();
+  return Index::SortCosts();
 }
 
 Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
+    IndexId id,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
   TRI_ASSERT(node);
   TRI_ASSERT(reference);
-  auto filterCosts = FilterCosts::defaultCosts(itemsInIndex);
+  auto filterCosts = Index::FilterCosts::defaultCosts(itemsInIndex);
 
   // non-deterministic condition will mean full-scan. So we should
   // not use index here.
   // FIXME: maybe in the future we will be able to optimize just deterministic part?
   if (!node->isDeterministic()) {
     LOG_TOPIC("750e6", TRACE, iresearch::TOPIC)
-             << "Found non-deterministic condition. Skipping index " << id().id();
+             << "Found non-deterministic condition. Skipping index " << id.id();
     return  filterCosts;
   }
 
@@ -120,15 +152,15 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
 
 
   // check that only covered attributes are referenced
-  if (!visitAllAttributeAccess(node, *reference, queryCtx, CheckFieldsAccess(queryCtx, *reference, fields()))) {
+  if (!visitAllAttributeAccess(node, *reference, queryCtx, CheckFieldsAccess(queryCtx, *reference, fields))) {
     LOG_TOPIC("d2beb", TRACE, iresearch::TOPIC)
-             << "Found unknown attribute access. Skipping index " << id().id();
+             << "Found unknown attribute access. Skipping index " << id.id();
     return  filterCosts;
   }
 
   auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false);
   LOG_TOPIC_IF("ee0f7", TRACE, iresearch::TOPIC, rv.fail())
-             << "Failed to build filter with error'" << rv.errorMessage() <<"' Skipping index " << id().id();
+             << "Failed to build filter with error'" << rv.errorMessage() <<"' Skipping index " << id.id();
 
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
@@ -156,7 +188,7 @@ std::shared_ptr<Index> IResearchInvertedIndexFactory::instantiate(LogicalCollect
                                                                   velocypack::Slice const& definition,
                                                                   IndexId id,
                                                                   bool isClusterConstructor) const {
-  IResearchInvertedIndex::IResearchInvertedIndexMeta meta;
+  IResearchInvertedIndexMeta meta;
   // FIXME: for cluster  - where to get actual collection name? Pre-store in definition I guess!
   auto res = meta.init(_server, nullptr, definition, isClusterConstructor);
   if (res.fail()) {
@@ -165,13 +197,13 @@ std::shared_ptr<Index> IResearchInvertedIndexFactory::instantiate(LogicalCollect
              << "' error:" << res.errorMessage();
     return nullptr;
   }
-  return std::make_shared<IResearchInvertedIndex>(id, collection, std::move(meta));
+  return std::make_shared<IResearchRocksDBInvertedIndex>(id, collection, std::move(meta));
 }
 
 Result IResearchInvertedIndexFactory::normalize(velocypack::Builder& normalized, velocypack::Slice definition,
                                                 bool isCreation, TRI_vocbase_t const& vocbase) const {
   TRI_ASSERT(normalized.isOpenObject());
-  Result res = IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(_server, &vocbase, normalized, definition);
+  Result res = IResearchInvertedIndexMeta::normalize(_server, &vocbase, normalized, definition);
   if (res.ok()) {
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(arangodb::Index::oldtypeName(
@@ -192,7 +224,7 @@ Result IResearchInvertedIndexFactory::normalize(velocypack::Builder& normalized,
   return res;
 }
 
-Result IResearchInvertedIndex::IResearchInvertedIndexMeta::init(
+Result IResearchInvertedIndexMeta::init(
     application_features::ApplicationServer& server,
     TRI_vocbase_t const* defaultVocbase,
     velocypack::Slice const info, bool isClusterConstructor) {
@@ -208,7 +240,6 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::init(
   if (!_fieldsMeta.init(server, info, false, errField,
                         defaultVocbase ? defaultVocbase->name() : irs::string_ref::NIL,
                         IResearchLinkMeta::DEFAULT(), nullptr, true)) {
-
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         errField.empty()
@@ -219,7 +250,7 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::init(
   return {};
 }
 
-Result IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(
+Result IResearchInvertedIndexMeta::normalize(
     application_features::ApplicationServer& server,
     TRI_vocbase_t const* defaultVocbase,
     velocypack::Builder& normalized, velocypack::Slice definition) {
@@ -257,43 +288,17 @@ Result IResearchInvertedIndex::IResearchInvertedIndexMeta::normalize(
   return {};
 }
 
-namespace {
-template<bool first>
-void traverseFields(
-    irs::hashed_string_ref const myName,
-    FieldMeta const& meta, std::vector<arangodb::basics::AttributeName> current, // intentional copy
-    std::vector<std::vector<arangodb::basics::AttributeName>>& total) {
-  if constexpr (!first) {
-     current.push_back(
-         arangodb::basics::AttributeName(
-           arangodb::velocypack::StringRef(myName.c_str(), myName.size()), false));
-  }
-  if (meta._fields.empty()) {
-    // reached the bottom
-    total.push_back(current);
-    return;
-  }
-  for (auto const& f : meta._fields) {
-    traverseFields<false>(f.key(),  *f.value().get(), current, total);
-  }
-}
-
-void traverseMetaFields(
-    FieldMeta const& meta,
-    std::vector<std::vector<arangodb::basics::AttributeName>>& total) {
-  total.clear();
-  if(!meta._fields.empty()) {
-    std::vector<arangodb::basics::AttributeName> current;
-    traverseFields<true>(irs::hashed_string_ref(0, irs::string_ref::NIL), meta,  current, total);
-  }
-}
-} // namespace
-
-std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::IResearchInvertedIndexMeta::fields() const {
+std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndexMeta::fields() const {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
   traverseMetaFields(_fieldsMeta, res);
   return res;
 }
+
+IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta)
+  : RocksDBIndex(id, collection, meta._name, meta.fields(), true, false,
+    RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
+    meta._objectId, false),
+  IResearchInvertedIndex(std::move(meta)) {}
 
 } // namespace iresearch
 } // namespace arangodb

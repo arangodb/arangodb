@@ -27,6 +27,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexFactory.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -34,40 +35,79 @@
 namespace arangodb {
 namespace iresearch {
 
-class IResearchInvertedIndex : public Index {
+
+struct IResearchInvertedIndexMeta {
+  Result init(application_features::ApplicationServer& server,
+              TRI_vocbase_t const* defaultVocbase, velocypack::Slice const info,
+              bool isClusterConstructor);
+  static Result normalize(application_features::ApplicationServer& server,
+                          TRI_vocbase_t const* defaultVocbase,
+                          velocypack::Builder& normalized, velocypack::Slice definition);
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> fields() const;
+
+  std::string _name;
+  IResearchViewMeta _indexMeta;
+  IResearchLinkMeta _fieldsMeta;
+  uint64_t _objectId{0};
+};
+
+
+class IResearchInvertedIndex {
  public:
-
-  struct IResearchInvertedIndexMeta {
-
-    Result  init(application_features::ApplicationServer& server,
-                 TRI_vocbase_t const* defaultVocbase,
-                 velocypack::Slice const info,
-                 bool isClusterConstructor);
-    static Result normalize(application_features::ApplicationServer& server,
-                            TRI_vocbase_t const* defaultVocbase, velocypack::Builder& normalized,
-                            velocypack::Slice definition);
-
-    std::vector<std::vector<arangodb::basics::AttributeName>> fields() const;
-
-    std::string _name;
-    IResearchViewMeta _indexMeta;
-    IResearchLinkMeta _fieldsMeta;
-  };
-
-  IResearchInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta);
-
+  explicit IResearchInvertedIndex(IResearchInvertedIndexMeta&& meta);
 
   void toVelocyPack(VPackBuilder& builder,
-                    std::underlying_type<Index::Serialize>::type flags) const override;
+                    std::underlying_type<Index::Serialize>::type flags) const;
 
+  bool isSorted() const {
+    return false; // FIXME: sometimes we can be sorted
+  }
+
+
+
+  bool inProgress() const {
+    // We should be in that state until we have chance to initialize analyzers
+    // in case of usage  custom ones
+    // FIXME: implement entering/leaving inProgress
+    return false;
+  }
+
+  std::unique_ptr<IndexIterator> iteratorForCondition(LogicalCollection* collection,
+                                                      transaction::Methods* trx,
+                                                      aql::AstNode const* node,
+                                                      aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts);
+
+  Index::SortCosts supportsSortCondition(aql::SortCondition const* sortCondition,
+                                         aql::Variable const* reference,
+                                         size_t itemsInIndex) const;
+
+  Index::FilterCosts supportsFilterCondition(IndexId id,
+                                             std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
+                                             std::vector<std::shared_ptr<Index>> const& allIndexes,
+                                             aql::AstNode const* node,
+                                             aql::Variable const* reference,
+                                             size_t itemsInIndex) const;
+
+  aql::AstNode* specializeCondition(aql::AstNode* node,
+                                    aql::Variable const* reference) const;
+
+ private:
+  IResearchInvertedIndexMeta _meta;
+};
+
+class IResearchRocksDBInvertedIndex : public RocksDBIndex, IResearchInvertedIndex {
+ public:
+  IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta);
 
   Index::IndexType type() const override { return  Index::TRI_IDX_TYPE_SEARCH_INDEX; }
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
-                                                      aql::AstNode const* node,
-                                                      aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
-
+  size_t memory() const override {
+    // FIXME return in memory size
+    //return stats().indexSize;
+    return 0;
+  }
 
   bool isHidden() const override {
     return false;
@@ -82,7 +122,7 @@ class IResearchInvertedIndex : public Index {
   }
 
   bool isSorted() const override {
-    return false; // FIXME: sometimes we can be sorted
+    return  IResearchInvertedIndex::isSorted();
   }
 
   bool hasSelectivityEstimate() const override {
@@ -90,34 +130,54 @@ class IResearchInvertedIndex : public Index {
   }
 
   bool inProgress() const override {
-    // We should be in that state until we have chance to initialize analyzers
-    // in case of usage  custom ones
-    // FIXME: implement entering/leaving inProgress
-    return false;
-  }
-
-  size_t memory() const override {
-    // FIXME return in memory size
-    //return stats().indexSize;
-    return 0;
+    return IResearchInvertedIndex::inProgress();
   }
 
   void load() override {}
   void unload() override {}
 
+
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
+                                                    aql::AstNode const* node,
+                                                    aql::Variable const* reference,
+                                                    IndexIteratorOptions const& opts) override {
+    return IResearchInvertedIndex::iteratorForCondition(&collection(), trx, node, reference, opts);
+  }
+
   Index::SortCosts supportsSortCondition(aql::SortCondition const* sortCondition,
                                          aql::Variable const* reference,
-                                         size_t itemsInIndex) const override;
+                                         size_t itemsInIndex) const override {
+     return IResearchInvertedIndex::supportsSortCondition(sortCondition, reference, itemsInIndex);
+  }
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<Index>> const& allIndexes,
                                              aql::AstNode const* node,
                                              aql::Variable const* reference,
-                                             size_t itemsInIndex) const override;
+                                             size_t itemsInIndex) const override {
+     return IResearchInvertedIndex::supportsFilterCondition(id(), fields(), allIndexes,
+                                                            node, reference, itemsInIndex);
+  }
 
   aql::AstNode* specializeCondition(aql::AstNode* node,
-                                    aql::Variable const* reference) const override;
+                                    aql::Variable const* reference) const override {
+    return IResearchInvertedIndex::specializeCondition(node, reference);
+  }
 
-  IResearchInvertedIndexMeta _meta;
+  Result insert(transaction::Methods& trx,
+                RocksDBMethods* /*methods*/,
+                LocalDocumentId const& documentId,
+                VPackSlice doc,
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override {
+    return {};
+  }
+
+  Result remove(transaction::Methods& trx,
+                RocksDBMethods*,
+                LocalDocumentId const& documentId,
+                VPackSlice doc) override {
+    return {};
+  }
 };
 
 class IResearchInvertedIndexFactory : public IndexTypeFactory {
@@ -134,12 +194,11 @@ class IResearchInvertedIndexFactory : public IndexTypeFactory {
                                      bool isClusterConstructor) const override;
 
   /// @brief normalize an Index definition prior to instantiation/persistence
-  Result normalize( // normalize definition
-    velocypack::Builder& normalized, // normalized definition (out-param)
-    velocypack::Slice definition, // source definition
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
-  ) const override;
+  Result normalize(
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation,
+    TRI_vocbase_t const& vocbase) const override;
 
   bool attributeOrderMatters() const override {
     return false;

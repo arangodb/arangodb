@@ -97,9 +97,10 @@ class IResearchInvertedIndexConditionTest
     SCOPED_TRACE(testing::Message("estimateFilterCondition failed for query:<")
       << queryString << "> Expected support:" << expectedCosts.supportsCondition);
     arangodb::IndexId id(1);
-    arangodb::iresearch::IResearchInvertedIndex::IResearchInvertedIndexMeta meta;
+    arangodb::iresearch::IResearchInvertedIndexMeta meta;
     meta.init(server.server(), _vocbase, getPropertiesSlice(id, fields).slice(), false);
-    arangodb::iresearch::IResearchInvertedIndex Index(id, collection(), std::move(meta));
+    auto indexFields = meta.fields();
+    arangodb::iresearch::IResearchInvertedIndex Index(std::move(meta));
 
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
@@ -150,7 +151,7 @@ class IResearchInvertedIndexConditionTest
       }
 
       arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, mockCtx, nullptr, ref};
-      auto costs = Index.supportsFilterCondition({}, filterNode, ref, 0);
+      auto costs = Index.supportsFilterCondition(id, indexFields, {}, filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!
