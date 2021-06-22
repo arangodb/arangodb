@@ -262,7 +262,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
     assertFalse(db[cn].exists("stop"));
     db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
     let tries = 0;
-    let done = 0;
+    const allClientsDone = () => clients.every(client => client.done);
     while (++tries < 120) {
       clients.forEach(function (client) {
         if (!client.done) {
@@ -276,18 +276,16 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
         }
       });
 
-      done = clients.reduce(function (accumulator, currentValue) {
-        return accumulator + (currentValue.done ? 1 : 0);
-      }, 0);
-
-      if (done === clients.length) {
+      if (allClientsDone()) {
         break;
       }
 
       internal.sleep(0.5);
     }
 
-    assertEqual(done, clients.length, "not all shells could be joined");
+    if (!allClientsDone()) {
+      console.warn("Not all shells could be joined!");
+    }
   } finally {
     clients.forEach(function(client) {
       try {
@@ -319,4 +317,33 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
     });
   }
   return clients;
+};
+
+exports.waitForShardsInSync = function(cn, timeout) {
+  if (!timeout) {
+    timeout = 300;
+  }
+  let start = internal.time();
+  while (true) {
+    if (internal.time() - start > timeout) {
+      assertTrue(false, "Shards were not getting in sync in time, giving up!");
+      return;
+    }
+    let shardDistribution = arango.GET("/_admin/cluster/shardDistribution");
+    assertFalse(shardDistribution.error);
+    assertEqual(200, shardDistribution.code);
+    let collInfo = shardDistribution.results[cn];
+    let shards = Object.keys(collInfo.Plan);
+    let insync = 0;
+    for (let s of shards) {
+      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length) {
+        ++insync;
+      }
+    }
+    if (insync === shards.length) {
+      return;
+    }
+    console.warn("insync=", insync, ", collInfo=", collInfo, internal.time() - start);
+    internal.wait(1);
+  }
 };
