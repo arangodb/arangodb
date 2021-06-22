@@ -26,6 +26,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 
+#include <atomic>
 #include <mutex>
 #include <thread>
 
