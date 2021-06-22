@@ -26,16 +26,15 @@
 // / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
+const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let errors = arangodb.errors;
-let { getEndpointById,
-      getEndpointsByType,
+let { getEndpointsByType,
       debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt
+      debugClearFailAt,
+      waitForShardsInSync
     } = require('@arangodb/test-helper');
 
 function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
@@ -115,31 +114,6 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
     }
   }
   return { endpointMap, coordinator, leader, follower, shards };
-}
-
-function waitForShardsInSyncAgain(cn) {
-  let start = internal.time();
-  while (true) {
-    if (internal.time() - start > 60) {
-      assertTrue(false, "timeout waiting for shards being in sync");
-      return;
-    }
-    let sd = arango.GET("/_admin/cluster/shardDistribution");
-    sd = sd.results[cn];
-    let plan = sd.Plan;
-    let current = sd.Current;
-    let shards = Object.keys(plan);
-    let good = 0;
-    for (let s of shards) {
-      if (plan[s].followers.length === current[s].followers.length) {
-        ++good;
-      }
-    }
-    if (good === shards.length) {
-      break;
-    }
-    internal.wait(1);
-  }
 }
 
 function switchConnectionToCoordinator(collInfo) {
@@ -232,20 +206,14 @@ function dropFollowersElCheapoSuite() {
       // coordinator otherwise we do not see the follower information.
 
       switchConnectionToCoordinator(collInfo);
-      waitForShardsInSyncAgain(cn);
+      waitForShardsInSync(cn, 60);
 
       switchConnectionToLeader(collInfo);
-      let count = 0;
-      for (let s of collInfo.shards) {
-        count += db._collection(s).count();
-      }
+      let count = _.sumBy(collInfo.shards, s => db._collection(s).count());
       assertEqual(21, count);
 
       switchConnectionToFollower(collInfo);
-      count = 0;
-      for (let s of collInfo.shards) {
-        count += db._collection(s).count();
-      }
+      count = _.sumBy(collInfo.shards, s => db._collection(s).count());
       assertEqual(21, count);
 
       switchConnectionToCoordinator(collInfo);
@@ -301,21 +269,12 @@ function dropFollowersElCheapoSuite() {
       let trxsLeader = arango.GET("/_api/transaction");
       assertTrue(trxsLeader.hasOwnProperty("transactions"));
       let followerTrxId = String(Number(trxid) + 2);
-      let found = false;
-      for (let t of trxsLeader.transactions) {
-        if (t.id === followerTrxId) {
-          found = true;
-        }
-      }
+      let found = trxsLeader.transactions.some(t => t.id === followerTrxId);
       assertFalse(found);
       switchConnectionToFollower(collInfo);
       let trxsFollower = arango.GET("/_api/transaction");
       assertTrue(trxsFollower.hasOwnProperty("transactions"));
-      for (let t of trxsFollower.transactions) {
-        if (t.id === followerTrxId) {
-          found = true;
-        }
-      }
+      found = trxsFollower.transactions.some(t => t.id === followerTrxId);
       assertFalse(found);
 
       // The above transaction should be entirely visible across the shards,
@@ -323,20 +282,14 @@ function dropFollowersElCheapoSuite() {
       // coordinator otherwise we do not see the follower information.
 
       switchConnectionToCoordinator(collInfo);
-      waitForShardsInSyncAgain(cn);
+      waitForShardsInSync(cn, 60);
 
       switchConnectionToLeader(collInfo);
-      let count = 0;
-      for (let s of collInfo.shards) {
-        count += db._collection(s).count();
-      }
+      let count = _.sumBy(collInfo.shards, s => db._collection(s).count());
       assertEqual(40, count);
 
       switchConnectionToFollower(collInfo);
-      count = 0;
-      for (let s of collInfo.shards) {
-        count += db._collection(s).count();
-      }
+      count = _.sumBy(collInfo.shards, s => db._collection(s).count());
       assertEqual(40, count);
 
       switchConnectionToCoordinator(collInfo);
