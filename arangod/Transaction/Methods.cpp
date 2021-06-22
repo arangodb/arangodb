@@ -2540,6 +2540,8 @@ Future<Result> Methods::replicateOperations(
           auto r = resp.combinedResult();
           bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
           didRefuse = didRefuse || followerRefused;
+          
+          replicationFailureReason = "got error from follower: " + std::string(r.errorMessage());
 
           if (followerRefused) {
             vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
