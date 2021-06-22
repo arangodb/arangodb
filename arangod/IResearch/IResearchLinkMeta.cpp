@@ -378,7 +378,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
           auto nameSlice = val.get("name");
           if (nameSlice.isString()) {
             std::vector<basics::AttributeName> fieldParts;
-            TRI_ParseAttributeString(nameSlice.stringView(), fieldParts, false);
+            TRI_ParseAttributeString(nameSlice.stringRef(), fieldParts, false);
             FieldMeta* lastSubField = this;    
             for (auto const& fieldPart : fieldParts) {
               lastSubField = lastSubField->_fields[fieldPart.name].get();
@@ -426,7 +426,11 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
                   // save in referencedAnalyzers
                   referencedAnalyzers->emplace(analyzer);
                 }
-                lastSubField->_analyzers.emplace_back(analyzer, std::move(shortName));
+                if (lastSubField->_analyzers.empty() || 
+                    shortName != lastSubField->_analyzers.front()._shortName) {
+                  lastSubField->_analyzers.clear(); // remove default identity
+                  lastSubField->_analyzers.emplace_back(analyzer, std::move(shortName));
+                }
               } else {
                 errorField = fieldsFieldName + "[" +
                              basics::StringUtils::itoa(itr.index()) + "]" +
@@ -513,7 +517,7 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
   std::map<std::string, AnalyzerPool::ptr> analyzers;
 
   if ((!ignoreEqual || !equalAnalyzers(_analyzers, ignoreEqual->_analyzers)) &&
-      (!mask || mask->_analyzers)) {
+      (!mask || mask->_analyzers) && !forInvertedIndex) {
     velocypack::Builder analyzersBuilder;
 
     analyzersBuilder.openArray();
