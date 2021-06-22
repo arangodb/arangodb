@@ -26,13 +26,12 @@
 #include <mutex>
 
 #include "Basics/Result.h"
+#include "Basics/UnshackledMutex.h"
 #include "Futures/Future.h"
-
 #include "Replication2/ReplicatedLog/Common.h"
 
 namespace arangodb::replication2 {
 struct PersistedLog;
-struct Persistor;
 }
 
 namespace arangodb::replication2::replicated_log {
@@ -73,7 +72,7 @@ struct alignas(64) LogCore {
 
  private:
   std::shared_ptr<PersistedLog> _persistedLog;
-  mutable std::mutex _operationMutex;
+  mutable basics::UnshackledMutex _operationMutex;
 };
 
 }  // namespace arangodb::replication2::replicated_log
