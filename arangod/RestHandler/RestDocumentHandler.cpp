@@ -196,6 +196,9 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   if (ServerState::instance()->isDBServer() &&
       _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+    // make sure that the current transaction includes the collection that we want to
+    // write into. this is not necessarily the case for follower transactions that
+    // are started lazily. in this case, we must reject the request.
     generateTransactionError(cname, OperationResult(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION), opOptions), "");
     return RestStatus::DONE;
   }
@@ -503,6 +506,9 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   
   if (ServerState::instance()->isDBServer() &&
       _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+    // make sure that the current transaction includes the collection that we want to
+    // write into. this is not necessarily the case for follower transactions that
+    // are started lazily. in this case, we must reject the request.
     generateTransactionError(cname, OperationResult(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION), opOptions), "");
     return RestStatus::DONE;
   }
@@ -631,6 +637,9 @@ RestStatus RestDocumentHandler::removeDocument() {
   
   if (ServerState::instance()->isDBServer() &&
       _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+    // make sure that the current transaction includes the collection that we want to
+    // write into. this is not necessarily the case for follower transactions that
+    // are started lazily. in this case, we must reject the request.
     generateTransactionError(cname, OperationResult(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION), opOptions), "");
     return RestStatus::DONE;
   }
