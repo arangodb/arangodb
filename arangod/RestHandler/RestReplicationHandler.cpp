@@ -3407,10 +3407,6 @@ struct RebootCookie : public arangodb::TransactionState::Cookie {
 Result RestReplicationHandler::createBlockingTransaction(
     TransactionId id, LogicalCollection& col, double ttl, AccessMode::Type access,
     RebootId const& rebootId, std::string const& serverId) {
-  // This is a constant JSON structure for Queries.
-  // we actually do not need a plan, as we only want the query registry to have
-  // a hold of our transaction
-  auto planBuilder = std::make_shared<VPackBuilder>(VPackSlice::emptyObjectSlice());
   
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
@@ -3579,7 +3575,7 @@ void RestReplicationHandler::timeoutTombstones() const {
       }
     }
     // Release read lock.
-    // If someone writes now we do not realy care.
+    // If someone writes now we do not really care.
   }
   if (toDelete.empty()) {
     // nothing todo
