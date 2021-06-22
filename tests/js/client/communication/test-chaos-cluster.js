@@ -36,7 +36,8 @@ const {
   deriveTestSuite,
   getEndpointById,
   getServersByType,
-  runParallelArangoshTests
+  runParallelArangoshTests,
+  waitForShardsInSync
 } = require('@arangodb/test-helper');
 
 const getDBServers = () => {
@@ -58,31 +59,6 @@ const fetchRevisionTree = (serverUrl, shardId) => {
   return JSON.parse(result.body);
 };
 
-const waitForShardsInSync = (cn) => {
-  let start = internal.time();
-  while (true) {
-    if (internal.time() - start > 300) {
-      assertTrue(false, "Shards were not getting in sync in time, giving up!");
-    }
-    let shardDistribution = arango.GET("/_admin/cluster/shardDistribution");
-    assertFalse(shardDistribution.error);
-    assertEqual(200, shardDistribution.code);
-    let collInfo = shardDistribution.results[cn];
-    let shards = Object.keys(collInfo.Plan);
-    let insync = 0;
-    for (let s of shards) {
-      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length) {
-        ++insync;
-      }
-    }
-    if (insync === shards.length) {
-      return;
-    }
-    console.warn("insync=", insync, ", collInfo=", collInfo, internal.time() - start);
-    internal.wait(1);
-  }
-};
-
 const checkCollectionConsistency = (cn) => {
   const c = db._collection(cn);
   const servers = getDBServers();
@@ -96,12 +72,15 @@ const checkCollectionConsistency = (cn) => {
     Object.entries(shardInfo).forEach(
       ([shard, [leader, follower]]) => {
         const leaderTree = fetchRevisionTree(getServerUrl(leader), shard);
+        // We remove the computed and stored nodes since we may want to print the trees, but we
+        // don't want to print the 262k buckets! Equality of the trees is checked using the single
+        // combined hash and document count.
         leaderTree.computed.nodes = "<reduced>";
         leaderTree.stored.nodes = "<reduced>";
         if (!leaderTree.equal) {
           console.error(`Leader has inconsistent tree for shard ${shard}:`, leaderTree);
           failed = true;
-        };
+        }
         
         const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
         followerTree.computed.nodes = "<reduced>";
@@ -109,7 +88,7 @@ const checkCollectionConsistency = (cn) => {
         if (!followerTree.equal) {
           console.error(`Follower has inconsistent tree for shard ${shard}:`, followerTree);
           failed = true;
-        };
+        }
 
         if (!_.isEqual(leaderTree, followerTree)) {
           console.error(`Leader and follower have different trees for shard ${shard}`);
@@ -137,12 +116,16 @@ const clearAllFailurePoints = () => {
 function BaseChaosSuite(testOpts) {
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
+  const communication_cn = cn + "_comm";
+  
 
   return {
     setUp: function () {
       db._drop(cn);
+      db._drop(communication_cn);
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
+      db._create(communication_cn);
       
       if (testOpts.withFailurePoints) {
         const servers = getDBServers();
@@ -157,13 +140,24 @@ function BaseChaosSuite(testOpts) {
     tearDown: function () {
       clearAllFailurePoints();
       db._drop(cn);
+      
+      const shells = db[communication_cn].all();
+      if (shells.length > 0) {
+        print("Found remaining docs in communication collection:");
+        print(shells);
+      }
+      db._drop(communication_cn);
     },
     
     testWorkInParallel: function () {
       let code = (testOpts) => {
+        // The idea here is to use the birthday paradox and have a certain amount of collisions.
+        // The babies API is supposed to go through and report individual collisions. Same with
+        // removes,so we intentionally try to remove lots of documents which are not actually there.
         const key = () => "testmann" + Math.floor(Math.random() * 100000000);
         const docs = () => {
           let result = [];
+          // TODO - optionally use only single-document operations
           const r = Math.floor(Math.random() * 2000) + 1;
           for (let i = 0; i < r; ++i) {
             result.push({ _key: key() });
@@ -175,14 +169,13 @@ function BaseChaosSuite(testOpts) {
         const opts = () => {
           let result = {};
           if (testOpts.withIntermediateCommits) {
-            const r = Math.random();
-            if (r <= 0.5) {
-              result.intermediateCommitCount = 7 + Math.floor(r * 10);
+            if (Math.random() <= 0.5) {
+              result.intermediateCommitCount = 7 + Math.floor(Math.random() * 10);
             }
           }
           
           if (testOpts.withVaryingOverwriteMode) {
-            let r = Math.random();
+            const r = Math.random();
             if (r >= 0.75) {
               result.overwriteMode = "replace";
             } else if (r >= 0.5) {
@@ -194,17 +187,23 @@ function BaseChaosSuite(testOpts) {
           return result;
         };
         
-        let query = db._query;
+        let query = (...args) => db._query(...args);
         let trx = null;
-        let ctx = db;
+        let isTransaction = false;
         if (testOpts.withStreamingTransactions && Math.random() < 0.5) {
           trx = db._createTransaction({ collections: { write: [c.name()] } });
-          ctx = trx;
           c = trx.collection(testOpts.collection);
-          query = trx.query;
+          query = (...args) => trx.query(...args);
+          isTransaction = true;
         }
 
-        const ops = Math.round(Math.random() * 5) + 1;
+        const logAllOps = false;
+        const log = (msg) => {
+          if (logAllOps) {
+            console.info(msg);
+          }
+        };
+        const ops = isTransaction ? Math.floor(Math.random() * 5) + 1 : 1;
         for (let op = 0; op < ops; ++op) {
           try {
             const d = Math.random();
@@ -214,24 +213,26 @@ function BaseChaosSuite(testOpts) {
             } else if (d >= 0.9) {
               let o = opts();
               let d = docs();
-              console.warn("RUNNING AQL INSERT WITH " + d.length + " DOCS. OPTIONS: " + JSON.stringify(o));
-              query.call(ctx, "FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: d}, o);
+              log(`RUNNING AQL INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
+              query("FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: d}, o);
             } else if (d >= 0.8) {
               let o = opts();
-              console.warn("RUNNING AQL REMOVE. OPTIONS: " + JSON.stringify(o));
-              query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 138 REMOVE doc IN " + c.name(), {}, o);
+              const limit = Math.floor(Math.random() * 200);
+              log(`RUNNING AQL REMOVE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
+              query("FOR doc IN " + c.name() + " LIMIT @limit REMOVE doc IN " + c.name(), {limit}, o);
             } else if (d >= 0.7) {
               let o = opts();
-              console.warn("RUNNING AQL REPLACE. OPTIONS: " + JSON.stringify(o));
-              query.call(ctx, "FOR doc IN " + c.name() + " LIMIT 1338 REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {}, o);
+              const limit = Math.floor(Math.random() * 2000);
+              log(`RUNNING AQL REPLACE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
+              query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {limit}, o);
             } else if (d >= 0.25) {
               let o = opts();
               let d = docs();
-              console.warn("RUNNING INSERT WITH " + d.length + " DOCS. OPTIONS: " + JSON.stringify(o));
+              log(`RUNNING INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
               c.insert(d, o);
             } else {
               let d = docs();
-              console.warn("RUNNING REMOVE WITH " + d.length + " DOCS");
+              log(`RUNNING REMOVE WITH ${d.length} DOCS`);
               c.remove(d);
             }
           } catch (err) {}
@@ -255,7 +256,7 @@ function BaseChaosSuite(testOpts) {
       }
 
       // run the suite for 5 minutes
-      runParallelArangoshTests(tests, 5 * 60, cn);
+      runParallelArangoshTests(tests, 5 * 60, communication_cn);
 
       print("Finished load test - waiting for cluster to get in sync before checking consistency.");
       clearAllFailurePoints();
@@ -287,7 +288,11 @@ function addSuite(paramValues) {
 
   jsunity.run(func);
 }
+
 /*
+This code dynamically creates test suites for all parameter combinations.
+ATM we don't use it since we don't want to include ALL suites in the PR tests, but
+we do want to have them in the nightlies, but that will be done in a separate PR.
 for (let i = 0; i < (1 << params.length); ++i) {
   let paramValues = [];
   for (let j = params.length - 1; j >= 0; --j) {
