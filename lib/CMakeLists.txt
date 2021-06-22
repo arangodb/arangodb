@@ -131,6 +131,7 @@ add_library(arango STATIC
   Basics/StringHeap.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
+  Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
