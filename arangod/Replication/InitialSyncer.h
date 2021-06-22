@@ -33,6 +33,8 @@
 
 #include <velocypack/Slice.h>
 
+#include <mutex>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -66,6 +68,7 @@ class InitialSyncer : public Syncer {
   replutils::ProgressInfo _progress;
   
   /// recurring task to keep the batch alive
+  std::mutex _batchPingMutex;
   Scheduler::WorkHandle _batchPingTimer;
 };
 }  // namespace arangodb
