@@ -763,9 +763,6 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
     metrics->replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
   }};
 
-  auto logCoreGuard = _guardedLogCore.getLockedGuard();
-  auto& logCore = logCoreGuard.get();
-
   // TODO maybe this is to much and we have to add the values
   //      manually to the messages
   auto messageLogContext =
@@ -774,24 +771,9 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
           .with<logContextKeyPrevLogTerm>(request.prevLogTerm)
           .with<logContextKeyLeaderCommit>(request.leaderCommit);
 
-  LOG_CTX("6fa8b", TRACE, messageLogContext)
-      << "local follower received append entries";
-
-  if (logCore == nullptr) {
-    LOG_CTX("e9b70", DEBUG, messageLogContext)
-        << "local follower received append entries although the log core is "
-           "moved away.";
-    return AppendEntriesResult{request.leaderTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                               AppendEntriesErrorReason::LOST_LOG_CORE, request.messageId};
-  }
-
-  // TODO The LogCore should know its last log index, and we should assert here
-  //      that the AppendEntriesRequest matches it.
-  auto iter = std::make_unique<ReplicatedLogIterator>(request.entries);
-  return logCore->insertAsync(std::move(iter), request.waitForSync)
-      .thenValue([term = request.leaderTerm, messageId = request.messageId,
-                  logContext = std::move(messageLogContext),
-                  measureTime = std::move(measureTime)](Result const& res) {
+  auto returnAppendEntriesResult =
+      [term = request.leaderTerm, messageId = request.messageId, logContext = messageLogContext,
+       measureTime = std::move(measureTime)](Result const& res) {
         if (!res.ok()) {
           LOG_CTX("fdc87", ERR, logContext)
               << "local follower failed to write entries: " << res;
@@ -800,7 +782,31 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
         LOG_CTX("e0800", TRACE, logContext)
             << "local follower completed append entries";
         return AppendEntriesResult{term, messageId};
-      });
+      };
+
+  LOG_CTX("6fa8b", TRACE, messageLogContext)
+      << "local follower received append entries";
+
+  if (request.entries.empty()) {
+    // Nothing to do here, save some work.
+    return returnAppendEntriesResult(Result(TRI_ERROR_NO_ERROR));
+  }
+
+  return _guardedLogCore.doUnderLock([&](auto& logCore) -> futures::Future<AppendEntriesResult> {
+    if (logCore == nullptr) {
+      LOG_CTX("e9b70", DEBUG, messageLogContext)
+          << "local follower received append entries although the log core is "
+             "moved away.";
+      return AppendEntriesResult{request.leaderTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                                 AppendEntriesErrorReason::LOST_LOG_CORE,
+                                 request.messageId};
+    }
+
+    // TODO The LogCore should know its last log index, and we should assert here
+    //      that the AppendEntriesRequest matches it.
+    auto iter = std::make_unique<ReplicatedLogIterator>(request.entries);
+    return logCore->insertAsync(std::move(iter), request.waitForSync).thenValue(std::move(returnAppendEntriesResult));
+  });
 }
 
 auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<LogCore> {
