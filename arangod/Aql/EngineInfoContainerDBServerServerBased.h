@@ -147,7 +147,7 @@ class EngineInfoContainerDBServerServerBased {
 
  private:
 
-  std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID const& server,
+  std::vector<bool> buildEngineInfo(QueryId clusterQueryId, VPackBuilder& infoBuilder, ServerID const& server,
                                     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                                     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
@@ -168,7 +168,7 @@ class EngineInfoContainerDBServerServerBased {
    * they may be leftovers from Coordinator.
    * Will also clear the list of queryIds after return.
    *
-   * @param pool The ConnectionPool
+   * @param clusterQueryId cluster-wide query id (used from 3.8 onwards)
    * @param errorCode error Code to be send to DBServers for logging.
    * @param dbname Name of the database this query is executed in.
    * @param serverQueryIds A map of QueryIds of the format: (remoteNodeId:shardId)

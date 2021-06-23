@@ -40,6 +40,9 @@ const {
   waitForShardsInSync
 } = require('@arangodb/test-helper');
 
+const getCoordinators = () => {
+  return getServersByType('coordinator');
+};
 const getDBServers = () => {
   return getServersByType('dbserver');
 };
@@ -111,6 +114,9 @@ const clearAllFailurePoints = () => {
   for (const server of getDBServers()) {
     debugClearFailAt(getEndpointById(server.id));
   }
+  for (const server of getCoordinators()) {
+    debugClearFailAt(getEndpointById(server.id));
+  }
 };
 
 function BaseChaosSuite(testOpts) {
@@ -128,11 +134,17 @@ function BaseChaosSuite(testOpts) {
       db._create(communication_cn);
       
       if (testOpts.withFailurePoints) {
-        const servers = getDBServers();
+        let servers = getDBServers();
         assertTrue(servers.length > 0);
         for (const server of servers) {
           debugSetFailAt(getEndpointById(server.id), "replicateOperations_randomize_timeout");
           debugSetFailAt(getEndpointById(server.id), "delayed_synchronous_replication_request_processing");
+          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeout");
+        }
+        servers = getCoordinators();
+        assertTrue(servers.length > 0);
+        for (const server of servers) {
+          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeout");
         }
       }
     },
@@ -202,7 +214,7 @@ function BaseChaosSuite(testOpts) {
           if (logAllOps) {
             console.info(msg);
           }
-        }
+        };
         const ops = isTransaction ? Math.floor(Math.random() * 5) + 1 : 1;
         for (let op = 0; op < ops; ++op) {
           try {

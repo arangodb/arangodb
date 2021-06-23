@@ -26,8 +26,11 @@
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
+
+#include <unordered_map>
 
 namespace arangodb {
 namespace aql {
@@ -130,7 +133,11 @@ class QueryRegistry {
   
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
+    /// @brief constructor for a regular query entry
     QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+    
+    /// @brief constructor for a tombstone entry
+    explicit QueryInfo(ErrorCode errorCode, double ttl);
     ~QueryInfo();
 
     std::unique_ptr<ClusterQuery> _query;  // the actual query pointer
@@ -139,6 +146,9 @@ class QueryRegistry {
     double _expires;     // UNIX UTC timestamp of expiration
     size_t _numEngines; // used for legacy shutdown
     size_t _numOpen;
+
+    ErrorCode _errorCode;
+    bool const _isTombstone;
 
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
