@@ -4,7 +4,6 @@
 const expect = require('chai').expect;
 var utils = require('@arangodb/foxx/manager-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
-const request = require('@arangodb/request');
 const util = require('@arangodb/util');
 const fs = require('fs');
 const internal = require('internal');
