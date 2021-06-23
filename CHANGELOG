@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed DEVSUP-799: unique vertex getter may point to invalid memory after
+  being resetted, resulting in undefined behavior for traversals returning
+  unique vertices from inner FOR loops.
+
 * Web UI: Disables the hover tooltip within the statistics view of the
   memory consumption chart.
 
