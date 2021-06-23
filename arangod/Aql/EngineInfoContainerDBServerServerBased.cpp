@@ -398,10 +398,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // We at least have one Snippet, or one graph node.
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
+
+  ErrorCode cleanupReason = TRI_ERROR_INTERNAL;
   
-  auto cleanupGuard = scopeGuard([this, &serverToQueryId]() {
+  auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() {
     // Fire and forget
-    std::ignore = cleanupEngines(TRI_ERROR_INTERNAL, _query.vocbase().name(), serverToQueryId);
+    std::ignore = cleanupEngines(cleanupReason, _query.vocbase().name(), serverToQueryId);
   });
 
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
@@ -478,8 +480,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
           });
   if (fastPathResult.get().fail()) {
     if (fastPathResult.get().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+      // we got an error. this will trigger the cleanupGuard!
+      // set the proper error reason.
+      cleanupReason = fastPathResult.get().errorNumber();
       return fastPathResult.get();
     }
+
     {
       // in case of fast path failure, we need to cleanup engines
       auto requests = cleanupEngines(fastPathResult.get().errorNumber(), _query.vocbase().name(), serverToQueryId);
@@ -538,6 +544,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                                        serverToQueryIdLock, pool, options);
       _query.incHttpRequests(unsigned(1));
       if (request.get().fail()) {
+        // this will trigger the cleanupGuard.
+        // set the proper error reason
+        cleanupReason = request.get().errorNumber();
         return request.get();
       }
     }
