@@ -86,6 +86,7 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
 
 void ClusterTraverser::clear() {
   _startIdBuilder.clear();
+  _vertexGetter->clear();
   traverserCache()->clear();
 
   _vertices.clear();

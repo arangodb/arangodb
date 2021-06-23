@@ -78,6 +78,9 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
 
 void Traverser::VertexGetter::reset(arangodb::velocypack::StringRef const&) {}
 
+// nothing to do
+void Traverser::VertexGetter::clear() {}
+
 bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge,
                                               arangodb::traverser::EnumeratedPath& path) {
   VPackSlice toAdd = edge;
@@ -137,6 +140,13 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice 
 
   _returnedVertices.emplace(result);
   return true;
+}
+
+void Traverser::UniqueVertexGetter::clear() {
+  // we must make sure that we clear _returnedVertices, not only for
+  // correctness, but also because it may point into memory that is
+  // going to be freed after this call.
+  _returnedVertices.clear();
 }
 
 void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const& startVertex) {
