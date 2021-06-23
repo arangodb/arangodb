@@ -67,6 +67,7 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
 }
 
 void SingleServerTraverser::clear() {
+  _vertexGetter->clear();
   traverserCache()->clear();
 }
 
