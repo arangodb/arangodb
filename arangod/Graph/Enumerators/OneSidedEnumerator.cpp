@@ -94,6 +94,14 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);
 
+  // only explore here if we're responsible
+  if (!step.isResponsible(_provider.trx())) {
+    // This server cannot decide on this specific vertex.
+    // Include it in results, to report back that we
+    // found this undecided path
+    _results.push_back(&step);
+    return;
+  }
   ValidationResult res = _validator.validatePath(step);
 
   // TODO: Adjust log output
@@ -107,11 +115,6 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
     _results.push_back(&step);
   } else {
     _stats.incrFiltered();
-  }
-
-  // only expand if we're responsible
-  if (!step.isResponsible(_provider.trx())) {
-    return;
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
