@@ -1847,9 +1847,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
