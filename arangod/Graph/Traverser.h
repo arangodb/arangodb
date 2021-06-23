@@ -145,6 +145,8 @@ class Traverser {
 
     virtual void reset(arangodb::velocypack::StringRef const&);
 
+    virtual void clear();
+
    protected:
     Traverser* _traverser;
   };
@@ -169,6 +171,8 @@ class Traverser {
     bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
 
     void reset(arangodb::velocypack::StringRef const&) override;
+
+    void clear() override;
 
    private:
     std::unordered_set<arangodb::velocypack::StringRef> _returnedVertices;
