@@ -45,11 +45,6 @@ static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
                   AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
               "AccessMode::Type total order fail");
   
-bool TransactionCollection::hasFollower(ServerID const& server) const {
-  TRI_ASSERT(_followers != nullptr);
-  return _followers != nullptr && std::find(_followers->begin(), _followers->end(), server) != _followers->end();
-}
-  
 /// @brief check if a collection is locked in a specific mode in a transaction
 bool TransactionCollection::isLocked(AccessMode::Type accessType) const {
   if (accessType > _accessType) {

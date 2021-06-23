@@ -64,7 +64,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
         return true;
       }
       if (!state.isCoordinator()) {
-        if (col.hasFollower(server)) {
+        if (col.collection()->followers()->contains(server)) {
           if (numCollections == 0) {
             builder.add(key, VPackValue(VPackValueType::Array));
           }
