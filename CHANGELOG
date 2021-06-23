@@ -1,6 +1,12 @@
 devel
 -----
 
+* Web UI: Disables the hover tooltip within the statistics view of the
+  memory consumption chart.
+
+* Raised the versions of the node modules `node-sass` and `sass-loader`
+  to be able to build the Web UI with Node v16+.
+
 * Slightly improve specific warning messages for better readability.
 
 * Fix URL request parsing in case data is handed in in small chunks.
