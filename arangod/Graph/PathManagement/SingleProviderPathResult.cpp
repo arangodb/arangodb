@@ -121,11 +121,15 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntr
     // The depth of the current step
     result.add(VPackValue(step.getDepth()));
 
-    // A vertex is a loose end, if this server is not responsible.
-    result.add(VPackValue(!step.isResponsible(_provider.trx())));
-
-    // content of step
-    _provider.addVertexToBuilder(step.getVertex(), result);
+    bool isResponsible = step.isResponsible(_provider.trx());
+    // Print if we have a loose end here (looseEnd := this server is NOT responsible)
+    result.add(VPackValue(!isResponsible));
+    if (isResponsible) {
+      // This server needs to provide the data for the vertex
+      _provider.addVertexToBuilder(step.getVertex(), result);
+    } else {
+      result.add(VPackSlice::nullSlice());
+    }
 
     _provider.addEdgeToBuilder(step.getEdge(), result);
   };  // TODO: Create method instead of lambda
