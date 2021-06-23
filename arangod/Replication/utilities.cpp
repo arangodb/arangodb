@@ -540,7 +540,7 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
     if (errorMsg.empty() && response != nullptr) {
       errorMsg = "HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) +
                  ": " + response->getHttpReturnMessage() + " - " +
-                 response->getBody().toString();
+                 response->getTextifiedBody();
     }
     return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
                   std::string("could not connect to leader at ") +
@@ -553,7 +553,7 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
                     connection.endpoint() + " for URL " + url + ": HTTP " +
                     basics::StringUtils::itoa(response->getHttpReturnCode()) +
                     ": " + response->getHttpReturnMessage() + " - " +
-                    response->getBody().toString());
+                    response->getTextifiedBody());
 }
 
 /// @brief parse a velocypack response

@@ -86,6 +86,26 @@ std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
   return parser.steal();
 }
 
+std::string SimpleHttpResult::getTextifiedBody() const {
+  bool found;
+  auto content_type = getHeaderField(StaticStrings::ContentTypeHeader, found);
+  if (found) {
+    if (content_type == StaticStrings::MimeTypeVPack) {
+      auto parsedBody = getBodyVelocyPack();
+      try {
+        return std::string("V: " ) + parsedBody.get()->slice().toJson();
+      } catch (...) {
+      }
+    }
+    else if (content_type.compare(0, 4, "text") ||
+        (content_type == StaticStrings::MimeTypeJsonNoEncoding) ||
+        (content_type == StaticStrings::MimeTypeJson)) {
+      return std::string(_resultBody.c_str(), _resultBody.size());
+    }
+  }
+  return StringUtils::encodeHex(_resultBody.c_str(), _resultBody.size());
+}
+
 std::string SimpleHttpResult::getResultTypeMessage() const {
   switch (_requestResultType) {
     case (COMPLETE):
