@@ -27,7 +27,6 @@
 #include <memory>
 
 #include "Basics/Common.h"
-#include "Cluster/ClusterTypes.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
@@ -60,8 +59,6 @@ class TransactionCollection {
     return _collection;  // vocbase collection pointer
   }
 
-  bool hasFollower(ServerID const& server) const;
-
   std::string const& collectionName() const;
 
   AccessMode::Type accessType() const { return _accessType; }
@@ -89,10 +86,6 @@ class TransactionCollection {
   std::shared_ptr<LogicalCollection> _collection;  // vocbase collection pointer
   AccessMode::Type _accessType;                    // access type (read|write)
   AccessMode::Type _lockType;                      // actual held lock type
-  
-  /// follower list. only populated on DB servers. 
-  /// this is only set once and never updated later
-  std::shared_ptr<std::vector<ServerID> const> _followers;
 
  private:
   // perform lock, sets _lockType

@@ -91,10 +91,6 @@ Result RocksDBTransactionCollection::lockUsage() {
   }
  
   TRI_ASSERT(_collection != nullptr);
-  
-  if (_followers == nullptr && ServerState::instance()->isDBServer()) {
-    _followers = _collection->followers()->get();
-  }
       
   if (/*AccessMode::isWriteOrExclusive(_accessType) &&*/!isLocked()) {
     // r/w lock the collection
