@@ -530,6 +530,22 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 
   TRI_ASSERT(usedIndexes.empty());
 
+  // we might have a search index - it could cover all condition at once.
+  // Give it a try
+  // FIXME: honor the index hint!
+  for (auto& index : indexes) {
+    if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+      auto costs = index.get()->supportsFilterCondition(indexes, root, reference, itemsInCollection);
+      if (costs.supportsCondition) {
+        // we need to find 'root' in 'ast' and replace it with specialized version
+        // but for now we know that index will not alter the node, so just an assert
+        TRI_ASSERT(root == index.get()->specializeCondition(root, reference));
+        usedIndexes.emplace_back(index);
+        return std::make_pair(true, false);
+      }
+    }
+  }
+
   size_t const n = root->numMembers();
   for (size_t i = 0; i < n; ++i) {
     // BTS-398: if there are multiple OR-ed conditions, fail only for forced index

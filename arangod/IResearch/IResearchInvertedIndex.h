@@ -106,7 +106,7 @@ class IResearchRocksDBInvertedIndex : public RocksDBIndex, IResearchInvertedInde
  public:
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta);
 
-  Index::IndexType type() const override { return  Index::TRI_IDX_TYPE_SEARCH_INDEX; }
+  Index::IndexType type() const override { return  Index::TRI_IDX_TYPE_INVERTED_INDEX; }
 
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type<Index::Serialize>::type flags) const override;

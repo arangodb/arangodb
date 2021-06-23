@@ -38,7 +38,7 @@ ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
 ADB_IGNORE_UNUSED extern arangodb::LogTopic TOPIC;
 
 
-constexpr std::string_view IRESEARCH_INVERTED_INDEX_TYPE = "search";
+constexpr std::string_view IRESEARCH_INVERTED_INDEX_TYPE = "inverted";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current implementation version of the iresearch interface

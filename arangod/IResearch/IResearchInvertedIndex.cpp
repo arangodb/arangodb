@@ -215,7 +215,7 @@ Result IResearchInvertedIndexFactory::normalize(velocypack::Builder& normalized,
   if (res.ok()) {
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(arangodb::Index::oldtypeName(
-                   arangodb::Index::TRI_IDX_TYPE_SEARCH_INDEX)));
+                   arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX)));
 
     if (isCreation && !arangodb::ServerState::instance()->isCoordinator() &&
         !definition.hasKey("objectId")) {
@@ -255,6 +255,16 @@ Result IResearchInvertedIndexMeta::init(
         : (std::string("failed to initialize index from definition, error in attribute '")
           + errField + "': " + info.toString()));
   }
+  auto nameSlice = info.get(arangodb::StaticStrings::IndexName);
+  if (nameSlice.isString() && nameSlice.getStringLength() > 0) {
+    _name = nameSlice.copyString();
+  } else if (!nameSlice.isNone()) {
+    return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failed to initialize index from definition, error in attribute '")
+        + arangodb::StaticStrings::IndexName + "': "
+        + info.toString());
+  }
   return {};
 }
 
@@ -292,6 +302,16 @@ Result IResearchInvertedIndexMeta::normalize(
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("failed to initialize index from definition: ") + definition.toString());
+  }
+  auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
+  if (nameSlice.isString() && nameSlice.getStringLength() > 0) {
+    normalized.add(arangodb::StaticStrings::IndexName, nameSlice);
+  } else if (!nameSlice.isNone()) {
+    return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failed to initialize index from definition, error in attribute '")
+        + arangodb::StaticStrings::IndexName + "': "
+        + definition.toString());
   }
   return {};
 }

@@ -68,7 +68,7 @@ class IResearchInvertedIndexConditionTest
     {
       VPackObjectBuilder obj(&vpack);
       vpack.add(arangodb::StaticStrings::IndexId, VPackValue(iid.id()));
-      vpack.add(arangodb::StaticStrings::IndexType, VPackValue("search"));
+      vpack.add(arangodb::StaticStrings::IndexType, VPackValue("inverted"));
 
       //FIXME: maybe this should be set by index internally ?
       vpack.add(arangodb::StaticStrings::IndexUnique, VPackValue(false));
