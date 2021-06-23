@@ -47,6 +47,7 @@
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -103,10 +104,12 @@ void RestAqlHandler::setupClusterQuery() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
     return;
   }
+  
+  TRI_IF_FAILURE("Query::setupTimeout") {
+    // intentionally delay the request
+    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+  }
 
-  // ---------------------------------------------------
-  // SECTION:                            body validation
-  // ---------------------------------------------------
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
@@ -116,6 +119,16 @@ void RestAqlHandler::setupClusterQuery() {
            "parse the transmitted plan. "
            "Aborting query.";
     return;
+  }
+
+  QueryId clusterQueryId = 0;
+  // this is an optional attribute that 3.8 coordinators will send, but
+  // older versions won't send.
+  // if set, it is the query id that will be used for this particular query
+  VPackSlice queryIdSlice = querySlice.get("clusterQueryId");
+  if (queryIdSlice.isNumber()) {
+    clusterQueryId = queryIdSlice.getNumber<QueryId>();
+    TRI_ASSERT(clusterQueryId > 0);
   }
 
   VPackSlice lockInfoSlice = querySlice.get("lockInfo");
@@ -253,7 +266,8 @@ void RestAqlHandler::setupClusterQuery() {
   AccessMode::Type access = AccessMode::Type::READ;
   const double ttl = options.ttl;
   // creates a StandaloneContext or a leased context
-  auto q = std::make_unique<ClusterQuery>(createTransactionContext(access),
+  auto q = std::make_unique<ClusterQuery>(clusterQueryId, 
+                                          createTransactionContext(access),
                                           std::move(options));
 
   VPackBufferUInt8 buffer;
@@ -263,7 +277,12 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
 
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
-  answerBuilder.add("queryId", VPackValue(q->id()));
+  if (clusterQueryId == 0) {
+    // only return this attribute if we didn't get a query ID as input from
+    // the coordinator. this will be the case for setup requests from 3.7 
+    // coordinators
+    answerBuilder.add("queryId", VPackValue(q->id()));
+  }
   QueryAnalyzerRevisions analyzersRevision;
   auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
   if(ADB_UNLIKELY(revisionRes.fail())) {
