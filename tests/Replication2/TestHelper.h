@@ -101,6 +101,7 @@ struct AsyncMockLog : MockLog {
   std::vector<std::shared_ptr<QueueEntry>> _queue;
   std::condition_variable _cv;
   std::atomic<bool> _stopping = false;
+  bool _stopped = false;
   // _asyncWorker *must* be initialized last, otherwise starting the thread
   // races with initializing the coordination variables.
   std::thread _asyncWorker;
