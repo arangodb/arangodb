@@ -194,15 +194,6 @@ RestStatus RestDocumentHandler::insertDocument() {
     return RestStatus::DONE;
   }
 
-  if (ServerState::instance()->isDBServer() &&
-      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
-    // make sure that the current transaction includes the collection that we want to
-    // write into. this is not necessarily the case for follower transactions that
-    // are started lazily. in this case, we must reject the request.
-    generateTransactionError(cname, OperationResult(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION), opOptions), "");
-    return RestStatus::DONE;
-  }
-
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
           .thenValue([=](OperationResult&& opres) {
@@ -504,15 +495,6 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
   
-  if (ServerState::instance()->isDBServer() &&
-      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
-    // make sure that the current transaction includes the collection that we want to
-    // write into. this is not necessarily the case for follower transactions that
-    // are started lazily. in this case, we must reject the request.
-    generateTransactionError(cname, OperationResult(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION), opOptions), "");
-    return RestStatus::DONE;
-  }
-
   auto f = futures::Future<OperationResult>::makeEmpty();
   if (isPatch) {
     // patching an existing document
@@ -635,15 +617,6 @@ RestStatus RestDocumentHandler::removeDocument() {
     return RestStatus::DONE;
   }
   
-  if (ServerState::instance()->isDBServer() &&
-      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
-    // make sure that the current transaction includes the collection that we want to
-    // write into. this is not necessarily the case for follower transactions that
-    // are started lazily. in this case, we must reject the request.
-    generateTransactionError(cname, OperationResult(Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION), opOptions), "");
-    return RestStatus::DONE;
-  }
-
   bool const isMultiple = search.isArray();
 
   return waitForFuture(
