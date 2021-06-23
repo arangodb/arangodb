@@ -628,7 +628,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     // make sure that the current transaction includes the collection that we want to
     // write into. this is not necessarily the case for follower transactions that
     // are started lazily. in this case, we must reject the request.
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
         std::string("Transaction with id '") + std::to_string(tid.id())
         + "' does not contain collection '" + collectionName
         + "' with the required access mode.");
