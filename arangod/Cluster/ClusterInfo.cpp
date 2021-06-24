@@ -54,6 +54,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Common.h"
 #include "Rest/CommonDefines.h"
@@ -825,6 +826,14 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   return std::make_shared<LogicalCollection>(vocbase, data, true);
 }
 
+
+struct ClusterInfo::NewStuffByDatabase {
+  using ReplicatedLogsMap = std::unordered_map<replication2::LogId, std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+  ReplicatedLogsMap replicatedLogs;
+  using CollectionGroupMap = std::unordered_map<replication2::agency::CollectionGroupId, std::shared_ptr<replication2::agency::CollectionGroup const>>;
+  CollectionGroupMap collectionGroups;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about our plan
 /// Usually one does not have to call this directly.
@@ -931,7 +940,7 @@ void ClusterInfo::loadPlan() {
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
-  decltype(_replicatedLogs) newReplicatedsLogs;
+  decltype(_newStuffByDatabase) newStuffByDatabase;
 
   bool swapDatabases = false;
   bool swapCollections = false;
@@ -947,7 +956,7 @@ void ClusterInfo::loadPlan() {
     newShardServers = _shardServers;
     newShardToName = _shardToName;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
-    newReplicatedsLogs = _replicatedLogs;
+    newStuffByDatabase = _newStuffByDatabase;
     auto ende = std::chrono::steady_clock::now();
     LOG_TOPIC("feee1", TRACE, Logger::CLUSTER)
         << "Time for copy operation in loadPlan: "
@@ -1004,6 +1013,7 @@ void ClusterInfo::loadPlan() {
         }
       }
       newDatabases.erase(name);
+      newStuffByDatabase.erase(name);
       newPlan.erase(name);
       continue;
     }
@@ -1439,25 +1449,46 @@ void ClusterInfo::loadPlan() {
     if (databaseName.empty()) {
       continue;
     }
-    newReplicatedsLogs.erase(databaseName);
-    auto replicatedLogsPaths = cluster::paths::aliases::plan()
-                                   ->replicatedLogs()
-                                   ->database(databaseName)
-                                   ->vec();
 
-    auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
-    if (logsSlice.isNone()) {
-      continue;
+    auto stuff = std::make_shared<NewStuffByDatabase>();
+    {
+      auto replicatedLogsPaths = cluster::paths::aliases::plan()
+                                     ->replicatedLogs()
+                                     ->database(databaseName)
+                                     ->vec();
+
+      auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
+      if (!logsSlice.isNone()) {
+        NewStuffByDatabase::ReplicatedLogsMap newLogs;
+        for (auto const& [idString, logSlice] : VPackObjectIterator(logsSlice)) {
+          auto spec = std::make_shared<replication2::agency::LogPlanSpecification>(
+              replication2::agency::from_velocypack, logSlice);
+          newLogs.emplace(spec->id, spec);
+        }
+        stuff->replicatedLogs = std::move(newLogs);
+      }
     }
 
-
-    ReplicatedLogsMap newLogs;
-    for (auto const& [idString, logSlice] : VPackObjectIterator(logsSlice)) {
-      auto spec = std::make_shared<replication2::agency::LogPlanSpecification>
-       (replication2::agency::from_velocypack, logSlice);
-      newLogs.emplace(spec->id, spec);
+    {
+      /*auto collectionGroupsPaths = cluster::paths::aliases::plan()
+          ->replicatedLogs()
+          ->database(databaseName)
+          ->vec(); TODO */
+      auto collectionGroupsPath =
+          std::initializer_list<std::string_view>{AgencyCommHelper::path(),
+                                                  "Plan", "CollectionGroups", databaseName};
+      auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
+      if (!groupsSlice.isNone()) {
+        NewStuffByDatabase::CollectionGroupMap groups;
+        for (auto const& [idString, groupSlice] : VPackObjectIterator(groupsSlice)) {
+          auto spec = std::make_shared<replication2::agency::CollectionGroup>(groupSlice);
+          groups.emplace(spec->id, spec);
+        }
+        stuff->collectionGroups = std::move(groups);
+      }
     }
-    newReplicatedsLogs[databaseName] = std::move(newLogs);
+
+    newStuffByDatabase[databaseName] = std::move(stuff);
   }
 
 
@@ -1511,7 +1542,7 @@ void ClusterInfo::loadPlan() {
     _dbAnalyzersRevision.swap(newDbAnalyzersRevision);
   }
 
-  _replicatedLogs.swap(newReplicatedsLogs);
+  _newStuffByDatabase.swap(newStuffByDatabase);
 
   if (planValid) {
     _planProt.isValid = true;
@@ -2764,13 +2795,15 @@ Result ClusterInfo::createCollectionsCoordinator(
   // closure and the main thread executing this function. Note that it can
   // happen that the callback is called only after we return from this
   // function!
-  auto dbServerResult =
-      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
-  auto nrDone = std::make_shared<std::atomic<size_t>>(0);
-  auto errMsg = std::make_shared<std::string>();
-  auto cacheMutex = std::make_shared<Mutex>();
-  auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
-  auto isCleaned = std::make_shared<bool>(false);
+  struct SharedDataForCallback {
+    std::atomic<std::optional<ErrorCode>> dbServerResult;
+    std::atomic<size_t> nrDone{0};
+    std::string errMsg;
+    Mutex cacheMutex;
+    std::atomic<std::thread::id> cacheMutexOwner;
+    bool isCleaned{false};
+  };
+  auto sharedData = std::make_shared<SharedDataForCallback>();
 
   AgencyComm ac(_server);
   std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
@@ -2787,8 +2820,8 @@ Result ClusterInfo::createCollectionsCoordinator(
     // d) info might be deleted, so we cannot use it.
     // e) If the callback is ongoing during cleanup, the callback will
     //    hold the Mutex and delay the cleanup.
-    RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
-    *isCleaned = true;
+    RECURSIVE_MUTEX_LOCKER(sharedData->cacheMutex, sharedData->cacheMutexOwner);
+    sharedData->isCleaned = true;
     for (auto& cb : agencyCallbacks) {
       _agencyCallbackRegistry->unregisterCallback(cb);
     }
@@ -2805,7 +2838,7 @@ Result ClusterInfo::createCollectionsCoordinator(
 
     if (info.state == ClusterCollectionCreationState::DONE) {
       // This is possible in Enterprise / Smart Collection situation
-      (*nrDone)++;
+      sharedData->nrDone++;
     }
 
     std::map<ShardID, std::vector<ServerID>> shardServers;
@@ -2822,13 +2855,12 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
 
     // The AgencyCallback will copy the closure will take responsibilty of it.
-    auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
-                    nrDone, isCleaned, shardServers, this](VPackSlice const& result) {
+    auto closure = [&info, sharedData, shardServers, this](VPackSlice const& result) {
       // NOTE: This ordering here is important to cover against a race in cleanup.
       // a) The Guard get's the Mutex, sets isCleaned == true, then removes the callback
       // b) If the callback is acquired it is saved in a shared_ptr, the Mutex will be acquired first, then it will check if it isCleaned
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
-      if (*isCleaned) {
+      RECURSIVE_MUTEX_LOCKER(sharedData->cacheMutex, sharedData->cacheMutexOwner);
+      if (sharedData->isCleaned) {
         return true;
       }
       TRI_ASSERT(!info.name.empty());
@@ -2872,10 +2904,10 @@ Result ClusterInfo::createCollectionsCoordinator(
                 LOG_TOPIC("9ed54", ERR, Logger::CLUSTER)
                     << "Did not find shard in _shardServers: " << p.key.copyString()
                     << ". Maybe the collection is already dropped.";
-                *errMsg = "Error in creation of collection: " + p.key.copyString() +
+                sharedData->errMsg = "Error in creation of collection: " + p.key.copyString() +
                           ". Collection already dropped. " + __FILE__ + ":" +
                           std::to_string(__LINE__);
-                dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                sharedData->dbServerResult.store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                       std::memory_order_release);
                 TRI_ASSERT(info.state != ClusterCollectionCreationState::DONE);
                 info.state = ClusterCollectionCreationState::FAILED;
@@ -2916,9 +2948,9 @@ Result ClusterInfo::createCollectionsCoordinator(
           }
         }
         if (!tmpError.empty()) {
-          *errMsg = "Error in creation of collection:" + tmpError + " " +
+          sharedData->errMsg = "Error in creation of collection:" + tmpError + " " +
                     __FILE__ + std::to_string(__LINE__);
-          dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+          sharedData->dbServerResult.store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                 std::memory_order_release);
           // We cannot get into bad state after a collection was created
           TRI_ASSERT(info.state != ClusterCollectionCreationState::DONE);
@@ -2928,7 +2960,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           // As soon as all leaders are done we are either FAILED or DONE, this cannot be altered later.
           TRI_ASSERT(info.state != ClusterCollectionCreationState::FAILED);
           info.state = ClusterCollectionCreationState::DONE;
-          (*nrDone)++;
+          sharedData->nrDone++;
         }
       }
       return true;
@@ -3135,7 +3167,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // using loadPlan, this is necessary for the callback closure to
       // see the new planned state for this collection. Otherwise it cannot
       // recognize completion of the create collection operation properly:
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      RECURSIVE_MUTEX_LOCKER(sharedData->cacheMutex, sharedData->cacheMutexOwner);
       auto res = ac.sendTransactionWithFailover(transaction);
       // Only if not precondition failed
       if (!res.successful()) {
@@ -3183,7 +3215,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
   do {
-    auto tmpRes = dbServerResult->load(std::memory_order_acquire);
+    auto tmpRes = sharedData->dbServerResult.load(std::memory_order_acquire);
     if (TRI_microtime() > endTime) {
       for (auto const& info : infos) {
         LOG_TOPIC("f6b57", ERR, Logger::CLUSTER)
@@ -3200,7 +3232,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
     }
 
-    if (nrDone->load(std::memory_order_acquire) == infos.size()) {
+    if (sharedData->nrDone.load(std::memory_order_acquire) == infos.size()) {
       // We do not need to lock all condition variables
       // we are save by cacheMutex
       cbGuard.fire();
@@ -3293,7 +3325,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           << "Failed createCollectionsCoordinator for " << infos.size()
           << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
           << " first collection name: " << infos[0].name << " result: " << *tmpRes;
-      return {*tmpRes, *errMsg};
+      return {*tmpRes, sharedData->errMsg};
     }
 
     // If we get here we have not tried anything.
@@ -5412,7 +5444,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 /// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID const& shardID) {
+std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(ShardID const& shardID) {
   int tries = 0;
 
   if (!_currentProt.isValid) {
@@ -5449,7 +5481,7 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
 
   }
 
-  return std::make_shared<std::vector<ServerID>>();
+  return nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -5775,8 +5807,9 @@ auto ClusterInfo::getReplicatedLogLeader(DatabaseID const& database, replication
     -> std::optional<ServerID> {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  if (auto it = _replicatedLogs.find(database); it != std::end(_replicatedLogs)) {
-    if (auto it2 = it->second.find(id); it2 != std::end(it->second)) {
+  if (auto it = _newStuffByDatabase.find(database); it != std::end(_newStuffByDatabase)) {
+    if (auto it2 = it->second->replicatedLogs.find(id);
+        it2 != std::end(it->second->replicatedLogs)) {
       if (auto const& term = it2->second->currentTerm) {
         if (auto const& leader = term->leader) {
           return leader->serverId;
@@ -5786,6 +5819,21 @@ auto ClusterInfo::getReplicatedLogLeader(DatabaseID const& database, replication
   }
 
   return std::nullopt;
+}
+
+auto ClusterInfo::getCollectionGroupById(DatabaseID const& database,
+                                         replication2::agency::CollectionGroupId id)
+    -> std::shared_ptr<replication2::agency::CollectionGroup const> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  if (auto it = _newStuffByDatabase.find(database); it != std::end(_newStuffByDatabase)) {
+    if (auto it2 = it->second->collectionGroups.find(id);
+        it2 != std::end(it->second->collectionGroups)) {
+      return it2->second;
+    }
+  }
+
+  return nullptr;
 }
 
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {

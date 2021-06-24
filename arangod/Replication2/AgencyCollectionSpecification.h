@@ -19,13 +19,12 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include <unordered_map>
 
-#include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <Basics/Identifier.h>
@@ -42,7 +41,6 @@ struct CollectionGroup {
   CollectionGroupId id;
 
   struct Collection {
-
     explicit Collection(VPackSlice slice);
     void toVelocyPack(VPackBuilder& builder) const;
   };
@@ -69,4 +67,12 @@ struct CollectionGroup {
   void toVelocyPack(VPackBuilder& builder) const;
 };
 
-}
+}  // namespace arangodb::replication2::agency
+
+template <>
+struct std::hash<arangodb::replication2::agency::CollectionGroupId> {
+  auto operator()(arangodb::replication2::agency::CollectionGroupId const& v) const noexcept
+      -> std::size_t {
+    return std::hash<arangodb::basics::Identifier>{}(v);
+  }
+};

@@ -224,6 +224,10 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(PLAN_REPLICATED_LOGS), PLAN_REPLICATED_LOGS) == 0) {
           auto tmp = r.substr(strlen(PLAN_REPLICATED_LOGS));
           planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_COLLECTION_GROUPS) &&  // Plan/CollectionGroups
+                   r.compare(0, strlen(PLAN_COLLECTION_GROUPS), PLAN_COLLECTION_GROUPS) == 0) {
+          auto tmp = r.substr(strlen(PLAN_COLLECTION_GROUPS));
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (rs > strlen(PLAN_DATABASES) &&  // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
           auto tmp = r.substr(strlen(PLAN_DATABASES));
@@ -670,6 +674,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
       AgencyCommHelper::path(PLAN_DATABASES) + "/",
       AgencyCommHelper::path(PLAN_VIEWS) + "/",
+      AgencyCommHelper::path(PLAN_COLLECTION_GROUPS) + "/",
       AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/"});
   static std::vector<std::string> const currentGoodies(
       {AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",

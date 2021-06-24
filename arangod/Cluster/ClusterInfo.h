@@ -61,6 +61,8 @@ class Slice;
 
 namespace replication2::agency {
 struct LogPlanSpecification;
+struct CollectionGroupId;
+struct CollectionGroup;
 }
 
 class ClusterInfo;
@@ -851,7 +853,7 @@ class ClusterInfo final {
   /// an error.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ServerID>> getResponsibleServer(ShardID const&);
+  std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(ShardID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -959,6 +961,9 @@ class ClusterInfo final {
 
   auto getReplicatedLogLeader(DatabaseID const& database, replication2::LogId) const
       -> std::optional<ServerID>;
+
+  auto getCollectionGroupById(DatabaseID const& database, replication2::agency::CollectionGroupId id)
+    -> std::shared_ptr<replication2::agency::CollectionGroup const>;
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
@@ -1181,8 +1186,8 @@ class ClusterInfo final {
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
   std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>> _shardIds;  // from Current/Collections/
 
-  using ReplicatedLogsMap = std::unordered_map<replication2::LogId, std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
-  std::unordered_map<DatabaseID, ReplicatedLogsMap> _replicatedLogs;
+  struct NewStuffByDatabase;
+  std::unordered_map<DatabaseID, std::shared_ptr<NewStuffByDatabase>> _newStuffByDatabase;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence
