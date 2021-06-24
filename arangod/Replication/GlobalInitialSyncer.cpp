@@ -129,7 +129,10 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
     startRecurringBatchExtension();
   }
   TRI_DEFER(if (!_state.isChildSyncer) {
-    _batchPingTimer.reset();
+    {
+      std::lock_guard<std::mutex> guard(_batchPingMutex);
+      _batchPingTimer.reset();
+    }
     _batch.finish(_state.connection, _progress, _state.syncerId);
   });
   LOG_TOPIC("62fb5", DEBUG, Logger::REPLICATION) << "sending start batch done";
