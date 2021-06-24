@@ -477,10 +477,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     auto pair = rocksutils::stripObjectIds(collections);
     r = handleCollectionsAndViews(pair.first, views, incremental);
 
-    // all done here, do not try to finish batch if leader is unresponsive
-    if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE) && !_config.isChild()) {
-    }
-
     if (r.fail()) {
       LOG_TOPIC("12556", DEBUG, Logger::REPLICATION)
           << "Error during initial sync: " << r.errorMessage();
