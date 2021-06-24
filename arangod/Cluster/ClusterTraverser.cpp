@@ -87,10 +87,11 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
 void ClusterTraverser::clear() {
   _startIdBuilder.clear();
   _vertexGetter->clear();
-  traverserCache()->clear();
-
   _vertices.clear();
   _verticesToFetch.clear();
+
+  TRI_ASSERT(!_vertexGetter->pointsIntoTraverserCache());
+  traverserCache()->clear();
 }
 
 bool ClusterTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {

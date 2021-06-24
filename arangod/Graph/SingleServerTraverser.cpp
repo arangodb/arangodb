@@ -76,6 +76,8 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
 void SingleServerTraverser::clear() {
   _startIdBuilder.clear();
   _vertexGetter->clear();
+  TRI_ASSERT(!_vertexGetter->pointsIntoTraverserCache());
+
   traverserCache()->clear();
 }
 

@@ -81,6 +81,12 @@ void Traverser::VertexGetter::reset(arangodb::velocypack::StringRef const&) {}
 // nothing to do
 void Traverser::VertexGetter::clear() {}
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+bool Traverser::VertexGetter::pointsIntoTraverserCache() const noexcept {
+  return false;
+}
+#endif
+
 bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge,
                                               arangodb::traverser::EnumeratedPath& path) {
   VPackSlice toAdd = edge;
@@ -148,6 +154,12 @@ void Traverser::UniqueVertexGetter::clear() {
   // going to be freed after this call.
   _returnedVertices.clear();
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+bool Traverser::UniqueVertexGetter::pointsIntoTraverserCache() const noexcept {
+  return !_returnedVertices.empty();
+}
+#endif
 
 void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const& startVertex) {
   _returnedVertices.clear();
