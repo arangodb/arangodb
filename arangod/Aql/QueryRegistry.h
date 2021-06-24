@@ -30,6 +30,8 @@
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ResultT.h"
 
+#include <unordered_map>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -134,7 +136,11 @@ class QueryRegistry {
   
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
+    /// @brief constructor for a regular query entry
     QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+    /// @brief constructor for a tombstone entry
+    explicit QueryInfo(int errorCode, double ttl);
+
     ~QueryInfo();
 
     TRI_vocbase_t* _vocbase;  // the vocbase
@@ -144,6 +150,9 @@ class QueryRegistry {
     double _expires;     // UNIX UTC timestamp of expiration
     size_t _numEngines; // used for legacy shutdown
     size_t _numOpen;
+
+    int _errorCode;
+    bool const _isTombstone;
 
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };

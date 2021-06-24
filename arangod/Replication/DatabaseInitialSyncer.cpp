@@ -254,7 +254,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     r = handleCollectionsAndViews(pair.first, views, incremental);
 
     // all done here, do not try to finish batch if master is unresponsive
-    if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE) && !_config.isChild()) {
+    if (!_config.isChild()) {
       batchFinish();
     }
 

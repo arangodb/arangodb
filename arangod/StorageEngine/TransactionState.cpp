@@ -220,6 +220,13 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
                          AccessMode::typeString(accessType) + "]");
   }
 
+  if (AccessMode::isWriteOrExclusive(accessType) &&
+      !AccessMode::isWriteOrExclusive(_type)) {
+    // if one collection is written to, the whole transaction becomes a
+    // write-y transaction
+    _type = std::max(_type, accessType);
+  }
+
   // now check the permissions
   res = checkCollectionPermission(cid, cname, accessType);
 

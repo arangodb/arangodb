@@ -33,6 +33,7 @@
 #include "Aql/QuerySnippet.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Graph/BaseOptions.h"
@@ -40,6 +41,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
@@ -50,7 +52,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-const double SETUP_TIMEOUT = 15.0;
+const double SETUP_TIMEOUT = 60.0;
 // Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
 const double FAST_PATH_LOCK_TIMEOUT = 2.0;
 
@@ -255,6 +257,7 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 }
 
 std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
+    QueryId clusterQueryId,
     VPackBuilder& infoBuilder, ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
@@ -263,6 +266,8 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
 
   infoBuilder.clear();
   infoBuilder.openObject();
+  infoBuilder.add("clusterQueryId", VPackValue(clusterQueryId));
+
   addLockingPart(infoBuilder, server);
   TRI_ASSERT(infoBuilder.isOpenObject());
 
@@ -313,17 +318,26 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
   // add the transaction ID header
   network::Headers headers;
   ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
+  
+  TRI_ASSERT(infoSlice.isObject() && infoSlice.get("clusterQueryId").isUInt());
+  QueryId globalId = infoSlice.get("clusterQueryId").getNumber<QueryId>();
 
   auto buildCallback =
       [this, server, serverDest, didCreateEngine = std::move(didCreateEngine),
-       &serverToQueryId, &serverToQueryIdLock, &snippetIds](
+       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId](
           arangodb::futures::Try<arangodb::network::Response> const& response) -> Result {
     auto const& resolvedResponse = response.get();
+    auto queryId = globalId;
+    
+    std::unique_lock<std::mutex> guard{serverToQueryIdLock};
+
     if (resolvedResponse.fail()) {
       Result res = resolvedResponse.combinedResult();
       LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
           << server << " responded with " << res.errorNumber() << ": "
           << res.errorMessage();
+
+      serverToQueryId.emplace(serverDest, globalId);
       return res;
     }
 
@@ -331,13 +345,9 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
     if (responseSlice.isNone()) {
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
-    std::unique_lock<std::mutex> guard{serverToQueryIdLock};
-    QueryId globalId = 0;
     auto result = parseResponse(responseSlice, snippetIds, server, serverDest,
-                                didCreateEngine, globalId);
-    if (result.ok()) {
-      serverToQueryId.emplace(serverDest, globalId);
-    }
+                                didCreateEngine, queryId);
+    serverToQueryId.emplace(serverDest, queryId);
 
     return result;
   };
@@ -397,9 +407,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
-  auto cleanupGuard = scopeGuard([this, &serverToQueryId]() {
+  int cleanupReason = TRI_ERROR_INTERNAL;
+
+  auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() {
     // Fire and forget
-    std::ignore = cleanupEngines(TRI_ERROR_INTERNAL, _query.vocbase().name(), serverToQueryId);
+    std::ignore = cleanupEngines(cleanupReason, _query.vocbase().name(), serverToQueryId);
   });
 
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
@@ -418,6 +430,14 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.skipScheduler = true;  // hack to speed up future.get()
   options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
+  TRI_IF_FAILURE("Query::setupTimeout") {
+    options.timeout = network::Timeout(0.01 + (double) RandomGenerator::interval(uint32_t(10)));
+  }
+
+  /// cluster global query id, under which the query will be registered
+  /// on DB servers from 3.8 onwards.
+  QueryId clusterQueryId = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo().uniqid();
+
   // decreases lock timeout manually for fast path
   auto oldLockTimeout = _query.getLockTimeout();
   _query.setLockTimeout(FAST_PATH_LOCK_TIMEOUT);
@@ -427,7 +447,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   for (ServerID const& server : dbServers) {
     // Build Lookup Infos
     VPackBuilder infoBuilder;
-    auto didCreateEngine = buildEngineInfo(infoBuilder, server, nodesById, nodeAliases);
+    auto didCreateEngine = buildEngineInfo(clusterQueryId, infoBuilder, server, nodesById, nodeAliases);
     VPackSlice infoSlice = infoBuilder.slice();
 
     if (isNotSatelliteLeader(infoSlice)) {
@@ -468,8 +488,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
           });
   if (fastPathResult.get().fail()) {
     if (fastPathResult.get().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+      // we got an error. this will trigger the cleanupGuard!
+      // set the proper error reason.
+      cleanupReason = fastPathResult.get().errorNumber();
       return fastPathResult.get();
     }
+
     {
       // in case of fast path failure, we need to cleanup engines
       auto requests = cleanupEngines(fastPathResult.get().errorNumber(), _query.vocbase().name(), serverToQueryId);
@@ -479,6 +503,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       futures::collectAll(requests).wait();
       snippetIds.clear();
     }
+
+    // we must generate a new query id, because the fast path setup has failed
+    clusterQueryId = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo().uniqid();
 
     // set back to default lock timeout for slow path fallback
     _query.setLockTimeout(oldLockTimeout);
@@ -514,6 +541,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       // lock all servers, any performance optimization here will not have measureable impact.
       VPackBuilder overwrittenOptions;
       overwrittenOptions.openObject();
+      // patch query id
+      overwrittenOptions.add("clusterQueryId", VPackValue(clusterQueryId));
       addOptionsPart(overwrittenOptions, server);
       overwrittenOptions.close();
       auto newRequest = arangodb::velocypack::Collection::merge(infoSlice, overwrittenOptions.slice(), false);
@@ -523,6 +552,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                                        serverToQueryIdLock, pool, options);
       _query.incHttpRequests(unsigned(1));
       if (request.get().fail()) {
+        // this will trigger the cleanupGuard.
+        // set the proper error reason
+        cleanupReason = request.get().errorNumber();
         return request.get();
       }
     }
@@ -558,9 +590,12 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   // simon: in 3.7 we get a queryId for all snippets
   VPackSlice queryIdSlice = result.get("queryId");
   if (queryIdSlice.isNumber()) {
+    // populate globalQueryId only if present in response (older 3.7 and before).
+    // 3.8 DB servers will not populate this attribute in their responses!
+    // this is fine (tm), because then the coordinator will assume that all
+    // DB servers will have used the global query ID that the coordinator
+    // had prescribed
     globalQueryId = queryIdSlice.getNumber<QueryId>();
-  } else {
-    globalQueryId = 0;
   }
 
   VPackSlice snippets = result.get("snippets");

@@ -30,6 +30,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
@@ -37,6 +38,8 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
+
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -195,6 +198,12 @@ RestStatus RestDocumentHandler::insertDocument() {
                         opOptions.isOverwriteModeUpdateReplace();
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
+
+  TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
+    if (!opOptions.isSynchronousReplicationFrom.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
+  }
 
   // find and load collection given by name or identifier
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
@@ -449,6 +458,12 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
+  TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
+    if (!opOptions.isSynchronousReplicationFrom.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
+  }
+
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   if (!isArrayCase) {
@@ -571,6 +586,12 @@ RestStatus RestDocumentHandler::removeDocument() {
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
+
+  TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
+    if (!opOptions.isSynchronousReplicationFrom.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
+  }
 
   VPackSlice search;
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;

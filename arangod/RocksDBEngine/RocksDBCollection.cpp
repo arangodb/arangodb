@@ -1542,15 +1542,6 @@ Result RocksDBCollection::update(transaction::Methods* trx,
     }
   }
 
-  if (newSlice.length() <= 1) {  // TODO move above ?!
-    // shortcut. no need to do anything
-    resultMdr.setManaged(oldDoc.begin());
-    TRI_ASSERT(!resultMdr.empty());
-
-    trackWaitForSync(trx, options);
-    return res;
-  }
-
   // merge old and new values
   TRI_voc_rid_t revisionId;
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
@@ -1834,7 +1825,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                               hasPerformedIntermediateCommit);
 
-    savepoint.finish(hasPerformedIntermediateCommit);
+    if (res.ok()) {
+      savepoint.finish(hasPerformedIntermediateCommit);
+    }
   }
   return res;
 }
