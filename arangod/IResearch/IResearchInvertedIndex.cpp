@@ -339,7 +339,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex
 }
 
 IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta)
-  : RocksDBIndex(id, collection, meta._name, meta.fields(), true, false,
+  : RocksDBIndex(id, collection, meta._name, meta.fields(), false, true,
     RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
     meta._objectId, false),
   IResearchInvertedIndex(std::move(meta)) {}
@@ -361,6 +361,8 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
   builder.add(arangodb::StaticStrings::IndexType,
               arangodb::velocypack::Value(oldtypeName(type())));
   builder.add(arangodb::StaticStrings::IndexName, arangodb::velocypack::Value(name()));
+  builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
+  builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
 
 } // namespace iresearch
