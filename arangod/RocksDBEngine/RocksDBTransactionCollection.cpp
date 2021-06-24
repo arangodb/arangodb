@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
-#include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"

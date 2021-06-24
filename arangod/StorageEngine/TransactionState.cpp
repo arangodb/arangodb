@@ -161,17 +161,27 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
     }
   }
 #endif
-  Result res;
 
-  // upgrade transaction type if required
-  if (_status == transaction::Status::CREATED) {
+  Result res = addCollectionInternal(cid, cname, accessType, lockUsage);
+
+  if (res.ok()) {
+    // upgrade transaction type if required
     if (AccessMode::isWriteOrExclusive(accessType) &&
         !AccessMode::isWriteOrExclusive(_type)) {
       // if one collection is written to, the whole transaction becomes a
       // write-y transaction
-      _type = std::max(_type, accessType);
+      if (_status == transaction::Status::CREATED || _options.allowImplicitCollectionsForWrite) {
+        _type = std::max(_type, accessType);
+      }
     }
   }
+
+  return res;
+}
+
+Result TransactionState::addCollectionInternal(DataSourceId cid, std::string const& cname,
+                                               AccessMode::Type accessType, bool lockUsage) {
+  Result res;
 
   // check if we already got this collection in the _collections vector
   size_t position = 0;
@@ -216,13 +226,6 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
                          ": " + cname + " [" +
                          AccessMode::typeString(accessType) + "]");
-  }
-    
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_type)) {
-    // if one collection is written to, the whole transaction becomes a
-    // write-y transaction
-    _type = std::max(_type, accessType);
   }
 
   // now check the permissions
