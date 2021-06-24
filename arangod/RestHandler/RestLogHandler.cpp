@@ -187,8 +187,7 @@ auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
 }
 
 struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
-  auto insert(LogId id, LogPayload payload) const
-      -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> override {
+  auto getLogLeader(LogId id) const {
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
 
     auto leader = ci.getReplicatedLogLeader(vocbase.name(), id);
@@ -196,46 +195,30 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
 
+    return *leader;
+  }
+
+  auto insert(LogId id, LogPayload payload) const
+      -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> override {
     auto pool = server.getFeature<NetworkFeature>().pool();
-    return sendInsertRequest(pool, *leader, vocbase.name(), id, std::move(payload));
+    return sendInsertRequest(pool, getLogLeader(id), vocbase.name(), id, std::move(payload));
   }
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
       -> futures::Future<std::optional<LogEntry>> override {
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-
-    auto leader = ci.getReplicatedLogLeader(vocbase.name(), id);
-    if (!leader) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-    }
-
     auto pool = server.getFeature<NetworkFeature>().pool();
-    return sendReadEntryRequest(pool, *leader, vocbase.name(), id, index);
+    return sendReadEntryRequest(pool, getLogLeader(id), vocbase.name(), id, index);
   }
 
   auto getLogStatus(LogId id) const -> futures::Future<replication2::replicated_log::LogStatus> override {
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-
-    auto leader = ci.getReplicatedLogLeader(vocbase.name(), id);
-    if (!leader) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-    }
-
     auto pool = server.getFeature<NetworkFeature>().pool();
-    return sendLogStatusRequest(pool, *leader, vocbase.name(), id);
+    return sendLogStatusRequest(pool, getLogLeader(id), vocbase.name(), id);
   }
 
   auto tailEntries(LogId id, LogIndex first) const
       -> futures::Future<std::unique_ptr<LogIterator>> override {
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-
-    auto leader = ci.getReplicatedLogLeader(vocbase.name(), id);
-    if (!leader) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-    }
-
     auto pool = server.getFeature<NetworkFeature>().pool();
-    return sendTailRequest(pool, *leader, vocbase.name(), id, first);
+    return sendTailRequest(pool, getLogLeader(id), vocbase.name(), id, first);
   }
 
   auto createReplicatedLog(replication2::agency::LogPlanSpecification const& spec) const
@@ -449,74 +432,22 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
 }
 
 RestStatus RestLogHandler::handleGetRequest(ReplicatedLogMethods const& methods) {
-  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.empty()) {
-    return waitForFuture(methods.getReplicatedLogs().thenValue([this](auto&& logs) {
-      VPackBuilder builder;
-      {
-        VPackObjectBuilder ob(&builder);
-
-        for (auto const& [idx, status] : logs) {
-          builder.add(VPackValue(std::to_string(idx.id())));
-          std::visit([&](auto const& status) { status.toVelocyPack(builder); }, status);
-        }
-      }
-
-      generateOk(rest::ResponseCode::OK, builder.slice());
-    }));
+    return handleGet(methods);
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
 
   if (suffixes.size() == 1) {
-    return waitForFuture(methods.getLogStatus(logId).thenValue([this](auto&& status) {
-      VPackBuilder buffer;
-      std::visit([&](auto const& status) { status.toVelocyPack(buffer); }, status);
-      generateOk(rest::ResponseCode::OK, buffer.slice());
-    }));
+    return handleGetLog(methods, logId);
   }
 
   auto const& verb = suffixes[1];
-
   if (verb == "tail") {
-    if (suffixes.size() != 2) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expect GET /_api/log/<log-id>/tail");
-      return RestStatus::DONE;
-    }
-    LogIndex logIdx{basics::StringUtils::uint64(_request->value("first"))};
-    auto fut = methods.tailEntries(logId, logIdx).thenValue([&](std::unique_ptr<LogIterator> iter) {
-      VPackBuilder builder;
-      {
-        VPackArrayBuilder ab(&builder);
-        while (auto entry = iter->next()) {
-          entry->toVelocyPack(builder);
-        }
-      }
-
-      generateOk(rest::ResponseCode::OK, builder.slice());
-    });
-
-    return waitForFuture(std::move(fut));
+    return handleGetTail(methods, logId);
   } else if (verb == "readEntry") {
-    if (suffixes.size() != 3) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expect GET /_api/log/<log-id>/readEntry/<id>");
-      return RestStatus::DONE;
-    }
-    LogIndex logIdx{basics::StringUtils::uint64(suffixes[2])};
-
-    return waitForFuture(
-        methods.getLogEntryByIndex(logId, logIdx).thenValue([this](std::optional<LogEntry>&& entry) {
-          if (entry) {
-            VPackBuilder result;
-            entry->toVelocyPack(result);
-            generateOk(rest::ResponseCode::OK, result.slice());
-          } else {
-            generateError(rest::ResponseCode::NOT_FOUND,
-                          TRI_ERROR_HTTP_NOT_FOUND, "log index not found");
-          }
-        }));
+    return handleGetReadEntry(methods, logId);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expecting one of the resources 'dump', 'readEntry'");
@@ -548,3 +479,74 @@ RestLogHandler::RestLogHandler(application_features::ApplicationServer& server,
                                GeneralRequest* req, GeneralResponse* resp)
     : RestVocbaseBaseHandler(server, req, resp) {}
 RestLogHandler::~RestLogHandler() = default;
+
+RestStatus RestLogHandler::handleGet(const ReplicatedLogMethods& methods) {
+  return waitForFuture(methods.getReplicatedLogs().thenValue([this](auto&& logs) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+
+      for (auto const& [idx, status] : logs) {
+        builder.add(VPackValue(std::to_string(idx.id())));
+        std::visit([&](auto const& status) { status.toVelocyPack(builder); }, status);
+      }
+    }
+
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  }));
+}
+
+RestStatus RestLogHandler::handleGetLog(const ReplicatedLogMethods& methods,
+                                        replication2::LogId logId) {
+  return waitForFuture(methods.getLogStatus(logId).thenValue([this](auto&& status) {
+    VPackBuilder buffer;
+    std::visit([&](auto const& status) { status.toVelocyPack(buffer); }, status);
+    generateOk(rest::ResponseCode::OK, buffer.slice());
+  }));
+}
+
+RestStatus RestLogHandler::handleGetTail(const ReplicatedLogMethods& methods,
+                                         replication2::LogId logId) {
+  if (_request->suffixes().size() != 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_api/log/<log-id>/tail");
+    return RestStatus::DONE;
+  }
+  LogIndex logIdx{basics::StringUtils::uint64(_request->value("first"))};
+  auto fut = methods.tailEntries(logId, logIdx).thenValue([&](std::unique_ptr<LogIterator> iter) {
+    VPackBuilder builder;
+    {
+      VPackArrayBuilder ab(&builder);
+      while (auto entry = iter->next()) {
+        entry->toVelocyPack(builder);
+      }
+    }
+
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  });
+
+  return waitForFuture(std::move(fut));
+}
+
+RestStatus RestLogHandler::handleGetReadEntry(const ReplicatedLogMethods& methods,
+                                              replication2::LogId logId) {
+  auto const& suffixes = _request->suffixes();
+  if (suffixes.size() != 3) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_api/log/<log-id>/readEntry/<id>");
+    return RestStatus::DONE;
+  }
+  LogIndex logIdx{basics::StringUtils::uint64(suffixes[2])};
+
+  return waitForFuture(
+      methods.getLogEntryByIndex(logId, logIdx).thenValue([this](std::optional<LogEntry>&& entry) {
+        if (entry) {
+          VPackBuilder result;
+          entry->toVelocyPack(result);
+          generateOk(rest::ResponseCode::OK, result.slice());
+        } else {
+          generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                        "log index not found");
+        }
+      }));
+}

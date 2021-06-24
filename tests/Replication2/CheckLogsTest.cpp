@@ -63,14 +63,16 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
     return current;
   }
 
-  auto makeLogCurrentReportAll(ParticipantInfo const& info, LogTerm term, LogIndex spearhead, LogTerm spearheadTerm) {
+  auto makeLogCurrentReportAll(ParticipantInfo const& info, LogTerm term,
+                               LogIndex spearhead, LogTerm spearheadTerm) {
     auto current = agency::LogCurrent{};
-    std::transform(info.begin(), info.end(), std::inserter(current.localState, current.localState.end()), [&](auto const& info) {
-      auto state = agency::LogCurrentLocalState{};
-      state.term = term;
-      state.spearhead = TermIndexPair{spearheadTerm, spearhead};
-      return std::make_pair(info.first, state);
-    });
+    std::transform(info.begin(), info.end(),
+                   std::inserter(current.localState, current.localState.end()),
+                   [&](auto const& info) {
+                     auto state =
+                         agency::LogCurrentLocalState{term, TermIndexPair{spearheadTerm, spearhead}};
+                     return std::make_pair(info.first, state);
+                   });
     return current;
   }
 

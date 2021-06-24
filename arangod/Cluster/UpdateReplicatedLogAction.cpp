@@ -90,7 +90,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
         }
       }
 
-      auto newLeader = log.becomeLeader(termData, std::move(follower));
+      auto newLeader = log.becomeLeader(termData, follower);
       newLeader->runAsyncStep(); // TODO move this call into becomeLeader?
     } else {
       auto leaderString = std::string{};
@@ -105,7 +105,9 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   });
 
   if (result.fail()) {
-    abort();  // to do
+    LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
+        << "failed to modify replicated log " << _description.get(DATABASE)
+        << '/' << logId << "; " << result.errorMessage();
   }
 
   return false;

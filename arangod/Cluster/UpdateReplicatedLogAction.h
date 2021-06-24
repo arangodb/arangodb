@@ -32,11 +32,6 @@ class UpdateReplicatedLogAction : public ActionBase {
   UpdateReplicatedLogAction(MaintenanceFeature&, ActionDescription const&);
 
   bool first() override;
- private:
-  std::string _databaseName;
-  std::string _collectionName;
-  std::string _shardName;
-  std::string _leader;
 };
 
 }  // namespace arangodb::maintenance
