@@ -904,7 +904,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end()) {
       // insert a tombstone for an aborted transaction that we never saw before
-      auto inserted = buck._managed.try_emplace(tid, _feature, MetaType::Tombstone, 0, nullptr, arangodb::cluster::CallbackGuard{});
+      auto inserted = buck._managed.try_emplace(tid, _feature, MetaType::Tombstone, tombstoneTTL, nullptr, arangodb::cluster::CallbackGuard{});
       inserted.first->second.finalStatus = transaction::Status::ABORTED;
       std::string msg = "transaction " + std::to_string(tid.id()) + " not found";
       if (status == transaction::Status::COMMITTED) {
