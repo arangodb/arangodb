@@ -448,10 +448,9 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
 void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
                                                TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(!isReadOnlyTransaction());
+  TRI_ASSERT(_rocksTransaction != nullptr);
 
   bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
-
-  TRI_ASSERT(_rocksTransaction != nullptr);
   if (singleOp) {
     // singleOp => no modifications yet
     TRI_ASSERT(_rocksTransaction->GetNumPuts() == 0 &&

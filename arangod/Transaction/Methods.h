@@ -117,6 +117,11 @@ class Methods {
           std::vector<std::string> const& writeCollections,
           std::vector<std::string> const& exclusiveCollections,
           transaction::Options const& options);
+  
+  /// @brief create the transaction, and add a collection to it.
+  /// use on followers only!
+  Methods(std::shared_ptr<transaction::Context> transactionContext,
+          std::string const& collectionName, AccessMode::Type type); 
 
   /// @brief destroy the transaction
   virtual ~Methods();
@@ -374,7 +379,7 @@ class Methods {
   
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
-    
+  
 #ifndef USE_ENTERPRISE
   bool skipInaccessible() const {
     return false;

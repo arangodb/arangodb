@@ -312,6 +312,16 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
 }
+  
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
+                              std::string const& collectionName, AccessMode::Type type)
+    : transaction::Methods(std::move(ctx), transaction::Options{}) {
+  TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
+  Result res = Methods::addCollection(collectionName, type);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
 
 /// @brief create the transaction, used to be UserTransaction
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,

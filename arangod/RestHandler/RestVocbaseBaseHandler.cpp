@@ -622,7 +622,15 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
   }
-  return std::make_unique<transaction::Methods>(std::move(ctx));
+
+  std::unique_ptr<transaction::Methods> trx;
+  if (ServerState::instance()->isDBServer() &&
+      !opOptions.isSynchronousReplicationFrom.empty()) {
+    trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName, type);
+  } else {
+    trx = std::make_unique<transaction::Methods>(std::move(ctx));
+  }
+  return trx;
 }
 
 /// @brief create proper transaction context, inclusing the proper IDs
