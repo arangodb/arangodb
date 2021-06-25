@@ -92,7 +92,8 @@ using namespace std::chrono;
 SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc),
     ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
-    _leaderInfo(arangodb::replutils::LeaderInfo::createEmpty()) {
+    _leaderInfo(arangodb::replutils::LeaderInfo::createEmpty()),
+    _followingTermId(0) {
   std::stringstream error;
 
   if (!desc.has(COLLECTION)) {
@@ -416,7 +417,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   // nullptr only happens during controlled shutdown
   if (pool == nullptr) {
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
-                            "cancelReadLockOnLeader: Shutting down");
+                            "getReadLock: Shutting down");
   }
 
   VPackBuilder body;
@@ -445,6 +446,16 @@ arangodb::Result SynchronizeShard::getReadLock(
 
   if (res.ok()) {
     // Habemus clausum, we have a lock
+    if (!soft) {
+      // Now store the random followingTermId:
+      VPackSlice body = response.response().slice();
+      if (body.isObject()) {
+        VPackSlice followingTermIdSlice = body.get(StaticStrings::FollowingTermId);
+        if (followingTermIdSlice.isNumber()) {
+          _followingTermId = followingTermIdSlice.getNumber<uint64_t>();
+        }
+      }
+    }
     return arangodb::Result();
   }
 
@@ -913,10 +924,6 @@ bool SynchronizeShard::first() {
         return false;
       }
 
-      // This is necessary to accept replications from the leader which can
-      // happen as soon as we are in sync.
-      collection->followers()->setTheLeader(leader);
-
       startTime = system_clock::now();
 
       VPackBuilder config;
@@ -1168,6 +1175,13 @@ Result SynchronizeShard::catchupWithExclusiveLock(
           << "Could not cancel hard read lock on leader: " << res.errorMessage();
       }
     });
+
+  // Now we have got a unique id for this following term and have stored it
+  // in _followingTermId, so we can use it to set the leader:
+
+  // This is necessary to accept replications from the leader which can
+  // happen as soon as we are in sync.
+  collection.followers()->setTheLeader(leader + "_" + basics::StringUtils::itoa(_followingTermId));
 
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 

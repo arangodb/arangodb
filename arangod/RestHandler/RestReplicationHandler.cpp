@@ -2708,6 +2708,10 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   {
     VPackObjectBuilder bb(&b);
     b.add(StaticStrings::Error, VPackValue(false));
+    if (!serverId.empty()) {
+      b.add(StaticStrings::FollowingTermId,
+            VPackValue(col->followers()->newFollowingTermId(serverId)));
+    }
   }
 
   LOG_TOPIC("61a9d", DEBUG, Logger::REPLICATION)
