@@ -38,6 +38,9 @@ RocksDBSavePoint::RocksDBSavePoint(RocksDBTransactionState* state,
                                    TRI_voc_document_operation_e operationType)
     : _state(state),
       _trx(trx),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _numCommitsAtStart(0),
+#endif
       _operationType(operationType),
       _handled(_trx->isSingleOperationTransaction()),
       _tainted(false) {
@@ -49,6 +52,9 @@ RocksDBSavePoint::RocksDBSavePoint(RocksDBTransactionState* state,
     // only create a savepoint when necessary
     mthds->SetSavePoint();
   }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _numCommitsAtStart = _state->numCommits();
+#endif
 }
 
 RocksDBSavePoint::~RocksDBSavePoint() {
@@ -82,6 +88,10 @@ Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
   });
 
   if (!_handled) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_numCommitsAtStart + (hasPerformedIntermediateCommit ? 1 : 0) == _state->numCommits());
+#endif
+
     if (res.ok()) {
       if (!hasPerformedIntermediateCommit) {
         // pop the savepoint from the transaction in order to
@@ -108,12 +118,18 @@ Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
     }
   }
 
+  TRI_ASSERT(res.ok() || !hasPerformedIntermediateCommit);
+
   return res;
 }
 
 void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
   auto mthds = RocksDBTransactionState::toMethods(_trx);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_numCommitsAtStart == _state->numCommits());
+#endif
 
   rocksdb::Status s;
   if (_tainted) {

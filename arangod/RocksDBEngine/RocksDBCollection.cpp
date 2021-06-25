@@ -40,6 +40,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
@@ -1543,6 +1544,12 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     TRI_ASSERT(s.IsNotFound() || !s.ok());
   }
 #endif
+
+  TRI_IF_FAILURE("RocksDBCollection::insertFail1") {
+    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+  }
   
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
@@ -1557,23 +1564,29 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     });
     return res;
   }
-
+  
   // we have successfully added a value to the WBWI. after this, we 
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
- 
-  bool needReversal = false;
- 
+  
   {
+    bool needReversal = false;
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
     for (auto it = _indexes.begin(); it != _indexes.end(); ++it) {
+      TRI_IF_FAILURE("RocksDBCollection::insertFail2") {
+        if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
+          return res.reset(TRI_ERROR_DEBUG);
+        }
+      }
+
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
       // if we already performed the preflight checks, there is no need to repeat the
       // checks once again here
       res = rIdx->insert(*trx, mthds, documentId, doc, options, /*performChecks*/ !performPreflightChecks);
       // currently only IResearchLink indexes need a reversal
       needReversal = needReversal || rIdx->needsReversal();
+
       if (res.fail()) {
         if (needReversal && !state->isSingleOperation()) {
           ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
@@ -1625,6 +1638,12 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
     TRI_ASSERT(s.ok());
   }
 #endif
+  
+  TRI_IF_FAILURE("RocksDBCollection::removeFail1") {
+    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+  }
 
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
@@ -1650,9 +1669,16 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       << " objectID " << objectId() << " name: " << _logicalCollection.name();*/
 
   {
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     bool needReversal = false;
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+
     for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+      TRI_IF_FAILURE("RocksDBCollection::removeFail2") {
+        if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
+          return res.reset(TRI_ERROR_DEBUG);
+        }
+      }
+
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
       res = rIdx->remove(*trx, mthds, documentId, doc);
       needReversal = needReversal || rIdx->needsReversal();
@@ -1728,6 +1754,12 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
   key->constructDocument(objectId(), oldDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
   invalidateCacheEntry(key.ref());
+  
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail1") {
+    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+  }
 
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
@@ -1746,6 +1778,12 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
   // we have successfully removed a value from the WBWI. after this, we 
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
+  
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail2") {
+    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+  }
 
   key->constructDocument(objectId(), newDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
@@ -1764,9 +1802,15 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
   }
 
   {
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     bool needReversal = false;
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+
     for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+      TRI_IF_FAILURE("RocksDBCollection::modifyFail3") {
+        if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
+          return res.reset(TRI_ERROR_DEBUG);
+        }
+      }
       auto rIdx = static_cast<RocksDBIndex*>(it->get());
       // if we already performed the preflight checks, there is no need to repeat the
       // checks once again here
