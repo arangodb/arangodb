@@ -189,10 +189,13 @@ RestStatus RestDocumentHandler::insertDocument() {
   }
 
   Result res = _activeTrx->begin();
+
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
+  
+  TRI_ASSERT(_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) != nullptr);
   
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
@@ -490,10 +493,13 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   // ...........................................................................
 
   Result res = _activeTrx->begin();
+
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
+
+  TRI_ASSERT(_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) != nullptr);
   
   auto f = futures::Future<OperationResult>::makeEmpty();
   if (isPatch) {
@@ -616,6 +622,8 @@ RestStatus RestDocumentHandler::removeDocument() {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
+  
+  TRI_ASSERT(_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) != nullptr);
   
   bool const isMultiple = search.isArray();
 

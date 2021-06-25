@@ -311,14 +311,14 @@ static bool findRefusal(std::vector<futures::Try<network::Response>> const& resp
   return false;
 }
 
-transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& transactionContext,
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                               transaction::Options const& options)
     : _state(nullptr),
-      _transactionContext(transactionContext),
+      _transactionContext(ctx),
       _mainTransaction(false) {
 
-  TRI_ASSERT(transactionContext != nullptr);
-  if (ADB_UNLIKELY(transactionContext == nullptr)) {
+  TRI_ASSERT(_transactionContext != nullptr);
+  if (ADB_UNLIKELY(_transactionContext == nullptr)) {
     // in production, we must not go on with undefined behavior, so we bail out
     // here with an exception as last resort
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transaction context pointer");
@@ -327,6 +327,16 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
+}
+
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
+                              std::string const& collectionName, AccessMode::Type type)
+    : transaction::Methods(std::move(ctx), transaction::Options{}) {
+  TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
+  Result res = Methods::addCollection(collectionName, type);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 /// @brief create the transaction, used to be UserTransaction

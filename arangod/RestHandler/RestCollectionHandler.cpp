@@ -530,6 +530,8 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       _activeTrx.reset();
       return RestStatus::DONE;
     }
+
+    TRI_ASSERT(_activeTrx->state()->collection(coll->name(), AccessMode::Type::EXCLUSIVE) != nullptr);
   
     return waitForFuture(
       _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll, opts](OperationResult&& opres) {
