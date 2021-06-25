@@ -2468,6 +2468,14 @@ Future<Result> Methods::replicateOperations(
   TRI_IF_FAILURE("replicateOperations_randomize_timeout") {
     reqOpts.timeout = network::Timeout((double) RandomGenerator::interval(uint32_t(60)));
   }
+    
+  TRI_IF_FAILURE("replicateOperationsDropFollowerBeforeSending") {
+    // drop all our followers, intentionally
+    for (auto const& f : *followerList) {
+      Result res = collection->followers()->remove(f);
+      TRI_ASSERT(res.ok());
+    }
+  }
 
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
