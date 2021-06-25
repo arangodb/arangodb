@@ -109,6 +109,11 @@ void RestAqlHandler::setupClusterQuery() {
     // intentionally delay the request
     std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
+  
+  TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
+    // simulate lock timeout during query setup
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+  }
 
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
