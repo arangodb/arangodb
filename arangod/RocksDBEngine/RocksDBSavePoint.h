@@ -65,6 +65,9 @@ class RocksDBSavePoint {
  private:
   RocksDBTransactionState* _state;
   transaction::Methods* _trx;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  uint64_t _numCommitsAtStart;
+#endif
   TRI_voc_document_operation_e const _operationType;
   bool _handled;
   bool _tainted;

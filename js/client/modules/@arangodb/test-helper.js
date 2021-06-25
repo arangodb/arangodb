@@ -225,7 +225,16 @@ while (true) {
   }
   ${command}
 }
-db['${cn}'].insert({ _key: "${key}", done: true, iterations: tries });
+let saveTries = 0;
+while (++saveTries < 100) {
+  try {
+    /* saving our status may actually fail because of failure points set */
+    db['${cn}'].insert({ _key: "${key}", done: true, iterations: tries });
+    break;
+  } catch (err) {
+    /* try again */
+  }
+}
 })();
   `);
 
@@ -260,7 +269,16 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 
     // broad cast stop signal
     assertFalse(db[cn].exists("stop"));
-    db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
+    let saveTries = 0;
+    while (++saveTries < 100) {
+      try {
+        // saving our stop signal may actually fail because of failure points set
+        db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
+        break;
+      } catch (err) {
+        // try again
+      }
+    }
     let tries = 0;
     const allClientsDone = () => clients.every(client => client.done);
     while (++tries < 120) {

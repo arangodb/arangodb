@@ -140,6 +140,13 @@ function BaseChaosSuite(testOpts) {
           debugSetFailAt(getEndpointById(server.id), "replicateOperations_randomize_timeout");
           debugSetFailAt(getEndpointById(server.id), "delayed_synchronous_replication_request_processing");
           debugSetFailAt(getEndpointById(server.id), "Query::setupTimeout");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail1");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail2");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail1");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail2");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail3");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail1");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail2");
         }
         servers = getCoordinators();
         assertTrue(servers.length > 0);
