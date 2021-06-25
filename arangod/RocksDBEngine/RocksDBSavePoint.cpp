@@ -118,8 +118,6 @@ Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
     }
   }
 
-  TRI_ASSERT(res.ok() || !hasPerformedIntermediateCommit);
-
   return res;
 }
 
