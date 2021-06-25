@@ -359,12 +359,14 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
 
     // "fields" is a list of fields
     for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
-      if (!it.isString()) {
+
+      auto fieldName = it.isObject()? it.get("name"): it; // FIXME: verify index type?
+      if (!fieldName.isString()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "index field names must be non-empty strings");
       }
       
-      arangodb::velocypack::StringRef f(it);
+      arangodb::velocypack::StringRef f(fieldName);
 
       if (f.empty()) {
         return Result(TRI_ERROR_BAD_PARAMETER,

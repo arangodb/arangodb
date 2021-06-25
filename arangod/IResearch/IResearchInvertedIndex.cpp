@@ -197,7 +197,6 @@ std::shared_ptr<Index> IResearchInvertedIndexFactory::instantiate(LogicalCollect
                                                                   IndexId id,
                                                                   bool isClusterConstructor) const {
   IResearchInvertedIndexMeta meta;
-  // FIXME: for cluster  - where to get actual collection name? Pre-store in definition I guess!
   auto res = meta.init(_server, &collection.vocbase(), definition, isClusterConstructor);
   if (res.fail()) {
         LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
@@ -211,24 +210,35 @@ std::shared_ptr<Index> IResearchInvertedIndexFactory::instantiate(LogicalCollect
 Result IResearchInvertedIndexFactory::normalize(velocypack::Builder& normalized, velocypack::Slice definition,
                                                 bool isCreation, TRI_vocbase_t const& vocbase) const {
   TRI_ASSERT(normalized.isOpenObject());
-  Result res = IResearchInvertedIndexMeta::normalize(_server, &vocbase, normalized, definition);
-  if (res.ok()) {
-    normalized.add(arangodb::StaticStrings::IndexType,
-                   arangodb::velocypack::Value(arangodb::Index::oldtypeName(
-                   arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX)));
 
-    if (isCreation && !arangodb::ServerState::instance()->isCoordinator() &&
-        !definition.hasKey("objectId")) {
-        normalized.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
-    }
-    normalized.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
-    normalized.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
-
-    // FIXME: make indexing true background?
-    bool bck = basics::VelocyPackHelper::getBooleanValue(
-        definition, arangodb::StaticStrings::IndexInBackground, false);
-    normalized.add(arangodb::StaticStrings::IndexInBackground, VPackValue(bck));
+  auto res  =  IndexFactory::validateFieldsDefinition(definition, 1, SIZE_MAX, true);
+  if (res.fail()) {
+    return res;
   }
+
+  res = IResearchInvertedIndexMeta::normalize(_server, &vocbase, normalized, definition);
+  if (res.fail()) {
+    return res;
+  }
+
+
+  normalized.add(arangodb::StaticStrings::IndexType,
+                 arangodb::velocypack::Value(arangodb::Index::oldtypeName(
+                     arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX)));
+
+  if (isCreation && !arangodb::ServerState::instance()->isCoordinator() &&
+      !definition.hasKey("objectId")) {
+    normalized.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+  }
+  normalized.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
+  normalized.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
+
+  // FIXME: make indexing true background?
+  bool bck = basics::VelocyPackHelper::getBooleanValue(definition,
+                                                       arangodb::StaticStrings::IndexInBackground,
+                                                       false);
+  normalized.add(arangodb::StaticStrings::IndexInBackground, VPackValue(bck));
+
   return res;
 }
 
