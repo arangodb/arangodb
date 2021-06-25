@@ -196,7 +196,8 @@ RestStatus RestDocumentHandler::insertDocument() {
   }
   
   if (ServerState::instance()->isDBServer() &&
-      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+       _activeTrx->state()->isReadOnlyTransaction())) {
     // make sure that the current transaction includes the collection that we want to
     // write into. this is not necessarily the case for follower transactions that
     // are started lazily. in this case, we must reject the request.
@@ -513,7 +514,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   if (ServerState::instance()->isDBServer() &&
-      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+       _activeTrx->state()->isReadOnlyTransaction())) {
     // make sure that the current transaction includes the collection that we want to
     // write into. this is not necessarily the case for follower transactions that
     // are started lazily. in this case, we must reject the request.
@@ -650,7 +652,8 @@ RestStatus RestDocumentHandler::removeDocument() {
   }
   
   if (ServerState::instance()->isDBServer() &&
-      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+       _activeTrx->state()->isReadOnlyTransaction())) {
     // make sure that the current transaction includes the collection that we want to
     // write into. this is not necessarily the case for follower transactions that
     // are started lazily. in this case, we must reject the request.
