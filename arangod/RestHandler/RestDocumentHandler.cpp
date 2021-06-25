@@ -220,7 +220,20 @@ RestStatus RestDocumentHandler::insertDocument() {
     return RestStatus::DONE;
   }
   
-  TRI_ASSERT(_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) != nullptr);
+  if (ServerState::instance()->isDBServer() &&
+      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+    // make sure that the current transaction includes the collection that we want to
+    // write into. this is not necessarily the case for follower transactions that
+    // are started lazily. in this case, we must reject the request.
+    // we _cannot_ do this for follower transactions, where shards may lazily be
+    // added (e.g. if servers A and B both replicate their own write ops to follower
+    // C one after the after, then C will first see only shards from A and then only
+    // from B).
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string("Transaction with id '") + std::to_string(_activeTrx->tid())
+        + "' does not contain collection '" + cname
+        + "' with the required access mode.");
+  }
 
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
@@ -518,7 +531,20 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
   
-  TRI_ASSERT(_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) != nullptr);
+  if (ServerState::instance()->isDBServer() &&
+      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+    // make sure that the current transaction includes the collection that we want to
+    // write into. this is not necessarily the case for follower transactions that
+    // are started lazily. in this case, we must reject the request.
+    // we _cannot_ do this for follower transactions, where shards may lazily be
+    // added (e.g. if servers A and B both replicate their own write ops to follower
+    // C one after the after, then C will first see only shards from A and then only
+    // from B).
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string("Transaction with id '") + std::to_string(_activeTrx->tid())
+        + "' does not contain collection '" + cname
+        + "' with the required access mode.");
+  }
 
   auto f = futures::Future<OperationResult>::makeEmpty();
   if (isPatch) {
@@ -642,7 +668,20 @@ RestStatus RestDocumentHandler::removeDocument() {
     return RestStatus::DONE;
   }
   
-  TRI_ASSERT(_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) != nullptr);
+  if (ServerState::instance()->isDBServer() &&
+      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
+    // make sure that the current transaction includes the collection that we want to
+    // write into. this is not necessarily the case for follower transactions that
+    // are started lazily. in this case, we must reject the request.
+    // we _cannot_ do this for follower transactions, where shards may lazily be
+    // added (e.g. if servers A and B both replicate their own write ops to follower
+    // C one after the after, then C will first see only shards from A and then only
+    // from B).
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string("Transaction with id '") + std::to_string(_activeTrx->tid())
+        + "' does not contain collection '" + cname
+        + "' with the required access mode.");
+  }
 
   bool const isMultiple = search.isArray();
 
