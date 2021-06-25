@@ -1181,8 +1181,13 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   // This is necessary to accept replications from the leader which can
   // happen as soon as we are in sync.
-  collection.followers()->setTheLeader(leader + "_" + basics::StringUtils::itoa(_followingTermId));
+  if (_followingTermId != 0) {
+    collection.followers()->setTheLeader(leader + "_" + basics::StringUtils::itoa(_followingTermId));
 
+  } else {
+    // This is the case for a leader before the upgrade, we tolerate this:
+    collection.followers()->setTheLeader(leader);
+  }
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
   builder.clear();

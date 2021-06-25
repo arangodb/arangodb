@@ -86,11 +86,6 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
     error << "database and shard must be specified. ";
   }
 
-  if (!desc.has(THE_LEADER)) {
-    error << "leader must be specified. ";
-  }
-  TRI_ASSERT(desc.has(THE_LEADER));
-
   if (!desc.has(LOCAL_LEADER)) {
     error << "local leader must be specified. ";
   }
@@ -112,22 +107,13 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
                                      std::vector<ServerID> const& currentServers,
                                      std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
                                      std::string const& databaseName,
-                                     ShardID const& shardID, std::string const& oldLeader) {
+                                     LogicalCollection& shard, std::string const& oldLeader) {
   if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
     return;
   }
 
   std::string const& sid = ServerState::instance()->getId();
-
-  VPackBufferUInt8 buffer;
-  VPackBuilder bodyBuilder(buffer);
-  {
-    VPackObjectBuilder ob(&bodyBuilder);
-    bodyBuilder.add("leaderId", VPackValue(sid));
-    bodyBuilder.add("oldLeaderId", VPackValue(oldLeader));
-    bodyBuilder.add("shard", VPackValue(shardID));
-  }
 
   network::RequestOptions options;
   options.database = databaseName;
@@ -143,6 +129,17 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
     if (srv == sid) {
       continue;  // ignore ourself
     }
+    uint64_t followingTermId = shard.followers()->newFollowingTermId(srv);
+    VPackBufferUInt8 buffer;
+    VPackBuilder bodyBuilder(buffer);
+    {
+      VPackObjectBuilder ob(&bodyBuilder);
+      bodyBuilder.add("leaderId", VPackValue(sid));
+      bodyBuilder.add("oldLeaderId", VPackValue(oldLeader));
+      bodyBuilder.add("shard", VPackValue(shard.name()));
+      bodyBuilder.add(StaticStrings::FollowingTermId, VPackValue(followingTermId));
+    }
+
     LOG_TOPIC("42516", DEBUG, Logger::MAINTENANCE)
         << "Sending " << bodyBuilder.toJson() << " to " << srv;
     auto f = network::sendRequest(pool, "server:" + srv, fuerte::RestVerb::Put,
@@ -165,78 +162,54 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
 }
 
 static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
-                             std::string const& localLeader, std::string const& plannedLeader,
+                             std::string const& localLeader,
                              std::string const& databaseName,
                              MaintenanceFeature& feature) {
   auto& followers = collection.followers();
 
-  if (plannedLeader.empty()) {   // Planned to lead
-    if (!localLeader.empty()) {  // We were not leader, assume leadership
-      LOG_TOPIC("5632f", DEBUG, Logger::MAINTENANCE)
-      << "handling leadership of shard '" << databaseName << "/"
-      << collection.name() << ": becoming leader";
+  if (!localLeader.empty()) {  // We were not leader, assume leadership
+    LOG_TOPIC("5632f", DEBUG, Logger::MAINTENANCE)
+    << "handling leadership of shard '" << databaseName << "/"
+    << collection.name() << ": becoming leader";
 
-      auto& ci = collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-      // This will block the thread until our ClusterInfo cache fetched a
-      // Current version in background thread which is at least as new as the
-      // Plan which brought us here. This is important for the assertion
-      // below where we check that we are in the list of failoverCandidates!
-      ci.waitForCurrent(planIndex);
-      auto currentInfo =
-          ci.getCollectionCurrent(databaseName,
-                                  std::to_string(collection.planId().id()));
-      if (currentInfo == nullptr) {
-        // Collection has been dropped. we cannot continue here.
-        return;
-      }
-      TRI_ASSERT(currentInfo != nullptr);
-      std::vector<ServerID> currentServers = currentInfo->servers(collection.name());
-      std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
-
-      if (!currentServers.empty()) {
-        std::string& oldLeader = currentServers[0];
-        // Check if the old leader has resigned and stopped all write
-        // (if so, we can assume that all servers are still in sync)
-        if (!oldLeader.empty() && oldLeader[0] == '_') {
-          // remove the underscore from the list as it is useless anyway
-          oldLeader = oldLeader.substr(1);
-
-          // Update all follower and tell them that we are the leader now
-          NetworkFeature& nf =
-              collection.vocbase().server().getFeature<NetworkFeature>();
-          network::ConnectionPool* pool = nf.pool();
-          sendLeaderChangeRequests(pool, currentServers, realInsyncFollowers,
-                                   databaseName, collection.name(), oldLeader);
-        }
-      }
-
-      std::vector<ServerID> failoverCandidates =
-          currentInfo->failoverCandidates(collection.name());
-      followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
-      transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
+    auto& ci = collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    // This will block the thread until our ClusterInfo cache fetched a
+    // Current version in background thread which is at least as new as the
+    // Plan which brought us here. This is important for the assertion
+    // below where we check that we are in the list of failoverCandidates!
+    ci.waitForCurrent(planIndex);
+    auto currentInfo =
+        ci.getCollectionCurrent(databaseName,
+                                std::to_string(collection.planId().id()));
+    if (currentInfo == nullptr) {
+      // Collection has been dropped. we cannot continue here.
+      return;
     }
-  } else {  // Planned to follow
-    if (localLeader.empty() || localLeader == LEADER_NOT_YET_KNOWN) {
-      // Note that the following does not delete the follower list
-      // and that this is crucial, because in the planned leader
-      // resign case, updateCurrentForCollections will report the
-      // resignation together with the old in-sync list to the
-      // agency. If this list would be empty, then the supervision
-      // would be very angry with us!
+    TRI_ASSERT(currentInfo != nullptr);
+    std::vector<ServerID> currentServers = currentInfo->servers(collection.name());
+    std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
 
-      LOG_TOPIC("5632e", DEBUG, Logger::MAINTENANCE)
-          << "handling leadership of shard '" << databaseName << "/"
-          << collection.name() << ": following " << plannedLeader;
+    if (!currentServers.empty()) {
+      std::string& oldLeader = currentServers[0];
+      // Check if the old leader has resigned and stopped all write
+      // (if so, we can assume that all servers are still in sync)
+      if (!oldLeader.empty() && oldLeader[0] == '_') {
+        // remove the underscore from the list as it is useless anyway
+        oldLeader = oldLeader.substr(1);
 
-      followers->setTheLeader(plannedLeader);
-      transaction::cluster::abortLeaderTransactionsOnShard(collection.id());
+        // Update all follower and tell them that we are the leader now
+        NetworkFeature& nf =
+            collection.vocbase().server().getFeature<NetworkFeature>();
+        network::ConnectionPool* pool = nf.pool();
+        sendLeaderChangeRequests(pool, currentServers, realInsyncFollowers,
+                                 databaseName, collection, oldLeader);
+      }
     }
-    // Note that if we have been a follower to some leader
-    // we do not immediately adjust the leader here, even if
-    // the planned leader differs from what we have set locally.
-    // The setting must only be adjusted once we have
-    // synchronized with the new leader and negotiated
-    // a leader/follower relationship!
+
+    std::vector<ServerID> failoverCandidates =
+        currentInfo->failoverCandidates(collection.name());
+    followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
+    transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
   }
 }
 
@@ -244,7 +217,6 @@ bool TakeoverShardLeadership::first() {
   std::string const& database = getDatabase();
   std::string const& collection = _description.get(COLLECTION);
   std::string const& shard = getShard();
-  std::string const& plannedLeader = _description.get(THE_LEADER);
   std::string const& localLeader = _description.get(LOCAL_LEADER);
   std::string const& planRaftIndex = _description.get(PLAN_RAFT_INDEX);
   uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
@@ -265,7 +237,7 @@ bool TakeoverShardLeadership::first() {
       // resignation case is not handled here, since then
       // ourselves does not appear in shards[shard] but only
       // "_" + ourselves.
-      handleLeadership(planIndex, *coll, localLeader, plannedLeader, vocbase.name(),
+      handleLeadership(planIndex, *coll, localLeader, vocbase.name(),
                        feature());
     } else {
       std::stringstream error;

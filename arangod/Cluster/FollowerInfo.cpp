@@ -545,11 +545,15 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
 }
 
 uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
-  uint64_t i = RandomGenerator::interval(UINT64_MAX);
+  uint64_t i = 0;
+  // We want the random number to be non-zero:
+  do {
+    i = RandomGenerator::interval(UINT64_MAX);
+  } while (i == 0);
   try {
     _followingTermId[s] = i;
   } catch(std::bad_alloc const& exc) {
-    i = 0;   // I assume here that I do not get bad_alloc if the key is
+    i = 1;   // I assume here that I do not get bad_alloc if the key is
              // already in the map, since it then only has to overwrite
              // an integer, if the key is not in the map, we default to 0.
   }
@@ -560,7 +564,8 @@ uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) noexcept {
   // Note that we assume that find() does not throw!
   auto it = _followingTermId.find(s);
   if (it == _followingTermId.end()) {
-    return 0;
+    // If not found, we use the default from above:
+    return 1;
   }
   return it->second;
 }
