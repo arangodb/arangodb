@@ -524,10 +524,9 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       _activeTrx.reset();
       return RestStatus::DONE;
     }
-  
+    
     if (ServerState::instance()->isDBServer() &&
-        _activeTrx->state()->collection(coll->name(), AccessMode::Type::EXCLUSIVE) == nullptr &&
-         !_activeTrx->state()->options().allowImplicitCollectionsForWrite) {
+        _activeTrx->state()->collection(coll->name(), AccessMode::Type::EXCLUSIVE) == nullptr) {
       // make sure that the current transaction includes the collection that we want to
       // write into. this is not necessarily the case for follower transactions that
       // are started lazily. in this case, we must reject the request.
@@ -543,7 +542,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       _activeTrx.reset();
       return RestStatus::DONE;
     }
-  
+
     return waitForFuture(
       _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll, opts](OperationResult&& opres) {
           // Will commit if no error occured.

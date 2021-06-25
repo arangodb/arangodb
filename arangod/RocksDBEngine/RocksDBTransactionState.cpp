@@ -471,6 +471,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
 void RocksDBTransactionState::prepareOperation(DataSourceId cid, RevisionId rid,
                                                TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(!isReadOnlyTransaction());
+  TRI_ASSERT(_rocksTransaction != nullptr);
 
   if (isSingleOperation()) {
     // singleOp => no modifications yet

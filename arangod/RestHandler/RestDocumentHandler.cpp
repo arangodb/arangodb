@@ -189,14 +189,14 @@ RestStatus RestDocumentHandler::insertDocument() {
   }
 
   Result res = _activeTrx->begin();
+
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
   
   if (ServerState::instance()->isDBServer() &&
-      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr &&
-       !_activeTrx->state()->options().allowImplicitCollectionsForWrite) {
+      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
     // make sure that the current transaction includes the collection that we want to
     // write into. this is not necessarily the case for follower transactions that
     // are started lazily. in this case, we must reject the request.
@@ -209,7 +209,7 @@ RestStatus RestDocumentHandler::insertDocument() {
         + "' does not contain collection '" + cname
         + "' with the required access mode.");
   }
-
+  
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
           .thenValue([=](OperationResult&& opres) {
@@ -506,14 +506,14 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   // ...........................................................................
 
   Result res = _activeTrx->begin();
+
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
-  
+
   if (ServerState::instance()->isDBServer() &&
-      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr &&
-       !_activeTrx->state()->options().allowImplicitCollectionsForWrite) {
+      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
     // make sure that the current transaction includes the collection that we want to
     // write into. this is not necessarily the case for follower transactions that
     // are started lazily. in this case, we must reject the request.
@@ -650,8 +650,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   }
   
   if (ServerState::instance()->isDBServer() &&
-      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr &&
-       !_activeTrx->state()->options().allowImplicitCollectionsForWrite) {
+      _activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr) {
     // make sure that the current transaction includes the collection that we want to
     // write into. this is not necessarily the case for follower transactions that
     // are started lazily. in this case, we must reject the request.

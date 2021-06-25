@@ -104,8 +104,13 @@ class Methods {
  public:
   
   /// @brief create the transaction
-  explicit Methods(std::shared_ptr<transaction::Context> const& transactionContext,
+  explicit Methods(std::shared_ptr<transaction::Context> const& ctx,
                    transaction::Options const& options = transaction::Options());
+
+  /// @brief create the transaction, and add a collection to it.
+  /// use on followers only!
+  Methods(std::shared_ptr<transaction::Context> ctx,
+          std::string const& collectionName, AccessMode::Type type); 
 
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,
