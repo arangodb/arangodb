@@ -163,17 +163,39 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
     }
   }
 #endif
-  Result res;
+  Result res = addCollectionInternal(cid, cname, accessType, lockUsage);
 
-  // upgrade transaction type if required
-  if (_status == transaction::Status::CREATED) {
+  if (res.ok()) {
+    // upgrade transaction type if required
     if (AccessMode::isWriteOrExclusive(accessType) &&
         !AccessMode::isWriteOrExclusive(_type)) {
       // if one collection is written to, the whole transaction becomes a
-      // write-transaction
-      _type = AccessMode::Type::WRITE;
+      // write-y transaction
+      if (_status == transaction::Status::CREATED) {
+        // this is safe to do before the transaction has started
+        _type = std::max(_type, accessType);
+      } else if (_status == transaction::Status::RUNNING &&
+                 _options.allowImplicitCollectionsForWrite &&
+                 !isReadOnlyTransaction()) {
+        // it is also safe to add another write collection to a write
+        // transaction on followers
+        _type = std::max(_type, accessType);
+      } else {
+        // everything else is not safe and must be rejected
+        res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                  std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                  ": " + cname + " [" + AccessMode::typeString(accessType) + "]");
+      }
     }
   }
+
+  return res;
+}
+
+
+Result TransactionState::addCollectionInternal(TRI_voc_cid_t cid, std::string const& cname,
+                                               AccessMode::Type accessType, bool lockUsage) {
+  Result res;
 
   // check if we already got this collection in the _collections vector
   size_t position = 0;
@@ -218,13 +240,6 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
                          ": " + cname + " [" +
                          AccessMode::typeString(accessType) + "]");
-  }
-
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_type)) {
-    // if one collection is written to, the whole transaction becomes a
-    // write-y transaction
-    _type = std::max(_type, accessType);
   }
 
   // now check the permissions
