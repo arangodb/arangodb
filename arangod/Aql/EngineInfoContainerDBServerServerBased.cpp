@@ -407,8 +407,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
-  int cleanupReason = TRI_ERROR_INTERNAL;
-
+  int cleanupReason = TRI_ERROR_CLUSTER_TIMEOUT;
   auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() {
     // Fire and forget
     std::ignore = cleanupEngines(cleanupReason, _query.vocbase().name(), serverToQueryId);
@@ -433,7 +432,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   TRI_IF_FAILURE("Query::setupTimeout") {
     options.timeout = network::Timeout(0.01 + (double) RandomGenerator::interval(uint32_t(10)));
   }
-
+  
+  TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
+    options.timeout = network::Timeout(0.5);
+  }
+  
   /// cluster global query id, under which the query will be registered
   /// on DB servers from 3.8 onwards.
   QueryId clusterQueryId = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo().uniqid();
