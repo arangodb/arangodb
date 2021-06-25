@@ -597,6 +597,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   std::unique_ptr<transaction::Methods> trx;
   if (ServerState::instance()->isDBServer() &&
       !opOptions.isSynchronousReplicationFrom.empty()) {
+    TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName, type);
   } else {
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
