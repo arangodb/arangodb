@@ -1,6 +1,12 @@
 devel
 -----
 
+* Bug-Fix: Pregel WCC algorithm could yield incorrect results if a
+  part of the connected component was only attached via OUTBOUND edges.
+  The underlying algorithm is now modified to properly retain INBOUND
+  edges for the runtime of the execution. This uses more RAM for the
+  algorithm but guarantees correctness.
+
 * Web UI: Disables the hover tooltip within the statistics view of the
   memory consumption chart.
 
