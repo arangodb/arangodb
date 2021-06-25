@@ -1551,6 +1551,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     }
   }
   
+  TRI_IF_FAILURE("RocksDBCollection::insertFail1Always") {
+    return res.reset(TRI_ERROR_DEBUG);
+  }
+  
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
       key.ref(),
@@ -1572,6 +1576,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
         if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
           return res.reset(TRI_ERROR_DEBUG);
         }
+      }
+      
+      TRI_IF_FAILURE("RocksDBCollection::insertFail2Always") {
+        return res.reset(TRI_ERROR_DEBUG);
       }
 
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
@@ -1638,6 +1646,10 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       return res.reset(TRI_ERROR_DEBUG);
     }
   }
+  
+  TRI_IF_FAILURE("RocksDBCollection::removeFail1Always") {
+    return res.reset(TRI_ERROR_DEBUG);
+  }
 
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
@@ -1665,6 +1677,9 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
         if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
           return res.reset(TRI_ERROR_DEBUG);
         }
+      }
+      TRI_IF_FAILURE("RocksDBCollection::removeFail2Always") {
+        return res.reset(TRI_ERROR_DEBUG);
       }
 
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
@@ -1748,6 +1763,10 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
       return res.reset(TRI_ERROR_DEBUG);
     }
   }
+  
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail1Always") {
+    return res.reset(TRI_ERROR_DEBUG);
+  }
 
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
@@ -1765,6 +1784,10 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
     if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
       return res.reset(TRI_ERROR_DEBUG);
     }
+  }
+  
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail2Always") {
+    return res.reset(TRI_ERROR_DEBUG);
   }
 
   key->constructDocument(objectId(), newDocumentId);
@@ -1793,6 +1816,11 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
           return res.reset(TRI_ERROR_DEBUG);
         }
       }
+
+      TRI_IF_FAILURE("RocksDBCollection::modifyFail3Always") {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
+
       auto rIdx = static_cast<RocksDBIndex*>(it->get());
       // if we already performed the preflight checks, there is no need to repeat the
       // checks once again here
