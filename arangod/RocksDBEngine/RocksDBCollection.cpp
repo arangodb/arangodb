@@ -37,6 +37,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
@@ -2096,6 +2097,16 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
+  
+  TRI_IF_FAILURE("RocksDBCollection::insertFail1") {
+    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+  }
+  
+  TRI_IF_FAILURE("RocksDBCollection::insertFail1Always") {
+    return res.reset(TRI_ERROR_DEBUG);
+  }
 
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
   rocksdb::Status s =
@@ -2105,11 +2116,21 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
-
+ 
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    TRI_IF_FAILURE("RocksDBCollection::insertFail2") {
+      if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
+    }
+      
+    TRI_IF_FAILURE("RocksDBCollection::insertFail2Always") {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
     res = rIdx->insert(*trx, mthds, documentId, doc, options);
     needReversal = needReversal || rIdx->needsReversal();
@@ -2150,8 +2171,19 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
+  
+  TRI_IF_FAILURE("RocksDBCollection::removeFail1") {
+    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+  }
+  
+  TRI_IF_FAILURE("RocksDBCollection::removeFail1Always") {
+    return res.reset(TRI_ERROR_DEBUG);
+  }
 
   rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -2164,6 +2196,15 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    TRI_IF_FAILURE("RocksDBCollection::removeFail2") {
+      if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
+    }
+    TRI_IF_FAILURE("RocksDBCollection::removeFail2Always") {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
     res = rIdx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
     needReversal = needReversal || rIdx->needsReversal();
@@ -2234,6 +2275,16 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
+  
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail1") {
+    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+  }
+  
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail1Always") {
+    return res.reset(TRI_ERROR_DEBUG);
+  }
 
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), oldDocumentId);
@@ -2243,6 +2294,16 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
+  }
+  
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail2") {
+    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+  }
+  
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail2Always") {
+    return res.reset(TRI_ERROR_DEBUG);
   }
 
   key->constructDocument(objectId(), newDocumentId);
@@ -2262,6 +2323,16 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+    TRI_IF_FAILURE("RocksDBCollection::modifyFail3") {
+      if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
+    }
+
+    TRI_IF_FAILURE("RocksDBCollection::modifyFail3Always") {
+      return res.reset(TRI_ERROR_DEBUG);
+    }
+
     auto rIdx = static_cast<RocksDBIndex*>(it->get());
     res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
                        newDoc, options.indexOperationMode);
