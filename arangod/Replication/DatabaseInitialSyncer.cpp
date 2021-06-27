@@ -888,8 +888,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     if (checkMore && !isAborted()) {
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
-      sharedStatus->request([this, self, &baseUrl, sharedStatus, coll,
-                             leaderColl, batch, fromTick, chunkSize]() {
+      sharedStatus->request([this, self = std::move(self), baseUrl = std::move(baseUrl),
+                             sharedStatus, coll, leaderColl, batch, fromTick, chunkSize]() {
         fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl,
                        batch + 1, fromTick, chunkSize);
       });
