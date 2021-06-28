@@ -24,8 +24,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-const base = require("fs").join(require('internal').pathForTesting('client'), 'chaos', 'test-chaos-load-common.inc');
-const { run, makeConfig, parameters } = require(base);
+const { run, makeConfig, parameters } = require("./test-chaos-load-common.inc");
 
 module.exports.getConfigs = () => [makeConfig(Array(parameters.length).fill(true))];
 module.exports.run = run;
