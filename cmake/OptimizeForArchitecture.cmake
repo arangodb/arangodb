@@ -149,6 +149,8 @@ macro(AutodetectHostArchitecture)
             set(TARGET_ARCHITECTURE "ivy-bridge")
          elseif(_cpu_model EQUAL 42 OR _cpu_model EQUAL 45)
             set(TARGET_ARCHITECTURE "sandy-bridge")
+         elseif(_cpu_model EQUAL 165) # Comet lake. Use skylake, the closest march supported by GCC.
+            set(TARGET_ARCHITECTURE "skylake")
          elseif(_cpu_model EQUAL 37 OR _cpu_model EQUAL 44 OR _cpu_model EQUAL 47)
             set(TARGET_ARCHITECTURE "westmere")
          elseif(_cpu_model EQUAL 26 OR _cpu_model EQUAL 30 OR _cpu_model EQUAL 31 OR _cpu_model EQUAL 46)
