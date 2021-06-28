@@ -41,9 +41,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
+ClusterQuery::ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
                            QueryOptions&& options)
-    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, std::move(options),
+    : Query(id, ctx, aql::QueryString(), /*bindParams*/ nullptr, std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
                 : std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
