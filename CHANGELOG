@@ -1,3 +1,17 @@
+v3.6.15 (XXXX-XX-XX)
+--------------------
+
+* On a failure during synchronous replication, do not remove the failed follower 
+  from the list of known servers in the transaction.
+  If we do, we would not be able to send the commit/abort to the follower later.
+  However, we still need to send the commit/abort to the follower at transaction 
+  end, because the follower may be responsible  for _other_ shards as well.
+
+  This change also removes dangling transactions that could stay around on
+  followers until they expired after the transaction idle timeout (180 seconds),
+  and that could prevent a follower from getting back in sync during this period.
+
+
 v3.6.14 (2021-06-20)
 --------------------
 

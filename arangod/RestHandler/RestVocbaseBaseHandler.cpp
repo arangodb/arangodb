@@ -64,6 +64,16 @@ class SimpleTransaction : public transaction::Methods {
   explicit SimpleTransaction(std::shared_ptr<transaction::Context>&& transactionContext,
                     transaction::Options&& options = transaction::Options())
     : Methods(std::move(transactionContext), std::move(options)) {}
+  
+  explicit SimpleTransaction(std::shared_ptr<transaction::Context>&& transactionContext,
+                             std::string const& collectionName, AccessMode::Type type) 
+    : Methods(std::move(transactionContext), transaction::Options()) {
+    TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
+    Result res = Methods::addCollection(collectionName, type);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
 };
 } // namespace
 
@@ -632,6 +642,13 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
   }
+  std::unique_ptr<transaction::Methods> trx;
+  if (ServerState::instance()->isDBServer() &&
+      !opOptions.isSynchronousReplicationFrom.empty()) {
+    TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
+    return std::make_unique<::SimpleTransaction>(std::move(ctx), collectionName, type);
+  } 
+  
   return std::make_unique<::SimpleTransaction>(std::move(ctx));
 }
 

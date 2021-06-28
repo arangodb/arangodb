@@ -2472,12 +2472,20 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 
     return futures::makeFuture(OperationResult(res));
   }
-
+    
   // Now see whether or not we have to do synchronous replication:
   if (replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(followers != nullptr);
 
     TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL));
+  
+    TRI_IF_FAILURE("replicateOperationsDropFollowerBeforeSending") {
+      // drop all our followers, intentionally
+      for (auto const& f : *followers) {
+        Result res = collection->followers()->remove(f);
+        TRI_ASSERT(res.ok());
+      }
+    }
 
     // Now replicate the good operations on all followers:
     NetworkFeature const& nf = vocbase().server().getFeature<NetworkFeature>();
@@ -2520,12 +2528,17 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           auto const& followerInfo = collection->followers();
           vocbase().server().getFeature<ClusterFeature>().trackFollowerDropped();
           Result res = followerInfo->remove((*followers)[i]);
-          if (res.ok()) {
-            _state->removeKnownServer((*followers)[i]);
-            LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
-                << "truncateLocal: dropped follower " << (*followers)[i]
-                << " for shard " << collectionName;
-          } else {
+          // intentionally do NOT remove the follower from the list of
+          // known servers here. if we do, we will not be able to
+          // send the commit/abort to the follower later. However, we
+          // still need to send the commit/abort to the follower at 
+          // transaction end, because the follower may be responsbile
+          // for _other_ shards as well. 
+          // it does not matter if we later commit the writes of the shard 
+          // from which we just removed the follower, because the follower
+          // is now dropped and will try to get back in sync anyway, so
+          // it will run the full shard synchronization process.
+          if (res.fail()) {
             LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collectionName << ": " << res.errorMessage();
@@ -3344,14 +3357,17 @@ Future<Result> Methods::replicateOperations(
 
         vocbase().server().getFeature<ClusterFeature>().trackFollowerDropped();
         Result res = collection->followers()->remove(deadFollower);
-        if (res.ok()) {
-          // TODO: what happens if a server is re-added during a transaction ?
-          _state->removeKnownServer(deadFollower);
-          LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-              << "synchronous replication: dropped follower "
-              << deadFollower << " for shard " << collection->name()
-              << " in database " << collection->vocbase().name();
-        } else {
+        // intentionally do NOT remove the follower from the list of
+        // known servers here. if we do, we will not be able to
+        // send the commit/abort to the follower later. However, we
+        // still need to send the commit/abort to the follower at 
+        // transaction end, because the follower may be responsbile
+        // for _other_ shards as well. 
+        // it does not matter if we later commit the writes of the shard 
+        // from which we just removed the follower, because the follower
+        // is now dropped and will try to get back in sync anyway, so
+        // it will run the full shard synchronization process.
+        if (res.fail()) {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
               << deadFollower << " for shard " << collection->name()
