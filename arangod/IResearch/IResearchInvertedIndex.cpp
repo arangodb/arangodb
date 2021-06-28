@@ -23,6 +23,7 @@
 
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "Basics/AttributeNameParser.h"
 #include "Cluster/ServerState.h"
@@ -68,34 +69,65 @@ struct CheckFieldsAccess {
                      std::equal_to<std::vector<basics::AttributeName>>> _fields;
 };
 
-template<bool first>
-void traverseFields(
-    irs::hashed_string_ref const myName,
-    FieldMeta const& meta, std::vector<basics::AttributeName> current, // intentional copy
-    std::vector<std::vector<basics::AttributeName>>& total) {
-  if constexpr (!first) {
-     current.push_back(
-         basics::AttributeName(
-           velocypack::StringRef(myName.c_str(), myName.size()), false));
-  }
-  if (meta._fields.empty()) {
-    // reached the bottom
-    total.push_back(current);
-    return;
-  }
-  for (auto const& f : meta._fields) {
-    traverseFields<false>(f.key(),  *f.value().get(), current, total);
-  }
-}
+class FieldsBuilder {
+ public:
+  FieldsBuilder(std::vector<std::vector<basics::AttributeName>>& fields) : _fields(fields) {}
 
-void traverseMetaFields(
-    FieldMeta const& meta,
-    std::vector<std::vector<basics::AttributeName>>& total) {
-  total.clear();
-  if (!meta._fields.empty()) {
-    std::vector<basics::AttributeName> current;
-    traverseFields<true>(irs::hashed_string_ref(0, irs::string_ref::NIL), meta,  current, total);
+  bool operator()(irs::hashed_string_ref const name, FieldMeta const& meta) {
+    if (!name.empty()) {
+      if (meta._fields.empty()) {
+        // found last field in branch
+        _fields.push_back(_stack);
+        _fields.back().emplace_back(velocypack::StringRef(name.c_str(), name.size()), false);
+        processLeaf(meta);
+      } else {
+        _stack.emplace_back(velocypack::StringRef(name.c_str(), name.size()), false);
+      }
+    }
+    return true;
   }
+
+  void pop() {
+    if (!_stack.empty()) {
+      _stack.pop_back();
+    }
+  }
+
+  virtual void processLeaf(FieldMeta const& meta) {}
+
+private:
+  std::vector<basics::AttributeName> _stack;
+  std::vector<std::vector<basics::AttributeName>>& _fields;
+};
+
+class FieldsBuilderWithAnalyzer : public FieldsBuilder {
+ public:
+  FieldsBuilderWithAnalyzer(std::vector<std::vector<basics::AttributeName>>& fields)
+    : FieldsBuilder(fields) {}
+
+  void processLeaf(FieldMeta const& meta) override {
+     if (!meta._analyzers.empty()) {
+        TRI_ASSERT(meta._analyzers.size() == 1);
+        _analyzerNames.emplace_back(meta._analyzers.front()._pool->name());
+      }
+  }
+
+  std::vector<irs::string_ref> _analyzerNames;
+};
+
+template<typename Visitor>
+bool visitFields(
+    irs::hashed_string_ref const myName,
+    FieldMeta const& meta, Visitor& visitor) {
+  if (visitor(myName, meta)) {
+    for (auto const& f : meta._fields) {
+      visitFields<Visitor>(f.key(),  *f.value().get(), visitor);
+    }
+    visitor.pop();
+  } else {
+    return false;
+  }
+  return true;
 }
 } // namespace
 
@@ -116,6 +148,59 @@ void IResearchInvertedIndex::toVelocyPack(
         TRI_ERROR_INTERNAL,
         std::string("Failed to generate inverted index definition")));
   }
+}
+
+bool IResearchInvertedIndex::matchesDefinition(VPackSlice other) const {
+  std::vector<std::vector<basics::AttributeName>> myFields;
+  FieldsBuilderWithAnalyzer fb(myFields);
+  visitFields({0, irs::hashed_string_ref::NIL}, _meta._fieldsMeta, fb);
+  TRI_ASSERT(fb._analyzerNames.size() == myFields.size());
+  auto value = other.get(arangodb::StaticStrings::IndexFields);
+
+  if (!value.isArray()) {
+    return false; 
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  auto const count = myFields.size();
+  if (n != count) {
+    return false;
+  }
+
+  // Order of fields does not matter
+  std::vector<arangodb::basics::AttributeName> translate;
+  for (size_t i = 0; i < n; ++i) {
+    translate.clear();
+    VPackSlice fieldSlice = value.at(i);
+
+    TRI_ASSERT(fieldSlice.isObject()); // We expect only normalized definitions here.
+                              // Otherwise we will need vocbase to properly match analyzers.
+    if (ADB_UNLIKELY(!fieldSlice.isObject())) {
+      return false;
+    }
+
+    auto name = fieldSlice.get("name");
+    auto analyzer = fieldSlice.get("analyzer");
+    TRI_ASSERT(name.isString() &&  // We expect only normalized definitions here.
+               analyzer.isString()); // Otherwise we will need vocbase to properly match analyzers.
+    if (ADB_UNLIKELY(!name.isString() || !analyzer.isString())) {
+      return false;
+    }
+
+    auto in = name.stringRef();
+    irs::string_ref analyzerName = analyzer.stringView();
+    TRI_ParseAttributeString(in, translate, true);
+    size_t fieldIdx{0};
+    for (auto const& f : myFields) {
+      if (fb._analyzerNames[fieldIdx++] == analyzerName) {
+        if (!arangodb::basics::AttributeName::isIdentical(f, translate, false)) {
+          return false;
+        } 
+      }
+      translate.clear();
+    }
+  }
+  return true;
 }
 
 std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iteratorForCondition(
@@ -344,7 +429,8 @@ Result IResearchInvertedIndexMeta::json(application_features::ApplicationServer 
 
 std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndexMeta::fields() const {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
-  traverseMetaFields(_fieldsMeta, res);
+  FieldsBuilder fb(res);
+  visitFields({0, irs::hashed_string_ref::NIL}, _fieldsMeta, fb);
   return res;
 }
 

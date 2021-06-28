@@ -70,6 +70,8 @@ class IResearchInvertedIndex {
   }
 
 
+  bool matchesDefinition(VPackSlice other) const;
+
 
   bool inProgress() const {
     // We should be in that state until we have chance to initialize analyzers
@@ -143,6 +145,29 @@ class IResearchRocksDBInvertedIndex : public RocksDBIndex, IResearchInvertedInde
 
   void load() override {}
   void unload() override {}
+
+  bool matchesDefinition(arangodb::velocypack::Slice const& other) const override {
+    TRI_ASSERT(other.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto typeSlice = other.get(arangodb::StaticStrings::IndexType);
+    TRI_ASSERT(typeSlice.isString());
+    arangodb::velocypack::StringRef typeStr(typeSlice);
+    TRI_ASSERT(typeStr == oldtypeName());
+#endif
+    auto value = other.get(arangodb::StaticStrings::IndexId);
+
+    if (!value.isNone()) {
+      // We already have an id.
+      if (!value.isString()) {
+        // Invalid ID
+        return false;
+      }
+      // Short circuit. If id is correct the index is identical.
+      arangodb::velocypack::StringRef idRef(value);
+      return idRef == std::to_string(id().id());
+    }
+    return IResearchInvertedIndex::matchesDefinition(other);
+  }
 
 
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
