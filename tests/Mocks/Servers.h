@@ -202,7 +202,7 @@ class MockClusterServer : public MockServer,
   std::shared_ptr<LogicalCollection> createCollection(
       std::string const& dbName, std::string collectionName,
       std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
-      TRI_col_type_e type);
+      TRI_col_type_e type, VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
 
   // You can only create specialized types
  protected:
@@ -219,11 +219,10 @@ class MockClusterServer : public MockServer,
   // create database and only after collections
   // will be populated in plan.
   void agencyCreateCollections(std::string const& name);
-
   void agencyDropDatabase(std::string const& name);
+
 protected:
   std::unique_ptr<arangodb::network::ConnectionPool> _pool;
- private:
   bool _useAgencyMockPool;
   arangodb::ServerState::RoleEnum _oldRole;
   int _dummy;

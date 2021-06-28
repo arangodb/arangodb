@@ -599,7 +599,7 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
 std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
     std::string const& dbName, std::string collectionName,
     std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
-    TRI_col_type_e type) {
+    TRI_col_type_e type, VPackSlice additionalProperties) {
   /*
   std::string cID, uint64_t shards,
                                   uint64_t replicationFactor, uint64_t writeConcern,
@@ -638,7 +638,14 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
         props.add(toIndex->slice());
       }
     }
+
+    if (additionalProperties.isObject()) {
+      for (auto it : VPackObjectIterator(additionalProperties)) {
+        props.add(it.key.copyString(), it.value.value());
+      }
+    }
   }
+  LOG_DEVEL << props.toJson();
   LogicalCollection dummy(*vocbase, props.slice(), true);
 
   auto shards = std::make_shared<ShardMap>();
