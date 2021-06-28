@@ -6,7 +6,7 @@ v3.6.15 (XXXX-XX-XX)
   vertices from inner FOR loops.
 
 
-v3.6.14 (XXXX-XX-XX)
+v3.6.14 (2021-06-20)
 --------------------
 
 * Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
