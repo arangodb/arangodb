@@ -1188,7 +1188,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   }
   // If _followingTermid is 0, then this is a leader before the update, 
   // we tolerate this and simply use its ID without a term in this case.
-  collection.followers()->setTheLeader(leader);
+  collection.followers()->setTheLeader(leaderIdWithTerm);
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
   builder.clear();
