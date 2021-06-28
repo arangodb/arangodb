@@ -1211,10 +1211,6 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
 
-  // This is necessary to accept replications from the leader which can
-  // happen as soon as we are in sync.
-  collection.followers()->setTheLeader(leader);
-
   NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   res = addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId, clientId,
