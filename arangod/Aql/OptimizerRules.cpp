@@ -7916,6 +7916,9 @@ void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
   struct CallstackSplitter : WalkerWorkerBase<ExecutionNode> {
     explicit CallstackSplitter(size_t maxNodes) : maxNodesPerCallstack(maxNodes) {}
     bool before(ExecutionNode* n) override {
+      // This rule must be executed after subquery splicing, so we must not see any subqueries here!
+      TRI_ASSERT(n->getType() != EN::SUBQUERY);
+      
       if (n->getType() == EN::REMOTE) {
         // RemoteNodes provide a natural split in the callstack, so we can reset the counter here!
         count = 0;

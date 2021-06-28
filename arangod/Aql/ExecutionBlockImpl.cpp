@@ -2000,11 +2000,12 @@ auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(ExecutionContext& ctx
     -> UpstreamResult {
   std::variant<UpstreamResult, std::exception_ptr, std::nullopt_t> result{std::nullopt};
   Params params{result, ctx, aqlCall};
-  
-  _lock.lock();
-  _params = &params;
-  _state.store(State::Executing);
-  _lock.unlock();
+
+  {
+    std::unique_lock guard(_lock);
+    _params = &params;
+    _state.store(State::Executing);
+  }
 
   _bell.notify_one();
   
