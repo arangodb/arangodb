@@ -1,6 +1,8 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 2.4.0.
+
 * For cluster AQL queries, let the coordinator determine the query id to be used
   on DB servers. This allows the coordinator to roll back AQL query setup
   requests via the query id. Previously, the DB servers each generated a local
