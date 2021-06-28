@@ -28,6 +28,7 @@
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
+const path = require('path');
 const pu = require('@arangodb/testutils/process-utils');
 const yaml = require('js-yaml');
 
@@ -241,7 +242,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         const _NODE_PATH = process.env.NODE_PATH;
         // Add the testcase's directory to the path so we can use `require` with
         // relative paths (e.g., `require("./helpers.inc")`).
-        process.env.NODE_PATH += ':' + fs.dirname(te);
+        process.env.NODE_PATH += ':' + path.dirname(te);
         
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);

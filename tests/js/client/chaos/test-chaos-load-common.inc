@@ -170,7 +170,6 @@ function BaseChaosSuite(testOpts) {
         const key = () => "testmann" + Math.floor(Math.random() * 100000000);
         const docs = () => {
           let result = [];
-          // TODO - optionally use only single-document operations
           const max = 2000;
           const r = Math.floor(Math.random() * max) + 1;
           if (r > (max * 0.8)) {

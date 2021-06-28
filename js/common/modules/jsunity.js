@@ -395,15 +395,9 @@ function RunTest (path, outputReply, filter) {
     content = fs.read(path);
   }
 
-  content = `(function(){
-    require('jsunity').jsUnity.attachAssertions();
-    return (function() {
-      require('jsunity').setTestFilter(${JSON.stringify(filter)});
-      const runSetup = false;
-      const getOptions = false;
-      ${content}
-    }());
-  });`;
+  // NOTE: this is intentionally a single long line to ensure that any line information
+  // refers to the correct line in the original source file.
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const runSetup = false; const getOptions = false; ${content} }()); });`;
   f = internal.executeScript(content, undefined, path);
 
   if (f === undefined) {
