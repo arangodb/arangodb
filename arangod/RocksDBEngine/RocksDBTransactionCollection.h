@@ -141,6 +141,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief request an unlock for a collection
   Result doUnlock(AccessMode::Type) override;
+  
+  Result ensureCollection();
 
  private:
   uint64_t _initialNumberDocuments;
