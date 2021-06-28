@@ -1,6 +1,10 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
+  resetted, resulting in undefined behavior for traversals returning unique
+  vertices from inner FOR loops.
+
 * Fixed ES-863: reloading of users within the Cluster.
   If a Coordinator is asked to reload its users (e.g. by the UserManager in
   Foxx, it is also possible to do via API, but this is internal and on purpose
