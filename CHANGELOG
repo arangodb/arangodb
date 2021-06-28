@@ -1,3 +1,16 @@
+v3.6.15 (XXXX-XX-XX)
+--------------------
+
+* Removed a special case for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated) were handled
+  in a special way without performing any writes. The problem was that such
+  updates did not update the local state, but could have been replicated to
+  followers.
+  This special empty update case is now removed and update operations that do
+  not update any attributes are treated as normal write operations both 
+  locally and in the replication.
+
+
 v3.6.14 (2021-06-20)
 --------------------
 

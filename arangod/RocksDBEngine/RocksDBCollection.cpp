@@ -914,15 +914,6 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     }
   }
 
-  if (newSlice.length() <= 1) {  // TODO move above ?!
-    // shortcut. no need to do anything
-    resultMdr.setManaged(oldDoc.begin());
-    TRI_ASSERT(!resultMdr.empty());
-
-    trackWaitForSync(trx, options);
-    return res;
-  }
-
   // merge old and new values
   TRI_voc_rid_t revisionId;
   LocalDocumentId const newDocumentId = LocalDocumentId::create();
