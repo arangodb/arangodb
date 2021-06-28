@@ -389,10 +389,21 @@ function RunTest (path, outputReply, filter) {
   var content;
   var f;
 
-  content = fs.read(path);
+  if (path.includes("test-module-")) {
+    content = `return require(${JSON.stringify(path)}).run({ runSetup, getOptions });`;
+  } else {
+    content = fs.read(path);
+  }
 
-  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const runSetup = false; const getOptions = false; ${content} }());
-});`;
+  content = `(function(){
+    require('jsunity').jsUnity.attachAssertions();
+    return (function() {
+      require('jsunity').setTestFilter(${JSON.stringify(filter)});
+      const runSetup = false;
+      const getOptions = false;
+      ${content}
+    }());
+  });`;
   f = internal.executeScript(content, undefined, path);
 
   if (f === undefined) {
