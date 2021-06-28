@@ -1496,7 +1496,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                               TRI_VOC_DOCUMENT_OPERATION_INSERT,
                               hasPerformedIntermediateCommit);
 
-    savepoint.finish(hasPerformedIntermediateCommit);
+    if (res.ok()) {
+      savepoint.finish(hasPerformedIntermediateCommit);
+    }
   }
 
   return res;
