@@ -186,7 +186,8 @@ struct TRI_vocbase_t {
                                          std::optional<std::string> const& collectionName)
       -> arangodb::ResultT<std::reference_wrapper<arangodb::replication2::replicated_log::ReplicatedLog>>;
   [[nodiscard]] auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;
-  auto ensureReplicatedLog(arangodb::replication2::LogId id, std::string const& collectionName)
+  auto ensureReplicatedLog(arangodb::replication2::LogId id,
+                           std::optional<std::string> const& collectionName)
       -> arangodb::replication2::replicated_log::ReplicatedLog&;
 
  public:

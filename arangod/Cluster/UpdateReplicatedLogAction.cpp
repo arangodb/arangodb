@@ -70,7 +70,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
     TRI_ASSERT(logId == spec->id);
     TRI_ASSERT(spec->currentTerm.has_value());
     auto& leader = spec->currentTerm->leader;
-    auto& log = vocbase.ensureReplicatedLog(logId, _collectionName);
+    auto& log = vocbase.ensureReplicatedLog(logId, std::nullopt);
 
     if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
       replicated_log::LogLeader::TermData termData;

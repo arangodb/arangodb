@@ -2059,7 +2059,8 @@ void TRI_vocbase_t::unregisterReplicatedLog(arangodb::replication2::LogId id) {
   server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_sub(1);
 }
 
-auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id, std::string const& collectionName)
+auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id,
+                                        std::optional<std::string> const& collectionName)
     -> arangodb::replication2::replicated_log::ReplicatedLog& {
   {
     std::unique_lock guard(_logManager->_mutex);
