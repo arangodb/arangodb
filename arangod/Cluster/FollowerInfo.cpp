@@ -552,7 +552,7 @@ uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
   } while (i == 0);
   try {
     _followingTermId[s] = i;
-  } catch(std::bad_alloc const& exc) {
+  } catch(std::bad_alloc const&) {
     i = 1;   // I assume here that I do not get bad_alloc if the key is
              // already in the map, since it then only has to overwrite
              // an integer, if the key is not in the map, we default to 0.
