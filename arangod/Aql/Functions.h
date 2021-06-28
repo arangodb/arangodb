@@ -532,6 +532,15 @@ struct Functions {
   static AqlValue MakeDistributeGraphInput(arangodb::aql::ExpressionContext*,
                                            AstNode const&, VPackFunctionParameters const&);
 
+  static AqlValue DecayGauss(arangodb::aql::ExpressionContext*,
+                             AstNode const&, VPackFunctionParameters const&);
+
+  static AqlValue DecayExp(arangodb::aql::ExpressionContext*,
+                           AstNode const&, VPackFunctionParameters const&);
+
+  static AqlValue DecayLinear(arangodb::aql::ExpressionContext*,
+                              AstNode const&, VPackFunctionParameters const&);
+
   /// @brief dummy function that will only throw an error when called
   static AqlValue NotImplemented(arangodb::aql::ExpressionContext*,
                                  AstNode const&, VPackFunctionParameters const&);

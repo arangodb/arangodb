@@ -1,7 +1,86 @@
 devel
 -----
 
+* For cluster AQL queries, let the coordinator determine the query id to be 
+  used on DB servers. This allows the coordinator to roll back AQL query setup
+  requests via the query id. Previously, the DB servers each generated a local
+  query id and returned it to the coordinator, who would then keep track of
+  them for later use. The problem with this was that if an AQL query setup
+  request timed out, the coordinator had no way to roll it back.
+
+  In addition, if setting up a query takes long on a DB server so that the
+  coordinator sends a rollback request, there are some measures in place for
+  the unlikely case in which the rollback request overtakes the setup request.
+  In this case, the rollback request will not find a query yet, but will
+  register a tombstone for it. Once the query gets registered by the delayed
+  request, it will (correctly) fail because of the tombstone.
+
+* Removed a special case for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated) were handled
+  in a special way without performing any writes. The problem was that such
+  updates did not update the local state, but could have been replicated to
+  followers.
+  This special empty update case is now removed and update operations that do
+  not update any attributes are treated as normal write operations both 
+  locally and in the replication.
+
+* Fix partial cleanup of internal write batches for multi-document operations of
+  which one or multiple failed. The previous implementation had an unreleased
+  performance optimization that wouldn't clean up the write batch completely.
+  That could have led to a wrong sequence of events being accumulated in the 
+  write batch, which may have confused the WAL tailing API later. 
+
+* Fix some occurrences in which Merkle trees could silently apply the same change
+  multiple times, which led to data drift between the Merkle tree and the
+  underlying collection's data.
+
+* On a failure during synchronous replication, do not remove the failed follower 
+  from the list of known servers in the transaction.
+  If we do, we would not be able to send the commit/abort to the follower later.
+  However, we still need to send the commit/abort to the follower at transaction 
+  end, because the follower may be responsible  for _other_ shards as well.
+
+  This change also removes dangling transactions that could stay around on
+  followers until they expired after the transaction idle timeout (180 seconds),
+  and that could prevent a follower from getting back in sync during this period.
+
+* Added more context to "dropping follower" messages, so it is easier to analyze
+  what exactly went wrong.
+
+* Fixed invalid shard synchronization for documents not added via INSERT with
+  `overwriteMode` set to `ignore`. In this case, if a document with the given key
+  already exists, it is not changed on the leader (i.e. no write happens on the
+  leader). However, a write was replicated to the follower, which was wrong.
+  This write is now suppressed, which can only make such insert operations faster.
+
+* Web UI: Disables the hover tooltip within the statistics view of the
+  memory consumption chart.
+
+* Raised the versions of the node modules `node-sass` and `sass-loader`
+  to be able to build the Web UI with Node v16+.
+
+* Improve usability of hidden options: `--help` mentions that these exist
+  and how to display them.
+
+
+* Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
+  iterator.
+
+* Fixed ES-863: reloading of users within the Cluster.
+  If a Coordinator is asked to reload its users (e.g. by the UserManager in
+  Foxx, it is also possible to do via API, but this is internal and on purpose
+  not documented, so unlikely that it is used), in concurrency with user
+  management updates there is a chance that the reload is not correctly
+  performed on this coordinator. It may have missed the last update locally,
+  causing one user to have an older state. It will be fixed on the next
+  modification of any other users/permissions. Unfortunately this bug can
+  cascade and when hit again, the coordinator can now be off by two updates.
+  In DC2DC this situation is more likely to happen on the target datacenter,
+  causing this datacenter to have other users/permissions than the source one.
+
 * Slightly improve specific warning messages for better readability.
+
+* Add 3 AQL functions: DECAY_GAUSS, DECAY_EXP and DECAY_LINEAR.
 
 * Fix URL request parsing in case data is handed in in small chunks.
   Previously the URL could be cut off if the chunk size was smaller than
