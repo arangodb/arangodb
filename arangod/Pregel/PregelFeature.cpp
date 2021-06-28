@@ -73,7 +73,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     std::vector<std::string> const& edgeCollections, 
     std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
     VPackSlice const& params) {
-  if (isStopping()) {
+  if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     return std::make_pair(Result{TRI_ERROR_SHUTTING_DOWN,
                                  "pregel system not available"}, 0);
   }
@@ -210,7 +210,8 @@ uint64_t PregelFeature::createExecutionNumber() {
 }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "Pregel") {
+    : application_features::ApplicationFeature(server, "Pregel"),
+      _softShutdownOngoing(false) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
 }
@@ -230,7 +231,8 @@ void PregelFeature::scheduleGarbageCollection() {
     return;
   }
 
-  std::chrono::seconds offset = std::chrono::seconds(10);
+  // GC will be run every 20 seconds
+  std::chrono::seconds offset = std::chrono::seconds(20);
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
@@ -274,8 +276,6 @@ void PregelFeature::beginShutdown() {
   }
 }
 
-void PregelFeature::stop() {}
-
 void PregelFeature::unprepare() {
   MUTEX_LOCKER(guard, _mutex);
   decltype(_conductors) cs = std::move(_conductors);
@@ -300,7 +300,7 @@ bool PregelFeature::isStopping() const noexcept {
 }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c, uint64_t executionNumber) {
-  if (isStopping()) {
+  if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   
@@ -315,17 +315,21 @@ std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
   return (it != _conductors.end() && ::authorized(it->second.user)) ? it->second.conductor : nullptr;
 }
 
-void PregelFeature::garbageCollectConductors() {
+void PregelFeature::garbageCollectConductors() try {
   // iterate over all conductors and remove the ones which can be garbage-collected
   MUTEX_LOCKER(guard, _mutex);
   for (auto it = _conductors.begin(); it != _conductors.end(); /*no hoisting*/) {
     if (it->second.conductor->canBeGarbageCollected()) {
+      uint64_t executionNumber = it->first;
+
       it = _conductors.erase(it);
+      
+      _workers.erase(executionNumber);
     } else {
       ++it;
     }
   }
-}
+} catch (...) {}
 
 void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w, uint64_t executionNumber) {
   if (isStopping()) {
@@ -347,6 +351,7 @@ std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
 void PregelFeature::cleanupConductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   _conductors.erase(executionNumber);
+  _workers.erase(executionNumber);
 }
 
 void PregelFeature::cleanupWorker(uint64_t executionNumber) {
@@ -383,6 +388,10 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   }
   std::shared_ptr<Conductor> co = conductor(exeNum);
   if (!co) {
+    if (path == Utils::finishedWorkerFinalizationPath) {
+      // conductor not found, but potentially already garbage-collected
+      return;
+    }
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CURSOR_NOT_FOUND, "Conductor not found, invalid execution number: " + std::to_string(exeNum));
   }
@@ -414,6 +423,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   }
 
   uint64_t exeNum = sExecutionNum.getUInt();
+
   std::shared_ptr<IWorker> w = worker(exeNum);
 
   // create a new worker instance if necessary
@@ -437,6 +447,11 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     return;
   } else if (!w) {
     // any other call should have a working worker instance
+    if (path == Utils::finalizeExecutionPath) {
+      // except this is a cleanup call, and cleanup has already happened
+      // because of garbage collection
+      return;
+    }
     LOG_TOPIC("41788", WARN, Logger::PREGEL)
         << "Handling " << path << ", worker " << exeNum << " does not exist";
     THROW_ARANGO_EXCEPTION_FORMAT(
@@ -468,4 +483,35 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     }
     w->aqlResult(outBuilder, withId);
   }
+}
+
+uint64_t PregelFeature::numberOfActiveConductors() const {
+  MUTEX_LOCKER(guard, _mutex);
+  uint64_t nr{0};
+  for (auto const& p : _conductors) {
+    std::shared_ptr<Conductor> const& c = p.second.conductor;
+    if (c->_state == ExecutionState::DEFAULT ||
+        c->_state == ExecutionState::RUNNING ||
+        c->_state == ExecutionState::STORING) {
+      ++nr;
+    }
+  }
+  return nr;
+}
+  
+void PregelFeature::toVelocyPack(arangodb::velocypack::Builder& result) const {
+  result.openArray();
+  {
+    MUTEX_LOCKER(guard, _mutex);
+  
+    for (auto const& p : _conductors) {
+      auto const& ce = p.second;
+      if (!::authorized(ce.user)) {
+        continue;
+      }
+
+      ce.conductor->toVelocyPack(result);
+    }
+  }
+  result.close();
 }

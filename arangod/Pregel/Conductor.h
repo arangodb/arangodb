@@ -65,7 +65,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   ExecutionState _state = ExecutionState::DEFAULT;
   PregelFeature& _feature;
-  std::chrono::steady_clock::time_point _expires;
+  std::chrono::system_clock::time_point _created;
+  std::chrono::system_clock::time_point _expires;
   std::chrono::seconds _ttl = std::chrono::seconds(300);
   const DatabaseGuard _vocbaseGuard;
   const uint64_t _executionNumber;
@@ -143,7 +144,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void cancel();
   void startRecovery();
   void collectAQLResults(velocypack::Builder& outBuilder, bool withId);
-  VPackBuilder toVelocyPack() const;
+  void toVelocyPack(arangodb::velocypack::Builder& result) const;
 
   double totalRuntimeSecs() const {
     return _endTimeSecs == 0.0 ? TRI_microtime() - _startTimeSecs : _endTimeSecs - _startTimeSecs;

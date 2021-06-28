@@ -34,6 +34,7 @@
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 
+#include "Agency/TimeString.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
@@ -67,6 +68,7 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::string const& algoName, VPackSlice const& config,
                      PregelFeature& feature)
     : _feature(feature),
+      _created(std::chrono::system_clock::now()),
       _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(AlgoRegistry::createAlgorithm(vocbase.server(), algoName, config)),
@@ -853,8 +855,8 @@ bool Conductor::canBeGarbageCollected() const {
         _state == ExecutionState::DONE || 
         _state == ExecutionState::IN_ERROR || 
         _state == ExecutionState::FATAL_ERROR) {
-      return (_expires != std::chrono::steady_clock::time_point{} &&
-              _expires <= std::chrono::steady_clock::now());
+      return (_expires != std::chrono::system_clock::time_point{} &&
+              _expires <= std::chrono::system_clock::now());
     }
   }
 
@@ -887,11 +889,20 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   }
 }
 
-VPackBuilder Conductor::toVelocyPack() const {
+void Conductor::toVelocyPack(VPackBuilder& result) const {
   MUTEX_LOCKER(guard, _callbackMutex);
 
-  VPackBuilder result;
   result.openObject();
+  result.add("id", VPackValue(std::to_string(_executionNumber)));
+  result.add("database", VPackValue(_vocbaseGuard.database().name()));
+  if (_algorithm != nullptr) {
+    result.add("algorithm", VPackValue(_algorithm->name()));
+  }
+  result.add("created", VPackValue(timepointToString(_created)));
+  if (_state != ExecutionState::DEFAULT) {
+    result.add("expires", VPackValue(timepointToString(_expires)));
+  }
+  result.add("ttl", VPackValue(_ttl.count()));
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
@@ -914,7 +925,6 @@ VPackBuilder Conductor::toVelocyPack() const {
     _masterContext->serializeValues(result);
   }
   result.close();
-  return result;
 }
 
 ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message) {
@@ -927,7 +937,7 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
   _respondedServers.clear();
 
   // to support the single server case, we handle it without optimizing it
-  if (ServerState::instance()->isRunningInCluster() == false) {
+  if (!ServerState::instance()->isRunningInCluster()) {
     if (handle) {
       VPackBuilder response;
       _feature.handleWorkerRequest(_vocbaseGuard.database(), path, message.slice(), response);
@@ -949,7 +959,7 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (_dbServers.size() == 0) {
+  if (_dbServers.empty()) {
     LOG_TOPIC("a14fa", WARN, Logger::PREGEL) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
@@ -1030,6 +1040,6 @@ void Conductor::updateState(ExecutionState state) {
       _state == ExecutionState::DONE || 
       _state == ExecutionState::IN_ERROR || 
       _state == ExecutionState::FATAL_ERROR) {
-    _expires = std::chrono::steady_clock::now() + _ttl;
+    _expires = std::chrono::system_clock::now() + _ttl;
   }
 }

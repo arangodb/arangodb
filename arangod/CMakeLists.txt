@@ -750,6 +750,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp

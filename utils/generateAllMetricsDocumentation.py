@@ -154,6 +154,10 @@ for i, metric in enumerate(METRICSLIST):
                         print(f"YAML file '{filename}' has an unknown category "
                               f"'{y['category']}', please fix.")
                         bad = True
+                    if not bad:
+                        if y["name"] != metric:
+                            print(f"YAML file '{filename}' has an attribute name '" + y["name"] + "' which does not match the file name.")
+                            bad = True
 
     if bad:
         MISSING = True

@@ -44,6 +44,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   void prepare() override;
   void start() override;
   void stop() override;
+  void initiateSoftShutdown() override;
   void beginShutdown() override;
   void unprepare() override;
 
