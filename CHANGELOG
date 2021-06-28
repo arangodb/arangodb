@@ -1,9 +1,9 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
-* Fixed DEVSUP-799: unique vertex getter may point to invalid memory after
-  being resetted, resulting in undefined behavior for traversals returning
-  unique vertices from inner FOR loops.
+* Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
+  resetted, resulting in undefined behavior for traversals returning unique
+  vertices from inner FOR loops.
 
 
 v3.8.0 (XXXX-XX-XX)
