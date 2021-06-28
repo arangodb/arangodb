@@ -6064,6 +6064,72 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
         expected);
   }
 
+  // LEVENSHTEIN_MATCH(d.name, 'o', 1, false, 42, 'fo') contains prefix
+  {
+    irs::Or expected;
+    auto& filter = expected.add<irs::by_edit_distance>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->max_distance = 1;
+    opts->with_transpositions = false;
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
+    opts->max_terms = 42;
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, 'o', 1, false, 42, 'fo') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], 'o', 1, false, 42, 'fo') RETURN d",
+        expected);
+  }
+
+  // LEVENSHTEIN_MATCH(d.name, '', 1, false, 42, 'foo') contains prefix
+  {
+    irs::Or expected;
+    auto& filter = expected.add<irs::by_edit_distance>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->max_distance = 1;
+    opts->with_transpositions = false;
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref::EMPTY);
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->max_terms = 42;
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, '', 1, false, 42, 'foo') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], '', 1, false, 42, 'foo') RETURN d",
+        expected);
+  }
+
+  // LEVENSHTEIN_MATCH(d.name, '', 0, true, 42, 'foo') contains prefix
+  {
+    irs::Or expected;
+    auto& filter = expected.add<irs::by_edit_distance>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->max_distance = 0;
+    opts->with_transpositions = true;
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref::EMPTY);
+    opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->max_terms = 42;
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, '', 0, true, 42, 'foo') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], '', 0, true, 42, 'foo') RETURN d",
+        expected);
+  }
+
   // ANALYZER(LEVENSHTEIN_MATCH(d.name.foo, 'foo', 0, true), 'test_analyzer')
   {
     irs::Or expected;
@@ -6343,7 +6409,7 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
   // wrong number of arguments
   assertFilterParseFail(
       vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'true', 1, false, 1, 'z') RETURN d");
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'true', 1, false, 1, 'z', 'x') RETURN d");
   assertFilterParseFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'true') RETURN d");
