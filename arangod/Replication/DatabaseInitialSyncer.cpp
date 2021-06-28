@@ -253,7 +253,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     auto pair = rocksutils::stripObjectIds(collections);
     r = handleCollectionsAndViews(pair.first, views, incremental);
 
-    // all done here, do not try to finish batch if master is unresponsive
     if (!_config.isChild()) {
       batchFinish();
     }
