@@ -1181,13 +1181,14 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   // This is necessary to accept replications from the leader which can
   // happen as soon as we are in sync.
+  std::string leaderIdWithTerm{leader};
   if (_followingTermId != 0) {
-    collection.followers()->setTheLeader(leader + "_" + basics::StringUtils::itoa(_followingTermId));
-
-  } else {
-    // This is the case for a leader before the upgrade, we tolerate this:
-    collection.followers()->setTheLeader(leader);
+    leaderIdWithTerm += "_";
+    leaderIdWithTerm += basics::StringUtils::itoa(_followingTermId);
   }
+  // If _followingTermid is 0, then this is a leader before the update, 
+  // we tolerate this and simply use its ID without a term in this case.
+  collection.followers()->setTheLeader(leader);
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
   builder.clear();
@@ -1196,7 +1197,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     builder.add(ENDPOINT, VPackValue(ep));
     builder.add(DATABASE, VPackValue(getDatabase()));
     builder.add(COLLECTION, VPackValue(getShard()));
-    builder.add(LEADER_ID, VPackValue(leader));
+    builder.add(LEADER_ID, VPackValue(leaderIdWithTerm));
     builder.add("from", VPackValue(lastLogTick));
     builder.add("requestTimeout", VPackValue(600.0));
     builder.add("connectTimeout", VPackValue(60.0));
