@@ -127,16 +127,18 @@ macro(AutodetectHostArchitecture)
          # 4E | Skylake Client
          # 3C | Broadwell (likely a bug in the SDE)
          # 3C | Haswell
-         if(_cpu_model EQUAL 87) # 57
-            set(TARGET_ARCHITECTURE "knl")  # Knights Landing
+         if(_cpu_model EQUAL 165) # Comet lake. Use skylake, the closest march supported by GCC.
+            set(TARGET_ARCHITECTURE "skylake")
+         elseif(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158) # 8E, 9E
+            set(TARGET_ARCHITECTURE "kaby-lake")
+         elseif(_cpu_model EQUAL 102)
+            set(TARGET_ARCHITECTURE "cannonlake")
          elseif(_cpu_model EQUAL 92)
             set(TARGET_ARCHITECTURE "goldmont")
          elseif(_cpu_model EQUAL 90 OR _cpu_model EQUAL 76)
             set(TARGET_ARCHITECTURE "silvermont")
-         elseif(_cpu_model EQUAL 102)
-            set(TARGET_ARCHITECTURE "cannonlake")
-         elseif(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158) # 8E, 9E
-            set(TARGET_ARCHITECTURE "kaby-lake")
+         elseif(_cpu_model EQUAL 87) # 57
+            set(TARGET_ARCHITECTURE "knl")  # Knights Landing
          elseif(_cpu_model EQUAL 85) # 55
             set(TARGET_ARCHITECTURE "skylake-avx512")
          elseif(_cpu_model EQUAL 78 OR _cpu_model EQUAL 94) # 4E, 5E
@@ -149,26 +151,9 @@ macro(AutodetectHostArchitecture)
             set(TARGET_ARCHITECTURE "ivy-bridge")
          elseif(_cpu_model EQUAL 42 OR _cpu_model EQUAL 45)
             set(TARGET_ARCHITECTURE "sandy-bridge")
-         elseif(_cpu_model EQUAL 165) # Comet lake. Use skylake, the closest march supported by GCC.
-            set(TARGET_ARCHITECTURE "skylake")
-         elseif(_cpu_model EQUAL 37 OR _cpu_model EQUAL 44 OR _cpu_model EQUAL 47)
-            set(TARGET_ARCHITECTURE "westmere")
-         elseif(_cpu_model EQUAL 26 OR _cpu_model EQUAL 30 OR _cpu_model EQUAL 31 OR _cpu_model EQUAL 46)
-            set(TARGET_ARCHITECTURE "nehalem")
-         elseif(_cpu_model EQUAL 23 OR _cpu_model EQUAL 29)
-            set(TARGET_ARCHITECTURE "penryn")
-         elseif(_cpu_model EQUAL 15)
-            set(TARGET_ARCHITECTURE "merom")
-         elseif(_cpu_model EQUAL 28)
-            set(TARGET_ARCHITECTURE "atom")
-         elseif(_cpu_model EQUAL 14)
-            set(TARGET_ARCHITECTURE "core")
-         elseif(_cpu_model LESS 14)
-            message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the generic CPU settings with SSE2.")
-            set(TARGET_ARCHITECTURE "generic")
          else()
-            message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the 65nm Core 2 CPU settings.")
-            set(TARGET_ARCHITECTURE "merom")
+            message(WARNING "Your CPU (family ${_cpu_family}, model ${_cpu_model}) is not known. Auto-detection of optimization flags failed and will use the minimum required microarchitecture(sandy-bridge).")
+            set(TARGET_ARCHITECTURE "sandy-bridge")
          endif()
       elseif(_cpu_family EQUAL 7) # Itanium (not supported)
          message(WARNING "Your CPU (Itanium: family ${_cpu_family}, model ${_cpu_model}) is not supported by OptimizeForArchitecture.cmake.")
