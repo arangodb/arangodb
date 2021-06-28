@@ -521,10 +521,12 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   auto& vocbase = col->vocbase();
   auto database = vocbase.name();
 
+#if 0
   std::string leaderId;
   if (config.hasKey(LEADER_ID)) {
     leaderId = config.get(LEADER_ID).copyString();
   }
+#endif
 
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(), config, database);
@@ -534,9 +536,11 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   // database-specific synchronization
   auto syncer = DatabaseInitialSyncer::create(vocbase, configuration);
 
+#if 0
   if (!leaderId.empty()) {
     syncer->setLeaderId(leaderId);
   }
+#endif
 
   SyncerId syncerId{syncer->syncerId()};
 
@@ -597,7 +601,9 @@ static arangodb::Result replicationSynchronizeCatchup(
 
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
+#if 0
   auto const leaderId = conf.get(LEADER_ID).copyString();
+#endif
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
   ReplicationApplierConfiguration configuration =
@@ -609,9 +615,11 @@ static arangodb::Result replicationSynchronizeCatchup(
   DatabaseGuard guard(df, database);
   auto syncer = DatabaseTailingSyncer::create(guard.database(), configuration, fromTick, /*useTick*/true);
 
+#if 0
   if (!leaderId.empty()) {
     syncer->setLeaderId(leaderId);
   }
+#endif
 
   Result r;
   try {
