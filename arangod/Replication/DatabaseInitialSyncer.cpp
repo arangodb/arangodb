@@ -480,7 +480,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
                                            std::string const& baseUrl,
                                            arangodb::LogicalCollection* coll,
                                            std::string const& leaderColl,
-                                           InitialSyncerDumpStats& stats, int batch,
+                                           int batch,
                                            TRI_voc_tick_t fromTick, uint64_t chunkSize) {
   using ::arangodb::basics::StringUtils::itoa;
 
@@ -535,7 +535,6 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
         coll->name() + "', type: " + typeString + ", id: " + leaderColl +
         ", batch " + itoa(batch) + ", url: " + url);
 
-    ++stats.numDumpRequests;
     double t = TRI_microtime();
 
     // send request
@@ -546,7 +545,6 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
 
     t = TRI_microtime() - t;
     if (replutils::hasFailed(response.get())) {
-      stats.waitedForDump += t;
       sharedStatus->gotResponse(
           replutils::buildHttpError(response.get(), url, _config.connection), t);
       return;
@@ -618,8 +616,6 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       // fallthrough here in case everything went well
     }
 
-    stats.waitedForDump += t;
-
     if (replutils::hasFailed(response.get())) {
       // failure
       sharedStatus->gotResponse(
@@ -681,13 +677,17 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 
   // order initial chunk. this will block until the initial response
   // has arrived
-  fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats, batch, fromTick, chunkSize);
+  fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, batch, fromTick, chunkSize);
 
   while (true) {
     std::unique_ptr<httpclient::SimpleHttpResult> dumpResponse;
 
     // block until we either got a response or were shut down
     Result res = sharedStatus->waitForResponse(dumpResponse);
+    
+    // update our statistics
+    ++stats.numDumpRequests;
+    stats.waitedForDump += sharedStatus->time();
 
     if (res.fail()) {
       // no response or error or shutdown
@@ -747,9 +747,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     if (checkMore && !isAborted()) {
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
-      sharedStatus->request([this, self, &stats, &baseUrl, sharedStatus, coll,
+      sharedStatus->request([this, self, baseUrl, sharedStatus, coll,
                              leaderColl, batch, fromTick, chunkSize]() {
-        fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats,
+        fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, 
                        batch + 1, fromTick, chunkSize);
       });
     }
