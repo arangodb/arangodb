@@ -46,10 +46,6 @@ v3.8.0 (XXXX-XX-XX)
   and that could prevent a follower from getting back in sync during this
   period.
 
-
-v3.8.0-rc.2 (2021-06-07)
-------------------------
-
 * Added more context to "dropping follower" messages, so it is easier to analyze
   what exactly went wrong.
 
