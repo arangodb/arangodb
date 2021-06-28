@@ -11,6 +11,12 @@ v3.6.15 (XXXX-XX-XX)
   followers until they expired after the transaction idle timeout (180 seconds),
   and that could prevent a follower from getting back in sync during this period.
 
+* Updated arangosync to 1.6.0.
+
+* Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
+  resetted, resulting in undefined behavior for traversals returning unique
+  vertices from inner FOR loops.
+  
 
 v3.6.14 (2021-06-20)
 --------------------
