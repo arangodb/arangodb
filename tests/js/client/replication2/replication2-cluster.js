@@ -262,7 +262,7 @@ function ddlSuite() {
           if (e instanceof Error) {
             e.message = `When executing test ${JSON.stringify(test)}: ${e.message}`;
           } else if (typeof e === 'string') {
-            e = `When executing test ${JSON.stringify(test)}: ${e}`;
+            throw `When executing test ${JSON.stringify(test)}: ${e}`;
           }
           throw e;
         }
