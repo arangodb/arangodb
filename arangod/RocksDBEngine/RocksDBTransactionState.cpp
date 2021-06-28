@@ -541,6 +541,10 @@ void RocksDBTransactionState::rollbackOperation(TRI_voc_document_operation_e ope
 Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisionId,
                                              TRI_voc_document_operation_e operationType,
                                              bool& hasPerformedIntermediateCommit) {
+  TRI_IF_FAILURE("addOperationSizeError") {
+    return Result(TRI_ERROR_RESOURCE_LIMIT);
+  }
+
   size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
   if (currentSize > _options.maxTransactionSize) {
     // we hit the transaction size limit
