@@ -33,10 +33,12 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchViewMeta.h"
+#include "Iresearch/IResearchSnapshot.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
+
 
 namespace arangodb {
 
@@ -83,40 +85,6 @@ class AsyncLinkHandle {
 class IResearchLink {
  public:
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a snapshot representation of the data-store
-  ///        locked to prevent data store deallocation
-  //////////////////////////////////////////////////////////////////////////////
-  class Snapshot {
-   public:
-    Snapshot() = default;
-    Snapshot(std::unique_lock<ReadMutex>&& lock,
-             irs::directory_reader&& reader) noexcept
-        : _lock(std::move(lock)), _reader(std::move(reader)) {
-      TRI_ASSERT(_lock.owns_lock());
-    }
-    Snapshot(Snapshot&& rhs) noexcept
-      : _lock(std::move(rhs._lock)),
-        _reader(std::move(rhs._reader)) {
-      TRI_ASSERT(_lock.owns_lock());
-    }
-    Snapshot& operator=(Snapshot&& rhs) noexcept {
-      if (this != &rhs) {
-        _lock = std::move(rhs._lock);
-        _reader = std::move(rhs._reader);
-      }
-      TRI_ASSERT(_lock.owns_lock());
-      return *this;
-    }
-    operator irs::directory_reader const&() const noexcept {
-      return _reader;
-    }
-
-   private:
-    std::unique_lock<ReadMutex> _lock; // lock preventing data store dealocation
-    irs::directory_reader _reader;
-  };
 
   virtual ~IResearchLink();
 

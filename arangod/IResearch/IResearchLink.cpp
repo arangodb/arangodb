@@ -1818,7 +1818,7 @@ Result IResearchLink::remove(
   return {};
 }
 
-IResearchLink::Snapshot IResearchLink::snapshot() const {
+Snapshot IResearchLink::snapshot() const {
   // '_dataStore' can be asynchronously modified
   auto lock = _asyncSelf->lock();
 
