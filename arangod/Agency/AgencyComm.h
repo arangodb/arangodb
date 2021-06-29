@@ -40,6 +40,7 @@
 #include "AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
+#include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/Metrics.h"
 
@@ -195,6 +196,8 @@ class AgencyCommHelper {
   static std::vector<std::string> slicePath(std::string const&);
 
   static std::string generateStamp();
+
+  static network::Timeout defaultTimeout();
 };
 
 // -----------------------------------------------------------------------------
