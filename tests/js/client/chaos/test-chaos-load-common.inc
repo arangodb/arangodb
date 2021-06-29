@@ -124,7 +124,7 @@ const clearAllFailurePoints = () => {
 function BaseChaosSuite(testOpts) {
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
-  const coordination_cn = cn + "_comm";
+  const coordination_cn = cn + "_coord";
 
   return {
     setUp: function () {
@@ -141,6 +141,13 @@ function BaseChaosSuite(testOpts) {
           debugSetFailAt(getEndpointById(server.id), "replicateOperations_randomize_timeout");
           debugSetFailAt(getEndpointById(server.id), "delayed_synchronous_replication_request_processing");
           debugSetFailAt(getEndpointById(server.id), "Query::setupTimeout");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail1");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail2");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail1");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail2");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail3");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail1");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail2");
         }
         servers = getCoordinators();
         assertTrue(servers.length > 0);
@@ -212,13 +219,13 @@ function BaseChaosSuite(testOpts) {
           query = (...args) => trx.query(...args);
         }
 
-        const logAllOps = false;
+        const logAllOps = false; // can be set to true for debugging purposes
         const log = (msg) => {
           if (logAllOps) {
             console.info(msg);
           }
         };
-        const ops = trx === 0 ? 1 : Math.floor(Math.random() * 5) + 1;
+        const ops = trx === null ? 1 : Math.floor(Math.random() * 5) + 1;
         for (let op = 0; op < ops; ++op) {
           try {
             const d = Math.random();
