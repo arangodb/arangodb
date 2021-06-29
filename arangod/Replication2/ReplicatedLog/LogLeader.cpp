@@ -186,13 +186,13 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
             .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
                         lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
                         currentTerm = it->_currentTerm, messageId = messageId, startTime,
-                        logMetrics = logMetrics](futures::Try<AppendEntriesResult>&& res) {
+                        logMetrics = logMetrics](futures::Try<AppendEntriesResult>&& res) noexcept {
+              // This has to remain noexcept, because the code below is not exception safe
               auto const endTime = std::chrono::steady_clock::now();
 
               // TODO report (endTime - startTime) to
               //      server().getFeature<ReplicatedLogFeature>().metricReplicatedLogAppendEntriesRtt(),
               //      probably implicitly so tests can be done as well
-              // TODO This has to be noexcept
               if (auto self = parentLog.lock()) {
                 using namespace std::chrono_literals;
                 auto const duration = endTime - startTime;
