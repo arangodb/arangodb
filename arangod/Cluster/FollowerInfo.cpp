@@ -555,12 +555,12 @@ uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
   } catch(std::bad_alloc const&) {
     i = 1;   // I assume here that I do not get bad_alloc if the key is
              // already in the map, since it then only has to overwrite
-             // an integer, if the key is not in the map, we default to 0.
+             // an integer, if the key is not in the map, we default to 1.
   }
   return i;
 }
 
-uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) noexcept {
+uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) const noexcept {
   // Note that we assume that find() does not throw!
   auto it = _followingTermId.find(s);
   if (it == _followingTermId.end()) {
@@ -569,4 +569,3 @@ uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) noexcept {
   }
   return it->second;
 }
-
