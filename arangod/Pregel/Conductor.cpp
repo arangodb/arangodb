@@ -899,7 +899,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     result.add("algorithm", VPackValue(_algorithm->name()));
   }
   result.add("created", VPackValue(timepointToString(_created)));
-  if (_state != ExecutionState::DEFAULT) {
+  if (_expires != std::chrono::system_clock::time_point{}) {
     result.add("expires", VPackValue(timepointToString(_expires)));
   }
   result.add("ttl", VPackValue(_ttl.count()));
@@ -919,7 +919,10 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
-  result.add("parallelism", _userParams.slice().get(Utils::parallelismKey));
+  VPackSlice p = _userParams.slice().get(Utils::parallelismKey);
+  if (!p.isNone()) {
+    result.add("parallelism", p);
+  }
   if (_masterContext) {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);

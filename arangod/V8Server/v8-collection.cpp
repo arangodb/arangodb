@@ -1716,7 +1716,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // check the arguments
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
-    pregel.toVelocyPack(builder);
+    pregel.toVelocyPack(vocbase, builder, false, true);
     TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
     return;
   }

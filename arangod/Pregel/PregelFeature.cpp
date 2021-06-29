@@ -33,6 +33,9 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Recovery.h"
@@ -44,6 +47,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+using namespace arangodb;
+using namespace arangodb::pregel;
+
 namespace {
 bool authorized(std::string const& user) {
   auto const& exec = arangodb::ExecContext::current();
@@ -51,6 +57,17 @@ bool authorized(std::string const& user) {
     return true;
   }
   return (user == exec.user());
+}
+
+network::Headers buildHeaders() {
+  auto auth = AuthenticationFeature::instance();
+
+  network::Headers headers;
+  if (auth != nullptr && auth->isActive()) {
+    headers.try_emplace(StaticStrings::Authorization,
+                        "bearer " + auth->tokenCache().jwtToken());
+  }
+  return headers;
 }
 
 /// @brief custom deleter for the PregelFeature.
@@ -63,9 +80,6 @@ struct NonDeleter {
 };
 
 }  // namespace
-
-using namespace arangodb;
-using namespace arangodb::pregel;
 
 std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
@@ -499,7 +513,11 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
   return nr;
 }
   
-void PregelFeature::toVelocyPack(arangodb::velocypack::Builder& result) const {
+Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
+                                   arangodb::velocypack::Builder& result, 
+                                   bool allDatabases, bool fanout) const {
+  Result res;
+
   result.openArray();
   {
     MUTEX_LOCKER(guard, _mutex);
@@ -513,5 +531,62 @@ void PregelFeature::toVelocyPack(arangodb::velocypack::Builder& result) const {
       ce.conductor->toVelocyPack(result);
     }
   }
+  
+  if (ServerState::instance()->isCoordinator() && fanout) {
+    // coordinator case, fan out to other coordinators!
+    NetworkFeature const& nf = vocbase.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::vector<network::FutureRes> futures;
+
+    network::RequestOptions options;
+    options.timeout = network::Timeout(30.0);
+    options.database = vocbase.name();
+    options.param("local", "true");
+    options.param("all", allDatabases ? "true" : "false");
+    
+    std::string const url = "/_api/control_pregel";
+
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
+      if (coordinator == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator, fuerte::RestVerb::Get,
+                                    url, VPackBuffer<uint8_t>{}, options, ::buildHeaders());
+      futures.emplace_back(std::move(f));
+    }
+
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        auto& resp = it.get();
+        res.reset(resp.combinedResult());
+        if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+          // it is expected in a multi-coordinator setup that a coordinator is not
+          // aware of a database that was created very recently.
+          res.reset();
+        }
+        if (res.fail()) {
+          break;
+        }
+        auto slice = resp.slice();
+        // copy results from other coordinators
+        if (slice.isArray()) {
+          for (auto const& entry : VPackArrayIterator(slice)) {
+            result.add(entry);
+          }
+        }
+      }
+    }
+  } 
+
   result.close();
+
+  return res;
 }

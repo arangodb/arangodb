@@ -190,8 +190,11 @@ void RestControlPregelHandler::getExecutionStatus() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.empty()) {
+    bool const allDatabases = _request->parsedValue("all", false);
+    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+
     VPackBuilder builder;
-    _pregel.toVelocyPack(builder);
+    _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);
     generateResult(rest::ResponseCode::OK, builder.slice());
     return;
   }

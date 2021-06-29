@@ -95,7 +95,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
 
-  void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  Result toVelocyPack(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
+                      bool allDatabases, bool fanout) const;
 
  private:
   void scheduleGarbageCollection();
