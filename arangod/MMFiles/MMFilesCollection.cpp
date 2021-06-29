@@ -3451,17 +3451,6 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
     }
   }
 
-  if (newSlice.length() <= 1) {
-    // no need to do anything
-    resultMdr = previousMdr;
-
-    if (_logicalCollection.waitForSync()) {
-      options.waitForSync = true;
-    }
-
-    return Result();
-  }
-
   Result res;
   // merge old and new values
   TRI_voc_rid_t revisionId;

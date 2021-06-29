@@ -63,9 +63,9 @@ TraverserCache::~TraverserCache() {
 void TraverserCache::clear() {
   _query->decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
 
-  _stringHeap.clear();
   _persistedStrings.clear();
   _mmdr.clear();
+  _stringHeap.clear();
 }
 
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
