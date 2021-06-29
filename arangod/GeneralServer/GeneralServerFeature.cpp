@@ -454,7 +454,11 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                                     RestHandlerCreator<RestViewHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_api/log", RestHandlerCreator<RestLogHandler>::createNoData);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (cluster.isEnabled()) {
+    _handlerFactory->addPrefixHandler("/_api/log", RestHandlerCreator<RestLogHandler>::createNoData);
+  }
+#endif
 
   // This is the only handler were we need to inject
   // more than one data object. So we created the combinedRegistries
@@ -640,9 +644,12 @@ void GeneralServerFeature::defineHandlers() {
 
   // UGLY HACK INCOMING!
 
-#define ADD_REDIRECT(from, to) do{_handlerFactory->addPrefixHandler(from, \
-                                    RestHandlerCreator<RestRedirectHandler>::createData<const char*>, \
-                                    (void*) to);}while(0)
+#define ADD_REDIRECT(from, to)                                                  \
+  do {                                                                          \
+    _handlerFactory->addPrefixHandler(                                          \
+        from, RestHandlerCreator<RestRedirectHandler>::createData<const char*>, \
+        (void*)(to));                                                           \
+  } while (0)
 
   ADD_REDIRECT("/_admin/clusterNodeVersion", "/_admin/cluster/nodeVersion");
   ADD_REDIRECT("/_admin/clusterNodeEngine", "/_admin/cluster/nodeEngine");

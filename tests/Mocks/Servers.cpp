@@ -21,7 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Servers.h"
+#include <algorithm>
 
 #include "Agency/AgencyStrings.h"
 #include "Agency/AsyncAgencyComm.h"
@@ -35,8 +35,8 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
-#include "Basics/StringUtils.h"
 #include "Basics/files.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -72,6 +72,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Servers.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -80,11 +81,14 @@
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
+
+#include "Servers.h"
+#include "TemplateSpecializer.h"
+
 #include "IResearch/AgencyMock.h"
 #include "IResearch/common.h"
+
 #include "Mocks/PreparedResponseConnectionPool.h"
-#include "Mocks/StorageEngineMock.h"
-#include "Mocks/TemplateSpecializer.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -97,9 +101,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/core/demangle.hpp>
-
-#include <algorithm>
-
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::tests;

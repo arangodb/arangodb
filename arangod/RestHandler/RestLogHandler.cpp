@@ -295,6 +295,13 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
 };
 
 RestStatus RestLogHandler::execute() {
+
+  // for now required admin access to the database
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
   switch (ServerState::instance()->getRole()) {
     case ServerState::ROLE_DBSERVER:
       return executeByMethod(ReplicatedLogMethodsDBServ(_vocbase));
