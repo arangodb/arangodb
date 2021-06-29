@@ -199,16 +199,22 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                 self->_logMetrics->replicatedLogAppendEntriesRttUs->count(duration / 1us);
                 LOG_CTX("8ff44", TRACE, follower.logContext)
                     << "received append entries response, messageId = " << messageId;
-                auto [preparedRequests, resolvedPromises] = std::invoke([&] {
-                  auto guarded = self->acquireMutex();
-                  if (guarded->_didResign) {
-                    // Is throwing the right thing to do here? - No, we are in a finally
-                    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-                  }
-                  return guarded->handleAppendEntriesResponse(
-                      parentLog, follower, lastIndex, currentCommitIndex,
-                      currentTerm, std::move(res), endTime - startTime, messageId);
-                });
+                auto [preparedRequests, resolvedPromises] = std::invoke(
+                    [&]() -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet> {
+                      auto guarded = self->acquireMutex();
+                      if (!guarded->_didResign) {
+                        // Is throwing the right thing to do here? - No, we are in a finally
+                        return guarded->handleAppendEntriesResponse(
+                            parentLog, follower, lastIndex, currentCommitIndex, currentTerm,
+                            std::move(res), endTime - startTime, messageId);
+                      } else {
+                        LOG_CTX("da116", DEBUG, follower.logContext)
+                            << "received response from follower but leader "
+                               "already resigned, messageId = "
+                            << messageId;
+                      }
+                      return {};
+                    });
 
                 // TODO execute this in a different context
                 for (auto& promise : resolvedPromises._set) {
