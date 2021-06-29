@@ -434,7 +434,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex
 }
 
 IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta)
-  : RocksDBIndex(id, collection, meta._name, meta.fields(), false, true,
+  : RocksDBIndex(id, collection, meta._name, meta.fields(), false, false,
     RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
     meta._objectId, false),
   IResearchInvertedIndex(std::move(meta)) {}
