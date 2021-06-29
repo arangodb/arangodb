@@ -98,7 +98,7 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                        arangodb::options::Flags::DefaultNoComponents,
                        arangodb::options::Flags::OnCoordinator,
                        arangodb::options::Flags::OnSingle))
-                     .setIntroducedIn(30712);
+                     .setIntroducedIn(30900);
 
   options->addOption("--server.local-authentication",
                      "enable authentication using the local user database",
