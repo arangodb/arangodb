@@ -546,7 +546,9 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   )
 
 set(LIB_ARANGO_REPLICATION2_SOURCES
+  Replication2/AgencyCollectionSpecification.cpp
   Replication2/AgencyMethods.cpp
+  Replication2/FeatureFlag.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
   Replication2/ReplicatedLog/Algorithms.cpp
   Replication2/ReplicatedLog/Common.cpp
@@ -563,8 +565,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/types.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-  Replication2/AgencyCollectionSpecification.cpp
-  Replication2/AgencyCollectionSpecification.h)
+  )
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp

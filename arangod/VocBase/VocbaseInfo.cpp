@@ -30,6 +30,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "Replication2/FeatureFlag.h"
+#include "Replication2/Version.h"
 #include "Utils/Events.h"
 
 namespace arangodb {
@@ -387,7 +389,15 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
     if (!replicationVersionSlice.isNone()) {
       auto res = replication::parseVersion(replicationVersionSlice);
       if (res.ok()) {
-        vocbaseOptions.replicationVersion = res.get();
+        auto version = res.get();
+        if (version == replication::Version::TWO && !replication2::EnableReplication2) {
+          ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_NOT_IMPLEMENTED,
+              "Replication2 is disabled, but trying to load a version 2 "
+              "database.");
+        }
+
+        vocbaseOptions.replicationVersion = version;
       } else {
         THROW_ARANGO_EXCEPTION(std::move(res).result().withError([&](result::Error& err) {
           err.resetErrorMessage(
