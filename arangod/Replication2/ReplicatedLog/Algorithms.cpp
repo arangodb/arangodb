@@ -109,7 +109,6 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
       }
 
       auto const requiredNumberOfAvailableParticipants = std::invoke([&spec = spec.currentTerm] {
-        // TODO is this still correct for MoveShard if Participants > ReplicationFactor?
         return spec->participants.size() - spec->config.writeConcern + 1;
       });
 
@@ -199,7 +198,8 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
       return std::make_pair(ConflictReason::LOG_ENTRY_AFTER_END,
                             TermIndexPair{lastEntry->logTerm(), lastEntry->logIndex() + 1});
     } else {
-      TRI_ASSERT(false);  // TODO this can only happen if we drop log entries
+      // this can only happen if we drop log entries, check the code below before removing the assert
+      TRI_ASSERT(false);
       TRI_ASSERT(prevLog.index < lastEntry->logIndex());
       TRI_ASSERT(prevLog.index < log.getFirstEntry()->logIndex());
       // the given index too old, reset to (0, 0)

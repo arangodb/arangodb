@@ -729,6 +729,18 @@ constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED             
 /// (due to a configuration change), even if the server stays a follower.
 constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED            = ErrorCode{1423};
 
+/// 1424: ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE
+/// "the replicated log of the participant is gone"
+/// Will be raised when a participant instance of a replicated log is no longer
+/// available.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE             = ErrorCode{1424};
+
+/// 1425: ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM
+/// "an invalid term was given"
+/// Will be raised when a participant tries to change its term but found a
+/// invalid new term.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM                 = ErrorCode{1425};
+
 /// 1446: ERROR_CLUSTER_NOT_FOLLOWER
 /// "not a follower"
 /// Will be raised when an operation is sent to a non-following server.

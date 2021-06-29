@@ -58,8 +58,6 @@ auto replicated_log::LogCore::insert(LogIterator& iter, bool waitForSync) -> Res
 
 auto replicated_log::LogCore::read(LogIndex first) const -> std::unique_ptr<LogIterator> {
   std::unique_lock guard(_operationMutex);
-  // TODO is this safe? Or do we have to hold the lock as long as the iterator exists?
-  //      I think this is safe because of rocksdb but at this point its an implementation detail.
   return _persistedLog->read(first);
 }
 

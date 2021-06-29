@@ -46,10 +46,6 @@ namespace arangodb::replication2::replicated_log {
  * instance is created, and the core moved from the old to the new instance. If
  * the server is currently neither a leader nor follower for the log, e.g.
  * during startup, the LogCore is held by a LogUnconfiguredParticipant instance.
- *
- * TODO When the unique_ptr to the LogCore is destroyed by accident, it must be
- *      moved back to the responsible ReplicatedLog instance in the vocbase.
- *      Add a deleter that does this, or something similar.
  */
 struct alignas(64) LogCore {
   explicit LogCore(std::shared_ptr<PersistedLog> persistedLog);

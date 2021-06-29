@@ -49,12 +49,9 @@ auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::tuple<std::
 
 auto replicated_log::LogUnconfiguredParticipant::waitFor(LogIndex)
     -> replicated_log::LogParticipantI::WaitForFuture {
-  // TODO how to resolve a future with an exception?
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 replicated_log::LogUnconfiguredParticipant::~LogUnconfiguredParticipant() {
-  // TODO It'd be more accurate to do this in resign(), and here only conditionally
-  //      depending on whether we still own the LogCore.
   _logMetrics->replicatedLogInactiveNumber->fetch_sub(1);
 }
 

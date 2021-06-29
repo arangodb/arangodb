@@ -119,8 +119,6 @@ auto replicated_log::InMemoryLog::getLastIndexOfTerm(LogTerm term) const noexcep
 
 replicated_log::InMemoryLog::InMemoryLog(LogContext const& logContext,
                                          replicated_log::LogCore const& logCore) {
-  // TODO this is a cheap trick for now. Later we should be aware of the fact
-  //      that the log might not start at 1.
   auto iter = logCore.read(LogIndex{0});
   auto log = _log.transient();
   while (auto entry = iter->next()) {

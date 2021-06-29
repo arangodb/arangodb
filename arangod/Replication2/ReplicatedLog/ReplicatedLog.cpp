@@ -56,14 +56,13 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     LogLeader::TermData const& termData,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
     -> std::shared_ptr<LogLeader> {
-  // TODO add check that term is different from current term
   auto [leader, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
     if (auto term = _participant->getTerm(); term && *term > termData.term) {
       LOG_CTX("b8bf7", INFO, _logContext)
           << "tried to become leader with term " << termData.term
           << ", but current term is " << *term;
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM);
     }
 
     auto [logCore, deferred] = std::move(*_participant).resign();
@@ -108,8 +107,7 @@ auto replicated_log::ReplicatedLog::getParticipant() const
     -> std::shared_ptr<LogParticipantI> {
   std::unique_lock guard(_mutex);
   if (_participant == nullptr) {
-    // TODO better error message
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
   }
 
   return _participant;

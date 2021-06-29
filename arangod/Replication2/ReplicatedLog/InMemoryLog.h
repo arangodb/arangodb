@@ -81,7 +81,6 @@ struct InMemoryLog {
       -> std::optional<LogEntry>;
   [[nodiscard]] auto splice(LogIndex from, LogIndex to) const -> log_type;
 
-  // TODO Add unit tests for getFirstIndexOfTerm and getLastIndexOfTerm
   [[nodiscard]] auto getFirstIndexOfTerm(LogTerm term) const noexcept
       -> std::optional<LogIndex>;
   [[nodiscard]] auto getLastIndexOfTerm(LogTerm term) const noexcept
