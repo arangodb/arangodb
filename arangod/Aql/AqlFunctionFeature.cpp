@@ -314,6 +314,9 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REPLACE_NTH", ".,.,.|.", flags, &Functions::ReplaceNth});
   add({"INTERLEAVE", ".,.|+", flags, &Functions::Interleave});
 
+  add({"DECAY_GAUSS", ".,.,.,.,.,", flags, &Functions::DecayGauss});
+  add({"DECAY_EXP", ".,.,.,.,.,", flags, &Functions::DecayExp});
+  add({"DECAY_LINEAR", ".,.,.,.,.,", flags, &Functions::DecayLinear});
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic
   // and not cacheable, as we don't know what function is actually gonna be
