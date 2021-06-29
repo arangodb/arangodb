@@ -233,6 +233,28 @@
               '',
               ''
             ]);
+          } else {
+            // sort by query id, descending
+            rowsArray = rowsArray.sort(function(l, r) {
+              // normalize both inputs to strings (in case they are numbers)
+              l = l[0];
+              if (typeof l !== "string") {
+                l = String(l);
+              }
+              r = r[0];
+              if (typeof r !== "string") {
+                r = String(r);
+              }
+              
+              // pad strings to the same length, by prepending '0' chars
+              l = Array(20 - l.length).join("0") + l;
+              r = Array(20 - r.length).join("0") + r;
+
+              if (l === r) {
+                return 0;
+              }
+              return l < r ? 1 : -1;
+            });
           }
 
           self.tableDescription.rows = rowsArray;
