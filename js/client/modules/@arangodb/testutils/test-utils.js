@@ -28,7 +28,6 @@
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
-const path = require('path');
 const pu = require('@arangodb/testutils/process-utils');
 const yaml = require('js-yaml');
 
@@ -241,7 +240,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
-        
+
         if (reply.hasOwnProperty('forceTerminate')) {
           results[te] = reply;
           continueTesting = false;
