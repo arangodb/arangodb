@@ -870,7 +870,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       cbDuringLock();
     }
 
-    guard.finish(hasPerformedIntermediateCommit);
+    if (res.ok()) {
+      guard.finish(hasPerformedIntermediateCommit);
+    }
   }
 
   return res;
@@ -912,15 +914,6 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     if (result != TRI_ERROR_NO_ERROR) {
       return res.reset(result);
     }
-  }
-
-  if (newSlice.length() <= 1) {  // TODO move above ?!
-    // shortcut. no need to do anything
-    resultMdr.setManaged(oldDoc.begin());
-    TRI_ASSERT(!resultMdr.empty());
-
-    trackWaitForSync(trx, options);
-    return res;
   }
 
   // merge old and new values
@@ -1159,7 +1152,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
       cbDuringLock();
     }
 
-    guard.finish(hasPerformedIntermediateCommit);
+    if (res.ok()) {
+      guard.finish(hasPerformedIntermediateCommit);
+    }
   }
 
   return res;

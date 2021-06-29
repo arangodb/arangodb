@@ -1,15 +1,34 @@
 v3.6.15 (XXXX-XX-XX)
 --------------------
 
-* On a failure during synchronous replication, do not remove the failed follower 
+* On a failure during synchronous replication, do not remove the failed follower
   from the list of known servers in the transaction.
   If we do, we would not be able to send the commit/abort to the follower later.
-  However, we still need to send the commit/abort to the follower at transaction 
+  However, we still need to send the commit/abort to the follower at transaction
   end, because the follower may be responsible  for _other_ shards as well.
 
   This change also removes dangling transactions that could stay around on
   followers until they expired after the transaction idle timeout (180 seconds),
-  and that could prevent a follower from getting back in sync during this period.
+  and that could prevent a follower from getting back in sync during this
+  period.
+
+* Honor return code of addOperation() calls. There were 2 places in the code
+  that did not test its return value. In case an insert or a remove operation
+  triggered a "resource limit exceeded" error, the operation was still added to
+  the WriteBatch successfully, but the "resource limit exceeded" error was
+  returned to the caller. This is now changed so that when an error occurs, the
+  current operation is not added to the WriteBatch but rolled back.
+
+* Removed a special case for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated) were handled in
+  a special way without performing any writes. The problem was that such updates
+  did not update the local state, but could have been replicated to followers.
+  This special empty update case is now removed and update operations that do
+  not update any attributes are treated as normal write operations both locally
+  and in the replication.
+
+* Fix an ownership issue in replication dump code. It was possible that a URL
+  string was referred to by a different thread after it became invalidated.
 
 * Updated arangosync to 1.6.0.
 
