@@ -308,9 +308,8 @@ class Node final {
   std::optional<std::reference_wrapper<Children const>> hasAsChildren(std::string const&) const;
 
   /// @brief accessor to Node then write to builder
-  /// @return  second is true if url exists, first is ignored
-  bool hasAsBuilder(std::string const&, Builder&,
-                                      bool showHidden = false) const;
+  /// @return  returns true if url exists
+  [[nodiscard]] bool hasAsBuilder(std::string const&, Builder&, bool showHidden = false) const;
 
   /// @brief accessor to Node's value as a Builder object
   /// @return  returns nullopt if not found or type doesn't match
