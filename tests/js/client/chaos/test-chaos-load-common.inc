@@ -1,28 +1,30 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
 /* global fail, assertTrue, assertFalse, assertEqual,
    assertNotEqual, arango, print */
+   
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License")
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Manuel Pöter
+////////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / DISCLAIMER
-// /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
-// /
-// / @author Manuel Pöter
-// //////////////////////////////////////////////////////////////////////////////
 'use strict';
 const _ = require('lodash');
 const jsunity = require('jsunity');
@@ -98,16 +100,15 @@ const clearAllFailurePoints = () => {
 function BaseChaosSuite(testOpts) {
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
-  const communication_cn = cn + "_comm";
-  
+  const coordination_cn = cn + "_coord";
 
   return {
     setUp: function () {
       db._drop(cn);
-      db._drop(communication_cn);
+      db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
-      db._create(communication_cn);
+      db._create(coordination_cn);
       
       if (testOpts.withFailurePoints) {
         let servers = getDBServers();
@@ -129,12 +130,12 @@ function BaseChaosSuite(testOpts) {
       clearAllFailurePoints();
       db._drop(cn);
       
-      const shells = db[communication_cn].all();
+      const shells = db[coordination_cn].all();
       if (shells.length > 0) {
-        print("Found remaining docs in communication collection:");
+        print("Found remaining docs in coordination collection:");
         print(shells);
       }
-      db._drop(communication_cn);
+      db._drop(coordination_cn);
     },
     
     testWorkInParallel: function () {
@@ -145,8 +146,12 @@ function BaseChaosSuite(testOpts) {
         const key = () => "testmann" + Math.floor(Math.random() * 100000000);
         const docs = () => {
           let result = [];
-          // TODO - optionally use only single-document operations
-          const r = Math.floor(Math.random() * 2000) + 1;
+          const max = 2000;
+          const r = Math.floor(Math.random() * max) + 1;
+          if (r > (max * 0.8)) {
+            // we want ~20% of all requests to be single document operations
+            r = 1;
+          }
           for (let i = 0; i < r; ++i) {
             result.push({ _key: key() });
           }
@@ -177,26 +182,24 @@ function BaseChaosSuite(testOpts) {
         
         let query = (...args) => db._query(...args);
         let trx = null;
-        let isTransaction = false;
         if (testOpts.withStreamingTransactions && Math.random() < 0.5) {
           trx = db._createTransaction({ collections: { write: [c.name()] } });
           c = trx.collection(testOpts.collection);
           query = (...args) => trx.query(...args);
-          isTransaction = true;
         }
 
-        const logAllOps = false;
+        const logAllOps = false; // can be set to true for debugging purposes
         const log = (msg) => {
           if (logAllOps) {
             console.info(msg);
           }
         };
-        const ops = isTransaction ? Math.floor(Math.random() * 5) + 1 : 1;
+        const ops = trx === null ? 1 : Math.floor(Math.random() * 5) + 1;
         for (let op = 0; op < ops; ++op) {
           try {
             const d = Math.random();
             if (d >= 0.98 && testOpts.withTruncate) {
-              console.warn("RUNNING TRUNCATE");
+              log("RUNNING TRUNCATE");
               c.truncate();
             } else if (d >= 0.9) {
               let o = opts();
@@ -217,10 +220,12 @@ function BaseChaosSuite(testOpts) {
               let o = opts();
               let d = docs();
               log(`RUNNING INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
+              d = d.length == 1 ? d[0] : d;
               c.insert(d, o);
             } else {
               let d = docs();
               log(`RUNNING REMOVE WITH ${d.length} DOCS`);
+              d = d.length == 1 ? d[0] : d;
               c.remove(d);
             }
           } catch (err) {}
@@ -244,7 +249,7 @@ function BaseChaosSuite(testOpts) {
       }
 
       // run the suite for 5 minutes
-      runParallelArangoshTests(tests, 5 * 60, communication_cn);
+      runParallelArangoshTests(tests, 5 * 60, coordination_cn);
 
       print("Finished load test - waiting for cluster to get in sync before checking consistency.");
       clearAllFailurePoints();
@@ -254,44 +259,40 @@ function BaseChaosSuite(testOpts) {
   };
 }
 
-function BuildChaosSuite(opts, suffix) {
-  let suite = {};
-  deriveTestSuite(BaseChaosSuite(opts), suite, suffix);
-  return suite;
-}
+// truncate is disabled because it does not work reliably ATM
+const params = ["IntermediateCommits", "FailurePoints", /*"Truncate",*/ "VaryingOverwriteMode", "StreamingTransactions"];
 
-const params = ["IntermediateCommits", "FailurePoints", "Truncate", "VaryingOverwriteMode", "StreamingTransactions"];
-
-function addSuite(paramValues) {
+const makeConfig = (paramValues) => {
   let suffix = "";
   let opts = {};
   for (let j = 0; j < params.length; ++j) {
     suffix += paramValues[j] ? "_with_" : "_no_";
     suffix += params[j];
     opts["with" + params[j]] = paramValues[j];
-  }  
-  let func = function() { return BuildChaosSuite(opts, suffix); };
+  }
+  return { suffix: suffix, options: opts };
+}
+
+const run = () => {
+  if (!global.currentTestConfig) {
+    throw "Chaos test requires global currentTestConfig to be defined!";
+  }
+  const { options, suffix } = global.currentTestConfig;
+  print("Running chaos test with config ", options);
+
+  let func = function() {
+    let suite = {};
+    deriveTestSuite(BaseChaosSuite(options), suite, suffix);
+    return suite;
+  };
   // define the function name as it shows up as suiteName
   Object.defineProperty(func, 'name', {value: "ChaosSuite" + suffix, writable: false});
 
   jsunity.run(func);
+
+  return jsunity.done();
 }
 
-/*
-This code dynamically creates test suites for all parameter combinations.
-ATM we don't use it since we don't want to include ALL suites in the PR tests, but
-we do want to have them in the nightlies, but that will be done in a separate PR.
-for (let i = 0; i < (1 << params.length); ++i) {
-  let paramValues = [];
-  for (let j = params.length - 1; j >= 0; --j) {
-    paramValues.push(Boolean(i & (1 << j)));
-  }
-  addSuite(paramValues);
-}
-*/
-
-// ATM we only create a single suite with all options except Truncate, because there are still known issues.
-// Later we probably want to have all possible combinations, at least for the nightly builds.
-addSuite([true, true, false, true, true]);
-
-return jsunity.done();
+module.exports.parameters = params;
+module.exports.makeConfig = makeConfig;
+module.exports.run = run;
