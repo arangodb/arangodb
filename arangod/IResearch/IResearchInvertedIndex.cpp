@@ -150,7 +150,7 @@ void IResearchInvertedIndex::toVelocyPack(
   }
 }
 
-bool IResearchInvertedIndex::matchesDefinition(VPackSlice other) const {
+bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
   std::vector<std::vector<basics::AttributeName>> myFields;
   FieldsBuilderWithAnalyzer fb(myFields);
   visitFields({0, irs::hashed_string_ref::NIL}, _meta._fieldsMeta, fb);
@@ -169,10 +169,8 @@ bool IResearchInvertedIndex::matchesDefinition(VPackSlice other) const {
 
   // Order of fields does not matter
   std::vector<arangodb::basics::AttributeName> translate;
-  for (size_t i = 0; i < n; ++i) {
-    translate.clear();
-    VPackSlice fieldSlice = value.at(i);
-
+  size_t matched{0};
+  for (auto fieldSlice : VPackArrayIterator(value)) {
     TRI_ASSERT(fieldSlice.isObject()); // We expect only normalized definitions here.
                               // Otherwise we will need vocbase to properly match analyzers.
     if (ADB_UNLIKELY(!fieldSlice.isObject())) {
@@ -189,18 +187,19 @@ bool IResearchInvertedIndex::matchesDefinition(VPackSlice other) const {
 
     auto in = name.stringRef();
     irs::string_ref analyzerName = analyzer.stringView();
-    TRI_ParseAttributeString(in, translate, true);
+    TRI_ParseAttributeString(in, translate, false);
     size_t fieldIdx{0};
     for (auto const& f : myFields) {
       if (fb._analyzerNames[fieldIdx++] == analyzerName) {
-        if (!arangodb::basics::AttributeName::isIdentical(f, translate, false)) {
-          return false;
+        if (arangodb::basics::AttributeName::isIdentical(f, translate, false)) {
+          matched++;
+          break;
         } 
       }
-      translate.clear();
     }
+    translate.clear();
   }
-  return true;
+  return matched == count;
 }
 
 std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iteratorForCondition(
@@ -459,6 +458,29 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
   builder.add(arangodb::StaticStrings::IndexName, arangodb::velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+}
+
+bool IResearchRocksDBInvertedIndex::matchesDefinition(arangodb::velocypack::Slice const& other) const {
+  TRI_ASSERT(other.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto typeSlice = other.get(arangodb::StaticStrings::IndexType);
+  TRI_ASSERT(typeSlice.isString());
+  arangodb::velocypack::StringRef typeStr(typeSlice);
+  TRI_ASSERT(typeStr == oldtypeName());
+#endif
+  auto value = other.get(arangodb::StaticStrings::IndexId);
+
+  if (!value.isNone()) {
+    // We already have an id.
+    if (!value.isString()) {
+      // Invalid ID
+      return false;
+    }
+    // Short circuit. If id is correct the index is identical.
+    arangodb::velocypack::StringRef idRef(value);
+    return idRef == std::to_string(id().id());
+  }
+  return IResearchInvertedIndex::matchesFieldsDefinition(other);
 }
 
 } // namespace iresearch
