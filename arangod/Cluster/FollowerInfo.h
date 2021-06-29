@@ -55,8 +55,8 @@ class FollowerInfo {
   std::shared_ptr<std::vector<ServerID>> _failoverCandidates;
 
   // The following map holds a random number for each follower, this
-  // random number is sent given to the follower when it gets in sync
-  // (actually, when it acquires the hard lock to get in sync), and is
+  // random number is given and sent to the follower when it gets in sync
+  // (actually, when it acquires the exclusive lock to get in sync), and is
   // then subsequently sent alongside every synchronous replication
   // request. If the number does not match, the follower will refuse the
   // replication request. This is to ensure that replication requests cannot
