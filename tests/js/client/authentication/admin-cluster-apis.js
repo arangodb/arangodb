@@ -51,7 +51,6 @@ function AuthSuite() {
   };
 
   let checkClusterNodeVersion = function() {
-    // this will just redirect to a new endpoint
     let result = arango.GET('/_admin/cluster/nodeVersion?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('server'), result);
     assertTrue(result.hasOwnProperty('license'), result);
@@ -59,7 +58,6 @@ function AuthSuite() {
   };
 
   let checkClusterNodeEngine = function() {
-    // this will just redirect to a new endpoint
     let result = arango.GET('/_admin/cluster/nodeEngine?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('name'), result);
   };
