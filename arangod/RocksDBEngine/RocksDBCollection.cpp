@@ -870,7 +870,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       cbDuringLock();
     }
 
-    guard.finish(hasPerformedIntermediateCommit);
+    if (res.ok()) {
+      guard.finish(hasPerformedIntermediateCommit);
+    }
   }
 
   return res;
@@ -1150,7 +1152,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
       cbDuringLock();
     }
 
-    guard.finish(hasPerformedIntermediateCommit);
+    if (res.ok()) {
+      guard.finish(hasPerformedIntermediateCommit);
+    }
   }
 
   return res;

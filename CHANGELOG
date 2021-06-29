@@ -1,6 +1,13 @@
 v3.6.15 (XXXX-XX-XX)
 --------------------
 
+* Honor return code of addOperation() calls. There were 2 places in the code
+  that did not test its return value. In case an insert or a remove operation
+  triggered a "resource limit exceeded" error, the operation was still added to
+  the WriteBatch successfully, but the "resource limit exceeded" error was
+  returned to the caller. This is now changed so that when an error occurs, the
+  current operation is not added to the WriteBatch but rolled back.
+
 * Removed a special case for empty document update operations (i.e. update
   requests in which no attributes were specified to be updated) were handled in
   a special way without performing any writes. The problem was that such updates
