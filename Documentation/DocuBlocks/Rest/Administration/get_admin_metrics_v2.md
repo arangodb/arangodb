@@ -1,20 +1,13 @@
 
-@startDocuBlock get_admin_metrics
+@startDocuBlock get_admin_metrics_v2
 @brief return the current instance metrics
 
-@RESTHEADER{GET /_admin/metrics, Read the metrics, getMetrics}
-
-@HINTS
-{% hint 'warning' %}
-This endpoint should no longer be used. It is deprecated from version 3.8.0 on.
-Use `/_admin/metrics/v2` instead, which provides the data exposed by this API
-and a lot more.
-{% endhint %}
+@RESTHEADER{GET /_admin/metrics/v2, Read the metrics, getMetricsV2}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{serverId,string,optional}
-Returns metrics of the specified server. If no serverId is given, the asked 
+Returns metrics of the specified server. If no serverId is given, the asked
 server will reply. This parameter is only meaningful on Coordinators.
 
 @RESTDESCRIPTION
@@ -24,8 +17,8 @@ at any given time and exposes them for collection by Prometheus.
 
 The document contains different metrics and metrics groups dependent
 on the role of the queried instance. All exported metrics are
-published with the `arangodb_` or `rocksdb_` string to distinguish
-them from other collected data. 
+published with the prefix `arangodb_` or `rocksdb_` to distinguish them from
+other collected data.
 
 The API then needs to be added to the Prometheus configuration file
 for collection.
@@ -42,8 +35,8 @@ to be not found.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestAdminMetrics}
-    var url = "/_admin/metrics";
+@EXAMPLE_ARANGOSH_RUN{RestAdminMetricsV2}
+    var url = "/_admin/metrics/v2";
     var response = logCurlRequest('GET', url);
 
     assert(response.code === 200);
