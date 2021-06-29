@@ -133,20 +133,20 @@ auto replicated_log::LogLeader::tryHardToClearQueue() noexcept -> void {
 
 auto replicated_log::LogLeader::instantiateFollowers(
     LogContext logContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-    std::shared_ptr<LocalFollower> const& localFollower, LogIndex lastIndex)
+    std::shared_ptr<LocalFollower> const& localFollower, TermIndexPair lastEntry)
     -> std::vector<FollowerInfo> {
-  auto initLastIndex =
-      lastIndex == LogIndex{0} ? LogIndex{0} : LogIndex{lastIndex.value - 1};
+  auto initLastIndex = lastEntry.index == LogIndex{0}
+                           ? LogIndex{0}
+                           : LogIndex{lastEntry.index.value - 1};
   std::vector<FollowerInfo> follower_vec;
   follower_vec.reserve(follower.size() + 1);
-  follower_vec.emplace_back(localFollower, lastIndex, logContext);
+  follower_vec.emplace_back(localFollower, lastEntry, logContext);
   std::transform(follower.cbegin(), follower.cend(), std::back_inserter(follower_vec),
                  [&](std::shared_ptr<AbstractFollower> const& impl) -> FollowerInfo {
-                   return FollowerInfo{impl, initLastIndex, logContext};
+                   return FollowerInfo{impl, TermIndexPair{LogTerm{0}, initLastIndex}, logContext};
                  });
   return follower_vec;
 }
-
 
 namespace {
 auto delayedFuture(std::chrono::steady_clock::duration duration) -> futures::Future<futures::Unit> {
@@ -263,7 +263,7 @@ auto replicated_log::LogLeader::construct(
   };
 
   auto log = InMemoryLog{logContext, *logCore};
-  auto const lastIndex = log.getLastIndex();
+  auto const lastIndex = log.getLastTermIndexPair();
 
   auto commonLogContext = logContext.with<logContextKeyTerm>(termData.term)
                               .with<logContextKeyLeaderId>(termData.id);
@@ -360,7 +360,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     for (FollowerInfo const& f : leaderData._follower) {
       status.follower[f._impl->getParticipantId()] = {
           // TODO introduce lastAckedTerm
-          LogStatistics{TermIndexPair(LogTerm(0), f.lastAckedIndex), f.lastAckedCommitIndex},
+          LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex},
           f.lastErrorReason,
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency)
               .count()};
@@ -475,19 +475,19 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   }
 
   auto currentCommitIndex = _commitIndex;
-  auto lastAvailableIndex = _inMemoryLog.getLastIndex();
+  auto lastAvailableIndex = _inMemoryLog.getLastTermIndexPair();
   LOG_CTX("8844a", TRACE, follower.logContext)
-      << "last acked index = " << follower.lastAckedIndex
+      << "last acked index = " << follower.lastAckedEntry
       << ", current index = " << lastAvailableIndex
       << ", last acked commit index = " << follower.lastAckedCommitIndex
       << ", current commit index = " << _commitIndex;
-  if (follower.lastAckedIndex == lastAvailableIndex &&
+  if (follower.lastAckedEntry.index == lastAvailableIndex.index &&
       _commitIndex == follower.lastAckedCommitIndex) {
     LOG_CTX("74b71", TRACE, _self._logContext) << "up to date";
     return std::nullopt;  // nothing to replicate
   }
 
-  auto const lastAcked = _inMemoryLog.getEntryByIndex(follower.lastAckedIndex);
+  auto const lastAcked = _inMemoryLog.getEntryByIndex(follower.lastAckedEntry.index);
 
   AppendEntriesRequest req;
   req.leaderCommit = _commitIndex;
@@ -506,7 +506,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 
   {
     // TODO maybe put an iterator into the request?
-    auto it = getLogIterator(follower.lastAckedIndex);
+    auto it = getLogIterator(follower.lastAckedEntry.index);
     auto transientEntries = decltype(req.entries)::transient_type{};
     while (auto entry = it->next()) {
       transientEntries.push_back(*std::move(entry));
@@ -519,7 +519,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 
   auto isEmptyAppendEntries = req.entries.empty();
   auto lastIndex =
-      isEmptyAppendEntries ? lastAvailableIndex : req.entries.back().logIndex();
+      isEmptyAppendEntries ? lastAvailableIndex : req.entries.back().logTermIndexPair();
 
   LOG_CTX("af3c6", TRACE, follower.logContext)
       << "preparing append entries with " << req.entries.size()
@@ -550,7 +550,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 
 auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
-    LogIndex lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
+    TermIndexPair lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
     futures::Try<AppendEntriesResult>&& res,
     std::chrono::steady_clock::duration latency, MessageId messageId)
     -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet> {
@@ -582,7 +582,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
       follower.lastErrorReason = response.reason;
       if (response.isSuccess()) {
         follower.numErrorsSinceLastAnswer = 0;
-        follower.lastAckedIndex = lastIndex;
+        follower.lastAckedEntry = lastIndex;
         follower.lastAckedCommitIndex = currentCommitIndex;
         toBeResolved = checkCommitIndex(parentLog);
       } else {
@@ -595,11 +595,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
             follower.numErrorsSinceLastAnswer = 0;
             TRI_ASSERT(response.conflict.has_value());
-            follower.lastAckedIndex = response.conflict.value().index;
+            follower.lastAckedEntry.index = response.conflict.value().index;
             LOG_CTX("33c6d", DEBUG, follower.logContext)
-                << "reset last acked index to " << follower.lastAckedIndex;
-            if (follower.lastAckedIndex > LogIndex{0}) {
-              follower.lastAckedIndex = LogIndex{follower.lastAckedIndex.value - 1};
+                << "reset last acked index to " << follower.lastAckedEntry;
+            if (follower.lastAckedEntry.index > LogIndex{0}) {
+              follower.lastAckedEntry.index = LogIndex{follower.lastAckedEntry.index.value - 1};
             }
             break;
           default:
@@ -656,7 +656,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
   std::vector<std::pair<LogIndex, ParticipantId>> indexes;
   std::transform(_follower.begin(), _follower.end(),
                  std::back_inserter(indexes), [](FollowerInfo const& f) {
-                   return std::make_pair(f.lastAckedIndex, f._impl->getParticipantId());
+                   return std::make_pair(f.lastAckedEntry.index, f._impl->getParticipantId());
                  });
   TRI_ASSERT(indexes.size() == _follower.size());
 
@@ -822,9 +822,9 @@ auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<Lo
 }
 
 replicated_log::LogLeader::FollowerInfo::FollowerInfo(std::shared_ptr<AbstractFollower> impl,
-                                                      LogIndex lastLogIndex,
+                                                      TermIndexPair lastLogIndex,
                                                       LogContext logContext)
     : _impl(std::move(impl)),
-      lastAckedIndex(lastLogIndex),
+      lastAckedEntry(lastLogIndex),
       logContext(logContext.with<logContextKeyLogComponent>("follower-info")
                      .with<logContextKeyFollowerId>(_impl->getParticipantId())) {}

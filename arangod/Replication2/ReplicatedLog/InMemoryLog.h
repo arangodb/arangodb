@@ -71,6 +71,7 @@ struct InMemoryLog {
 
   ~InMemoryLog() noexcept = default;
 
+  [[nodiscard]] auto getLastTermIndexPair() const noexcept -> TermIndexPair;
   [[nodiscard]] auto getLastIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getLastTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto getLastEntry() const noexcept -> std::optional<LogEntry>;

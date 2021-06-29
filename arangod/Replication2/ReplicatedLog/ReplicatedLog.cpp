@@ -57,8 +57,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
     -> std::shared_ptr<LogLeader> {
   // TODO add check that term is different from current term
-  auto leader = std::shared_ptr<LogLeader>{};
-  auto deferred = std::invoke([&] {
+  auto [leader, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
     if (auto term = _participant->getTerm(); term && *term > termData.term) {
       LOG_CTX("b8bf7", INFO, _logContext)
@@ -70,11 +69,11 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     auto [logCore, deferred] = std::move(*_participant).resign();
     LOG_CTX("23d7b", DEBUG, _logContext)
         << "becoming leader in term " << termData.term;
-    leader = LogLeader::construct(termData, std::move(logCore), follower,
+    auto leader = LogLeader::construct(termData, std::move(logCore), follower,
                                   _logContext, _metrics);
     _participant = std::static_pointer_cast<LogParticipantI>(leader);
     _metrics->replicatedLogLeaderTookOverNumber->count();
-    return std::move(deferred);
+    return std::make_pair(std::move(leader), std::move(deferred));
   });
 
   return leader;

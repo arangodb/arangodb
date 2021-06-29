@@ -120,11 +120,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   using ConstGuard = MutexGuard<GuardedLeaderData const, std::unique_lock<std::mutex>>;
 
   struct alignas(64) FollowerInfo {
-    explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl, LogIndex lastLogIndex, LogContext logContext);
+    explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl,
+                          TermIndexPair lastLogIndex, LogContext logContext);
 
     std::chrono::steady_clock::duration _lastRequestLatency{};
     std::shared_ptr<AbstractFollower> _impl;
-    LogIndex lastAckedIndex = LogIndex{0};
+    TermIndexPair lastAckedEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     MessageId lastSendMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
@@ -159,7 +160,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     FollowerInfo* _follower;
     AppendEntriesRequest _request;
     std::weak_ptr<LogLeader> _parentLog;
-    LogIndex _lastIndex;
+    TermIndexPair _lastIndex;
     LogIndex _currentCommitIndex;
     LogTerm _currentTerm;
     std::chrono::steady_clock::duration _executionDelay;
@@ -189,7 +190,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
     [[nodiscard]] auto handleAppendEntriesResponse(
         std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
-        LogIndex lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
+        TermIndexPair lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
         futures::Try<AppendEntriesResult>&& res, std::chrono::steady_clock::duration latency,
         MessageId messageId)
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet>;
@@ -225,7 +226,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   static auto instantiateFollowers(LogContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                                    std::shared_ptr<LocalFollower> const& localFollower,
-                                   LogIndex lastIndex) -> std::vector<FollowerInfo>;
+                                   TermIndexPair lastEntry) -> std::vector<FollowerInfo>;
 
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;

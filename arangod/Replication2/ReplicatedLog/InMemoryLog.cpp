@@ -49,7 +49,14 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 auto replicated_log::InMemoryLog::getLastIndex() const noexcept -> LogIndex {
-    return LogIndex{_log.size()};
+  return LogIndex{_log.size()};
+}
+
+auto replicated_log::InMemoryLog::getLastTermIndexPair() const noexcept -> TermIndexPair{
+  if (_log.empty()) {
+    return {};
+  }
+  return _log.back().logTermIndexPair();
 }
 
 auto replicated_log::InMemoryLog::getLastTerm() const noexcept -> LogTerm {
