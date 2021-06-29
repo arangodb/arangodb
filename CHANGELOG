@@ -12,6 +12,8 @@ devel
   available, the coordinator is now notified of that and will terminate the
   query more eagerly.
 
+* Updated arangosync to 2.4.0.
+
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
   resetted, resulting in undefined behavior for traversals returning unique
   vertices from inner FOR loops.
