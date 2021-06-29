@@ -135,14 +135,14 @@ class MockGraph {
   std::vector<EdgeDef> _edges;
   std::unordered_set<VertexDef, hashVertexDef> _vertices;
 
+ private:
+  std::string _vertexCollectionName{"v"};
+  std::string _edgeCollectionName{"e"};
+
   std::vector<std::pair<std::string, std::string>> _vertexShards{
       {"s9870", "PRMR_0001"}};
   std::vector<std::pair<std::string, std::string>> _edgeShards{
       {"s9880", "PRMR_0001"}};
-
- private:
-  std::string _vertexCollectionName{"v"};
-  std::string _edgeCollectionName{"e"};
 };
 }  // namespace graph
 }  // namespace tests
