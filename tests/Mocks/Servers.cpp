@@ -594,23 +594,10 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
       .wait();
 }
 
-// Create a clusterWide Collection.
-// This does NOT create Shards.
-std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
-    std::string const& dbName, std::string collectionName,
-    std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
-    TRI_col_type_e type, VPackSlice additionalProperties) {
-  /*
-  std::string cID, uint64_t shards,
-                                  uint64_t replicationFactor, uint64_t writeConcern,
-                                  bool waitForRep, velocypack::Slice const& slice,
-                                  std::string coordinatorId, RebootId rebootId */
-  // This is unsafe
-  std::string cid = "98765" + basics::StringUtils::itoa(type);
-  auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
-  auto vocbase = databaseFeature.lookupDatabase(dbName);
-
-  VPackBuilder props;
+void MockClusterServer::buildCollectionProperties(VPackBuilder& props,
+                                                  std::string const& collectionName,
+                                                  std::string const& cid, TRI_col_type_e type,
+                                                  VPackSlice additionalProperties) {
   {
     // This is hand-crafted unfortunately the code does not exist...
     VPackObjectBuilder guard(&props);
@@ -645,24 +632,13 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
       }
     }
   }
-  LOG_DEVEL << props.toJson();
-  LogicalCollection dummy(*vocbase, props.slice(), true);
+}
 
-  auto shards = std::make_shared<ShardMap>();
-  for (auto const& [shard, server] : shardNameToServerNamePairs) {
-    shards->emplace(shard, std::vector<ServerID>{server});
-  }
-  dummy.setShardMap(shards);
-
-  std::unordered_set<std::string> const ignoreKeys{
-      "allowUserKeys", "cid",     "globallyUniqueId", "count",
-      "planId",        "version", "objectId"};
-  dummy.setStatus(TRI_VOC_COL_STATUS_LOADED);
-  VPackBuilder velocy =
-      dummy.toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
-
+void MockClusterServer::injectCollectionToAgency(
+    std::string const& dbName, VPackBuilder& velocy, DataSourceId const& planId,
+    std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs) {
   agencyTrx("/arango/Plan/Collections/" + dbName + "/" +
-                basics::StringUtils::itoa(dummy.planId().id()),
+                basics::StringUtils::itoa(planId.id()),
             velocy.toJson());
   {
     /* Hard-Coded section to inject the CURRENT counter part.
@@ -692,7 +668,7 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
       }
     }
     agencyTrx("/arango/Current/Collections/" + dbName + "/" +
-                  basics::StringUtils::itoa(dummy.planId().id()),
+                  basics::StringUtils::itoa(planId.id()),
               current.toJson());
   }
 
@@ -705,6 +681,41 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
       .clusterInfo()
       .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
       .wait();
+}
+
+// Create a clusterWide Collection.
+// This does NOT create Shards.
+std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
+    std::string const& dbName, std::string collectionName,
+    std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
+    TRI_col_type_e type, VPackSlice additionalProperties) {
+  /*
+  std::string cID, uint64_t shards,
+                                  uint64_t replicationFactor, uint64_t writeConcern,
+                                  bool waitForRep, velocypack::Slice const& slice,
+                                  std::string coordinatorId, RebootId rebootId */
+  // This is unsafe
+  std::string cid = "98765" + basics::StringUtils::itoa(type);
+  auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = databaseFeature.lookupDatabase(dbName);
+
+  VPackBuilder props;
+  buildCollectionProperties(props, collectionName, cid, type, additionalProperties);
+  LogicalCollection dummy(*vocbase, props.slice(), true);
+
+  auto shards = std::make_shared<ShardMap>();
+  for (auto const& [shard, server] : shardNameToServerNamePairs) {
+    shards->emplace(shard, std::vector<ServerID>{server});
+  }
+  dummy.setShardMap(shards);
+
+  std::unordered_set<std::string> const ignoreKeys{
+      "allowUserKeys", "cid",     "globallyUniqueId", "count",
+      "planId",        "version", "objectId"};
+  dummy.setStatus(TRI_VOC_COL_STATUS_LOADED);
+  VPackBuilder velocy =
+      dummy.toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
+  injectCollectionToAgency(dbName, velocy, dummy.planId(), shardNameToServerNamePairs);
 
   ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
   return clusterInfo.getCollection(dbName, collectionName);

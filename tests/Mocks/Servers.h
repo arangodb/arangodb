@@ -202,7 +202,16 @@ class MockClusterServer : public MockServer,
   std::shared_ptr<LogicalCollection> createCollection(
       std::string const& dbName, std::string collectionName,
       std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
-      TRI_col_type_e type, VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
+      TRI_col_type_e type,
+      VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
+
+  void buildCollectionProperties(VPackBuilder& props, std::string const& collectionName,
+                                 std::string const& cid, TRI_col_type_e type,
+                                 VPackSlice additionalProperties);
+
+  void injectCollectionToAgency(std::string const& dbName, VPackBuilder& velocy,
+                                DataSourceId const& planId,
+                                std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs);
 
   // You can only create specialized types
  protected:
@@ -213,7 +222,7 @@ class MockClusterServer : public MockServer,
   // Implementation knows the place when all features are included
   consensus::index_t agencyTrx(std::string const& key, std::string const& value);
   void agencyCreateDatabase(std::string const& name);
-  
+
   // creation of collection is separated
   // as for DBerver at first maintenance should
   // create database and only after collections
@@ -221,7 +230,7 @@ class MockClusterServer : public MockServer,
   void agencyCreateCollections(std::string const& name);
   void agencyDropDatabase(std::string const& name);
 
-protected:
+ protected:
   std::unique_ptr<arangodb::network::ConnectionPool> _pool;
   bool _useAgencyMockPool;
   arangodb::ServerState::RoleEnum _oldRole;
