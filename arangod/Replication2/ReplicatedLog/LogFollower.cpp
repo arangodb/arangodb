@@ -110,8 +110,6 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
                                AppendEntriesErrorReason::INVALID_LEADER_ID, req.messageId};
   }
 
-  // TODO does >= suffice here? Maybe we want to do an atomic operation
-  //      before increasing our term
   if (req.leaderTerm != _currentTerm) {
     LOG_CTX("dd7a3", DEBUG, _logContext)
         << "reject append entries - wrong term, given = " << req.leaderTerm
@@ -140,7 +138,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     if (!res.ok()) {
       LOG_CTX("f17b8", ERR, _logContext)
           << "failed to remove log entries after " << req.prevLogIndex;
-      abort();  // TODO abort?
+      FATAL_ERROR_EXIT();
     }
   }
 
@@ -188,8 +186,6 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
                             DeferredAction([toBeResolved = std::move(toBeResolved)]() noexcept {
                               for (auto it = toBeResolved->value().begin;
                                    it != toBeResolved->value().end; it++) {
-                                // TODO what do we resolve this with? QuorumData is not available on follower
-                                // TODO execute this in a different context.
                                 if (!it->second.isFulfilled()) {
                                   // This only throws if promise was fulfilled earlier.
                                   it->second.setValue(std::shared_ptr<QuorumData>{});
@@ -218,7 +214,6 @@ replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
 auto replicated_log::LogFollower::GuardedFollowerData::waitFor(LogIndex index)
     -> replicated_log::LogParticipantI::WaitForFuture {
   if (_commitIndex >= index) {
-    // TODO give current term?
     return futures::Future<std::shared_ptr<QuorumData const>>{std::in_place, nullptr};
   }
   // emplace might throw a std::bad_alloc but the remainder is noexcept
@@ -234,7 +229,6 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
     -> replicated_log::LogParticipantI::WaitForIteratorFuture {
   TRI_ASSERT(index != LogIndex{0});
   return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
-    // TODO what if the data was compacted after the commit index reached index?
     return getLogIterator(LogIndex{index.value - 1});
   });
 }

@@ -281,7 +281,6 @@ auto replicated_log::LogLeader::construct(
       instantiateFollowers(commonLogContext, followers, localFollower, lastIndex);
   leader->_localFollower = std::move(localFollower);
 
-  // TODO hack
   if (leaderDataGuard->_follower.size() == 1) {
     leaderDataGuard->_commitIndex = leaderDataGuard->_inMemoryLog.getLastIndex();
   }
@@ -300,8 +299,6 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
 }
 
 auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
-  // TODO Do we need to do more than that, like make sure to refuse future
-  //      requests?
   return _guardedLeaderData.doUnderLock([this, &localFollower = *_localFollower,
                                          &participantId = _termData.id](GuardedLeaderData& leaderData) {
     if (leaderData._didResign) {
@@ -359,7 +356,6 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.term = term;
     for (FollowerInfo const& f : leaderData._follower) {
       status.follower[f._impl->getParticipantId()] = {
-          // TODO introduce lastAckedTerm
           LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex},
           f.lastErrorReason,
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency)
@@ -372,8 +368,6 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
 // NOLINTNEXTLINE(performance-unnecessary-value-param)
 auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
   auto const insertTp = LogEntry::clock::now();
-  // TODO this has to be lock free
-  // TODO investigate what order between insert-increaseTerm is required?
   // Currently we use a mutex. Is this the only valid semantic?
   return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leaderData) {
     if (leaderData._didResign) {
@@ -493,7 +487,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   req.leaderCommit = _commitIndex;
   req.leaderTerm = _self._termData.term;
   req.leaderId = _self._termData.id;
-  req.waitForSync = _self._termData.waitForSync; // TODO select this based on the log entries
+  req.waitForSync = _self._termData.waitForSync;
   req.messageId = ++follower.lastSendMessageId;
 
   if (lastAcked) {
@@ -505,7 +499,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   }
 
   {
-    // TODO maybe put an iterator into the request?
     auto it = getLogIterator(follower.lastAckedEntry.index);
     auto transientEntries = decltype(req.entries)::transient_type{};
     while (auto entry = it->next()) {
@@ -586,10 +579,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         follower.lastAckedCommitIndex = currentCommitIndex;
         toBeResolved = checkCommitIndex(parentLog);
       } else {
-        // TODO Optimally, we'd like this condition (lastAckedIndex > 0) to be
-        //      assertable here. For that to work, we need to make sure that no
-        //      other failures than "I don't have that log entry" can lead to
-        //      this branch.
         TRI_ASSERT(response.reason != AppendEntriesErrorReason::NONE);
         switch (response.reason) {
           case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
@@ -652,7 +641,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
     std::weak_ptr<LogLeader> const& parentLog) -> ResolvedPromiseSet {
   auto const quorum_size = _self._termData.writeConcern;
 
-  // TODO make this so that we can place any predicate here
   std::vector<std::pair<LogIndex, ParticipantId>> indexes;
   std::transform(_follower.begin(), _follower.end(),
                  std::back_inserter(indexes), [](FollowerInfo const& f) {
@@ -763,8 +751,6 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
     metrics->replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
   }};
 
-  // TODO maybe this is to much and we have to add the values
-  //      manually to the messages
   auto messageLogContext =
       _logContext.with<logContextKeyMessageId>(request.messageId)
           .with<logContextKeyPrevLogIdx>(request.prevLogIndex)
@@ -777,7 +763,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
         if (!res.ok()) {
           LOG_CTX("fdc87", ERR, logContext)
               << "local follower failed to write entries: " << res;
-          abort();  // TODO abort
+          FATAL_ERROR_EXIT();
         }
         LOG_CTX("e0800", TRACE, logContext)
             << "local follower completed append entries";
