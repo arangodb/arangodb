@@ -1337,7 +1337,7 @@ function ahuacatlQuerySimpleTestSuite () {
 
     testLargeQuery : function() {
       let q = "";
-      const cnt = 1000;
+      const cnt = 990;
       for (let i = 0; i < cnt; ++i) {
         q += `LET v${i} = NOOPT(1)\n`;
       }
