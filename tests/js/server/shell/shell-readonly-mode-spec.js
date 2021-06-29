@@ -153,10 +153,7 @@ describe('Readonly mode api', function() {
     }
 
     let server = setReadOnlyAndGetDBServer();
-    let resp = download(endpoint + '/_admin/cluster/NodeVersion?ServerID=' + server);
-    expect(resp.code).to.equal(308);
-    
-    resp = download(endpoint + '/_admin/cluster/nodeVersion?ServerID=' + server);
+    let resp = download(endpoint + '/_admin/cluster/nodeVersion?ServerID=' + server);
     expect(resp.code).to.equal(200);
   });
   
@@ -167,9 +164,6 @@ describe('Readonly mode api', function() {
     
     let server = setReadOnlyAndGetDBServer();
     let resp = download(endpoint + '/_admin/cluster/nodeEngine?ServerID=' + server);
-    expect(resp.code).to.equal(308);
-    
-    resp = download(endpoint + '/_admin/cluster/nodeEngine?ServerID=' + server);
     expect(resp.code).to.equal(200);
   });
   

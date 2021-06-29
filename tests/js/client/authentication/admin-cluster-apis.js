@@ -53,9 +53,6 @@ function AuthSuite() {
   let checkClusterNodeVersion = function() {
     // this will just redirect to a new endpoint
     let result = arango.GET('/_admin/cluster/nodeVersion?ServerID=' + servers[0]);
-    assertEqual(308, result.code);
-    
-    result = arango.GET('/_admin/cluster/nodeVersion?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('server'), result);
     assertTrue(result.hasOwnProperty('license'), result);
     assertTrue(result.hasOwnProperty('version'), result);
@@ -64,18 +61,11 @@ function AuthSuite() {
   let checkClusterNodeEngine = function() {
     // this will just redirect to a new endpoint
     let result = arango.GET('/_admin/cluster/nodeEngine?ServerID=' + servers[0]);
-    assertEqual(308, result.code);
-    
-    result = arango.GET('/_admin/cluster/nodeEngine?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('name'), result);
   };
 
   let checkClusterNodeStats = function() {
-    // this will just redirect to a new endpoint
-    let result = arango.GET('/_admin/cluster/nodeStats?ServerID=' + servers[0]);
-    assertEqual(308, result.code);
-    
-    result = arango.GET('/_admin/cluster/nodeStatistics?ServerID=' + servers[0]);
+    let result = arango.GET('/_admin/cluster/nodeStatistics?ServerID=' + servers[0]);
     assertTrue(result.hasOwnProperty('time'), result);
     assertTrue(result.hasOwnProperty('system'), result);
   };
