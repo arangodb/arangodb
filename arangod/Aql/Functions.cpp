@@ -1817,6 +1817,16 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, AstNode const& node
     return AqlValue{AqlValueHintNull{}};
   }
 
+  // arg for prefix
+  if (args.size() > 4) {
+    auto const& prefix = extractFunctionParameterValue(args, 4);
+
+    if (ADB_UNLIKELY(!prefix.isString())) {
+      registerInvalidArgumentWarning(ctx, AFN);
+      return AqlValue{AqlValueHintNull{}};
+    }
+  }
+
   auto const& lhs = extractFunctionParameterValue(args, 0);
   auto const lhsValue = lhs.isString() ? iresearch::getBytesRef(lhs.slice())
                                        : irs::bytes_ref::EMPTY;

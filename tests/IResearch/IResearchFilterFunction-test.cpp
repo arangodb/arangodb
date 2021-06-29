@@ -6293,6 +6293,12 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(RAND() > 0.5 ? d.foo.name : d.foo.bar, 'fooo', 1, false) RETURN d",
       &ExpressionContextMock::EMPTY);
 
+  // invalid prefix
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, '', 0, true, 42, [1]) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
   // invalid target
   assertFilterFail(
       vocbase(),
