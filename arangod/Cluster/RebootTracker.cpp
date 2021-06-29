@@ -326,16 +326,6 @@ void RebootTracker::queueCallback(DescriptedCallback callback) {
       std::unordered_map<CallbackId, DescriptedCallback>{ { getNextCallbackId(), std::move(callback) } }
   )});
 }
-
-RebootId RebootTracker::rebootId(ServerID const& server) const {
-  MUTEX_LOCKER(guard, _mutex);
-        
-  auto const rebootIdIt = _rebootIds.find(server);
-  if (rebootIdIt == _rebootIds.end()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
-  }
-  return rebootIdIt->second;
-}
     
 void RebootTracker::PeerState::toVelocyPack(velocypack::Builder& builder) const {
   builder.openObject();

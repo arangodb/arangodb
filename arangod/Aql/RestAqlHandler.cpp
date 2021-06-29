@@ -288,6 +288,9 @@ void RestAqlHandler::setupClusterQuery() {
     // coordinators
     answerBuilder.add("queryId", VPackValue(q->id()));
   }
+  // send back our own reboot id
+  answerBuilder.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
+
   QueryAnalyzerRevisions analyzersRevision;
   auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
   if(ADB_UNLIKELY(revisionRes.fail())) {

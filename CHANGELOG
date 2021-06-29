@@ -1,7 +1,8 @@
 devel
 -----
 
-* Increase internal AQL query and transaction timeout on DB servers to 1 hour.
+* Increase internal AQL query and transaction timeout on DB servers to 20
+  minutes.
   Previously, queries and transactions on DB servers could expire quickly,
   which led to spurious "query ID not found" or "transaction ID not found"
   errors on DB servers for multi-server queries/transactions with unbalanced 

@@ -505,14 +505,9 @@ struct DistributedQueryInstanciator final
       
       ClusterInfo& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
       engine->rebootTrackers().reserve(srvrQryId.size());
-      for (auto const& srvr : srvrQryId) {
+      for (auto const& [server, queryId, rebootId] : srvrQryId) {
+        TRI_ASSERT(server.substr(0, 7) != "server:");
         std::string comment = std::string("AQL query from coordinator ") + ServerState::instance()->getId();
-        // intentional copy, because we may modify the value later
-        auto server = srvr.first;
-        if (server.compare(0, 7, "server:") == 0) {
-          server = server.substr(7);
-        }
-        auto rebootId = ci.rebootTracker().rebootId(server);
         
         std::function<void(void)> f = [server, id = _query.id(), &vocbase = _query.vocbase()]() {
           LOG_TOPIC("d2554", INFO, Logger::QUERIES) 
@@ -535,10 +530,10 @@ struct DistributedQueryInstanciator final
 
     bool knowsAllQueryIds = snippetIds.empty() || !srvrQryId.empty();
     TRI_ASSERT(knowsAllQueryIds);
-    for (auto const& [serverDst, queryId] : srvrQryId) {
+    for (auto const& [server, queryId, rebootId] : srvrQryId) {
       if (queryId == 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       std::string("no query ID known for ") + serverDst);
+                                       std::string("no query ID known for ") + server);
       }
     }
     

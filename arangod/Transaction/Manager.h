@@ -54,10 +54,9 @@ class ManagerFeature;
 class Hints;
 struct Options;
 
-/// @brief Tracks TransasctionState instances
+/// @brief tracks TransactionState instances
 class Manager final {
   static constexpr size_t numBuckets = 16;
-  static constexpr double idleTTLDBServer = 60.0 * 60.0;           // 60 minutes
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
   static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
 
@@ -104,6 +103,8 @@ class Manager final {
   Manager& operator=(Manager const&) = delete;
 
   explicit Manager(ManagerFeature& feature);
+  
+  static constexpr double idleTTLDBServer = 20.0 * 60.0;           // 20 minutes
 
   // register a transaction
   void registerTransaction(TransactionId transactionId, bool isReadOnlyTransaction,

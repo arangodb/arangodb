@@ -25,6 +25,7 @@
 
 #include "Basics/Mutex.h"
 #include "Cluster/CallbackGuard.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <map>
 #include <memory>
@@ -74,10 +75,6 @@ class RebootTracker {
 
   void updateServerState(std::unordered_map<ServerID, RebootId> const& state);
 
-
-  /// @brief determine the current reboot id for a server.
-  /// will throw if no reboot id is known for the server
-  RebootId rebootId(ServerID const& server) const;
 
  private:
   using CallbackId = uint64_t;
