@@ -169,7 +169,7 @@ class FollowerInfo {
   /// the replication in case it is not "in the same term".
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t getFollowingTermId(ServerID const& s) noexcept;
+  uint64_t getFollowingTermId(ServerID const& s) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clear follower list, no changes in agency necesary
