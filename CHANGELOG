@@ -1,6 +1,9 @@
 devel
 -----
 
+* Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
+  internal requests to use the new url.
+
 * For cluster AQL queries, let the coordinator determine the query id to be 
   used on DB servers. This allows the coordinator to roll back AQL query setup
   requests via the query id. Previously, the DB servers each generated a local
