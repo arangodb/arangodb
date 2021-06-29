@@ -1,6 +1,13 @@
 devel
 -----
 
+* Fix display of running and slow queries in web UI when there are multiple
+  coordinators. Previously, the display order of queries was undefined, which
+  could lead to queries from one coordinator being display on top once and
+  then the queries from another. That made using this UI harder than necessary.
+  
+  Now queries are sorted for display, according to their query IDs. 
+
 * Updated arangosync to 2.4.0.
 
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
