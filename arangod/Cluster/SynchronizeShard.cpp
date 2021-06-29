@@ -89,6 +89,33 @@ std::string const TTL("ttl");
 
 using namespace std::chrono;
 
+// Overview over the code in this file:
+// The main method being called is "first", it does:
+// first:
+//  - wait until leader has created shard
+//  - lookup local shard
+//  - call `replicationSynchronize`
+//  - call `catchupWithReadLock`
+//  - call `catchupWithExclusiveLock`
+// replicationSynchronize:
+//  - set local shard to follow leader (without a following term id)
+//  - use a `DatabaseInitialSyncer` to synchronize to a certain state,
+//    (configure leaderId for it to go through)
+// catchupWithReadLock:
+//  - start a read lock on leader
+//  - keep configuration for shard to follow the leader without term id
+//  - call `replicationSynchronizeCatchup` (WAL tailing, configure leaderId
+//    for it to go through)
+//  - cancel read lock on leader
+// catchupWithExclusiveLock:
+//  - start an exclusive lock on leader, acquire unique following term id
+//  - set local shard to follower leader (with new following term id)
+//  - call `replicationSynchronizeFinalize` (WAL tailing)
+//  - do a final check by comparing counts on leader and follower
+//  - add us as official follower on the leader
+//  - release exclusive lock on leader
+//
+
 SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc),
     ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
@@ -521,12 +548,10 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   auto& vocbase = col->vocbase();
   auto database = vocbase.name();
 
-#if 0
   std::string leaderId;
   if (config.hasKey(LEADER_ID)) {
     leaderId = config.get(LEADER_ID).copyString();
   }
-#endif
 
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(), config, database);
@@ -536,11 +561,10 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   // database-specific synchronization
   auto syncer = DatabaseInitialSyncer::create(vocbase, configuration);
 
-#if 0
   if (!leaderId.empty()) {
+    // In this phase we use the normal leader ID without following term id:
     syncer->setLeaderId(leaderId);
   }
-#endif
 
   SyncerId syncerId{syncer->syncerId()};
 
@@ -601,9 +625,7 @@ static arangodb::Result replicationSynchronizeCatchup(
 
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
-#if 0
   auto const leaderId = conf.get(LEADER_ID).copyString();
-#endif
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
   ReplicationApplierConfiguration configuration =
@@ -615,11 +637,11 @@ static arangodb::Result replicationSynchronizeCatchup(
   DatabaseGuard guard(df, database);
   auto syncer = DatabaseTailingSyncer::create(guard.database(), configuration, fromTick, /*useTick*/true);
 
-#if 0
   if (!leaderId.empty()) {
+    // In this phase we still use the normal leaderId without a following
+    // term id:
     syncer->setLeaderId(leaderId);
   }
-#endif
 
   Result r;
   try {
@@ -643,10 +665,10 @@ static arangodb::Result replicationSynchronizeCatchup(
 
 static arangodb::Result replicationSynchronizeFinalize(SynchronizeShard const& job,
                                                        application_features::ApplicationServer& server,
-                                                       VPackSlice const& conf) {
+                                                       VPackSlice const& conf,
+                                                       std::string const& leaderId) {
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
-  auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
     
   ReplicationApplierConfiguration configuration =
@@ -954,6 +976,10 @@ bool SynchronizeShard::first() {
 
       auto details = std::make_shared<VPackBuilder>();
 
+      // Configure the shard to follow the leader without any following
+      // term id:
+      collection->followers()->setTheLeader(leader);
+
       ResultT<SyncerId> syncRes =
           replicationSynchronize(*this, collection, config.slice(), details);
 
@@ -1211,7 +1237,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     builder.add("connectTimeout", VPackValue(60.0));
   }
 
-  res = replicationSynchronizeFinalize(*this, feature().server(), builder.slice());
+  res = replicationSynchronizeFinalize(*this, feature().server(), builder.slice(), leaderIdWithTerm);
 
   if (!res.ok()) {
     std::string errorMessage(
