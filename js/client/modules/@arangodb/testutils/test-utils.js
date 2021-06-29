@@ -239,17 +239,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         }
         pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
         
-        const _NODE_PATH = process.env.NODE_PATH;
-        // Add the testcase's directory to the path so we can use `require` with
-        // relative paths (e.g., `require("./helpers.inc")`).
-        process.env.NODE_PATH += ':' + path.dirname(te);
-        
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
         
-        // Restore NODE_PATH 
-        process.env.NODE_PATH = _NODE_PATH;
-
         if (reply.hasOwnProperty('forceTerminate')) {
           results[te] = reply;
           continueTesting = false;
