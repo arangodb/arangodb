@@ -8,7 +8,7 @@
 <small>Introduced in: v3.7.12, v3.8.1, v3.9.0</small>
 
 This call reports progress about a soft Coordinator shutdown (see
-documentation of `DELETE /_admin/shutdown?soft=true`). 
+documentation of `DELETE /_admin/shutdown?soft=true`).
 In this case, the following types of operations are tracked:
 
  - AQL cursors (in particular streaming cursors)
@@ -20,7 +20,7 @@ In this case, the following types of operations are tracked:
  - Queued low priority requests (most normal requests)
  - Ongoing low priority requests
 
-This API is not available on DB-Servers and Agents.
+This API is only available on Coordinators.
 
 @RESTRETURNCODES
 
