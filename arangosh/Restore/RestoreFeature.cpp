@@ -1819,7 +1819,7 @@ void RestoreFeature::start() {
       }
       Result result = _clientManager.getConnectedClient(httpClient, _options.force,
           true, !_options.createDatabase, false);
-      if (!result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
+      if (!result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT) && !result.is(TRI_ERROR_INTERNAL)) {
         return result;
       }
     }
