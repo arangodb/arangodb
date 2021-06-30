@@ -66,8 +66,8 @@ class QueryContext {
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  explicit QueryContext(TRI_vocbase_t& vocbase);
-
+  explicit QueryContext(TRI_vocbase_t& vocbase, QueryId id = 0);
+  
   virtual ~QueryContext();
 
   arangodb::ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
