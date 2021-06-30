@@ -327,6 +327,8 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
     auto const& resolvedResponse = response.get();
     auto queryId = globalId;
     RebootId rebootId{0};
+  
+    TRI_ASSERT(server.substr(0, 7) != "server:");
     
     std::unique_lock<std::mutex> guard{serverToQueryIdLock};
 
@@ -589,6 +591,8 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
     VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
     std::vector<bool> const& didCreateEngine,
     QueryId& globalQueryId, RebootId& rebootId) const {
+  TRI_ASSERT(server.substr(0, 7) != "server:");
+
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", WARN, Logger::AQL) << "Received error information from "
                                           << server << " : " << response.toJson();
@@ -709,11 +713,12 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
   builder.openObject();
-  builder.add(StaticStrings::Code, VPackValue(to_string(errorCode)));
+  builder.add(StaticStrings::Code, VPackValue(errorCode));
   builder.close();
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
-    requests.emplace_back(network::sendRequestRetry(pool, server, fuerte::RestVerb::Delete,
+    TRI_ASSERT(server.substr(0, 7) != "server:");
+    requests.emplace_back(network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Delete,
                                                           ::finishUrl + std::to_string(queryId),
                                                           /*copy*/ body, options));
   }
@@ -725,6 +730,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   for (auto& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
+      TRI_ASSERT(engine.first.substr(0, 7) != "server:");
       requests.emplace_back(network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
                            ::traverserUrl + basics::StringUtils::itoa(engine.second), noBody, options));
     }

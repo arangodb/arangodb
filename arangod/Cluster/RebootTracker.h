@@ -75,7 +75,6 @@ class RebootTracker {
 
   void updateServerState(std::unordered_map<ServerID, RebootId> const& state);
 
-
  private:
   using CallbackId = uint64_t;
 

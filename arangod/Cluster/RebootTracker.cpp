@@ -127,7 +127,7 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
     TRI_ASSERT(!inserted || _callbacks.find(serverId) == _callbacks.end());
   }
 }
-  
+
 CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peerState,
                                             RebootTracker::Callback callback,
                                             std::string callbackDescription) {

@@ -548,3 +548,4 @@ bool QueryRegistry::queryIsRegistered(std::string const& dbName, QueryId id) {
   return q != m->second.end();
 }
 #endif
+

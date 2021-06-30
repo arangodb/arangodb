@@ -1463,7 +1463,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
           << " exclusive: " << exclusiveLocked << ": you may not be able to write into these collections until the locks time out.";
 
       for (auto const& [server, queryId, rebootId] : _serverQueryIds) {
-        auto msg = "Failed to send unlock request DELETE /_api/aql/finish/" + std::to_string(queryId) + " to " + server + " in database " + vocbase().name();
+        auto msg = "Failed to send unlock request DELETE /_api/aql/finish/" + std::to_string(queryId) + " to server:" + server + " in database " + vocbase().name();
         _warnings.registerWarning(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, msg);
         LOG_TOPIC("7c10f", WARN, Logger::QUERIES) << msg;
       }
