@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
@@ -41,9 +42,11 @@ namespace graph {
 
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-                std::optional<size_t> memberToUpdate);
+                std::optional<size_t> memberToUpdate,
+                std::shared_ptr<arangodb::aql::Expression> expression);
 
   aql::AstNode* getCondition() const;
+  aql::Expression* getExpression() const;
   transaction::Methods::IndexHandle indexHandle() const;
   std::optional<size_t> getMemberToUpdate() const;
 
@@ -51,27 +54,39 @@ struct IndexAccessor {
   transaction::Methods::IndexHandle _idx;
   aql::AstNode* _indexCondition;
   std::optional<size_t> _memberToUpdate;
+
+  // TODO: This needs to be changed BEFORE merge
+  std::shared_ptr<arangodb::aql::Expression> _expression;
 };
 
 struct BaseProviderOptions {
  public:
-  BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
-                      std::map<std::string, std::string> const& collectionToShardMap);
+  BaseProviderOptions(
+      aql::Variable const* tmpVar,
+      std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> indexInfo,
+      aql::FixedVarExpressionContext& expressionContext,
+      std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
 
   aql::Variable const* tmpVar() const;
-  std::vector<IndexAccessor> const& indexInformations() const;
+  std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> const& indexInformations() const;
 
-  std::map<std::string, std::string> const& collectionToShardMap() const;
+  std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap() const;
+
+  aql::FixedVarExpressionContext& expressionContext() const;
 
  private:
   // The temporary Variable used in the Indexes
   aql::Variable const* _temporaryVariable;
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
-  std::vector<IndexAccessor> _indexInformation;
+  std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> _indexInformation;
+
+  // The context of AQL variables. These variables are set from the outside.
+  // and the caller needs to make sure the reference stays valid
+  aql::FixedVarExpressionContext& _expressionContext;
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
-  std::map<std::string, std::string> const& _collectionToShardMap;
+  std::unordered_map<std::string, std::vector<std::string>> const& _collectionToShardMap;
 };
 
 struct ClusterBaseProviderOptions {
@@ -96,4 +111,3 @@ struct ClusterBaseProviderOptions {
 
 }  // namespace graph
 }  // namespace arangodb
-

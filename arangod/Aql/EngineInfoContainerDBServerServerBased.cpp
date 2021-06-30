@@ -87,7 +87,8 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
     }
 #endif
     _edgeCollections.emplace_back(
-        getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards)));
+        getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards),
+                          col->isSatellite() && node->isSmart()));
   }
   // Extract vertices
   auto const& vertices = _node->vertexColls();
@@ -102,21 +103,26 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
       _inaccessible.insert(std::to_string(col->id().id()));
     }
 #endif
-    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
+    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards),
+                                    col->isSatellite() && node->isSmart());
     _vertexCollections.try_emplace(col->name(), std::move(shards));
   }
 }
 
 std::vector<ShardID> EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::getAllLocalShards(
     std::unordered_map<ShardID, ServerID> const& shardMapping,
-    ServerID const& server, std::shared_ptr<std::vector<std::string>> shardIds) {
+    ServerID const& server, std::shared_ptr<std::vector<std::string>> shardIds, bool colIsSatellite) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
     TRI_ASSERT(it != shardMapping.end());
     if (it->second == server) {
       localShards.emplace_back(shard);
+      // Guaranteed that the traversal will be executed on this server.
       _hasShard = true;
+    } else if (colIsSatellite) {
+      // The satellite does not force run of a traversal here.
+      localShards.emplace_back(shard);
     }
   }
   return localShards;

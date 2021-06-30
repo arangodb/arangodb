@@ -127,7 +127,7 @@ bool SingleServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
 
 bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // fills callback with next EdgeDocumentToken and Slice that contains the
-  // ohter side of the edge (we are standing on a node and want to iterate all
+  // other side of the edge (we are standing on a node and want to iterate all
   // connected edges
   TRI_ASSERT(!_cursors.empty());
 
@@ -225,6 +225,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
             return false;
           }
 #endif
+          _opts->cache()->increaseCounter();
           callback(EdgeDocumentToken(cid, token), edge, cursorId);
           return true;
         });

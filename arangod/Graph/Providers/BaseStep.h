@@ -23,9 +23,12 @@
 
 #pragma once
 
+#include <velocypack/HashedStringRef.h>
+
 #include <numeric>
 
 namespace arangodb {
+
 namespace graph {
 
 template <class StepDetails>
@@ -34,6 +37,7 @@ class BaseStep {
   BaseStep() : _previous{std::numeric_limits<size_t>::max()}, _depth{0} {}
 
   BaseStep(size_t prev) : _previous{prev}, _depth{0} {}
+
   BaseStep(size_t prev, size_t depth) : _previous{prev}, _depth{depth} {}
 
   size_t getPrevious() const { return _previous; }
@@ -46,13 +50,26 @@ class BaseStep {
     return static_cast<StepDetails*>(this)->isLooseEnd();
   }
 
-  size_t getDepth() const {
-    return _depth;
+  size_t getDepth() const { return _depth; }
+
+  ResultT<std::pair<std::string, size_t>> extractCollectionName(
+      arangodb::velocypack::HashedStringRef const& idHashed) const {
+    size_t pos = idHashed.find('/');
+    if (pos == std::string::npos) {
+      // Invalid input. If we get here somehow we managed to store invalid
+      // _from/_to values or the traverser did a let an illegal start through
+      TRI_ASSERT(false);
+      return Result{TRI_ERROR_GRAPH_INVALID_EDGE,
+                    "edge contains invalid value " + idHashed.toString()};
+    }
+
+    std::string colName = idHashed.substr(0, pos).toString();
+    return std::make_pair(colName, pos);
   }
 
  private:
-  size_t const _previous;
-  size_t const _depth;
+  size_t _previous;
+  size_t _depth;
 };
 }  // namespace graph
 }  // namespace arangodb

@@ -117,7 +117,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     TRI_ASSERT(shardList.isArray());
     for (VPackSlice const shard : VPackArrayIterator(shardList)) {
       TRI_ASSERT(shard.isString());
-      _query.collections().add(shard.copyString(), AccessMode::Type::READ, aql::Collection::Hint::Collection);
+      _query.collections().add(shard.copyString(), AccessMode::Type::READ, aql::Collection::Hint::Shard);
     }
   }
 
@@ -412,6 +412,10 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
 TraverserEngine::~TraverserEngine() = default;
 
 void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
+}
+
+void TraverserEngine::smartSearchNew(VPackSlice, VPackBuilder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
 }
 

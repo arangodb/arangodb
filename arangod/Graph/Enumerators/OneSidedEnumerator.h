@@ -28,6 +28,8 @@
 
 #include "Basics/ResourceUsage.h"
 
+#include "Aql/TraversalStats.h"
+#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Transaction/Methods.h"
@@ -35,10 +37,6 @@
 #include <set>
 
 namespace arangodb {
-
-namespace aql {
-class TraversalStats;
-}
 
 namespace velocypack {
 class Builder;
@@ -48,31 +46,33 @@ class HashedStringRef;
 namespace graph {
 
 struct OneSidedEnumeratorOptions;
+class PathValidatorOptions;
 
-template <class ProviderType, class Step>
-class PathResult;
-
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidatorType>
-class OneSidedEnumerator {
+template <class Configuration>
+class OneSidedEnumerator : public TraversalEnumerator {
  public:
-  using Step = typename ProviderType::Step;  // public due to tracer access
+  using Step = typename Configuration::Step;  // public due to tracer access
+  using Provider = typename Configuration::Provider;
+  using Store = typename Configuration::Store;
+
+  using ResultPathType = SingleProviderPathResult<Provider, Store, Step>;
 
  private:
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
-  using Shell = std::multiset<Step>;
-  using ResultList = std::vector<Step>;
+  using ResultList = std::vector<Step*>;
   using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
 
  public:
-  OneSidedEnumerator(ProviderType&& forwardProvider, OneSidedEnumeratorOptions&& options,
+  OneSidedEnumerator(Provider&& provider, OneSidedEnumeratorOptions&& options,
+                     PathValidatorOptions pathValidatorOptions,
                      arangodb::ResourceMonitor& resourceMonitor);
   OneSidedEnumerator(OneSidedEnumerator const& other) = delete;
   OneSidedEnumerator(OneSidedEnumerator&& other) noexcept = default;
 
   ~OneSidedEnumerator();
 
-  void clear();
+  void clear() override;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.
@@ -80,7 +80,7 @@ class OneSidedEnumerator {
    * @return true There will be no further path.
    * @return false There is a chance that there is more data available.
    */
-  [[nodiscard]] bool isDone() const;
+  [[nodiscard]] bool isDone() const override;
 
   /**
    * @brief Reset to new source and target vertices.
@@ -90,8 +90,9 @@ class OneSidedEnumerator {
    * call of reset.
    *
    * @param source The source vertex to start the paths
+   * @param depth The depth we're starting the search at
    */
-  void reset(VertexRef source);
+  void reset(VertexRef source, size_t depth = 0) override;
 
   /**
    * @brief Get the next path, if available written into the result build.
@@ -106,7 +107,7 @@ class OneSidedEnumerator {
    * @return true Found and written a path, result is modified.
    * @return false No path found, result has not been changed.
    */
-  bool getNextPath(arangodb::velocypack::Builder& result);
+  auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
 
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
@@ -115,14 +116,14 @@ class OneSidedEnumerator {
    * @return false No path found.
    */
 
-  bool skipPath();
-  auto destroyEngines() -> void;
+  bool skipPath() override;
+  auto destroyEngines() -> void override;
 
   /**
    * @brief Return statistics generated since
    * the last time this method was called.
    */
-  auto stealStats() -> aql::TraversalStats;
+  auto stealStats() -> aql::TraversalStats override;
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;
@@ -143,16 +144,15 @@ class OneSidedEnumerator {
   GraphOptions _options;
   ResultList _results{};
   bool _resultsFetched{false};
+  aql::TraversalStats _stats{};
 
   // The next elements to process
-  QueueType _queue;
-  ProviderType _provider;
-  PathValidatorType _validator;
+  typename Configuration::Queue _queue;
+  typename Configuration::Provider _provider;
+  typename Configuration::Validator _validator;
 
   // This stores all paths processed
-  PathStoreType _interior;
-
-  SingleProviderPathResult<ProviderType, Step> _resultPath;
+  typename Configuration::Store _interior;
 };
 }  // namespace graph
 }  // namespace arangodb

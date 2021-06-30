@@ -36,7 +36,9 @@
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
+#include "Graph/algorithm-aliases.h"
 
 #include <Graph/Types/ValidationResult.h>
 #include <Logger/LogMacros.h>
@@ -46,37 +48,34 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::OneSidedEnumerator(
-    ProviderType&& forwardProvider, OneSidedEnumeratorOptions&& options,
-    arangodb::ResourceMonitor& resourceMonitor)
+template <class Configuration>
+OneSidedEnumerator<Configuration>::OneSidedEnumerator(Provider&& forwardProvider,
+                                                      OneSidedEnumeratorOptions&& options,
+                                                      PathValidatorOptions validatorOptions,
+                                                      arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
       _queue(resourceMonitor),
       _provider(std::move(forwardProvider)),
-      _validator(_interior),
-      _interior(resourceMonitor),
-      _resultPath{_provider} {}
+      _validator(_provider, _interior, std::move(validatorOptions)),
+      _interior(resourceMonitor) {}
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::~OneSidedEnumerator() {
-}
+template <class Configuration>
+OneSidedEnumerator<Configuration>::~OneSidedEnumerator() = default;
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::destroyEngines()
-    -> void {
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::destroyEngines() -> void {
   _provider.destroyEngines();
 }
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::clear() {
+template <class Configuration>
+void OneSidedEnumerator<Configuration>::clear() {
   _interior.reset();
   _queue.clear();
   _results.clear();
 }
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::computeNeighbourhoodOfNextVertex()
-    -> void {
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> void {
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
@@ -91,13 +90,31 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     TRI_ASSERT(_queue.hasProcessableElement());
   }
 
-  auto step = _queue.pop();
-  auto posPrevious = _interior.append(step);
+  auto tmp = _queue.pop();
+  auto posPrevious = _interior.append(std::move(tmp));
+  auto& step = _interior.getStepReference(posPrevious);
 
+  // only explore here if we're responsible
+  if (!step.isResponsible(_provider.trx())) {
+    // This server cannot decide on this specific vertex.
+    // Include it in results, to report back that we
+    // found this undecided path
+    _results.push_back(&step);
+    return;
+  }
   ValidationResult res = _validator.validatePath(step);
-  if ((step.getDepth() >= _options.getMinDepth()) && !res.isFiltered()) {
+
+  // TODO: Adjust log output
+  LOG_TOPIC("78155", TRACE, Logger::GRAPHS)
+      << std::boolalpha << "<Traverser> Validated Vertex: " << step.getVertex().getID()
+      << " filtered " << res.isFiltered() << " pruned " << res.isPruned()
+      << " depth " << _options.getMinDepth() << " <= " << step.getDepth()
+      << "<= " << _options.getMaxDepth();
+  if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
     // Include it in results.
-    _results.push_back(step);
+    _results.push_back(&step);
+  } else {
+    _stats.incrFiltered();
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
@@ -111,8 +128,8 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  * @return true There will be no further path.
  * @return false There is a chance that there is more data available.
  */
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::isDone() const {
+template <class Configuration>
+bool OneSidedEnumerator<Configuration>::isDone() const {
   return _results.empty() && searchDone();
 }
 
@@ -125,10 +142,10 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  *
  * @param source The source vertex to start the paths
  */
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::reset(VertexRef source) {
+template <class Configuration>
+void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth) {
   clear();
-  auto firstStep = _provider.startVertex(source);
+  auto firstStep = _provider.startVertex(source, depth);
   _queue.append(std::move(firstStep));
 }
 
@@ -145,32 +162,23 @@ void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  * @return true Found and written a path, result is modified.
  * @return false No path found, result has not been changed.
  */
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::getNextPath(VPackBuilder& result) {
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::getNextPath()
+    -> std::unique_ptr<PathResultInterface> {
   while (!isDone()) {
     searchMoreResults();
 
     while (!_results.empty()) {
-      auto const& vertex = _results.back();
-
-      // Performance Optimization:
-      // It seems to be pointless to first push
-      // everything in to the _resultPath object
-      // and then iterate again to return the path
-      // we should be able to return the path in the first go.
-      _resultPath.clear();
-      _interior.buildPath(vertex, _resultPath);
-      TRI_ASSERT(!_resultPath.isEmpty());
+      auto* step = _results.back();
       _results.pop_back();
-      _resultPath.toVelocyPack(result);
-      return true;
+      return std::make_unique<ResultPathType>(step, _provider, _interior);
     }
   }
-  return false;
+  return nullptr;
 }
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::searchMoreResults() {
+template <class Configuration>
+void OneSidedEnumerator<Configuration>::searchMoreResults() {
   while (_results.empty() && !searchDone()) {  // TODO: check && !_queue.isEmpty()
     _resultsFetched = false;
     computeNeighbourhoodOfNextVertex();
@@ -186,8 +194,8 @@ void OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  * @return false No path found.
  */
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::skipPath() {
+template <class Configuration>
+bool OneSidedEnumerator<Configuration>::skipPath() {
   while (!isDone()) {
     searchMoreResults();
 
@@ -200,21 +208,19 @@ bool OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   return false;
 }
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::searchDone() const
-    -> bool {
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::searchDone() const -> bool {
   return _queue.isEmpty();
 }
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::fetchResults()
-    -> void {
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
   if (!_resultsFetched && !_results.empty()) {
     std::vector<Step*> looseEnds{};
 
-    for (auto& vertex : _results) {
-      if (!vertex.isProcessable()) {
-        looseEnds.emplace_back(&vertex);
+    for (auto* vertex : _results) {
+      if (!vertex->isProcessable()) {
+        looseEnds.emplace_back(vertex);
       }
     }
 
@@ -235,22 +241,31 @@ auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   _resultsFetched = true;
 }
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-auto OneSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::stealStats()
-    -> aql::TraversalStats {
-  aql::TraversalStats stats = _provider.stealStats();
-  return stats;
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
+  _stats += _provider.stealStats();
+
+  auto t = _stats;
+  // Placement new of stats, do not reallocate space.
+  _stats.~TraversalStats();
+  new (&_stats) aql::TraversalStats{};
+  return t;
 }
 
 /* SingleServerProvider Section */
 
-template class ::arangodb::graph::OneSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>,
-    ::arangodb::graph::PathStore<SingleServerProvider::Step>, SingleServerProvider,
-    ::arangodb::graph::PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::PATH>>;
+// Breadth First Search
+template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, true>>;
 
-template class ::arangodb::graph::OneSidedEnumerator<
-    ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
-    ::arangodb::graph::ProviderTracer<SingleServerProvider>,
-    ::arangodb::graph::PathValidator<::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>>;
+// Depth First Search
+template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, true>>;

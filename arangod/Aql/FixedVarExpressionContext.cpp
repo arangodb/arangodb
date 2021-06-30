@@ -56,14 +56,18 @@ void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue c
   _vars.try_emplace(var, value);
 }
 
+void FixedVarExpressionContext::clearVariableValue(Variable const* var) {
+  _vars.erase(var);
+}
+
 void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const& opts,
                                                       velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   for (auto const& it : _vars) {
     builder.openArray();
     it.first->toVelocyPack(builder);
-    it.second.toVelocyPack(&opts, builder, /*resolveExternals*/true,
-                           /*allowUnindexed*/false);
+    it.second.toVelocyPack(&opts, builder, /*resolveExternals*/ true,
+                           /*allowUnindexed*/ false);
     builder.close();
   }
 }

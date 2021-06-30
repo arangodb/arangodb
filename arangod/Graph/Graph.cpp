@@ -451,7 +451,6 @@ void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
     builder.add(VPackValue(to));
   }
   builder.close();  // array
-  builder.add("type", VPackValue(getType()));
 }
 
 ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition, std::set<std::string> const& satCollections) {
@@ -572,7 +571,6 @@ void EdgeDefinition::addToBuilder(VPackBuilder& builder) const {
     builder.add(VPackValue(to));
   }
   builder.close();  // to
-  builder.add(StaticStrings::GraphEdgeDefinitionType, VPackValue(getType()));
 
   builder.close();  // obj
 }
@@ -772,11 +770,6 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 bool Graph::isSmart() const { return false; }
 
 bool Graph::isDisjoint() const {
-  return false;
-}
-
-bool Graph::isHybrid() const {
-  TRI_ASSERT(_satelliteColls.empty());
   return false;
 }
 

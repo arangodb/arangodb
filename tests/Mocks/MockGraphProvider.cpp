@@ -59,6 +59,12 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProc
       _edge(e),
       _isProcessable(isProcessable) {}
 
+MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable, size_t depth)
+    : arangodb::graph::BaseStep<Step>{prev, depth},
+      _vertex(v),
+      _edge({}),
+      _isProcessable(isProcessable) {}
+
 MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
                               bool isProcessable, size_t depth)
     : arangodb::graph::BaseStep<Step>{prev, depth},
@@ -66,13 +72,11 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e,
       _edge(e),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::~Step() {}
-
-MockGraphProvider::MockGraphProvider(MockGraph const& data,
-                                     arangodb::aql::QueryContext& queryContext,
-                                     LooseEndBehaviour looseEnds, bool reverse)
-    : _trx(queryContext.newTrxContext()), _reverse(reverse), _looseEnds(looseEnds), _stats{} {
-  for (auto const& it : data.edges()) {
+MockGraphProvider::MockGraphProvider(arangodb::aql::QueryContext& queryContext,
+                                     MockGraphProviderOptions opts,
+                                     arangodb::ResourceMonitor&)
+    : _trx(queryContext.newTrxContext()), _reverse(opts.reverse()), _looseEnds(opts.looseEnds()), _stats{} {
+  for (auto const& it : opts.data().edges()) {
     _fromIndex[it._from].push_back(it);
     _toIndex[it._to].push_back(it);
   }
@@ -91,7 +95,7 @@ auto MockGraphProvider::decideProcessable() const -> bool {
   }
 }
 
-auto MockGraphProvider::startVertex(VertexType v) -> Step {
+auto MockGraphProvider::startVertex(VertexType v, size_t depth) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Start Vertex:" << v;
   return Step(v, decideProcessable());

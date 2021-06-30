@@ -342,14 +342,25 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                  opts->maxDepth};
+    PathValidatorOptions validatorOptions(opts->tmpVar(), opts->getExpressionCtx());
 
     if (!ServerState::instance()->isCoordinator()) {
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
       // be changed in the future) create BaseProviderOptions
-      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes(),
+
+      // TODO FIXME START - only tmp workaround - we'll provide an empty depth based index info (also add an alias for large type)
+      std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> usedIndexes{};
+      usedIndexes.first = buildUsedIndexes();
+
+      std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> reversedUsedIndexes{};
+      reversedUsedIndexes.first = buildReverseUsedIndexes();
+      // TODO FIXME END
+
+      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), usedIndexes,
+                                                 opts->getExpressionCtx(),
                                                  opts->collectionToShard());
-      BaseProviderOptions backwardProviderOptions(opts->tmpVar(),
-                                                  buildReverseUsedIndexes(),
+      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), reversedUsedIndexes,
+                                                  opts->getExpressionCtx(),
                                                   opts->collectionToShard());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
@@ -361,7 +372,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                  opts->query().resourceMonitor()},
             SingleServerProvider{opts->query(), backwardProviderOptions,
                                  opts->query().resourceMonitor()},
-            std::move(enumeratorOptions), opts->query().resourceMonitor());
+            std::move(enumeratorOptions), std::move(validatorOptions),
+            opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -377,7 +389,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                                  opts->query().resourceMonitor()},
             ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions,
                                                  opts->query().resourceMonitor()},
-            std::move(enumeratorOptions), opts->query().resourceMonitor());
+            std::move(enumeratorOptions), std::move(validatorOptions),
+            opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -401,7 +414,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                             opts->query().resourceMonitor()},
             ClusterProvider{opts->query(), backwardProviderOptions,
                             opts->query().resourceMonitor()},
-            std::move(enumeratorOptions), opts->query().resourceMonitor());
+            std::move(enumeratorOptions), std::move(validatorOptions),
+            opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -417,7 +431,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
                                             opts->query().resourceMonitor()},
             ProviderTracer<ClusterProvider>{opts->query(), backwardProviderOptions,
                                             opts->query().resourceMonitor()},
-            std::move(enumeratorOptions), opts->query().resourceMonitor());
+            std::move(enumeratorOptions), std::move(validatorOptions),
+            opts->query().resourceMonitor());
 
         auto executorInfos =
             KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
@@ -475,7 +490,7 @@ void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
 }
-  
+
 void KShortestPathsNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
   if (_inStartVariable != nullptr) {
     _inStartVariable = Variable::replace(_inStartVariable, replacements);
@@ -524,7 +539,8 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _toCondition->clone(options()->query().ast()), 0);
+                                    _toCondition->clone(options()->query().ast()),
+                                    0, nullptr);
         break;
       }
       case TRI_EDGE_OUT: {
@@ -539,7 +555,8 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _fromCondition->clone(options()->query().ast()), 0);
+                                    _fromCondition->clone(options()->query().ast()),
+                                    0, nullptr);
         break;
       }
       case TRI_EDGE_ANY:
@@ -571,7 +588,8 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _fromCondition->clone(options()->query().ast()), 0);
+                                    _fromCondition->clone(options()->query().ast()),
+                                    0, nullptr);
         break;
       }
       case TRI_EDGE_OUT: {
@@ -586,7 +604,8 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _toCondition->clone(options()->query().ast()), 0);
+                                    _toCondition->clone(options()->query().ast()),
+                                    0, nullptr);
         break;
       }
       case TRI_EDGE_ANY:

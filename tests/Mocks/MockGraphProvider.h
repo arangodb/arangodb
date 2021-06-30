@@ -56,18 +56,39 @@ class HashedStringRef;
 
 namespace tests {
 namespace graph {
+
+class MockGraphProviderOptions {
+ public:
+  enum class LooseEndBehaviour { NEVER, ALWAYS };
+  MockGraphProviderOptions(MockGraph const& data, LooseEndBehaviour looseEnds,
+                           bool reverse = false)
+      : _data(data), _looseEnds(looseEnds), _reverse(reverse) {}
+  ~MockGraphProviderOptions() = default;
+
+  LooseEndBehaviour looseEnds() const { return _looseEnds; }
+  MockGraph const& data() const { return _data; }
+  bool reverse() const { return _reverse; }
+
+ private:
+  MockGraph const& _data;
+  LooseEndBehaviour _looseEnds;
+  bool _reverse;
+  ;
+};
+
 class MockGraphProvider {
   using VertexType = arangodb::velocypack::HashedStringRef;
   using EdgeType = MockGraph::EdgeDef;
 
  public:
-  enum class LooseEndBehaviour { NEVER, ALWAYS };
+  using Options = MockGraphProviderOptions;
+  using LooseEndBehaviour = typename MockGraphProviderOptions::LooseEndBehaviour;
 
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
     class Vertex {
      public:
-      explicit Vertex(VertexType v) : _vertex(v) {};
+      explicit Vertex(VertexType v) : _vertex(v){};
 
       VertexType getID() const { return _vertex; }
 
@@ -106,8 +127,9 @@ class MockGraphProvider {
 
     Step(VertexType v, bool isProcessable);
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
+    Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable, size_t depth);
-    ~Step();
+    ~Step() = default;
 
     bool operator<(Step const& other) const noexcept {
       return _vertex < other._vertex;
@@ -122,6 +144,10 @@ class MockGraphProvider {
         return "<Step><Vertex>: " + _vertex.getID().toString() +
                ", previous: " + basics::StringUtils::itoa(getPrevious());
       }
+    }
+
+    bool isResponsible(transaction::Methods* trx) const {
+      return true;
     }
 
     Vertex getVertex() const {
@@ -144,6 +170,28 @@ class MockGraphProvider {
 
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
 
+    std::string getCollectionName() const {
+      auto collectionNameResult = extractCollectionName(_vertex.getID());
+      if (collectionNameResult.fail()) {
+        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+      }
+      return collectionNameResult.get().first;
+    };
+
+    void setLocalSchreierIndex(size_t index) {
+      TRI_ASSERT(index != std::numeric_limits<size_t>::max());
+      TRI_ASSERT(!hasLocalSchreierIndex());
+      _localSchreierIndex = index;
+    }
+
+    bool hasLocalSchreierIndex() const {
+      return _localSchreierIndex != std::numeric_limits<size_t>::max();
+    }
+
+    std::size_t getLocalSchreierIndex() const {
+      return _localSchreierIndex;
+    }
+
     bool isProcessable() const { return _isProcessable; }
 
     bool isLooseEnd() const { return !isProcessable(); }
@@ -159,11 +207,13 @@ class MockGraphProvider {
     Vertex _vertex;
     Edge _edge;
     bool _isProcessable;
+    size_t _localSchreierIndex;
   };
 
   MockGraphProvider() = delete;
-  MockGraphProvider(MockGraph const& data, arangodb::aql::QueryContext& queryContext,
-                    LooseEndBehaviour looseEnds, bool reverse = false);
+  MockGraphProvider(arangodb::aql::QueryContext& queryContext, Options opts,
+                    arangodb::ResourceMonitor& resourceMonitor);
+
   MockGraphProvider(MockGraphProvider const&) = delete;  // TODO: check "Rule of 5"
   MockGraphProvider(MockGraphProvider&&) = default;
   ~MockGraphProvider();
@@ -172,7 +222,7 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
   void destroyEngines(){};
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
   auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;

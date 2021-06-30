@@ -27,10 +27,19 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
-                             aql::AstNode* condition, std::optional<size_t> memberToUpdate)
-    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {}
+                             aql::AstNode* condition, std::optional<size_t> memberToUpdate,
+                             std::shared_ptr<arangodb::aql::Expression> expression)
+    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {
+  if (expression != nullptr) {
+    _expression = std::move(expression);
+  }
+}
 
 aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
+
+aql::Expression* IndexAccessor::getExpression() const {
+  return _expression.get();
+}
 
 transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
   return _idx;
@@ -40,23 +49,32 @@ std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
   return _memberToUpdate;
 }
 
-BaseProviderOptions::BaseProviderOptions(aql::Variable const* tmpVar,
-                                         std::vector<IndexAccessor> indexInfo,
-                                         std::map<std::string, std::string> const& collectionToShardMap)
+BaseProviderOptions::BaseProviderOptions(
+    aql::Variable const* tmpVar,
+    std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> indexInfo,
+    aql::FixedVarExpressionContext& expressionContext,
+    std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
+      _expressionContext(expressionContext),
       _collectionToShardMap(collectionToShardMap) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
 }
 
-std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const {
+// first is global index information, second is depth-based index information.
+std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> const&
+BaseProviderOptions::indexInformations() const {
   return _indexInformation;
 }
 
-std::map<std::string, std::string> const& BaseProviderOptions::collectionToShardMap() const {
+std::unordered_map<std::string, std::vector<std::string>> const& BaseProviderOptions::collectionToShardMap() const {
   return _collectionToShardMap;
+}
+
+aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
+  return _expressionContext;
 }
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(

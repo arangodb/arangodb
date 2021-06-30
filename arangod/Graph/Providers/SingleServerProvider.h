@@ -68,7 +68,7 @@ struct SingleServerProvider {
       explicit Vertex(VertexType v) : _vertex(v) {}
 
       VertexType const& getID() const;
-      
+
       bool operator<(Vertex const& other) const noexcept {
         return _vertex < other._vertex;
       }
@@ -98,6 +98,7 @@ struct SingleServerProvider {
     Step(VertexType v);
     Step(VertexType v, EdgeDocumentToken edge, size_t prev);
     Step(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth);
+    Step(VertexType v, size_t depth);
     ~Step();
 
     bool operator<(Step const& other) const noexcept {
@@ -115,15 +116,40 @@ struct SingleServerProvider {
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
 
+    std::string getCollectionName() const {
+      auto collectionNameResult = extractCollectionName(_vertex.getID());
+      if (collectionNameResult.fail()) {
+        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+      }
+      return collectionNameResult.get().first;
+    };
+
+    void setLocalSchreierIndex(size_t index) {
+      TRI_ASSERT(index != std::numeric_limits<size_t>::max());
+      TRI_ASSERT(!hasLocalSchreierIndex());
+      _localSchreierIndex = index;
+    }
+
+    bool hasLocalSchreierIndex() const {
+       return _localSchreierIndex != std::numeric_limits<size_t>::max();
+    }
+
+    std::size_t getLocalSchreierIndex() const {
+      return _localSchreierIndex;
+    }
+
+    bool isResponsible(transaction::Methods* trx) const;
+
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
    private:
     Vertex _vertex;
     Edge _edge;
+    size_t _localSchreierIndex = std::numeric_limits<size_t>::max();
   };
 
  public:
-  SingleServerProvider(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+  SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                        arangodb::ResourceMonitor& resourceMonitor);
   SingleServerProvider(SingleServerProvider const&) = delete;
   SingleServerProvider(SingleServerProvider&&) = default;
@@ -131,7 +157,7 @@ struct SingleServerProvider {
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
 
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
@@ -151,7 +177,8 @@ struct SingleServerProvider {
  private:
   void activateCache(bool enableDocumentCache);
 
-  std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
+  std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor(
+      arangodb::aql::FixedVarExpressionContext& expressionContext);
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
@@ -163,9 +190,8 @@ struct SingleServerProvider {
   BaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
-  
+
   arangodb::aql::TraversalStats _stats;
 };
 }  // namespace graph
 }  // namespace arangodb
-

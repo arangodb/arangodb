@@ -365,7 +365,8 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   _expressionCtx.serializeAllVariables(_query.vpackOptions(), builder);
 }
 
-void BaseOptions::setCollectionToShard(std::map<std::string, std::string> const& in) {
+void BaseOptions::setCollectionToShard(
+    std::unordered_map<std::string, std::vector<std::string>> const& in) {
   _collectionToShard = std::move(in);
 }
 
@@ -460,6 +461,10 @@ void BaseOptions::activateCache(bool enableDocumentCache,
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
   TRI_ASSERT(_cache == nullptr);
   _cache = std::move(testCache);
+}
+
+arangodb::aql::FixedVarExpressionContext& BaseOptions::getExpressionCtx() {
+  return _expressionCtx;
 }
 
 arangodb::aql::FixedVarExpressionContext const& BaseOptions::getExpressionCtx() const {

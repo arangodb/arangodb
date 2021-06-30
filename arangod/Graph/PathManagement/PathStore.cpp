@@ -23,7 +23,6 @@
 
 #include "PathStore.h"
 #include "Graph/PathManagement/PathResult.h"
-#include "Graph/PathManagement/SingleProviderPathResult.h"
 
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
@@ -78,11 +77,21 @@ size_t PathStore<Step>::append(Step step) {
 }
 
 template <class Step>
-Step PathStore<Step>::get(size_t position) const {
+Step PathStore<Step>::getStep(size_t position) const {
   TRI_ASSERT(position <= size());
   Step step = _schreier.at(position);
   LOG_TOPIC("45bf5", TRACE, Logger::GRAPHS)
       << "<PathStore> Get step: " << step.toString();
+
+  return step;
+}
+
+template <class Step>
+Step& PathStore<Step>::getStepReference(size_t position) {
+  TRI_ASSERT(position <= size());
+  auto& step = _schreier.at(position);
+  LOG_TOPIC("45bf6", TRACE, Logger::GRAPHS)
+  << "<PathStore> Get step: " << step.toString();
 
   return step;
 }
@@ -159,6 +168,26 @@ auto PathStore<Step>::visitReversePath(Step const& step,
   }
 }
 
+template <class Step>
+auto PathStore<Step>::modifyReversePath(Step& step,
+                                       std::function<bool(Step &)> const& visitor)
+-> bool {
+  Step * walker = &step;
+  // Guaranteed to make progress, as the schreier vector contains a loop-free tree.
+  while (true) {
+    bool cont = visitor(*walker);
+    if (!cont) {
+      // Aborted
+      return false;
+    }
+    if (walker->isFirst()) {
+      // Visited the full path
+      return true;
+    }
+    walker = &_schreier.at(walker->getPrevious());
+  }
+}
+
 /* SingleServerProvider Section */
 
 template class PathStore<SingleServerProvider::Step>;
@@ -166,11 +195,6 @@ template class PathStore<SingleServerProvider::Step>;
 template void PathStore<SingleServerProvider::Step>::buildPath<PathResult<SingleServerProvider, SingleServerProvider::Step>>(
     SingleServerProvider::Step const& vertex,
     PathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
-
-template void PathStore<SingleServerProvider::Step>::buildPath<
-    SingleProviderPathResult<SingleServerProvider, SingleServerProvider::Step>>(
-    SingleServerProvider::Step const& vertex,
-    SingleProviderPathResult<SingleServerProvider, SingleServerProvider::Step>& path) const;
 
 template void PathStore<SingleServerProvider::Step>::reverseBuildPath<SingleServerProvider>(
     SingleServerProvider::Step const& vertex,
@@ -182,12 +206,6 @@ template void PathStore<SingleServerProvider::Step>::buildPath<
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
-
-template void PathStore<SingleServerProvider::Step>::buildPath<
-    SingleProviderPathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
-    ProviderTracer<SingleServerProvider>::Step const& vertex,
-    SingleProviderPathResult<ProviderTracer<SingleServerProvider>,
-                             ProviderTracer<SingleServerProvider>::Step>& path) const;
 
 template void PathStore<ProviderTracer<SingleServerProvider>::Step>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,

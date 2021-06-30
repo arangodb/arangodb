@@ -63,7 +63,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       }
       auto const graphIsUsedAsSatellite = graphNode->isUsedAsSatellite();
       auto const isUsedAsSatellite = [&](auto const& col) {
-        return graphIsUsedAsSatellite || (pushToSingleServer && col->isSatellite());
+        return graphIsUsedAsSatellite || (pushToSingleServer && col->isSatellite()) || (col->isSatellite() && graphNode->isSmart());
       };
       // Add all Edge Collections to the Transactions, Traversals do never write
       for (auto const& col : graphNode->edgeColls()) {
@@ -75,6 +75,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       for (auto const& col : graphNode->vertexColls()) {
         updateLocking(col, AccessMode::Type::READ, snippetId, {}, isUsedAsSatellite(col));
       }
+
       break;
     }
     case ExecutionNode::ENUMERATE_COLLECTION:

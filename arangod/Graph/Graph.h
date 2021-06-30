@@ -207,7 +207,6 @@ class Graph {
   virtual bool isSmart() const;
   virtual bool isDisjoint() const;
   virtual bool isSatellite() const;
-  virtual bool isHybrid() const;
   virtual bool needsToBeSatellite(std::string const& edge) const;
 
   uint64_t numberOfShards() const;

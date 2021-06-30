@@ -38,9 +38,21 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
 using namespace arangodb::graph;
 
+namespace {
+aql::AstNode* InitializeReference(aql::Ast& ast, aql::Variable& var) {
+  ast.scopes()->start(aql::ScopeType::AQL_SCOPE_MAIN);
+  ast.scopes()->addVariable(&var);
+  aql::AstNode* a = ast.createNodeReference(var.name);
+  ast.scopes()->endCurrent();
+  return a;
+}
+}  // namespace
+
 namespace arangodb {
 namespace tests {
 namespace single_server_provider_test {
+
+using Step = SingleServerProvider::Step;
 
 class SingleServerProviderTest : public ::testing::Test {
  protected:
@@ -50,8 +62,17 @@ class SingleServerProviderTest : public ::testing::Test {
   std::unique_ptr<arangodb::aql::Query> query{nullptr};
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
+  std::unique_ptr<arangodb::transaction::Methods> _trx{};
 
-  std::map<std::string, std::string> _emptyShardMap{};
+  // Expression Parts
+  aql::Variable* _tmpVar{nullptr};
+  aql::AstNode* _varNode{nullptr};
+
+  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+
+  std::string stringToMatch = "0-1";
 
   SingleServerProviderTest() {}
   ~SingleServerProviderTest() {}
@@ -65,20 +86,60 @@ class SingleServerProviderTest : public ::testing::Test {
 
     // We now have collections "v" and "e"
     query = singleServer->getQuery("RETURN 1", {"v", "e"});
+    _trx = std::make_unique<arangodb::transaction::Methods>(query->newTrxContext());
 
     auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
-    auto tmpVar = singleServer->generateTempVar(query.get());
-    auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
+    _tmpVar = singleServer->generateTempVar(query.get());
 
-    std::vector<IndexAccessor> usedIndexes{IndexAccessor{edgeIndexHandle, indexCondition, 0}};
+    auto indexCondition = singleServer->buildOutboundCondition(query.get(), _tmpVar);
+    _varNode = ::InitializeReference(*query->ast(), *_tmpVar);
 
-    BaseProviderOptions opts(tmpVar, std::move(usedIndexes), _emptyShardMap);
+    std::vector<IndexAccessor> usedIndexes{};
+    auto expr = conditionKeyMatches(stringToMatch);
+    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, expr});
+
+    _expressionContext =
+        std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx, *query, _functionsCache);
+    BaseProviderOptions opts(_tmpVar,
+                             std::make_pair(std::move(usedIndexes),
+                                            std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+                             *_expressionContext.get(), _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
+  }
+
+  /*
+   * generates a condition #TMP._key == '<toMatch>'
+   */
+  std::shared_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
+    auto expectedKey =
+        query->ast()->createNodeValueString(toMatch.c_str(), toMatch.length());
+    auto keyAccess =
+        query->ast()->createNodeAttributeAccess(_varNode,
+                                                StaticStrings::KeyString.c_str(),
+                                                StaticStrings::KeyString.length());
+    // This condition cannot be fulfilled
+    auto condition = query->ast()->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                            keyAccess, expectedKey);
+    return std::make_shared<aql::Expression>(query->ast(), condition);
   }
 };
 
-TEST_F(SingleServerProviderTest, it_must_be_described) {
-  ASSERT_TRUE(true);
+TEST_F(SingleServerProviderTest, it_can_provide_edges) {
+  MockGraph g;
+  g.addEdge(0, 1, 2);
+  g.addEdge(0, 2, 3);
+  g.addEdge(1, 2, 1);
+  auto testee = makeProvider(g);
+  auto startVertex = g.vertexToId(0);
+  HashedStringRef hashedStart{startVertex.c_str(),
+                              static_cast<uint32_t>(startVertex.length())};
+  Step s = testee.startVertex(hashedStart);
+
+  testee.expand(s, 0, [&](Step next) {
+    VPackBuilder hund;
+    testee.addEdgeToBuilder(next.getEdge(), hund);
+    LOG_DEVEL << next.getVertexIdentifier() << " e: " << hund.toJson();
+  });
 }
 
 }  // namespace single_server_provider_test

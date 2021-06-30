@@ -121,6 +121,29 @@ class ClusterProvider {
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
 
+    std::string getCollectionName() const {
+      auto collectionNameResult = extractCollectionName(_vertex.getID());
+      if (collectionNameResult.fail()) {
+        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+      }
+      return collectionNameResult.get().first;
+    };
+
+    /* to be moved-out later into seperate step */
+    void setLocalSchreierIndex(size_t index) {
+      TRI_ASSERT(index != std::numeric_limits<size_t>::max());
+      TRI_ASSERT(!hasLocalSchreierIndex());
+      _localSchreierIndex = index;
+    }
+
+    bool hasLocalSchreierIndex() const {
+      return _localSchreierIndex != std::numeric_limits<size_t>::max();
+    }
+
+    std::size_t getLocalSchreierIndex() const { return _localSchreierIndex; }
+
+    bool isResponsible(transaction::Methods* trx) const;
+
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
    private:
@@ -130,6 +153,7 @@ class ClusterProvider {
     Vertex _vertex;
     Edge _edge;
     bool _fetched;
+    size_t _localSchreierIndex = std::numeric_limits<size_t>::max();  // to be removed later
   };
 
  public:
@@ -143,7 +167,7 @@ class ClusterProvider {
 
   void clear();
 
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;

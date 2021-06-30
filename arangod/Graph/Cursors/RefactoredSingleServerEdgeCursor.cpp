@@ -42,10 +42,11 @@ namespace {
 IndexIteratorOptions defaultIndexIteratorOptions;
 }
 
-RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(transaction::Methods::IndexHandle idx,
-                                                         aql::AstNode* condition,
-                                                         std::optional<size_t> memberToUpdate)
+RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(
+    transaction::Methods::IndexHandle idx, aql::AstNode* condition,
+    std::optional<size_t> memberToUpdate, aql::Expression* expression)
     : _idxHandle(std::move(idx)),
+      _expression(expression),
       _indexCondition(condition),
       _cursor(nullptr),
       _conditionMemberToUpdate(memberToUpdate) {}
@@ -57,6 +58,10 @@ RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(LookupInfo&& other) noe
       _cursor(std::move(other._cursor)){};
 
 RefactoredSingleServerEdgeCursor::LookupInfo::~LookupInfo() = default;
+
+aql::Expression* RefactoredSingleServerEdgeCursor::LookupInfo::getExpression() {
+  return _expression;
+}
 
 void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
     VertexType vertex, transaction::Methods* trx, arangodb::aql::Variable const* tmpVar) {
@@ -74,6 +79,25 @@ void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
     // must edit node in place; TODO replace node?
     // TODO i think there is now a mutable String node available
+    TEMPORARILY_UNLOCK_NODE(idNode);
+    idNode->setStringValue(vertex.data(), vertex.length());
+  } else {
+    // If we have to inject the vertex value it has to be within
+    // the last member of the condition.
+    // We only get into this case iff the index used does
+    // not cover _from resp. _to.
+    // inject _from/_to value
+    auto expressionNode = _expression->nodeForModification();
+
+    TRI_ASSERT(expressionNode->numMembers() > 0);
+    auto dirCmp = expressionNode->getMemberUnchecked(expressionNode->numMembers() - 1);
+    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+    TRI_ASSERT(dirCmp->numMembers() == 2);
+
+    auto idNode = dirCmp->getMemberUnchecked(1);
+    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+
     TEMPORARILY_UNLOCK_NODE(idNode);
     idNode->setStringValue(vertex.data(), vertex.length());
   }
@@ -100,15 +124,28 @@ IndexIterator& RefactoredSingleServerEdgeCursor::LookupInfo::cursor() {
 }
 
 RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
-    arangodb::transaction::Methods* trx,
-    arangodb::aql::Variable const* tmpVar, std::vector<IndexAccessor> const& indexConditions)
-    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx) {
+    transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
+    std::vector<IndexAccessor> const& globalIndexConditions,
+    std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
+    arangodb::aql::FixedVarExpressionContext& expressionContext)
+    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx), _expressionCtx(expressionContext) {
   // We need at least one indexCondition, otherwise nothing to serve
-  TRI_ASSERT(!indexConditions.empty());
-  _lookupInfo.reserve(indexConditions.size());
-  for (auto const& idxCond : indexConditions) {
+  TRI_ASSERT(!globalIndexConditions.empty());
+  _lookupInfo.reserve(globalIndexConditions.size());
+  _depthLookupInfo.reserve(depthBasedIndexConditions.size());
+  for (auto const& idxCond : globalIndexConditions) {
     _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                             idxCond.getMemberToUpdate());
+                             idxCond.getMemberToUpdate(), idxCond.getExpression());
+  }
+  for (auto const& obj : depthBasedIndexConditions) {
+    auto& [depth, idxCondArray] = obj;
+
+    std::vector<LookupInfo> tmpLookupVec;
+    for (auto const& idxCond : idxCondArray) {
+      tmpLookupVec.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
+                                idxCond.getMemberToUpdate(), idxCond.getExpression());
+    }
+    _depthLookupInfo.try_emplace(depth, std::move(tmpLookupVec));
   }
 }
 
@@ -133,9 +170,22 @@ void RefactoredSingleServerEdgeCursor::rearm(VertexType vertex, uint64_t /*depth
   }
 }
 
-void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
+void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
+                                               aql::TraversalStats& stats, size_t depth,
                                                Callback const& callback) {
   TRI_ASSERT(!_lookupInfo.empty());
+  VPackBuilder tmpBuilder;
+
+  auto handleExpression = [&](aql::Expression* expression,
+                              EdgeDocumentToken edgeToken, VPackSlice edge) {
+    if (edge.isString()) {
+      tmpBuilder.clear();
+      provider.insertEdgeIntoResult(edgeToken, tmpBuilder);
+      edge = tmpBuilder.slice();
+    }
+    return evaluateExpression(expression, edge);
+  };
+
   for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
     auto& cursor = _lookupInfo[_currentCursor].cursor();
     LogicalCollection* collection = cursor.collection();
@@ -148,31 +198,85 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
           return false;
         }
 #endif
-        callback(EdgeDocumentToken(cid, token), edge, _currentCursor);
+
+        EdgeDocumentToken edgeToken(cid, token);
+        // eval depth-based expression first if available
+        bool foundDepthInfo =
+            (_depthLookupInfo.find(depth) == _depthLookupInfo.end()) ? false : true;
+        if (foundDepthInfo && _depthLookupInfo.at(depth).size() > 0 &&
+            _depthLookupInfo.at(depth)[_currentCursor].getExpression() != nullptr) {
+          if (!handleExpression(_depthLookupInfo.at(depth)[_currentCursor].getExpression(),
+                                edgeToken, edge)) {
+            stats.incrFiltered();
+            return false;
+          }
+        } else {
+          // eval global expression if available AND only if no depth specific expression needs to be handled before
+          if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
+            if (!handleExpression(_lookupInfo[_currentCursor].getExpression(),
+                                  edgeToken, edge)) {
+              stats.incrFiltered();
+              return false;
+            }
+          }
+        }
+
+        callback(std::move(edgeToken), edge, _currentCursor);
         return true;
       });
     } else {
       cursor.all([&](LocalDocumentId const& token) {
-        return collection->getPhysical()->read(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-          stats.addScannedIndex(1);
+        return collection->getPhysical()
+            ->read(_trx, token,
+                   [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+                     stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
-          if (_trx->skipInaccessible()) {
-            // TODO: we only need to check one of these
-            VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
-            VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-            if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-              return false;
-            }
-          }
+                     if (_trx->skipInaccessible()) {
+                       // TODO: we only need to check one of these
+                       VPackSlice from =
+                           transaction::helpers::extractFromFromDocument(edgeDoc);
+                       VPackSlice to =
+                           transaction::helpers::extractToFromDocument(edgeDoc);
+                       if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+                         return false;
+                       }
+                     }
 #endif
-          callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
-          return true;
-        }).ok();
+                     // eval expression if available
+                     if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
+                       bool result =
+                           evaluateExpression(_lookupInfo[_currentCursor].getExpression(),
+                                              edgeDoc);
+                       if (!result) {
+                         stats.incrFiltered();
+                         return false;
+                       }
+                     }
+                     callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
+                     return true;
+                   })
+            .ok();
       });
     }
   }
 }
 
-arangodb::transaction::Methods* RefactoredSingleServerEdgeCursor::trx() const {
-  return _trx;
+bool RefactoredSingleServerEdgeCursor::evaluateExpression(arangodb::aql::Expression* expression,
+                                                          VPackSlice value) {
+  if (expression == nullptr) {
+    return true;
+  }
+
+  TRI_ASSERT(value.isObject() || value.isNull());
+
+  aql::AqlValue edgeVal(aql::AqlValueHintDocumentNoCopy(value.begin()));
+  _expressionCtx.setVariableValue(_tmpVar, edgeVal);
+  TRI_DEFER(_expressionCtx.clearVariableValue(_tmpVar));
+
+  bool mustDestroy = false;
+  aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);
+  aql::AqlValueGuard guard(res, mustDestroy);
+  TRI_ASSERT(res.isBoolean());
+
+  return res.toBoolean();
 }
