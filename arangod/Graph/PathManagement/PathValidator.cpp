@@ -163,7 +163,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCon
 
   auto expr = _options.getVertexExpression(step.getDepth());
   if (expr != nullptr) {
-    // TODO: Maybe we want to replace this by ExpressionContext for simplicity
     _tmpObjectBuilder.clear();
     _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
 

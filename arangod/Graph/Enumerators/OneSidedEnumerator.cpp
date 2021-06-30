@@ -60,7 +60,7 @@ OneSidedEnumerator<Configuration>::OneSidedEnumerator(Provider&& forwardProvider
       _interior(resourceMonitor) {}
 
 template <class Configuration>
-OneSidedEnumerator<Configuration>::~OneSidedEnumerator() {}
+OneSidedEnumerator<Configuration>::~OneSidedEnumerator() = default;
 
 template <class Configuration>
 auto OneSidedEnumerator<Configuration>::destroyEngines() -> void {
@@ -269,4 +269,3 @@ template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServ
 template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, true>>;
-
