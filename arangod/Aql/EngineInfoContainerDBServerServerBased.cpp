@@ -685,7 +685,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
   builder.openObject();
-  builder.add("code", VPackValue(std::to_string(errorCode)));
+  builder.add("code", VPackValue(errorCode));
   builder.close();
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId] : serverQueryIds) {
