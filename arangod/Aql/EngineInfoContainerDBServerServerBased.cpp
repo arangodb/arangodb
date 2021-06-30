@@ -713,7 +713,8 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   builder.close();
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
-    requests.emplace_back(network::sendRequestRetry(pool, server, fuerte::RestVerb::Delete,
+    TRI_ASSERT(server.substr(0, 7) != "server:");
+    requests.emplace_back(network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Delete,
                                                           ::finishUrl + std::to_string(queryId),
                                                           /*copy*/ body, options));
   }
@@ -725,6 +726,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   for (auto& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
+      TRI_ASSERT(engine.first.substr(0, 7) != "server:");
       requests.emplace_back(network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
                            ::traverserUrl + basics::StringUtils::itoa(engine.second), noBody, options));
     }
