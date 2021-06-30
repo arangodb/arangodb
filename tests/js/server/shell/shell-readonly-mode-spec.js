@@ -167,16 +167,13 @@ describe('Readonly mode api', function() {
     expect(resp.code).to.equal(200);
   });
   
-  it('can still access cluster/nodeStats API when readonly', function() {
+  it('can still access cluster/nodeStatistics API when readonly', function() {
     if (!isCluster) {
       return;
     }
     
     let server = setReadOnlyAndGetDBServer();
-    let resp = download(endpoint + '/_admin/clusterNodeStats?ServerID=' + server);
-    expect(resp.code).to.equal(308);
-    
-    resp = download(endpoint + '/_admin/cluster/nodeStatistics?ServerID=' + server);
+    let resp = download(endpoint + '/_admin/cluster/nodeStatistics?ServerID=' + server);
     expect(resp.code).to.equal(200);
   });
   
