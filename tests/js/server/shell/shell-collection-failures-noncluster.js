@@ -48,6 +48,27 @@ function DocumentOperationsFailuresSuite() {
       internal.debugClearFailAt();
       db._drop(cn);
     },
+    
+    testInsertSizeLimit: function () {
+      let c = db._create(cn);
+
+      internal.debugSetFailAt("addOperationSizeError");
+
+      try {
+        c.insert({ _key: "testi" });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_RESOURCE_LIMIT.code);
+      }
+
+      assertEqual(0, c.count());
+    
+      internal.debugClearFailAt();
+
+      c.insert({ _key: "testi" });
+      assertEqual(1, c.count());
+    },
 
     testInsertFailure1: function () {
       let c = db._create(cn);
@@ -89,6 +110,28 @@ function DocumentOperationsFailuresSuite() {
 
       c.insert({ _key: "testi" });
       assertEqual(1, c.count());
+    },
+    
+    testRemoveSizeLimit: function () {
+      let c = db._create(cn);
+      c.insert({ _key: "testi" });
+
+      internal.debugSetFailAt("addOperationSizeError");
+
+      try {
+        c.remove("testi");
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_RESOURCE_LIMIT.code);
+      }
+
+      assertEqual(1, c.count());
+    
+      internal.debugClearFailAt();
+
+      c.remove("testi");
+      assertEqual(0, c.count());
     },
     
     testRemoveFailure1: function () {
@@ -133,6 +176,30 @@ function DocumentOperationsFailuresSuite() {
 
       c.remove("testi");
       assertEqual(0, c.count());
+    },
+    
+    testModifySizeLimit: function () {
+      let c = db._create(cn);
+      c.insert({ _key: "testi", value: 1 });
+
+      internal.debugSetFailAt("addOperationSizeError");
+
+      try {
+        c.update("testi", { value: 2 });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_RESOURCE_LIMIT.code);
+      }
+
+      assertEqual(1, c.count());
+      assertEqual(1, c.document("testi").value);
+    
+      internal.debugClearFailAt();
+
+      c.update("testi", { value: 3 });
+      assertEqual(1, c.count());
+      assertEqual(3, c.document("testi").value);
     },
     
     testModifyFailure1: function () {

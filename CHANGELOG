@@ -7,6 +7,8 @@ devel
   edges for the runtime of the execution. This uses more RAM for the
   algorithm but guarantees correctness.
 
+* Updated ArangoDB Starter to 0.15.1-preview-1.
+
 * Updated arangosync to 2.4.0.
 
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
