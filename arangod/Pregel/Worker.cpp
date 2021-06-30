@@ -37,8 +37,8 @@
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "Network/NetworkFeature.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
@@ -168,17 +168,20 @@ void Worker<V, E, M>::setupWorker() {
     // of time. Therefore this is performed asynchronously
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, cb = std::move(cb)] {
-      try {
-        _graphStore->loadShards(&_config, cb);
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("a47c4", WARN, Logger::PREGEL) << "caught exception in loadShards: " << ex.what();
-        throw;
-      } catch (...) {
-        LOG_TOPIC("e932d", WARN, Logger::PREGEL) << "caught unknown exception in loadShards"; 
-        throw;
-      }
-    });
+    bool queued =
+        scheduler->queue(RequestLane::INTERNAL_LOW, [this, cb = std::move(cb)] {
+          try {
+            _graphStore->loadShards(&_config, cb);
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("a47c4", WARN, Logger::PREGEL)
+                << "caught exception in loadShards: " << ex.what();
+            throw;
+          } catch (...) {
+            LOG_TOPIC("e932d", WARN, Logger::PREGEL)
+                << "caught unknown exception in loadShards";
+            throw;
+          }
+        });
     if (!queued) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
                                      "No available thread to load shards");
@@ -194,7 +197,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data, VPackBuilder& re
   if (_state != WorkerState::IDLE) {
     LOG_TOPIC("b8506", ERR, Logger::PREGEL)
         << "Cannot prepare a gss when the worker is not idle";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
   }
   _state = WorkerState::PREPARING;  // stop any running step
   LOG_TOPIC("f16f2", DEBUG, Logger::PREGEL) << "Received prepare GSS: " << data.toJson();
@@ -340,12 +344,13 @@ void Worker<V, E, M>::_startProcessing() {
   TRI_ASSERT(_runningThreads >= 1);
   TRI_ASSERT(_runningThreads <= _config.parallelism());
   size_t numT = _runningThreads;
-  
+
   auto self = shared_from_this();
   for (size_t i = 0; i < numT; i++) {
     bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT, numSegments] {
       if (_state != WorkerState::COMPUTING) {
-        LOG_TOPIC("f0e3d", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
+        LOG_TOPIC("f0e3d", WARN, Logger::PREGEL)
+            << "Execution aborted prematurely.";
         return;
       }
       size_t dividend = numSegments / numT;
@@ -365,7 +370,7 @@ void Worker<V, E, M>::_startProcessing() {
                                      "No thread available to start processing");
     }
   }
-  
+
   // TRI_ASSERT(_runningThreads == i);
   LOG_TOPIC("425c3", DEBUG, Logger::PREGEL) << "Using " << numT << " Threads";
 }
@@ -382,7 +387,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 // internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
 bool Worker<V, E, M>::_processVertices(size_t threadId,
-                                       RangeIterator<Vertex<V,E>>& vertexIterator) {
+                                       RangeIterator<Vertex<V, E>>& vertexIterator) {
   double start = TRI_microtime();
 
   // thread local caches
@@ -411,10 +416,10 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
 
   size_t activeCount = 0;
   for (; vertexIterator.hasMore(); ++vertexIterator) {
-    Vertex<V,E>* vertexEntry = *vertexIterator;
+    Vertex<V, E>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
-    
+
     if (messages.size() > 0 || vertexEntry->active()) {
       vertexComputation->_vertexEntry = vertexEntry;
       vertexComputation->compute(messages);
@@ -429,7 +434,8 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    LOG_TOPIC("ee2ab", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
+    LOG_TOPIC("ee2ab", WARN, Logger::PREGEL)
+        << "Execution aborted prematurely.";
     return false;
   }
   if (vertexComputation->_enterNextGSS) {
@@ -458,7 +464,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
-    lastThread = _runningThreads == 0;  // should work like a join operation    
+    lastThread = _runningThreads == 0;  // should work like a join operation
   }
   return lastThread;
 }
@@ -492,7 +498,7 @@ void Worker<V, E, M>::_finishedProcessing() {
       size_t currentAVCount = _graphStore->localVertexCount();
       auto it = _graphStore->vertexIterator();
       for (; it.hasMore(); ++it) {
-        Vertex<V,E>* vertexEntry = *it;
+        Vertex<V, E>* vertexEntry = *it;
         // reduces the containedMessageCount
         _readCache->erase(vertexEntry->shard(), vertexEntry->key());
       }
@@ -611,8 +617,7 @@ void Worker<V, E, M>::_continueAsync() {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
-                                        std::function<void()> cb) {
+void Worker<V, E, M>::finalizeExecution(VPackSlice const& body, std::function<void()> cb) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -621,7 +626,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     cb();
     return;
   }
-  
+
   auto cleanup = [self = shared_from_this(), this, cb] {
     VPackBuilder body;
     body.openObject();
@@ -631,7 +636,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();
   };
-  
+
   _state = WorkerState::DONE;
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
@@ -648,20 +653,19 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   MUTEX_LOCKER(guard, _commandMutex);
   TRI_ASSERT(b.isEmpty());
-  
-//  std::vector<ShardID> const& shards = _config.globalShardIDs();
+  //  std::vector<ShardID> const& shards = _config.globalShardIDs();
   std::string tmp;
 
-  b.openArray(/*unindexed*/true);
+  b.openArray(/*unindexed*/ true);
   auto it = _graphStore->vertexIterator();
   for (; it.hasMore(); ++it) {
-    Vertex<V,E> const* vertexEntry = *it;
-    
+    Vertex<V, E> const* vertexEntry = *it;
+
     TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
     ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
-    
-    b.openObject(/*unindexed*/true);
-    
+
+    b.openObject(/*unindexed*/ true);
+
     if (withId) {
       std::string const& cname = _config.shardIDToCollectionName(shardId);
       if (!cname.empty()) {
@@ -672,11 +676,11 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
         b.add(StaticStrings::IdString, VPackValue(tmp));
       }
     }
-    
-    b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),
-                                                   vertexEntry->key().size(),
-                                                   VPackValueType::String));
-    
+
+    b.add(StaticStrings::KeyString,
+          VPackValuePair(vertexEntry->key().data(), vertexEntry->key().size(),
+                         VPackValueType::String));
+
     V const& data = vertexEntry->data();
     // bool store =
     _graphStore->graphFormat()->buildVertexDocument(b, &data);
@@ -728,7 +732,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), this] {
     if (_state != WorkerState::RECOVERING) {
-      LOG_TOPIC("554e2", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      LOG_TOPIC("554e2", WARN, Logger::PREGEL)
+          << "Compensation aborted prematurely.";
       return;
     }
 
@@ -738,19 +743,21 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _initializeVertexContext(vCompensate.get());
     if (!vCompensate) {
       _state = WorkerState::DONE;
-      LOG_TOPIC("938d2", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      LOG_TOPIC("938d2", WARN, Logger::PREGEL)
+          << "Compensation aborted prematurely.";
       return;
     }
     vCompensate->_writeAggregators = _workerAggregators.get();
 
     size_t i = 0;
     for (; vertexIterator.hasMore(); ++vertexIterator) {
-      Vertex<V,E>* vertexEntry = *vertexIterator;
+      Vertex<V, E>* vertexEntry = *vertexIterator;
       vCompensate->_vertexEntry = vertexEntry;
       vCompensate->compensate(i > _preRecoveryTotal);
       i++;
       if (_state != WorkerState::RECOVERING) {
-        LOG_TOPIC("e9011", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
+        LOG_TOPIC("e9011", WARN, Logger::PREGEL)
+            << "Execution aborted prematurely.";
         break;
       }
     }
@@ -773,7 +780,8 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::RECOVERING) {
-    LOG_TOPIC("22e42", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+    LOG_TOPIC("22e42", WARN, Logger::PREGEL)
+        << "Compensation aborted prematurely.";
     return;
   }
 
@@ -805,19 +813,18 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     }
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
-    
+
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
-    
+
     auto const& nf = server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
-    
+
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
-    
-    network::sendRequest(pool, "server:" + _config.coordinatorId(),
-                         fuerte::RestVerb::Post, baseUrl + path, std::move(buffer), reqOpts);
-    
+
+    network::sendRequest(pool, "server:" + _config.coordinatorId(), fuerte::RestVerb::Post,
+                         baseUrl + path, std::move(buffer), reqOpts);
   }
 }
 
@@ -832,23 +839,24 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
     handle(response.slice());
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
-    
+
     application_features::ApplicationServer& server = _config.vocbase()->server();
     auto const& nf = server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
-    
+
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
-    
-    
+
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
     reqOpts.skipScheduler = true;
 
-    network::Response r = network::sendRequest(pool, "server:" + _config.coordinatorId(),
-                                               fuerte::RestVerb::Post,
-                                               baseUrl + path, std::move(buffer), reqOpts).get();
-    
+    network::Response r =
+        network::sendRequest(pool, "server:" + _config.coordinatorId(),
+                             fuerte::RestVerb::Post, baseUrl + path,
+                             std::move(buffer), reqOpts)
+            .get();
+
     if (handle) {
       handle(r.slice());
     }
