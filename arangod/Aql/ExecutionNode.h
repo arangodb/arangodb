@@ -475,6 +475,10 @@ class ExecutionNode {
 
   void setIsAsyncPrefetchEnabled(bool v) noexcept { _isAsyncPrefetchEnabled = v; }
 
+  bool isCallstackSplitEnabled() const noexcept { return _isCallstackSplitEnabled; }
+  
+  void enableCallstackSplit() noexcept { _isCallstackSplitEnabled = true; }
+
   [[nodiscard]] static bool isIncreaseDepth(NodeType type);
   [[nodiscard]] bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
@@ -547,6 +551,10 @@ class ExecutionNode {
   /// @brief whether or not asynchronous prefetching is enabled for this node
   bool _isAsyncPrefetchEnabled{false};
 
+  /// @brief whether or not this node should split calls to upstream nodes to a
+  /// separate thread to avoid the problem of stackoverflows in large queries.
+  bool _isCallstackSplitEnabled{false};
+  
   /// @brief _plan, the ExecutionPlan object
   ExecutionPlan* _plan;
 

@@ -978,6 +978,7 @@ if (MSVC)
     add_definitions(/Z7)
   endif ()
 
+  add_definitions(/bigobj)
 else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")

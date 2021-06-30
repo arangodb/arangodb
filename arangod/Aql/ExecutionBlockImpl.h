@@ -39,6 +39,10 @@
 #include <memory>
 #include <mutex>
 
+namespace arangodb {
+  class ExecContext;
+}
+
 namespace arangodb::aql {
 
 template <BlockPassthrough passThrough>
@@ -346,6 +350,61 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     std::condition_variable _bell;
     std::optional<PrefetchResult> _result;
   };
+  
+  /**
+   * @brief The CallstackSplit class is used for execution blocks that need to
+   * perform their calls to upstream nodes in a separate thread in order to
+   * prevent stack overflows.
+   * 
+   * Execution blocks for which the callstack split has been enabled create a
+   * single CallstackSplit instance upon creation. The CallstackSplit instance
+   * manages the new thread for the upstream execution. Instead of calling
+   * executeFetcher directly, we call Callsplit::execute which stores the call
+   * parameter, signals the thread and then blocks. The other thread fetches
+   * the parameters, performs the call to executeFetcher, stores the result and
+   * notifies the original thread.
+   * 
+   * This way we can split the callstack over multiple threads and thereby
+   * avoid stack overflows.
+   * 
+   */
+  struct CallstackSplit {
+    explicit CallstackSplit(ExecutionBlockImpl& block);
+    ~CallstackSplit();
+
+    using UpstreamResult =
+        std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>;
+    UpstreamResult execute(ExecutionContext& ctx, AqlCallType const& aqlCall);
+
+   private:
+    enum class State {
+      /// @brief the thread is waiting to be notified about  a pending upstream
+      /// call or that it should terminate.
+      Waiting,
+      /// @brief the thread is currently executing an upstream call. As long
+      /// as we are in state `Executing` the previous thread is blocked waiting
+      /// for the result.
+      Executing,
+      /// @brief the CallstackSplit instance is getting destroyed and the thread
+      /// must terminate
+      Stopped
+    };
+    struct Params {
+      std::variant<UpstreamResult, std::exception_ptr, std::nullopt_t>& result;
+      ExecutionContext& ctx;
+      AqlCallType const& aqlCall;
+    };
+
+    void run(ExecContext const& execContext);
+    std::atomic<State> _state{State::Waiting};
+    Params* _params;
+    ExecutionBlockImpl& _block;
+
+    std::mutex _lock;
+    std::condition_variable _bell;
+
+    std::thread _thread;
+  };
 
   RegisterInfos _registerInfos;
 
@@ -393,9 +452,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   AqlCallStack _stackBeforeWaiting;
   
   std::shared_ptr<PrefetchTask> _prefetchTask;
-  
+
+  std::unique_ptr<CallstackSplit> _callstackSplit;
+
   Result _firstFailure;
-  
+
   bool _hasMemoizedCall{false};
 
   // Only used in passthrough variant.

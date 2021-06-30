@@ -96,6 +96,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   uint64_t _queryMemoryLimit;
   double _queryMaxRuntime;
   uint64_t _maxQueryPlans;
+  uint64_t _maxNodesPerCallstack;
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
   uint64_t _queryCacheMaxEntrySize;
