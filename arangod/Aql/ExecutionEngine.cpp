@@ -509,10 +509,10 @@ struct DistributedQueryInstanciator final
         TRI_ASSERT(server.substr(0, 7) != "server:");
         std::string comment = std::string("AQL query from coordinator ") + ServerState::instance()->getId();
         
-        std::function<void(void)> f = [server, id = _query.id(), &vocbase = _query.vocbase()]() {
+        std::function<void(void)> f = [srvr = server, id = _query.id(), &vocbase = _query.vocbase()]() {
           LOG_TOPIC("d2554", INFO, Logger::QUERIES) 
             << "killing query " << id << " because participating DB server "
-            << server << " is unavailable";
+            << srvr << " is unavailable";
           try {
             methods::Queries::kill(vocbase, id, false);
           } catch (...) {
