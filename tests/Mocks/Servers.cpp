@@ -689,13 +689,7 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
     std::string const& dbName, std::string collectionName,
     std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
     TRI_col_type_e type, VPackSlice additionalProperties) {
-  /*
-  std::string cID, uint64_t shards,
-                                  uint64_t replicationFactor, uint64_t writeConcern,
-                                  bool waitForRep, velocypack::Slice const& slice,
-                                  std::string coordinatorId, RebootId rebootId */
-  // This is unsafe
-  std::string cid = "98765" + basics::StringUtils::itoa(type);
+  std::string cid = std::to_string(_server.getFeature<ClusterFeature>().clusterInfo().uniqid());
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(dbName);
 

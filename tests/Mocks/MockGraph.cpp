@@ -88,7 +88,7 @@ void MockGraph::addEdge(size_t from, size_t to, double weight) {
 }
 
 void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
-                          std::string const& edgeCollectionName) const {
+                          std::string const& edgeCollectionName, std::string const& edgeCollectionSecondName) const {
   {
     // Insert vertices
     arangodb::OperationOptions options;
@@ -111,28 +111,36 @@ void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexColle
     EXPECT_TRUE(added == vertices().size());
   }
 
-  {
-    // Insert edges
-    arangodb::OperationOptions options;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              edgeCollectionName,
-                                              arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
-    size_t added = 0;
-    velocypack::Builder b;
-    for (auto& edge : edges()) {
-      b.clear();
-      edge.addToBuilder(b);
-      auto res = trx.insert(edgeCollectionName, b.slice(), options);
-      if (res.fail()) {
-        LOG_DEVEL << res.errorMessage() << " " << b.toJson();
+  auto insertEdges = [&](std::string const& edgeCollectionToInsert) -> void {
+    {
+      // Insert edges
+      arangodb::OperationOptions options;
+      arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                                edgeCollectionToInsert,
+                                                arangodb::AccessMode::Type::WRITE);
+      EXPECT_TRUE((trx.begin().ok()));
+      size_t added = 0;
+      velocypack::Builder b;
+      for (auto& edge : edges()) {
+        b.clear();
+        edge.addToBuilder(b);
+        auto res = trx.insert(edgeCollectionToInsert, b.slice(), options);
+        if (res.fail()) {
+          LOG_DEVEL << res.errorMessage() << " " << b.toJson();
+        }
+        EXPECT_TRUE((res.ok()));
+        added++;
       }
-      EXPECT_TRUE((res.ok()));
-      added++;
-    }
 
-    EXPECT_TRUE((trx.commit().ok()));
-    EXPECT_TRUE(added == edges().size());
+      EXPECT_TRUE((trx.commit().ok()));
+      EXPECT_TRUE(added == edges().size());
+    }
+  };
+
+  insertEdges(edgeCollectionName);
+  if (!edgeCollectionSecondName.empty()) {
+    LOG_DEVEL << "test: " << edgeCollectionSecondName;
+    insertEdges(edgeCollectionSecondName);
   }
 }
 
