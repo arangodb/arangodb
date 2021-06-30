@@ -71,10 +71,8 @@ class RefactoredSingleServerEdgeCursor {
 
     IndexIterator& cursor();
     aql::Expression* getExpression();
-    aql::Expression* getExpression(uint64_t position);
 
    private:
-    // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
     transaction::Methods::IndexHandle _idxHandle;
     aql::Expression* _expression;
