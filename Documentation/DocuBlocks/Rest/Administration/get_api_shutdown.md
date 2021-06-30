@@ -42,6 +42,10 @@ Once all numbers have gone to 0, the flag `allClear` is set and the
 Coordinator shuts down automatically. This API is not available on
 DB-Servers and Agents.
 
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned in all cases.
 
 @RESTREPLYBODY{softShutdownOngoing,boolean,required,}
 Whether a soft shutdown of the Coordinator is in progress.
@@ -69,10 +73,5 @@ Number of ongoing low priority requests.
 
 @RESTREPLYBODY{allClear,boolean,required,}
 Whether all active operations finished.
-
-@RESTRETURNCODES
-
-@RESTRETURNCODE{200}
-is returned in all cases, the above JSON object is in the body.
 
 @endDocuBlock
