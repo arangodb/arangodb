@@ -130,7 +130,7 @@ JOB_STATUS CleanOutServer::status() {
       }
       addRemoveJobFromSomewhere(reportTrx, "Pending", _jobId);
       Builder job;
-      _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+      std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(reportTrx, "Finished", job.slice(), "");
       addReleaseServer(reportTrx, _server);
     }

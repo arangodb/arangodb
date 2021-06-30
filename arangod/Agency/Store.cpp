@@ -416,9 +416,13 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
     Node const* node = &Node::dummyNode();
 
     // Check is guarded in ::apply
+    bool found = false;
     if (auto n = _node.get(pv); n.has_value()) {
+      found = true;
       node = &n->get();
     }
+
+
 
     if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {

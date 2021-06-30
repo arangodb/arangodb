@@ -97,10 +97,10 @@ bool Job::finish(std::string const& server, std::string const& shard,
     {
       VPackArrayBuilder guard(&pending);
       if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
-        _snapshot.hasAsBuilder(pendingPrefix + _jobId, pending);
+        std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, pending);
         started = true;
       } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
-        _snapshot.hasAsBuilder(toDoPrefix + _jobId, pending);
+        std::ignore = _snapshot.hasAsBuilder(toDoPrefix + _jobId, pending);
       } else {
         LOG_TOPIC("54fde", DEBUG, Logger::AGENCY)
             << "Nothing in pending to finish up for job " << _jobId;

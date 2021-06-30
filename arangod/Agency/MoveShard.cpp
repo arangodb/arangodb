@@ -807,7 +807,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         addPreconditionCollectionStillThere(pre, _database, _collection);
         addRemoveJobFromSomewhere(trx, "Pending", _jobId);
         Builder job;
-        _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+        std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
         addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
         addReleaseShard(trx, _shard);
         addMoveShardToServerUnLock(trx);
@@ -927,7 +927,7 @@ JOB_STATUS MoveShard::pendingFollower() {
 
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
-      _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+      std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
       addPreconditionCollectionStillThere(precondition, _database, _collection);
       addReleaseShard(trx, _shard);
@@ -1082,7 +1082,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       }
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
-      _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+      std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted (3): " + reason);
       addReleaseShard(trx, _shard);
       addMoveShardToServerUnLock(trx);
