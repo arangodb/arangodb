@@ -1,6 +1,12 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Bug-Fix: Pregel WCC algorithm could yield incorrect results if a
+  part of the connected component was only attached via OUTBOUND edges.
+  The underlying algorithm is now modified to properly retain INBOUND
+  edges for the runtime of the execution. This uses more RAM for the
+  algorithm but guarantees correctness.
+
 * Updated arangosync to 2.4.0.
 
 * For cluster AQL queries, let the coordinator determine the query id to be used
