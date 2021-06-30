@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.1-preview-2.
+
 * Fix potential stack overflow when executing large queries. This is
   achieved by splitting the callstack and moving part of the execution
   to a separate thread. The number of execution nodes after which such
