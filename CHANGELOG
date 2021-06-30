@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch and AQL  
+* Added prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch  
 
 * Fix potential stack overflow when executing large queries. This is
   achieved by splitting the callstack and moving part of the execution
