@@ -1809,6 +1809,20 @@ void RestoreFeature::start() {
 
   std::unique_ptr<SimpleHttpClient> httpClient;
 
+  auto const connectRetry = [&](size_t numRetries) -> Result {
+    for (size_t i = 0; i < numRetries; i++) {
+      if (i > 0) {
+        LOG_TOPIC("5855a", WARN, Logger::RESTORE) << "Failed to connect to server, retry.";
+      }
+      Result result = _clientManager.getConnectedClient(httpClient, _options.force,
+          true, !_options.createDatabase, false);
+      if (!result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT) && !result.is(TRI_ERROR_INTERNAL)) {
+        return result;
+      }
+    }
+    return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
+  };
+
   // final result
   Result result = _clientManager.getConnectedClient(httpClient, _options.force,
                                              true, !_options.createDatabase, false);
