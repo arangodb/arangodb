@@ -1,8 +1,8 @@
 
 @startDocuBlock get_api_shutdown
-@brief initiates the shutdown sequence
+@brief query progress of soft shutdown process
 
-@RESTHEADER{GET /_admin/shutdown, Query progress of soft shutdown process, RestShutdownHandler}
+@RESTHEADER{GET /_admin/shutdown, Query progress of soft shutdown process, RestGetShutdownHandler}
 
 @RESTDESCRIPTION
 <small>Introduced in: v3.7.12, v3.8.1, v3.9.0</small>
@@ -20,32 +20,14 @@ In this case, the following types of operations are tracked:
  - Queued low priority requests (most normal requests)
  - Ongoing low priority requests
 
-This call returns a JSON object of the following shape, indicating the
-fact that a soft shutdown is ongoing and the number of active operations
-of the various types:
-
-```json
-{
-  "softShutdownOngoing" : true,
-  "AQLcursors" : 0,
-  "transactions" : 1,
-  "pendingJobs" : 1,
-  "doneJobs" : 0,
-  "pregelConductors" : 0,
-  "lowPrioOngoingRequests" : 1,
-  "lowPrioQueuedRequests" : 0,
-  "allClear" : false
-}
-```
-
-Once all numbers have gone to 0, the flag `allClear` is set and the
-Coordinator shuts down automatically. This API is not available on
-DB-Servers and Agents.
+This API is not available on DB-Servers and Agents.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned in all cases.
+The response indicates the fact that a soft shutdown is ongoing and the
+number of active operations of the various types. Once all numbers have gone
+to 0, the flag `allClear` is set and the Coordinator shuts down automatically.
 
 @RESTREPLYBODY{softShutdownOngoing,boolean,required,}
 Whether a soft shutdown of the Coordinator is in progress.
