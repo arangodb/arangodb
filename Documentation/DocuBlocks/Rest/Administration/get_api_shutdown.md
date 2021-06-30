@@ -5,13 +5,15 @@
 @RESTHEADER{GET /_admin/shutdown, Query progress of soft shutdown process, RestShutdownHandler}
 
 @RESTDESCRIPTION
-This call reports progress about a soft coordinator shutdown (see
+<small>Introduced in: v3.7.12, v3.8.1, v3.9.0</small>
+
+This call reports progress about a soft Coordinator shutdown (see
 documentation of `DELETE /_admin/shutdown?soft=true`). 
 In this case, the following types of operations are tracked:
 
  - AQL cursors (in particular streaming cursors)
- - Transactions (in particular streaming transactions)
- - Pregel runs (conducted by this coordinator)
+ - Transactions (in particular stream transactions)
+ - Pregel runs (conducted by this Coordinator)
  - Ongoing asynchronous requests (using the `x-arango-async: store` HTTP header
  - Finished asynchronous requests, whose result has not yet been
    collected
@@ -37,11 +39,36 @@ of the various types:
 ```
 
 Once all numbers have gone to 0, the flag `allClear` is set and the
-coordinator shuts down automatically. This API is not available on
-DBServers and Agents.
+Coordinator shuts down automatically. This API is not available on
+DB-Servers and Agents.
 
-This API call was introduced in 3.7.12, 3.8.1 and all versions greater
-or equal to 3.9.
+
+@RESTREPLYBODY{softShutdownOngoing,boolean,required,}
+Whether a soft shutdown of the Coordinator is in progress.
+
+@RESTREPLYBODY{AQLcursors,number,required,}
+Number of AQL cursors that are still active.
+
+@RESTREPLYBODY{transactions,number,required,}
+Number of ongoing transactions.
+
+@RESTREPLYBODY{pendingJobs,number,required,}
+Number of ongoing asynchronous requests.
+
+@RESTREPLYBODY{doneJobs,number,required,}
+Number of finished asynchronous requests, whose result has not yet been collected.
+
+@RESTREPLYBODY{pregelConductors,number,required,}
+Number of ongoing Pregel jobs.
+
+@RESTREPLYBODY{lowPrioOngoingRequests,number,required,}
+Number of queued low priority requests.
+
+@RESTREPLYBODY{lowPrioQueuedRequests,number,required,}
+Number of ongoing low priority requests.
+
+@RESTREPLYBODY{allClear,boolean,required,}
+Whether all active operations finished.
 
 @RESTRETURNCODES
 
