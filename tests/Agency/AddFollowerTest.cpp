@@ -153,7 +153,7 @@ TEST_F(AddFollowerTest, creating_a_job_should_create_a_job_in_todo) {
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  auto addFollower = AddFollower(baseStructure(PREFIX), &agent, jobId,
+  auto addFollower = AddFollower(baseStructure.getOrCreate(PREFIX), &agent, jobId,
                                  "unittest", DATABASE, COLLECTION, SHARD);
 
   addFollower.create();
@@ -211,7 +211,7 @@ TEST_F(AddFollowerTest, collection_still_exists) {
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(AddFollowerTest, collection_has_nonempty_distributeshardslike) {
@@ -261,7 +261,7 @@ TEST_F(AddFollowerTest, collection_has_nonempty_distributeshardslike) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(AddFollowerTest, condition_still_holds) {
@@ -321,7 +321,7 @@ TEST_F(AddFollowerTest, condition_still_holds) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(AddFollowerTest, if_no_job_under_shard_leave_job_in_todo) {
@@ -367,7 +367,7 @@ TEST_F(AddFollowerTest, if_no_job_under_shard_leave_job_in_todo) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(AddFollowerTest, we_can_find_one_with_status_good) {
@@ -416,7 +416,7 @@ TEST_F(AddFollowerTest, we_can_find_one_with_status_good) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(AddFollowerTest, job_performed_immediately_in_a_single_transaction) {
@@ -465,7 +465,7 @@ TEST_F(AddFollowerTest, job_performed_immediately_in_a_single_transaction) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(AddFollowerTest, job_can_still_be_safely_aborted) {
@@ -516,7 +516,7 @@ TEST_F(AddFollowerTest, job_can_still_be_safely_aborted) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::PENDING, jobId).abort("test abort");
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId).abort("test abort");
 }
 
 TEST_F(AddFollowerTest, job_cannot_be_aborted) {
@@ -567,7 +567,7 @@ TEST_F(AddFollowerTest, job_cannot_be_aborted) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).abort("test abort");
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).abort("test abort");
 }
 
 }  // namespace add_follower_test
