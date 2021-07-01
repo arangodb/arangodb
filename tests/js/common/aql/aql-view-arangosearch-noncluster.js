@@ -2023,13 +2023,6 @@ function iResearchAqlTestSuite () {
       assertEqual("half", res[1].name);
     },
 
-    testLevenshteinDamerauMatchPrefix : function() {
-      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'zi', 1, true, 64, 'la'), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
-      assertEqual(2, res.length);
-      assertEqual("full", res[0].name);
-      assertEqual("half", res[1].name);
-    },
-
     testLevenshteinDamerauMatch1Default : function() {
       var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzai', 1), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
       assertEqual(2, res.length);
