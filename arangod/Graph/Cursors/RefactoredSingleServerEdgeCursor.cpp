@@ -215,7 +215,9 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
     auto& cursor = _lookupInfo[_currentCursor].cursor();
     LogicalCollection* collection = cursor.collection();
     auto cid = collection->id();
-    if (cursor.hasExtra()) {
+    bool hasExtra = cursor.hasExtra();
+
+    if (hasExtra) {
       cursor.allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
         stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
