@@ -8,6 +8,8 @@ devel
   
   Now queries are sorted for display, according to their query IDs. 
 
+* Updated ArangoDB Starter to 0.15.1-preview-2.
+
 * Fix potential stack overflow when executing large queries. This is
   achieved by splitting the callstack and moving part of the execution
   to a separate thread. The number of execution nodes after which such
@@ -182,9 +184,6 @@ devel
   minimum of required file descriptors. The system set upper bound is now
   honored and the soft limit will be set to either hard limit or system limit
   whichever is lower.
-
-* Allow an INSERT operation for a multi-shard collection to execute in 
-  parallel on different DB servers.
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
