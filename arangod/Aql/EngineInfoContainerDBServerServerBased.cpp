@@ -34,8 +34,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
-#include <set>
 #include <velocypack/Collection.h>
+#include <set>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -78,10 +78,13 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
   auto const& restrictToShards = query.queryOptions().restrictToShards;
+#ifdef USE_ENTERPRISE
+  transaction::Methods trx{query.newTrxContext()};
+#endif
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
 #ifdef USE_ENTERPRISE
-    if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
+    if (trx.isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
       _inaccessible.insert(std::to_string(col->id().id()));
     }
@@ -98,7 +101,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
 #ifdef USE_ENTERPRISE
-    if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
+    if (trx.isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
       _inaccessible.insert(std::to_string(col->id().id()));
     }
@@ -110,8 +113,8 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
 }
 
 std::vector<ShardID> EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::getAllLocalShards(
-    std::unordered_map<ShardID, ServerID> const& shardMapping,
-    ServerID const& server, std::shared_ptr<std::vector<std::string>> shardIds, bool colIsSatellite) {
+    std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server,
+    std::shared_ptr<std::vector<std::string>> shardIds, bool colIsSatellite) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
@@ -341,8 +344,8 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
   };
 
   return network::sendRequestRetry(pool, serverDest, fuerte::RestVerb::Post,
-                              "/_api/aql/setup", std::move(buffer), options,
-                              std::move(headers))
+                                   "/_api/aql/setup", std::move(buffer),
+                                   options, std::move(headers))
       .then([buildCallback = std::move(buildCallback)](futures::Try<network::Response>&& resp) mutable {
         return buildCallback(resp);
       });
@@ -363,7 +366,8 @@ bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(VPackSlice inf
     return true;
   }
 
-  TRI_ASSERT((infoSlice.get("snippets").isObject() && !infoSlice.get("snippets").isEmptyObject()) ||
+  TRI_ASSERT((infoSlice.get("snippets").isObject() &&
+              !infoSlice.get("snippets").isEmptyObject()) ||
              infoSlice.hasKey("traverserEngines"));
 
   return false;
@@ -444,7 +448,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
           .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses) -> Result {
             // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
             // error as we need to abort after.
-            // Otherwise we need to report 
+            // Otherwise we need to report
             Result res{TRI_ERROR_NO_ERROR};
             for (auto const& tryRes : responses) {
               auto response = tryRes.get();
@@ -470,7 +474,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     }
     {
       // in case of fast path failure, we need to cleanup engines
-      auto requests = cleanupEngines(fastPathResult.get().errorNumber(), _query.vocbase().name(), serverToQueryId);
+      auto requests = cleanupEngines(fastPathResult.get().errorNumber(),
+                                     _query.vocbase().name(), serverToQueryId);
       // Wait for all requests to complete.
       // So we know that all Transactions are aborted.
       // We do NOT care for the actual result.
@@ -490,7 +495,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::sort(engineInformation.begin(), engineInformation.end(),
               [](auto const& lhs, auto const& rhs) {
                 // Entry <0> is the Server
-                return TransactionState::ServerIdLessThan(std::get<0>(lhs), std::get<0>(rhs));
+                return TransactionState::ServerIdLessThan(std::get<0>(lhs),
+                                                          std::get<0>(rhs));
               });
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Make sure we always maintain the correct ordering of servers
@@ -514,7 +520,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       overwrittenOptions.openObject();
       addOptionsPart(overwrittenOptions, server);
       overwrittenOptions.close();
-      auto newRequest = arangodb::velocypack::Collection::merge(infoSlice, overwrittenOptions.slice(), false);
+      auto newRequest =
+          arangodb::velocypack::Collection::merge(infoSlice,
+                                                  overwrittenOptions.slice(), false);
 
       auto request = buildSetupRequest(trx, std::move(server), newRequest.slice(),
                                        std::move(didCreateEngine), snippetIds, serverToQueryId,
@@ -653,8 +661,8 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId] : serverQueryIds) {
     requests.emplace_back(network::sendRequestRetry(pool, server, fuerte::RestVerb::Delete,
-                                                          url + std::to_string(queryId),
-                                                          /*copy*/ body, options));
+                                                    url + std::to_string(queryId),
+                                                    /*copy*/ body, options));
   }
   _query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
 
@@ -665,8 +673,9 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   for (auto& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
-      requests.emplace_back(network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-                           url + basics::StringUtils::itoa(engine.second), noBody, options));
+      requests.emplace_back(network::sendRequestRetry(
+          pool, "server:" + engine.first, fuerte::RestVerb::Delete,
+          url + basics::StringUtils::itoa(engine.second), noBody, options));
     }
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
     gn->clearEngines();
