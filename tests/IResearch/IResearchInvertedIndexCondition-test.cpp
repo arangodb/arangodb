@@ -100,7 +100,7 @@ class IResearchInvertedIndexConditionTest
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     meta.init(server.server(), _vocbase, getPropertiesSlice(id, fields).slice(), false);
     auto indexFields = meta.fields();
-    arangodb::iresearch::IResearchInvertedIndex Index(std::move(meta));
+    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection, std::move(meta));
 
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());

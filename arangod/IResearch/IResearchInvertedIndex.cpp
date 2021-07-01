@@ -22,22 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchInvertedIndex.h"
+
+#include "Basics/AttributeNameParser.h"
+#include "Basics/StringUtils.h"
+#include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchFilterFactory.h"
-#include "IResearch/IResearchSnapshot.h"
-#include "Basics/AttributeNameParser.h"
-#include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 
 //#include <rocksdb/env_encryption.h>
 //#include "utils/encryption.hpp"
-#include <analysis/token_attributes.hpp>
-#include <search/boolean_filter.hpp>
-#include <search/score.hpp>
-#include <search/cost.hpp>
+#include "analysis/token_attributes.hpp"
+#include "index/directory_reader.hpp"
+#include "index/index_writer.hpp"
+#include "store/directory.hpp"
+#include "search/boolean_filter.hpp"
+#include "search/score.hpp"
+#include "search/cost.hpp"
+#include "utils/utf8_path.hpp"
 
 namespace {
 using namespace arangodb;
@@ -147,9 +152,9 @@ inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
   return reader ? reader->iterator() : nullptr;
 }
 
-class InvertedIndexTrxState final : public TransactionState::Cookie {
+class IResearchSnapshotState final : public TransactionState::Cookie {
  public:
-   Snapshot snapshot;
+   IResearchDataStore::Snapshot snapshot;
 };
 
 class IResearchInvertedIndexIterator final : public IndexIterator  {
@@ -160,6 +165,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     : IndexIterator(collection, trx), _index(index), _condition(condition),
       _variable(variable) {}
   char const* typeName() const override { return "inverted-index-iterator"; }
+
  protected:
   bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
     if (limit == 0) {
@@ -202,10 +208,12 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     return limit == 0;
   }
 
+  // FIXME: track if the filter condition is volatile!
+  // FIXME: support sorting!
   void resetFilter()  {
     if (!_trx->state()) {
       LOG_TOPIC("a9ccd", WARN, arangodb::iresearch::TOPIC)
-        << "failed to get transaction state while creating search index "
+        << "failed to get transaction state while creating inverted index "
            "snapshot";
 
       return;
@@ -214,19 +222,19 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
 
     // TODO FIXME find a better way to look up a State
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* ctx = dynamic_cast<InvertedIndexTrxState*>(state.cookie(this));
+    auto* ctx = dynamic_cast<IResearchSnapshotState*>(state.cookie(this));
 #else
-    auto* ctx = static_cast<InvertedIndexTrxState*>(state.cookie(this));
+    auto* ctx = static_cast<IResearchSnapshotState*>(state.cookie(this));
 #endif
     if (!ctx) {
-      auto ptr = irs::memory::make_unique<InvertedIndexTrxState>();
+      auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
       ctx = ptr.get();
       state.cookie(this, std::move(ptr));
 
       if (!ctx) {
         LOG_TOPIC("d7061", WARN, arangodb::iresearch::TOPIC)
             << "failed to store state into a TransactionState for snapshot of "
-               "search index ";
+               "inverted index ";
         return;
       }
       ctx->snapshot = _index->snapshot();
@@ -276,7 +284,8 @@ namespace arangodb {
 namespace iresearch {
 
 arangodb::iresearch::IResearchInvertedIndex::IResearchInvertedIndex(
-    IResearchInvertedIndexMeta&& meta) : _meta(meta) {
+    IndexId iid, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta)
+    : IResearchDataStore(iid, collection), _meta(meta) {
 }
 
 void IResearchInvertedIndex::toVelocyPack(
@@ -580,17 +589,16 @@ std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex
 }
 
 IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta)
-  : RocksDBIndex(id, collection, meta._name, meta.fields(), false, false,
+  : IResearchInvertedIndex(id, collection, std::move(meta)), RocksDBIndex(id, collection, meta._name, meta.fields(), false, false,
     RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
-    meta._objectId, false),
-  IResearchInvertedIndex(std::move(meta)) {}
+    meta._objectId, false) {}
 
 void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
                                                  std::underlying_type<Index::Serialize>::type flags) const {
   auto const forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
   VPackObjectBuilder objectBuilder(&builder);
-  IResearchInvertedIndex::toVelocyPack(collection().vocbase().server(),
-                                       &collection().vocbase(), builder, forPersistence);
+  IResearchInvertedIndex::toVelocyPack(IResearchDataStore::collection().vocbase().server(),
+                                       &IResearchDataStore::collection().vocbase(), builder, forPersistence);
   if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
     builder.add("objectId", VPackValue(std::to_string(objectId())));
@@ -624,7 +632,7 @@ bool IResearchRocksDBInvertedIndex::matchesDefinition(arangodb::velocypack::Slic
     }
     // Short circuit. If id is correct the index is identical.
     arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(id().id());
+    return idRef == std::to_string(IResearchDataStore::id().id());
   }
   return IResearchInvertedIndex::matchesFieldsDefinition(other);
 }

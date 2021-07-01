@@ -72,7 +72,7 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
     return *(_subReaders[subReaderId].second);
   }
 
-  void add(arangodb::DataSourceId cid, arangodb::iresearch::Snapshot&& snapshot);
+  void add(arangodb::DataSourceId cid, arangodb::iresearch::IResearchDataStore::Snapshot&& snapshot);
 
   arangodb::DataSourceId cid(size_t offset) const noexcept override {
     return offset < _subReaders.size() ? _subReaders[offset].first
@@ -109,12 +109,12 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
   size_t _docs_count{};
   size_t _live_docs_count{};
   std::unordered_set<arangodb::DataSourceId> _collections;
-  std::vector<arangodb::iresearch::Snapshot> _snapshots;  // prevent data-store deallocation (lock @ AsyncSelf)
+  std::vector<arangodb::iresearch::IResearchDataStore::Snapshot> _snapshots;  // prevent data-store deallocation (lock @ AsyncSelf)
   std::vector<std::pair<arangodb::DataSourceId, irs::sub_reader const*>> _subReaders;
 };
 
 void ViewTrxState::add(arangodb::DataSourceId cid,
-                       arangodb::iresearch::Snapshot&& snapshot) {
+                       arangodb::iresearch::IResearchDataStore::Snapshot&& snapshot) {
   auto& reader = static_cast<irs::index_reader const&>(snapshot);
   for (auto& entry : reader) {
     _subReaders.emplace_back(std::piecewise_construct, std::forward_as_tuple(cid),
@@ -665,7 +665,11 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
     );
   }
 
-  auto* linkPtr = link->get();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* linkPtr = dynamic_cast<IResearchLink*>(link->get());
+#else
+  auto* linkPtr = static_cast<IResearchLink*>(link->get());
+#endif
 
   auto const cid = linkPtr->collection().id();
   read_write_mutex::write_mutex mutex(_mutex); // '_meta'/'_links' can be asynchronously read
@@ -869,7 +873,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
   try {
     // collect snapshots from all requested links
     for (auto const cid : *collections) {
-      arangodb::iresearch::Snapshot snapshot;
+      arangodb::iresearch::IResearchDataStore::Snapshot snapshot;
 
       if (auto const itr = _links.find(cid);
           itr != _links.end() && itr->second) {
@@ -1036,7 +1040,13 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
       auto lock = link->lock();
 
       if (link->get()) {
-        auto result = link->get()->properties(_meta);
+        
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto* linkPtr = dynamic_cast<IResearchLink*>(link->get());
+#else
+        auto* linkPtr = static_cast<IResearchLink*>(link->get());
+#endif
+        auto result = linkPtr->properties(_meta);
 
         if (!result.ok()) {
           res = result;

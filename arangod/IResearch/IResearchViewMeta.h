@@ -57,6 +57,7 @@ namespace iresearch {
 /// @brief metadata describing the IResearch view
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewMeta {
+
   class ConsolidationPolicy {
    public:
     ConsolidationPolicy() = default;

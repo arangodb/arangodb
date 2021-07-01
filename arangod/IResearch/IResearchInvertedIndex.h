@@ -28,9 +28,10 @@
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchViewMeta.h"
-#include "IResearch/IResearchLinkMeta.h"
+#include "IResearchCommon.h"
+#include "IResearchDataStore.h"
+#include "IResearchViewMeta.h"
+#include "IResearchLinkMeta.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -57,9 +58,9 @@ struct IResearchInvertedIndexMeta {
 };
 
 
-class IResearchInvertedIndex {
+class IResearchInvertedIndex  : public IResearchDataStore {
  public:
-  explicit IResearchInvertedIndex(IResearchInvertedIndexMeta&& meta);
+  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta);
 
   void toVelocyPack(application_features::ApplicationServer& server,
                     TRI_vocbase_t const* defaultVocbase,
@@ -68,7 +69,6 @@ class IResearchInvertedIndex {
   bool isSorted() const {
     return false; // FIXME: sometimes we can be sorted
   }
-
 
   bool matchesFieldsDefinition(VPackSlice other) const;
 
@@ -152,7 +152,7 @@ class IResearchRocksDBInvertedIndex : public RocksDBIndex, IResearchInvertedInde
                                                     aql::AstNode const* node,
                                                     aql::Variable const* reference,
                                                     IndexIteratorOptions const& opts) override {
-    return IResearchInvertedIndex::iteratorForCondition(&collection(), trx, node, reference, opts);
+    return IResearchInvertedIndex::iteratorForCondition(&IResearchDataStore::collection(), trx, node, reference, opts);
   }
 
   Index::SortCosts supportsSortCondition(aql::SortCondition const* sortCondition,
@@ -165,7 +165,7 @@ class IResearchRocksDBInvertedIndex : public RocksDBIndex, IResearchInvertedInde
                                              aql::AstNode const* node,
                                              aql::Variable const* reference,
                                              size_t itemsInIndex) const override {
-     return IResearchInvertedIndex::supportsFilterCondition(id(), fields(), allIndexes,
+     return IResearchInvertedIndex::supportsFilterCondition(IResearchDataStore::id(), fields(), allIndexes,
                                                             node, reference, itemsInIndex);
   }
 

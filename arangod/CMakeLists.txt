@@ -62,6 +62,7 @@ add_library(arango_iresearch
   IResearch/IResearchAqlAnalyzer.cpp IResearch/IResearchAqlAnalyzer.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
+  IResearch/IResearchDataStore.cpp IResearch/IResearchDataStore.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
