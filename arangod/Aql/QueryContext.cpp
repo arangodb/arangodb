@@ -76,15 +76,20 @@ QueryContext::~QueryContext() {
 }
 
 Collections& QueryContext::collections() {
-#ifndef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
-#endif
   return _collections;
 }
 
 Collections const& QueryContext::collections() const {
   return _collections;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // same as "collections()", but without assertion about query execution state
+Collections& QueryContext::collectionsForTest() {
+  return _collections;
+}
+#endif
 
 /// @brief return the names of collections used in the query
 std::vector<std::string> QueryContext::collectionNames() const {

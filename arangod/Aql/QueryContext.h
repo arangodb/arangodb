@@ -79,6 +79,11 @@ class QueryContext {
   Collections& collections();
   Collections const& collections() const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // same as "collections()", but without assertion about query execution state
+  Collections& collectionsForTest();
+#endif
+
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const;
 
