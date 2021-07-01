@@ -183,7 +183,7 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
       provider.insertEdgeIntoResult(edgeToken, tmpBuilder);
       edge = tmpBuilder.slice();
     }
-    return evaluateExpression(expression, edge);
+    return evaluateEdgeExpression(expression, edge);
   };
 
   auto evaluateLookupInfos = [&](EdgeDocumentToken const& edgeToken,
@@ -270,8 +270,8 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
   }
 }
 
-bool RefactoredSingleServerEdgeCursor::evaluateExpression(arangodb::aql::Expression* expression,
-                                                          VPackSlice value) {
+bool RefactoredSingleServerEdgeCursor::evaluateEdgeExpression(arangodb::aql::Expression* expression,
+                                                              VPackSlice value) {
   if (expression == nullptr) {
     return true;
   }
