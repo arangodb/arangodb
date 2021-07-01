@@ -29,18 +29,20 @@ namespace arangodb {
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
+  static void LinkIndexFactories(application_features::ApplicationServer& server,
+                                 IndexFactory& factory);
   explicit ClusterIndexFactory(application_features::ApplicationServer&);
   ~ClusterIndexFactory() = default;
 
-  Result enhanceIndexDefinition( // normalize definition
-    velocypack::Slice const definition, // source definition
-    velocypack::Builder& normalized, // normalized definition (out-param)
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
+  Result enhanceIndexDefinition(           // normalize definition
+      velocypack::Slice const definition,  // source definition
+      velocypack::Builder& normalized,     // normalized definition (out-param)
+      bool isCreation,                     // definition for index creation
+      TRI_vocbase_t const& vocbase         // index vocbase
   ) const override;
 
-  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
-  /// used to display storage engine capabilities
+  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
+  /// "hash") used to display storage engine capabilities
   std::unordered_map<std::string, std::string> indexAliases() const override;
 
   void fillSystemIndexes(arangodb::LogicalCollection& col,
