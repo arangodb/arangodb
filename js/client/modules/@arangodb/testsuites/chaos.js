@@ -31,7 +31,7 @@ const functionsDocumentation = {
 const optionsDocumentation = [];
 
 const _ = require('lodash');
-const tu = require('@arangodb/testutils/test-utils');
+const tu = require('@arangodb/test-utils');
 
 const testPaths = {
   'chaos': [ tu.pathForTesting('client/chaos') ],
