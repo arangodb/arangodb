@@ -79,11 +79,6 @@ class QueryContext {
   Collections& collections();
   Collections const& collections() const;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  // same as "collections()", but without assertion about query execution state
-  Collections& collectionsForTest();
-#endif
-
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const;
 
@@ -152,9 +147,6 @@ class QueryContext {
   /// @brief current resources and limits used by query
   arangodb::ResourceMonitor _resourceMonitor;
 
-  /// @brief registers/unregisters query base ovehead
-  arangodb::ResourceUsageScope _baseOverHeadTracker;
-  
   TRI_voc_tick_t const _queryId;
   
   /// @brief thread-safe query warnings collector

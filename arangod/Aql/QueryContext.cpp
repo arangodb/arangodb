@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
@@ -53,7 +54,6 @@ using namespace arangodb::aql;
 /// @brief creates a query
 QueryContext::QueryContext(TRI_vocbase_t& vocbase, QueryId id)
     : _resourceMonitor(GlobalResourceMonitor::instance()),
-      _baseOverHeadTracker(_resourceMonitor, baseMemoryUsage),
       _queryId(id ? id : TRI_NewServerSpecificTick()),
       _collections(&vocbase),
       _vocbase(vocbase),
@@ -76,20 +76,13 @@ QueryContext::~QueryContext() {
 }
 
 Collections& QueryContext::collections() {
-  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
+  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION || ClusterEngine::Mocking);
   return _collections;
 }
 
 Collections const& QueryContext::collections() const {
   return _collections;
 }
-
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  // same as "collections()", but without assertion about query execution state
-Collections& QueryContext::collectionsForTest() {
-  return _collections;
-}
-#endif
 
 /// @brief return the names of collections used in the query
 std::vector<std::string> QueryContext::collectionNames() const {

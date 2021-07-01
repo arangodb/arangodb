@@ -94,11 +94,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
           auto collection = server.getSystemDatabase().createCollection(info->slice());
           //"Failed to create collection";
           TRI_ASSERT(collection.get() != nullptr);
-          // we cannot call collections() here, because that would trigger an assertion
-          // error because we are adding collections to the query after the start. as
-          // a workaround, we call collectionsForTest, which returns the mutable list
-          // of collections without the assertion
-          auto& collections = query.collectionsForTest();
+          auto& collections = query.collections();
           auto col = collections.add(collectionName, AccessMode::Type::WRITE,
                                      Collection::Hint::Shard);
           TRI_ASSERT(col != nullptr);  // failed to add collection
@@ -260,7 +256,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                               std::move(execInfos)};
     }
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
-      auto const& collections = fakedQuery->collectionsForTest();
+      auto const& collections = fakedQuery->collections();
       auto col = collections.get(collectionName);
       TRI_ASSERT(col != nullptr);  // failed to add collection
       OperationOptions opts{};
