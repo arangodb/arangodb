@@ -176,14 +176,39 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
   TRI_ASSERT(!_lookupInfo.empty());
   VPackBuilder tmpBuilder;
 
-  auto handleExpression = [&](aql::Expression* expression,
-                              EdgeDocumentToken edgeToken, VPackSlice edge) {
+  auto evaluateEdgeExpressionHelper = [&](aql::Expression* expression,
+                                          EdgeDocumentToken edgeToken, VPackSlice edge) {
     if (edge.isString()) {
       tmpBuilder.clear();
       provider.insertEdgeIntoResult(edgeToken, tmpBuilder);
       edge = tmpBuilder.slice();
     }
     return evaluateExpression(expression, edge);
+  };
+
+  auto evaluateLookupInfos = [&](EdgeDocumentToken const& edgeToken,
+                                 VPackSlice const& edge) -> bool {
+    bool foundDepthInfo =
+        (_depthLookupInfo.find(depth) == _depthLookupInfo.end()) ? false : true;
+    if (foundDepthInfo && _depthLookupInfo.at(depth).size() > 0 &&
+        _depthLookupInfo.at(depth)[_currentCursor].getExpression() != nullptr) {
+      if (!evaluateEdgeExpressionHelper(
+              _depthLookupInfo.at(depth)[_currentCursor].getExpression(), edgeToken, edge)) {
+        stats.incrFiltered();
+        return false;
+      }
+    } else {
+      // eval global expression if available AND only if no depth specific expression needs to be handled before
+      if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
+        if (!evaluateEdgeExpressionHelper(_lookupInfo[_currentCursor].getExpression(),
+                                          edgeToken, edge)) {
+          stats.incrFiltered();
+          return false;
+        }
+      }
+    }
+
+    return true;
   };
 
   for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
@@ -201,24 +226,9 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
 
         EdgeDocumentToken edgeToken(cid, token);
         // eval depth-based expression first if available
-        bool foundDepthInfo =
-            (_depthLookupInfo.find(depth) == _depthLookupInfo.end()) ? false : true;
-        if (foundDepthInfo && _depthLookupInfo.at(depth).size() > 0 &&
-            _depthLookupInfo.at(depth)[_currentCursor].getExpression() != nullptr) {
-          if (!handleExpression(_depthLookupInfo.at(depth)[_currentCursor].getExpression(),
-                                edgeToken, edge)) {
-            stats.incrFiltered();
-            return false;
-          }
-        } else {
-          // eval global expression if available AND only if no depth specific expression needs to be handled before
-          if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
-            if (!handleExpression(_lookupInfo[_currentCursor].getExpression(),
-                                  edgeToken, edge)) {
-              stats.incrFiltered();
-              return false;
-            }
-          }
+        bool needToRead = evaluateLookupInfos(edgeToken, edge);
+        if (!needToRead) {
+          return false;
         }
 
         callback(std::move(edgeToken), edge, _currentCursor);
@@ -242,17 +252,14 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
                        }
                      }
 #endif
-                     // eval expression if available
-                     if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
-                       bool result =
-                           evaluateExpression(_lookupInfo[_currentCursor].getExpression(),
-                                              edgeDoc);
-                       if (!result) {
-                         stats.incrFiltered();
-                         return false;
-                       }
+                     // eval depth-based expression first if available
+                     EdgeDocumentToken edgeToken(cid, token);
+                     bool needToRead = evaluateLookupInfos(edgeToken, edgeDoc);
+                     if (!needToRead) {
+                       return false;
                      }
-                     callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
+
+                     callback(std::move(edgeToken), edgeDoc, _currentCursor);
                      return true;
                    })
             .ok();
