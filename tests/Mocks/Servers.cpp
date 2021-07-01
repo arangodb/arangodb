@@ -522,6 +522,36 @@ void MockClusterServer::startFeatures() {
   _server.getFeature<arangodb::ClusterFeature>().clusterInfo().startSyncers();
 }
 
+std::unique_ptr<arangodb::aql::Query> MockClusterServer::createFakeQuery(
+    bool activateTracing, std::string queryString,
+    std::function<void(aql::Query&)> callback) const {
+  auto bindParams = std::make_shared<VPackBuilder>();
+  bindParams->openObject();
+  bindParams->close();
+  VPackBuilder queryOptions;
+  queryOptions.openObject();
+  if (activateTracing) {
+    queryOptions.add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
+  }
+  queryOptions.close();
+  if (queryString.empty()) {
+    queryString = "RETURN 1";
+  }
+
+  aql::QueryString fakeQueryString(queryString);
+  auto query = std::make_unique<arangodb::aql::Query>(
+      arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
+      fakeQueryString, bindParams, queryOptions.slice());
+  callback(*query);
+  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+
+  //  auto engine =
+  //      std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
+  //  query->setEngine(std::move(engine));
+
+  return query;
+}
+
 consensus::index_t MockClusterServer::agencyTrx(std::string const& key,
                                                 std::string const& value) {
   // Build an agency transaction:
