@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+
 * Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
   internal requests to use the new url.
 
