@@ -146,13 +146,10 @@ class OneSidedEnumerator : public TraversalEnumerator {
   bool _resultsFetched{false};
   aql::TraversalStats _stats{};
 
-  // The next elements to process
-  typename Configuration::Queue _queue;
+  typename Configuration::Queue _queue;  // The next elements to process
   typename Configuration::Provider _provider;
+  typename Configuration::Store _interior;  // This stores all paths processed
   typename Configuration::Validator _validator;
-
-  // This stores all paths processed
-  typename Configuration::Store _interior;
 };
 }  // namespace graph
 }  // namespace arangodb
