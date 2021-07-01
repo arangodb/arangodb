@@ -98,7 +98,7 @@ class CreateDatabaseInfo {
 
   bool validId() const { return _validId; }
 
-  // shold be created with vaild id
+  // should be created with vaild id
   void setId(uint64_t id) {
     _id = id;
     _validId = true;

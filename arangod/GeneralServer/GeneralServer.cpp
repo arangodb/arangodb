@@ -24,9 +24,18 @@
 
 #include "GeneralServer.h"
 
+#include "Agency/AgencyFeature.h"
+#include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/NumberOfCores.h"
+#include "Basics/PhysicalMemory.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
+#include "Basics/hashes.h"
+#include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/Acceptor.h"
@@ -35,22 +44,235 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Rest/Version.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "VocBase/Identifiers/ServerId.h"
+#include "VocBase/vocbase.h"
 
 #include <chrono>
 #include <thread>
 #include <algorithm>
 
+#include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {
+class InfoThread : virtual public Thread {
+ public:
+  explicit InfoThread(application_features::ApplicationServer& server)
+    : Thread(server, "Info"), _count(0), _licenseHash(0),
+      _agencyEnabled(false), _agencySize(0), _coordinators(0), _dbservers(0) {}
+  ~InfoThread() { shutdown(); }
+
+  void run() override {
+    char const* licenseKey = getenv("ARANGO_LICENSE_KEY");
+
+    if (licenseKey != nullptr) {
+      _licenseHash = TRI_FnvHashString(licenseKey);
+    }
+
+    LOG_TOPIC("29daa", ERR, Logger::FIXME)
+      << "INFO STARTED";
+
+    while (!_server.isStopping()) {
+      if (_count % agencyPeriod == 0) {
+        readAgency();
+      }
+
+      if (_count % logPeriod == 1) {
+	logInfo();
+      }
+      std::this_thread::sleep_for(std::chrono::seconds(10));
+
+      ++_count;
+    }
+  }
+
+private:
+  static constexpr uint64_t logPeriod = 6;
+  static constexpr uint64_t agencyPeriod = 5;
+
+  static constexpr char const* CORES = "cores";
+  static constexpr char const* DEPLOYMENT = "deployment";
+  static constexpr char const* EDITION = "edition";
+  static constexpr char const* MEMORY = "memory";
+  static constexpr char const* LICENSE = "license";
+  static constexpr char const* OS = "os";
+  static constexpr char const* SERVER_ID = "serverId";
+  static constexpr char const* VERSION = "version";
+
+  static constexpr char const* AGENCY_SIZE = "agency";
+  static constexpr char const* NUM_COORDINATORS = "coordinators";
+  static constexpr char const* NUM_DBSERVERS = "dbservers";
+
+  static constexpr char const* CLUSTER = "cluster";
+  static constexpr char const* COMMUNITY = "community";
+  static constexpr char const* ENTERPRISE = "enterprise";
+  static constexpr char const* SINGLE = "single";
+
+  void readAgency() {
+    static std::string const PLAN_COORDINATORS = "/arango/Plan/Coordinators";
+    static std::string const PLAN_DBSERVERS = "/arango/Plan/DBservers";
+
+    if (!ServerState::instance()->isAgent()) {
+      return;
+    }
+
+    AgencyFeature& agency = _server.getFeature<AgencyFeature>();
+
+    if (agency.activated()) {
+      consensus::Agent* agent = agency.agent();
+
+      if (agent != nullptr) {
+	_agencyEnabled = true;
+        _agencySize = agent->size();
+
+	agent->executeLockedRead([&]() {
+				   LOG_TOPIC("29daa", ERR, Logger::FIXME) << "TEST 1";
+
+				   if (agent->readDB().has("/")) {
+				     LOG_TOPIC("29daa", ERR, Logger::FIXME) << "TEST 6";
+				   }
+
+				   if (agent->readDB().has("/arango")) {
+				     LOG_TOPIC("29daa", ERR, Logger::FIXME) << "TEST 5";
+				   }
+
+				   if (agent->readDB().has("/agency")) {
+				     LOG_TOPIC("29daa", ERR, Logger::FIXME) << "TEST 7";
+				   }
+
+				   if (agent->readDB().has("/arango/Plan")) {
+				     LOG_TOPIC("29daa", ERR, Logger::FIXME) << "TEST 4";
+				   }
+
+				   if (agent->readDB().has(PLAN_COORDINATORS)) {
+				     LOG_TOPIC("29daa", ERR, Logger::FIXME) << "TEST 2";
+				     auto const pn = agent->readDB().get(PLAN_COORDINATORS);
+				     _coordinators = pn.children().size();
+				   } 
+
+				   if (agent->readDB().has(PLAN_DBSERVERS)) {
+				     LOG_TOPIC("29daa", ERR, Logger::FIXME) << "TEST 3";
+				     auto const pn = agent->readDB().get(PLAN_DBSERVERS);
+				     _dbservers = pn.children().size();
+				   } 
+				 });
+      }
+    }
+  }
+
+  void logInfo() {
+    if (ServerState::instance()->isSingleServer()) {
+      logInfoSingleServer();
+    } else if (ServerState::instance()->isAgent()) {
+      logInfoAgency();
+    } else {
+      LOG_TOPIC("29daa", ERR, Logger::FIXME)
+	<< "TEST";
+    }
+  }
+
+  void logInfoSingleServer() {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+
+      builder.add(VERSION, VPackValue(Version::getNumericServerVersion()));
+#ifdef USE_ENTERPRISE
+      builder.add(EDITION, VPackValue(ENTERPRISE));
+#else
+      builder.add(EDITION, VPackValue(COMMUNITY));
+#endif
+
+      builder.add(DEPLOYMENT, VPackValue(SINGLE));
+
+      auto& feature = server().getFeature<ServerIdFeature>();
+      builder.add(SERVER_ID, VPackValue(feature.getId().id()));
+
+      builder.add(MEMORY, VPackValue(PhysicalMemory::getValue())); 
+      builder.add(CORES, VPackValue(NumberOfCores::getValue())); 
+      builder.add(OS, VPackValue(TRI_PLATFORM));
+
+      if (_licenseHash != 0) {
+        builder.add(LICENSE, VPackValue(_licenseHash));
+      }
+    }
+
+    output(builder);
+  }
+
+  void logInfoAgency() {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+
+      builder.add(VERSION, VPackValue(Version::getNumericServerVersion()));
+#ifdef USE_ENTERPRISE
+      builder.add(EDITION, VPackValue(ENTERPRISE));
+#else
+      builder.add(EDITION, VPackValue(COMMUNITY));
+#endif
+
+      builder.add(DEPLOYMENT, VPackValue(CLUSTER));
+
+      auto& feature = server().getFeature<ServerIdFeature>();
+      builder.add(SERVER_ID, VPackValue(feature.getId().id()));
+
+      builder.add(MEMORY, VPackValue(PhysicalMemory::getValue())); 
+      builder.add(CORES, VPackValue(NumberOfCores::getValue())); 
+      builder.add(OS, VPackValue(TRI_PLATFORM));
+
+      if (_licenseHash != 0) {
+        builder.add(LICENSE, VPackValue(_licenseHash)); 
+      }
+
+      if (_agencyEnabled) {
+	builder.add(AGENCY_SIZE, VPackValue(_agencySize));
+	builder.add(NUM_COORDINATORS, VPackValue(_coordinators));
+	builder.add(NUM_DBSERVERS, VPackValue(_dbservers));
+      }
+    }
+
+    output(builder);
+  }
+
+  void output(VPackBuilder const& builder) {
+    StringBuffer output;
+    VPackStringBufferAdapter buffer(output.stringBuffer());
+    VPackOptions opts;
+    VPackDumper dumper(&buffer, &opts);
+    dumper.dump(builder.slice());
+    std::string s(output.c_str(), output.length());
+
+    LOG_TOPIC("29daa", ERR, Logger::FIXME)
+      << "TEST " << s;
+  }
+
+private:
+  uint64_t _count;
+  uint64_t _licenseHash;
+  bool _agencyEnabled;
+  uint64_t _agencySize;
+  std::atomic<uint64_t> _coordinators;
+  std::atomic<uint64_t> _dbservers;
+};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThreads)
-    : _feature(feature), _endpointList(nullptr), _contexts() {
+    : _feature(feature), _endpointList(nullptr), _contexts(), _infoThread() {
   auto& server = feature.server();
   for (size_t i = 0; i < numIoThreads; ++i) {
     _contexts.emplace_back(server);
@@ -116,6 +338,9 @@ void GeneralServer::startListening() {
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_BIND_PORT);
     }
   }
+
+  _infoThread.reset(new InfoThread(server()));
+  _infoThread->start();
 }
 
 /// stop accepting new connections
@@ -123,6 +348,8 @@ void GeneralServer::stopListening() {
   for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
     acceptor->close();
   }
+
+  _infoThread.reset();
 }
 
 /// stop connections

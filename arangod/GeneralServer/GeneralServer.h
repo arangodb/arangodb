@@ -85,6 +85,8 @@ class GeneralServer {
   std::mutex _sslContextMutex;
   /// global SSL context to use here
   SslServerFeature::SslContextList _sslContexts;
+
+  std::unique_ptr<Thread> _infoThread;
 };
 }  // namespace rest
 }  // namespace arangodb
