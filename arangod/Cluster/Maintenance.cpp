@@ -58,7 +58,6 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
-static std::vector<std::string> const compareProperties{WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED};
 static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
 
 static VPackValue const VP_DELETE("delete");
@@ -88,12 +87,15 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& first,
                                                           VPackSlice const& second) {
+  static std::vector<std::string> const compareProperties{WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
+                                                          StaticStrings::InternalValidatorTypes};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
     for (auto const& property : compareProperties) {
       auto const& planned = first.get(property);
-      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false)) {  // Register any change
+      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false) &&
+          !planned.isNone()) {  // Register any change
         result->add(property, planned);
       }
     }
@@ -1471,6 +1473,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           std::vector<std::string> const planPath {
             AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
 
+          if (!pdb.isObject()) {
+            LOG_TOPIC("2647d", WARN, Logger::MAINTENANCE) 
+              << "plan database in error reporting struct is not an object: " << pdb.toJson();
+          }
+          if (!ldb.isObject()) {
+            LOG_TOPIC("8fe58", WARN, Logger::MAINTENANCE) 
+              << "local database in error reporting struct is not an object: " << ldb.toJson();
+          }
           TRI_ASSERT(pdb.isObject());
           TRI_ASSERT(ldb.isObject());
           if (pdb.hasKey(planPath) && !ldb.hasKey(s)) {

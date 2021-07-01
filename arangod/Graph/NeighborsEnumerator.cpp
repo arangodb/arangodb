@@ -65,69 +65,98 @@ bool NeighborsEnumerator::next() {
       _toPrune.emplace(*_iterator);
     }
     if (_opts->minDepth == 0) {
-      return true;
+      if (_opts->usesPostFilter()) {
+        auto evaluator = _opts->getPostFilterEvaluator();
+        if (usePostFilter(evaluator)) {
+          return true;
+        }
+      } else {
+        return true;
+      }
     }
   }
-
-  if (_iterator == _currentDepth.end() || ++_iterator == _currentDepth.end()) {
-    do {
-      // This depth is done. Get next
-      if (_opts->maxDepth == _searchDepth) {
-        // We are finished.
-        return false;
-      }
-
-      swapLastAndCurrentDepth();
-      for (auto const& nextVertex : _lastDepth) {
-        EdgeCursor* cursor = getCursor(nextVertex, _searchDepth);
-        cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice vertex, size_t cursorId) {
-          if (!keepEdge(eid, vertex, nextVertex, _searchDepth, cursorId)) {
-            return;
-          }
-
-          // Counting should be done in readAll
-          if (!vertex.isString()) {
-            TRI_ASSERT(vertex.isObject());
-            VPackSlice tmp = transaction::helpers::extractFromFromDocument(vertex);
-            if (tmp.compareString(nextVertex.data(), nextVertex.length()) == 0) {
-              tmp = transaction::helpers::extractToFromDocument(vertex);
-            }
-            TRI_ASSERT(tmp.isString());
-            vertex = tmp;
-          }
-
-          arangodb::velocypack::StringRef v(vertex);
-
-          if (_allFound.find(v) == _allFound.end()) {
-            v = _opts->cache()->persistString(v);
-
-            if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
-              _allFound.emplace(v);
-              if (shouldPrune(v)) {
-                _toPrune.emplace(v);
-              }
-              _currentDepth.emplace(v);
-            }
-          } else {
-            _opts->cache()->increaseFilterCounter();
-          }
-        });
-
-        incHttpRequests(cursor->httpRequests());
-      }
-    
-      _opts->isQueryKilledCallback();
-
-      if (_currentDepth.empty()) {
-        // Nothing found. Cannot do anything more.
-        return false;
-      }
-      ++_searchDepth;
-    } while (_searchDepth < _opts->minDepth);
-    _iterator = _currentDepth.begin();
+  if (_iterator != _currentDepth.end()) {
+    // We returned this iterator for the last time,
+    // move on.
+    _iterator++;
   }
-  TRI_ASSERT(_iterator != _currentDepth.end());
-  return true;
+  while (true) {
+    if (_searchDepth >= _opts->minDepth) {
+      // We only return after we reached the min allowed depth.
+      while (_iterator != _currentDepth.end()) {
+        //  We still have something to return
+        if (_opts->usesPostFilter()) {
+          auto evaluator = _opts->getPostFilterEvaluator();
+          if (usePostFilter(evaluator)) {
+            return true;
+          } else {
+            // Skip this result. Does not pass the PostFilter.
+            _iterator++;
+          }
+        } else {
+          return true;
+        }
+      }
+    } else {
+      // Make sure we skip everything here.
+      _iterator = _currentDepth.end();
+    }
+    // This depth is done. Get next
+    TRI_ASSERT(_iterator == _currentDepth.end());
+    if (_opts->maxDepth == _searchDepth) {
+      // We are finished.
+      return false;
+    }
+    swapLastAndCurrentDepth();
+    // Now fetch data.
+    // Do the full depth in one go.
+    for (auto const& nextVertex : _lastDepth) {
+      EdgeCursor* cursor = getCursor(nextVertex, _searchDepth);
+      cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice vertex, size_t cursorId) {
+        if (!keepEdge(eid, vertex, nextVertex, _searchDepth, cursorId)) {
+          return;
+        }
+
+        // Counting should be done in readAll
+        if (!vertex.isString()) {
+          TRI_ASSERT(vertex.isObject());
+          VPackSlice tmp = transaction::helpers::extractFromFromDocument(vertex);
+          if (tmp.compareString(nextVertex.data(), nextVertex.length()) == 0) {
+            tmp = transaction::helpers::extractToFromDocument(vertex);
+          }
+          TRI_ASSERT(tmp.isString());
+          vertex = tmp;
+        }
+
+        arangodb::velocypack::StringRef v(vertex);
+
+        if (_allFound.find(v) == _allFound.end()) {
+          v = _opts->cache()->persistString(v);
+
+          if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
+            _allFound.emplace(v);
+            if (shouldPrune(v)) {
+              _toPrune.emplace(v);
+            }
+            _currentDepth.emplace(v);
+          }
+        } else {
+          _opts->cache()->increaseFilterCounter();
+        }
+      });
+
+      incHttpRequests(cursor->httpRequests());
+    }
+
+    _opts->isQueryKilledCallback();
+    _iterator = _currentDepth.begin();
+
+    if (_currentDepth.empty()) {
+      // Nothing found. Cannot do anything more.
+      return false;
+    }
+    ++_searchDepth;
+  }
 }
 
 arangodb::aql::AqlValue NeighborsEnumerator::lastVertexToAqlValue() {

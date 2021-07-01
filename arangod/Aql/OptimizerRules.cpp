@@ -79,6 +79,22 @@
 
 namespace {
 
+bool willUseV8(arangodb::aql::ExecutionPlan const& plan) {
+  struct V8Checker : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+    bool before(arangodb::aql::ExecutionNode* n) override {
+      if (n->getType() == arangodb::aql::ExecutionNode::CALCULATION &&
+          static_cast<arangodb::aql::CalculationNode*>(n)->expression()->willUseV8()) {
+        result = true;
+        return true;
+      }
+      return false;
+    }
+    bool result{false};
+  } walker{};
+  plan.root()->walk(walker);
+  return walker.result;
+}
+
 bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
                                 arangodb::aql::ExecutionNode const* node,
                                 arangodb::aql::VarSet& vars) {
@@ -7410,10 +7426,14 @@ struct ParallelizableFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   bool const _parallelizeWrites;
   bool _isParallelizable;
+  bool _seenDistribute;
+  uint32_t _numRemotes;
 
   explicit ParallelizableFinder(bool parallelizeWrites)
       : _parallelizeWrites(parallelizeWrites),
-        _isParallelizable(true) {}
+        _isParallelizable(true),
+        _seenDistribute(false),
+        _numRemotes(0) {}
 
   ~ParallelizableFinder() = default;
 
@@ -7423,10 +7443,37 @@ struct ParallelizableFinder final
 
   bool before(ExecutionNode* node) override final {
     if (node->getType() == ExecutionNode::SCATTER ||
-        node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE) {
+        node->getType() == ExecutionNode::GATHER) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
+    }
+    if (node->getType() == ExecutionNode::DISTRIBUTE) {
+      if (_seenDistribute) {
+        // if we find 2 DISTRIBUTE nodes in the plan, or a DISTRIBUTE
+        // at an unexpected place, we give up
+        _isParallelizable = false;
+        return true;
+      }
+      // note that we have seen a DISTRIBUTE node.
+      // note that a single DISTRIBUTE node should be safe if it
+      // itself does not reach out to other snippets.
+      // The reason it should be safe is that the DISTRIBUTE will
+      // be executed under the snippet's mutex, so any real parallelism
+      // on the same DISTRIBUTE node is prevented. if multiple
+      // DB ervers are queuing for the same DISTRIBUTE node, this may
+      // lead to some contention, but should work eventually.
+      _seenDistribute = true;
+    }
+    if (node->getType() == ExecutionNode::REMOTE) {
+      // plan walking starts at a GATHER node, so we expect to see
+      // at least one REMOTE node.
+      // if we find another one, it is ok if that REMOTE node refers
+      // to a DISTRIBUTE node (checked above). if it refers to another
+      // GATHER node somewhere, we also abort above.
+      if (++_numRemotes > 2 || _seenDistribute) {
+        _isParallelizable = false;
+        return true;
+      }
     }
 
     if (node->getType() == ExecutionNode::TRAVERSAL ||
@@ -7446,6 +7493,7 @@ struct ParallelizableFinder final
         (!_parallelizeWrites ||
          (node->getType() != ExecutionNode::REMOVE &&
           node->getType() != ExecutionNode::REPLACE &&
+          node->getType() != ExecutionNode::INSERT &&
           node->getType() != ExecutionNode::UPDATE))) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
@@ -7790,10 +7838,10 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
+  if (nodes.size() == 1 && !plan->contains(EN::SCATTER)) {
+    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
     TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
     bool parallelizeWrites = vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites();
-    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
 
     if (!gn->isInSubquery() && isParallelizable(gn, parallelizeWrites)) {
       // find all graph nodes and make sure that they all are using satellite
@@ -7854,6 +7902,37 @@ void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
     }
   };
   AsyncPrefetchEnabler walker{};
+  plan.root()->walk(walker);
+}
+
+void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
+  if (willUseV8(plan)) {
+    // V8 requires thread local context configuration, so we cannot 
+    // use our thread based split solution...
+    return;
+  }
+  
+  auto const& options = plan.getAst()->query().queryOptions();
+  struct CallstackSplitter : WalkerWorkerBase<ExecutionNode> {
+    explicit CallstackSplitter(size_t maxNodes) : maxNodesPerCallstack(maxNodes) {}
+    bool before(ExecutionNode* n) override {
+      // This rule must be executed after subquery splicing, so we must not see any subqueries here!
+      TRI_ASSERT(n->getType() != EN::SUBQUERY);
+      
+      if (n->getType() == EN::REMOTE) {
+        // RemoteNodes provide a natural split in the callstack, so we can reset the counter here!
+        count = 0;
+      } else if (++count >= maxNodesPerCallstack) {
+        count = 0;
+        n->enableCallstackSplit();
+      }
+      return false;
+    }
+    size_t maxNodesPerCallstack;
+    size_t count = 0;
+  };
+  
+  CallstackSplitter walker(options.maxNodesPerCallstack);
   plan.root()->walk(walker);
 }
 

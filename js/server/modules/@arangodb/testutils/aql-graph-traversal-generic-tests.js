@@ -34,6 +34,7 @@ const db = internal.db;
 const aql = require("@arangodb").aql;
 const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
+const {getCompactStatsNodes, TraversalBlock } = require("@arangodb/testutils/aql-profiler-test-helper");
 
 
 /*
@@ -4517,6 +4518,114 @@ function testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitGen(testGraph
 
 }
 
+const assertEarlyFilterOptimization = (testGraph, query, numAllowedResults) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const profile = db._query(query, {profile: 2}).getExtra();
+  const result = getCompactStatsNodes(profile).filter(n => n.type === TraversalBlock);
+  // We only have one TraversalBlock
+  assertEqual(result.length, 1);
+  // The traversal block shall only output the numberOfAllowedResults
+  assertEqual(result[0].items, numAllowedResults);
+};
+
+const testCompleteGraphOptimizeVBFS = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs"}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVDFS = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "dfs"}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVNeighbors = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs", uniqueVertices: "global"}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVWeighted = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeEBFS = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v, e IN 1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs"}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeEDFS = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v, e IN 1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "dfs"}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeENeighbors = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v,e  IN 1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs", uniqueVertices: "global"}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeEWeighted = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v, e IN 1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVBFSD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs"}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVDFSD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "dfs"}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVNeighborsD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs", uniqueVertices: "global"}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeVWeightedD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+     FILTER v._id == ${testGraph.vertex('B')}
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeEBFSD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v, e IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs"}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeEDFSD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v, e IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "dfs"}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeENeighborsD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v,e  IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "bfs", uniqueVertices: "global"}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+const testCompleteGraphOptimizeEWeightedD0 = (testGraph) => assertEarlyFilterOptimization(testGraph,
+  aql`FOR v, e IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS { order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+     FILTER e[${testGraph.weightAttribute()}] == 1
+     RETURN v
+  `, 1);
+
+
+
 function getExpectedBinTree() {
   const leftChild = vi => 2 * vi + 1;
   const rightChild = vi => 2 * vi + 2;
@@ -5867,6 +5976,22 @@ const testsByGraph = {
     testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD3EnabledWeights,
     testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD10EnabledWeights,
     testCompleteGraphWeightedUniqueEdgesNoneUniqueVerticesGlobalD10EnabledWeights,
+    testCompleteGraphOptimizeVBFS,
+    testCompleteGraphOptimizeVDFS,
+    testCompleteGraphOptimizeVNeighbors,
+    testCompleteGraphOptimizeVWeighted,
+    testCompleteGraphOptimizeEBFS,
+    testCompleteGraphOptimizeEDFS,
+    testCompleteGraphOptimizeENeighbors,
+    testCompleteGraphOptimizeEWeighted,
+    testCompleteGraphOptimizeVBFSD0,
+    testCompleteGraphOptimizeVDFSD0,
+    testCompleteGraphOptimizeVNeighborsD0,
+    testCompleteGraphOptimizeVWeightedD0,
+    testCompleteGraphOptimizeEBFSD0,
+    testCompleteGraphOptimizeEDFSD0,
+    testCompleteGraphOptimizeENeighborsD0,
+    testCompleteGraphOptimizeEWeightedD0,
   },
   easyPath: {
     testEasyPathAllCombinations,

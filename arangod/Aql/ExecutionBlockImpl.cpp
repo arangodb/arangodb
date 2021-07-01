@@ -188,6 +188,10 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
   // Break the stack before waiting.
   // We should not use this here.
   _stackBeforeWaiting.popCall();
+  
+  if (_exeNode->isCallstackSplitEnabled()) {
+    _callstackSplit = std::make_unique<CallstackSplit>(*this);
+  }
 }
 
 template <class Executor>
@@ -338,28 +342,54 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  initOnce();
-  auto res = executeWithoutTrace(stack);
-  if (std::get<0>(res) != ExecutionState::WAITING) {
-    // if we have finished processing our input we reset _outputItemRow and
-    // _lastRange to release the SharedAqlItemBlockPtrs. This is necessary to
-    // avoid concurrent refCount updates in case of async prefetching because
-    // refCount is intentionally not atomic.
-    _outputItemRow.reset();
-    if constexpr (!isMultiDepExecutor<Executor>) {
-      if (!_lastRange.hasValidRow()) {
-        _lastRange.reset();
+  
+  // check if this block failed already.
+  if (_firstFailure.fail()) {
+    // if so, just return the stored error.
+    // we need to do this because if a block fails with
+    // an exception, it is in an invalid state, and all
+    // subsequent calls into it may behave badly.
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  }
+
+  try {
+    initOnce();
+    auto res = executeWithoutTrace(stack);
+
+    if (std::get<0>(res) != ExecutionState::WAITING) {
+      // if we have finished processing our input we reset _outputItemRow and
+      // _lastRange to release the SharedAqlItemBlockPtrs. This is necessary to
+      // avoid concurrent refCount updates in case of async prefetching because
+      // refCount is intentionally not atomic.
+      _outputItemRow.reset();
+      if constexpr (!isMultiDepExecutor<Executor>) {
+        if (!_lastRange.hasValidRow()) {
+          _lastRange.reset();
+        }
       }
     }
-  }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto const& [state, skipped, block] = res;
-  if (block != nullptr) {
-    block->validateShadowRowConsistency();
-  }
+    auto const& [state, skipped, block] = res;
+    if (block != nullptr) {
+      block->validateShadowRowConsistency();
+    }
 #endif
-  traceExecuteEnd(res);
-  return res;
+    traceExecuteEnd(res);
+    return res;
+  } catch (basics::Exception const& ex) {
+    TRI_ASSERT(_firstFailure.ok());
+    // store only the first failure we got
+    _firstFailure = {ex.code(), ex.what()};
+    LOG_QUERY("7289a", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
+    throw;
+  } catch (std::exception const& ex) {
+    TRI_ASSERT(_firstFailure.ok());
+    // store only the first failure we got
+    _firstFailure = {TRI_ERROR_INTERNAL, ex.what()};
+    LOG_QUERY("2bbd5", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
+    // Rewire the error, to be consistent with potentially next caller.
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  }
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
@@ -1204,7 +1234,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
   // We can only work on a Stack that has valid calls for all levels.  
   TRI_ASSERT(callStack.hasAllValidCalls());
   ExecutionContext ctx(*this, callStack);
-
+          
   ExecutorState localExecutorState = ExecutorState::DONE;
 
   // We can only have returned the following internal states
@@ -1492,7 +1522,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
         auto subqueryLevelBefore = ctx.stack.subqueryLevel();
 #endif
         SkipResult skippedLocal;
-        std::tie(_upstreamState, skippedLocal, _lastRange) = executeFetcher(ctx, _upstreamRequest);
+        if (_callstackSplit) {
+          // we need to split the callstack to avoid stack overflows, so we move upstream
+          // execution into a separate thread
+          std::tie(_upstreamState, skippedLocal, _lastRange) = _callstackSplit->execute(ctx, _upstreamRequest);
+        } else {
+          std::tie(_upstreamState, skippedLocal, _lastRange) = executeFetcher(ctx, _upstreamRequest);
+        }
+        
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         TRI_ASSERT(subqueryLevelBefore == ctx.stack.subqueryLevel());
 #endif
@@ -1939,6 +1976,73 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(ExecutionBlockImpl& blo
     _lock.lock();
     _lock.unlock();
 
+    _bell.notify_one();
+  }
+}
+
+template <class Executor>
+ExecutionBlockImpl<Executor>::CallstackSplit::CallstackSplit(ExecutionBlockImpl& block) :
+  _block(block),
+  _thread(&CallstackSplit::run, this, std::cref(ExecContext::current())) {}
+  
+template <class Executor>
+ExecutionBlockImpl<Executor>::CallstackSplit::~CallstackSplit() { 
+  _lock.lock();
+  _state.store(State::Stopped);
+  _lock.unlock();
+
+  _bell.notify_one();
+  _thread.join();
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(ExecutionContext& ctx, AqlCallType const& aqlCall)
+    -> UpstreamResult {
+  std::variant<UpstreamResult, std::exception_ptr, std::nullopt_t> result{std::nullopt};
+  Params params{result, ctx, aqlCall};
+
+  {
+    std::unique_lock guard(_lock);
+    _params = &params;
+    _state.store(State::Executing);
+  }
+
+  _bell.notify_one();
+  
+  std::unique_lock<std::mutex> guard(_lock);
+  _bell.wait(guard, [this]() {
+    return _state.load(std::memory_order_acquire) != State::Executing;
+  });
+  TRI_ASSERT(_state.load() == State::Waiting);
+
+  if (std::holds_alternative<std::exception_ptr>(result)) {
+    std::rethrow_exception(std::get<std::exception_ptr>(result));
+  }
+
+  return std::get<UpstreamResult>(std::move(result));
+}
+  
+template <class Executor>
+void ExecutionBlockImpl<Executor>::CallstackSplit::run(ExecContext const& execContext) {
+  ExecContextScope scope(&execContext);
+  std::unique_lock<std::mutex> guard(_lock);
+  while (true) {
+    _bell.wait(guard, [this]() {
+      return _state.load(std::memory_order_relaxed) != State::Waiting;
+    });
+    if (_state == State::Stopped) {
+      return;
+    }
+    TRI_ASSERT(_params != nullptr);
+    _state = State::Executing;
+
+    try {
+      _params->result = _block.executeFetcher(_params->ctx, _params->aqlCall);
+    } catch(...) {
+      _params->result = std::current_exception();
+    }
+
+    _state.store(State::Waiting, std::memory_order_relaxed);
     _bell.notify_one();
   }
 }
