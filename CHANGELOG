@@ -1,6 +1,13 @@
 devel
 -----
 
+* Revive startup parameter `--server.session-timeout` to control the timeout
+  for web interface sessions and other sessions that are based on JWTs created
+  by the `/_open/auth` API.
+  
+  This PR also changes the default session timeout for web interface sessions
+  to one hour. Older versions of ArangoDB had longer session timeouts.
+
 * Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
 
 * Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
