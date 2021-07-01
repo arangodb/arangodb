@@ -1620,6 +1620,8 @@ void RestoreFeature::start() {
     for (size_t i = 0; i < numRetries; i++) {
       if (i > 0) {
         LOG_TOPIC("5855a", WARN, Logger::RESTORE) << "Failed to connect to server, retry.";
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(i * 1s);
       }
       Result result = _clientManager.getConnectedClient(httpClient, _options.force,
           true, !_options.createDatabase, false);
