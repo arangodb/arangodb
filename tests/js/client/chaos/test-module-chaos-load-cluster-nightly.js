@@ -1,10 +1,13 @@
+/* jshint globalstrict:false, strict:false, maxlen: 200 */
+/* global fail, print */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Apache License, Version 2.0 (the "License")
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
@@ -18,27 +21,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestRedirectHandler.h"
+const { run, makeConfig, parameters } = require("./test-chaos-load-common.inc");
 
-using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::rest;
-
-RestStatus RestRedirectHandler::execute() {
-
-  std::string const& url = request()->fullUrl();
-  std::string prefix = request()->prefix();
-  if (prefix.empty()) {
-    prefix = request()->requestPath();
+module.exports.getConfigs = () => {
+  let configs = [];
+  for (let i = 0; i < (1 << parameters.length); ++i) {
+    let paramValues = [];
+    for (let j = parameters.length - 1; j >= 0; --j) {
+      paramValues.push(Boolean(i & (1 << j)));
+    }
+    configs.push(makeConfig(paramValues));
   }
-
-  std::string newUrl = _newPrefix + url.substr(prefix.size());
-  response()->setHeader(StaticStrings::Location, newUrl);
-  response()->setResponseCode(ResponseCode::PERMANENT_REDIRECT);
-  return RestStatus::DONE;
-}
-
-void RestRedirectHandler::handleError(basics::Exception const&) {}
+  return configs;
+};
+module.exports.run = run;

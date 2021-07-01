@@ -3306,6 +3306,44 @@ function subQuerySuite() {
       cleanup();
     },
 
+    testUniqueVertexGetterMemoryIssue: function () {
+      // test case: UniqueVertexGetter keeps track of which vertices
+      // were already visited. the vertex id tracked pointed to memory
+      // which was allocated only temporarily and that became invalid
+      // once TraverserCache::clear() got called.
+      let query = `WITH ${vn} FOR i IN 1..3 FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', bfs: true } SORT v._key RETURN v._key`;
+      let result = db._query(query).toArray();
+      assertEqual([ 
+        "B", "B", "B", 
+        "B1", "B1", "B1", 
+        "B2", "B2", "B2", 
+        "B3", "B3", "B3", 
+        "B4", "B4", "B4", 
+        "B5", "B5", "B5", 
+        "C", "C", "C", 
+        "C1", "C1", "C1", 
+        "C2", "C2", "C2", 
+        "C3", "C3", "C3", 
+        "C4", "C4", "C4", 
+        "C5", "C5", "C5", 
+        "D", "D", "D", 
+        "D1", "D1", "D1", 
+        "D2", "D2", "D2", 
+        "D3", "D3", "D3", 
+        "D4", "D4", "D4", 
+        "D5", "D5", "D5" 
+      ], result);
+      
+      // while we are here, try a different query as well
+      query = `WITH ${vn} FOR i IN 1..3 LET sub = (FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', bfs: true } SORT v._key RETURN v._key) RETURN sub`;
+      result = db._query(query).toArray();
+      assertEqual([ 
+        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ], 
+        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ], 
+        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ] 
+      ], result);
+    },
+
     // The test is that the traversal in subquery has more then LIMIT many
     // results. In case of a bug the cursor of the traversal is reused for the second
     // iteration as well and does not reset.
