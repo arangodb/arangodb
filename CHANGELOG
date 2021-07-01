@@ -4,6 +4,9 @@ devel
 * Revive startup parameter `--server.session-timeout` to control the timeout
   for web interface sessions and other sessions that are based on JWTs created
   by the `/_open/auth` API.
+  
+  This PR also changes the default session timeout for web interface sessions
+  to one hour. Older versions of ArangoDB had longer session timeouts.
 
 * Fix potential stack overflow when executing large queries. This is
   achieved by splitting the callstack and moving part of the execution
