@@ -79,6 +79,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     std::vector<std::string> numberOfShards;
     std::vector<std::string> replicationFactor;
     uint32_t threadCount{2};
+    uint32_t initialConnectRetries{3};
     bool clusterMode{false};
     bool createDatabase{false};
     bool force{false};

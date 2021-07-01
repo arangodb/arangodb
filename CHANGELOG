@@ -1,6 +1,10 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Added a retry loop for arangorestore during the initial connection phase. The
+  number of retries defaults to 3 and can be configured using 
+  --initial-connect-retries.
+
 * Updated arangosync to 1.6.0.
 
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
