@@ -95,6 +95,7 @@ function waitForAlive(timeout, baseurl, data) {
 
 function restartInstance(arangod) {
   let options = global.testOptions;
+  options.skipReconnect = false;
   pu.reStartInstance(options, global.instanceInfo, {});
   waitForAlive(30, arangod.url, {});
 };
