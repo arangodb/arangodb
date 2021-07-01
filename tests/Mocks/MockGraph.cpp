@@ -134,7 +134,6 @@ void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexColle
         EXPECT_TRUE((res.ok()));
         added++;
       }
-      LOG_DEVEL << "added in total: " << added;
 
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(added == edges.size());
@@ -143,7 +142,6 @@ void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexColle
 
   insertEdges(edgeCollectionName, edges());
   if (!edgeCollectionSecondName.empty()) {
-    LOG_DEVEL << "test: " << edgeCollectionSecondName;
     insertEdges(edgeCollectionSecondName, secondEdges);
   }
 }
