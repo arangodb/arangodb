@@ -3,6 +3,16 @@ devel
 
 * Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
 
+* Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
+  internal requests to use the new url.
+
+* Fix display of running and slow queries in web UI when there are multiple
+  coordinators. Previously, the display order of queries was undefined, which
+  could lead to queries from one coordinator being display on top once and
+  then the queries from another. That made using this UI harder than necessary.
+  
+  Now queries are sorted for display, according to their query IDs. 
+
 * Updated ArangoDB Starter to 0.15.1-preview-2.
 
 * Fix potential stack overflow when executing large queries. This is
