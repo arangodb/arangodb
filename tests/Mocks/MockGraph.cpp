@@ -88,7 +88,9 @@ void MockGraph::addEdge(size_t from, size_t to, double weight) {
 }
 
 void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
-                          std::string const& edgeCollectionName, std::string const& edgeCollectionSecondName) const {
+                          std::string const& edgeCollectionName,
+                          std::string const& edgeCollectionSecondName,
+                          std::vector<EdgeDef> const& secondEdges) const {
   {
     // Insert vertices
     arangodb::OperationOptions options;
@@ -111,17 +113,18 @@ void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexColle
     EXPECT_TRUE(added == vertices().size());
   }
 
-  auto insertEdges = [&](std::string const& edgeCollectionToInsert) -> void {
+  auto insertEdges = [&](std::string const& edgeCollectionToInsert,
+                         std::vector<EdgeDef> const& edges) -> void {
     {
       // Insert edges
       arangodb::OperationOptions options;
-      arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                                edgeCollectionToInsert,
-                                                arangodb::AccessMode::Type::WRITE);
+      arangodb::SingleCollectionTransaction trx(
+          arangodb::transaction::StandaloneContext::Create(vocbase),
+          edgeCollectionToInsert, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE((trx.begin().ok()));
       size_t added = 0;
       velocypack::Builder b;
-      for (auto& edge : edges()) {
+      for (auto& edge : edges) {
         b.clear();
         edge.addToBuilder(b);
         auto res = trx.insert(edgeCollectionToInsert, b.slice(), options);
@@ -131,16 +134,17 @@ void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexColle
         EXPECT_TRUE((res.ok()));
         added++;
       }
+      LOG_DEVEL << "added in total: " << added;
 
       EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(added == edges().size());
+      EXPECT_TRUE(added == edges.size());
     }
   };
 
-  insertEdges(edgeCollectionName);
+  insertEdges(edgeCollectionName, edges());
   if (!edgeCollectionSecondName.empty()) {
     LOG_DEVEL << "test: " << edgeCollectionSecondName;
-    insertEdges(edgeCollectionSecondName);
+    insertEdges(edgeCollectionSecondName, secondEdges);
   }
 }
 
@@ -174,8 +178,6 @@ void MockGraph::prepareServer(MockCoordinator& server) const {
                                         getEdgeShardNameServerPairs(), TRI_COL_TYPE_EDGE);
 }
 
-
-
 template <>
 // Future: Also engineID's need to be returned here.
 std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockGraph::simulateApi(
@@ -192,15 +194,15 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
   {
     // init restaqlhandler
     arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
-    
+
     // generate and add body here
     VPackBuilder builder;
     builder.openObject();
     builder.add("lockInfo", VPackValue(VPackValueType::Object));
 
     builder.add("read", VPackValue(VPackValueType::Array));
-    // append here the collection names (?) <-- TODO: Check RestAqlHandler.cpp:230
-    // builder.add(VPackValue(_vertexCollectionName));
+    // append here the collection names (?) <-- TODO: Check
+    // RestAqlHandler.cpp:230 builder.add(VPackValue(_vertexCollectionName));
     // builder.add(VPackValue(_edgeCollectionName));
     // appending collection shard ids
     for (auto const& vShard : _vertexShards) {
@@ -209,8 +211,8 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
     for (auto const& eShard : _edgeShards) {
       builder.add(VPackValue(eShard.first));
     }
-    builder.close(); // array READ
-    builder.close(); // object lockInfo
+    builder.close();  // array READ
+    builder.close();  // object lockInfo
 
     builder.add("options", VPackValue(VPackValueType::Object));
     builder.add("ttl", VPackValue(120));
@@ -224,7 +226,7 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
 
     builder.add("traverserEngines", VPackValue(VPackValueType::Array));
 
-    builder.openObject(); // main container
+    builder.openObject();  // main container
 
     builder.add(VPackValue("options"));
 
@@ -236,25 +238,25 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
     builder.add(VPackValue("vertices"));
     builder.openObject();
 
-    for (auto const& vertexTuple: getVertexShardNameServerPairs()) {
+    for (auto const& vertexTuple : getVertexShardNameServerPairs()) {
       builder.add(_vertexCollectionName, VPackValue(VPackValueType::Array));
-      builder.add(VPackValue(vertexTuple.first)); // shardID
-      builder.close(); // inner array
+      builder.add(VPackValue(vertexTuple.first));  // shardID
+      builder.close();                             // inner array
     }
 
-    builder.close(); // vertices
+    builder.close();  // vertices
 
     builder.add(VPackValue("edges"));
     builder.openArray();
-    for (auto const& edgeTuple: getEdgeShardNameServerPairs()) {
+    for (auto const& edgeTuple : getEdgeShardNameServerPairs()) {
       builder.openArray();
-      builder.add(VPackValue(edgeTuple.first)); // shardID
-      builder.close(); // inner array
+      builder.add(VPackValue(edgeTuple.first));  // shardID
+      builder.close();                           // inner array
     }
-    builder.close(); // edges
-    builder.close(); // shards
-    builder.close(); // main container
-    builder.close(); // array traverserEngines
+    builder.close();  // edges
+    builder.close();  // shards
+    builder.close();  // main container
+    builder.close();  // array traverserEngines
     builder.close();  // object (outer)
 
     prep.addBody(builder.slice());

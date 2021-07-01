@@ -121,7 +121,9 @@ class MockGraph {
       arangodb::graph::BaseOptions& opts) const;
 
   void storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
-                 std::string const& edgeCollectionName, std::string const& edgeCollectionSecondName = "") const;
+                 std::string const& edgeCollectionName,
+                 std::string const& edgeCollectionSecondName = "",
+                 std::vector<EdgeDef> const& secondEdges = {}) const;
 
  protected:
   std::vector<std::pair<std::string, std::string>> const& getVertexShardNameServerPairs() const {
