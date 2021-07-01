@@ -50,7 +50,7 @@ class LogFollower : public LogParticipantI,
   ~LogFollower() override;
   LogFollower(LogContext const&, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
               ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-              ParticipantId leaderId, InMemoryLog inMemoryLog);
+              std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
 
   // follower only
   auto appendEntries(AppendEntriesRequest) -> futures::Future<AppendEntriesResult> override;
@@ -89,7 +89,7 @@ class LogFollower : public LogParticipantI,
   };
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   ParticipantId const _participantId;
-  ParticipantId const _leaderId;
+  std::optional<ParticipantId> const _leaderId;
   LogTerm const _currentTerm;
   Guarded<GuardedFollowerData> _guardedFollowerData;
   LogContext const _logContext;

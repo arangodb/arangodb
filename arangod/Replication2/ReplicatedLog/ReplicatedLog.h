@@ -78,7 +78,7 @@ struct alignas(64) ReplicatedLog {
   auto becomeLeader(LogLeader::TermData const& termData,
                     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
       -> std::shared_ptr<LogLeader>;
-  auto becomeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId)
+  auto becomeFollower(ParticipantId id, LogTerm term, std::optional<ParticipantId> leaderId)
       -> std::shared_ptr<LogFollower>;
 
   auto getParticipant() const -> std::shared_ptr<LogParticipantI>;

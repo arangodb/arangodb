@@ -79,7 +79,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
 }
 
 auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm term,
-                                                   ParticipantId leaderId)
+                                                   std::optional<ParticipantId> leaderId)
     -> std::shared_ptr<LogFollower> {
   auto [follower, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
@@ -91,7 +91,8 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
     }
     auto [logCore, deferred] = std::move(*_participant).resign();
     LOG_CTX("1ed24", DEBUG, _logContext)
-        << "becoming follower in term " << term << " with leader " << leaderId;
+        << "becoming follower in term " << term << " with leader "
+        << leaderId.value_or("<none>");
     auto log = InMemoryLog{_logContext, *logCore};
     auto follower = std::make_shared<LogFollower>(_logContext, _metrics,
                                                   std::move(id), std::move(logCore),

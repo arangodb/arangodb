@@ -105,7 +105,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   if (req.leaderId != _leaderId) {
     LOG_CTX("a2009", DEBUG, _logContext)
         << "reject append entries - wrong leader, given = " << req.leaderId
-        << " current = " << _leaderId;
+        << " current = " << _leaderId.value_or("<none>");
     return AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
                                AppendEntriesErrorReason::INVALID_LEADER_ID, req.messageId};
   }
@@ -250,7 +250,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
         }
         FollowerStatus status;
         status.local = followerData.getLocalStatistics();
-        status.leader = leaderId;
+        status.leader = leaderId.value_or("<none>");
         status.term = term;
         return LogStatus{std::move(status)};
       });
@@ -294,7 +294,7 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
 replicated_log::LogFollower::LogFollower(LogContext const& logContext,
                                          std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                                          ParticipantId id, std::unique_ptr<LogCore> logCore,
-                                         LogTerm term, ParticipantId leaderId,
+                                         LogTerm term, std::optional<ParticipantId> leaderId,
                                          replicated_log::InMemoryLog inMemoryLog)
     : _logMetrics(std::move(logMetrics)),
       _participantId(std::move(id)),
@@ -302,7 +302,7 @@ replicated_log::LogFollower::LogFollower(LogContext const& logContext,
       _currentTerm(term),
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)),
       _logContext(logContext.with<logContextKeyLogComponent>("follower")
-                      .with<logContextKeyLeaderId>(_leaderId)
+                      .with<logContextKeyLeaderId>(_leaderId.value_or("<none>"))
                       .with<logContextKeyTerm>(term)) {
   _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
 }

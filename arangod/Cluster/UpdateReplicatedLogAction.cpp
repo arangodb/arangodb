@@ -93,7 +93,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
       auto newLeader = log.becomeLeader(termData, follower);
       newLeader->runAsyncStep(); // TODO move this call into becomeLeader?
     } else {
-      auto leaderString = std::string{};
+      auto leaderString = std::optional<ParticipantId>{};
       if (spec->currentTerm->leader) {
         leaderString = spec->currentTerm->leader->serverId;
       }
