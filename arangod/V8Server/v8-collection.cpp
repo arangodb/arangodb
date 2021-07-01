@@ -1705,18 +1705,26 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  // check the arguments
-  uint32_t const argLength = args.Length();
-  if (argLength != 1 || (!args[0]->IsNumber() && !args[0]->IsString())) {
-    // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
-  }
-
   auto& vocbase = GetContextVocBase(isolate);
   if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
   auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
+  
+  VPackBuilder builder;
+
+  // check the arguments
+  uint32_t const argLength = args.Length();
+  if (argLength == 0) {
+    pregel.toVelocyPack(vocbase, builder, false, true);
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+    return;
+  }
+
+  if (argLength != 1 || (!args[0]->IsNumber() && !args[0]->IsString())) {
+    // TODO extend this for named graphs, use the Graph class
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
+  }
 
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
   auto c = pregel.conductor(executionNum);
@@ -1725,7 +1733,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "Execution number is invalid");
   }
 
-  VPackBuilder builder = c->toVelocyPack();
+  c->toVelocyPack(builder);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
 }

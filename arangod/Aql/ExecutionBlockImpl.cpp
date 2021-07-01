@@ -188,6 +188,10 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
   // Break the stack before waiting.
   // We should not use this here.
   _stackBeforeWaiting.popCall();
+  
+  if (_exeNode->isCallstackSplitEnabled()) {
+    _callstackSplit = std::make_unique<CallstackSplit>(*this);
+  }
 }
 
 template <class Executor>
@@ -1518,7 +1522,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
         auto subqueryLevelBefore = ctx.stack.subqueryLevel();
 #endif
         SkipResult skippedLocal;
-        std::tie(_upstreamState, skippedLocal, _lastRange) = executeFetcher(ctx, _upstreamRequest);
+        if (_callstackSplit) {
+          // we need to split the callstack to avoid stack overflows, so we move upstream
+          // execution into a separate thread
+          std::tie(_upstreamState, skippedLocal, _lastRange) = _callstackSplit->execute(ctx, _upstreamRequest);
+        } else {
+          std::tie(_upstreamState, skippedLocal, _lastRange) = executeFetcher(ctx, _upstreamRequest);
+        }
+        
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         TRI_ASSERT(subqueryLevelBefore == ctx.stack.subqueryLevel());
 #endif
@@ -1965,6 +1976,73 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(ExecutionBlockImpl& blo
     _lock.lock();
     _lock.unlock();
 
+    _bell.notify_one();
+  }
+}
+
+template <class Executor>
+ExecutionBlockImpl<Executor>::CallstackSplit::CallstackSplit(ExecutionBlockImpl& block) :
+  _block(block),
+  _thread(&CallstackSplit::run, this, std::cref(ExecContext::current())) {}
+  
+template <class Executor>
+ExecutionBlockImpl<Executor>::CallstackSplit::~CallstackSplit() { 
+  _lock.lock();
+  _state.store(State::Stopped);
+  _lock.unlock();
+
+  _bell.notify_one();
+  _thread.join();
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(ExecutionContext& ctx, AqlCallType const& aqlCall)
+    -> UpstreamResult {
+  std::variant<UpstreamResult, std::exception_ptr, std::nullopt_t> result{std::nullopt};
+  Params params{result, ctx, aqlCall};
+
+  {
+    std::unique_lock guard(_lock);
+    _params = &params;
+    _state.store(State::Executing);
+  }
+
+  _bell.notify_one();
+  
+  std::unique_lock<std::mutex> guard(_lock);
+  _bell.wait(guard, [this]() {
+    return _state.load(std::memory_order_acquire) != State::Executing;
+  });
+  TRI_ASSERT(_state.load() == State::Waiting);
+
+  if (std::holds_alternative<std::exception_ptr>(result)) {
+    std::rethrow_exception(std::get<std::exception_ptr>(result));
+  }
+
+  return std::get<UpstreamResult>(std::move(result));
+}
+  
+template <class Executor>
+void ExecutionBlockImpl<Executor>::CallstackSplit::run(ExecContext const& execContext) {
+  ExecContextScope scope(&execContext);
+  std::unique_lock<std::mutex> guard(_lock);
+  while (true) {
+    _bell.wait(guard, [this]() {
+      return _state.load(std::memory_order_relaxed) != State::Waiting;
+    });
+    if (_state == State::Stopped) {
+      return;
+    }
+    TRI_ASSERT(_params != nullptr);
+    _state = State::Executing;
+
+    try {
+      _params->result = _block.executeFetcher(_params->ctx, _params->aqlCall);
+    } catch(...) {
+      _params->result = std::current_exception();
+    }
+
+    _state.store(State::Waiting, std::memory_order_relaxed);
     _bell.notify_one();
   }
 }
