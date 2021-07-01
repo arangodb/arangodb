@@ -209,6 +209,13 @@ void auth::UserManager::loadFromDB() {
     return;
   }
 
+  TRI_IF_FAILURE("UserManager::performDBLookup") {
+    // Used in GTest. It is used to identify
+    // if the UserManager would have updated it's
+    // cache in a specific situation.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   try {
     std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server);
     if (builder) {

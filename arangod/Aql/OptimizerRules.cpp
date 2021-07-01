@@ -79,6 +79,22 @@
 
 namespace {
 
+bool willUseV8(arangodb::aql::ExecutionPlan const& plan) {
+  struct V8Checker : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+    bool before(arangodb::aql::ExecutionNode* n) override {
+      if (n->getType() == arangodb::aql::ExecutionNode::CALCULATION &&
+          static_cast<arangodb::aql::CalculationNode*>(n)->expression()->willUseV8()) {
+        result = true;
+        return true;
+      }
+      return false;
+    }
+    bool result{false};
+  } walker{};
+  plan.root()->walk(walker);
+  return walker.result;
+}
+
 bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
                                 arangodb::aql::ExecutionNode const* node,
                                 arangodb::aql::VarSet& vars) {
@@ -811,6 +827,96 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace arangodb {
 namespace aql {
+
+// checks if the path variable (variable) can be optimized away, or restricted to some
+// attributes (vertices, edges, weights)
+bool optimizeTraversalPathVariable(Variable const* variable, TraversalNode* traversal, 
+                                   std::vector<Variable const*> const& pruneVars) {
+  if (variable == nullptr) {
+    return false;
+  }
+    
+  auto* options =
+      static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
+
+  if (!traversal->isVarUsedLater(variable)) {
+    // traversal path outVariable not used later
+    if (std::find(pruneVars.begin(), pruneVars.end(), variable) == pruneVars.end()) {
+      options->setProducePaths(/*vertices*/ false, /*edges*/ false, /*weights*/ false);
+      traversal->setPathOutput(nullptr);
+      return true; /*modified*/
+    } else {
+      // we still need to build the path because PRUNE relies on it
+      // TODO: this can potentially be optimized in the future.
+      options->setProducePaths(/*vertices*/ true, /*edges*/ true, /*weights*/ true);
+      return false; /*modified*/
+    }
+  } else {
+    // path is used later, but lets check which of its sub-attributes
+    // "vertices" or "edges" are in use (or the complete path)
+    std::unordered_set<std::string> attributes;
+    VarSet vars;
+    bool canOptimize = true;
+
+    ExecutionNode* current = traversal->getFirstParent();
+    while (current != nullptr && canOptimize) {
+      switch (current->getType()) {
+        case EN::CALCULATION: {
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+          if (vars.find(variable) != vars.end()) {
+            // path variable used here
+            Expression* exp = ExecutionNode::castTo<CalculationNode*>(current)->expression();
+            AstNode const* node = exp->node();
+            if (!Ast::getReferencedAttributes(node, variable, attributes)) {
+              // full path variable is used, or accessed in a way that we don't 
+              // understand, e.g. "p" or "p[0]" or "p[*]..."
+              canOptimize = false;
+            }
+          }
+          break;
+        }
+        default: {
+          // if the path is used by any other node type, we don't know what to do
+          // and will not optimize parts of it away
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+          if (vars.find(variable) != vars.end()) {
+            canOptimize = false;
+          }
+          break;
+        }
+      }
+      current = current->getFirstParent();
+    }
+
+    if (canOptimize) {
+      // check which attributes from the path are actually used
+      bool producePathsVertices = (attributes.find(StaticStrings::GraphQueryVertices) != attributes.end());
+      bool producePathsEdges = (attributes.find(StaticStrings::GraphQueryEdges) != attributes.end());
+      bool producePathsWeights = (attributes.find(StaticStrings::GraphQueryWeights) != attributes.end()) && 
+                                 (options->mode == traverser::TraverserOptions::Order::WEIGHTED);
+
+      if (!producePathsVertices && !producePathsEdges && !producePathsWeights &&
+          !attributes.empty()) {
+        // none of the existing path attributes is actually accessed - but a different 
+        // (non-existing) attribute is accessed, e.g. `p.whatever`.
+        // in order to not optimize away our path variable, and then being unable to access
+        // the non-existing attribute, we simply activate the production of vertices.
+        // this prevents us from running into errors trying to access an attribute of
+        // an optimzed-away variable later
+        producePathsVertices = true;
+      }
+
+      if (!producePathsVertices || !producePathsEdges || !producePathsWeights) {
+        // pass the info to the traversal
+        options->setProducePaths(producePathsVertices, producePathsEdges, producePathsWeights);
+        return true; /*modified*/
+      }
+    }
+  }
+  return false; /*modified*/
+}
 
 Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context) {
   aql::Collection* coll = nullptr;
@@ -5842,16 +5948,9 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       modified = true;
     }
 
+    // path
     outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
-      // traversal path outVariable not used later
-      options->setProducePaths(false);
-      if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
-          pruneVars.end()) {
-        traversal->setPathOutput(nullptr);
-      }
-      modified = true;
-    }
+    modified |= optimizeTraversalPathVariable(outVariable, traversal, pruneVars);
 
     // check if we can make use of the optimized neighbors enumerator
     if (!ServerState::instance()->isCoordinator()) {
@@ -6006,15 +6105,11 @@ void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
   // variables from them
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
-
-    std::vector<Variable const*> pruneVars;
-    traversal->getPruneVariables(pruneVars);
     auto outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
-        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
-      // traversal path outVariable not used later
-      traversal->setPathOutput(nullptr);
-      modified = true;
+    if (outVariable != nullptr) {
+      std::vector<Variable const*> pruneVars;
+      traversal->getPruneVariables(pruneVars);
+      modified |= optimizeTraversalPathVariable(outVariable, traversal, pruneVars);
     }
   }
   opt->addPlan(std::move(plan), rule, modified);
@@ -7775,6 +7870,37 @@ void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
     }
   };
   AsyncPrefetchEnabler walker{};
+  plan.root()->walk(walker);
+}
+
+void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
+  if (willUseV8(plan)) {
+    // V8 requires thread local context configuration, so we cannot 
+    // use our thread based split solution...
+    return;
+  }
+  
+  auto const& options = plan.getAst()->query().queryOptions();
+  struct CallstackSplitter : WalkerWorkerBase<ExecutionNode> {
+    explicit CallstackSplitter(size_t maxNodes) : maxNodesPerCallstack(maxNodes) {}
+    bool before(ExecutionNode* n) override {
+      // This rule must be executed after subquery splicing, so we must not see any subqueries here!
+      TRI_ASSERT(n->getType() != EN::SUBQUERY);
+      
+      if (n->getType() == EN::REMOTE) {
+        // RemoteNodes provide a natural split in the callstack, so we can reset the counter here!
+        count = 0;
+      } else if (++count >= maxNodesPerCallstack) {
+        count = 0;
+        n->enableCallstackSplit();
+      }
+      return false;
+    }
+    size_t maxNodesPerCallstack;
+    size_t count = 0;
+  };
+  
+  CallstackSplitter walker(options.maxNodesPerCallstack);
   plan.root()->walk(walker);
 }
 

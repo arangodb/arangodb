@@ -38,6 +38,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "Rest/CommonDefines.h"
@@ -410,6 +411,12 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
     LOG_TOPIC("0a10d", DEBUG, Logger::REPLICATION)
         << "client: getting leader state to dump " << vocbase().name();
+    
+    auto batchCancelation = scopeGuard([this]() {
+      if (!_config.isChild()) {
+        batchFinish();
+      }
+    });
 
     Result r;
     if (!_config.isChild()) {
@@ -445,7 +452,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
       startRecurringBatchExtension();
     }
-
+    
     VPackSlice collections, views;
     if (dbInventory.isObject()) {
       collections = dbInventory.get("collections");  // required
@@ -471,11 +478,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     auto pair = rocksutils::stripObjectIds(collections);
     r = handleCollectionsAndViews(pair.first, views, incremental);
 
-    // all done here, do not try to finish batch if leader is unresponsive
-    if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE) && !_config.isChild()) {
-      batchFinish();
-    }
-
     if (r.fail()) {
       LOG_TOPIC("12556", DEBUG, Logger::REPLICATION)
           << "Error during initial sync: " << r.errorMessage();
@@ -488,19 +490,10 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
     return r;
   } catch (arangodb::basics::Exception const& ex) {
-    if (!_config.isChild()) {
-      batchFinish();
-    }
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    if (!_config.isChild()) {
-      batchFinish();
-    }
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    if (!_config.isChild()) {
-      batchFinish();
-    }
     return Result(TRI_ERROR_INTERNAL, "an unknown exception occurred");
   }
 }
@@ -528,6 +521,16 @@ bool DatabaseInitialSyncer::isAborted() const {
       (vocbase().replicationApplier() != nullptr &&
        vocbase().replicationApplier()->stopInitialSynchronization())) {
     return true;
+  }
+
+  if (_state.isChildSyncer) {
+    // this syncer is used as a child syncer of the GlobalInitialSyncer.
+    // now check if parent was aborted
+    ReplicationFeature& replication = vocbase().server().getFeature<ReplicationFeature>();
+    GlobalReplicationApplier* applier = replication.globalReplicationApplier();
+    if (applier != nullptr && applier->stopInitialSynchronization()) {
+      return true;
+    }
   }
 
   return Syncer::isAborted();
@@ -896,8 +899,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     if (checkMore && !isAborted()) {
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
-      sharedStatus->request([this, self, &baseUrl, sharedStatus, coll,
-                             leaderColl, batch, fromTick, chunkSize]() {
+      sharedStatus->request([this, self, baseUrl,
+                             sharedStatus, coll, leaderColl, batch, fromTick, chunkSize]() {
         fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl,
                        batch + 1, fromTick, chunkSize);
       });

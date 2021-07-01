@@ -157,8 +157,10 @@ set(ARANGODB_TESTS_SOURCES
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Aql/WindowExecutorTest.cpp
+  Aql/DecaysFunctionTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
+  Auth/UserManagerClusterTest.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/datetime.cpp
@@ -280,7 +282,10 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
-  Zkd/Library.cpp)
+  Zkd/Library.cpp
+  ${ADDITIONAL_TEST_SOURCES}
+)
+
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

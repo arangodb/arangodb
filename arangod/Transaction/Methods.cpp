@@ -57,6 +57,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Random/RandomGenerator.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -310,14 +311,14 @@ static bool findRefusal(std::vector<futures::Try<network::Response>> const& resp
   return false;
 }
 
-transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& transactionContext,
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                               transaction::Options const& options)
     : _state(nullptr),
-      _transactionContext(transactionContext),
+      _transactionContext(ctx),
       _mainTransaction(false) {
 
-  TRI_ASSERT(transactionContext != nullptr);
-  if (ADB_UNLIKELY(transactionContext == nullptr)) {
+  TRI_ASSERT(_transactionContext != nullptr);
+  if (ADB_UNLIKELY(_transactionContext == nullptr)) {
     // in production, we must not go on with undefined behavior, so we bail out
     // here with an exception as last resort
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transaction context pointer");
@@ -326,6 +327,16 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
+}
+
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
+                              std::string const& collectionName, AccessMode::Type type)
+    : transaction::Methods(std::move(ctx), transaction::Options{}) {
+  TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
+  Result res = Methods::addCollection(collectionName, type);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 /// @brief create the transaction, used to be UserTransaction
@@ -1036,9 +1047,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // This failure point is to test the case that a former leader has
     // resigned in the meantime but still gets an insert request from
     // a coordinator who does not know this yet. That is, the test sets
@@ -1059,16 +1067,17 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
 
       switch (followerInfo->allowedToWrite()) {
-      case FollowerInfo::WriteState::FORBIDDEN:
-        // We cannot fulfill minimum replication Factor. Reject write.
-        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-      case FollowerInfo::WriteState::STARTUP:
-        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
-      default:
-        break;
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::STARTUP:
+          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
+      followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -1090,12 +1099,17 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
     }
   }  // isDBServer - early block
+    
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
+  TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER || followers->empty());
 
   VPackBuilder resultBuilder;
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
-  auto workForOneDocument = [&](VPackSlice const value, bool isBabies) -> Result {
+  auto workForOneDocument = [&](VPackSlice const value, bool isBabies, bool& excludeFromReplication) -> Result {
+    excludeFromReplication = false;
+
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
@@ -1136,13 +1150,18 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       // RepSert Case - unique_constraint violated ->  try update, replace or ignore!
       TRI_ASSERT(options.isOverwriteModeSet());
       TRI_ASSERT(options.overwriteMode != OperationOptions::OverwriteMode::Conflict);
+        
+      TRI_ASSERT(res.ok());
 
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no write!)
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(),
                               oldRevisionId, RevisionId::none(), nullptr, nullptr);
+        // we have not written anything, so exclude this document from replication!
+        excludeFromReplication = true;
         return res;
       }
+    
       if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
         // in case of unique constraint violation: (partially) update existing document
         res = collection->update(this, value, docResult, options, prevDocResult);
@@ -1172,7 +1191,9 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
       return res;
     }
-
+        
+    TRI_ASSERT(res.ok());
+      
     if (!options.silent) {
       bool const showReplaced = (options.returnOld && didReplace);
       TRI_ASSERT(!options.returnNew || !docResult.empty());
@@ -1192,23 +1213,37 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
                             showReplaced ? &prevDocResult : nullptr,
                             options.returnNew ? &docResult : nullptr);
     }
-    return Result();
+    return res;
   };
 
   Result res;
   std::unordered_map<ErrorCode, size_t> errorCounter;
+  std::unordered_set<size_t> excludePositions;
+
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
-    for (VPackSlice s : VPackArrayIterator(value)) {
-      res = workForOneDocument(s, true);
+    VPackArrayIterator it(value);
+    while (it.valid()) {
+      bool excludeFromReplication = false;
+      VPackSlice s = it.value();
+      res = workForOneDocument(s, true, excludeFromReplication);
       if (res.fail()) {
         createBabiesError(resultBuilder, errorCounter, res);
+      } else if (excludeFromReplication) {
+        excludePositions.insert(it.index());
       }
+      it.next();
     }
     res.reset(); // With babies reporting is handled in the result body
   } else {
-    res = workForOneDocument(value, false);
+    bool excludeFromReplication = false;
+    res = workForOneDocument(value, false, excludeFromReplication);
+    if (res.ok() && excludeFromReplication) {
+      excludePositions.insert(0);
+    }
   }
+  
+  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length()); 
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1221,7 +1256,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs)
+                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs,
+                               excludePositions)
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
@@ -1352,9 +1388,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1364,16 +1397,17 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       }
 
       switch (followerInfo->allowedToWrite()) {
-      case FollowerInfo::WriteState::FORBIDDEN:
-        // We cannot fulfill minimum replication Factor. Reject write.
-        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-      case FollowerInfo::WriteState::STARTUP:
-        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
-      default:
-        break;
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::STARTUP:
+          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
+      followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -1395,6 +1429,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       }
     }
   }  // isDBServer - early block
+  
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
+  TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER || followers->empty());
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
@@ -1462,21 +1499,21 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   std::unordered_map<ErrorCode, size_t> errorCounter;
   Result res;
   if (multiCase) {
-    {
-      VPackArrayBuilder guard(&resultBuilder);
-      VPackArrayIterator it(newValue);
-      while (it.valid()) {
-        res = workForOneDocument(it.value(), true);
-        if (res.fail()) {
-          createBabiesError(resultBuilder, errorCounter, res);
-        }
-        ++it;
+    VPackArrayBuilder guard(&resultBuilder);
+    VPackArrayIterator it(newValue);
+    while (it.valid()) {
+      res = workForOneDocument(it.value(), true);
+      if (res.fail()) {
+        createBabiesError(resultBuilder, errorCounter, res);
       }
+      it.next();
     }
     res.reset(); // With babies reporting is handled in the result body
   } else {
     res = workForOneDocument(newValue, false);
   }
+
+  TRI_ASSERT(!newValue.isArray() || options.silent || resultBuilder.slice().length() == newValue.length()); 
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1493,7 +1530,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, newValue,
-                               operation, resDocs)
+                               operation, resDocs, {})
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
@@ -1579,8 +1616,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
 
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
@@ -1591,16 +1626,17 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
 
       switch (followerInfo->allowedToWrite()) {
-      case FollowerInfo::WriteState::FORBIDDEN:
-        // We cannot fulfill minimum replication Factor. Reject write.
-        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-      case FollowerInfo::WriteState::STARTUP:
-        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
-      default:
-        break;
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::STARTUP:
+          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
+      followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -1622,6 +1658,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
     }
   }  // isDBServer - early block
+  
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
+  TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER || followers->empty());
 
   VPackBuilder resultBuilder;
   ManagedDocumentResult previous;
@@ -1691,6 +1730,8 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   } else {
     res = workForOneDocument(value, false);
   }
+  
+  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length()); 
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1704,7 +1745,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs)
+                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs, {})
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
@@ -1816,9 +1857,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1829,19 +1867,19 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       }
 
       switch (followerInfo->allowedToWrite()) {
-      case FollowerInfo::WriteState::FORBIDDEN:
-        // We cannot fulfill minimum replication Factor. Reject write.
-        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-      case FollowerInfo::WriteState::STARTUP:
-        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
-      default:
-        break;
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::STARTUP:
+          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
+        default:
+          break;
       }
 
       // fetch followers
+      replicationType = ReplicationType::LEADER;
       followers = followerInfo->get();
-      if (followers->size() > 0) {
-        replicationType = ReplicationType::LEADER;
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1859,6 +1897,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     }
   }  // isDBServer - early block
 
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) == (followers != nullptr));
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
   Result res = collection->truncate(*this, options);
@@ -1868,11 +1907,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
   }
 
   // Now see whether or not we have to do synchronous replication:
-  if (replicationType == ReplicationType::LEADER) {
-    TRI_ASSERT(followers != nullptr);
-
-    TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL));
-
+  if (replicationType == ReplicationType::LEADER && !followers->empty()) {
     // Now replicate the good operations on all followers:
     NetworkFeature const& nf = vocbase().server().getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
@@ -1918,9 +1953,17 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
               << " for shard " << collection->vocbase().name() << "/" << collectionName
               << ": " << responses[i].get().combinedResult().errorMessage();
             res = followerInfo->remove((*followers)[i]);
-            if (res.ok()) {
-              _state->removeKnownServer((*followers)[i]);
-            } else {
+            // intentionally do NOT remove the follower from the list of
+            // known servers here. if we do, we will not be able to
+            // send the commit/abort to the follower later. However, we
+            // still need to send the commit/abort to the follower at 
+            // transaction end, because the follower may be responsbile
+            // for _other_ shards as well. 
+            // it does not matter if we later commit the writes of the shard 
+            // from which we just removed the follower, because the follower
+            // is now dropped and will try to get back in sync anyway, so
+            // it will run the full shard synchronization process.
+            if (res.fail()) {
               LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collection->vocbase().name() << "/" << collection->name()
@@ -2311,7 +2354,8 @@ Future<Result> Methods::replicateOperations(
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, VPackSlice const value,
     TRI_voc_document_operation_e const operation,
-    std::shared_ptr<VPackBuffer<uint8_t>> const& ops) {
+    std::shared_ptr<VPackBuffer<uint8_t>> const& ops,
+    std::unordered_set<size_t> const& excludePositions) {
   TRI_ASSERT(followerList != nullptr);
 
   if (followerList->empty()) {
@@ -2341,9 +2385,19 @@ Future<Result> Methods::replicateOperations(
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
+      
+      opName = "insert";
+      // handle overwrite modes
       if (options.isOverwriteModeSet()) {
         if (options.overwriteMode != OperationOptions::OverwriteMode::Unknown) {
           reqOpts.param(StaticStrings::OverwriteMode, OperationOptions::stringifyOverwriteMode(options.overwriteMode));
+          if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+            opName = "insert w/ overwriteMode update";
+          } else if (options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
+            opName = "insert w/ overwriteMode replace";
+          } else if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
+            opName = "insert w/ overwriteMode ingore";
+          } 
         }
         if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
           // extra parameters only required for update
@@ -2351,7 +2405,6 @@ Future<Result> Methods::replicateOperations(
           reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects ? "true" : "false");
         }
       }
-      opName = "insert";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::fuerte::RestVerb::Patch;
@@ -2389,25 +2442,46 @@ Future<Result> Methods::replicateOperations(
     VPackArrayIterator itValue(value);
     VPackArrayIterator itResult(ourResult);
     while (itValue.valid() && itResult.valid()) {
+      TRI_ASSERT(itValue.index() == itResult.index());
+
       TRI_ASSERT((*itResult).isObject());
       if (!(*itResult).hasKey(StaticStrings::Error)) {
-        doOneDoc(itValue.value(), itResult.value());
-        count++;
+        // not an error
+        // now check if document is explicitly excluded from replication
+        // this currently happens only for insert with overwriteMode=ignore
+        // for already-existing documents
+        if (excludePositions.find(itValue.index()) == excludePositions.end()) {
+          doOneDoc(itValue.value(), itResult.value());
+          count++;
+        }
       }
       itValue.next();
       itResult.next();
     }
   } else {
-    doOneDoc(value, ourResult);
-    count++;
+    if (excludePositions.find(0) == excludePositions.end()) {
+      doOneDoc(value, ourResult);
+      count++;
+    }
   }
-
+  
   if (count == 0) {
     // nothing to do
     return Result();
   }
 
   reqOpts.timeout = network::Timeout(chooseTimeoutForReplication(count, payload->size()));
+  TRI_IF_FAILURE("replicateOperations_randomize_timeout") {
+    reqOpts.timeout = network::Timeout((double) RandomGenerator::interval(uint32_t(60)));
+  }
+    
+  TRI_IF_FAILURE("replicateOperationsDropFollowerBeforeSending") {
+    // drop all our followers, intentionally
+    for (auto const& f : *followerList) {
+      Result res = collection->followers()->remove(f);
+      TRI_ASSERT(res.ok());
+    }
+  }
 
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
@@ -2422,6 +2496,10 @@ Future<Result> Methods::replicateOperations(
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + f, requestType,
                                                    url, *(payload->buffer()), reqOpts,
                                                    std::move(headers)));
+
+    LOG_TOPIC("fecaf", TRACE, Logger::REPLICATION) 
+      << "replicating " << count << " " << opName << " operations for shard " <<
+      collection->vocbase().name() << "/" << collection->name() << ", server:" << f;
   }
 
   // If any would-be-follower refused to follow there are two possiblities:
@@ -2453,19 +2531,23 @@ Future<Result> Methods::replicateOperations(
       network::Response const& resp = responses[i].get();
       ServerID const& follower = (*followerList)[i];
 
-      bool replicationWorked = false;
+      std::string replicationFailureReason;
       if (resp.error == fuerte::Error::NoError) {
-        replicationWorked = resp.statusCode() == fuerte::StatusAccepted ||
-                            resp.statusCode() == fuerte::StatusCreated ||
-                            resp.statusCode() == fuerte::StatusOK;
-        if (replicationWorked) {
+        if (resp.statusCode() == fuerte::StatusAccepted ||
+            resp.statusCode() == fuerte::StatusCreated ||
+            resp.statusCode() == fuerte::StatusOK) {
           bool found;
-          resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
-          replicationWorked = !found;
+          std::string const& errors = resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
+          if (found) {
+            replicationFailureReason = "got error header from follower: " + errors;
+          }
+  
         } else {
           auto r = resp.combinedResult();
           bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
           didRefuse = didRefuse || followerRefused;
+          
+          replicationFailureReason = "got error from follower: " + std::string(r.errorMessage());
 
           if (followerRefused) {
             vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
@@ -2477,25 +2559,37 @@ Future<Result> Methods::replicateOperations(
               << " refused the operation: " << r.errorMessage();
           }
         }
+      } else {
+        replicationFailureReason = "no response from follower";
       }
 
       TRI_IF_FAILURE("replicateOperationsDropFollower") {
-        replicationWorked = false;
+        replicationFailureReason = "intentional debug error";
       }
 
-      if (!replicationWorked) {
+      if (!replicationFailureReason.empty()) {
         if (!vocbase().server().isStopping()) {
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-            << "synchronous replication of " << opName << " operation: "
-            << ": dropping follower " << follower << " for shard "
+            << "synchronous replication of " << opName << " operation "
+            << "(" << count << " doc(s)): "
+            << "dropping follower " << follower << " for shard "
             << collection->vocbase().name() << "/" << collection->name()
-            << ": " << resp.combinedResult().errorMessage();
+            << ": failure reason: " << replicationFailureReason
+            << ", http response code: " << (int) resp.statusCode() 
+            << ", error message: " << resp.combinedResult().errorMessage();
 
           Result res = collection->followers()->remove(follower);
-          if (res.ok()) {
-            // simon: follower cannot be re-added without lock on collection
-            _state->removeKnownServer(follower);
-          } else {
+          // intentionally do NOT remove the follower from the list of
+          // known servers here. if we do, we will not be able to
+          // send the commit/abort to the follower later. However, we
+          // still need to send the commit/abort to the follower at 
+          // transaction end, because the follower may be responsbile
+          // for _other_ shards as well. 
+          // it does not matter if we later commit the writes of the shard 
+          // from which we just removed the follower, because the follower
+          // is now dropped and will try to get back in sync anyway, so
+          // it will run the full shard synchronization process.
+          if (res.fail()) {
             LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication of " << opName << " operation: "
               << "could not drop follower " << follower << " for shard "
