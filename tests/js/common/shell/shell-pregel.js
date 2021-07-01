@@ -836,7 +836,7 @@ function multiCollectionTestSuite() {
           internal.wait(0.2);
           let stats = pregel.status(pid);
           if (stats.state !== "running" && stats.state !== "storing") {
-            assertEqual(500, stats.gss);
+            assertEqual(25, stats.gss);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
 
@@ -869,7 +869,7 @@ function multiCollectionTestSuite() {
           internal.wait(0.2);
           let stats = pregel.status(pid);
           if (stats.state !== "running" && stats.state !== "storing") {
-            assertEqual(500, stats.gss);
+            assertEqual(25, stats.gss);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
 
