@@ -1,6 +1,9 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Include sender pid in shutdown log messages, so that it becomes easier to
+  figure out which process sent a shutdown signal.
+
 * Updated arangosync to 1.6.0.
 
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
