@@ -545,11 +545,17 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
 }
 
 uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
+  WRITE_LOCKER(guard, _dataLock);
   uint64_t i = 0;
-  // We want the random number to be non-zero:
+  uint64_t prev = 0;
+  auto it = _followingTermId.find(s);
+  if (it != _followingTermId.end()) {
+    prev = it->second;
+  }
+  // We want the random number to be non-zero and different from a previous one:
   do {
     i = RandomGenerator::interval(UINT64_MAX);
-  } while (i == 0);
+  } while (i == 0 || i == prev);
   try {
     _followingTermId[s] = i;
   } catch(std::bad_alloc const&) {
@@ -561,6 +567,7 @@ uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
 }
 
 uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) const noexcept {
+  READ_LOCKER(guard, _dataLock);
   // Note that we assume that find() does not throw!
   auto it = _followingTermId.find(s);
   if (it == _followingTermId.end()) {
