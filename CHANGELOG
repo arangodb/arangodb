@@ -1,5 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
--------------------
+--------------------
+
+* Added a retry loop for arangorestore during the initial connection phase. The
+  number of retries defaults to 3 and can be configured using 
+  --initial-connect-retries.
 
 * Updated arangosync to 2.4.0.
 

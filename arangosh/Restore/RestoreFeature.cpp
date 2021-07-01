@@ -1539,6 +1539,13 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                   new UInt32Parameter(&_options.threadCount))
       .setIntroducedIn(30400);
 
+  options
+      ->addOption("--initial-connect-retries",
+          "number of connect retries for initial connection",
+          new UInt32Parameter(&_options.initialConnectRetries))
+      .setIntroducedIn(30800)
+      .setIntroducedIn(30713);
+
   options->addOption("--include-system-collections",
                      "include system collections",
                      new BooleanParameter(&_options.includeSystemCollections));
@@ -1824,8 +1831,7 @@ void RestoreFeature::start() {
   };
 
   // final result
-  Result result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                             true, !_options.createDatabase, false);
+  Result result = connectRetry(_options.initialConnectRetries);
   if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
