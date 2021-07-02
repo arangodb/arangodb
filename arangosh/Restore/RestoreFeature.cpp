@@ -1619,7 +1619,7 @@ void RestoreFeature::start() {
   auto const connectRetry = [&](size_t numRetries) -> Result {
     for (size_t i = 0; i < numRetries; i++) {
       if (i > 0) {
-        LOG_TOPIC("5855a", WARN, Logger::RESTORE) << "Failed to connect to server, retry.";
+        LOG_TOPIC("5855a", WARN, Logger::RESTORE) << "Failed to connect to server, retrying...";
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(i * 1s);
       }
@@ -1633,7 +1633,7 @@ void RestoreFeature::start() {
   };
 
   // final result
-  Result result = connectRetry(_options.initialConnectRetries);
+  Result result = connectRetry(std::max<uint32_t>(1, _options.initialConnectRetries));
   if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
