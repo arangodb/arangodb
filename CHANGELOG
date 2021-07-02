@@ -44,6 +44,9 @@ v3.7.13 (XXXX-XX-XX)
   This write is now suppressed, which can only make such insert operations
   faster.
 
+* Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+  (DEVSUPP-753).
+
 * Updated arangosync to 1.6.0.
 
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
