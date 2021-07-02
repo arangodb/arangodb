@@ -106,21 +106,21 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant_
   auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
-                                                 logId,
-                                                 {
-                                                     logId,
-                                                     agency::LogPlanTermSpecification{
-                                                         LogTerm{3},
-                                                         defaultConfig,
-                                                         std::nullopt,
-                                                         {
-                                                             {ParticipantId{"B"}, {}},
-                                                             {ParticipantId{"leader"}, {}},
-                                                         },
-                                                     },
-                                                     defaultConfig,
-                                                 },
-                                             }};
+      logId,
+      {
+          logId,
+          agency::LogPlanTermSpecification{
+              LogTerm{3},
+              defaultConfig,
+              std::nullopt,
+              {
+                  {ParticipantId{"B"}, {}},
+                  {ParticipantId{"leader"}, {}},
+              },
+          },
+          defaultConfig,
+      },
+  }};
 
   auto res = diffReplicatedLogs(database, localLogs, planLogs, "A", errors,
                                 dirtyset, callNotify, actions);
@@ -137,6 +137,41 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
       {logId, replicated_log::UnconfiguredStatus{}},
+  };
+  auto const defaultConfig = agency::LogPlanConfig{};
+
+  auto const planLogs = ReplicatedLogSpecMap{{
+      logId,
+      {
+          logId,
+          agency::LogPlanTermSpecification{
+              LogTerm{3},
+              defaultConfig,
+              std::nullopt,
+              {
+                  {ParticipantId{"A"}, {}},
+                  {ParticipantId{"leader"}, {}},
+              },
+          },
+          defaultConfig,
+      },
+  }};
+
+  auto res = diffReplicatedLogs(database, localLogs, planLogs, "A", errors,
+                                dirtyset, callNotify, actions);
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(actions.size(), 1);
+  auto const& action = actions.front();
+  EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_LOG);
+  EXPECT_EQ(action->get(DATABASE), database);
+  EXPECT_EQ(action->get(REPLICATED_LOG_ID), to_string(logId));
+}
+
+TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
+  auto const logId = LogId{12};
+  auto const database = DatabaseID{"mydb"};
+  auto const localLogs = ReplicatedLogStatusMap{
+      {logId, replicated_log::FollowerStatus{{}, ParticipantId{"leader"}, LogTerm{4}}},
   };
   auto const defaultConfig = agency::LogPlanConfig{};
 
