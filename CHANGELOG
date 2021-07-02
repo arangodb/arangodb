@@ -2,7 +2,7 @@ devel
 -----
 
 * Fixed an issue in index selection, when the selectivty estimate of another
-  index was prefix was used without checking if the other index covered the
+  prefix index was used without checking if the other index covered the
   FILTER condition.
 
   For example, if there were the following and indexes:
