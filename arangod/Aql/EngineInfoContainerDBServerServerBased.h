@@ -40,7 +40,7 @@ namespace network {
 class ConnectionPool;
 struct RequestOptions;
 struct Response;
-}
+}  // namespace network
 
 namespace velocypack {
 class Builder;
@@ -56,6 +56,9 @@ class QuerySnippet;
 
 class EngineInfoContainerDBServerServerBased {
  private:
+  // TODO Temporary. Do not check in!!
+  // We need to access the TraverserEngineShardList nothing else.
+ public:
   // @brief Local struct to create the
   // information required to build traverser engines
   // on DB servers.
@@ -123,7 +126,6 @@ class EngineInfoContainerDBServerServerBased {
   // the given queryid of the coordinator as data provider.
   void closeSnippet(QueryId inputSnippet);
 
-
   // Build the Engines for the DBServer
   //   * Creates one Query-Entry for each Snippet per Shard (multiple on the
   //   same DB)
@@ -140,13 +142,11 @@ class EngineInfoContainerDBServerServerBased {
                       MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
                       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
-
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
   void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
  private:
-
   std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID const& server,
                                     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                                     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
@@ -158,7 +158,6 @@ class EngineInfoContainerDBServerServerBased {
       network::ConnectionPool* pool, network::RequestOptions const& options) const;
 
   [[nodiscard]] bool isNotSatelliteLeader(VPackSlice infoSlice) const;
-
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -175,8 +174,8 @@ class EngineInfoContainerDBServerServerBased {
    * -> queryid.
    */
   std::vector<futures::Future<network::Response>> cleanupEngines(
-      ErrorCode errorCode, std::string const& dbname, aql::ServerQueryIdList& serverQueryIds) const;
-
+      ErrorCode errorCode, std::string const& dbname,
+      aql::ServerQueryIdList& serverQueryIds) const;
 
   // Insert the Locking information into the message to be send to DBServers
   void addLockingPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
