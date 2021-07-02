@@ -879,7 +879,19 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
 
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
-    if (it == buck._managed.end() || !::authorized(it->second.user)) {
+    if (it == buck._managed.end()) {
+      // insert a tombstone for an aborted transaction that we never saw before
+      auto inserted = buck._managed.try_emplace(tid, MetaType::Tombstone, tombstoneTTL, nullptr, arangodb::cluster::CallbackGuard{});
+      inserted.first->second.finalStatus = transaction::Status::ABORTED;
+      std::string msg = "transaction " + std::to_string(tid) + " not found";
+      if (status == transaction::Status::COMMITTED) {
+        msg += " on commit operation";
+      } else {
+        msg += " on abort operation";
+      }
+      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::move(msg));
+    }
+    if (!::authorized(it->second.user)) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        std::string("transaction '") + std::to_string(tid) +
                            "' not found");
@@ -973,6 +985,12 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
   if (status == transaction::Status::COMMITTED) {
     res = trx.commit();
     if (res.fail()) {  // set final status to aborted
+      // Note that if the failure point TransactionCommitFail is used, then
+      // the trx can still be running here.
+      if (trx.state()->isRunning()) {
+        // ignore return code here
+        trx.abort();
+      }
       abortTombstone();
     }
   } else {

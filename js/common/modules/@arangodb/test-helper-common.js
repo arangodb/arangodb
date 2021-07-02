@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global arango */
+/*global arango, db */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
@@ -28,46 +28,62 @@
 // / @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal'); // OK: processCsvFile
+let internal = require('internal'); // OK: processCsvFile
+const request = require('@arangodb/request');
 
-var processCsvFile = internal.processCsvFile;
+exports.getServerById = function (id) {
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter((d) => (d.id === id))[0];
+};
 
-// wait for initial selfHeal in cluster
-exports.waitForFoxxInitialized = function () {
-  let internal = require("internal");
-  if (!internal.isCluster()) {
-    // the initial selfHeal is only required in cluster.
-    // single server runs the selfHeal directly at startup.
-    return;
-  }
+exports.getServersByType = function (type) {
+  const isType = (d) => (d.role.toLowerCase() === type);
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(isType);
+};
 
-  let tries = 0;
-  while (++tries < 4 * 30) {
-    let isServer = require('@arangodb').isServer;
-    if (isServer) {
-      // arangod
-      if (!global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
-        return;
-      }
-    } else {
-      // arangosh
-      let result = arango.GET("/wenn-der-fuxxmann-zweimal-klingelt");
-      if (result.code === 404) {
-        // selfHeal was already executed - Foxx is ready!
-        return;
-      }
+exports.getEndpointById = function (id) {
+  const toEndpoint = (d) => (d.endpoint);
+  const endpointToURL = (endpoint) => {
+    if (endpoint.substr(0, 6) === 'ssl://') {
+      return 'https://' + endpoint.substr(6);
     }
-    // otherwise we will likely see HTTP 500
-    if (tries % 4 === 0) {
-      require("console").warn("waiting for initial Foxx selfHeal to kick in");
+    let pos = endpoint.indexOf('://');
+    if (pos === -1) {
+      return 'http://' + endpoint;
     }
-    internal.sleep(0.25);
-  }
+    return 'http' + endpoint.substr(pos);
+  };
+
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter((d) => (d.id === id))
+                              .map(toEndpoint)
+                              .map(endpointToURL)[0];
+};
+
+exports.getEndpointsByType = function (type) {
+  const isType = (d) => (d.role.toLowerCase() === type);
+  const toEndpoint = (d) => (d.endpoint);
+  const endpointToURL = (endpoint) => {
+    if (endpoint.substr(0, 6) === 'ssl://') {
+      return 'https://' + endpoint.substr(6);
+    }
+    let pos = endpoint.indexOf('://');
+    if (pos === -1) {
+      return 'http://' + endpoint;
+    }
+    return 'http' + endpoint.substr(pos);
+  };
+
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(isType)
+                              .map(toEndpoint)
+                              .map(endpointToURL);
 };
 
 exports.Helper = {
   process: function (file, processor) {
-    processCsvFile(file, function (raw_row, index) {
+    internal.processCsvFile(file, function (raw_row, index) {
       if (index !== 0) {
         processor(raw_row.toString().split(','));
       }
@@ -305,4 +321,37 @@ exports.compareStringIds = function (l, r) {
     return l < r ? -1 : 1;
   }
   return 0;
+};
+
+// wait for initial selfHeal in cluster
+exports.waitForFoxxInitialized = function () {
+  let internal = require("internal");
+  if (!internal.isCluster()) {
+    // the initial selfHeal is only required in cluster.
+    // single server runs the selfHeal directly at startup.
+    return;
+  }
+
+  let tries = 0;
+  while (++tries < 4 * 30) {
+    let isServer = require('@arangodb').isServer;
+    if (isServer) {
+      // arangod
+      if (!global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
+        return;
+      }
+    } else {
+      // arangosh
+      let result = arango.GET("/wenn-der-fuxxmann-zweimal-klingelt");
+      if (result.code === 404) {
+        // selfHeal was already executed - Foxx is ready!
+        return;
+      }
+    }
+    // otherwise we will likely see HTTP 500
+    if (tries % 4 === 0) {
+      require("console").warn("waiting for initial Foxx selfHeal to kick in");
+    }
+    internal.sleep(0.25);
+  }
 };
