@@ -1,3 +1,11 @@
+v3.8.1 (XXXX-XX-XX)
+-------------------
+
+* Enable process metrics on agent instances by default. Previously, some 
+  metrics (including the metrics starting with `arangodb_process` prefix) were
+  not returned by agent instances.
+
+
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
