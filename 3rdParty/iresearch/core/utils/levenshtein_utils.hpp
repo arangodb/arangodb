@@ -244,6 +244,7 @@ IRESEARCH_API parametric_description read(data_input& in);
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API automaton make_levenshtein_automaton(
   const parametric_description& description,
+  const bytes_ref& prefix,
   const bytes_ref& target);
 
 ////////////////////////////////////////////////////////////////////////////////

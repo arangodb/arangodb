@@ -751,7 +751,14 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   double const now = TRI_microtime();
 
-  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true), options);
+  arangodb::aql::QueryId queryId;
+  if (ServerState::instance()->isCoordinator()) {
+    queryId = vocbase.server().getFeature<ClusterFeature>().clusterInfo().uniqid();
+  } else {
+    queryId = TRI_NewServerSpecificTick(); 
+  }
+
+  arangodb::aql::ClusterQuery query(queryId, transaction::V8Context::Create(vocbase, true), options);
   
   VPackSlice collections = queryBuilder->slice().get("collections");
   VPackSlice variables = queryBuilder->slice().get("variables");

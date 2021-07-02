@@ -79,11 +79,11 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief internal constructor, Used to construct a full query or a ClusterQuery
-Query::Query(std::shared_ptr<transaction::Context> const& ctx,
+Query::Query(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              std::shared_ptr<VPackBuilder> const& options,
              std::shared_ptr<SharedQueryState> sharedState)
-    : QueryContext(ctx->vocbase()),
+    : QueryContext(ctx->vocbase(), id),
       _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
@@ -162,7 +162,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 Query::Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
              std::shared_ptr<VPackBuilder> const& bindParameters,
              std::shared_ptr<VPackBuilder> const& options)
-    : Query(ctx, queryString, bindParameters, options,
+    : Query(0, ctx, queryString, bindParameters, options,
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 /// @brief destroys a query
@@ -1342,9 +1342,9 @@ ExecutionEngine* Query::rootEngine() const {
   return nullptr;
 }
 
-ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
+ClusterQuery::ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
                            std::shared_ptr<arangodb::velocypack::Builder> const& options)
-    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options,
+    : Query(id, ctx, aql::QueryString(), /*bindParams*/ nullptr, options,
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
                 : std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
