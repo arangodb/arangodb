@@ -300,6 +300,25 @@ void IResearchInvertedIndex::toVelocyPack(
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup referenced analyzer
+////////////////////////////////////////////////////////////////////////////////
+AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(AnalyzerPool const& analyzer) const {
+  auto const it = _meta._fieldsMeta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+
+  if (it == _meta._fieldsMeta._analyzerDefinitions.end()) {
+    return nullptr;
+  }
+
+  auto const pool = *it;
+
+  if (pool && analyzer == *pool) {
+    return pool;
+  }
+
+  return nullptr;
+}
+
 bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
   std::vector<std::vector<basics::AttributeName>> myFields;
   FieldsBuilderWithAnalyzer fb(myFields);

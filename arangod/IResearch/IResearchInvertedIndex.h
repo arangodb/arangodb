@@ -72,6 +72,7 @@ class IResearchInvertedIndex  : public IResearchDataStore {
 
   bool matchesFieldsDefinition(VPackSlice other) const;
 
+  AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const override;
 
   bool inProgress() const {
     // We should be in that state until we have chance to initialize analyzers
