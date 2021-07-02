@@ -566,6 +566,7 @@ parametric_description read(data_input& in) {
 
 automaton make_levenshtein_automaton(
     const parametric_description& description,
+    const bytes_ref& prefix,
     const bytes_ref& target) {
   assert(description);
 
@@ -597,18 +598,31 @@ automaton make_levenshtein_automaton(
   UNUSED(invalid_state);
 
   // initial state
-  a.SetStart(a.AddState());
+  auto start_state = a.AddState();
+  a.SetStart(start_state);
+
+  auto begin = prefix.begin();
+  auto end = prefix.end();
+  decltype(start_state) to;
+  for (; begin != end; ) {
+    const byte_type* next = utf8_utils::next(begin, end);
+    to = a.AddState();
+    auto dist = std::distance(begin, next);
+    irs::utf8_emplace_arc(a, start_state, bytes_ref(begin, dist), to);
+    start_state = to;
+    begin = next;
+  }
 
   // check if start state is final
   const auto distance = description.distance(1, utf8_size);
 
   if (distance <= description.max_distance()) {
-    a.SetFinal(a.Start(), {true, distance});
+    a.SetFinal(start_state, {true, distance});
   }
 
   // state stack
   std::vector<state> stack;
-  stack.emplace_back(0, 1, a.Start());  // 0 offset, 1st parametric state, initial automaton state
+  stack.emplace_back(0, 1, start_state);  // 0 offset, 1st parametric state, initial automaton state
 
   std::vector<std::pair<bytes_ref, automaton::StateId>> arcs;
   arcs.resize(utf8_size); // allocate space for max possible number of arcs
@@ -698,7 +712,7 @@ size_t edit_distance(const parametric_description& description,
     const auto c = utf8_utils::next(rhs);
 
     const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
-    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto end = lhs_chars.begin() + std::min(offset + description.chi_size(), static_cast<uint64_t>(lhs_chars.size()));
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transition(state, chi);
 
@@ -737,7 +751,7 @@ bool edit_distance(
     }
 
     const auto begin = lhs_chars.begin() + ptrdiff_t(offset);
-    const auto end = std::min(begin + ptrdiff_t(description.chi_size()), lhs_chars.end());
+    const auto end = lhs_chars.begin() + std::min(offset + description.chi_size(), static_cast<uint64_t>(lhs_chars.size()));
     const auto chi = ::chi(begin, end, c);
     const auto& transition = description.transition(state, chi);
 
