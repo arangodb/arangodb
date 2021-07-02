@@ -30,6 +30,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
@@ -37,6 +39,8 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
+
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -196,6 +200,12 @@ RestStatus RestDocumentHandler::insertDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
+  TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
+    if (!opOptions.isSynchronousReplicationFrom.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
+  }
+
   // find and load collection given by name or identifier
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
   bool const isMultiple = body.isArray();
@@ -208,6 +218,22 @@ RestStatus RestDocumentHandler::insertDocument() {
   if (!res.ok()) {
     generateTransactionError(cname, res, "");
     return RestStatus::DONE;
+  }
+  
+  if (ServerState::instance()->isDBServer() &&
+      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+       _activeTrx->state()->isReadOnlyTransaction())) {
+    // make sure that the current transaction includes the collection that we want to
+    // write into. this is not necessarily the case for follower transactions that
+    // are started lazily. in this case, we must reject the request.
+    // we _cannot_ do this for follower transactions, where shards may lazily be
+    // added (e.g. if servers A and B both replicate their own write ops to follower
+    // C one after the after, then C will first see only shards from A and then only
+    // from B).
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string("Transaction with id '") + std::to_string(_activeTrx->tid())
+        + "' does not contain collection '" + cname
+        + "' with the required access mode.");
   }
 
   return waitForFuture(
@@ -449,6 +475,12 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
+  TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
+    if (!opOptions.isSynchronousReplicationFrom.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
+  }
+
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   if (!isArrayCase) {
@@ -498,6 +530,22 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   if (!res.ok()) {
     generateTransactionError(cname, res, "");
     return RestStatus::DONE;
+  }
+  
+  if (ServerState::instance()->isDBServer() &&
+      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+       _activeTrx->state()->isReadOnlyTransaction())) {
+    // make sure that the current transaction includes the collection that we want to
+    // write into. this is not necessarily the case for follower transactions that
+    // are started lazily. in this case, we must reject the request.
+    // we _cannot_ do this for follower transactions, where shards may lazily be
+    // added (e.g. if servers A and B both replicate their own write ops to follower
+    // C one after the after, then C will first see only shards from A and then only
+    // from B).
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string("Transaction with id '") + std::to_string(_activeTrx->tid())
+        + "' does not contain collection '" + cname
+        + "' with the required access mode.");
   }
 
   auto f = futures::Future<OperationResult>::makeEmpty();
@@ -572,6 +620,12 @@ RestStatus RestDocumentHandler::removeDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
+  TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
+    if (!opOptions.isSynchronousReplicationFrom.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
+  }
+
   VPackSlice search;
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
@@ -614,6 +668,22 @@ RestStatus RestDocumentHandler::removeDocument() {
   if (!res.ok()) {
     generateTransactionError(cname, res, "");
     return RestStatus::DONE;
+  }
+  
+  if (ServerState::instance()->isDBServer() &&
+      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+       _activeTrx->state()->isReadOnlyTransaction())) {
+    // make sure that the current transaction includes the collection that we want to
+    // write into. this is not necessarily the case for follower transactions that
+    // are started lazily. in this case, we must reject the request.
+    // we _cannot_ do this for follower transactions, where shards may lazily be
+    // added (e.g. if servers A and B both replicate their own write ops to follower
+    // C one after the after, then C will first see only shards from A and then only
+    // from B).
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string("Transaction with id '") + std::to_string(_activeTrx->tid())
+        + "' does not contain collection '" + cname
+        + "' with the required access mode.");
   }
 
   bool const isMultiple = search.isArray();

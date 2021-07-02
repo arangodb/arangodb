@@ -2521,6 +2521,23 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "'readLockId' is not a string or empty");
     return;
   }
+
+  auto cleanup = scopeGuard([&body, this]() {
+    // untrack the (async) replication client, so the WAL may be cleaned
+    arangodb::ServerId const serverId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
+    SyncerId const syncerId = SyncerId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+    std::string const clientInfo =
+        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
+
+    try {
+      _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
+    } catch (...) {
+    }
+  });
+
+
   LOG_TOPIC("23b9f", DEBUG, Logger::REPLICATION)
       << "Try add follower with documents";
   // previous versions < 3.3x might not send the checksum, if mixed clusters
@@ -2561,17 +2578,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (res.fail()) {
     // this will create an error response with the appropriate message
     THROW_ARANGO_EXCEPTION(res);
-  }
-
-  {  // untrack the (async) replication client, so the WAL may be cleaned
-    arangodb::ServerId const serverId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
-    SyncerId const syncerId = SyncerId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
-    std::string const clientInfo =
-        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
-
-    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
   }
 
   VPackBuilder b;
@@ -2798,6 +2804,23 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     generateError(res);
     return;
   }
+
+  // check if we are not the actual leader anymore. this can
+  // happen if there is a leader change after a follower scheduled a
+  // synchronize shard job
+  bool isLeader = col->followers()->getLeader().empty();
+  if (!isLeader) {
+    auto res = cancelBlockingTransaction(id);
+    if (!res.ok()) {
+      // this is potentially bad!
+      LOG_TOPIC("957fa", WARN, Logger::REPLICATION)
+          << "Lock " << id << " could not be canceled because of: " << res.errorMessage();
+    }
+    // indicate that we are not the leader
+    generateError(TRI_ERROR_CLUSTER_NOT_LEADER);
+    return;
+  }
+
 
   TRI_ASSERT(isLockHeld(id).ok());
   TRI_ASSERT(isLockHeld(id).get() == true);

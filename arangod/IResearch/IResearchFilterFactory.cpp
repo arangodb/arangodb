@@ -2335,7 +2335,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
   auto const argc = ElementTraits::numMembers(args);
   constexpr size_t min = 3 - First;
-  constexpr size_t max = 5 - First;
+  constexpr size_t max = 6 - First;
   if (argc < min || argc > max) {
     auto res = error::invalidArgsCount<error::Range<min, max>>(funcName);
     return {
@@ -2431,24 +2431,39 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
     }
   }
 
+  // optional (5 - First) argument defines prefix for target
+  irs::string_ref prefix = irs::string_ref::EMPTY;
+  if (5 - First < argc) {
+    res = ElementTraits::evaluateArg(prefix, tmpValue, funcName,
+                                     args, 5 - First, isFilter, ctx);
+
+    if (res.fail()) {
+      return {
+        res.errorNumber(),
+        res.errorMessage().append(errorSuffix)
+      };
+    }
+  }
+
   irs::assign(opts.term, irs::ref_cast<irs::byte_type>(target));
   opts.with_transpositions = withTranspositions;
   opts.max_distance = static_cast<irs::byte_type>(maxDistance);
   opts.max_terms = static_cast<size_t>(maxTerms);
   opts.provider = &arangodb::iresearch::getParametricDescription;
+  irs::assign(opts.prefix, irs::ref_cast<irs::byte_type>(prefix));
 
   return {};
 }
 
-// {<LEVENSHTEIN_MATCH>: '[' <term>, <max_distance> [, <with_transpositions> ] ']'}
+// {<LEVENSHTEIN_MATCH>: '[' <term>, <max_distance> [, <with_transpositions>, <prefix> ] ']'}
 arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
-                                                size_t const funcArgumentPosition,
-                                                char const* subFuncName,
-                                                irs::by_phrase* filter,
-                                                QueryContext const& ctx,
-                                                VPackSlice array,
-                                                size_t firstOffset,
-                                                irs::analysis::analyzer* /*analyzer*/ = nullptr) {
+                                      size_t const funcArgumentPosition,
+                                      char const* subFuncName,
+                                      irs::by_phrase* filter,
+                                      QueryContext const& ctx,
+                                      VPackSlice array,
+                                      size_t firstOffset,
+                                      irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   if (!array.isArray()) {
     return {
       TRI_ERROR_BAD_PARAMETER,
