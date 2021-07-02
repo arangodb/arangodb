@@ -22,6 +22,7 @@
 
 #include <optional>
 
+#include <Replication2/ReplicatedLog/Algorithms.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -31,18 +32,39 @@
 #include "Basics/overload.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Network/NetworkFeature.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "RestServer/DatabaseFeature.h"
 #include "UpdateReplicatedLogAction.h"
 #include "Utils/DatabaseGuard.h"
 
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-
 using namespace arangodb::basics;
 using namespace arangodb::replication2;
 
+
+
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
+
+  struct LogActionContextMaintenance : algorithms::LogActionContext {
+    LogActionContextMaintenance(TRI_vocbase_t& vocbase, network::ConnectionPool* pool)
+        : vocbase(vocbase), pool(pool) {}
+
+    auto dropReplicatedLog(LogId id) -> arangodb::Result override {
+      return vocbase.dropReplicatedLog(id);
+    }
+    auto ensureReplicatedLog(LogId id) -> replicated_log::ReplicatedLog& override {
+      return vocbase.ensureReplicatedLog(id, std::nullopt);
+    }
+    auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
+    -> std::shared_ptr<replicated_log::AbstractFollower> override {
+      return std::make_shared<replicated_log::NetworkAttachedFollower>(pool, std::move(participantId), vocbase.name(), id);
+    }
+
+    TRI_vocbase_t& vocbase;
+    network::ConnectionPool* pool;
+  };
+
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
     auto buffer = StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
@@ -57,52 +79,14 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto serverId = ServerState::instance()->getId();
   auto rebootId = ServerState::instance()->getRebootId();
 
-  auto result = basics::catchToResult([&]() -> Result {
-    auto const& database = _description.get(DATABASE);
-    auto& df = _feature.server().getFeature<DatabaseFeature>();
-    DatabaseGuard guard(df, database);
-    auto& vocbase = guard.database();
+  network::ConnectionPool* pool = _feature.server().getFeature<NetworkFeature>().pool();
 
-    if (!spec.has_value()) {
-        return vocbase.dropReplicatedLog(logId);
-    }
-
-    TRI_ASSERT(logId == spec->id);
-    TRI_ASSERT(spec->currentTerm.has_value());
-    auto& leader = spec->currentTerm->leader;
-    auto& log = vocbase.ensureReplicatedLog(logId, std::nullopt);
-
-    if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
-      replicated_log::LogLeader::TermData termData;
-      termData.term = spec->currentTerm->term;
-      termData.id = serverId;
-      // TODO maybe we should use the same type in the term data
-      termData.writeConcern = spec->currentTerm->config.writeConcern;
-      termData.waitForSync = spec->currentTerm->config.waitForSync;
-
-      network::ConnectionPool* pool = _feature.server().getFeature<NetworkFeature>().pool();
-      auto follower =
-          std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
-      for (auto const& [participant, data] : spec->currentTerm->participants) {
-        if (participant != serverId) {
-          follower.emplace_back(std::make_shared<replication2::replicated_log::NetworkAttachedFollower>(
-              pool, participant, database, logId));
-        }
-      }
-
-      auto newLeader = log.becomeLeader(termData, follower);
-      newLeader->runAsyncStep(); // TODO move this call into becomeLeader?
-    } else {
-      auto leaderString = std::optional<ParticipantId>{};
-      if (spec->currentTerm->leader) {
-        leaderString = spec->currentTerm->leader->serverId;
-      }
-
-      std::ignore = log.becomeFollower(serverId, spec->currentTerm->term, leaderString);
-    }
-
-    return Result();
-  });
+  auto const& database = _description.get(DATABASE);
+  auto& df = _feature.server().getFeature<DatabaseFeature>();
+  DatabaseGuard guard(df, database);
+  auto ctx = LogActionContextMaintenance{guard.database(), pool};
+  auto result = replication2::algorithms::updateReplicatedLog(ctx, serverId, rebootId,
+                                                              logId, spec);
 
   if (result.fail()) {
     LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)

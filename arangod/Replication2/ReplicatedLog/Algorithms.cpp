@@ -21,6 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
@@ -206,4 +207,47 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
       return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN, TermIndexPair{});
     }
   }
+}
+
+auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId, RebootId rebootId, LogId logId, std::optional<agency::LogPlanSpecification> const& spec) -> arangodb::Result {
+  return basics::catchToResult([&]() -> Result {
+
+    if (!spec.has_value()) {
+      return ctx.dropReplicatedLog(logId);
+    }
+
+    TRI_ASSERT(logId == spec->id);
+    TRI_ASSERT(spec->currentTerm.has_value());
+    auto& leader = spec->currentTerm->leader;
+    auto& log = ctx.ensureReplicatedLog(logId);
+
+    if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
+      replicated_log::LogLeader::TermData termData;
+      termData.term = spec->currentTerm->term;
+      termData.id = serverId;
+      // TODO maybe we should use the same type in the term data
+      termData.writeConcern = spec->currentTerm->config.writeConcern;
+      termData.waitForSync = spec->currentTerm->config.waitForSync;
+
+      auto follower =
+          std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
+      for (auto const& [participant, data] : spec->currentTerm->participants) {
+        if (participant != serverId) {
+          follower.emplace_back(ctx.buildAbstractFollowerImpl(logId, participant));
+        }
+      }
+
+      auto newLeader = log.becomeLeader(termData, follower);
+      newLeader->runAsyncStep(); // TODO move this call into becomeLeader?
+    } else {
+      auto leaderString = std::optional<ParticipantId>{};
+      if (spec->currentTerm->leader) {
+        leaderString = spec->currentTerm->leader->serverId;
+      }
+
+      std::ignore = log.becomeFollower(serverId, spec->currentTerm->term, leaderString);
+    }
+
+    return Result();
+  });
 }

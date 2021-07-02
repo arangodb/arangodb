@@ -27,8 +27,9 @@
 #include <unordered_map>
 
 #include "Cluster/ClusterTypes.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "InMemoryLog.h"
+#include "ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 namespace arangodb::replication2::algorithms {
 
@@ -55,5 +56,18 @@ auto to_string(ConflictReason r) noexcept -> std::string_view;
 
 auto detectConflict(replicated_log::InMemoryLog const& log, TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>>;
+
+struct LogActionContext {
+  virtual ~LogActionContext() = default;
+  virtual auto dropReplicatedLog(LogId) -> Result = 0;
+  virtual auto ensureReplicatedLog(LogId) -> replicated_log::ReplicatedLog& = 0;
+  virtual auto buildAbstractFollowerImpl(LogId, ParticipantId)
+      -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
+};
+
+auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
+                         RebootId rebootId, LogId logId,
+                         std::optional<agency::LogPlanSpecification> const& spec)
+    -> arangodb::Result;
 
 }  // namespace arangodb::replication2::algorithms
