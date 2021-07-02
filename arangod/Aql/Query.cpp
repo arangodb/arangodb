@@ -1483,7 +1483,9 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     }
     bool usingSystemCollection = false;
     // Ignore queries on System collections, we do not want them to hit failure points
-    collections().visit([&usingSystemCollection](std::string const&, Collection& col) -> bool {
+    // note that we must call the _const_ version of collections() here, because the non-const
+    // version will trigger an assertion failure if the query is already executing!
+    const_cast<Query const*>(this)->collections().visit([&usingSystemCollection](std::string const&, Collection const& col) -> bool {
       if (col.getCollection()->system()) {
         usingSystemCollection = true;
         return false;
