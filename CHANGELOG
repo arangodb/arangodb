@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.1-preview-3.
+
 * Added garbage collection for finished and failed Pregel conductors.
   Previously, Pregel executions that finished successfully or unsuccessfully
   remained in memory until being explicitly canceled. This prevented a 
