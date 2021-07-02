@@ -152,6 +152,17 @@ LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice) 
   }
 }
 
+LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term, LogPlanConfig config,
+                                                   std::optional<Leader> leader,
+                                                   std::unordered_map<ParticipantId, Participant> participants)
+    : term(term),
+      config(config),
+      leader(std::move(leader)),
+      participants(std::move(participants)) {}
+
+LogPlanSpecification::LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
+                                           LogPlanConfig config) : id(id), currentTerm(std::move(term)), targetConfig(config) {}
+
 LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t, VPackSlice slice) {
   auto spearheadSlice = slice.get(StaticStrings::Spearhead);
   spearhead.term = spearheadSlice.get(StaticStrings::Term).extract<LogTerm>();

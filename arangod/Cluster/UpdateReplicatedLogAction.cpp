@@ -44,7 +44,7 @@ using namespace arangodb::replication2;
 
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
-    auto buffer = StringUtils::decodeBase64(_description.get(FOLLOWERS_TO_DROP));
+    auto buffer = StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
       return agency::LogPlanSpecification(agency::from_velocypack, slice);
@@ -53,7 +53,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
     return std::nullopt;
   });
 
-  auto logId = LogId{StringUtils::uint64(_description.get(COLLECTION))};
+  auto logId = LogId{StringUtils::uint64(_description.get(REPLICATED_LOG_ID))};
   auto serverId = ServerState::instance()->getId();
   auto rebootId = ServerState::instance()->getRebootId();
 

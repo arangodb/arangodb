@@ -519,6 +519,83 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
   return shardMap;
 }
 
+auto arangodb::maintenance::diffReplicatedLogs(
+    DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
+    ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
+    MaintenanceFeature::errors_t& errors,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions) -> arangodb::Result {
+  using namespace arangodb::replication2;
+
+  auto const createReplicatedLogAction = [&](LogId id, agency::LogPlanSpecification const* spec) {
+    auto specStr = std::invoke([&] {
+      VPackBuilder builder;
+      auto slice = VPackSlice::emptyObjectSlice();
+      if (spec != nullptr) {
+        spec->toVelocyPack(builder);
+      }
+      return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
+    });
+
+    auto description = std::make_shared<ActionDescription>(
+        std::map<std::string, std::string>{
+            {std::string(NAME), std::string(UPDATE_REPLICATED_LOG)},
+            {std::string(DATABASE), database},
+            {REPLICATED_LOG_ID, std::to_string(id.id())},
+            {REPLICATED_LOG_SPEC, specStr},
+        },
+        NORMAL_PRIORITY, false);
+
+    makeDirty.insert(database);
+    callNotify = true;
+    actions.emplace_back(std::move(description));
+  };
+
+  // check all plan log entries
+  for (auto const& [logId, spec] : planLogs) {
+    if (spec.currentTerm && spec.currentTerm->participants.find(serverId) !=
+                                spec.currentTerm->participants.end()) {
+      // check if there are logs that do not exist locally
+      if (auto localIt = localLogs.find(spec.id); localIt == std::end(localLogs)) {
+        createReplicatedLogAction(spec.id, &spec);
+      } else {
+        // check if the term is the same
+        bool const requiresUpdate = std::invoke([&, &status = localIt->second, &spec = spec] {
+          if (spec.currentTerm.has_value()) {
+            auto currentTerm = getCurrentTerm(status);
+            return !currentTerm.has_value() || *currentTerm != spec.currentTerm->term;
+          }
+          return false;
+        });
+
+        // Create UpdateLogAction
+        if (requiresUpdate) {
+          createReplicatedLogAction(spec.id, &spec);
+        }
+      }
+    }
+  }
+
+  for (auto const& [id, status] : localLogs) {
+    bool const dropLog = std::invoke([&, &id = id] {
+      auto it = planLogs.find(id);
+      if (it == std::end(planLogs)) {
+        return true;
+      }
+      auto const& spec = it->second;
+      return !spec.currentTerm.has_value() ||
+             (spec.currentTerm->participants.find(serverId) ==
+              spec.currentTerm->participants.end());
+    });
+
+    if (dropLog) {
+      createReplicatedLogAction(id, nullptr);
+    }
+  }
+
+  return Result{};
+}
+
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal(
     StorageEngine& engine,
@@ -529,7 +606,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    LocalLogsMap const& localLogs) {
+    ReplicatedLogsStatusMapByDatabase const& localLogs) {
   // You are entering the functional sector.
   // Vous entrez dans le secteur fonctionel.
   // Sie betreten den funktionalen Sektor.
@@ -682,23 +759,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
   for (auto const& dbname : dirty) {
     using namespace arangodb::replication2;
-
-    auto const createReplicatedLogAction = [&](LogId id, VPackSlice spec) {
-      auto specStr = StringUtils::encodeBase64(spec.startAs<char>(), spec.byteSize());
-      auto description = std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{
-              {std::string(NAME), std::string(UPDATE_REPLICATED_LOG)},
-              {std::string(DATABASE), dbname},
-              {COLLECTION, std::to_string(id.id())},
-              {FOLLOWERS_TO_DROP, specStr},
-          },
-          NORMAL_PRIORITY, false);
-
-      makeDirty.insert(dbname);
-      callNotify = true;
-      actions.emplace_back(std::move(description));
-    };
-
     auto lit = localLogs.find(dbname);
     if (lit == std::end(localLogs)) {
       continue;
@@ -714,53 +774,18 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     if (!plans.isObject()) {
       continue;
     }
-    // check all plan log entries
-    for (auto const& [key, value] : VPackObjectIterator(plans)) {
-      replication2::agency::LogPlanSpecification spec(replication2::agency::from_velocypack, value);
-      if (!spec.currentTerm) {
-        continue;
-      }
-      if (spec.currentTerm->participants.find(serverId) == spec.currentTerm->participants.end()) {
-        continue;
-      }
 
-      // check if there are logs that do not exist locally
-      if (auto localIt = logs.find(spec.id); localIt == std::end(logs)) {
-        createReplicatedLogAction(spec.id, value);
-      } else {
-        // check if the term is the same
-        bool const requiresUpdate = std::invoke([&, &status = localIt->second] {
-          if (spec.currentTerm.has_value()) {
-            auto currentTerm = getCurrentTerm(status);
-            return !currentTerm.has_value() || *currentTerm != spec.currentTerm->term;
-          }
-          return false;
-        });
-
-        // Create UpdateLogAction
-        if (requiresUpdate) {
-          createReplicatedLogAction(spec.id, value);
-        }
-      }
+    // create data structure
+    auto planLogs = ReplicatedLogSpecMap{};
+    for (auto [key, value] : VPackObjectIterator(plans)) {
+      auto spec = agency::LogPlanSpecification(agency::from_velocypack, value);
+      planLogs.emplace(spec.id, std::move(spec));
     }
 
-    for (auto const& [id, status] : logs) {
-      bool const dropLog = std::invoke([&, &id = id] {
-        auto planSlice = plans.get(std::to_string(id.id()));
-        if (planSlice.isNone()) {
-          return true;
-        }      // TODO transform plan once to spec, and not twice
-
-        replication2::agency::LogPlanSpecification spec(replication2::agency::from_velocypack,
-                                                        planSlice);
-        return !spec.currentTerm.has_value() ||
-               (spec.currentTerm->participants.find(serverId) ==
-                spec.currentTerm->participants.end());
-      });
-
-      if (dropLog) {
-        createReplicatedLogAction(id, VPackSlice::noneSlice());
-      }
+    if (auto res = diffReplicatedLogs(dbname, logs, planLogs, serverId, errors,
+                                      makeDirty, callNotify, actions);
+        !res.ok()) {
+      return res;
     }
   }
 
@@ -841,7 +866,7 @@ arangodb::Result arangodb::maintenance::executePlan(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  LocalLogsMap const& localLogs) {
+  ReplicatedLogsStatusMapByDatabase const& localLogs) {
 
   // Errors from maintenance feature
   MaintenanceFeature::errors_t errors;
@@ -998,7 +1023,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  LocalLogsMap const& localLogs) {
+  ReplicatedLogsStatusMapByDatabase const& localLogs) {
 
   auto start = std::chrono::steady_clock::now();
 
@@ -1192,7 +1217,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& current,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
-    VPackBuilder& report, ShardStatistics& shardStats, LocalLogsMap const& localLogs) {
+    VPackBuilder& report, ShardStatistics& shardStats,
+    ReplicatedLogsStatusMapByDatabase const& localLogs) {
   for (auto const& dbName : dirty) {
     auto lit = local.find(dbName);
     VPackSlice ldb;
@@ -1836,7 +1862,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  LocalLogsMap const& localLogs) {
+  ReplicatedLogsStatusMapByDatabase const& localLogs) {
 
   auto start = std::chrono::steady_clock::now();
 
