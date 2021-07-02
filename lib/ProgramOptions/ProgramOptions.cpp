@@ -112,7 +112,7 @@ void ProgramOptions::printHelp(std::string const& search) const {
   printUsage();
 
   if (!showHidden) {
-    std::cout << "Common options (excluding hidden options) are:" << std::endl;
+    std::cout << "Common options (excluding hidden/uncommon options):" << std::endl;
     std::cout << std::endl;
   }
 
