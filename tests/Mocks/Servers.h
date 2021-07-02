@@ -58,7 +58,7 @@ namespace mocks {
 /// @brief mock application server with no features added
 class MockServer {
  public:
-  MockServer();
+  MockServer(arangodb::ServerState::RoleEnum = arangodb::ServerState::RoleEnum::ROLE_SINGLE);
   virtual ~MockServer();
 
   application_features::ApplicationServer& server();
@@ -121,6 +121,7 @@ class MockServer {
 
  private:
   bool _started;
+  arangodb::ServerState::RoleEnum _oldRole;
 };
 
 /// @brief a server with almost no features added (Metrics are available
@@ -210,7 +211,7 @@ class MockClusterServer : public MockServer,
           [](arangodb::aql::Query&) {}) const;
   // You can only create specialized types
  protected:
-  MockClusterServer(bool useAgencyMockConnection);
+  MockClusterServer(bool useAgencyMockConnection, arangodb::ServerState::RoleEnum role);
   ~MockClusterServer();
 
  protected:
@@ -231,7 +232,6 @@ class MockClusterServer : public MockServer,
 
  private:
   bool _useAgencyMockPool;
-  arangodb::ServerState::RoleEnum _oldRole;
   int _dummy;
 };
 
