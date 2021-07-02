@@ -1,6 +1,10 @@
 devel
 -----
 
+* Enable process metrics on agent instances by default. Previously, some 
+  metrics (including the metrics starting with `arangodb_process` prefix) were
+  not returned by agent instances.
+
 * Added garbage collection for finished and failed Pregel conductors.
   Previously, Pregel executions that finished successfully or unsuccessfully
   remained in memory until being explicitly canceled. This prevented a 
