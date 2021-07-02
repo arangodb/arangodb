@@ -1,6 +1,9 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Include sender pid in shutdown log messages, so that it becomes easier to
+  figure out which process sent a shutdown signal.
+
 * For cluster AQL queries, let the coordinator determine the query id to be used
   on DB servers. This allows the coordinator to roll back AQL query setup
   requests via the query id. Previously, the DB servers each generated a local
