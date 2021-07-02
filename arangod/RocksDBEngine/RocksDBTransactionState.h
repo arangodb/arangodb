@@ -38,6 +38,10 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <atomic>
+#endif
+
 struct TRI_vocbase_t;
 
 namespace rocksdb {
@@ -169,6 +173,12 @@ class RocksDBTransactionState final : public TransactionState {
 
   rocksdb::SequenceNumber beginSeq() const;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief only needed for RocksDBTransactionStateGuard
+  void use() noexcept;
+  void unuse() noexcept;
+#endif
+
  private:
   /// @brief create a new rocksdb transaction
   void createTransaction();
@@ -223,8 +233,28 @@ class RocksDBTransactionState final : public TransactionState {
   /// resetted on intermediate commit
   uint64_t _numRollbacks;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::atomic<uint32_t> _users;
+#endif
+
   /// @brief if true there key buffers will no longer be shared
   bool _parallel;
+};
+
+/// @brief a struct that makes sure that the same RocksDBTransactionState
+/// is not used by different write operations in parallel. will only do
+/// something in maintainer mode, and do nothing in release mode!
+struct RocksDBTransactionStateGuard {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  explicit RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept;
+  ~RocksDBTransactionStateGuard();
+  
+  RocksDBTransactionState* _state;
+#else
+class RocksDBTransactionStateGuard {
+  explicit RocksDBTransactionStateGuard(RocksDBTransactionState* /*state*/) noexcept {}
+  ~RocksDBTransactionStateGuard() = default;
+#endif
 };
 
 class RocksDBKeyLeaser {

@@ -152,7 +152,8 @@ class Manager final {
 
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,
-                                                        AccessMode::Type mode);
+                                                        AccessMode::Type mode,
+                                                        bool openContextWithoutLock);
   void returnManagedTrx(TransactionId) noexcept;
 
   /// @brief get the meta transasction state

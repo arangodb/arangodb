@@ -749,6 +749,7 @@ TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collec
 ///        Does not care for revision handling!
 Result transaction::Methods::documentFastPath(std::string const& collectionName,
                                               VPackSlice value,
+                                              OperationOptions const& options,
                                               VPackBuilder& result) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   if (!value.isObject() && !value.isString()) {
@@ -757,7 +758,6 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   }
 
   if (_state->isCoordinator()) {
-    OperationOptions options;
     OperationResult opRes = documentCoordinator(collectionName, value, options).get();
     if (!opRes.fail()) {
       result.add(opRes.slice());
@@ -857,7 +857,7 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
 /// @brief read one or multiple documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::documentCoordinator(
-    std::string const& collectionName, VPackSlice value, OperationOptions& options) {
+    std::string const& collectionName, VPackSlice value, OperationOptions const& options) {
   if (!value.isArray()) {
     arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
@@ -877,7 +877,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
 /// @brief read one or multiple documents in a collection, local
 Future<OperationResult> transaction::Methods::documentLocal(std::string const& collectionName,
                                                             VPackSlice value,
-                                                            OperationOptions& options) {
+                                                            OperationOptions const& options) {
   DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 

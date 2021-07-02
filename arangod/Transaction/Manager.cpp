@@ -700,8 +700,11 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
 
 /// @brief lease the transaction, increases nesting
 std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TransactionId tid,
-                                                               AccessMode::Type mode) {
+                                                               AccessMode::Type mode,
+                                                               bool openContextWithoutLock) {
   TRI_ASSERT(mode != AccessMode::Type::NONE);
+  TRI_ASSERT(!openContextWithoutLock || mode == AccessMode::Type::READ);
+
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
@@ -737,6 +740,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TransactionId tid
     }
 
     if (AccessMode::isWriteOrExclusive(mode)) {
+      TRI_ASSERT(!openContextWithoutLock);
       if (mtrx.type == MetaType::StandaloneAQL) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
@@ -751,6 +755,13 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TransactionId tid
         TRI_ASSERT(mode == AccessMode::Type::READ);
         state = mtrx.state;
         break;
+      } else if (openContextWithoutLock) {
+        // unable to acquire the read-lock. if this happens but we are trying to 
+        // satisfy a DOCUMENT() request, we already have a lock on the context,
+        // and it is safe to open the transaction anyway
+        state = mtrx.state;
+        return std::make_shared<ManagedContext>(tid, std::move(state),
+                                                /*responsibleForCommit*/ false, /*cloned*/ true);
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_LOCKED, std::string("cannot read-lock, transaction ") +
