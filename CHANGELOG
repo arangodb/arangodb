@@ -5,7 +5,7 @@ v3.7.13 (XXXX-XX-XX)
   index was prefix was used without checking if the other index covered the
   FILTER condition.
 
-  For example, if there were the following and indexes:
+  For example, given the following indexes:
   
   - index 1: ["e", "a", "b", "c"]
   - index 2: ["e", "a", "b"]
