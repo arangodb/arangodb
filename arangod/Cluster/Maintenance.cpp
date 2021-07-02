@@ -530,9 +530,10 @@ auto arangodb::maintenance::diffReplicatedLogs(
   auto const createReplicatedLogAction = [&](LogId id, agency::LogPlanSpecification const* spec) {
     auto specStr = std::invoke([&] {
       VPackBuilder builder;
-      auto slice = VPackSlice::emptyObjectSlice();
+      auto slice = VPackSlice::noneSlice();
       if (spec != nullptr) {
         spec->toVelocyPack(builder);
+        slice = builder.slice();
       }
       return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
     });
@@ -606,7 +607,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogsStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogs) {
   // You are entering the functional sector.
   // Vous entrez dans le secteur fonctionel.
   // Sie betreten den funktionalen Sektor.
@@ -866,7 +867,7 @@ arangodb::Result arangodb::maintenance::executePlan(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  ReplicatedLogsStatusMapByDatabase const& localLogs) {
+  ReplicatedLogStatusMapByDatabase const& localLogs) {
 
   // Errors from maintenance feature
   MaintenanceFeature::errors_t errors;
@@ -1023,7 +1024,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  ReplicatedLogsStatusMapByDatabase const& localLogs) {
+  ReplicatedLogStatusMapByDatabase const& localLogs) {
 
   auto start = std::chrono::steady_clock::now();
 
@@ -1218,7 +1219,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
-    ReplicatedLogsStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogs) {
   for (auto const& dbName : dirty) {
     auto lit = local.find(dbName);
     VPackSlice ldb;
@@ -1862,7 +1863,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  ReplicatedLogsStatusMapByDatabase const& localLogs) {
+  ReplicatedLogStatusMapByDatabase const& localLogs) {
 
   auto start = std::chrono::steady_clock::now();
 
