@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertTrue, assertEqual, fail, arango */
+/* global print, assertNotEqual, assertFalse, assertTrue, assertEqual, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -47,6 +47,61 @@ promtoolPath = fs.join(promtoolPath, 'promtool' + pu.executableExt);
 
 const metricsUrlPath = "/_admin/metrics/v2";
 const serverIdPath = "/_admin/server/id";
+const healthUrl = "_admin/cluster/health";
+
+function getServerId(server) {
+  let res = request.get({
+    url: server.url + serverIdPath
+  });
+  return res.json.id;
+}
+
+function getServerShortName(server) {
+  let serverId = getServerId(server);
+  let clusterHealth = arango.GET_RAW(healthUrl).parsedBody.Health;
+  let shortName = Object.keys(clusterHealth)
+    .filter(x => {
+      return x === serverId;
+    })
+    .map(x => clusterHealth[x]["ShortName"])[0];
+  return shortName;
+}
+
+function checkThatServerIsResponsive(server) {
+  try {
+    let serverName = getServerShortName(server);
+    print("Checking if server " + serverName + " is responsive.");
+    let res = request.get({
+      url: server.url + metricsUrlPath
+    });
+    if (res.body.includes(serverName) && res.statusCode === 200) {
+      print("Server " + serverName + " is OK!");
+      return true;
+    } else {
+      print("Server " + serverName + " doesn't respond properly to reauests.");
+      return false;
+    }
+  } catch(error){
+    return false;
+  }
+}
+
+function checkThatAllDbServersAreHealthy() {
+  print("Checking that all DB servers are healthy.")
+  let clusterHealth = arango.GET_RAW(healthUrl).parsedBody.Health;
+  let dbServers = Object.keys(clusterHealth)
+    .filter(x => {
+      return clusterHealth[x]["Role"] === "DBServer";
+    })
+    .map(x => clusterHealth[x]);
+    for(let i = 0; i < dbServers.length; i++) {
+      print("Server "+ dbServers[i].ShortName + " status is " + dbServers[i]["Status"])
+      if(!(dbServers[i]["Status"] === "GOOD")){
+        return false;
+      }
+    }
+  return true;
+}
 
 function validateMetrics(metrics) {
   let toRemove = [];
@@ -80,6 +135,17 @@ function validateMetrics(metrics) {
   }
 }
 
+function checkMetricsBelongToServer(metrics, server) {
+  let serverName = getServerShortName(server);
+  let positiveRegex = new RegExp('(shortname="(' + serverName + ').*")');
+  let negativeRegex = new RegExp('(shortname="(?!' + serverName + ').*")');
+  let matchesServerName = metrics.match(positiveRegex);
+  let matchesAnyOtherName = metrics.match(negativeRegex);
+  assertNotEqual(null, matchesServerName, "Metrics must contain server name, but they don't");
+  assertTrue(matchesServerName.length > 0, "Metrics must contain server name, but they don't");
+  assertEqual(null, matchesAnyOtherName, "Metrics must NOT contain other servers' names.");
+}
+
 function validateMetricsOnServer(server) {
   print("Querying server ", server.name);
   let res = request.get({
@@ -91,13 +157,6 @@ function validateMetricsOnServer(server) {
   validateMetrics(body);
 }
 
-function getServerId(server) {
-  let res = request.get({
-    url: server.url + serverIdPath
-  });
-  return res.json.id;
-}
-
 function validateMetricsViaCoordinator(coordinator, server) {
   let serverId = getServerId(server);
   let metricsUrl = coordinator.url + metricsUrlPath + "?serverId=" + serverId;
@@ -106,6 +165,7 @@ function validateMetricsViaCoordinator(coordinator, server) {
   expect(res).to.have.property('statusCode', 200);
   let body = String(res.body);
   validateMetrics(body);
+  checkMetricsBelongToServer(body, server);
 }
 
 function promtoolClusterSuite() {
@@ -133,7 +193,7 @@ function promtoolClusterSuite() {
       }
     },
     testMetricsOnCoordinators: function () {
-      print("Validating metrics coordinators...");
+      print("Validating metrics from coordinators...");
       for (let i = 0; i < coordinators.length; i++) {
         validateMetricsOnServer(coordinators[i]);
       }
@@ -169,8 +229,24 @@ function promtoolClusterSuite() {
         //        let body = res.parsedBody;
         //        expect(body.errorNum).to.equal(errors.ERROR_CLUSTER_CONNECTION_LOST.code);
       } finally {
+        let clusterHealthOk = false;
         assertTrue(continueExternal(dbServer.pid));
-        delete dbServer.suspended;
+        for (let i = 0; i < 60; i++) {
+          if (checkThatServerIsResponsive(dbServer)) {
+            delete dbServer.suspended;
+            break;
+          }
+          internal.sleep(1);
+        }
+        for (let i = 0; i < 60; i++) {
+          if (checkThatAllDbServersAreHealthy()) {
+            clusterHealthOk = true;
+            break;
+          }
+          internal.sleep(1);
+        }
+        assertFalse(dbServer.suspended, "Couldn't recover server after suspension.");
+        assertTrue(clusterHealthOk, "Some db servers are not ready according to " + healthUrl);
       }
     }
   };
