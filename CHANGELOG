@@ -1,6 +1,10 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Enable process metrics on agent instances by default. Previously, some 
+  metrics (including the metrics starting with `arangodb_process` prefix) were
+  not returned by agent instances.
+
 * Updated arangosync to 1.6.0.
 
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
