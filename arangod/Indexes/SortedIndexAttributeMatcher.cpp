@@ -352,30 +352,29 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
               break;
             }
             ++matches;
-              
-            if (matches == otherFields.size()) {
-              // the other index is a full prefix of our own index.
-              // now check if the other index actually satisfies the filter condition
-              std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> foundOther;
-              [[maybe_unused]] size_t valuesOther = 0; // ignored here
-              matchAttributes(otherIdx.get(), node, reference, foundOther, valuesOther, nonNullAttributes, false);
-  
-              auto [attributesCoveredOther, attributesCoveredByEqualityOther, equalityReductionFactorOther, nonEqualityReductionFactorOther] = 
-                  ::analyzeConditions(otherIdx.get(), foundOther);
-
-              // all attributes from the other index must be covered with equality lookups,
-              // otherwise we cannot use the other index' selectivity estimate
-              if (foundOther.size() == matches && attributesCoveredByEqualityOther == matches) {
-                double estimate = other->selectivityEstimate();
-                if (estimate > 0.0 && estimate > otherEstimate) {
-                  otherEstimate = estimate;
-                }
-              }
-              break;
-            }
             
             if (matches > found.size()) {
               break;
+            }
+          }
+              
+          if (matches == otherFields.size()) {
+            // the other index is a full prefix of our own index.
+            // now check if the other index actually satisfies the filter condition
+            std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> foundOther;
+            [[maybe_unused]] size_t valuesOther = 0; // ignored here
+            matchAttributes(otherIdx.get(), node, reference, foundOther, valuesOther, nonNullAttributes, false);
+
+            auto [attributesCoveredOther, attributesCoveredByEqualityOther, equalityReductionFactorOther, nonEqualityReductionFactorOther] = 
+                ::analyzeConditions(otherIdx.get(), foundOther);
+
+            // all attributes from the other index must be covered with equality lookups,
+            // otherwise we cannot use the other index' selectivity estimate
+            if (foundOther.size() == matches && attributesCoveredByEqualityOther == matches) {
+              double estimate = other->selectivityEstimate();
+              if (estimate > 0.0 && estimate > otherEstimate) {
+                otherEstimate = estimate;
+              }
             }
           } 
         }
