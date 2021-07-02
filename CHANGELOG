@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix locking of write transactions on DB servers.
+
 * Added garbage collection for finished and failed Pregel conductors.
   Previously, Pregel executions that finished successfully or unsuccessfully
   remained in memory until being explicitly canceled. This prevented a 
