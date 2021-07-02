@@ -3,6 +3,8 @@ v3.7.13 (XXXX-XX-XX)
 
 * Updated arangosync to 1.6.0.
 
+* Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
   resetted, resulting in undefined behavior for traversals returning unique
   vertices from inner FOR loops.
