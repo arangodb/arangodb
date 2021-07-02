@@ -2438,8 +2438,10 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                      args, 5 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return res.withError(
-          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+      return {
+        res.errorNumber(),
+        res.errorMessage().append(errorSuffix)
+      };
     }
   }
 
@@ -2454,7 +2456,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
 }
 
 // {<LEVENSHTEIN_MATCH>: '[' <term>, <max_distance> [, <with_transpositions>, <prefix> ] ']'}
-Result fromFuncPhraseLevenshteinMatch(char const* funcName,
+arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
                                       size_t const funcArgumentPosition,
                                       char const* subFuncName,
                                       irs::by_phrase* filter,
