@@ -1,6 +1,30 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Fixed an issue in index selection, when the selectivty estimate of another
+  prefix index was used without checking if the other index covered the FILTER
+  condition.
+
+  For example, given the following indexes:
+  
+  - index 1: ["e", "a", "b", "c"]
+  - index 2: ["e", "a", "b"]
+  - index 3: ["d", "e", "f", "g"]
+
+  and the FILTER condition `d == 1 && e == 2 && f == 3`, then the best index to
+  pick would be index 3. However, the optimizer may have picked index 1 here.
+  All indexes are valid candidates for this FILTER condition, but none of the
+  indexes covered all attributes of the FILTER condition. So the index
+  selectivity estimates were (correctly) not used directly to determine the best
+  index.
+  The actual bug happened when comparing the usefulness of the candidate
+  indexes, when figuring out that even though the selectivity estimate for index
+  1 could not be used, but that there existed a prefix index of index 1 (index
+  2). The selecivity estimate of this index was taken _without_ checking that
+  prefix index actually satisfied the FILTER condition fully.
+  The prefix index' selectivity estimate must only be used if it fully satisfies
+  the FILTER condition, which was not the case here.
+
 * Include sender pid in shutdown log messages, so that it becomes easier to
   figure out which process sent a shutdown signal.
 
