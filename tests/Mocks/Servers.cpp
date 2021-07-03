@@ -181,9 +181,9 @@ static void SetupAqlPhase(MockServer& server) {
 #endif
 }
 
-MockServer::MockServer(arangodb::ServerState::RoleEnum myRole)
+MockServer::MockServer(arangodb::ServerState::RoleEnum myRole, bool injectClusterIndexes)
     : _server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr), nullptr),
-      _engine(_server, myRole == arangodb::ServerState::RoleEnum::ROLE_COORDINATOR),
+      _engine(_server, injectClusterIndexes),
       _oldRebootId(0),
       _started(false) {
   _oldRole = arangodb::ServerState::instance()->getRole();
@@ -468,10 +468,9 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
 consensus::Store& AgencyCache::store() { return _readDB; }
 
 MockClusterServer::MockClusterServer(bool useAgencyMockPool,
-                                     arangodb::ServerState::RoleEnum newRole)
-    : MockServer(newRole), _useAgencyMockPool(useAgencyMockPool) {
-  LOG_DEVEL << "Starting up a " << (int)newRole;
-
+                                     arangodb::ServerState::RoleEnum newRole,
+                                     bool injectClusterIndexes)
+    : MockServer(newRole, injectClusterIndexes), _useAgencyMockPool(useAgencyMockPool) {
   // Add features
   SetupAqlPhase(*this);
 
@@ -492,7 +491,6 @@ MockClusterServer::~MockClusterServer() {
   ci.shutdownSyncers();
   ci.waitForSyncersToStop();
   _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
-  LOG_DEVEL << "Shutting down a " << (int)arangodb::ServerState::instance()->getRole();
 }
 
 void MockClusterServer::startFeatures() {
@@ -857,8 +855,9 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
   }
 }
 
-MockCoordinator::MockCoordinator(bool start, bool useAgencyMock)
-    : MockClusterServer(useAgencyMock, arangodb::ServerState::RoleEnum::ROLE_COORDINATOR) {
+MockCoordinator::MockCoordinator(bool start, bool useAgencyMock, bool injectClusterIndexes)
+    : MockClusterServer(useAgencyMock, arangodb::ServerState::RoleEnum::ROLE_COORDINATOR,
+                        injectClusterIndexes) {
   if (start) {
     MockCoordinator::startFeatures();
     MockCoordinator::createDatabase("_system");

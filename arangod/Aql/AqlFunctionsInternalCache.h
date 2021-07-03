@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include <VocBase/Validators.h>
 #include "Aql/AqlValue.h"
 #include "Basics/Common.h"
+#include "VocBase/Validators.h"
 
 #include <unicode/regex.h>
 #include <memory>
@@ -97,4 +97,3 @@ class AqlFunctionsInternalCache final {
 
 }  // namespace aql
 }  // namespace arangodb
-

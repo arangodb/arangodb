@@ -60,7 +60,7 @@ OneSidedEnumerator<Configuration>::OneSidedEnumerator(Provider&& forwardProvider
       _interior(resourceMonitor) {}
 
 template <class Configuration>
-OneSidedEnumerator<Configuration>::~OneSidedEnumerator() {}
+OneSidedEnumerator<Configuration>::~OneSidedEnumerator() = default;
 
 template <class Configuration>
 auto OneSidedEnumerator<Configuration>::destroyEngines() -> void {

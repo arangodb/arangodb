@@ -58,7 +58,13 @@ namespace mocks {
 /// @brief mock application server with no features added
 class MockServer {
  public:
-  MockServer(arangodb::ServerState::RoleEnum = arangodb::ServerState::RoleEnum::ROLE_SINGLE);
+  // Note, setting injectClusterIndexes causes the "create" methods to fail.
+  // this is all hardly worked around the Cluster engine and needs a proper
+  // clean up. It is highly recommended to not set injectClusterIndexes unless
+  // you want to specificly test something that selects an index, but cannot use
+  // it. Use with care for now.
+  MockServer(arangodb::ServerState::RoleEnum = arangodb::ServerState::RoleEnum::ROLE_SINGLE,
+             bool injectClusterIndexes = false);
   virtual ~MockServer();
 
   application_features::ApplicationServer& server();
@@ -211,7 +217,8 @@ class MockClusterServer : public MockServer,
           [](arangodb::aql::Query&) {}) const;
   // You can only create specialized types
  protected:
-  MockClusterServer(bool useAgencyMockConnection, arangodb::ServerState::RoleEnum role);
+  MockClusterServer(bool useAgencyMockConnection, arangodb::ServerState::RoleEnum role,
+                    bool injectClusterIndexes = false);
   ~MockClusterServer();
 
  protected:
@@ -249,7 +256,8 @@ class MockDBServer : public MockClusterServer {
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true);
+  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true,
+                  bool injectClusterIndexes = false);
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;

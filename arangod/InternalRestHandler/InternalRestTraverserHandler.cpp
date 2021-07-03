@@ -86,8 +86,9 @@ RestStatus InternalRestTraverserHandler::execute() {
 }
 
 void InternalRestTraverserHandler::createEngine() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "API traversal engine creation no longer supported");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "API traversal engine creation no longer supported");
 }
 
 void InternalRestTraverserHandler::queryEngine() {
@@ -118,7 +119,8 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   }
 
-  std::chrono::time_point<std::chrono::steady_clock> start =  std::chrono::steady_clock::now();
+  std::chrono::time_point<std::chrono::steady_clock> start =
+      std::chrono::steady_clock::now();
 
   traverser::BaseEngine* engine = nullptr;
   while (true) {
@@ -128,7 +130,8 @@ void InternalRestTraverserHandler::queryEngine() {
         break;
       }
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid TraverserEngine id - potentially the AQL query was already aborted or timed out");
+                    "invalid TraverserEngine id - potentially the AQL query "
+                    "was already aborted or timed out");
       return;
     } catch (basics::Exception const& ex) {
       // it is possible that the engine is already in use
@@ -148,18 +151,18 @@ void InternalRestTraverserHandler::queryEngine() {
       generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_LOCK_TIMEOUT);
       return;
     }
-  } 
+  }
 
   TRI_ASSERT(engine != nullptr);
 
   auto& registry = _registry;  // For the guard
-  auto cleanup = scopeGuard([registry, &engineId]() {
-    registry->closeEngine(engineId);
-  });
+  auto cleanup =
+      scopeGuard([registry, &engineId]() { registry->closeEngine(engineId); });
 
   if (option == "lock") {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "API for traversal engine locking no longer supported");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "API for traversal engine locking no longer supported");
   }
 
   VPackBuilder result;
@@ -183,7 +186,7 @@ void InternalRestTraverserHandler::queryEngine() {
         // Safe cast BaseTraverserEngines are all of type TRAVERSER
         auto eng = static_cast<BaseTraverserEngine*>(engine);
         TRI_ASSERT(eng != nullptr);
-        
+
         VPackSlice variables = body.get("variables");
         eng->injectVariables(variables);
 
@@ -234,48 +237,6 @@ void InternalRestTraverserHandler::queryEngine() {
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
     eng->smartSearchNew(body, result);
-
-    // TODO: Move this commentary into testsuite + write tests
-    /*
-     VPackBuilder old;
-     eng->smartSearch(body, old);
-     auto printSchreier = [](std::string const label, VPackSlice result) -> void {
-      result = result.get("result").at(0);
-      std::vector<std::pair<size_t, VPackSlice>> data {};
-
-      size_t skip = false;
-      for (auto entry : VPackArrayIterator(result)) {
-        if (skip) {
-          data.emplace_back(std::make_pair(entry.at(1).getNumber<size_t>(), entry));
-        }
-        skip = true;
-      }
-
-      std::function<std::string(size_t)> printPath = [&] (size_t index) -> std::string {
-        TRI_ASSERT(index < data.size());
-        auto const& [prev, entry] = data.at(index);
-        VPackSlice vertex = entry.at(4);
-        if (vertex.isObject()) {
-          vertex = vertex.get("key");
-        }
-        if (index == 0) {
-          return vertex.toJson();
-        } else {
-          TRI_ASSERT(prev < index);
-          return printPath(prev) + "->" +  vertex.toJson();
-        }
-      };
-
-      LOG_DEVEL << label;
-      for (size_t i = 0; i < data.size(); i++) {
-        LOG_DEVEL << printPath(i);
-      }
-      LOG_DEVEL << "end of: " << label;
-    };
-    printSchreier("OLD", old.slice());
-    printSchreier("NEW", result.slice());*/
-
-
   } else if (option == "smartSearchBFS") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
