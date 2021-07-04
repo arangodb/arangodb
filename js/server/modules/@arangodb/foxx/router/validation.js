@@ -76,9 +76,9 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
     actualType = def.contentTypes[0] || indicatedType;
   }
 
-  actualType = ct.parse(actualType).type;
+  actualType = ct.parse(actualType);
 
-  if (actualType.startsWith('multipart/')) {
+  if (actualType.type.startsWith('multipart/')) {
     body = requestParts(req._raw);
   }
 
@@ -88,11 +88,11 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
     const value = entry[1];
     let match;
     if (key instanceof RegExp) {
-      match = actualType.test(key);
+      match = actualType.type.test(key);
     } else if (typeof key === 'function') {
-      match = key(actualType);
+      match = key(actualType.type, actualType.parameters);
     } else {
-      match = typeIs.is(key, actualType);
+      match = typeIs.is(key, actualType.type);
     }
     if (match && value.fromClient) {
       handler = value;
@@ -101,7 +101,7 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
   }
 
   if (handler) {
-    body = handler.fromClient(body, req, actualType);
+    body = handler.fromClient(body, req, actualType.parameters);
   }
 
   return body;
