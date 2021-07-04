@@ -2963,6 +2963,15 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
+#### underscore
+
+Name: underscore
+Version: 1.9.1
+Project Home: https://github.com/jashkenas/underscore
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/underscore/LICENSE
+License Name: MIT License
+License Id: MIT
+
 #### uri-js
 
 Name: uri-js

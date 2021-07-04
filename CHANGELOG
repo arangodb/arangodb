@@ -1,5 +1,29 @@
 devel
 -----
+* Updated JavaScript dependencies, including breaking changes to non-public
+  modules. We recommend always bundling your own copy of third-party modules,
+  even ones listed as public.
+
+  - accepts: 1.3.5 -> 1.3.7
+  - ansi_up: 4.0.3 -> 5.0.1
+  - chalk: 1.1.3 -> 4.1.1
+  - content-type: (added) -> 1.0.4
+  - error-stack-parser: 2.0.2 -> 2.0.6
+  - highlight.js: 9.15.6 -> 10.7.2
+  - http-errors: 1.7.2 -> 1.8.0
+  - iconv-lite: 0.4.24 -> 0.6.2
+  - js-yaml: 3.13.1 -> 3.14.1
+  - lodash: 4.17.13 -> 4.17.21
+  - marked: 0.6.2 -> removed
+  - media-typer: 0.3.0 -> removed
+  - mime-types: 2.1.22 -> 2.1.30
+  - netmask: 1.0.6 -> 2.0.2
+  - qs: 6.7.0 -> 6.10.1
+  - range-parser: 1.2.0 -> 1.2.1
+  - semver: 6.0.0 -> 7.3.5
+  - timezone: 1.0.22 -> 1.0.23
+  - type-is: 1.6.16 -> 1.6.18
+
 * Adapt various places related to handling of execution plans non-recursive
   in order to avoid stack overflows. This allows us now to execute much larger
   queries.
