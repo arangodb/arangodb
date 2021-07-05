@@ -60,7 +60,7 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
     err << "Failed to find job " << _jobId << " in agency.";
     LOG_TOPIC("4d260", ERR, Logger::SUPERVISION) << err.str();
     // TODO this call to finish is invokes a virtual member function within a constructor
-    finish("", tmp_shard.value(), false, err.str());
+    finish("", tmp_shard.value_or(""), false, err.str());
     _status = FAILED;
   }
 }

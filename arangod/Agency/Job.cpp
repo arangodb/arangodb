@@ -672,7 +672,7 @@ void Job::doForAllShards(
         curColPrefix + database + "/" + collection + "/" + shard + "/servers";
 
     Slice plan = snapshot.hasAsSlice(planPath).value();
-    Slice current = snapshot.hasAsSlice(curPath).value();
+    Slice current = snapshot.hasAsSlice(curPath).value_or(Slice::noneSlice());
 
     worker(plan, current, planPath, curPath);
   }
