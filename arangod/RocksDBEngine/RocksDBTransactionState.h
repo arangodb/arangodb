@@ -251,7 +251,6 @@ struct RocksDBTransactionStateGuard {
   
   RocksDBTransactionState* _state;
 #else
-class RocksDBTransactionStateGuard {
   explicit RocksDBTransactionStateGuard(RocksDBTransactionState* /*state*/) noexcept {}
   ~RocksDBTransactionStateGuard() = default;
 #endif
