@@ -468,6 +468,7 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
 
     if (handler == Handlers.end()) {
       // no handler found for attribute
+      aql::ExecutionPlan::invalidOptionAttribute(query, "FOR", attributeName.c_str(), attributeName.size());
       continue;
     }
 

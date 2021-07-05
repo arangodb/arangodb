@@ -208,7 +208,7 @@
     "ERROR_QUERY_INVALID_DATE_VALUE" : { "code" : 1572, "message" : "invalid date value" },
     "ERROR_QUERY_MULTI_MODIFY"     : { "code" : 1573, "message" : "multi-modify query" },
     "ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION" : { "code" : 1574, "message" : "invalid aggregate expression" },
-    "ERROR_QUERY_COMPILE_TIME_OPTIONS" : { "code" : 1575, "message" : "query options must be readable at query compile time" },
+    "ERROR_QUERY_INVALID_OPTIONS"  : { "code" : 1575, "message" : "query options must be readable at query compile time" },
     "ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE" : { "code" : 1577, "message" : "could not use forced index hint" },
     "ERROR_QUERY_DISALLOWED_DYNAMIC_CALL" : { "code" : 1578, "message" : "disallowed dynamic call to '%s'" },
     "ERROR_QUERY_ACCESS_AFTER_MODIFICATION" : { "code" : 1579, "message" : "access after data-modification by %s" },

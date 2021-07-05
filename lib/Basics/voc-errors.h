@@ -1105,11 +1105,12 @@ constexpr auto TRI_ERROR_QUERY_MULTI_MODIFY                                     
 /// Will be raised when an AQL query contains an invalid aggregate expression.
 constexpr auto TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION                      = ErrorCode{1574};
 
-/// 1575: ERROR_QUERY_COMPILE_TIME_OPTIONS
+/// 1575: ERROR_QUERY_INVALID_OPTIONS
 /// "query options must be readable at query compile time"
-/// Will be raised when an AQL data-modification query contains options that
-/// cannot be figured out at query compile time.
-constexpr auto TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              = ErrorCode{1575};
+/// Will be raised when an AQL query contains OPTIONS that cannot be figured
+/// out at query compile time or when an unknown attribute is used inside
+/// OPTIONS.
+constexpr auto TRI_ERROR_QUERY_INVALID_OPTIONS                                   = ErrorCode{1575};
 
 /// 1577: ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE
 /// "could not use forced index hint"

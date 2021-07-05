@@ -212,7 +212,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
         auto value = member->getMember(0);
         TRI_ASSERT(value->isConstant());
 
-        if (name == "bfs") {
+        if (name == "bfs" && value->isBoolValue()) {
           options->mode = value->isTrue()
                               ? arangodb::traverser::TraverserOptions::Order::BFS
                               : arangodb::traverser::TraverserOptions::Order::DFS;
@@ -270,6 +270,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
           }
         } else if (name == StaticStrings::GraphRefactorFlag && value->isBoolValue()) {
           options->setRefactor(value);
+        } else {
+          ExecutionPlan::invalidOptionAttribute(ast->query(), "TRAVERSAL", name.data(), name.size());
         }
       }
     }
@@ -321,6 +323,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast, AstNode 
           options->setDefaultWeight(value->getDoubleValue());
         } else if (name == StaticStrings::GraphRefactorFlag) {
           options->setRefactor(value->getBoolValue());
+        } else {
+          ExecutionPlan::invalidOptionAttribute(ast->query(), "SHORTEST_PATH", name.data(), name.size());
         }
       }
     }
@@ -414,6 +418,20 @@ ExecutionPlan::~ExecutionPlan() {
   plan->findVarUsage();
 
   return plan;
+}
+
+void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
+                                           char const* operationName, 
+                                           char const* name, size_t length) {
+  std::string msg("usage of unknown OPTIONS attribute '");
+  msg.append(name, length);
+  msg.append("' in ");
+  msg.append(operationName);
+  msg.append(" statement");
+
+  // if warnings are converted into errors, adding this warning will
+  // abort the query
+  query.warnings().registerWarning(TRI_ERROR_QUERY_INVALID_OPTIONS, msg.c_str());
 }
 
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
@@ -829,7 +847,9 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 }
 
 /// @brief create modification options from an AST node
-ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node) {
+ModificationOptions ExecutionPlan::parseModificationOptions(QueryContext& query,
+                                                            char const* operationName, AstNode const* node,
+                                                            bool addWarnings) {
   ModificationOptions options;
 
   // parse the modification options we got
@@ -845,18 +865,18 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 
         TRI_ASSERT(value->isConstant());
 
-        if (name == StaticStrings::WaitForSyncString) {
+        if (name == StaticStrings::WaitForSyncString && value->isBoolValue()) {
           options.waitForSync = value->isTrue();
-        } else if (name == StaticStrings::SkipDocumentValidation) {
+        } else if (name == StaticStrings::SkipDocumentValidation && value->isBoolValue()) {
           options.validate = !value->isTrue();
-        } else if (name == StaticStrings::KeepNullString) {
+        } else if (name == StaticStrings::KeepNullString && value->isBoolValue()) {
           options.keepNull = value->isTrue();
-        } else if (name == StaticStrings::MergeObjectsString) {
+        } else if (name == StaticStrings::MergeObjectsString && value->isBoolValue()) {
           options.mergeObjects = value->isTrue();
-        } else if (name == StaticStrings::Overwrite && value->isTrue()) {
+        } else if (name == StaticStrings::Overwrite && value->isBoolValue()) {
           // legacy: overwrite is set, superseded by overwriteMode
           // default behavior if only "overwrite" is specified
-          if (!options.isOverwriteModeSet()) {
+          if (!options.isOverwriteModeSet() && value->isTrue()) {
             options.overwriteMode = OperationOptions::OverwriteMode::Replace;
           }
         } else if (name == StaticStrings::OverwriteMode && value->isStringValue()) {
@@ -866,12 +886,16 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
           if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
             options.overwriteMode = overwriteMode;
           }
-        } else if (name == StaticStrings::IgnoreRevsString) {
+        } else if (name == StaticStrings::IgnoreRevsString && value->isBoolValue()) {
           options.ignoreRevs = value->isTrue();
-        } else if (name == "exclusive") {
+        } else if (name == "exclusive" && value->isBoolValue()) {
           options.exclusive = value->isTrue();
-        } else if (name == "ignoreErrors") {
+        } else if (name == "ignoreErrors" && value->isBoolValue()) {
           options.ignoreErrors = value->isTrue();
+        } else {
+          if (addWarnings) {
+            invalidOptionAttribute(query, operationName, name.data(), name.size());
+          }
         }
       }
     }
@@ -881,8 +905,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 }
 
 /// @brief create modification options from an AST node
-ModificationOptions ExecutionPlan::createModificationOptions(AstNode const* node) {
-  ModificationOptions options = parseModificationOptions(node);
+ModificationOptions ExecutionPlan::createModificationOptions(char const* operationName, AstNode const* node) {
+  ModificationOptions options = parseModificationOptions(_ast->query(), operationName, node, /*addWarnings*/ true);
 
   // this means a data-modification query must first read the entire input data
   // before starting with the modifications
@@ -931,12 +955,19 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
+        bool handled = false;
         auto const name = member->getStringRef();
         if (name == "method") {
           auto value = member->getMember(0);
           if (value->isStringValue()) {
             options.method = CollectOptions::methodFromString(value->getString());
+            if (options.method != CollectOptions::CollectMethod::UNDEFINED) {
+              handled = true;
+            }
           }
+        }
+        if (!handled) {
+          invalidOptionAttribute(_ast->query(), "COLLECT", name.data(), name.size());
         }
       }
     }
@@ -1005,7 +1036,7 @@ ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous, ExecutionNo
   }
 }
 
-/// @brief create an execution plan element from an AST FOR (non-view) node
+/// @brief create an execution plan element from an AST FOR node
 ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
   TRI_ASSERT(node->numMembers() == 3);
@@ -1013,7 +1044,6 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
   auto variable = node->getMember(0);
   auto expression = node->getMember(1);
   auto options = node->getMember(2);
-  IndexHint hint(options);
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -1033,6 +1063,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no collection for EnumerateCollection");
     }
+    IndexHint hint(_ast->query(), options);
     en = registerNode(new EnumerateCollectionNode(this, nextId(), collection, v, false, hint));
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
@@ -1682,7 +1713,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous, AstNode co
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
   TRI_ASSERT(node->numMembers() == 4);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("REMOVE", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -1724,7 +1755,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous, AstNode co
   TRI_ASSERT(node->numMembers() > 3);
   TRI_ASSERT(node->numMembers() < 6);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("INSERT", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -1773,7 +1804,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous, AstNode co
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
   TRI_ASSERT(node->numMembers() == 6);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("UPDATE", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -1837,7 +1868,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous, AstNode c
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
   TRI_ASSERT(node->numMembers() == 6);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("REPLACE", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -1901,7 +1932,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous, AstNode co
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPSERT);
   TRI_ASSERT(node->numMembers() == 7);
 
-  auto options = createModificationOptions(node->getMember(0));
+  auto options = createModificationOptions("UPSERT", node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
@@ -1997,7 +2028,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
     VPackStringRef const name = member->getStringRef();
     AstNode* value = member->getMember(0);
     if (!value->isConstant()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_OPTIONS,
                                      "WINDOW bounds must be determined at compile time");
     }
     

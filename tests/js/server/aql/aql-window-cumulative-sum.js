@@ -364,7 +364,7 @@ FOR i IN 1..10
         db._query(query);
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_QUERY_COMPILE_TIME_OPTIONS.code);
+        assertEqual(err.errorNum, errors.ERROR_QUERY_INVALID_OPTIONS.code);
       }
     },
     
@@ -380,7 +380,7 @@ FOR i IN 1..10
         db._query(query);
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_QUERY_COMPILE_TIME_OPTIONS.code);
+        assertEqual(err.errorNum, errors.ERROR_QUERY_INVALID_OPTIONS.code);
       }
     },
 

@@ -416,7 +416,7 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 344> ErrorMessage
       "multi-modify query"},
     {TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION,  // 1574
       "invalid aggregate expression"},
-    {TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,  // 1575
+    {TRI_ERROR_QUERY_INVALID_OPTIONS,  // 1575
       "query options must be readable at query compile time"},
     {TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,  // 1577
       "could not use forced index hint"},
