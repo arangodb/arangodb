@@ -1,3 +1,14 @@
+v3.8.1 (XXXX-XX-XX)
+-------------------
+
+* APM-107: Added metric "rocksdb_read_only" to determine whether RocksDB is
+  currently in read-only mode due to a background error. The metric will have
+  a value of "1" if RocksDB is in read-only mode and "0" if RocksDB is in 
+  normal operations mode. If the metric value is "1" it means all writes into
+  RocksDB will fail, so inspecting the logfiles and acting on the actual error
+  situation is required.
+
+
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
