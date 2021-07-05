@@ -1576,7 +1576,7 @@ TEST_F(IResearchFeatureTest, test_start) {
     { "MIN_MATCH", { ".,.|.+", FunctionType::FILTER } },
     { "LIKE", { ".,.|.", FunctionType::FILTER } },
     { "NGRAM_MATCH", { ".,.|.,.", FunctionType::FILTER } },
-    { "LEVENSHTEIN_MATCH", { ".,.,.|.,.", FunctionType::FILTER } },
+    { "LEVENSHTEIN_MATCH", { ".,.,.|.,.,.", FunctionType::FILTER } },
 
     // context functions
     { "ANALYZER", { ".,.", FunctionType::FILTER } },
