@@ -354,7 +354,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer
       server);
   static const TtlIndexFactory ttlIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
-  static const iresearch::IResearchInvertedIndexFactory iresearchInvertedIndexFactory(server);
+  static const iresearch::IResearchRocksDBInvertedIndexFactory iresearchInvertedIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);

@@ -80,14 +80,6 @@ class IResearchLink : public IResearchDataStore {
 
   void afterCommit() override;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx,
-                LocalDocumentId const& documentId,
-                velocypack::Slice const doc);
-
   bool isHidden() const;  // arangodb::Index override
   bool isSorted() const; // arangodb::Index override
 
@@ -110,19 +102,6 @@ class IResearchLink : public IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result properties(velocypack::Builder& builder, bool forPersistence) const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update runtine data processing properties (not persisted)
-  /// @return success
-  //////////////////////////////////////////////////////////////////////////////
-  Result properties(IResearchViewMeta const& meta);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief remove an ArangoDB document from an iResearch View
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  Result remove(transaction::Methods& trx,
-                LocalDocumentId const& documentId,
-                velocypack::Slice const doc);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ArangoSearch Link index type enum value
@@ -176,7 +155,6 @@ class IResearchLink : public IResearchDataStore {
   IResearchLink(IndexId iid, LogicalCollection& collection);
 
  private:
-  IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
 };  // IResearchLink
 

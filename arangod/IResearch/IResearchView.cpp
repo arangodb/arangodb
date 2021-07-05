@@ -680,12 +680,12 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
     _links.try_emplace(cid, link);
   } else if (ServerState::instance()->isSingleServer() && !itr->second) {
     itr->second = link;
-    linkPtr->properties(_meta);
+    static_cast<IResearchDataStore*>(linkPtr)->properties(_meta);
 
     return {}; // single-server persisted cid placeholder substituted with actual link
   } else if (itr->second && itr->second->empty()) {
     itr->second = link;
-    linkPtr->properties(_meta);
+    static_cast<IResearchDataStore*>(linkPtr)->properties(_meta);
 
     return {}; // a previous link instance was unload()ed and a new instance is linking
   } else {
@@ -707,7 +707,7 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
     return res;
   }
 
-  return linkPtr->properties(_meta);
+  return static_cast<IResearchDataStore*>(linkPtr)->properties(_meta);
 }
 
 arangodb::Result IResearchView::commit() {
@@ -1042,9 +1042,9 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
       if (link->get()) {
         
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto* linkPtr = dynamic_cast<IResearchLink*>(link->get());
+        auto* linkPtr = dynamic_cast<IResearchDataStore*>(link->get());
 #else
-        auto* linkPtr = static_cast<IResearchLink*>(link->get());
+        auto* linkPtr = static_cast<IResearchDataStore*>(link->get());
 #endif
         auto result = linkPtr->properties(_meta);
 

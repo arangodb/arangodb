@@ -36,31 +36,9 @@
 namespace arangodb {
 namespace iresearch {
 
-
-struct IResearchInvertedIndexMeta {
-  Result init(application_features::ApplicationServer& server,
-              TRI_vocbase_t const* defaultVocbase, velocypack::Slice const info,
-              bool isClusterConstructor);
-  static Result normalize(application_features::ApplicationServer& server,
-                          TRI_vocbase_t const* defaultVocbase,
-                          velocypack::Builder& normalized, velocypack::Slice definition);
-
-  Result json(application_features::ApplicationServer& server,
-              TRI_vocbase_t const* defaultVocbase,
-              velocypack::Builder& builder, bool forPersistence) const;
-
-  std::vector<std::vector<arangodb::basics::AttributeName>> fields() const;
-
-  std::string _name;
-  IResearchViewMeta _indexMeta;
-  IResearchLinkMeta _fieldsMeta;
-  uint64_t _objectId{0};
-};
-
-
 class IResearchInvertedIndex  : public IResearchDataStore {
  public:
-  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta);
+  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection, IResearchLinkMeta&& meta);
 
   void toVelocyPack(application_features::ApplicationServer& server,
                     TRI_vocbase_t const* defaultVocbase,
@@ -69,15 +47,14 @@ class IResearchInvertedIndex  : public IResearchDataStore {
   bool isSorted() const {
     return false; // FIXME: sometimes we can be sorted
   }
+  
+  static std::vector<std::vector<arangodb::basics::AttributeName>> fields(IResearchLinkMeta const& meta);
 
   bool matchesFieldsDefinition(VPackSlice other) const;
 
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const override;
 
   bool inProgress() const {
-    // We should be in that state until we have chance to initialize analyzers
-    // in case of usage  custom ones
-    // FIXME: implement entering/leaving inProgress
     return false;
   }
 
@@ -100,14 +77,12 @@ class IResearchInvertedIndex  : public IResearchDataStore {
 
   aql::AstNode* specializeCondition(aql::AstNode* node,
                                     aql::Variable const* reference) const;
-
- private:
-  IResearchInvertedIndexMeta _meta;
 };
 
-class IResearchRocksDBInvertedIndex : public RocksDBIndex, IResearchInvertedIndex {
+class IResearchRocksDBInvertedIndex : public IResearchInvertedIndex, public RocksDBIndex {
  public:
-  IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, IResearchInvertedIndexMeta&& meta);
+  IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, uint64_t objectId,
+                                std::string const& name, IResearchLinkMeta&& meta);
 
   Index::IndexType type() const override { return  Index::TRI_IDX_TYPE_INVERTED_INDEX; }
 
@@ -166,7 +141,7 @@ class IResearchRocksDBInvertedIndex : public RocksDBIndex, IResearchInvertedInde
                                              aql::AstNode const* node,
                                              aql::Variable const* reference,
                                              size_t itemsInIndex) const override {
-     return IResearchInvertedIndex::supportsFilterCondition(IResearchDataStore::id(), fields(), allIndexes,
+     return IResearchInvertedIndex::supportsFilterCondition(IResearchDataStore::id(), RocksDBIndex::fields(), allIndexes,
                                                             node, reference, itemsInIndex);
   }
 
@@ -181,21 +156,21 @@ class IResearchRocksDBInvertedIndex : public RocksDBIndex, IResearchInvertedInde
                 VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
-    return {};
+    return IResearchDataStore::insert(trx, documentId, doc);
   }
 
   Result remove(transaction::Methods& trx,
                 RocksDBMethods*,
                 LocalDocumentId const& documentId,
                 VPackSlice doc) override {
-    return {};
+    return IResearchDataStore::remove(trx, documentId, doc);
   }
 };
 
-class IResearchInvertedIndexFactory : public IndexTypeFactory {
+class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
  public:
-  explicit IResearchInvertedIndexFactory(application_features::ApplicationServer& server);
-  virtual ~IResearchInvertedIndexFactory() = default;
+  explicit IResearchRocksDBInvertedIndexFactory(application_features::ApplicationServer& server);
+  virtual ~IResearchRocksDBInvertedIndexFactory() = default;
 
   bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs,
              std::string const& dbname) const override;

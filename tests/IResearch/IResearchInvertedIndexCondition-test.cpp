@@ -97,9 +97,11 @@ class IResearchInvertedIndexConditionTest
     SCOPED_TRACE(testing::Message("estimateFilterCondition failed for query:<")
       << queryString << "> Expected support:" << expectedCosts.supportsCondition);
     arangodb::IndexId id(1);
-    arangodb::iresearch::IResearchInvertedIndexMeta meta;
-    meta.init(server.server(), _vocbase, getPropertiesSlice(id, fields).slice(), false);
-    auto indexFields = meta.fields();
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    meta.init(server.server(), getPropertiesSlice(id, fields).slice(), false, errorField, _vocbase->name(), arangodb::iresearch::IResearchLinkMeta::DEFAULT(),
+              nullptr, true);
+    auto indexFields =arangodb::iresearch::IResearchInvertedIndex::fields(meta);
     arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection, std::move(meta));
 
 
