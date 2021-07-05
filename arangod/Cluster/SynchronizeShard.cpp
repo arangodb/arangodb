@@ -894,10 +894,6 @@ bool SynchronizeShard::first() {
         return false;
       }
 
-      // This is necessary to accept replications from the leader which can
-      // happen as soon as we are in sync.
-      collection->followers()->setTheLeader(leader);
-
       startTime = system_clock::now();
 
       VPackBuilder config;
@@ -1047,7 +1043,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     if (!res.ok()) {
       std::string errorMessage =
         "SynchronizeShard: error in startReadLockOnLeader (soft):" + res.errorMessage();
-      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+      return ResultT<TRI_voc_tick_t>::error(res.errorNumber(), std::move(errorMessage));
     }
 
     auto readLockGuard = arangodb::scopeGuard([&, this]() {
@@ -1135,7 +1131,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   if (!res.ok()) {
     std::string errorMessage =
       "SynchronizeShard: error in startReadLockOnLeader (hard):" + res.errorMessage();
-    return {TRI_ERROR_INTERNAL, errorMessage};
+    return {res.errorNumber(), std::move(errorMessage)};
   }
   auto readLockGuard = arangodb::scopeGuard([&, this]() {
     // Always cancel the read lock.
@@ -1171,6 +1167,10 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
+      
+  // This is necessary to accept replications from the leader which can
+  // happen as soon as we are in sync.
+  collection.followers()->setTheLeader(leader);
 
   NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
