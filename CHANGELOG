@@ -1,11 +1,14 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Fixed potential segfault in tcp/ssl socket handling (potentially fixes issue
+  #14431).
+
 * Added a retry loop for arangorestore during the initial connection phase. The
   number of retries defaults to 3 and can be configured using
   --initial-connect-retries.
 
-* Fix display of running and slow queries in web UI when there are multiple
+* Fixed display of running and slow queries in web UI when there are multiple
   coordinators. Previously, the display order of queries was undefined, which
   could lead to queries from one coordinator being display on top once and then
   the queries from another. That made using this UI harder than necessary.
@@ -31,7 +34,7 @@ v3.7.13 (XXXX-XX-XX)
   The actual bug happened when comparing the usefulness of the candidate
   indexes, when figuring out that even though the selectivity estimate for index
   1 could not be used, but that there existed a prefix index of index 1 (index
-  2). The selecivity estimate of this index was taken _without_ checking that
+  2). The selectivity estimate of this index was taken _without_ checking that
   prefix index actually satisfied the FILTER condition fully.
   The prefix index' selectivity estimate must only be used if it fully satisfies
   the FILTER condition, which was not the case here.

@@ -46,7 +46,6 @@ class AcceptorTcp final : public Acceptor {
 
  private:
   asio_ns::ip::tcp::acceptor _acceptor;
-  std::unique_ptr<AsioSocket<T>> _asioSocket;
 };
 }  // namespace rest
 }  // namespace arangodb
