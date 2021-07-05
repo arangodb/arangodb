@@ -135,10 +135,17 @@ void assertDecayFunction(char const* expected, char const* args,
   SmallVector<AqlValue> params = createArgVec(argsSlice);
 
   // evaluate
-  auto const actual_value = evaluateDecayFunction(params, node);
+  auto actual_value = evaluateDecayFunction(params, node);
 
   // check equality
   expectEqSlices(actual_value.slice(), expectedSlice);
+
+  // destroy AqlValues
+  for (auto& p : params) {
+    p.destroy();
+  }
+
+  actual_value.destroy();
 }
 
 void assertDecayFunctionFail(char const* args,
@@ -152,6 +159,11 @@ void assertDecayFunctionFail(char const* args,
   SmallVector<AqlValue> params = createArgVec(argsSlice);
 
   ASSERT_TRUE(evaluateDecayFunction(params, node).isNull(false));
+
+  // destroy AqlValues
+  for (auto& p : params) {
+    p.destroy();
+  }
 }
 
 TEST(GaussDecayFunctionTest, test) {

@@ -7,6 +7,34 @@ devel
   more reliable and prevent inconsistent shard replicas under bad network
   conditions.
 
+* Updated ArangoDB Starter to 0.15.1-preview-3.
+
+* Added garbage collection for finished and failed Pregel conductors.
+  Previously, Pregel executions that finished successfully or unsuccessfully
+  remained in memory until being explicitly canceled. This prevented a 
+  cleanup of abandoned jobs. Such jobs are now automatically cleaned
+  about 10 minutes after finalization. The time-to-live values can be
+  overriden per Pregel job by passing a "ttl" value.
+
+* Revive startup parameter `--server.session-timeout` to control the timeout
+  for web interface sessions and other sessions that are based on JWTs created
+  by the `/_open/auth` API.
+  
+  This PR also changes the default session timeout for web interface sessions
+  to one hour. Older versions of ArangoDB had longer session timeouts.
+
+* Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+
+* Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
+  internal requests to use the new url.
+
+* Fix display of running and slow queries in web UI when there are multiple
+  coordinators. Previously, the display order of queries was undefined, which
+  could lead to queries from one coordinator being display on top once and
+  then the queries from another. That made using this UI harder than necessary.
+  
+  Now queries are sorted for display, according to their query IDs. 
+
 * Updated ArangoDB Starter to 0.15.1-preview-2.
 
 * Fix potential stack overflow when executing large queries. This is

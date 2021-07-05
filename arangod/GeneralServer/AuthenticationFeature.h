@@ -72,6 +72,8 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   /// verification only secrets
   std::pair<std::string, std::vector<std::string>> jwtSecrets() const;
 #endif
+
+  double sessionTimeout() const { return _sessionTimeout; }
   
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
@@ -91,6 +93,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   bool _localAuthentication;
   bool _active;
   double _authenticationTimeout;
+  double _sessionTimeout;
   
   mutable std::mutex _jwtSecretsLock;
 
