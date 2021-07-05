@@ -274,8 +274,9 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serv
           // Only check if found
           std::shared_ptr<Node> healthNode = it->second;
           // Check its status:
-          auto status = healthNode->hasAsString("Status");
-          if (status.value() == "GOOD" || status.value() == "BAD") {
+
+          if (auto status = healthNode->hasAsString("Status");
+              status && (status.value() == "GOOD" || status.value() == "BAD")) {
             ++count;
           }
         }
@@ -301,8 +302,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
         // Only check if found
         std::shared_ptr<Node> healthNode = it->second;
         // Check its status:
-        auto status = healthNode->hasAsString("Status");
-        if (status.value() == "GOOD" || status.value() == "BAD") {
+        if (auto status = healthNode->hasAsString("Status");
+            status && (status.value() == "GOOD" || status.value() == "BAD")) {
           ++count;
         }
       }

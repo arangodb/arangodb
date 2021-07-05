@@ -97,14 +97,14 @@ struct HealthRecord {
 
   HealthRecord& operator=(Node const& node) {
     version = 0;
-    if (shortName.empty()) {
-      shortName = node.hasAsString("ShortName").value();
+    if (auto newShortName = node.hasAsString("ShortName"); shortName.empty() && newShortName) {
+      shortName = newShortName.value();
     }
-    if (endpoint.empty()) {
-      endpoint = node.hasAsString("Endpoint").value();
+    if (auto newEndpoint = node.hasAsString("Endpoint"); endpoint.empty() && newEndpoint) {
+      endpoint = newEndpoint.value();
     }
-    if (hostId.empty()) {
-      hostId = node.hasAsString("Host").value();
+    if (auto newHostId = node.hasAsString("Host"); hostId.empty() && newHostId) {
+      hostId = newHostId.value();
     }
     if (node.has("Status")) {
       status = node.hasAsString("Status").value();
