@@ -1545,7 +1545,8 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       ->addOption("--initial-connect-retries",
           "number of connect retries for initial connection",
           new UInt32Parameter(&_options.initialConnectRetries))
-      .setIntroducedIn(30713);
+      .setIntroducedIn(30713)
+      .setIntroducedIn(30800);
 
   options->addOption("--include-system-collections",
                      "include system collections",
