@@ -27,14 +27,16 @@
 // / @author Copyright 2015-2016, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var interfaces = require('mocha/lib/interfaces');
-var MochaContext = require('mocha/lib/context');
-var MochaSuite = require('mocha/lib/suite');
-var MochaRunner = require('mocha/lib/runner');
-var BaseReporter = require('mocha/lib/reporters/base');
-var DefaultReporter = require('mocha/lib/reporters/json');
-var createStatsCollector = require('mocha/lib/stats-collector');
-var escapeRe = require('mocha/node_modules/escape-string-regexp');
+var interfaces = {
+  bdd: require('@arangodb/mocha/bdd'),
+  tdd: require('@arangodb/mocha/tdd'),
+  exports: require('@arangodb/mocha/exports')
+};
+var MochaContext = require('@arangodb/mocha/context');
+var MochaSuite = require('@arangodb/mocha/suite');
+var MochaRunner = require('@arangodb/mocha/runner');
+var createStatsCollector = require('@arangodb/mocha/stats-collector');
+const util = require('util');
 
 function notIn (arr) {
   return function (item) {
@@ -81,10 +83,13 @@ exports.run = function runMochaTests (run, files, reporterName, grep) {
   var mocha = {
     options: options,
     grep (re) {
-      if (typeof re === 'string') {
-        re = new RegExp(escapeRe(re));
-      } else if (Array.isArray(re)) {
-        re = new RegExp(re.map(v => escapeRe(v)).join("|"));
+      if (re) {
+        if (!Array.isArray(re)) {
+          re = [re];
+        }
+        re = new RegExp(re.map(
+          v => v.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&")
+        ).join("|"));
       }
       this.options.grep = re;
       return this;
@@ -136,6 +141,166 @@ exports.run = function runMochaTests (run, files, reporterName, grep) {
 
   return runner.testResults || reporter.stats;
 };
+
+/**
+ * Return a plain-object representation of `test`
+ * free of cyclic properties etc.
+ *
+ * @private
+ * @param {Object} test
+ * @return {Object}
+ */
+function clean(test) {
+  var err = test.err || {};
+  if (err instanceof Error) {
+    err = errorJSON(err);
+  }
+
+  return {
+    title: test.title,
+    fullTitle: test.fullTitle(),
+    duration: test.duration,
+    currentRetry: test.currentRetry(),
+    err: cleanCycles(err)
+  };
+}
+
+/**
+ * Replaces any circular references inside `obj` with '[object Object]'
+ *
+ * @private
+ * @param {Object} obj
+ * @return {Object}
+ */
+function cleanCycles(obj) {
+  var cache = [];
+  return JSON.parse(
+    JSON.stringify(obj, function(key, value) {
+      if (typeof value === 'object' && value !== null) {
+        if (cache.indexOf(value) !== -1) {
+          // Instead of going in a circle, we'll print [object Object]
+          return '' + value;
+        }
+        cache.push(value);
+      }
+
+      return value;
+    })
+  );
+}
+
+/**
+ * Transform an Error object into a JSON object.
+ *
+ * @private
+ * @param {Error} err
+ * @return {Object}
+ */
+function errorJSON(err) {
+  var res = {};
+  Object.getOwnPropertyNames(err).forEach(function(key) {
+    res[key] = err[key];
+  }, err);
+  return res;
+}
+
+/**
+ * Constructs a new `JSON` reporter instance.
+ *
+ * @public
+ * @class JSON
+ * @memberof Mocha.reporters
+ * @extends Mocha.reporters.Base
+ * @param {Runner} runner - Instance triggers reporter actions.
+ * @param {Object} [options] - runner options
+ */
+ function DefaultReporter(runner, options) {
+  BaseReporter.call(this, runner, options);
+
+  var self = this;
+  var tests = [];
+  var pending = [];
+  var failures = [];
+  var passes = [];
+
+  runner.on('test end', function(test) {
+    tests.push(test);
+  });
+
+  runner.on('pass', function(test) {
+    passes.push(test);
+  });
+
+  runner.on('fail', function(test) {
+    failures.push(test);
+  });
+
+  runner.on('pending', function(test) {
+    pending.push(test);
+  });
+
+  runner.once('end', function() {
+    var obj = {
+      stats: self.stats,
+      tests: tests.map(clean),
+      pending: pending.map(clean),
+      failures: failures.map(clean),
+      passes: passes.map(clean)
+    };
+
+    runner.testResults = obj;
+
+    process.stdout.write(JSON.stringify(obj, null, 2));
+  });
+}
+
+/**
+ * Constructs a new `Base` reporter instance.
+ *
+ * @description
+ * All other reporters generally inherit from this reporter.
+ *
+ * @public
+ * @class
+ * @memberof Mocha.reporters
+ * @param {Runner} runner - Instance triggers reporter actions.
+ * @param {Object} [options] - runner options
+ */
+ function BaseReporter(runner, options) {
+  var failures = (this.failures = []);
+
+  if (!runner) {
+    throw new TypeError('Missing runner argument');
+  }
+  this.options = options || {};
+  this.runner = runner;
+  this.stats = runner.stats; // assigned so Reporters keep a closer reference
+
+  runner.on("pass", function(test) {
+    if (test.duration > test.slow()) {
+      test.speed = 'slow';
+    } else if (test.duration > test.slow() / 2) {
+      test.speed = 'medium';
+    } else {
+      test.speed = 'fast';
+    }
+  });
+
+  runner.on("fail", function(test, err) {
+    if (
+      err &&
+      err.showDiff !== false &&
+      String(err.actual) === String(err.expected) &&
+      err.expected !== undefined &&
+      (typeof err.actual !== "string" || typeof err.expected !== "string")
+    ) {
+      err.actual = util.inspect(err.actual);
+      err.expected = util.inspect(err.expected);
+    }
+    test.err = err;
+    failures.push(test);
+  });
+}
 
 function StreamReporter (runner) {
   var self = this;
