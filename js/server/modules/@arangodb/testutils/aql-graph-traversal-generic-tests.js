@@ -2647,8 +2647,11 @@ function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
 
 function testCompleteGraphDfsUniqueVerticesPathD3NotHasExtra(testGraph) {
   internal.debugSetFailAt("RocksDBEdgeIndex::disableHasExtra");
-  completeGraphDfsUniqueVerticesPathD3Helper(testGraph);
-  internal.debugRemoveFailAt("RocksDBEdgeIndex::disableHasExtra");
+  try {
+    completeGraphDfsUniqueVerticesPathD3Helper(testGraph);
+  } finally {
+    internal.debugRemoveFailAt("RocksDBEdgeIndex::disableHasExtra");
+  }
 }
 
 function testCompleteGraphDfsUniqueVerticesUniqueEdgesPathD2(testGraph) {
