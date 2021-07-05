@@ -60,7 +60,8 @@ auto detectConflict(replicated_log::InMemoryLog const& log, TermIndexPair prevLo
 struct LogActionContext {
   virtual ~LogActionContext() = default;
   virtual auto dropReplicatedLog(LogId) -> Result = 0;
-  virtual auto ensureReplicatedLog(LogId) -> replicated_log::ReplicatedLog& = 0;
+  virtual auto ensureReplicatedLog(LogId)
+      -> std::shared_ptr<replicated_log::ReplicatedLog> = 0;
   virtual auto buildAbstractFollowerImpl(LogId, ParticipantId)
       -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
 };

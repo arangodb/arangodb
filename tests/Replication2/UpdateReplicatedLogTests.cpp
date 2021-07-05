@@ -59,12 +59,12 @@ struct ReplicationMaintenanceActionTest : ReplicatedLogTest, algorithms::LogActi
     }
   }
 
-  auto ensureReplicatedLog(LogId id) -> replicated_log::ReplicatedLog& final {
+  auto ensureReplicatedLog(LogId id) -> std::shared_ptr<replicated_log::ReplicatedLog> final {
     if (auto it = logs.find(id); it != logs.end()) {
-      return *it->second;
+      return it->second;
     }
 
-    return *logs.emplace(id, makeReplicatedLog(id)).first->second;
+    return logs.emplace(id, makeReplicatedLog(id)).first->second;
   }
 
   auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
@@ -140,7 +140,6 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_wrong_rebo
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
   EXPECT_TRUE(std::holds_alternative<FollowerStatus>(log->getParticipant()->getStatus()));
 }
-
 
 TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follower) {
   auto const logId = LogId{12};

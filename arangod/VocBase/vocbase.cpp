@@ -103,7 +103,7 @@ struct arangodb::VocBaseLogManager {
             std::move(database))) {}
 
   [[nodiscard]] auto getReplicatedLogById(replication2::LogId id) const
-      -> replication2::replicated_log::ReplicatedLog const& {
+      -> std::shared_ptr<replication2::replicated_log::ReplicatedLog const> {
     if (auto iter = _logs.find(id); iter != _logs.end()) {
       return iter->second;
     }
@@ -113,7 +113,7 @@ struct arangodb::VocBaseLogManager {
   }
 
   [[nodiscard]] auto getReplicatedLogById(replication2::LogId id)
-      -> replication2::replicated_log::ReplicatedLog& {
+      -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
     if (auto iter = _logs.find(id); iter != _logs.end()) {
       return iter->second;
     }
@@ -125,15 +125,15 @@ struct arangodb::VocBaseLogManager {
   auto resignAll() {
     std::unique_lock guard(_mutex);
     for (auto&& [id, log] : _logs) {
-      auto core = log.drop();
-      core.release();
+      auto core = log->drop();
+      core.reset();
     }
     _logs.clear();
   }
 
   [[nodiscard]] auto createReplicatedLog(TRI_vocbase_t& vocbase, replication2::LogId id,
                                          std::optional<std::string> const& collectionName)
-      -> arangodb::ResultT<std::reference_wrapper<replication2::replicated_log::ReplicatedLog>> {
+      -> arangodb::ResultT<std::shared_ptr<replication2::replicated_log::ReplicatedLog>> {
     LOG_CTX("04b14", DEBUG, _logContext) << "Creating replicated log " << id;
     std::unique_lock guard(_mutex);
 
@@ -146,21 +146,22 @@ struct arangodb::VocBaseLogManager {
       }
     });
 
-    if (auto iter = _logs.lower_bound(id); iter == _logs.end() || iter->first != id) {
+    if (auto iter = _logs.find(id); iter == _logs.end()) {
       auto&& persistedLog = engine.createReplicatedLog(vocbase, id);
       if (persistedLog.fail()) {
         return persistedLog.result();
       }
       auto&& logCore = std::make_unique<replication2::replicated_log::LogCore>(
           std::move(persistedLog.get()));
-      auto it = _logs.try_emplace(iter, id, std::move(logCore),
-                                  _server.getFeature<ReplicatedLogFeature>().metrics(),
-                                  logContext);
+      auto it = _logs.try_emplace(
+          id, std::make_shared<arangodb::replication2::replicated_log::ReplicatedLog>(
+                  std::move(logCore),
+                  _server.getFeature<ReplicatedLogFeature>().metrics(), logContext));
       _server.getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_add(1);
       _server.getFeature<ReplicatedLogFeature>()
           .metrics()
           ->replicatedLogCreationNumber->count();
-      return std::ref(it->second);
+      return it.first->second;
     } else {
       return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
     }
@@ -173,7 +174,7 @@ struct arangodb::VocBaseLogManager {
     StorageEngine& engine = _server.getFeature<EngineSelectorFeature>().engine();
 
     if (auto iter = _logs.find(id); iter != _logs.end()) {
-      auto core = iter->second.drop();
+      auto core = iter->second->drop();
       auto res = engine.dropReplicatedLog(vocbase, std::move(*core).releasePersistedLog());
       if (res.fail()) {
         return res;
@@ -193,7 +194,7 @@ struct arangodb::VocBaseLogManager {
 
   application_features::ApplicationServer& _server;
   LogContext _logContext;
-  std::map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::ReplicatedLog> _logs;
+  std::unordered_map<arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>> _logs;
   std::mutex _mutex;
 };
 
@@ -1966,19 +1967,19 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor, bool lock
 }
 
 auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
-    -> arangodb::replication2::replicated_log::ReplicatedLog& {
+    -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog> {
   std::unique_lock guard(_logManager->_mutex);
   return _logManager->getReplicatedLogById(id);
 }
 
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogLeaderById(arangodb::replication2::LogId id) const
     -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> {
-  return getReplicatedLogById(id).getLeader();
+  return getReplicatedLogById(id)->getLeader();
 }
 
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
     -> std::shared_ptr<replication2::replicated_log::LogFollower> {
-  return getReplicatedLogById(id).getFollower();
+  return getReplicatedLogById(id)->getFollower();
 }
 
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogs() const
@@ -1986,7 +1987,7 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
   std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus> result;
   std::unique_lock guard(_logManager->_mutex);
   for (auto& [id, log] : _logManager->_logs) {
-    result.emplace(id, log.getParticipant()->getStatus());
+    result.emplace(id, log->getParticipant()->getStatus());
   }
   return result;
 }
@@ -1994,7 +1995,7 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 using namespace arangodb::replication2;
 
 auto TRI_vocbase_t::createReplicatedLog(LogId id, std::optional<std::string> const& collectionName)
-    -> arangodb::ResultT<std::reference_wrapper<replicated_log::ReplicatedLog>> {
+    -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>> {
   return _logManager->createReplicatedLog(*this, id, collectionName);
 }
 
@@ -2043,10 +2044,10 @@ void TRI_vocbase_t::registerReplicatedLog(arangodb::replication2::LogId logId,
   std::unique_lock guard(_logManager->_mutex);
   auto core = std::make_unique<arangodb::replication2::replicated_log::LogCore>(
       std::move(persistedLog));
-  auto [iter, inserted] =
-      _logManager->_logs.try_emplace(logId, std::move(core),
-                                     server().getFeature<ReplicatedLogFeature>().metrics(),
-                                     LogContext(Logger::REPLICATION2));
+  auto [iter, inserted] = _logManager->_logs.try_emplace(
+      logId, std::make_shared<replication2::replicated_log::ReplicatedLog>(
+                 std::move(core), server().getFeature<ReplicatedLogFeature>().metrics(),
+                 LogContext(Logger::REPLICATION2)));
   server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_add(1);
   TRI_ASSERT(inserted);
 }
@@ -2061,7 +2062,7 @@ void TRI_vocbase_t::unregisterReplicatedLog(arangodb::replication2::LogId id) {
 
 auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id,
                                         std::optional<std::string> const& collectionName)
-    -> arangodb::replication2::replicated_log::ReplicatedLog& {
+    -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog> {
   {
     std::unique_lock guard(_logManager->_mutex);
     if (auto iter = _logManager->_logs.find(id); iter != _logManager->_logs.end()) {
@@ -2073,7 +2074,7 @@ auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id,
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result());
   }
-  return res->get();
+  return res.get();
 }
 
 // -----------------------------------------------------------------------------

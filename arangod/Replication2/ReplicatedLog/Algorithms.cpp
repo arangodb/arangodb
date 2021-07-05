@@ -221,7 +221,7 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
     TRI_ASSERT(logId == spec->id);
     TRI_ASSERT(spec->currentTerm.has_value());
     auto& leader = spec->currentTerm->leader;
-    auto& log = ctx.ensureReplicatedLog(logId);
+    auto log = ctx.ensureReplicatedLog(logId);
 
     if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
       replicated_log::LogLeader::TermData termData;
@@ -239,7 +239,7 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
         }
       }
 
-      auto newLeader = log.becomeLeader(termData, follower);
+      auto newLeader = log->becomeLeader(termData, follower);
       newLeader->runAsyncStep(); // TODO move this call into becomeLeader?
     } else {
       auto leaderString = std::optional<ParticipantId>{};
@@ -247,7 +247,7 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
         leaderString = spec->currentTerm->leader->serverId;
       }
 
-      std::ignore = log.becomeFollower(serverId, spec->currentTerm->term, leaderString);
+      std::ignore = log->becomeFollower(serverId, spec->currentTerm->term, leaderString);
     }
 
     return Result();

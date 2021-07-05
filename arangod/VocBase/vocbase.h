@@ -175,7 +175,7 @@ struct TRI_vocbase_t {
  public:
   std::shared_ptr<arangodb::VocBaseLogManager> _logManager;
   [[nodiscard]] auto getReplicatedLogById(arangodb::replication2::LogId id) const
-      -> arangodb::replication2::replicated_log::ReplicatedLog&;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
   [[nodiscard]] auto getReplicatedLogLeaderById(arangodb::replication2::LogId id) const
       -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
   [[nodiscard]] auto getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
@@ -184,11 +184,11 @@ struct TRI_vocbase_t {
       -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
   [[nodiscard]] auto createReplicatedLog(arangodb::replication2::LogId id,
                                          std::optional<std::string> const& collectionName)
-      -> arangodb::ResultT<std::reference_wrapper<arangodb::replication2::replicated_log::ReplicatedLog>>;
+      -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>>;
   [[nodiscard]] auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;
   auto ensureReplicatedLog(arangodb::replication2::LogId id,
                            std::optional<std::string> const& collectionName)
-      -> arangodb::replication2::replicated_log::ReplicatedLog&;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;

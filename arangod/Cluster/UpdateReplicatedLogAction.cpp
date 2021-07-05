@@ -53,7 +53,8 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
     auto dropReplicatedLog(LogId id) -> arangodb::Result override {
       return vocbase.dropReplicatedLog(id);
     }
-    auto ensureReplicatedLog(LogId id) -> replicated_log::ReplicatedLog& override {
+    auto ensureReplicatedLog(LogId id)
+        -> std::shared_ptr<replicated_log::ReplicatedLog> override {
       return vocbase.ensureReplicatedLog(id, std::nullopt);
     }
     auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)

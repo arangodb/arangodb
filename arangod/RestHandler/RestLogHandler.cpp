@@ -262,7 +262,7 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
 
   auto getLogStatus(LogId id) const
       -> futures::Future<replication2::replicated_log::LogStatus> override {
-    return vocbase.getReplicatedLogById(id).getParticipant()->getStatus();
+    return vocbase.getReplicatedLogById(id)->getParticipant()->getStatus();
   }
 
   auto getLogEntryByIndex(LogId id, LogIndex idx) const -> futures::Future<std::optional<LogEntry>> override {
@@ -388,7 +388,7 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
     if (!ServerState::instance()->isDBServer()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
-    auto& log = _vocbase.getReplicatedLogById(logId);
+    auto log = _vocbase.getReplicatedLogById(logId);
 
     auto term = LogTerm{body.get(StaticStrings::Term).getNumericValue<uint64_t>()};
     auto writeConcern = body.get(StaticStrings::WriteConcern).getNumericValue<std::size_t>();
@@ -405,16 +405,16 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
     termData.term = term;
     termData.writeConcern = writeConcern;
     termData.waitForSync = waitForSync;
-    log.becomeLeader(termData, follower);
+    log->becomeLeader(termData, follower);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
   } else if (verb == "becomeFollower") {
     if (!ServerState::instance()->isDBServer()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
-    auto& log = _vocbase.getReplicatedLogById(logId);
+    auto log = _vocbase.getReplicatedLogById(logId);
     auto term = LogTerm{body.get(StaticStrings::Term).getNumericValue<uint64_t>()};
     auto leaderId = body.get(StaticStrings::Leader).copyString();
-    log.becomeFollower(ServerState::instance()->getId(), term, leaderId);
+    log->becomeFollower(ServerState::instance()->getId(), term, leaderId);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
 
   } else if (verb == "appendEntries") {
