@@ -69,7 +69,7 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
 void RocksDBBackgroundErrorListener::OnErrorRecoveryCompleted(rocksdb::Status /* old_bg_error */) {
   _called.store(false, std::memory_order_relaxed);
     
-  LOG_TOPIC("8ff56", INFO, Logger::ROCKSDB)
+  LOG_TOPIC("8ff56", WARN, Logger::ROCKSDB)
       << "RocksDB resuming operations after background error";
 }
 
