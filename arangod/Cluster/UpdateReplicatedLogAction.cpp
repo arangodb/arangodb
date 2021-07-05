@@ -85,8 +85,9 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
   auto ctx = LogActionContextMaintenance{guard.database(), pool};
-  auto result = replication2::algorithms::updateReplicatedLog(ctx, serverId, rebootId,
-                                                              logId, spec);
+  auto result =
+      replication2::algorithms::updateReplicatedLog(ctx, serverId, rebootId, logId,
+                                                    spec.has_value() ? &spec.value() : nullptr);
 
   if (result.fail()) {
     LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)

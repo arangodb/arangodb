@@ -34,6 +34,10 @@ struct ReplicationMaintenanceTest : ::testing::Test {
   std::vector<std::shared_ptr<ActionDescription>> actions;
 };
 
+/*
+ * These tests check if the maintenance generates an action when necessary.
+ */
+
 TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};

@@ -209,10 +209,12 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
   }
 }
 
-auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId, RebootId rebootId, LogId logId, std::optional<agency::LogPlanSpecification> const& spec) -> arangodb::Result {
+auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
+                                     RebootId rebootId, LogId logId,
+                                     agency::LogPlanSpecification const* spec)
+    -> arangodb::Result {
   return basics::catchToResult([&]() -> Result {
-
-    if (!spec.has_value()) {
+    if (spec == nullptr) {
       return ctx.dropReplicatedLog(logId);
     }
 

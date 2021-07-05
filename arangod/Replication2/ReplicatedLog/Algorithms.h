@@ -67,7 +67,6 @@ struct LogActionContext {
 
 auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
                          RebootId rebootId, LogId logId,
-                         std::optional<agency::LogPlanSpecification> const& spec)
-    -> arangodb::Result;
+                         agency::LogPlanSpecification const* spec) -> arangodb::Result;
 
 }  // namespace arangodb::replication2::algorithms
