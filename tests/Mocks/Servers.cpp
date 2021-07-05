@@ -627,9 +627,7 @@ void MockClusterServer::buildCollectionProperties(VPackBuilder& props,
     }
 
     if (additionalProperties.isObject()) {
-      for (auto it : VPackObjectIterator(additionalProperties)) {
-        props.add(it.key.copyString(), it.value.value());
-      }
+      props.add(VPackObjectIterator(additionalProperties));
     }
   }
 }
