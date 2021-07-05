@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
-#include "Cluster/FollowerInfo.h"
 #include "Futures/Future.h"
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
@@ -82,6 +81,7 @@ struct Options;
 /// @brief forward declarations
 class ClusterFeature;
 class CollectionNameResolver;
+class FollowerInfo;
 class Index;
 class LocalDocumentId;
 class ManagedDocumentResult;

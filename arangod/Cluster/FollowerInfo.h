@@ -247,7 +247,7 @@ class FollowerInfo {
         // We know that we still do not have enough followers
         LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
             << "Shard " << _docColl->name() << " is temporarily in read-only mode, since we have less than writeConcern ("
-            << basics::StringUtils::itoa(_docColl->writeConcern())
+            << _docColl->writeConcern()
             << ") replicas in sync.";
         return false;
       }
