@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix potential memleak in Pregel conductor garbage collection.
+
 * Updated ArangoDB Starter to 0.15.1-preview-3.
 
 * Added garbage collection for finished and failed Pregel conductors.
