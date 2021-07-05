@@ -1,3 +1,10 @@
+v3.8.1 (XXXX-XX-XX)
+-------------------
+
+* Fix numeric overflow in AQL WINDOW node cost estimation if the number of
+  preceding rows was set to `unbounded`.
+
+
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
