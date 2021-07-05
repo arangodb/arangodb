@@ -1,6 +1,12 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Add following term ids, which prevents old synchronous replication requests
+  to be accepted after a follower was dropped and has gotten in sync again.
+  This makes the chaos tests which delay synchronous replication requests
+  more reliable and prevent inconsistent shard replicas under bad network
+  conditions.
+
 * Fix display of running and slow queries in web UI when there are multiple
   coordinators. Previously, the display order of queries was undefined, which
   could lead to queries from one coordinator being display on top once and then
