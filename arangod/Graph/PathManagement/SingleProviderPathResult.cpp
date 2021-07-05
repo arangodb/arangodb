@@ -37,6 +37,10 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+namespace arangodb::graph::enterprise {
+class SmartGraphStep;
+}  // namespace arangodb
+
 template <class ProviderType, class PathStoreType, class Step>
 SingleProviderPathResult<ProviderType, PathStoreType, Step>::SingleProviderPathResult(
     Step* step, ProviderType& provider, PathStoreType& store)
@@ -109,49 +113,54 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
 template <class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntry(
     arangodb::velocypack::Builder& result, size_t& currentLength) -> void {
-  size_t prevIndex = 0;
+  if constexpr (!std::is_same_v<enterprise::SmartGraphStep, Step>) {  // TODO: eventually move to EE
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  } else {
+    size_t prevIndex = 0;
 
-  auto writeStepToBuilder = [&](Step& step) {
-    VPackArrayBuilder arrayGuard(&result);
-    // Create a VPackValue based on the char* inside the HashedStringRef, will save us a String copy each time.
-    result.add(VPackValue(step.getVertex().getID().begin()));
+    auto writeStepToBuilder = [&](Step& step) {
+      VPackArrayBuilder arrayGuard(&result);
+      // Create a VPackValue based on the char* inside the HashedStringRef, will save us a String copy each time.
+      result.add(VPackValue(step.getVertex().getID().begin()));
 
-    // Index position of previous step
-    result.add(VPackValue(prevIndex));
-    // The depth of the current step
-    result.add(VPackValue(step.getDepth()));
+      // Index position of previous step
+      result.add(VPackValue(prevIndex));
+      // The depth of the current step
+      result.add(VPackValue(step.getDepth()));
 
-    bool isResponsible = step.isResponsible(_provider.trx());
-    // Print if we have a loose end here (looseEnd := this server is NOT responsible)
-    result.add(VPackValue(!isResponsible));
-    if (isResponsible) {
-      // This server needs to provide the data for the vertex
-      _provider.addVertexToBuilder(step.getVertex(), result);
-    } else {
-      result.add(VPackSlice::nullSlice());
+      bool isResponsible = step.isResponsible(_provider.trx());
+      // Print if we have a loose end here (looseEnd := this server is NOT responsible)
+      result.add(VPackValue(!isResponsible));
+      if (isResponsible) {
+        // This server needs to provide the data for the vertex
+        _provider.addVertexToBuilder(step.getVertex(), result);
+      } else {
+        result.add(VPackSlice::nullSlice());
+      }
+
+      _provider.addEdgeToBuilder(step.getEdge(), result);
+    };  // TODO: Create method instead of lambda
+
+    std::vector<Step*> toWrite{};
+
+    _store.modifyReversePath(*_step, [&](Step& step) -> bool {
+      if (!step.hasLocalSchreierIndex()) {
+        toWrite.emplace_back(&step);
+        return true;
+      } else {
+        prevIndex = step.getLocalSchreierIndex();
+        return false;
+      }
+    });
+
+    for (auto it = toWrite.rbegin(); it != toWrite.rend(); it++) {
+      TRI_ASSERT(!(*it)->hasLocalSchreierIndex());
+      writeStepToBuilder(**it);
+
+      prevIndex = currentLength;
+      (*it)->setLocalSchreierIndex(currentLength++);
     }
-
-    _provider.addEdgeToBuilder(step.getEdge(), result);
-  };  // TODO: Create method instead of lambda
-
-  std::vector<Step*> toWrite{};
-
-  _store.modifyReversePath(*_step, [&](Step& step) -> bool {
-    if (!step.hasLocalSchreierIndex()) {
-      toWrite.emplace_back(&step);
-      return true;
-    } else {
-      prevIndex = step.getLocalSchreierIndex();
-      return false;
-    }
-  });
-
-  for (auto it = toWrite.rbegin(); it != toWrite.rend(); it++) {
-    TRI_ASSERT(!(*it)->hasLocalSchreierIndex());
-    writeStepToBuilder(**it);
-
-    prevIndex = currentLength;
-    (*it)->setLocalSchreierIndex(currentLength++);
   }
 }
 

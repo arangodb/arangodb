@@ -76,8 +76,6 @@ bool SingleServerProvider::Step::isResponsible(transaction::Methods* trx) const 
 };
 #endif
 
-
-
 void SingleServerProvider::addEdgeToBuilder(Step::Edge const& edge,
                                             arangodb::velocypack::Builder& builder) {
   if (edge.isValid()) {
