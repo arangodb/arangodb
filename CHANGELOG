@@ -17,7 +17,7 @@ devel
           OPTIONS { indexHint: 'myIndex' } /* should be used above for FOR */
 
   In case a wrong option attribute is used, a warning with code 1575 will be
-  raised. This is a behavior 
+  raised. 
   By default, warnings are reported but do not lead to the query being aborted. 
   This can be toggled by the startup option `--query.fail-on-warnings` or the 
   per-query runtime option `failOnWarnings`.
