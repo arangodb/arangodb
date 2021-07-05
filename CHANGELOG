@@ -4,6 +4,10 @@ v3.7.13 (XXXX-XX-XX)
 * Fixed potential segfault in tcp/ssl socket handling (potentially fixes issue
   #14431).
 
+* Added a retry loop for arangorestore during the initial connection phase. The
+  number of retries defaults to 3 and can be configured using
+  --initial-connect-retries.
+
 * Fixed display of running and slow queries in web UI when there are multiple
   coordinators. Previously, the display order of queries was undefined, which
   could lead to queries from one coordinator being display on top once and then
