@@ -672,6 +672,10 @@ void CrashHandler::installCrashHandler() {
   SetUnhandledExceptionFilter(unhandledExceptionFilter);
 #endif
 
+#if defined(__GNUC__) && (__GNUC__ == 11) && (__GNUC_MINOR__ <= 1)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wnonnull"
+#endif
   // install handler for std::terminate()
   std::set_terminate([]() {
     char buffer[256];
@@ -707,6 +711,9 @@ void CrashHandler::installCrashHandler() {
 
     CrashHandler::crash(&buffer[0]);
   });
+#if defined(__GNUC__) && (__GNUC__ == 11) && (__GNUC_MINOR__ <= 1)
+#pragma GCC diagnostic pop
+#endif
 }
 
 #ifdef _WIN32
