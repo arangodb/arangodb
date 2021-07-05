@@ -1,9 +1,96 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
-* Enable process metrics on agent instances by default. Previously, some 
-  metrics (including the metrics starting with `arangodb_process` prefix) were
-  not returned by agent instances.
+* Enable process metrics on agent instances by default. Previously, some metrics
+  (including the metrics starting with `arangodb_process` prefix) were not
+  returned by agent instances.
+
+* Fixed potential segfault in tcp/ssl socket handling (potentially fixes issue
+  #14431).
+
+* Added a retry loop for arangorestore during the initial connection phase. The
+  number of retries defaults to 3 and can be configured using
+  --initial-connect-retries.
+
+* Fixed display of running and slow queries in web UI when there are multiple
+  coordinators. Previously, the display order of queries was undefined, which
+  could lead to queries from one coordinator being display on top once and then
+  the queries from another. That made using this UI harder than necessary.
+
+  Now queries are sorted for display, according to their query IDs.
+
+* Fixed an issue in index selection, when the selectivty estimate of another
+  prefix index was used without checking if the other index covered the FILTER
+  condition.
+
+  For example, given the following indexes:
+  
+  - index 1: ["e", "a", "b", "c"]
+  - index 2: ["e", "a", "b"]
+  - index 3: ["d", "e", "f", "g"]
+
+  and the FILTER condition `d == 1 && e == 2 && f == 3`, then the best index to
+  pick would be index 3. However, the optimizer may have picked index 1 here.
+  All indexes are valid candidates for this FILTER condition, but none of the
+  indexes covered all attributes of the FILTER condition. So the index
+  selectivity estimates were (correctly) not used directly to determine the best
+  index.
+  The actual bug happened when comparing the usefulness of the candidate
+  indexes, when figuring out that even though the selectivity estimate for index
+  1 could not be used, but that there existed a prefix index of index 1 (index
+  2). The selectivity estimate of this index was taken _without_ checking that
+  prefix index actually satisfied the FILTER condition fully.
+  The prefix index' selectivity estimate must only be used if it fully satisfies
+  the FILTER condition, which was not the case here.
+
+* Include sender pid in shutdown log messages, so that it becomes easier to
+  figure out which process sent a shutdown signal.
+
+* For cluster AQL queries, let the coordinator determine the query id to be used
+  on DB servers. This allows the coordinator to roll back AQL query setup
+  requests via the query id. Previously, the DB servers each generated a local
+  query id and returned it to the coordinator, who would then keep track of them
+  for later use. The problem with this was that if an AQL query setup request
+  timed out, the coordinator had no way to roll it back.
+
+  In addition, if setting up a query takes long on a DB server so that the
+  coordinator sends a rollback request, there are some measures in place for the
+  unlikely case in which the rollback request overtakes the setup request. In
+  this case, the rollback request will not find a query yet, but will register a
+  tombstone for it. Once the query gets registered by the delayed request, it
+  will (correctly) fail because of the tombstone.
+
+* Removed a special case for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated) were handled in
+  a special way without performing any writes. The problem was that such updates
+  did not update the local state, but could have been replicated to followers.
+  This special empty update case is now removed and update operations that do
+  not update any attributes are treated as normal write operations both locally
+  and in the replication.
+
+* On a failure during synchronous replication, do not remove the failed follower
+  from the list of known servers in the transaction.
+  If we do, we would not be able to send the commit/abort to the follower later.
+  However, we still need to send the commit/abort to the follower at transaction
+  end, because the follower may be responsible  for _other_ shards as well.
+
+  This change also removes dangling transactions that could stay around on
+  followers until they expired after the transaction idle timeout (180 seconds),
+  and that could prevent a follower from getting back in sync during this
+  period.
+
+* Added more context to "dropping follower" messages, so it is easier to analyze
+  what exactly went wrong.
+
+* Fixed invalid shard synchronization for documents not added via INSERT with
+  `overwriteMode` set to `ignore`. In this case, if a document with the given
+  key already exists, it is not changed on the leader (i.e. no write happens on
+  the leader). However, a write was replicated to the follower, which was wrong.
+  This write is now suppressed, which can only make such insert operations
+  faster.
+
+* Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+  (DEVSUPP-753).
 
 * Updated arangosync to 1.6.0.
 
