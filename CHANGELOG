@@ -1,6 +1,10 @@
 devel
 -----
 
+* Enable process metrics on agent instances by default. Previously, some 
+  metrics (including the metrics starting with `arangodb_process` prefix) were
+  not returned by agent instances.
+
 * Fix potential memleak in Pregel conductor garbage collection.
 
 * Added a retry loop for arangorestore during the initial connection phase. The
