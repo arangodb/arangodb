@@ -39,7 +39,8 @@ const {
 } = jsunity.jsUnity.assertions;
 
 // The RestLogHandler is only available in maintainer mode.
-const isInMaintainerMode = require('internal').db._version(true)['maintainer-mode'];
+const isInMaintainerMode = require('internal').db._version(true)['maintainer-mode'] === 'true';
+const replication2Enabled = require('internal').db._version(true)['replication2-enabled'] === 'true';
 
 const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 
@@ -309,5 +310,7 @@ function ddlSuite() {
 if (isInMaintainerMode) {
   jsunity.run(dbServerApiSuite);
 }
-jsunity.run(ddlSuite);
+if (replication2Enabled) {
+  jsunity.run(ddlSuite);
+}
 return jsunity.done();

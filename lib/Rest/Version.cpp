@@ -45,6 +45,7 @@
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
+#include "Replication2/FeatureFlag.h"
 
 #include "3rdParty/iresearch/core/utils/version_defines.hpp"
 
@@ -258,6 +259,12 @@ void Version::initialize() {
 #else
   Values["libunwind"] = "false";
 #endif
+
+  if (::arangodb::replication2::EnableReplication2) {
+    Values["replication2-enabled"] = "true";
+  } else {
+    Values["replication2-enabled"] = "false";
+  }
 
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
