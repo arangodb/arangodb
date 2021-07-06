@@ -20,6 +20,6 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FeatureFlag.h"
+#include "FeatureFlags.h"
 
 bool const ::arangodb::replication2::EnableReplication2 = true;

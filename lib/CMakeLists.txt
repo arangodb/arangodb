@@ -102,6 +102,7 @@ add_library(arango STATIC
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/ErrorCode.cpp
+  Basics/FeatureFlags.cpp
   Basics/ResultError.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp

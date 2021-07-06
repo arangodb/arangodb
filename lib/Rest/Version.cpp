@@ -38,6 +38,7 @@
 #include <velocypack/Version.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/FeatureFlags.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/asio_ns.h"
@@ -45,7 +46,6 @@
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
-#include "Replication2/FeatureFlag.h"
 
 #include "3rdParty/iresearch/core/utils/version_defines.hpp"
 

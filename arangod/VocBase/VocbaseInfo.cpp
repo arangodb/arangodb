@@ -24,13 +24,13 @@
 #include "VocbaseInfo.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "Replication2/FeatureFlag.h"
 #include "Replication2/Version.h"
 #include "Utils/Events.h"
 
