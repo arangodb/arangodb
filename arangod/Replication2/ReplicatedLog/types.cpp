@@ -117,38 +117,48 @@ auto replicated_log::AppendEntriesResult::fromVelocyPack(velocypack::Slice slice
 }
 
 replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
-                                                         AppendEntriesErrorReason reason, MessageId id)
+                                                         AppendEntriesErrorReason reason,
+                                                         MessageId id) noexcept
     : logTerm(logTerm), errorCode(errorCode), reason(reason), messageId(id) {
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
              reason != replicated_log::AppendEntriesErrorReason::NONE);
 }
-replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, MessageId id)
+replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, MessageId id) noexcept
     : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NONE, id) {}
 
 replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm term,
                                                          replicated_log::MessageId id,
-                                                         TermIndexPair conflict)
+                                                         TermIndexPair conflict) noexcept
     : AppendEntriesResult(term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
                           AppendEntriesErrorReason::NO_PREV_LOG_MATCH, id) {
   this->conflict = conflict;
 }
 
-auto replicated_log::AppendEntriesResult::withConflict(LogTerm term, replicated_log::MessageId id,
-                                                       TermIndexPair conflict)
+auto replicated_log::AppendEntriesResult::withConflict(LogTerm term,
+                                                       replicated_log::MessageId id,
+                                                       TermIndexPair conflict) noexcept
     -> replicated_log::AppendEntriesResult {
   return AppendEntriesResult(term, id, conflict);
 }
 
 auto replicated_log::AppendEntriesResult::withRejection(LogTerm term, MessageId id,
-                                                        AppendEntriesErrorReason reason)
+                                                        AppendEntriesErrorReason reason) noexcept
     -> AppendEntriesResult {
   return AppendEntriesResult(term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
                              reason, id);
 }
-auto replicated_log::AppendEntriesResult::withPersistenceError(LogTerm term, replicated_log::MessageId id, Result const& res)
+
+auto replicated_log::AppendEntriesResult::withPersistenceError(LogTerm term,
+                                                               replicated_log::MessageId id,
+                                                               Result const& res) noexcept
     -> replicated_log::AppendEntriesResult {
   return AppendEntriesResult(term, res.errorNumber(),
                              AppendEntriesErrorReason::PERSISTENCE_FAILURE, id);
+}
+
+auto replicated_log::AppendEntriesResult::withOk(LogTerm term, replicated_log::MessageId id) noexcept
+    -> replicated_log::AppendEntriesResult {
+  return AppendEntriesResult(term, id);
 }
 
 void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {

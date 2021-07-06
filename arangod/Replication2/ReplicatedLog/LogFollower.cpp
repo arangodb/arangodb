@@ -52,6 +52,7 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
+#include <Basics/ScopeGuard.h>
 #include <Basics/application-exit.h>
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
@@ -146,18 +147,6 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
   MeasureTimeGuard measureTimeGuard{_logMetrics->replicatedLogFollowerAppendEntriesRtUs};
 
-  struct WaitForQueueResolve {
-    WaitForQueueResolve(Guarded<WaitForQueue>::mutex_guard_type guard, LogIndex commitIndex)
-        : _guard(std::move(guard)),
-          begin(_guard->begin()),
-          end(_guard->upper_bound(commitIndex)) {}
-
-    Guarded<WaitForQueue>::mutex_guard_type _guard;
-    WaitForQueue::iterator begin;
-    WaitForQueue::iterator end;
-  };
-
-  auto toBeResolved = std::make_unique<std::optional<WaitForQueueResolve>>();
   auto self = _guardedFollowerData.getLockedGuard();
 
 
@@ -192,61 +181,97 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     self->_inMemoryLog = std::move(newInMemoryLog);
   }
 
-  auto newInMemoryLog = self->_inMemoryLog.append(_loggerContext, req.entries);
+  struct WaitForQueueResolve {
+    WaitForQueueResolve(Guarded<WaitForQueue>::mutex_guard_type guard, LogIndex commitIndex) noexcept
+        : _guard(std::move(guard)),
+          begin(_guard->begin()),
+          end(_guard->upper_bound(commitIndex)) {}
 
-  auto iter = std::make_unique<ReplicatedLogIterator>(req.entries);
-  auto* core = self->_logCore.get();
-  // FIXME this code moves a unique_lock of a std::mutex into a future and a
-  //       different thread
-  auto commitToMemoryAndResolve = [self = std::move(self), req = std::move(req),
-                                   newInMemoryLog = std::move(newInMemoryLog),
-                                   toBeResolved = std::move(toBeResolved)](Result&& res) mutable {
-    static_assert(noexcept(res.fail()));
-    if (res.fail()) {
-      LOG_CTX("216d8", ERR, self->_self._loggerContext)
-          << "failed to insert log entries: " << res.errorMessage();
-      return std::make_pair(AppendEntriesResult::withPersistenceError(
-                                self->_self._currentTerm, req.messageId, res),
-                            DeferredAction{});
-    }
-
-    // commit the write in memory
-    static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
-    self->_inMemoryLog = std::move(newInMemoryLog);
-
-    LOG_CTX("dd72d", TRACE, self->_self._loggerContext)
-        << "appended " << req.entries.size() << " log entries after "
-        << req.prevLogIndex << ", leader commit index = " << req.leaderCommit;
-
-    if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog.empty()) {
-      self->_commitIndex =
-          std::min(req.leaderCommit, self->_inMemoryLog.back().logIndex());
-      LOG_CTX("1641d", TRACE, self->_self._loggerContext)
-          << "increment commit index: " << self->_commitIndex;
-
-      *toBeResolved = WaitForQueueResolve{self->_waitForQueue.getLockedGuard(),
-                                          self->_commitIndex};
-      return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
-                            DeferredAction([toBeResolved = std::move(toBeResolved)]() noexcept {
-                              for (auto it = toBeResolved->value().begin;
-                                   it != toBeResolved->value().end; it++) {
-                                if (!it->second.isFulfilled()) {
-                                  // This only throws if promise was fulfilled earlier.
-                                  it->second.setValue(std::shared_ptr<QuorumData>{});
-                                }
-                              }
-                            }));
-    }
-    return std::make_pair(AppendEntriesResult{self->_self._currentTerm, req.messageId},
-                          DeferredAction{});
+    Guarded<WaitForQueue>::mutex_guard_type _guard;
+    WaitForQueue::iterator begin;
+    WaitForQueue::iterator end;
   };
+
+  // Allocations
+  auto newInMemoryLog = self->_inMemoryLog.append(_loggerContext, req.entries);
+  auto iter = std::make_unique<ReplicatedLogIterator>(req.entries);
+  auto toBeResolved = std::make_unique<std::optional<WaitForQueueResolve>>();
+
+  auto* core = self->_logCore.get();
   static_assert(std::is_nothrow_move_constructible_v<decltype(newInMemoryLog)>);
+  auto commitToMemoryAndResolve = [maybeSelf = std::optional<decltype(self)>(std::move(self)),
+                                   req = std::move(req),
+                                   newInMemoryLog = std::move(newInMemoryLog),
+                                   toBeResolved = std::move(toBeResolved)](
+                                      Result&& res) mutable noexcept {
+    // We have to release the guard after this lambda is finished.
+    // Otherwise it would be release when the lambda is destructed, which
+    // happens// *after* the following thenValue calls have been executed. In particular
+    // the lock is held until the end of the future chain is reached.
+    // This will cause deadlocks.
+    TRI_DEFER({ maybeSelf.reset(); });
+    TRI_ASSERT(maybeSelf.has_value());
+    auto& self = maybeSelf.value();
+
+    {
+      // This code block does not throw any exceptions. This is executed after
+      // we wrote to the on-disk-log.
+      static_assert(noexcept(res.fail()));
+      if (res.fail()) {
+        LOG_CTX("216d8", ERR, self->_self._loggerContext)
+            << "failed to insert log entries: " << res.errorMessage();
+        return std::make_pair(AppendEntriesResult::withPersistenceError(
+                                  self->_self._currentTerm, req.messageId, res),
+                              DeferredAction{});
+      }
+
+      // commit the write in memory
+      static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
+      self->_inMemoryLog = std::move(newInMemoryLog);
+
+      LOG_CTX("dd72d", TRACE, self->_self._loggerContext)
+          << "appended " << req.entries.size() << " log entries after "
+          << req.prevLogIndex << ", leader commit index = " << req.leaderCommit;
+    }
+
+    auto action = std::invoke([&]() noexcept -> DeferredAction {
+      if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog.empty()) {
+        self->_commitIndex =
+            std::min(req.leaderCommit, self->_inMemoryLog.back().logIndex());
+        LOG_CTX("1641d", TRACE, self->_self._loggerContext)
+            << "increment commit index: " << self->_commitIndex;
+
+        *toBeResolved = WaitForQueueResolve{self->_waitForQueue.getLockedGuard(),
+                                            self->_commitIndex};
+        return DeferredAction([toBeResolved = std::move(toBeResolved)]() noexcept {
+          auto& resolve = toBeResolved->value();
+          for (auto it = resolve.begin; it != resolve.end; it = resolve._guard->erase(it)) {
+            if (!it->second.isFulfilled()) {
+              // This only throws if promise was fulfilled earlier.
+              it->second.setValue(std::shared_ptr<QuorumData>{});
+            }
+          }
+        });
+      }
+
+      return {};
+    });
+
+    static_assert(noexcept(AppendEntriesResult::withOk(self->_self._currentTerm, req.messageId)));
+    static_assert(std::is_nothrow_move_constructible_v<DeferredAction>);
+    return std::make_pair(AppendEntriesResult::withOk(self->_self._currentTerm, req.messageId), std::move(action));
+  };
   static_assert(std::is_nothrow_move_constructible_v<decltype(commitToMemoryAndResolve)>);
+
+  // Action
   return core->insertAsync(std::move(iter), req.waitForSync)
       .thenValue(std::move(commitToMemoryAndResolve))
       .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, toBeResolved] = res.get();
+        // Is is okay to fire here, because commitToMemoryAndResolve has release
+        // the guard already.
+        toBeResolved.fire();
         return std::move(result);
       });
 }

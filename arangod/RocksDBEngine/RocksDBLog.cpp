@@ -201,6 +201,9 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
           wb.Clear();
 
           start = current;
+          // We have to make sure that we do not split a single iterator in
+          // multiple write batches. Otherwise the in-memory-log could be out
+          // of sync.
           while (wb.Count() < 1000 && current != std::end(pendingRequests)) {
             auto* log_ptr = dynamic_cast<RocksDBLog*>(current->log.get());
             TRI_ASSERT(log_ptr != nullptr);

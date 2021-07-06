@@ -77,16 +77,17 @@ struct AppendEntriesResult {
     return errorCode == TRI_ERROR_NO_ERROR;
   }
 
-  AppendEntriesResult(LogTerm, MessageId, TermIndexPair conflict);
-  AppendEntriesResult(LogTerm, MessageId);
+  AppendEntriesResult(LogTerm, MessageId, TermIndexPair conflict) noexcept;
+  AppendEntriesResult(LogTerm, MessageId) noexcept;
   AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
-                      AppendEntriesErrorReason reason, MessageId);
+                      AppendEntriesErrorReason reason, MessageId) noexcept;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 
-  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict) -> AppendEntriesResult;
-  static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason) -> AppendEntriesResult;
-  static auto withPersistenceError(LogTerm, MessageId, Result const&) -> AppendEntriesResult;
+  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict) noexcept -> AppendEntriesResult;
+  static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason) noexcept -> AppendEntriesResult;
+  static auto withPersistenceError(LogTerm, MessageId, Result const&) noexcept -> AppendEntriesResult;
+  static auto withOk(LogTerm, MessageId) noexcept -> AppendEntriesResult;
 };
 
 auto to_string(AppendEntriesErrorReason reason) -> std::string;

@@ -83,7 +83,11 @@ class LogFollower : public LogParticipantI,
   ParticipantId const _participantId;
   std::optional<ParticipantId> const _leaderId;
   LogTerm const _currentTerm;
-  Guarded<GuardedFollowerData> _guardedFollowerData;
+
+  // We use the unshackled mutex because guards are captured by futures.
+  // When using a std::mutex we would have to release the mutex in the same thread.
+  // Using the UnshackledMutex this is no longer required.
+  Guarded<GuardedFollowerData, arangodb::basics::UnshackledMutex> _guardedFollowerData;
 
   auto appendEntriesPreFlightChecks(GuardedFollowerData const&,
                                     AppendEntriesRequest const&) const noexcept
