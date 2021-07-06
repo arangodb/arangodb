@@ -361,6 +361,5 @@ class IResearchDataStore {
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 IResearchDataStore const& link);
-
 } // namespace iresearch
 } // namespace arangodb

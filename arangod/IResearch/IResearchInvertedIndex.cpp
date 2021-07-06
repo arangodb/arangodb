@@ -26,15 +26,13 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
-#include "IResearch/AqlHelper.h"
-#include "IResearch/IResearchDocument.h"
-#include "IResearch/IResearchIdentityAnalyzer.h"
-#include "IResearch/IResearchFilterFactory.h"
+#include "AqlHelper.h"
+#include "IResearchDocument.h"
+#include "IResearchIdentityAnalyzer.h"
+#include "IResearchFilterFactory.h"
+#include "IResearchRocksDBEncryption.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
-
-
-//#include <rocksdb/env_encryption.h>
-//#include "utils/encryption.hpp"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
@@ -489,22 +487,25 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(Logical
         + definition.toString();
       return nullptr;
     }
+    indexName = nameSlice.copyString();
   }
 
-  auto objectIdSlice = definition.get(arangodb::StaticStrings::ObjectId);
-  uint64_t objectId{0};
-  if (!objectIdSlice.isNone()) {
-    if (!objectIdSlice.isNumber<uint64_t>() || (objectId = objectIdSlice.getNumber<uint64_t>()) == 0) {
-      LOG_TOPIC("b97dc", ERR, iresearch::TOPIC) <<
-        std::string("failed to initialize index from definition, error in attribute '")
-        + arangodb::StaticStrings::ObjectId + "': "
-        + definition.toString();
-      return nullptr;
-    }
-  }
+  auto objectId = basics::VelocyPackHelper::stringUInt64(definition, arangodb::StaticStrings::ObjectId);
   auto index = std::make_shared<IResearchRocksDBInvertedIndex>(id, collection, objectId, indexName, std::move(fieldsMeta));
+
+  auto initRes  = index->init([this](irs::directory& dir) {
+    auto& selector = _server.getFeature<EngineSelectorFeature>();
+    TRI_ASSERT(selector.isRocksDB());
+    auto& engine = selector.engine<RocksDBEngine>();
+    auto* encryption = engine.encryptionProvider();
+    if (encryption) {
+      dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
+                                                          engine.rocksDBOptions());
+    }
+  });
+
   // separate call as here object should be fully constructed and could be safely used by async tasks
-  auto initRes = index->properties(indexMeta);
+  initRes = index->properties(indexMeta);
   if (initRes.fail()) {
     LOG_TOPIC("9c949", ERR, iresearch::TOPIC) <<
       std::string("failed to initialize index from definition, error setting index properties ")
@@ -563,17 +564,6 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(velocypack::Builder& norm
         + arangodb::StaticStrings::IndexName + "': "
         + definition.toString());
   }
-  auto objectIdSlice = definition.get(arangodb::StaticStrings::ObjectId);
-  if (!objectIdSlice.isNone()) {
-    if (!objectIdSlice.isNumber<uint64_t>() || objectIdSlice.getNumber<uint64_t>() == 0) {
-      return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("failed to initialize index from definition, error in attribute '")
-        + arangodb::StaticStrings::ObjectId + "': "
-        + definition.toString());
-    }
-    normalized.add(arangodb::StaticStrings::ObjectId, objectIdSlice);
-  }
 
   normalized.add(arangodb::StaticStrings::IndexType,
                  arangodb::velocypack::Value(arangodb::Index::oldtypeName(
@@ -600,6 +590,20 @@ std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex
   FieldsBuilder fb(res);
   visitFields({0, irs::hashed_string_ref::NIL}, meta, fb);
   return res;
+}
+
+Result IResearchInvertedIndex::init(IResearchDataStore::InitCallback const& initCallback /*= {}*/) {
+  auto const& storedValuesColumns = _meta._storedValues.columns();
+  TRI_ASSERT(_meta._sortCompression);
+  auto const primarySortCompression = _meta._sortCompression
+      ? _meta._sortCompression
+      : getDefaultCompression();
+  auto const res = initDataStore(initCallback, isSorted(), storedValuesColumns, primarySortCompression);
+
+  if (!res.ok()) {
+    return res;
+  }
+  return {};
 }
 
 IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(

@@ -45,9 +45,11 @@ class IResearchInvertedIndex  : public IResearchDataStore {
                     velocypack::Builder& builder, bool forPersistence) const;
 
   bool isSorted() const {
-    return false; // FIXME: sometimes we can be sorted
+    return !_meta._sort.empty();
   }
   
+  Result init(InitCallback const& initCallback = {});
+
   static std::vector<std::vector<arangodb::basics::AttributeName>> fields(IResearchLinkMeta const& meta);
 
   bool matchesFieldsDefinition(VPackSlice other) const;
