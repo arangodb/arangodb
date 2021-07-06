@@ -1796,7 +1796,7 @@ License Id: MIT
 #### highlight.js
 
 Name: highlight.js
-Version: 9.15.6
+Version: 10.7.3
 Project Home: https://github.com/highlightjs/highlight.js
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/highlight.js/LICENSE
 License Name: BSD 3-clause "New" or "Revised" License
@@ -1832,7 +1832,7 @@ License Id: MIT
 #### iconv-lite
 
 Name: iconv-lite
-Version: 0.4.24
+Version: 0.6.3
 Project Home: https://github.com/ashtuchkin/iconv-lite
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/iconv-lite/LICENSE
 License Name: MIT License
@@ -2174,7 +2174,7 @@ License Id: MIT
 #### mime-types
 
 Name: mime-types
-Version: 2.1.22
+Version: 2.1.31
 Project Home: https://github.com/jshttp/mime-types
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/mime-types/LICENSE
 License Name: MIT License
@@ -2714,7 +2714,7 @@ License Id: ISC
 #### sinon
 
 Name: sinon
-Version: 1.17.6
+Version: 1.17.7
 Project Home: https://github.com/cjohansen/Sinon.JS
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/sinon/LICENSE
 License Name: BSD 3-clause "New" or "Revised" License
@@ -2966,7 +2966,7 @@ License Id: MIT
 #### underscore
 
 Name: underscore
-Version: 1.9.1
+Version: 1.13.1
 Project Home: https://github.com/jashkenas/underscore
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/underscore/LICENSE
 License Name: MIT License
@@ -3065,7 +3065,7 @@ License Id: MIT
 #### xmldom
 
 Name: xmldom
-Version: 0.1.27
+Version: 0.1.31
 Project Home: http://www.xidea.org
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
 License Name: MIT (dual license)
