@@ -40,9 +40,10 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
 
-#include <Graph/Types/ValidationResult.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -428,18 +429,19 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 }
 
 /* SingleServerProvider Section */
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>,
-    ::arangodb::graph::PathStore<SingleServerProvider::Step>, SingleServerProvider,
-    ::arangodb::graph::PathValidator<SingleServerProvider, PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
+    ::arangodb::graph::PathStore<SingleServerProviderStep>, SingleServerProvider<SingleServerProviderStep>,
+    ::arangodb::graph::PathValidator<SingleServerProvider<SingleServerProviderStep>, PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
-    ::arangodb::graph::ProviderTracer<SingleServerProvider>,
-    ::arangodb::graph::PathValidator<::arangodb::graph::ProviderTracer<SingleServerProvider>,
-                                     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProviderStep>>,
+    ::arangodb::graph::ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+    ::arangodb::graph::PathValidator<::arangodb::graph::ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+                                     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProviderStep>>, VertexUniquenessLevel::PATH>>;
 
 /* ClusterProvider Section */
 

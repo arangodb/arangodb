@@ -29,7 +29,12 @@
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
 
 #include "Basics/Exceptions.h"
 
@@ -217,17 +222,45 @@ namespace arangodb {
 namespace graph {
 
 /* SingleServerProvider Section */
-template class PathValidator<SingleServerProvider, PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::NONE>;
-template class PathValidator<ProviderTracer<SingleServerProvider>,
-                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider>::Step>>, VertexUniquenessLevel::NONE>;
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
-template class PathValidator<SingleServerProvider, PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::PATH>;
-template class PathValidator<ProviderTracer<SingleServerProvider>,
-                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider>::Step>>, VertexUniquenessLevel::PATH>;
+template class PathValidator<SingleServerProvider<SingleServerProviderStep>,
+                             PathStore<SingleServerProviderStep>, VertexUniquenessLevel::NONE>;
+template class PathValidator<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
+                             VertexUniquenessLevel::NONE>;
 
-template class PathValidator<SingleServerProvider, PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::GLOBAL>;
-template class PathValidator<ProviderTracer<SingleServerProvider>,
-                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider>::Step>>, VertexUniquenessLevel::GLOBAL>;
+template class PathValidator<SingleServerProvider<SingleServerProviderStep>,
+                             PathStore<SingleServerProvider<SingleServerProviderStep>::Step>, VertexUniquenessLevel::PATH>;
+template class PathValidator<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
+                             VertexUniquenessLevel::PATH>;
+
+template class PathValidator<SingleServerProvider<SingleServerProviderStep>,
+                             PathStore<SingleServerProvider<SingleServerProviderStep>::Step>, VertexUniquenessLevel::GLOBAL>;
+template class PathValidator<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
+                             VertexUniquenessLevel::GLOBAL>;
+
+#ifdef USE_ENTERPRISE
+template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
+                             PathStore<enterprise::SmartGraphStep>, VertexUniquenessLevel::NONE>;
+template class PathValidator<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
+                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
+                             VertexUniquenessLevel::NONE>;
+
+template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
+                             PathStore<SingleServerProvider<enterprise::SmartGraphStep>::Step>, VertexUniquenessLevel::PATH>;
+template class PathValidator<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
+                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
+                             VertexUniquenessLevel::PATH>;
+
+template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
+                             PathStore<SingleServerProvider<enterprise::SmartGraphStep>::Step>, VertexUniquenessLevel::GLOBAL>;
+template class PathValidator<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
+                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
+                             VertexUniquenessLevel::GLOBAL>;
+#endif
 
 /* ClusterProvider Section */
 template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>, VertexUniquenessLevel::NONE>;

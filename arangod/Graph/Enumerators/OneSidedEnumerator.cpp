@@ -40,6 +40,11 @@
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/algorithm-aliases.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/algorithm-aliases-ee.h"
+#endif
+
+#include <Graph/Steps/SingleServerProviderStep.h>
 #include <Graph/Types/ValidationResult.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
@@ -253,19 +258,50 @@ auto OneSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
 }
 
 /* SingleServerProvider Section */
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 // Breadth First Search
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL, true>>;
 
 // Depth First Search
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL, true>>;
+
+#ifdef USE_ENTERPRISE
+// Depth First Search
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
+
+// Tracing
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
+#endif

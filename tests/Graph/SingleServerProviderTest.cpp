@@ -29,6 +29,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 
 #include <velocypack/velocypack-aliases.h>
 #include <unordered_set>
@@ -52,7 +53,7 @@ namespace arangodb {
 namespace tests {
 namespace single_server_provider_test {
 
-using Step = SingleServerProvider::Step;
+using Step = SingleServerProviderStep;
 
 class SingleServerProviderTest : public ::testing::Test {
  protected:
@@ -77,7 +78,7 @@ class SingleServerProviderTest : public ::testing::Test {
   SingleServerProviderTest() {}
   ~SingleServerProviderTest() {}
 
-  auto makeProvider(MockGraph const& graph) -> arangodb::graph::SingleServerProvider {
+  auto makeProvider(MockGraph const& graph) -> arangodb::graph::SingleServerProvider<SingleServerProviderStep> {
     // Setup code for each provider type
     s = std::make_unique<GraphTestSetup>();
     singleServer =

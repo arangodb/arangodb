@@ -30,6 +30,11 @@
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -39,7 +44,7 @@ using namespace arangodb::graph;
 
 namespace arangodb::graph::enterprise {
 class SmartGraphStep;
-}  // namespace arangodb
+}  // namespace arangodb::graph::enterprise
 
 template <class ProviderType, class PathStoreType, class Step>
 SingleProviderPathResult<ProviderType, PathStoreType, Step>::SingleProviderPathResult(
@@ -171,15 +176,25 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::isEmpty() cons
 }
 
 /* SingleServerProvider Section */
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::SingleServerProvider, ::arangodb::graph::PathStore<::arangodb::graph::SingleServerProvider::Step>,
-    ::arangodb::graph::SingleServerProvider::Step>;
+    ::arangodb::graph::SingleServerProvider<SingleServerProviderStep>,
+    ::arangodb::graph::PathStore<SingleServerProviderStep>, SingleServerProviderStep>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<::arangodb::graph::SingleServerProvider::Step>>,
-    ::arangodb::graph::SingleServerProvider::Step>;
+    ::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider<SingleServerProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProviderStep>>, SingleServerProviderStep>;
+
+#ifdef USE_ENTERPRISE
+template class ::arangodb::graph::SingleProviderPathResult<
+    ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>,
+    ::arangodb::graph::PathStore<enterprise::SmartGraphStep>, enterprise::SmartGraphStep>;
+
+template class ::arangodb::graph::SingleProviderPathResult<
+    ::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>,
+    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<enterprise::SmartGraphStep>>, enterprise::SmartGraphStep>;
+#endif
 
 /* ClusterProvider Section */
 template class ::arangodb::graph::SingleProviderPathResult<
