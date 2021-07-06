@@ -212,7 +212,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
         auto value = member->getMember(0);
         TRI_ASSERT(value->isConstant());
 
-        if (name == "bfs" && value->isBoolValue()) {
+        if (name == "bfs") {
           options->mode = value->isTrue()
                               ? arangodb::traverser::TraverserOptions::Order::BFS
                               : arangodb::traverser::TraverserOptions::Order::DFS;
@@ -865,15 +865,15 @@ ModificationOptions ExecutionPlan::parseModificationOptions(QueryContext& query,
 
         TRI_ASSERT(value->isConstant());
 
-        if (name == StaticStrings::WaitForSyncString && value->isBoolValue()) {
+        if (name == StaticStrings::WaitForSyncString) {
           options.waitForSync = value->isTrue();
-        } else if (name == StaticStrings::SkipDocumentValidation && value->isBoolValue()) {
+        } else if (name == StaticStrings::SkipDocumentValidation) {
           options.validate = !value->isTrue();
-        } else if (name == StaticStrings::KeepNullString && value->isBoolValue()) {
+        } else if (name == StaticStrings::KeepNullString) {
           options.keepNull = value->isTrue();
-        } else if (name == StaticStrings::MergeObjectsString && value->isBoolValue()) {
+        } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
-        } else if (name == StaticStrings::Overwrite && value->isBoolValue()) {
+        } else if (name == StaticStrings::Overwrite) {
           // legacy: overwrite is set, superseded by overwriteMode
           // default behavior if only "overwrite" is specified
           if (!options.isOverwriteModeSet() && value->isTrue()) {
@@ -886,11 +886,11 @@ ModificationOptions ExecutionPlan::parseModificationOptions(QueryContext& query,
           if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
             options.overwriteMode = overwriteMode;
           }
-        } else if (name == StaticStrings::IgnoreRevsString && value->isBoolValue()) {
+        } else if (name == StaticStrings::IgnoreRevsString) {
           options.ignoreRevs = value->isTrue();
-        } else if (name == "exclusive" && value->isBoolValue()) {
+        } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
-        } else if (name == "ignoreErrors" && value->isBoolValue()) {
+        } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
         } else {
           if (addWarnings) {
