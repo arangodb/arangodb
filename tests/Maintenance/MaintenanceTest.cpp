@@ -842,7 +842,7 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase {});
+                                         ReplicatedLogStatusMapByDatabase {});
     ASSERT_EQ(actions.size(), 0);
   }
 
@@ -852,7 +852,7 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
     ASSERT_EQ(actions.size(), 0);
   }
 
@@ -862,7 +862,7 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
     ASSERT_EQ(actions.size(), 0);
   }
 }
@@ -879,7 +879,7 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
                                        localNodes.begin()->first, errors,
                                        makeDirty, callNotify, actions,
                                        arangodb::MaintenanceFeature::ShardActionMap{},
-                                       ReplicatedLogsStatusMapByDatabase{});
+                                       ReplicatedLogStatusMapByDatabase{});
 
   ASSERT_EQ(actions.size(), 0);
 
@@ -889,7 +889,7 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
                                        localNodes.begin()->first, errors,
                                        makeDirty, callNotify, actions,
                                        arangodb::MaintenanceFeature::ShardActionMap{},
-                                       ReplicatedLogsStatusMapByDatabase{});
+                                       ReplicatedLogStatusMapByDatabase{});
 
   ASSERT_EQ(actions.size(), 1);
   ASSERT_EQ(actions.front()->name(), "DropDatabase");
@@ -908,7 +908,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
                                        localNodes.begin()->first, errors,
                                        makeDirty, callNotify, actions,
                                        arangodb::MaintenanceFeature::ShardActionMap{},
-                                       ReplicatedLogsStatusMapByDatabase{});
+                                       ReplicatedLogStatusMapByDatabase{});
 
   ASSERT_EQ(actions.size(), 1);
   ASSERT_EQ(actions[0]->name(), "DropDatabase");
@@ -934,7 +934,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
@@ -973,7 +973,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
              std::make_shared<ActionDescription>(
                  std::map<std::string, std::string>({{"name", CREATE_COLLECTION}}), 0, true)},
         },
-        ReplicatedLogsStatusMapByDatabase{});
+        ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -999,7 +999,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1026,7 +1026,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
                                          localToChangeset(local), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -1062,7 +1062,7 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
                                          localToChangeset(local), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -1092,7 +1092,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
@@ -1125,7 +1125,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -1161,7 +1161,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
     // Every server is responsible for something, either leader or follower
     ASSERT_FALSE(actions.empty());
     ASSERT_EQ(actions.size(), relevantShards.size());
@@ -1190,7 +1190,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_self) {
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1212,7 +1212,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_se
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1240,7 +1240,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_self) {
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1268,7 +1268,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_s
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     for (auto const& action : actions) {
       assertIsResignLeadershipAction(*action, dbName());
@@ -1295,7 +1295,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_other) {
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1325,7 +1325,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_ot
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1353,7 +1353,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_other) {
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1375,7 +1375,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_o
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1397,7 +1397,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_resigned)
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1427,7 +1427,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1449,7 +1449,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_resigned
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     // Synchronize in Phase 2 is responsible for this.
     ASSERT_EQ(actions.size(), 0);
@@ -1472,7 +1472,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     // Synchronize in Phase 2 is responsible for this.
     ASSERT_EQ(actions.size(), 0);
@@ -1495,7 +1495,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1525,7 +1525,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1553,7 +1553,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_reboot) 
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     // We will just resign in this case to get a clear state.
     ASSERT_EQ(actions.size(), 2);
@@ -1582,7 +1582,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
                                          dirty, localToChangeset(local), server,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     // We will just resign in this case to get a clear state.
     ASSERT_EQ(actions.size(), 2);
@@ -1616,7 +1616,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     if (check) {
       ASSERT_EQ(actions.size(), 1);
@@ -1642,7 +1642,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership_plan) {
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), relevantShards.size());
     for (auto const& action : actions) {
@@ -1670,7 +1670,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), node.second("db3").children().size());
     for (auto const& action : actions) {
@@ -1719,7 +1719,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     ASSERT_EQ(actions.size(), 1);
     assertIsResignLeadershipAction(*actions[0], "_system");
@@ -1749,7 +1749,7 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogsStatusMapByDatabase{});
+                                         ReplicatedLogStatusMapByDatabase{});
 
     if (node.first == followerName) {
       // Must see an action dropping the shard
