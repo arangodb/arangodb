@@ -28,6 +28,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
+#include <Basics/application-exit.h>
 #include <Basics/debugging.h>
 #include <Containers/ImmerMemoryPolicy.h>
 
@@ -147,13 +148,13 @@ replicated_log::InMemoryLog::InMemoryLog(replicated_log::InMemoryLog&& other) no
          "consistency of persistent and in-memory state can no longer be "
          "guaranteed. The process will terminate now. The exception was: "
       << ex.what();
-  throw;
+  FATAL_ERROR_ABORT();
 } catch (...) {
   LOG_TOPIC("9771c", FATAL, Logger::REPLICATION2)
       << "Caught an exception when moving an InMemoryLog. This is fatal, as "
          "consistency of persistent and in-memory state can no longer be "
          "guaranteed. The process will terminate now.";
-  throw;
+  FATAL_ERROR_ABORT();
 }
 
 auto replicated_log::InMemoryLog::operator=(replicated_log::InMemoryLog&& other) noexcept
@@ -176,13 +177,13 @@ auto replicated_log::InMemoryLog::operator=(replicated_log::InMemoryLog&& other)
          "consistency of persistent and in-memory state can no longer be "
          "guaranteed. The process will terminate now. The exception was: "
       << ex.what();
-  throw;
+  FATAL_ERROR_ABORT();
 } catch (...) {
   LOG_TOPIC("2c084", FATAL, Logger::REPLICATION2)
       << "Caught an exception when moving an InMemoryLog. This is fatal, as "
          "consistency of persistent and in-memory state can no longer be "
          "guaranteed. The process will terminate now.";
-  throw;
+  FATAL_ERROR_ABORT();
 }
 
 auto replicated_log::InMemoryLog::getIteratorFrom(LogIndex fromIdx) const

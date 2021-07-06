@@ -135,7 +135,7 @@ auto replication2::to_string(LogIndex index) -> std::string {
 
 
 auto replication2::operator<=(replication2::TermIndexPair const& left,
-                                replication2::TermIndexPair const& right) noexcept -> bool {
+                              replication2::TermIndexPair const& right) noexcept -> bool {
   if (left.term < right.term) {
     return true;
   } else if (left.term == right.term) {

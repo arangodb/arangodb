@@ -50,6 +50,8 @@ struct LogPlanConfig {
   }
 };
 
+auto operator==(LogPlanConfig const& left, LogPlanConfig const& right) noexcept -> bool;
+
 struct LogPlanTermSpecification {
   LogTerm term;
   LogPlanConfig config;
@@ -118,7 +120,10 @@ struct LogCurrentSupervisionElection {
   LogCurrentSupervisionElection(from_velocypack_t, VPackSlice slice);
 };
 
-auto to_string(LogCurrentSupervisionElection::ErrorCode) -> std::string_view;
+auto operator==(LogCurrentSupervisionElection const&,
+                LogCurrentSupervisionElection const&) noexcept -> bool;
+
+auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept -> std::string_view;
 auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&) -> void;
 
 struct LogCurrentSupervision {

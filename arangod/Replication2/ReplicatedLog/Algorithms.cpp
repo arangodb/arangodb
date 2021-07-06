@@ -21,11 +21,14 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Algorithms.h"
+
 #include "Basics/Exceptions.h"
+#include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
-#include "Algorithms.h"
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -162,6 +165,10 @@ auto algorithms::to_string(ConflictReason r) noexcept -> std::string_view {
     case ConflictReason::LOG_ENTRY_NO_MATCH:
       return "term mismatch";
   }
+  LOG_TOPIC("03e11", FATAL, arangodb::Logger::REPLICATION2)
+      << "Invalid ConflictReason "
+      << static_cast<std::underlying_type_t<decltype(r)>>(r);
+  FATAL_ERROR_ABORT();
 }
 
 auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermIndexPair prevLog) noexcept

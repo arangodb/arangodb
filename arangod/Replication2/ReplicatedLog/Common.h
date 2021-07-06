@@ -98,7 +98,7 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   LogIndex index{};
 
   friend auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept
-  -> bool;
+      -> bool;
 
   TermIndexPair(LogTerm term, LogIndex index) : term(term), index(index) {}
   TermIndexPair() = default;
@@ -110,6 +110,8 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
     return os << '(' << pair.term << ':' << pair.index << ')';
   }
 };
+
+auto operator<=(TermIndexPair const&, TermIndexPair const&) noexcept -> bool;
 
 struct LogPayload {
   explicit LogPayload(VPackBufferUInt8 dummy) : dummy(std::move(dummy)) {}

@@ -22,10 +22,16 @@
 
 #include "AgencyLogSpecification.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -247,7 +253,7 @@ auto agency::toVelocyPack(LogCurrentSupervisionElection::ErrorCode ec, VPackBuil
   builder.add("message", VPackValue(to_string(ec)));
 }
 
-auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) -> std::string_view {
+auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept -> std::string_view {
   switch(ec) {
     case LogCurrentSupervisionElection::ErrorCode::OK:
       return "the server is ok";
@@ -256,6 +262,10 @@ auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) -> std::stri
     case LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED:
       return "the server has not (yet) confirmed the current term";
   }
+  LOG_TOPIC("7e572", FATAL, arangodb::Logger::REPLICATION2)
+      << "Invalid LogCurrentSupervisionElection::ErrorCode "
+      << static_cast<std::underlying_type_t<decltype(ec)>>(ec);
+  FATAL_ERROR_ABORT();
 }
 
 auto agency::operator==(const LogCurrentSupervisionElection& left,

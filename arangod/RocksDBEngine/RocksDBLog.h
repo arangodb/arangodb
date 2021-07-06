@@ -69,7 +69,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
 
   void runPersistorWorker(Lane& lane) noexcept;
 
-  Lane _lanes[2] = {};
+  std::array<Lane, 2> _lanes = {};
 
   rocksdb::ColumnFamilyHandle* const _cf;
   rocksdb::DB* const _db;

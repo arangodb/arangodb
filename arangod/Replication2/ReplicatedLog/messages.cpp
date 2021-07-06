@@ -22,6 +22,7 @@
 
 #include "messages.h"
 
+#include <Basics/application-exit.h>
 #include <Containers/ImmerMemoryPolicy.h>
 #include <Logger/LogMacros.h>
 
@@ -55,13 +56,13 @@ AppendEntriesRequest::AppendEntriesRequest(AppendEntriesRequest&& other) noexcep
          "longer be guaranteed. The process will terminate now. The exception "
          "was: "
       << ex.what();
-  throw;
+  FATAL_ERROR_ABORT();
 } catch (...) {
   LOG_TOPIC("12f06", FATAL, Logger::REPLICATION2)
       << "Caught an exception when moving an AppendEntriesRequest. This is "
          "fatal, as consistency of persistent and in-memory state can no "
          "longer be guaranteed. The process will terminate now.";
-  throw;
+  FATAL_ERROR_ABORT();
 }
 
 auto AppendEntriesRequest::operator=(replicated_log::AppendEntriesRequest&& other) noexcept
@@ -93,11 +94,11 @@ auto AppendEntriesRequest::operator=(replicated_log::AppendEntriesRequest&& othe
          "longer be guaranteed. The process will terminate now. The exception "
          "was: "
       << ex.what();
-  throw;
+  FATAL_ERROR_ABORT();
 } catch (...) {
   LOG_TOPIC("facec", FATAL, Logger::REPLICATION2)
       << "Caught an exception when moving an AppendEntriesRequest. This is "
          "fatal, as consistency of persistent and in-memory state can no "
          "longer be guaranteed. The process will terminate now.";
-  throw;
+  FATAL_ERROR_ABORT();
 }
