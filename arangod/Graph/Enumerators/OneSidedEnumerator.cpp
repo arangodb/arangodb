@@ -29,26 +29,20 @@
 
 #include "Futures/Future.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
-#include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/FifoQueue.h"
-#include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/algorithm-aliases-ee.h"
 #endif
 
-#include <Graph/Steps/SingleServerProviderStep.h>
-#include <Graph/Types/ValidationResult.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
