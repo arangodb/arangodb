@@ -176,7 +176,7 @@ module.exports = exports =
         return this;
       }
 
-      if (!mimes.length) {
+      if (!mimes.length && model !== MATCH_ALL_MODEL) {
         mimes.push(PARSED_JSON_MIME);
       }
 
