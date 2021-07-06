@@ -751,11 +751,12 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TransactionId tid
         break;
       }
     } else {
+      TRI_ASSERT(mode == AccessMode::Type::READ);
       if (mtrx.rwlock.tryLockRead()) {
-        TRI_ASSERT(mode == AccessMode::Type::READ);
         state = mtrx.state;
         break;
       } else if (openContextWithoutLock) {
+        TRI_ASSERT(mtrx.type == MetaType::Managed);
         // unable to acquire the read-lock. if this happens but we are trying to 
         // satisfy a DOCUMENT() request, we already have a lock on the context,
         // and it is safe to open the transaction anyway
@@ -801,12 +802,10 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TransactionId tid
 
   } while (true);
 
-  if (state) {
-    return std::make_shared<ManagedContext>(tid, std::move(state),
-                                            /*responsibleForCommit*/ false);
-  }
-  TRI_ASSERT(false);  // should be unreachable
-  return nullptr;
+  TRI_ASSERT(state != nullptr);
+    
+  return std::make_shared<ManagedContext>(tid, std::move(state),
+                                          /*responsibleForCommit*/ false);
 }
 
 void Manager::returnManagedTrx(TransactionId tid) noexcept {
@@ -953,7 +952,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     if (!tryGuard.isLocked()) {
       LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << "transaction " << tid << " is in use";
       return res.reset(TRI_ERROR_LOCKED,
-                       std::string("read lock failed, transaction ") +
+                       std::string("write lock failed, transaction ") +
                            std::to_string(tid.id()) + " is in use");
     }
     TRI_ASSERT(tryGuard.isLocked());
@@ -1205,9 +1204,8 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&, std::s
   for (TransactionId tid : toAbort) {
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
     if (res.fail() && !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
-      LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS) << "error aborting "
-                                                        "transaction: "
-                                                     << res.errorMessage();
+      LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS) 
+          << "error aborting transaction " << tid << ": " << res.errorMessage();
     }
   }
   return !toAbort.empty();

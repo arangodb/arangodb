@@ -402,8 +402,20 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   ErrorCode cleanupReason = TRI_ERROR_CLUSTER_TIMEOUT;
   
   auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() {
-    // Fire and forget
-    std::ignore = cleanupEngines(cleanupReason, _query.vocbase().name(), serverToQueryId);
+    try {
+      transaction::Methods& trx = _query.trxForOptimization();
+      auto requests = cleanupEngines(cleanupReason, _query.vocbase().name(), serverToQueryId);
+      if (!trx.isMainTransaction()) {
+        // for AQL queries in streaming transactions, we will wait for the
+        // complete shutdown to have finished before we return to the caller.
+        // this is done so that there will be no 2 AQL queries in the same
+        // streaming transaction at the same time
+        futures::collectAll(requests).wait();
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("2a9fe", WARN, Logger::AQL) 
+        << "unable to clean up query snippets: " << ex.what();
+    }
   });
 
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();

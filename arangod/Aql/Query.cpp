@@ -1170,6 +1170,14 @@ ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
     _resultCode = errorCode;
   }
 
+  if (_trx != nullptr && !_trx->isMainTransaction()) {
+    // force sync shutdown for AQL queries that are part of a streaming
+    // transaction. we want to wait for the complete query shutdown 
+    // before the next operation in the same streaming transaction can
+    // be started.
+    sync = true;
+  }
+
   if (sync && _sharedState) {
     _sharedState->resetWakeupHandler();
     auto state = cleanupTrxAndEngines(errorCode);
@@ -1177,6 +1185,7 @@ ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
       _sharedState->waitForAsyncWakeup();
       state = cleanupTrxAndEngines(errorCode);
     }
+    return state;
   }
 
   return cleanupTrxAndEngines(errorCode);
