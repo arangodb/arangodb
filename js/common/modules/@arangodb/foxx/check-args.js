@@ -39,7 +39,7 @@ function normalizeMimeType (mime) {
   }
   const contentType = mimeTypes.contentType(mime) || mime;
   const parsed = ct.parse(contentType);
-  return ct.format(parsed);
+  return parsed.type;
 }
 
 function runValidation (methodName, paramName, type, value) {
