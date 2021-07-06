@@ -44,7 +44,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId,
                                            std::move(coreB), LogTerm{1}, leaderId);
   auto leader =
-      LogLeader::construct(LogContext(Logger::REPLICATION2), _logMetricsMock,
+      LogLeader::construct(LoggerContext(Logger::REPLICATION2), _logMetricsMock,
                            leaderId, std::move(coreA), LogTerm{1},
                            std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
 

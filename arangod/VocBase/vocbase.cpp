@@ -64,7 +64,7 @@
 #include "Logger/LogMacros.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
-#include "Replication2/LogContext.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
@@ -99,7 +99,7 @@ using namespace arangodb::basics;
 struct arangodb::VocBaseLogManager {
   explicit VocBaseLogManager(application_features::ApplicationServer& server, DatabaseID database)
       : _server(server),
-        _logContext(LogContext{Logger::REPLICATION2}.with<logContextKeyDatabaseName>(
+        _logContext(LoggerContext{Logger::REPLICATION2}.with<logContextKeyDatabaseName>(
             std::move(database))) {}
 
   [[nodiscard]] auto getReplicatedLogById(replication2::LogId id) const
@@ -193,7 +193,7 @@ struct arangodb::VocBaseLogManager {
   }
 
   application_features::ApplicationServer& _server;
-  LogContext _logContext;
+  LoggerContext _logContext;
   std::unordered_map<arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>> _logs;
   std::mutex _mutex;
 };
@@ -2047,7 +2047,7 @@ void TRI_vocbase_t::registerReplicatedLog(arangodb::replication2::LogId logId,
   auto [iter, inserted] = _logManager->_logs.try_emplace(
       logId, std::make_shared<replication2::replicated_log::ReplicatedLog>(
                  std::move(core), server().getFeature<ReplicatedLogFeature>().metrics(),
-                 LogContext(Logger::REPLICATION2)));
+                 LoggerContext(Logger::REPLICATION2)));
   server().getFeature<ReplicatedLogFeature>().metrics()->replicatedLogNumber->fetch_add(1);
   TRI_ASSERT(inserted);
 }

@@ -22,7 +22,7 @@
 
 #include "InMemoryLog.h"
 
-#include "Replication2/LogContext.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 
@@ -117,7 +117,7 @@ auto replicated_log::InMemoryLog::getLastIndexOfTerm(LogTerm term) const noexcep
   }
 }
 
-replicated_log::InMemoryLog::InMemoryLog(LogContext const& logContext,
+replicated_log::InMemoryLog::InMemoryLog(LoggerContext const& logContext,
                                          replicated_log::LogCore const& logCore) {
   auto iter = logCore.read(LogIndex{0});
   auto log = _log.transient();
@@ -191,7 +191,7 @@ auto replicated_log::InMemoryLog::getIteratorFrom(LogIndex fromIdx) const
   return std::make_unique<ReplicatedLogIterator>(std::move(log));
 }
 
-auto replicated_log::InMemoryLog::appendInPlace(LogContext const& logContext,
+auto replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
                                                 LogEntry&& entry) -> void {
   if (!_log.empty() && _log.back().logIndex() + 1 != entry.logIndex()) {
     using namespace basics::StringUtils;
@@ -205,12 +205,12 @@ auto replicated_log::InMemoryLog::appendInPlace(LogContext const& logContext,
   _log = _log.push_back(std::move(entry));
 }
 
-auto replicated_log::InMemoryLog::appendInPlace(LogContext const& logContext,
+auto replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
                                                 LogEntry const& entry) -> void {
   return appendInPlace(logContext, LogEntry{entry});
 }
 
-auto replicated_log::InMemoryLog::append(LogContext const& logContext,
+auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
                                          log_type entries) const -> InMemoryLog {
   auto transient = _log.transient();
   transient.append(std::move(entries).transient());

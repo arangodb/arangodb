@@ -38,7 +38,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Replication2/LogContext.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "RestServer/DatabaseFeature.h"
@@ -1563,7 +1563,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             continue;
           }
 
-          auto logContext = LogContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
+          auto logContext =
+              LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
 
           LOG_CTX("11dbd", TRACE, logContext)
               << "checking replicated log " << id << " local term = "

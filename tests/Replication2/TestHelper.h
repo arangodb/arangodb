@@ -111,7 +111,7 @@ struct DelayedFollowerLog : AbstractFollower {
   explicit DelayedFollowerLog(std::shared_ptr<LogFollower> follower)
       : _follower(std::move(follower)) {}
 
-  DelayedFollowerLog(LogContext const& logContext,
+  DelayedFollowerLog(LoggerContext const& logContext,
                      std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock,
                      ParticipantId const& id, std::unique_ptr<LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
@@ -242,18 +242,20 @@ struct ReplicatedLogTest : ::testing::Test {
 
   auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
     auto core = makeLogCore(id);
-    return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock, LogContext(Logger::FIXME));
+    return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock,
+                                               LoggerContext(Logger::FIXME));
   }
 
   auto makeReplicatedLogWithAsyncMockLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
     auto persisted = std::make_shared<AsyncMockLog>(id);
     _persistedLogs[id] = persisted;
     auto core = std::make_unique<LogCore>(persisted);
-    return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock, LogContext(Logger::FIXME));
+    return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock,
+                                               LoggerContext(Logger::FIXME));
   }
 
   auto defaultLogger() {
-    return LogContext(Logger::REPLICATION2);
+    return LoggerContext(Logger::REPLICATION2);
   }
 
   auto stopAsyncMockLogs() -> void {

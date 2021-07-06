@@ -52,11 +52,10 @@ struct LogParticipantI {
 
   using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData const>>;
   using WaitForFuture = futures::Future<std::shared_ptr<QuorumData const>>;
+  using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogIterator>>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
-
-  using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogIterator>>;
   [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture;
   [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
 };

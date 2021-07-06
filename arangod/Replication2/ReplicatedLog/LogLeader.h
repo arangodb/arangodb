@@ -28,7 +28,7 @@
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/messages.h"
 
-#include "Replication2/LogContext.h"
+#include "Replication2/LoggerContext.h"
 
 #include <Basics/Guarded.h>
 #include <Containers/ImmerMemoryPolicy.h>
@@ -80,14 +80,14 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     std::size_t writeConcern;
   };
 
-  static auto construct(LogContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+  static auto construct(LoggerContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                         ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
                         std::vector<std::shared_ptr<AbstractFollower>> const& followers,
                         std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
 
   static auto construct(TermData const& termData, std::unique_ptr<LogCore> logCore,
                         std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-                        LogContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics)
+                        LoggerContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics)
       -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload) -> LogIndex;
@@ -111,7 +111,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
  protected:
   // Use the named constructor construct() to create a leader!
-  LogLeader(LogContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+  LogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             TermData termData, InMemoryLog inMemoryLog);
 
  private:
@@ -121,7 +121,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   struct alignas(64) FollowerInfo {
     explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl,
-                          TermIndexPair lastLogIndex, LogContext logContext);
+                          TermIndexPair lastLogIndex, LoggerContext logContext);
 
     std::chrono::steady_clock::duration _lastRequestLatency{};
     std::shared_ptr<AbstractFollower> _impl;
@@ -130,12 +130,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     MessageId lastSendMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
-    LogContext const logContext;
+    LoggerContext const logContext;
     bool requestInFlight = false;
   };
 
   struct LocalFollower final : AbstractFollower {
-    LocalFollower(LogLeader& self, LogContext logContext, std::unique_ptr<LogCore> logCore);
+    LocalFollower(LogLeader& self, LoggerContext logContext, std::unique_ptr<LogCore> logCore);
     ~LocalFollower() override = default;
 
     LocalFollower(LocalFollower const&) = delete;
@@ -150,14 +150,14 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     auto resign() && -> std::unique_ptr<LogCore>;
 
    private:
-    LogLeader& _self;
-    LogContext const _logContext;
+    LogLeader& _leader;
+    LoggerContext const _logContext;
     Guarded<std::unique_ptr<LogCore>> _guardedLogCore;
   };
 
   struct PreparedAppendEntryRequest {
     // TODO Write a constructor, delete the default constructor
-    FollowerInfo* _follower;
+    std::shared_ptr<FollowerInfo> _follower;
     AppendEntriesRequest _request;
     std::weak_ptr<LogLeader> _parentLog;
     TermIndexPair _lastIndex;
@@ -215,7 +215,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     bool _didResign{false};
   };
 
-  LogContext const _logContext;
+  LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   TermData const _termData;
   // _localFollower is const after construction
@@ -224,7 +224,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
-  static auto instantiateFollowers(LogContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+  static auto instantiateFollowers(LoggerContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                                    std::shared_ptr<LocalFollower> const& localFollower,
                                    TermIndexPair lastEntry) -> std::vector<FollowerInfo>;
 

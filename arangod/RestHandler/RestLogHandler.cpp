@@ -384,6 +384,7 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
         generateError(result);
       }
     }));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   } else if(verb == "becomeLeader") {
     if (!ServerState::instance()->isDBServer()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -429,6 +430,7 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
     });
 
     return waitForFuture(std::move(f));
+#endif
   } else {
     generateError(
         rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,

@@ -46,7 +46,7 @@ using namespace arangodb::replication2;
 
 replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core,
                                              std::shared_ptr<ReplicatedLogMetrics> const& metrics,
-                                             LogContext const& logContext)
+                                             LoggerContext const& logContext)
     : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
       _participant(
           std::make_shared<replicated_log::LogUnconfiguredParticipant>(std::move(core), metrics)),
@@ -98,7 +98,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
                                                   std::move(id), std::move(logCore),
                                                   term, std::move(leaderId), log);
     _participant = std::static_pointer_cast<LogParticipantI>(follower);
-    _metrics->replicatedLogStartedFollowingNumber->count();
+    _metrics->replicatedLogStartedFollowingNumber->operator++();
     return std::make_tuple(follower, std::move(deferred));
   });
   return follower;

@@ -22,17 +22,13 @@
 
 #include <optional>
 
-#include <Replication2/ReplicatedLog/Algorithms.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/overload.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "RestServer/DatabaseFeature.h"

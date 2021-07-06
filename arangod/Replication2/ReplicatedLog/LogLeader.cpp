@@ -67,7 +67,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-replicated_log::LogLeader::LogLeader(LogContext logContext,
+replicated_log::LogLeader::LogLeader(LoggerContext logContext,
                                      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                                      TermData termData, InMemoryLog inMemoryLog)
     : _logContext(std::move(logContext)),
@@ -132,7 +132,7 @@ auto replicated_log::LogLeader::tryHardToClearQueue() noexcept -> void {
 }
 
 auto replicated_log::LogLeader::instantiateFollowers(
-    LogContext logContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+    LoggerContext logContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
     std::shared_ptr<LocalFollower> const& localFollower, TermIndexPair lastEntry)
     -> std::vector<FollowerInfo> {
   auto initLastIndex = lastEntry.index == LogIndex{0}
@@ -169,7 +169,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
       // additionally capture a weak pointer that will be locked
       // when the request returns. If the locking is successful
       // we are still in the same term.
-      delayedFuture(it->_executionDelay).thenValue([it = it, logMetrics](auto&&) mutable {
+      delayedFuture(it->_executionDelay).thenFinal([it = it, logMetrics](auto&&) mutable {
         // we need to lock here, because we access _follower
         auto guard = it->_parentLog.lock();
         if (guard == nullptr) {
@@ -243,7 +243,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 auto replicated_log::LogLeader::construct(
     TermData const& termData, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    LogContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics)
+    LoggerContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics)
     -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
@@ -262,7 +262,7 @@ auto replicated_log::LogLeader::construct(
   // is actually protected.
   struct MakeSharedLogLeader : LogLeader {
    public:
-    MakeSharedLogLeader(LogContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+    MakeSharedLogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                         TermData termData, InMemoryLog inMemoryLog)
         : LogLeader(std::move(logContext), std::move(logMetrics),
                     std::move(termData), std::move(inMemoryLog)) {}
@@ -528,7 +528,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 
   follower.requestInFlight = true;
   auto preparedRequest = PreparedAppendEntryRequest{};
-  preparedRequest._follower = &follower;
+  preparedRequest._follower = std::shared_ptr<FollowerInfo>(parentLog.lock(), &follower);
   preparedRequest._currentTerm = _self._termData.term;
   preparedRequest._currentCommitIndex = currentCommitIndex;
   preparedRequest._lastIndex = lastIndex;
@@ -723,7 +723,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 }
 
 auto replicated_log::LogLeader::construct(
-    const LogContext& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+    const LoggerContext& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     const std::vector<std::shared_ptr<AbstractFollower>>& followers,
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
@@ -736,21 +736,21 @@ auto replicated_log::LogLeader::construct(
 }
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(replicated_log::LogLeader& self,
-                                                        LogContext logContext,
+                                                        LoggerContext logContext,
                                                         std::unique_ptr<LogCore> logCore)
-    : _self(self),
+    : _leader(self),
       _logContext(std::move(logContext)),
       _guardedLogCore(std::move(logCore)) {}
 
 auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
     -> ParticipantId const& {
-  return _self.getParticipantId();
+  return _leader.getParticipantId();
 }
 
 auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesRequest const request)
     -> futures::Future<AppendEntriesResult> {
   auto const startTime = std::chrono::steady_clock::now();
-  auto measureTime = DeferredAction{[startTime, metrics = _self._logMetrics]() noexcept {
+  auto measureTime = DeferredAction{[startTime, metrics = _leader._logMetrics]() noexcept {
     auto const endTime = std::chrono::steady_clock::now();
     auto const duration =
         std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
@@ -767,7 +767,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
       [term = request.leaderTerm, messageId = request.messageId, logContext = messageLogContext,
        measureTime = std::move(measureTime)](Result const& res) {
         if (!res.ok()) {
-          LOG_CTX("fdc87", ERR, logContext)
+          LOG_CTX("fdc87", FATAL, logContext)
               << "local follower failed to write entries: " << res;
           FATAL_ERROR_EXIT();
         }
@@ -803,19 +803,19 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
 
 auto replicated_log::LogLeader::LocalFollower::resign() && -> std::unique_ptr<LogCore> {
   LOG_CTX("2062b", TRACE, _logContext)
-      << "local follower received resign, term = " << _self._termData.term;
+      << "local follower received resign, term = " << _leader._termData.term;
   return _guardedLogCore.doUnderLock([&](auto& guardedLogCore) {
     auto logCore = std::move(guardedLogCore);
     LOG_CTX_IF("0f9b8", DEBUG, _logContext, logCore == nullptr)
         << "local follower asked to resign but log core already gone, term = "
-        << _self._termData.term;
+        << _leader._termData.term;
     return logCore;
   });
 }
 
 replicated_log::LogLeader::FollowerInfo::FollowerInfo(std::shared_ptr<AbstractFollower> impl,
                                                       TermIndexPair lastLogIndex,
-                                                      LogContext logContext)
+                                                      LoggerContext logContext)
     : _impl(std::move(impl)),
       lastAckedEntry(lastLogIndex),
       logContext(logContext.with<logContextKeyLogComponent>("follower-info")

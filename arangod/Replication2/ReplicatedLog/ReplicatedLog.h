@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Replication2/LogContext.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
@@ -67,7 +67,7 @@ namespace arangodb::replication2::replicated_log {
 struct alignas(64) ReplicatedLog {
   explicit ReplicatedLog(std::unique_ptr<LogCore> core,
                          std::shared_ptr<ReplicatedLogMetrics> const& metrics,
-                         LogContext const& logContext);
+                         LoggerContext const& logContext);
 
   ReplicatedLog() = delete;
   ReplicatedLog(ReplicatedLog const&) = delete;
@@ -112,7 +112,7 @@ struct alignas(64) ReplicatedLog {
   }
 
  private:
-  LogContext const _logContext = LogContext(Logger::REPLICATION2);
+  LoggerContext const _logContext = LoggerContext(Logger::REPLICATION2);
   mutable std::mutex _mutex;
   std::shared_ptr<LogParticipantI> _participant;
   std::shared_ptr<ReplicatedLogMetrics> const _metrics;

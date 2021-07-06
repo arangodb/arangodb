@@ -197,7 +197,9 @@ auto replicated_log::UnconfiguredStatus::fromVelocyPack(velocypack::Slice slice)
 void replicated_log::FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue(StaticStrings::Follower));
-  builder.add(StaticStrings::Leader, VPackValue(leader));
+  if (leader.has_value()) {
+    builder.add(StaticStrings::Leader, VPackValue(*leader));
+  }
   builder.add(StaticStrings::Term, VPackValue(term.value));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
@@ -206,9 +208,11 @@ void replicated_log::FollowerStatus::toVelocyPack(velocypack::Builder& builder) 
 auto replicated_log::FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
   TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Follower));
   FollowerStatus status;
-  status.leader = slice.get(StaticStrings::Leader).copyString();
   status.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<std::size_t>()};
   status.local = LogStatistics::fromVelocyPack(slice);
+  if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
+    status.leader = leader.copyString();
+  }
   return status;
 }
 

@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Replication2/LogContext.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/Common.h"
 
 #include <Containers/ImmerMemoryPolicy.h>
@@ -61,7 +61,7 @@ struct InMemoryLog {
 
  public:
   InMemoryLog() = delete;
-  InMemoryLog(LogContext const& logContext, replicated_log::LogCore const& logCore);
+  InMemoryLog(LoggerContext const& logContext, replicated_log::LogCore const& logCore);
 
   InMemoryLog(InMemoryLog&& other) noexcept;
   InMemoryLog(InMemoryLog const&) = default;
@@ -90,10 +90,10 @@ struct InMemoryLog {
   [[nodiscard]] auto back() const noexcept -> decltype(_log)::const_reference;
   [[nodiscard]] auto empty() const noexcept -> bool;
 
-  auto appendInPlace(LogContext const& logContext, LogEntry&& entry) -> void;
-  auto appendInPlace(LogContext const& logContext, LogEntry const& entry) -> void;
+  auto appendInPlace(LoggerContext const& logContext, LogEntry&& entry) -> void;
+  auto appendInPlace(LoggerContext const& logContext, LogEntry const& entry) -> void;
 
-  [[nodiscard]] auto append(LogContext const& logContext, log_type entries) const
+  [[nodiscard]] auto append(LoggerContext const& logContext, log_type entries) const
       -> InMemoryLog;
 
   [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<LogIterator>;

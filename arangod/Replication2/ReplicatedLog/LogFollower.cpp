@@ -149,6 +149,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 
   auto iter = std::make_unique<ReplicatedLogIterator>(req.entries);
   auto* core = self->_logCore.get();
+  // FIXME this code moves a unique_lock of a std::mutex into a future and a
+  //       different thread
   auto commitToMemoryAndResolve = [self = std::move(self), req = std::move(req),
                                    newInMemoryLog = std::move(newInMemoryLog),
                                    toBeResolved = std::move(toBeResolved)](Result&& res) mutable {
@@ -233,15 +235,6 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
   });
 }
 
-auto replicated_log::LogFollower::acquireMutex() -> replicated_log::LogFollower::Guard {
-  return _guardedFollowerData.getLockedGuard();
-}
-
-auto replicated_log::LogFollower::acquireMutex() const
-    -> replicated_log::LogFollower::ConstGuard {
-  return _guardedFollowerData.getLockedGuard();
-}
-
 auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   return _guardedFollowerData.doUnderLock(
       [term = _currentTerm, &leaderId = _leaderId](auto const& followerData) {
@@ -250,7 +243,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
         }
         FollowerStatus status;
         status.local = followerData.getLocalStatistics();
-        status.leader = leaderId.value_or("<none>");
+        status.leader = leaderId;
         status.term = term;
         return LogStatus{std::move(status)};
       });
@@ -264,8 +257,9 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
   return _guardedFollowerData.doUnderLock([this](GuardedFollowerData& followerData) {
     LOG_CTX("838fe", DEBUG, _logContext) << "follower resign";
     if (followerData._logCore == nullptr) {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+      LOG_CTX("55a1d", WARN, _logContext)
+          << "follower log core is already gone. Resign was called twice!";
+      ASSERT_OR_THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
     }
 
     // Use swap for multimap because its noexcept
@@ -291,25 +285,25 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
   });
 }
 
-replicated_log::LogFollower::LogFollower(LogContext const& logContext,
+replicated_log::LogFollower::LogFollower(LoggerContext const& logContext,
                                          std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                                          ParticipantId id, std::unique_ptr<LogCore> logCore,
                                          LogTerm term, std::optional<ParticipantId> leaderId,
                                          replicated_log::InMemoryLog inMemoryLog)
     : _logMetrics(std::move(logMetrics)),
+      _logContext(logContext.with<logContextKeyLogComponent>("follower")
+                      .with<logContextKeyLeaderId>(leaderId.value_or("<none>"))
+                      .with<logContextKeyTerm>(term)),
       _participantId(std::move(id)),
       _leaderId(std::move(leaderId)),
       _currentTerm(term),
-      _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)),
-      _logContext(logContext.with<logContextKeyLogComponent>("follower")
-                      .with<logContextKeyLeaderId>(_leaderId.value_or("<none>"))
-                      .with<logContextKeyTerm>(term)) {
+      _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {
   _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
 }
 
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::LogParticipantI::WaitForFuture {
-  auto self = acquireMutex();
+  auto self = _guardedFollowerData.getLockedGuard();
   return self->waitFor(idx);
 }
 

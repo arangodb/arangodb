@@ -57,21 +57,21 @@ struct LogNameValuePair : LoggableValue {
   }
 };
 
-struct LogContext {
-  explicit LogContext(LogTopic topic) : topic(std::move(topic)) {}
+struct LoggerContext {
+  explicit LoggerContext(LogTopic topic) : topic(std::move(topic)) {}
 
   template<const char N[], typename T>
-  auto with(T&& t) const -> LogContext {
+  auto with(T&& t) const -> LoggerContext {
     using S = std::decay_t<T>;
     auto pair = std::make_shared<LogNameValuePair<S, N>>(std::forward<T>(t));
-    return LogContext(values.push_back(std::move(pair)), topic);
+    return LoggerContext(values.push_back(std::move(pair)), topic);
   }
 
   auto withTopic(LogTopic newTopic) const {
-    return LogContext(values, std::move(newTopic));
+    return LoggerContext(values, std::move(newTopic));
   }
 
-  friend auto operator<<(std::ostream& os, LogContext const& ctx) -> std::ostream& {
+  friend auto operator<<(std::ostream& os, LoggerContext const& ctx) -> std::ostream& {
     os << "[";
     bool first = true;
     for (auto const& v : ctx.values) {
@@ -89,7 +89,7 @@ struct LogContext {
   ::immer::flex_vector<std::shared_ptr<LoggableValue>, arangodb::immer::arango_memory_policy> const values = {};
 
  private:
-  LogContext(decltype(values) values, LogTopic topic)
+  LoggerContext(decltype(values) values, LogTopic topic)
       : topic(std::move(topic)), values(std::move(values)) {}
 };
 }

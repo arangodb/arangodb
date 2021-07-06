@@ -82,7 +82,7 @@ struct LeaderStatus {
 
 struct FollowerStatus {
   LogStatistics local;
-  ParticipantId leader;
+  std::optional<ParticipantId> leader;
   LogTerm term;
 
   void toVelocyPack(velocypack::Builder& builder) const;
