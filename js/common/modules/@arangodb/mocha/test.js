@@ -1,5 +1,5 @@
 'use strict';
-const Runnable = require('./runnable');
+const Runnable = require('@arangodb/mocha/runnable');
 
 function createInvalidArgumentTypeError(message, argument, expected) {
   var err = new TypeError(message);

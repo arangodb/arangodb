@@ -1,7 +1,7 @@
 'use strict';
 
 const EventEmitter = require('events').EventEmitter;
-const Pending = require('./pending');
+const Pending = require('@arangodb/mocha/pending');
 const milliseconds = require('ms');
 
 function createInvalidExceptionError(message, value) {

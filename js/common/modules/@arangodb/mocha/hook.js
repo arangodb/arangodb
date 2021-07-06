@@ -1,6 +1,6 @@
 'use strict';
 
-const Runnable = require('./runnable');
+const Runnable = require('@arangodb/mocha/runnable');
 
 class Hook extends Runnable {
 /**

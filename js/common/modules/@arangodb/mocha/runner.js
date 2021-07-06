@@ -5,9 +5,9 @@
  */
 const util = require('util');
 const EventEmitter = require('events').EventEmitter;
-const Pending = require('./pending');
-const Runnable = require('./runnable');
-const Suite = require('./suite');
+const Pending = require('@arangodb/mocha/pending');
+const Runnable = require('@arangodb/mocha/runnable');
+const Suite = require('@arangodb/mocha/suite');
 
 function createInvalidExceptionError(message, value) {
   var err = new Error(message);

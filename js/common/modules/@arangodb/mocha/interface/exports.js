@@ -1,6 +1,6 @@
 'use strict';
-const Suite = require('./suite');
-const Test = require('./test');
+const Suite = require('@arangodb/mocha/suite');
+const Test = require('@arangodb/mocha/test');
 
 /**
  * Exports-style (as Node.js module) interface:

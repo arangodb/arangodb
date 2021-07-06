@@ -1,6 +1,6 @@
 'use strict';
 
-const Suite = require('./suite');
+const Suite = require('@arangodb/mocha/suite');
 
 function createMissingArgumentError(message, argument, expected) {
   var err = new TypeError(message);

@@ -5,7 +5,7 @@
  */
 const EventEmitter = require('events').EventEmitter;
 const milliseconds = require('ms');
-const Hook = require('./hook');
+const Hook = require('@arangodb/mocha/hook');
 
 function createInvalidArgumentTypeError(message, argument, expected) {
   var err = new TypeError(message);

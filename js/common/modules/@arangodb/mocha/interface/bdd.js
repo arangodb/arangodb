@@ -1,6 +1,6 @@
 'use strict';
 
-const Test = require('./test');
+const Test = require('@arangodb/mocha/test');
 
 /**
  * BDD-style interface:
@@ -23,7 +23,7 @@ module.exports = function bddInterface(suite) {
   var suites = [suite];
 
   suite.on('pre-require', function(context, file, mocha) {
-    var common = require('./common')(suites, context, mocha);
+    var common = require('@arangodb/mocha/interface/common')(suites, context, mocha);
 
     context.before = common.before;
     context.after = common.after;

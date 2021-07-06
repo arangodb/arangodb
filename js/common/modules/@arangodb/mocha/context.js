@@ -2,9 +2,6 @@
 /**
  * @module Context
  */
-/**
- * Expose `Context`.
- */
 
 class Context {
 
