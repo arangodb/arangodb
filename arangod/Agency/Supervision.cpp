@@ -2416,8 +2416,8 @@ void arangodb::consensus::enforceReplicationFunctional(
             bool found = false;
             for (auto const& pair : todo) {
               auto const& job = pair.second;
-              auto tmp_type = job->hasAsString("type").value();
-              auto tmp_shard = job->hasAsString("shard").value();
+              auto tmp_type = job->hasAsString("type");
+              auto tmp_shard = job->hasAsString("shard");
               if ((tmp_type == "addFollower" || tmp_type == "removeFollower" ||
                    tmp_type == "moveShard") &&
                   tmp_shard == shard_.first) {
