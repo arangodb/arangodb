@@ -23,6 +23,8 @@
 
 #include "TestHelper.h"
 
+#include "Basics/voc-errors.h"
+
 #include <Replication2/ReplicatedLog/Algorithms.h>
 
 #include <utility>

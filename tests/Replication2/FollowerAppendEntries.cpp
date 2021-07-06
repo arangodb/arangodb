@@ -22,6 +22,8 @@
 
 #include "TestHelper.h"
 
+#include "Basics/voc-errors.h"
+
 #include "ReplicatedLogMetricsMock.h"
 
 #include "Replication2/ReplicatedLog/LogFollower.h"

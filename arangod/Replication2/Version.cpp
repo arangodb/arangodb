@@ -25,6 +25,7 @@
 #include <Basics/ResultT.h>
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
+#include <Logger/LogMacros.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -63,7 +64,7 @@ auto replication::versionToString(replication::Version version) -> std::string_v
     case Version::TWO:
       return "2";
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
+  ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       StringUtils::concatT("Unhandled replication version: ",
                            static_cast<std::underlying_type_t<Version>>(version)));

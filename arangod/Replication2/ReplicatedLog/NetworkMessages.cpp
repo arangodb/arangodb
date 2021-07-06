@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "messages.h"
+#include "NetworkMessages.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

@@ -27,7 +27,7 @@
 #include <Network/ConnectionPool.h>
 #include <Network/Methods.h>
 
-#include "Replication2/ReplicatedLog/messages.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

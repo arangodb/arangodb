@@ -25,9 +25,10 @@
 #include <memory>
 #include <mutex>
 
-#include "Basics/Result.h"
-#include "Basics/UnshackledMutex.h"
-#include "Futures/Future.h"
+#include <Basics/Result.h>
+#include <Basics/UnshackledMutex.h>
+#include <Futures/Future.h>
+
 #include "Replication2/ReplicatedLog/Common.h"
 
 namespace arangodb::replication2 {

@@ -27,8 +27,8 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Replication2/ReplicatedLog/messages.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <Basics/Guarded.h>
