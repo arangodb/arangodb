@@ -71,7 +71,7 @@ class LogFollower : public LogParticipantI,
 
     [[nodiscard]] auto getLocalStatistics() const noexcept -> LogStatistics;
 
-    LogFollower const& _self;
+    LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
     LogIndex _commitIndex{0};

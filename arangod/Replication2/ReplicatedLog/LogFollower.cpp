@@ -156,6 +156,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     if (auto result = appendEntriesPreFlightChecks(self.get(), req); result.has_value()) {
       return *result;
     }
+
+    self->_lastRecvMessageId = req.messageId;
   }
 
   {
@@ -218,10 +220,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       // we wrote to the on-disk-log.
       static_assert(noexcept(res.fail()));
       if (res.fail()) {
-        LOG_CTX("216d8", ERR, self->_self._loggerContext)
+        LOG_CTX("216d8", ERR, self->_follower._loggerContext)
             << "failed to insert log entries: " << res.errorMessage();
         return std::make_pair(AppendEntriesResult::withPersistenceError(
-                                  self->_self._currentTerm, req.messageId, res),
+                                  self->_follower._currentTerm, req.messageId, res),
                               DeferredAction{});
       }
 
@@ -229,7 +231,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
       self->_inMemoryLog = std::move(newInMemoryLog);
 
-      LOG_CTX("dd72d", TRACE, self->_self._loggerContext)
+      LOG_CTX("dd72d", TRACE, self->_follower._loggerContext)
           << "appended " << req.entries.size() << " log entries after "
           << req.prevLogIndex << ", leader commit index = " << req.leaderCommit;
     }
@@ -238,7 +240,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog.empty()) {
         self->_commitIndex =
             std::min(req.leaderCommit, self->_inMemoryLog.back().logIndex());
-        LOG_CTX("1641d", TRACE, self->_self._loggerContext)
+        LOG_CTX("1641d", TRACE, self->_follower._loggerContext)
             << "increment commit index: " << self->_commitIndex;
 
         *toBeResolved = WaitForQueueResolve{self->_waitForQueue.getLockedGuard(),
@@ -257,9 +259,9 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       return {};
     });
 
-    static_assert(noexcept(AppendEntriesResult::withOk(self->_self._currentTerm, req.messageId)));
+    static_assert(noexcept(AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId)));
     static_assert(std::is_nothrow_move_constructible_v<DeferredAction>);
-    return std::make_pair(AppendEntriesResult::withOk(self->_self._currentTerm, req.messageId), std::move(action));
+    return std::make_pair(AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId), std::move(action));
   };
   static_assert(std::is_nothrow_move_constructible_v<decltype(commitToMemoryAndResolve)>);
 
@@ -278,7 +280,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
     LogFollower const& self, std::unique_ptr<LogCore> logCore, InMemoryLog inMemoryLog)
-    : _self(self), _inMemoryLog(std::move(inMemoryLog)), _logCore(std::move(logCore)) {}
+    : _follower(self), _inMemoryLog(std::move(inMemoryLog)), _logCore(std::move(logCore)) {}
 
 auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
