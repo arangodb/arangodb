@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix potential memleak in Pregel conductor garbage collection.
+
 * Added a retry loop for arangorestore during the initial connection phase. The
   number of retries defaults to 3 and can be configured using
   --initial-connect-retries.
