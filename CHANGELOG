@@ -25,7 +25,7 @@ devel
   - timezone: 1.0.22 -> 1.0.23
   - type-is: 1.6.16 -> 1.6.18
   - underscore: 1.9.1 -> 1.13.1
-  - xmldom: 0.1.27 -> 0.1.31
+  - xmldom: 0.1.27 -> 0.6.0
 
 * Adapt various places related to handling of execution plans non-recursive
   in order to avoid stack overflows. This allows us now to execute much larger

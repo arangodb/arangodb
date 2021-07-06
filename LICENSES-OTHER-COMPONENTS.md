@@ -3065,7 +3065,7 @@ License Id: MIT
 #### xmldom
 
 Name: xmldom
-Version: 0.1.31
+Version: 0.6.0
 Project Home: http://www.xidea.org
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
 License Name: MIT (dual license)
