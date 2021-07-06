@@ -492,8 +492,14 @@ CostEstimate WindowNode::estimateCost() const {
   // we never return more rows than above
   CostEstimate estimate = _dependencies.at(0)->getCost();
   if (_rangeVariable == nullptr) {
-    int64_t numRows = 1 + _bounds.numPrecedingRows() + _bounds.numFollowingRows();
-    estimate.estimatedCost += double(numRows * numRows) * _aggregateVariables.size();
+    uint64_t numRows = 1;
+    if ( _bounds.unboundedPreceding()) {
+      numRows += estimate.estimatedNrItems;
+    } else {
+      numRows += std::min<uint64_t>(estimate.estimatedNrItems, _bounds.numPrecedingRows());
+    }
+    numRows += _bounds.numFollowingRows();
+    estimate.estimatedCost += double(numRows) * double(numRows) * _aggregateVariables.size();
   } else {  // guestimate
     estimate.estimatedCost += 4 * _aggregateVariables.size();
   }

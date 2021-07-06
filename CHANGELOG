@@ -5,6 +5,9 @@ devel
   number of retries defaults to 3 and can be configured using
   --initial-connect-retries.
 
+* Fix numeric overflow in AQL WINDOW node cost estimation if the number of
+  preceding rows was set to `unbounded`.
+
 * Updated ArangoDB Starter to 0.15.1-preview-3.
 
 * Added garbage collection for finished and failed Pregel conductors.
