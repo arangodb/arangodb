@@ -50,6 +50,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -65,6 +66,8 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 using irs::async_utils::read_write_mutex;
+
+DECLARE_ATOMIC_METRIC(arangodb_arangosearch_link_stats, LinkStats, "Stats of documents in link");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
@@ -609,7 +612,11 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
-      _createdInRecovery(false) {
+      _createdInRecovery(false),
+      _linkStats(
+        _collection.vocbase().server()
+          .getFeature<arangodb::MetricsFeature>().add(arangodb_arangosearch_link_stats{})) {
+
   auto* key = this;
 
   // initialize transaction callback
@@ -862,6 +869,10 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     // update reader
     TRI_ASSERT(_dataStore._reader != reader);
     _dataStore._reader = reader;
+    Stats curr_stats = stats();
+
+    // update stats
+    _linkStats.store(std::make_shared<Stats>(curr_stats));
 
     // update last committed tick
     impl.tick(_lastCommittedTick);

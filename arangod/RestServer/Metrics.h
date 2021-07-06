@@ -86,6 +86,45 @@ class Counter : public Metric {
   mutable Metrics::buffer_type _b;
 };
 
+template<typename T> class AtomicMetric : public Metric {
+
+public:
+
+  AtomicMetric(const T& val, std::string const& name, std::string const& help,
+        std::string const& labels = std::string())
+    : Metric(name, help, labels), statsPtr(std::make_shared<T>(val)) { }
+
+  ~AtomicMetric() = default;
+
+  void store(const std::shared_ptr<T>& newStatsPtr) {
+    std::lock_guard<std::mutex> lock(mutex);
+    statsPtr = newStatsPtr;
+    return;
+  }
+
+  const std::shared_ptr<T> load() const noexcept {
+    std::lock_guard<std::mutex> lock(mutex);
+    return statsPtr;
+  }
+
+  virtual std::string type() const override { return "atomic_metric"; }
+
+  void toPrometheus(std::string& result,
+                    std::string const& globalLabels,
+                    std::string const& alternativeName) const override {
+    std::unique_lock<std::mutex> mutex_lock(mutex);
+    auto tmp = statsPtr.lock();
+    mutex_lock.unlock();
+    if (tmp) {
+      tmp->toPrometheus(result, labels(), globalLabels);
+    }
+    return;
+  }
+
+private:
+  std::weak_ptr<T> statsPtr;
+  mutable std::mutex mutex;
+};
 
 template<typename T> class Gauge : public Metric {
  public:

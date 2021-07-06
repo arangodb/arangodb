@@ -41,6 +41,11 @@
     x() { _name = #x; _help = help; } \
     }
     
+#define DECLARE_ATOMIC_METRIC(x, type, help)    \
+  struct x : arangodb::metrics::AtomicMetricBuilder<x, type> { \
+    x() { _name = #x; _help = help; } \
+    }
+
 #define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)
 
 #define DECLARE_HISTOGRAM(x, scale, help)                   \
@@ -147,6 +152,21 @@ struct HistogramBuilder : GenericBuilder<Derived> {
 
   char const* type() const override { return "histogram"; }
 };
+
+template <class Derived, typename T>
+struct AtomicMetricBuilder : GenericBuilder<Derived> {
+  using metric_t = ::AtomicMetric<T>;
+
+  std::shared_ptr<::Metric> build() const override {
+    return std::make_shared<::AtomicMetric<T>>(T{}, 
+                                              this->name(), 
+                                              this->_help, 
+                                              this->_labels);
+  }
+
+  char const* type() const override { return "atomic_metric"; }
+};
+
 }  // namespace metrics
 
 class MetricsFeature final : public application_features::ApplicationFeature {
