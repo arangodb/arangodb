@@ -154,27 +154,27 @@ class Scheduler {
   [[nodiscard]] virtual bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) = 0;
 
  public:
-    // delay Future returns a future that will be fulfilled after the given duration
-    // requires scheduler
-    // If d is zero, the future is fulfilled immediately. Throws a logic error
-    // if delay was cancelled.
-    futures::Future<futures::Unit> delay(clock::duration d) {
-      if (d == clock::duration::zero()) {
-        return futures::makeFuture();
-      }
-
-      futures::Promise<bool> p;
-      futures::Future<bool> f = p.getFuture();
-
-      auto item = queueDelay(RequestLane::DELAYED_FUTURE, d,
-        [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });
-
-      return std::move(f).thenValue([item = std::move(item)](bool cancelled) {
-        if (cancelled) {
-          throw std::logic_error("delay was cancelled");
-        }
-      });
+  // delay Future returns a future that will be fulfilled after the given duration
+  // requires scheduler
+  // If d is zero, the future is fulfilled immediately. Throws a logic error
+  // if delay was cancelled.
+  futures::Future<futures::Unit> delay(clock::duration d) {
+    if (d == clock::duration::zero()) {
+      return futures::makeFuture();
     }
+
+    futures::Promise<bool> p;
+    futures::Future<bool> f = p.getFuture();
+
+    auto item = queueDelay(RequestLane::DELAYED_FUTURE, d,
+      [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });
+
+    return std::move(f).thenValue([item = std::move(item)](bool cancelled) {
+      if (cancelled) {
+        throw std::logic_error("delay was cancelled");
+      }
+    });
+  }
 
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks
