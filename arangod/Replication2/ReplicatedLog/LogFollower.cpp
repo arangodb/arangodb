@@ -62,15 +62,89 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
+namespace {
+
+using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_log;
+
+struct MeasureTimeGuard {
+  explicit MeasureTimeGuard(std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> histogram) noexcept
+      : _start(std::chrono::steady_clock::now()), _histogram(std::move(histogram)) {}
+  MeasureTimeGuard(MeasureTimeGuard const&) = delete;
+  MeasureTimeGuard(MeasureTimeGuard&&) = default;
+
+  void fire() {
+    auto const endTime = std::chrono::steady_clock::now();
+    if (_histogram) {
+      auto const duration =
+          std::chrono::duration_cast<std::chrono::microseconds>(endTime - _start);
+      _histogram->count(duration.count());
+      _histogram.reset();
+    }
+  }
+
+  ~MeasureTimeGuard() { fire(); }
+
+ private:
+  std::chrono::steady_clock::time_point const _start;
+  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> _histogram;
+};
+
+}  // namespace
+
+auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
+                                               AppendEntriesRequest const& req) const noexcept
+    -> std::optional<AppendEntriesResult> {
+  if (data._logCore == nullptr) {
+    LOG_CTX("d290d", DEBUG, _loggerContext)
+        << "reject append entries - log core gone";
+    return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
+                                              AppendEntriesErrorReason::LOST_LOG_CORE);
+  }
+
+  if (data._lastRecvMessageId >= req.messageId) {
+    LOG_CTX("d291d", DEBUG, _loggerContext)
+        << "reject append entries - message id out dated: " << req.messageId;
+    return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
+                                              AppendEntriesErrorReason::MESSAGE_OUTDATED);
+  }
+
+  if (req.leaderId != _leaderId) {
+    LOG_CTX("a2009", DEBUG, _loggerContext)
+        << "reject append entries - wrong leader, given = " << req.leaderId
+        << " current = " << _leaderId.value_or("<none>");
+    return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
+                                              AppendEntriesErrorReason::INVALID_LEADER_ID);
+  }
+
+  if (req.leaderTerm != _currentTerm) {
+    LOG_CTX("dd7a3", DEBUG, _loggerContext)
+        << "reject append entries - wrong term, given = " << req.leaderTerm
+        << ", current = " << _currentTerm;
+    return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
+                                              AppendEntriesErrorReason::WRONG_TERM);
+  }
+
+  // It is always allowed to replace the log entirely
+  if (req.prevLogIndex > LogIndex{0}) {
+    if (auto conflict =
+            algorithms::detectConflict(data._inMemoryLog,
+                                       TermIndexPair{req.prevLogTerm, req.prevLogIndex});
+        conflict.has_value()) {
+      auto [reason, next] = *conflict;
+
+      LOG_CTX("5971a", DEBUG, _loggerContext)
+          << "reject append entries - prev log did not match: " << to_string(reason);
+      return AppendEntriesResult::withConflict(_currentTerm, req.messageId, next);
+    }
+  }
+
+  return std::nullopt;
+}
+
 auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
-  auto const startTime = std::chrono::steady_clock::now();
-  auto measureTime = DeferredAction{[startTime, metrics = _logMetrics]() noexcept {
-    auto const endTime = std::chrono::steady_clock::now();
-    auto const duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-    metrics->replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
-  }};
+  MeasureTimeGuard measureTimeGuard{_logMetrics->replicatedLogFollowerAppendEntriesRtUs};
 
   struct WaitForQueueResolve {
     WaitForQueueResolve(Guarded<WaitForQueue>::mutex_guard_type guard, LogIndex commitIndex)
@@ -84,68 +158,41 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   };
 
   auto toBeResolved = std::make_unique<std::optional<WaitForQueueResolve>>();
-
   auto self = _guardedFollowerData.getLockedGuard();
 
-  if (self->_logCore == nullptr) {
-    LOG_CTX("d290d", DEBUG, _loggerContext)
-        << "reject append entries - log core gone";
-    return AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                               AppendEntriesErrorReason::LOST_LOG_CORE, req.messageId);
-  }
 
-  if (self->_lastRecvMessageId >= req.messageId) {
-    LOG_CTX("d291d", DEBUG, _loggerContext)
-        << "reject append entries - message id out dated: " << req.messageId;
-    return AppendEntriesResult(_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                               AppendEntriesErrorReason::MESSAGE_OUTDATED, req.messageId);
-  }
-  self->_lastRecvMessageId = req.messageId;
-
-  if (req.leaderId != _leaderId) {
-    LOG_CTX("a2009", DEBUG, _loggerContext)
-        << "reject append entries - wrong leader, given = " << req.leaderId
-        << " current = " << _leaderId.value_or("<none>");
-    return AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                               AppendEntriesErrorReason::INVALID_LEADER_ID, req.messageId};
-  }
-
-  if (req.leaderTerm != _currentTerm) {
-    LOG_CTX("dd7a3", DEBUG, _loggerContext)
-        << "reject append entries - wrong term, given = " << req.leaderTerm
-        << ", current = " << _currentTerm;
-    return AppendEntriesResult{_currentTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                               AppendEntriesErrorReason::WRONG_TERM, req.messageId};
-  }
-  // TODO This happily modifies all parameters. Can we refactor that to make it a little nicer?
-
-  if (req.prevLogIndex > LogIndex{0}) {
-    if (auto conflict = algorithms::detectConflict(self->_inMemoryLog,
-                                       TermIndexPair{req.prevLogTerm, req.prevLogIndex});
-        conflict.has_value()) {
-      auto [reason, next] = *conflict;
-
-      LOG_CTX("5971a", DEBUG, _loggerContext) << "reject append entries - prev log did not match: " << to_string(reason);
-      return AppendEntriesResult{_currentTerm, req.messageId, next};
+  {
+    // Preflight checks - does the leader, log and other stuff match?
+    // This code block should not modify the local state, only check values.
+    if (auto result = appendEntriesPreFlightChecks(self.get(), req); result.has_value()) {
+      return *result;
     }
   }
 
-  // prepare the new in memory state
-  auto newInMemoryLog = self->_inMemoryLog.takeSnapshotUpToAndIncluding(req.prevLogIndex);
+  {
+    // Transactional Code Block
+    // This code removes parts of the log and makes sure that
+    // disk and in memory always agree. We first create the new state in memory
+    // as a copy, then modify the log on disk. This is an atomic operation. If
+    // it fails, we forget the new state. Otherwise we replace the old in memory
+    // state with the new value.
+    auto newInMemoryLog = self->_inMemoryLog.takeSnapshotUpToAndIncluding(req.prevLogIndex);
 
-  if (self->_inMemoryLog.getLastIndex() != req.prevLogIndex) {
-    auto res = self->_logCore->removeBack(req.prevLogIndex + 1);
-    if (!res.ok()) {
-      LOG_CTX("f17b8", FATAL, _loggerContext)
-          << "failed to remove log entries after " << req.prevLogIndex;
-      FATAL_ERROR_EXIT();
+    if (self->_inMemoryLog.getLastIndex() != req.prevLogIndex) {
+      auto res = self->_logCore->removeBack(req.prevLogIndex + 1);
+      if (!res.ok()) {
+        LOG_CTX("f17b8", ERR, _loggerContext)
+            << "failed to remove log entries after " << req.prevLogIndex;
+        return AppendEntriesResult::withPersistenceError(_currentTerm, req.messageId, res);
+      }
     }
+
+    // commit the deletion in memory
+    static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
+    self->_inMemoryLog = std::move(newInMemoryLog);
   }
 
-  // commit the deletion in memory
-  static_assert(std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
-  self->_inMemoryLog = std::move(newInMemoryLog);
-  newInMemoryLog = self->_inMemoryLog.append(_loggerContext, req.entries);
+  auto newInMemoryLog = self->_inMemoryLog.append(_loggerContext, req.entries);
 
   auto iter = std::make_unique<ReplicatedLogIterator>(req.entries);
   auto* core = self->_logCore.get();
@@ -158,14 +205,9 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     if (res.fail()) {
       LOG_CTX("216d8", ERR, self->_self._loggerContext)
           << "failed to insert log entries: " << res.errorMessage();
-      return std::make_pair(
-          AppendEntriesResult{
-              self->_self._currentTerm,
-              res.errorNumber(),
-              AppendEntriesErrorReason::PERSISTENCE_FAILURE,
-              req.messageId,
-          },
-          DeferredAction{});
+      return std::make_pair(AppendEntriesResult::withPersistenceError(
+                                self->_self._currentTerm, req.messageId, res),
+                            DeferredAction{});
     }
 
     // commit the write in memory
@@ -202,7 +244,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   static_assert(std::is_nothrow_move_constructible_v<decltype(commitToMemoryAndResolve)>);
   return core->insertAsync(std::move(iter), req.waitForSync)
       .thenValue(std::move(commitToMemoryAndResolve))
-      .then([measureTime = std::move(measureTime)](auto&& res) mutable {
+      .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, toBeResolved] = res.get();
         return std::move(result);
@@ -214,17 +256,16 @@ replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
     : _self(self), _inMemoryLog(std::move(inMemoryLog)), _logCore(std::move(logCore)) {}
 
 auto replicated_log::LogFollower::getStatus() const -> LogStatus {
-  return _guardedFollowerData.doUnderLock(
-      [this](auto const& followerData) {
-        if (followerData._logCore == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
-        }
-        FollowerStatus status;
-        status.local = followerData.getLocalStatistics();
-        status.leader = _leaderId;
-        status.term = _currentTerm;
-        return LogStatus{std::move(status)};
-      });
+  return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
+    if (followerData._logCore == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    }
+    FollowerStatus status;
+    status.local = followerData.getLocalStatistics();
+    status.leader = _leaderId;
+    status.term = _currentTerm;
+    return LogStatus{std::move(status)};
+  });
 }
 
 auto replicated_log::LogFollower::getParticipantId() const noexcept -> ParticipantId const& {
@@ -267,9 +308,10 @@ replicated_log::LogFollower::LogFollower(LoggerContext const& logContext,
                                          LogTerm term, std::optional<ParticipantId> leaderId,
                                          replicated_log::InMemoryLog inMemoryLog)
     : _logMetrics(std::move(logMetrics)),
-      _loggerContext(logContext.with<logContextKeyLogComponent>("follower")
-                      .with<logContextKeyLeaderId>(leaderId.value_or("<none>"))
-                      .with<logContextKeyTerm>(term)),
+      _loggerContext(
+          logContext.with<logContextKeyLogComponent>("follower")
+              .with<logContextKeyLeaderId>(leaderId.value_or("<none>"))
+              .with<logContextKeyTerm>(term)),
       _participantId(std::move(id)),
       _leaderId(std::move(leaderId)),
       _currentTerm(term),
@@ -294,7 +336,7 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
 }
 
 auto replicated_log::LogFollower::waitForIterator(LogIndex index)
--> replicated_log::LogParticipantI::WaitForIteratorFuture {
+    -> replicated_log::LogParticipantI::WaitForIteratorFuture {
   TRI_ASSERT(index != LogIndex{0});
   return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
     return getLogIterator(LogIndex{index.value - 1});
@@ -316,6 +358,7 @@ replicated_log::LogFollower::~LogFollower() {
   //      depending on whether we still own the LogCore.
   _logMetrics->replicatedLogFollowerNumber->fetch_sub(1);
 }
+
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept
     -> LogStatistics {

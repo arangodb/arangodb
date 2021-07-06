@@ -84,6 +84,10 @@ class LogFollower : public LogParticipantI,
   std::optional<ParticipantId> const _leaderId;
   LogTerm const _currentTerm;
   Guarded<GuardedFollowerData> _guardedFollowerData;
+
+  auto appendEntriesPreFlightChecks(GuardedFollowerData const&,
+                                    AppendEntriesRequest const&) const noexcept
+      -> std::optional<AppendEntriesResult>;
 };
 
 }  // namespace arangodb::replication2::replicated_log

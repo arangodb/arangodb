@@ -133,6 +133,24 @@ replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm term,
   this->conflict = conflict;
 }
 
+auto replicated_log::AppendEntriesResult::withConflict(LogTerm term, replicated_log::MessageId id,
+                                                       TermIndexPair conflict)
+    -> replicated_log::AppendEntriesResult {
+  return AppendEntriesResult(term, id, conflict);
+}
+
+auto replicated_log::AppendEntriesResult::withRejection(LogTerm term, MessageId id,
+                                                        AppendEntriesErrorReason reason)
+    -> AppendEntriesResult {
+  return AppendEntriesResult(term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                             reason, id);
+}
+auto replicated_log::AppendEntriesResult::withPersistenceError(LogTerm term, replicated_log::MessageId id, Result const& res)
+    -> replicated_log::AppendEntriesResult {
+  return AppendEntriesResult(term, res.errorNumber(),
+                             AppendEntriesErrorReason::PERSISTENCE_FAILURE, id);
+}
+
 void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
   {
     velocypack::ObjectBuilder ob(&builder);

@@ -122,7 +122,6 @@ auto RocksDBLog::removeFront(replication2::LogIndex stop) -> Result {
 auto RocksDBLog::removeBack(replication2::LogIndex start) -> Result {
   auto first = RocksDBKey();
   first.constructLogEntry(_objectId, LogIndex{start.value});
-  LOG_DEVEL << __func__ << " log = " << _objectId << " start = " << start.value;
 
   rocksdb::WriteOptions opts;
   auto s = _persistor->_db->DeleteRange(opts, _persistor->_cf, first.string(),

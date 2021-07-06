@@ -83,6 +83,10 @@ struct AppendEntriesResult {
                       AppendEntriesErrorReason reason, MessageId);
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
+
+  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict) -> AppendEntriesResult;
+  static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason) -> AppendEntriesResult;
+  static auto withPersistenceError(LogTerm, MessageId, Result const&) -> AppendEntriesResult;
 };
 
 auto to_string(AppendEntriesErrorReason reason) -> std::string;
