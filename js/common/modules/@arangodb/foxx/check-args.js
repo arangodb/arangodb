@@ -59,6 +59,14 @@ function createSchemaValidator (schema) {
   if (schema.isJoi) {
     return (value) => schema.validate(value);
   }
+  if (schema === false) {
+    return (value) => {
+      if (value === null || value === undefined || value === "") {
+        return {value: undefined, error: null};
+      }
+      return {value, error: new Error('"value" is forbidden')};
+    };
+  }
   const validator = ajv.compile(schema);
   return (value) => {
     const valid = validator(value);
