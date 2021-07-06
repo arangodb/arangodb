@@ -109,12 +109,13 @@ struct AbstractFollower {
 };
 
 struct QuorumData {
-  QuorumData(const LogIndex& index, LogTerm term, std::vector<ParticipantId> quorum);
+  QuorumData(LogIndex index, LogTerm term, std::vector<ParticipantId> quorum);
+  QuorumData(LogIndex index, LogTerm term);
   explicit QuorumData(velocypack::Slice slice);
 
   LogIndex index;
   LogTerm term;
-  std::vector<ParticipantId> quorum;
+  std::vector<ParticipantId> quorum;  // might be empty on follower
 
   void toVelocyPack(velocypack::Builder& builder) const;
 };

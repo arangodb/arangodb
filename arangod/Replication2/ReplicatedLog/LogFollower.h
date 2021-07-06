@@ -71,8 +71,6 @@ class LogFollower : public LogParticipantI,
 
     [[nodiscard]] auto getLocalStatistics() const noexcept -> LogStatistics;
 
-    [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture;
-
     LogFollower const& _self;
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
@@ -81,7 +79,7 @@ class LogFollower : public LogParticipantI,
     Guarded<WaitForQueue> _waitForQueue;
   };
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
-  LoggerContext const _logContext;
+  LoggerContext const _loggerContext;
   ParticipantId const _participantId;
   std::optional<ParticipantId> const _leaderId;
   LogTerm const _currentTerm;

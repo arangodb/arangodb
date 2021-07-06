@@ -54,9 +54,12 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-replicated_log::QuorumData::QuorumData(LogIndex const& index, LogTerm term,
+replicated_log::QuorumData::QuorumData(LogIndex index, LogTerm term,
                                        std::vector<ParticipantId> quorum)
     : index(index), term(term), quorum(std::move(quorum)) {}
+
+replicated_log::QuorumData::QuorumData(LogIndex index, LogTerm term)
+    : QuorumData(index, term, {}) {}
 
 replicated_log::QuorumData::QuorumData(VPackSlice slice) {
   index = LogIndex{slice.get(StaticStrings::Index).extract<std::size_t>()};
