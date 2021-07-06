@@ -1,8 +1,6 @@
 'use strict';
 const Runnable = require('./runnable');
 
-var inherits = require('util').inherits;
-
 function createInvalidArgumentTypeError(message, argument, expected) {
   var err = new TypeError(message);
   err.code = 'ERR_MOCHA_INVALID_ARG_TYPE';
@@ -12,8 +10,7 @@ function createInvalidArgumentTypeError(message, argument, expected) {
   return err;
 }
 
-module.exports = Test;
-
+class Test extends Runnable {
 /**
  * Initialize a new `Test` with the given `title` and callback `fn`.
  *
@@ -23,17 +20,17 @@ module.exports = Test;
  * @param {String} title - Test title (required)
  * @param {Function} [fn] - Test callback.  If omitted, the Test is considered "pending"
  */
-function Test(title, fn) {
+constructor(title, fn) {
   if (typeof title !== "string") {
-    throw createInvalidArgumentTypeError(
-      'Test argument "title" should be a string. Received type "' +
-        typeof title +
-        '"',
-      'title',
-      'string'
+  throw createInvalidArgumentTypeError(
+    'Test argument "title" should be a string. Received type "' +
+    typeof title +
+    '"',
+    'title',
+    'string'
     );
   }
-  Runnable.call(this, title, fn);
+  super(title, fn);
   this.pending = !fn;
   this.type = 'test';
 }
@@ -41,9 +38,8 @@ function Test(title, fn) {
 /**
  * Inherit from `Runnable.prototype`.
  */
-inherits(Test, Runnable);
 
-Test.prototype.clone = function() {
+clone() {
   var test = new Test(this.title, this.fn);
   test.timeout(this.timeout());
   test.slow(this.slow());
@@ -55,4 +51,7 @@ Test.prototype.clone = function() {
   test.file = this.file;
   test.ctx = this.ctx;
   return test;
-};
+}
+}
+
+module.exports = Test;

@@ -1,6 +1,6 @@
 'use strict';
 
-var Test = require('./test');
+const Test = require('./test');
 
 /**
  * TDD-style interface:

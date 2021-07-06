@@ -2,14 +2,7 @@
 
 const Runnable = require('./runnable');
 
-var inherits = require('util').inherits;
-
-/**
- * Expose `Hook`.
- */
-
-module.exports = Hook;
-
+class Hook extends Runnable {
 /**
  * Initialize a new `Hook` with the given `title` and callback `fn`
  *
@@ -18,15 +11,10 @@ module.exports = Hook;
  * @param {String} title
  * @param {Function} fn
  */
-function Hook(title, fn) {
-  Runnable.call(this, title, fn);
+constructor(title, fn) {
+  super(title, fn);
   this.type = 'hook';
 }
-
-/**
- * Inherit from `Runnable.prototype`.
- */
-inherits(Hook, Runnable);
 
 /**
  * Get or set the test `err`.
@@ -36,7 +24,7 @@ inherits(Hook, Runnable);
  * @param {Error} err
  * @return {Error}
  */
-Hook.prototype.error = function(err) {
+ error(err) {
   if (!arguments.length) {
     err = this._error;
     this._error = null;
@@ -44,4 +32,8 @@ Hook.prototype.error = function(err) {
   }
 
   this._error = err;
-};
+}
+
+}
+
+module.exports = Hook;

@@ -16,30 +16,7 @@ function createInvalidArgumentTypeError(message, argument, expected) {
   return err;
 }
 
-var inherits = require('util').inherits;
-
-/**
- * Expose `Suite`.
- */
-
-exports = module.exports = Suite;
-
-/**
- * Create a new `Suite` with the given `title` and parent `Suite`.
- *
- * @public
- * @param {Suite} parent - Parent suite (required!)
- * @param {string} title - Title
- * @return {Suite}
- */
-Suite.create = function(parent, title) {
-  var suite = new Suite(title, parent.ctx);
-  suite.parent = parent;
-  title = suite.fullTitle();
-  parent.addSuite(suite);
-  return suite;
-};
-
+class Suite extends EventEmitter {
 /**
  * Constructs a new `Suite` instance with the given `title`, `ctx`, and `isRoot`.
  *
@@ -51,7 +28,8 @@ Suite.create = function(parent, title) {
  * @param {Context} parentContext - Parent context instance.
  * @param {boolean} [isRoot=false] - Whether this is the root suite.
  */
-function Suite(title, parentContext, isRoot) {
+constructor(title, parentContext, isRoot) {
+  super();
   if (typeof title !== "string") {
     throw createInvalidArgumentTypeError(
       'Suite argument "title" must be a string. Received type "' +
@@ -84,17 +62,12 @@ function Suite(title, parentContext, isRoot) {
 }
 
 /**
- * Inherit from `EventEmitter.prototype`.
- */
-inherits(Suite, EventEmitter);
-
-/**
  * Return a clone of this `Suite`.
  *
  * @private
  * @return {Suite}
  */
-Suite.prototype.clone = function() {
+clone() {
   var suite = new Suite(this.title);
   suite.ctx = this.ctx;
   suite.root = this.root;
@@ -104,7 +77,7 @@ Suite.prototype.clone = function() {
   suite.slow(this.slow());
   suite.bail(this.bail());
   return suite;
-};
+}
 
 /**
  * Set or get timeout `ms` or short-hand such as "2s".
@@ -114,7 +87,7 @@ Suite.prototype.clone = function() {
  * @param {number|string} ms
  * @return {Suite|number} for chaining
  */
-Suite.prototype.timeout = function(ms) {
+timeout(ms) {
   if (!arguments.length) {
     return this._timeout;
   }
@@ -126,7 +99,7 @@ Suite.prototype.timeout = function(ms) {
   }
   this._timeout = parseInt(ms, 10);
   return this;
-};
+}
 
 /**
  * Set or get number of times to retry a failed test.
@@ -135,13 +108,13 @@ Suite.prototype.timeout = function(ms) {
  * @param {number|string} n
  * @return {Suite|number} for chaining
  */
-Suite.prototype.retries = function(n) {
+retries(n) {
   if (!arguments.length) {
     return this._retries;
   }
   this._retries = parseInt(n, 10) || 0;
   return this;
-};
+}
 
 /**
  * Set or get timeout to `enabled`.
@@ -150,13 +123,13 @@ Suite.prototype.retries = function(n) {
  * @param {boolean} enabled
  * @return {Suite|boolean} self or enabled
  */
-Suite.prototype.enableTimeouts = function(enabled) {
+enableTimeouts(enabled) {
   if (!arguments.length) {
     return this._enableTimeouts;
   }
   this._enableTimeouts = enabled;
   return this;
-};
+}
 
 /**
  * Set or get slow `ms` or short-hand such as "2s".
@@ -165,7 +138,7 @@ Suite.prototype.enableTimeouts = function(enabled) {
  * @param {number|string} ms
  * @return {Suite|number} for chaining
  */
-Suite.prototype.slow = function(ms) {
+slow(ms) {
   if (!arguments.length) {
     return this._slow;
   }
@@ -174,7 +147,7 @@ Suite.prototype.slow = function(ms) {
   }
   this._slow = ms;
   return this;
-};
+}
 
 /**
  * Set or get whether to bail after first error.
@@ -183,22 +156,22 @@ Suite.prototype.slow = function(ms) {
  * @param {boolean} bail
  * @return {Suite|number} for chaining
  */
-Suite.prototype.bail = function(bail) {
+bail(bail) {
   if (!arguments.length) {
     return this._bail;
   }
   this._bail = bail;
   return this;
-};
+}
 
 /**
  * Check if this suite or its parent suite is marked as pending.
  *
  * @private
  */
-Suite.prototype.isPending = function() {
+isPending() {
   return this.pending || (this.parent && this.parent.isPending());
-};
+}
 
 /**
  * Generic hook-creator.
@@ -207,7 +180,7 @@ Suite.prototype.isPending = function() {
  * @param {Function} fn - Hook callback
  * @returns {Hook} A new hook
  */
-Suite.prototype._createHook = function(title, fn) {
+_createHook(title, fn) {
   var hook = new Hook(title, fn);
   hook.parent = this;
   hook.timeout(this.timeout());
@@ -217,7 +190,7 @@ Suite.prototype._createHook = function(title, fn) {
   hook.ctx = this.ctx;
   hook.file = this.file;
   return hook;
-};
+}
 
 /**
  * Run `fn(test[, done])` before running tests.
@@ -227,7 +200,7 @@ Suite.prototype._createHook = function(title, fn) {
  * @param {Function} fn
  * @return {Suite} for chaining
  */
-Suite.prototype.beforeAll = function(title, fn) {
+beforeAll(title, fn) {
   if (this.isPending()) {
     return this;
   }
@@ -241,7 +214,7 @@ Suite.prototype.beforeAll = function(title, fn) {
   this._beforeAll.push(hook);
   this.emit('beforeAll', hook);
   return this;
-};
+}
 
 /**
  * Run `fn(test[, done])` after running tests.
@@ -251,7 +224,7 @@ Suite.prototype.beforeAll = function(title, fn) {
  * @param {Function} fn
  * @return {Suite} for chaining
  */
-Suite.prototype.afterAll = function(title, fn) {
+afterAll(title, fn) {
   if (this.isPending()) {
     return this;
   }
@@ -265,7 +238,7 @@ Suite.prototype.afterAll = function(title, fn) {
   this._afterAll.push(hook);
   this.emit('afterAll', hook);
   return this;
-};
+}
 
 /**
  * Run `fn(test[, done])` before each test case.
@@ -275,7 +248,7 @@ Suite.prototype.afterAll = function(title, fn) {
  * @param {Function} fn
  * @return {Suite} for chaining
  */
-Suite.prototype.beforeEach = function(title, fn) {
+beforeEach(title, fn) {
   if (this.isPending()) {
     return this;
   }
@@ -289,7 +262,7 @@ Suite.prototype.beforeEach = function(title, fn) {
   this._beforeEach.push(hook);
   this.emit('beforeEach', hook);
   return this;
-};
+}
 
 /**
  * Run `fn(test[, done])` after each test case.
@@ -299,7 +272,7 @@ Suite.prototype.beforeEach = function(title, fn) {
  * @param {Function} fn
  * @return {Suite} for chaining
  */
-Suite.prototype.afterEach = function(title, fn) {
+afterEach(title, fn) {
   if (this.isPending()) {
     return this;
   }
@@ -313,7 +286,7 @@ Suite.prototype.afterEach = function(title, fn) {
   this._afterEach.push(hook);
   this.emit('afterEach', hook);
   return this;
-};
+}
 
 /**
  * Add a test `suite`.
@@ -322,7 +295,7 @@ Suite.prototype.afterEach = function(title, fn) {
  * @param {Suite} suite
  * @return {Suite} for chaining
  */
-Suite.prototype.addSuite = function(suite) {
+addSuite(suite) {
   suite.parent = this;
   suite.root = false;
   suite.timeout(this.timeout());
@@ -333,7 +306,7 @@ Suite.prototype.addSuite = function(suite) {
   this.suites.push(suite);
   this.emit('suite', suite);
   return this;
-};
+}
 
 /**
  * Add a `test` to this suite.
@@ -342,7 +315,7 @@ Suite.prototype.addSuite = function(suite) {
  * @param {Test} test
  * @return {Suite} for chaining
  */
-Suite.prototype.addTest = function(test) {
+addTest(test) {
   test.parent = this;
   test.timeout(this.timeout());
   test.retries(this.retries());
@@ -352,7 +325,7 @@ Suite.prototype.addTest = function(test) {
   this.tests.push(test);
   this.emit('test', test);
   return this;
-};
+}
 
 /**
  * Return the full title generated by recursively concatenating the parent's
@@ -362,9 +335,9 @@ Suite.prototype.addTest = function(test) {
  * @public
  * @return {string}
  */
-Suite.prototype.fullTitle = function() {
+fullTitle() {
   return this.titlePath().join(' ');
-};
+}
 
 /**
  * Return the title path generated by recursively concatenating the parent's
@@ -374,7 +347,7 @@ Suite.prototype.fullTitle = function() {
  * @public
  * @return {string}
  */
-Suite.prototype.titlePath = function() {
+titlePath() {
   var result = [];
   if (this.parent) {
     result = result.concat(this.parent.titlePath());
@@ -383,7 +356,7 @@ Suite.prototype.titlePath = function() {
     result.push(this.title);
   }
   return result;
-};
+}
 
 /**
  * Return the total number of tests.
@@ -392,13 +365,13 @@ Suite.prototype.titlePath = function() {
  * @public
  * @return {number}
  */
-Suite.prototype.total = function() {
+total() {
   return (
     this.suites.reduce(function(sum, suite) {
       return sum + suite.total();
     }, 0) + this.tests.length
   );
-};
+}
 
 /**
  * Iterates through each suite recursively to find all tests. Applies a
@@ -408,23 +381,23 @@ Suite.prototype.total = function() {
  * @param {Function} fn
  * @return {Suite}
  */
-Suite.prototype.eachTest = function(fn) {
+eachTest(fn) {
   this.tests.forEach(fn);
   this.suites.forEach(function(suite) {
     suite.eachTest(fn);
   });
   return this;
-};
+}
 
 /**
  * This will run the root suite if we happen to be running in delayed mode.
  * @private
  */
-Suite.prototype.run = function run() {
+run() {
   if (this.root) {
     this.emit('run');
   }
-};
+}
 
 /**
  * Determines whether a suite has an `only` test or suite as a descendant.
@@ -432,7 +405,7 @@ Suite.prototype.run = function run() {
  * @private
  * @returns {Boolean}
  */
-Suite.prototype.hasOnly = function hasOnly() {
+hasOnly() {
   return (
     this._onlyTests.length > 0 ||
     this._onlySuites.length > 0 ||
@@ -440,7 +413,7 @@ Suite.prototype.hasOnly = function hasOnly() {
       return suite.hasOnly();
     })
   );
-};
+}
 
 /**
  * Filter suites based on `isOnly` logic.
@@ -448,7 +421,7 @@ Suite.prototype.hasOnly = function hasOnly() {
  * @private
  * @returns {Boolean}
  */
-Suite.prototype.filterOnly = function filterOnly() {
+filterOnly() {
   if (this._onlyTests.length) {
     // If the suite contains `only` tests, run those and ignore any nested suites.
     this.tests = this._onlyTests;
@@ -471,7 +444,7 @@ Suite.prototype.filterOnly = function filterOnly() {
   }
   // Keep the suite only if there is something to run
   return this.tests.length > 0 || this.suites.length > 0;
-};
+}
 
 /**
  * Adds a suite to the list of subsuites marked `only`.
@@ -479,9 +452,9 @@ Suite.prototype.filterOnly = function filterOnly() {
  * @private
  * @param {Suite} suite
  */
-Suite.prototype.appendOnlySuite = function(suite) {
+appendOnlySuite(suite) {
   this._onlySuites.push(suite);
-};
+}
 
 /**
  * Adds a test to the list of tests marked `only`.
@@ -489,17 +462,17 @@ Suite.prototype.appendOnlySuite = function(suite) {
  * @private
  * @param {Test} test
  */
-Suite.prototype.appendOnlyTest = function(test) {
+appendOnlyTest(test) {
   this._onlyTests.push(test);
-};
+}
 
 /**
  * Returns the array of hooks by hook name; see `HOOK_TYPE_*` 
  * @private
  */
-Suite.prototype.getHooks = function getHooks(name) {
+getHooks(name) {
   return this['_' + name];
-};
+}
 
 /**
  * Cleans up the references to all the deferred functions
@@ -511,7 +484,7 @@ Suite.prototype.getHooks = function getHooks(name) {
  *
  * @private
  */
-Suite.prototype.cleanReferences = function cleanReferences() {
+cleanReferences() {
   function cleanArrReferences(arr) {
     for (var i = 0; i < arr.length; i++) {
       delete arr[i].fn;
@@ -537,4 +510,23 @@ Suite.prototype.cleanReferences = function cleanReferences() {
   for (var i = 0; i < this.tests.length; i++) {
     delete this.tests[i].fn;
   }
-};
+}
+}
+
+module.exports = Suite
+
+/**
+ * Create a new `Suite` with the given `title` and parent `Suite`.
+ *
+ * @public
+ * @param {Suite} parent - Parent suite (required!)
+ * @param {string} title - Title
+ * @return {Suite}
+ */
+ Suite.create = function(parent, title) {
+  var suite = new Suite(title, parent.ctx);
+  suite.parent = parent;
+  title = suite.fullTitle();
+  parent.addSuite(suite);
+  return suite;
+}
