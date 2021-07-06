@@ -26,6 +26,6 @@ troubleshoot: |
   disk space or increasing the disk capacity will help.
   Under some conditions, RocksDB can automatically resume from the 
   background error and go back into normal operations. However, if the
-  background error happens during certain RocksDB operations, it can
+  background error happens during certain RocksDB operations, it cannot
   resume operations automatically, so the instance will need a manual
   restart after the error condition is removed.
