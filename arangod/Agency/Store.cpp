@@ -1005,7 +1005,13 @@ std::unordered_multimap<std::string, std::string> const& Store::observedTable() 
 /// Get node at path under mutex and store it in velocypack
 void Store::get(std::string const& path, arangodb::velocypack::Builder& b, bool showHidden) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
-  _node.hasAsNode(path).value().get().toBuilder(b, showHidden);
+  if (auto node = _node.hasAsNode(path); node) {
+    node.value().get().toBuilder(b, showHidden);
+  } else {
+    // Backwards compatibility of a refactoring. Would be better to communicate
+    // this clearly via a return code or so.
+    b.add(arangodb::velocypack::Slice::emptyObjectSlice());
+  }
 }
 
 /// Get node at path under mutex
