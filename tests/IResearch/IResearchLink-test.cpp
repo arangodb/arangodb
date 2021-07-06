@@ -1525,7 +1525,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
     auto link = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
-    auto linkImpl = std::dynamic_pointer_cast<IResearchDataStore>(link);
+    auto linkImpl = std::dynamic_pointer_cast<IResearchLink>(link);
     ASSERT_NE(nullptr, linkImpl);
     auto asyncSelf = linkImpl->self();
     ASSERT_NE(nullptr, asyncSelf);
@@ -1752,7 +1752,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
     auto link = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
-    auto linkImpl = std::dynamic_pointer_cast<IResearchDataStore>(link);
+    auto linkImpl = std::dynamic_pointer_cast<IResearchLink>(link);
     ASSERT_NE(nullptr, linkImpl);
     auto asyncSelf = linkImpl->self();
     ASSERT_NE(nullptr, asyncSelf);

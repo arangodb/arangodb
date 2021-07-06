@@ -102,6 +102,8 @@ class IResearchLink : public IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result properties(velocypack::Builder& builder, bool forPersistence) const;
 
+  using IResearchDataStore::properties;
+
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ArangoSearch Link index type enum value
