@@ -297,9 +297,7 @@ void PregelFeature::unprepare() {
   
   MUTEX_LOCKER(guard, _mutex);
   decltype(_conductors) cs = std::move(_conductors);
-  _conductors.clear();
   decltype(_workers) ws = std::move(_workers);
-  _workers.clear();
   guard.unlock();
 
   // all pending tasks should have been finished by now, and all references
