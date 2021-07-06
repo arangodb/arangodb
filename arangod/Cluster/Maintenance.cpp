@@ -1475,6 +1475,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           std::vector<std::string> const planPath {
             AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
 
+          if (!pdb.isObject()) {
+            LOG_TOPIC("2647d", WARN, Logger::MAINTENANCE) 
+              << "plan database in error reporting struct is not an object: " << pdb.toJson();
+          }
+          if (!ldb.isObject()) {
+            LOG_TOPIC("8fe58", WARN, Logger::MAINTENANCE) 
+              << "local database in error reporting struct is not an object: " << ldb.toJson();
+          }
           TRI_ASSERT(pdb.isObject());
           TRI_ASSERT(ldb.isObject());
           if (pdb.hasKey(planPath) && !ldb.hasKey(s)) {
