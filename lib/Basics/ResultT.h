@@ -32,7 +32,7 @@
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
-#if defined(__GNUC__) && (__GNUC__ < 11)
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
 #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
@@ -268,6 +268,6 @@ class ResultT {
 
 }  // namespace arangodb
 
-#if defined(__GNUC__) && (__GNUC__ < 11)
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
 #pragma GCC diagnostic pop
 #endif
