@@ -22,9 +22,28 @@
 
 #include "messages.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <Basics/application-exit.h>
 #include <Containers/ImmerMemoryPolicy.h>
 #include <Logger/LogMacros.h>
+#include <Basics/voc-errors.h>
+#include <Basics/Result.h>
+
+#if (_MSC_VER >= 1)
+// suppress warnings:
+#pragma warning(push)
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+#pragma warning(disable : 4267)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+#pragma warning(disable : 4334)
+#endif
+#include <immer/flex_vector_transient.hpp>
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -102,3 +121,157 @@ auto AppendEntriesRequest::operator=(replicated_log::AppendEntriesRequest&& othe
          "longer be guaranteed. The process will terminate now.";
   FATAL_ERROR_ABORT();
 }
+
+auto replicated_log::operator<=(MessageId left, MessageId right) noexcept -> bool {
+  return left.value <= right.value;
+}
+
+auto replicated_log::operator++(MessageId& id) -> MessageId& {
+  ++id.value;
+  return id;
+}
+
+auto replicated_log::operator<<(std::ostream& os, MessageId id) -> std::ostream& {
+  return os << id.value;
+}
+
+MessageId::operator velocypack::Value() const noexcept {
+  return velocypack::Value(value);
+}
+
+void replicated_log::AppendEntriesResult::toVelocyPack(velocypack::Builder& builder) const {
+  {
+    velocypack::ObjectBuilder ob(&builder);
+    builder.add("term", VPackValue(logTerm.value));
+    builder.add("errorCode", VPackValue(errorCode));
+    builder.add("reason", VPackValue(int(reason)));
+    builder.add("messageId", VPackValue(messageId));
+    if (conflict.has_value()) {
+      TRI_ASSERT(errorCode == TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      TRI_ASSERT(reason == AppendEntriesErrorReason::NO_PREV_LOG_MATCH);
+      builder.add(VPackValue("conflict"));
+      conflict->toVelocyPack(builder);
+    }
+  }
+}
+
+auto replicated_log::AppendEntriesResult::fromVelocyPack(velocypack::Slice slice)
+-> AppendEntriesResult {
+  auto logTerm = LogTerm{slice.get("term").extract<size_t>()};
+  auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
+  auto reason = AppendEntriesErrorReason{slice.get("reason").extract<int>()};
+  auto messageId = MessageId{slice.get("messageId").extract<uint64_t>()};
+
+  if (reason == AppendEntriesErrorReason::NO_PREV_LOG_MATCH) {
+    TRI_ASSERT(errorCode == TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+    auto conflict = slice.get("conflict");
+    TRI_ASSERT(conflict.isObject());
+    return AppendEntriesResult{logTerm, messageId, TermIndexPair::fromVelocyPack(conflict)};
+  }
+
+  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
+             reason != replicated_log::AppendEntriesErrorReason::NONE);
+  return AppendEntriesResult{logTerm, errorCode, reason, messageId};
+}
+
+replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
+                                                         AppendEntriesErrorReason reason,
+                                                         MessageId id) noexcept
+    : logTerm(logTerm), errorCode(errorCode), reason(reason), messageId(id) {
+  TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
+             reason != replicated_log::AppendEntriesErrorReason::NONE);
+}
+replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, MessageId id) noexcept
+    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NONE, id) {}
+
+replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm term,
+                                                         replicated_log::MessageId id,
+                                                         TermIndexPair conflict) noexcept
+    : AppendEntriesResult(term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                          AppendEntriesErrorReason::NO_PREV_LOG_MATCH, id) {
+  this->conflict = conflict;
+}
+
+auto replicated_log::AppendEntriesResult::withConflict(LogTerm term,
+                                                       replicated_log::MessageId id,
+                                                       TermIndexPair conflict) noexcept
+-> replicated_log::AppendEntriesResult {
+  return AppendEntriesResult(term, id, conflict);
+}
+
+auto replicated_log::AppendEntriesResult::withRejection(LogTerm term, MessageId id,
+                                                        AppendEntriesErrorReason reason) noexcept
+-> AppendEntriesResult {
+  return AppendEntriesResult(term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                             reason, id);
+}
+
+auto replicated_log::AppendEntriesResult::withPersistenceError(LogTerm term,
+                                                               replicated_log::MessageId id,
+                                                               Result const& res) noexcept
+-> replicated_log::AppendEntriesResult {
+  return AppendEntriesResult(term, res.errorNumber(),
+                             AppendEntriesErrorReason::PERSISTENCE_FAILURE, id);
+}
+
+auto replicated_log::AppendEntriesResult::withOk(LogTerm term, replicated_log::MessageId id) noexcept
+-> replicated_log::AppendEntriesResult {
+  return AppendEntriesResult(term, id);
+}
+
+auto replicated_log::AppendEntriesResult::isSuccess() const noexcept -> bool {
+  return errorCode == TRI_ERROR_NO_ERROR;
+}
+
+void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& builder) const {
+  {
+    velocypack::ObjectBuilder ob(&builder);
+    builder.add("leaderTerm", VPackValue(leaderTerm.value));
+    builder.add("leaderId", VPackValue(leaderId));
+    builder.add("prevLogTerm", VPackValue(prevLogTerm.value));
+    builder.add("prevLogIndex", VPackValue(prevLogIndex.value));
+    builder.add("leaderCommit", VPackValue(leaderCommit.value));
+    builder.add("messageId", VPackValue(messageId));
+    builder.add("waitForSync", VPackValue(waitForSync));
+    builder.add("entries", VPackValue(VPackValueType::Array));
+    for (auto const& it : entries) {
+      it.toVelocyPack(builder);
+    }
+    builder.close();  // close entries
+  }
+}
+
+auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slice)
+-> AppendEntriesRequest {
+  auto leaderTerm = LogTerm{slice.get("leaderTerm").getNumericValue<size_t>()};
+  auto leaderId = ParticipantId{slice.get("leaderId").copyString()};
+  auto prevLogTerm = LogTerm{slice.get("prevLogTerm").getNumericValue<size_t>()};
+  auto prevLogIndex = LogIndex{slice.get("prevLogIndex").getNumericValue<size_t>()};
+  auto leaderCommit = LogIndex{slice.get("leaderCommit").getNumericValue<size_t>()};
+  auto messageId = MessageId{slice.get("messageId").getNumericValue<uint64_t>()};
+  auto waitForSync = slice.get("waitForSync").extract<bool>();
+  auto entries = std::invoke([&] {
+    auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
+    auto transientEntries = EntryContainer::transient_type{};
+    std::transform(entriesVp.begin(), entriesVp.end(), std::back_inserter(transientEntries),
+                   [](auto const& it) { return LogEntry::fromVelocyPack(it); });
+    return std::move(transientEntries).persistent();
+  });
+
+  return AppendEntriesRequest{leaderTerm,        leaderId,     prevLogTerm,
+                              prevLogIndex,      leaderCommit, messageId,
+                              waitForSync, std::move(entries)};
+}
+
+replicated_log::AppendEntriesRequest::AppendEntriesRequest(
+    LogTerm leaderTerm, ParticipantId leaderId, LogTerm prevLogTerm,
+    LogIndex prevLogIndex, LogIndex leaderCommit,
+    replicated_log::MessageId messageId, bool waitForSync, EntryContainer entries)
+    : leaderTerm(leaderTerm),
+      leaderId(std::move(leaderId)),
+      prevLogTerm(prevLogTerm),
+      prevLogIndex(prevLogIndex),
+      leaderCommit(leaderCommit),
+      messageId(messageId),
+      waitForSync(waitForSync),
+      entries(std::move(entries)) {}

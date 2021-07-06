@@ -22,21 +22,20 @@
 
 #include "NetworkAttachedFollower.h"
 
-#include <Futures/Future.h>
+#include <utility>
+
 #include <Network/ConnectionPool.h>
 #include <Network/Methods.h>
 
-#include <utility>
-
-#include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/ReplicatedLog/messages.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-NetworkAttachedFollower::NetworkAttachedFollower(network::ConnectionPool* pool, ParticipantId id,
-                                 std::string database, LogId logId)
+NetworkAttachedFollower::NetworkAttachedFollower(network::ConnectionPool* pool,
+                                                 ParticipantId id,
+                                                 DatabaseID database, LogId logId)
     : pool(pool), id(std::move(id)), database(std::move(database)), logId(logId) {}
 
 auto NetworkAttachedFollower::getParticipantId() const noexcept -> ParticipantId const& {

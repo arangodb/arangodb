@@ -19,17 +19,7 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifndef ARANGODB3_REPLICATION_COMMON_H
-#define ARANGODB3_REPLICATION_COMMON_H
-
-#include <Basics/Identifier.h>
-#include <Basics/ResultT.h>
-
-#include <velocypack/Buffer.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
+#pragma once
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -37,7 +27,12 @@
 #include <ostream>
 #include <string>
 #include <string_view>
-#include <variant>
+
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <Basics/Identifier.h>
 
 namespace arangodb::velocypack {
 class Builder;
@@ -100,26 +95,22 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   friend auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept
       -> bool;
 
-  TermIndexPair(LogTerm term, LogIndex index) : term(term), index(index) {}
+  TermIndexPair(LogTerm term, LogIndex index) noexcept;
   TermIndexPair() = default;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
 
-  friend auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream& {
-    return os << '(' << pair.term << ':' << pair.index << ')';
-  }
+  friend auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream&;
 };
-
-auto operator<=(TermIndexPair const&, TermIndexPair const&) noexcept -> bool;
 
 struct LogPayload {
   explicit LogPayload(VPackBufferUInt8 dummy) : dummy(std::move(dummy)) {}
   explicit LogPayload(VPackSlice slice);
   explicit LogPayload(std::string_view dummy);
 
-  [[nodiscard]] auto operator==(LogPayload const&) const -> bool;
-  [[nodiscard]] auto operator!=(LogPayload const& other) const -> bool;
+  friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
+  friend auto operator!=(LogPayload const&, LogPayload const&) -> bool;
 
   [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
 
@@ -164,7 +155,7 @@ class LogId : public arangodb::basics::Identifier {
 
   static auto fromString(std::string_view) noexcept -> std::optional<LogId>;
 
-  [[nodiscard]] operator velocypack::Value() const noexcept;
+  [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
 auto to_string(LogId logId) -> std::string;
@@ -174,25 +165,21 @@ struct LogIterator {
   virtual auto next() -> std::optional<LogEntry> = 0;
 };
 
-template <typename I>
-struct ContainerIterator : LogIterator {
-  static_assert(std::is_same_v<typename I::value_type, LogEntry>);
+}  // namespace arangodb::replication2
 
-  ContainerIterator(I begin, I end)
-      : _current(std::move(begin)), _end(std::move(end)) {}
-
-  auto next() -> std::optional<LogEntry> override {
-    if (_current == _end) {
-      return std::nullopt;
-    }
-    return *(_current++);
+template <>
+struct std::hash<arangodb::replication2::LogIndex> {
+  auto operator()(arangodb::replication2::LogIndex const& v) const noexcept -> std::size_t {
+    return std::hash<uint64_t>{}(v.value);
   }
-
-  I _current;
-  I _end;
 };
 
-}  // namespace arangodb::replication2
+template <>
+struct std::hash<arangodb::replication2::LogTerm> {
+  auto operator()(arangodb::replication2::LogTerm const& v) const noexcept -> std::size_t {
+    return std::hash<uint64_t>{}(v.value);
+  }
+};
 
 template <>
 struct std::hash<arangodb::replication2::LogId> {
@@ -201,4 +188,3 @@ struct std::hash<arangodb::replication2::LogId> {
   }
 };
 
-#endif  // ARANGODB3_REPLICATION_COMMON_H

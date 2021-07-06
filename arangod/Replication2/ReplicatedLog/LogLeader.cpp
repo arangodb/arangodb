@@ -608,8 +608,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
       LOG_CTX("056a8", DEBUG, follower.logContext)
           << "received outdated response from follower "
           << follower._impl->getParticipantId() << ": "
-          << response.messageId.value << ", expected " << messageId
-          << ", latest " << follower.lastSendMessageId.value;
+          << response.messageId << ", expected " << messageId
+          << ", latest " << follower.lastSendMessageId;
     }
   } else if (res.hasException()) {
     ++follower.numErrorsSinceLastAnswer;

@@ -22,15 +22,12 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/Common.h"
-#include "Replication2/ReplicatedLog/types.h"
 
 #include <Basics/ErrorCode.h>
-#include <Basics/voc-errors.h>
 #include <Containers/ImmerMemoryPolicy.h>
 
 #include <string>
-#include <utility>
+#include <ostream>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -45,37 +42,37 @@
 #pragma warning(pop)
 #endif
 
+#include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/types.h"
+
+namespace arangodb {
+class Result;
+}
 
 namespace arangodb::replication2::replicated_log {
 
 struct MessageId : implement_compare<MessageId> {
   constexpr MessageId() noexcept : value{0} {}
   constexpr explicit MessageId(std::uint64_t value) noexcept : value{value} {}
+
+  friend auto operator<=(MessageId, MessageId) noexcept -> bool;
+  friend auto operator++(MessageId& id) -> MessageId&;
+  friend auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
+
+  [[nodiscard]] explicit operator velocypack::Value() const noexcept;
+ private:
   std::uint64_t value;
-  [[nodiscard]] auto operator<=(MessageId) const -> bool;
-
-  friend auto operator++(MessageId& id) -> MessageId& {
-    ++id.value;
-    return id;
-  }
-
-  friend auto operator<<(std::ostream& os, MessageId id) -> std::ostream& {
-    return os << id.value;
-  }
 };
 
-
 struct AppendEntriesResult {
-  LogTerm const logTerm = LogTerm{};
-  ErrorCode const errorCode = TRI_ERROR_NO_ERROR;
-  AppendEntriesErrorReason const reason = AppendEntriesErrorReason::NONE;
+  LogTerm const logTerm;
+  ErrorCode const errorCode;
+  AppendEntriesErrorReason const reason;
   MessageId messageId;
 
   std::optional<TermIndexPair> conflict;
 
-  [[nodiscard]] auto isSuccess() const noexcept -> bool {
-    return errorCode == TRI_ERROR_NO_ERROR;
-  }
+  [[nodiscard]] auto isSuccess() const noexcept -> bool;
 
   AppendEntriesResult(LogTerm, MessageId, TermIndexPair conflict) noexcept;
   AppendEntriesResult(LogTerm, MessageId) noexcept;
@@ -93,6 +90,8 @@ struct AppendEntriesResult {
 auto to_string(AppendEntriesErrorReason reason) -> std::string;
 
 struct AppendEntriesRequest {
+  using EntryContainer = ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy>;
+
   // TODO reorder members for a more efficient layout
   LogTerm leaderTerm;
   ParticipantId leaderId;
@@ -101,27 +100,19 @@ struct AppendEntriesRequest {
   LogIndex prevLogIndex;
   LogIndex leaderCommit;
   MessageId messageId;
-  bool waitForSync;
-  ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy> entries{};
+  bool waitForSync = false;
+  EntryContainer entries{};
 
   AppendEntriesRequest() = default;
   AppendEntriesRequest(LogTerm leaderTerm, ParticipantId leaderId, LogTerm prevLogTerm,
                        LogIndex prevLogIndex, LogIndex leaderCommit,
-                       MessageId messageId, bool waitForSync, decltype(entries) entries)
-      : leaderTerm(leaderTerm),
-        leaderId(std::move(leaderId)),
-        prevLogTerm(prevLogTerm),
-        prevLogIndex(prevLogIndex),
-        leaderCommit(leaderCommit),
-        messageId(messageId),
-        waitForSync(waitForSync),
-        entries(std::move(entries)) {}
+                       MessageId messageId, bool waitForSync, EntryContainer entries);
+  ~AppendEntriesRequest() noexcept = default;
 
   AppendEntriesRequest(AppendEntriesRequest&& other) noexcept;
   AppendEntriesRequest(AppendEntriesRequest const& other) = default;
   auto operator=(AppendEntriesRequest&& other) noexcept -> AppendEntriesRequest&;
   auto operator=(AppendEntriesRequest const& other) -> AppendEntriesRequest& = default;
-  ~AppendEntriesRequest() noexcept = default;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;

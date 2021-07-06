@@ -86,9 +86,14 @@ auto LogTerm::operator<=(LogTerm other) const -> bool {
   return value <= other.value;
 }
 
-auto LogPayload::operator==(LogPayload const& other) const -> bool {
-  return arangodb::basics::VelocyPackHelper::equal(
-      velocypack::Slice(dummy.data()), velocypack::Slice(other.dummy.data()), true);
+auto replication2::operator==(LogPayload const& left, LogPayload const& right) -> bool {
+  return arangodb::basics::VelocyPackHelper::equal(velocypack::Slice(left.dummy.data()),
+                                                   velocypack::Slice(right.dummy.data()),
+                                                   true);
+}
+
+auto replication2::operator!=(LogPayload const& left, LogPayload const& right) -> bool {
+  return !(left == right);
 }
 
 LogPayload::LogPayload(VPackSlice slice) {
@@ -98,10 +103,6 @@ LogPayload::LogPayload(VPackSlice slice) {
 
 auto LogPayload::byteSize() const noexcept -> std::size_t {
   return dummy.size();
-}
-
-auto LogPayload::operator!=(const LogPayload& other) const -> bool {
-  return !operator==(other);
 }
 
 LogPayload::LogPayload(std::string_view dummy) {
@@ -133,7 +134,6 @@ auto replication2::to_string(LogIndex index) -> std::string {
   return std::to_string(index.value);
 }
 
-
 auto replication2::operator<=(replication2::TermIndexPair const& left,
                               replication2::TermIndexPair const& right) noexcept -> bool {
   if (left.term < right.term) {
@@ -156,4 +156,14 @@ auto replication2::TermIndexPair::fromVelocyPack(velocypack::Slice slice) -> Ter
   pair.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<size_t>()};
   pair.index = LogIndex{slice.get(StaticStrings::Index).getNumericValue<size_t>()};
   return pair;
+}
+
+replication2::TermIndexPair::TermIndexPair(LogTerm term, LogIndex index) noexcept
+    : term(term), index(index) {
+  // Index 0 has always term 0, and it is the only index with that term.
+  TRI_ASSERT((index == LogIndex{0}) == (term == LogTerm{0}));
+}
+
+auto replication2::operator<<(std::ostream& os, const TermIndexPair& pair) -> std::ostream& {
+    return os << '(' << pair.term << ':' << pair.index << ')';
 }
