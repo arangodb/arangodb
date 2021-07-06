@@ -18,6 +18,24 @@ devel
   The index implements the relation <=, == and >= natively. Strict relations are
   emulated using post filtering. Ranges can be unbounded on one or both sides.
 
+* Fix potential memleak in Pregel conductor garbage collection.
+
+* Added a retry loop for arangorestore during the initial connection phase. The
+  number of retries defaults to 3 and can be configured using
+  --initial-connect-retries.
+
+* Fix numeric overflow in AQL WINDOW node cost estimation if the number of
+  preceding rows was set to `unbounded`.
+
+* Updated ArangoDB Starter to 0.15.1-preview-3.
+
+* Added garbage collection for finished and failed Pregel conductors.
+  Previously, Pregel executions that finished successfully or unsuccessfully
+  remained in memory until being explicitly canceled. This prevented a 
+  cleanup of abandoned jobs. Such jobs are now automatically cleaned
+  about 10 minutes after finalization. The time-to-live values can be
+  overriden per Pregel job by passing a "ttl" value.
+
 * Revive startup parameter `--server.session-timeout` to control the timeout
   for web interface sessions and other sessions that are based on JWTs created
   by the `/_open/auth` API.

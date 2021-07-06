@@ -73,8 +73,11 @@ var startExecution = function(algo, second, params) {
 };
 
 var getExecutionStatus = function (executionID) {
-  var URL = API + '/' + encodeURIComponent(executionID);
-  var requestResult = db._connection.GET(URL);
+  let URL = API;
+  if (executionID !== undefined) {
+    URL += '/' + encodeURIComponent(executionID);
+  }
+  let requestResult = db._connection.GET(URL);
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };
