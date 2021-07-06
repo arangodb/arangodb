@@ -939,7 +939,8 @@ void Supervision::reportStatus(std::string const& status) {
 
   {  // Do I have to report to agency under
     _lock.assertLockedByCurrentThread();
-    if (snapshot().hasAsString("/Supervision/State/Mode").value() != status) {
+    if (auto modeString = snapshot().hasAsString("/Supervision/State/Mode");
+        !modeString || modeString.value() != status) {
       // This includes the case that the mode is not set, since status
       // is never empty
       persist = true;
@@ -1723,7 +1724,9 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
   constexpr uint64_t maximalNumberTransferJobs = 100;
   constexpr char const* prefix = "/Target/HotBackup/TransferJobs/";
 
-  auto const& jobs = snapshot.hasAsChildren(prefix).value().get();
+  auto static const noJobs = Node::Children{};
+  auto const jobs = snapshot.hasAsChildren(prefix).value_or(noJobs).get();
+
   if (jobs.size() <= maximalNumberTransferJobs + 6) {
     // We tolerate some more jobs before we take action. This is to
     // avoid that we go through all jobs every second. Oasis takes
