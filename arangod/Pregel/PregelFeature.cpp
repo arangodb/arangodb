@@ -33,6 +33,9 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Recovery.h"
@@ -44,6 +47,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+using namespace arangodb;
+using namespace arangodb::pregel;
+
 namespace {
 bool authorized(std::string const& user) {
   auto const& exec = arangodb::ExecContext::current();
@@ -53,12 +59,15 @@ bool authorized(std::string const& user) {
   return (user == exec.user());
 }
 
-bool authorized(std::pair<std::string, std::shared_ptr<arangodb::pregel::Conductor>> const& conductor) {
-  return ::authorized(conductor.first);
-}
+network::Headers buildHeaders() {
+  auto auth = AuthenticationFeature::instance();
 
-bool authorized(std::pair<std::string, std::shared_ptr<arangodb::pregel::IWorker>> const& worker) {
-  return ::authorized(worker.first);
+  network::Headers headers;
+  if (auth != nullptr && auth->isActive()) {
+    headers.try_emplace(StaticStrings::Authorization,
+                        "bearer " + auth->tokenCache().jwtToken());
+  }
+  return headers;
 }
 
 /// @brief custom deleter for the PregelFeature.
@@ -71,9 +80,6 @@ struct NonDeleter {
 };
 
 }  // namespace
-
-using namespace arangodb;
-using namespace arangodb::pregel;
 
 std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
@@ -201,7 +207,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
       return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
     }
   }
-
+   
   uint64_t en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(en, vocbase, vertexCollections,
                                                edgeColls, edgeCollectionRestrictions,
@@ -234,32 +240,55 @@ size_t PregelFeature::availableParallelism() {
   return procNum < 1 ? 1 : procNum;
 }
 
-void PregelFeature::start() {
-  if (ServerState::instance()->isAgent()) {
+void PregelFeature::scheduleGarbageCollection() {
+  if (isStopping()) {
     return;
   }
 
+  // GC will be run every 20 seconds
+  std::chrono::seconds offset = std::chrono::seconds(20);
+
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  auto [queued, handle] = scheduler->queueDelay(RequestLane::INTERNAL_LOW, offset, [this](bool canceled) {
+    if (!canceled) {
+      garbageCollectConductors();
+      scheduleGarbageCollection();
+    }
+  });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                   "No thread available to queue Pregel garbage collection");
+  }
+
+  _gcHandle = std::move(handle);
+}
+
+void PregelFeature::start() {
   if (ServerState::instance()->isCoordinator()) {
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     _recoveryManager = std::make_unique<RecoveryManager>(ci);
     _recoveryManagerPtr.store(_recoveryManager.get(), std::memory_order_release);
   }
+  
+  if (!ServerState::instance()->isAgent()) {
+    scheduleGarbageCollection();
+  }
 }
 
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
+  _gcHandle.reset();
   
   MUTEX_LOCKER(guard, _mutex);
   // cancel all conductors and workers
   for (auto& it : _conductors) {
-    it.second.second->cancel();
+    it.second.conductor->cancel();
   }
   for (auto it : _workers) {
     it.second.second->cancelGlobalStep(VPackSlice());
   }
 }
-
-void PregelFeature::stop() {}
 
 void PregelFeature::unprepare() {
   MUTEX_LOCKER(guard, _mutex);
@@ -271,7 +300,7 @@ void PregelFeature::unprepare() {
   // to conductors and workers been dropped!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (auto& it : cs) {
-    TRI_ASSERT(it.second.second.use_count() == 1);
+    TRI_ASSERT(it.second.conductor.use_count() == 1);
   }
   
   for (auto it : _workers) {
@@ -291,15 +320,30 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c, uint64_t execut
   
   std::string user = ExecContext::current().user();
   MUTEX_LOCKER(guard, _mutex);
-  _conductors.try_emplace(executionNumber,
-                      std::move(user), std::move(c));
+  _conductors.try_emplace(executionNumber, ConductorEntry{ std::move(user), std::chrono::steady_clock::time_point{}, std::move(c) });
 }
 
 std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _conductors.find(executionNumber);
-  return (it != _conductors.end() && ::authorized(it->second)) ? it->second.second : nullptr;
+  return (it != _conductors.end() && ::authorized(it->second.user)) ? it->second.conductor : nullptr;
 }
+
+void PregelFeature::garbageCollectConductors() try {
+  // iterate over all conductors and remove the ones which can be garbage-collected
+  MUTEX_LOCKER(guard, _mutex);
+  for (auto it = _conductors.begin(); it != _conductors.end(); /*no hoisting*/) {
+    if (it->second.conductor->canBeGarbageCollected()) {
+      uint64_t executionNumber = it->first;
+
+      it = _conductors.erase(it);
+      
+      _workers.erase(executionNumber);
+    } else {
+      ++it;
+    }
+  }
+} catch (...) {}
 
 void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w, uint64_t executionNumber) {
   if (isStopping()) {
@@ -315,12 +359,13 @@ void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w, uint64_t executionNu
 std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _workers.find(executionNumber);
-  return (it != _workers.end() && ::authorized(it->second)) ? it->second.second : nullptr;
+  return (it != _workers.end() && ::authorized(it->second.first)) ? it->second.second : nullptr;
 }
 
 void PregelFeature::cleanupConductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   _conductors.erase(executionNumber);
+  _workers.erase(executionNumber);
 }
 
 void PregelFeature::cleanupWorker(uint64_t executionNumber) {
@@ -357,6 +402,10 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   }
   std::shared_ptr<Conductor> co = conductor(exeNum);
   if (!co) {
+    if (path == Utils::finishedWorkerFinalizationPath) {
+      // conductor not found, but potentially already garbage-collected
+      return;
+    }
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CURSOR_NOT_FOUND, "Conductor not found, invalid execution number: " + std::to_string(exeNum));
   }
@@ -388,6 +437,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   }
 
   uint64_t exeNum = sExecutionNum.getUInt();
+
   std::shared_ptr<IWorker> w = worker(exeNum);
 
   // create a new worker instance if necessary
@@ -411,6 +461,11 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     return;
   } else if (!w) {
     // any other call should have a working worker instance
+    if (path == Utils::finalizeExecutionPath) {
+      // except this is a cleanup call, and cleanup has already happened
+      // because of garbage collection
+      return;
+    }
     LOG_TOPIC("41788", WARN, Logger::PREGEL)
         << "Handling " << path << ", worker " << exeNum << " does not exist";
     THROW_ARANGO_EXCEPTION_FORMAT(
@@ -448,7 +503,7 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
   MUTEX_LOCKER(guard, _mutex);
   uint64_t nr{0};
   for (auto const& p : _conductors) {
-    std::shared_ptr<Conductor> const& c = p.second.second;
+    std::shared_ptr<Conductor> const& c = p.second.conductor;
     if (c->_state == ExecutionState::DEFAULT ||
         c->_state == ExecutionState::RUNNING ||
         c->_state == ExecutionState::STORING) {
@@ -456,4 +511,82 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
     }
   }
   return nr;
- }
+}
+  
+Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
+                                   arangodb::velocypack::Builder& result, 
+                                   bool allDatabases, bool fanout) const {
+  Result res;
+
+  result.openArray();
+  {
+    MUTEX_LOCKER(guard, _mutex);
+  
+    for (auto const& p : _conductors) {
+      auto const& ce = p.second;
+      if (!::authorized(ce.user)) {
+        continue;
+      }
+
+      ce.conductor->toVelocyPack(result);
+    }
+  }
+  
+  if (ServerState::instance()->isCoordinator() && fanout) {
+    // coordinator case, fan out to other coordinators!
+    NetworkFeature const& nf = vocbase.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::vector<network::FutureRes> futures;
+
+    network::RequestOptions options;
+    options.timeout = network::Timeout(30.0);
+    options.database = vocbase.name();
+    options.param("local", "true");
+    options.param("all", allDatabases ? "true" : "false");
+    
+    std::string const url = "/_api/control_pregel";
+
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
+      if (coordinator == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator, fuerte::RestVerb::Get,
+                                    url, VPackBuffer<uint8_t>{}, options, ::buildHeaders());
+      futures.emplace_back(std::move(f));
+    }
+
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        auto& resp = it.get();
+        res.reset(resp.combinedResult());
+        if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+          // it is expected in a multi-coordinator setup that a coordinator is not
+          // aware of a database that was created very recently.
+          res.reset();
+        }
+        if (res.fail()) {
+          break;
+        }
+        auto slice = resp.slice();
+        // copy results from other coordinators
+        if (slice.isArray()) {
+          for (auto const& entry : VPackArrayIterator(slice)) {
+            result.add(entry);
+          }
+        }
+      }
+    }
+  } 
+
+  result.close();
+
+  return res;
+}

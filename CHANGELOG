@@ -1,6 +1,54 @@
 devel
 -----
 
+* Fix numeric overflow in AQL WINDOW node cost estimation if the number of
+  preceding rows was set to `unbounded`.
+
+* Updated ArangoDB Starter to 0.15.1-preview-3.
+
+* Added garbage collection for finished and failed Pregel conductors.
+  Previously, Pregel executions that finished successfully or unsuccessfully
+  remained in memory until being explicitly canceled. This prevented a 
+  cleanup of abandoned jobs. Such jobs are now automatically cleaned
+  about 10 minutes after finalization. The time-to-live values can be
+  overriden per Pregel job by passing a "ttl" value.
+
+* Revive startup parameter `--server.session-timeout` to control the timeout
+  for web interface sessions and other sessions that are based on JWTs created
+  by the `/_open/auth` API.
+  
+  This PR also changes the default session timeout for web interface sessions
+  to one hour. Older versions of ArangoDB had longer session timeouts.
+
+* Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+
+* Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
+  internal requests to use the new url.
+
+* Fix display of running and slow queries in web UI when there are multiple
+  coordinators. Previously, the display order of queries was undefined, which
+  could lead to queries from one coordinator being display on top once and
+  then the queries from another. That made using this UI harder than necessary.
+  
+  Now queries are sorted for display, according to their query IDs. 
+
+* Updated ArangoDB Starter to 0.15.1-preview-2.
+
+* Fix potential stack overflow when executing large queries. This is
+  achieved by splitting the callstack and moving part of the execution
+  to a separate thread. The number of execution nodes after which such
+  a callstack split should be performed can be configured via the query
+  option `maxNodesPerCallstack` and the command line option
+  `--query.max-nodes-per-callstack`; the default is 250.
+  
+* Bug-Fix: Pregel WCC algorithm could yield incorrect results if a
+  part of the connected component was only attached via OUTBOUND edges.
+  The underlying algorithm is now modified to properly retain INBOUND
+  edges for the runtime of the execution. This uses more RAM for the
+  algorithm but guarantees correctness.
+
+* Updated ArangoDB Starter to 0.15.1-preview-1.
+
 * Updated arangosync to 2.4.0.
 
 * Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
@@ -67,7 +115,6 @@ devel
 
 * Improve usability of hidden options: `--help` mentions that these exist
   and how to display them.
-
 
 * Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
   iterator.
@@ -161,9 +208,6 @@ devel
   minimum of required file descriptors. The system set upper bound is now
   honored and the soft limit will be set to either hard limit or system limit
   whichever is lower.
-
-* Allow an INSERT operation for a multi-shard collection to execute in 
-  parallel on different DB servers.
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.
