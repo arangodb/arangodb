@@ -431,7 +431,7 @@ void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
 
   // if warnings are converted into errors, adding this warning will
   // abort the query
-  query.warnings().registerWarning(TRI_ERROR_QUERY_INVALID_OPTIONS, msg.c_str());
+  query.warnings().registerWarning(TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE, msg.c_str());
 }
 
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
@@ -2028,7 +2028,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
     VPackStringRef const name = member->getStringRef();
     AstNode* value = member->getMember(0);
     if (!value->isConstant()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_OPTIONS,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
                                      "WINDOW bounds must be determined at compile time");
     }
     

@@ -42,7 +42,7 @@ function aqlOptionsVerificationSuite () {
         assertEqual(0, result.warnings.length, query);
       } else {
         assertEqual(1, result.warnings.length, query);
-        assertEqual(errors.ERROR_QUERY_INVALID_OPTIONS.code, result.warnings[0].code, query);
+        assertEqual(errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code, result.warnings[0].code, query);
         assertMatch(RegExp(operation), result.warnings[0].message, query);
         assertMatch(RegExp(query[1]), result.warnings[0].message, query);
       }
