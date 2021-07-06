@@ -161,7 +161,8 @@ auto replication2::TermIndexPair::fromVelocyPack(velocypack::Slice slice) -> Ter
 replication2::TermIndexPair::TermIndexPair(LogTerm term, LogIndex index) noexcept
     : term(term), index(index) {
   // Index 0 has always term 0, and it is the only index with that term.
-  TRI_ASSERT((index == LogIndex{0}) == (term == LogTerm{0}));
+  // FIXME this should be an if and only if
+  TRI_ASSERT((index != LogIndex{0}) || (term == LogTerm{0}));
 }
 
 auto replication2::operator<<(std::ostream& os, const TermIndexPair& pair) -> std::ostream& {
