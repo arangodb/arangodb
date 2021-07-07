@@ -652,18 +652,29 @@ bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
 
 /// @brief invalidate the cost estimation for the node and its dependencies
 void ExecutionNode::invalidateCost() {
-  _costEstimate.invalidate();
-
-  for (auto& dep : _dependencies) {
-    dep->invalidateCost();
-  }
+  struct CostInvalidator : WalkerWorkerBase<ExecutionNode> {
+    void after(ExecutionNode* n) override {
+      n->_costEstimate.invalidate();
+    }
+  } invalidator;
+  this->walk(invalidator);
 }
 
 /// @brief estimate the cost of the node . . .
 /// does not recalculate the estimate if already calculated
 CostEstimate ExecutionNode::getCost() const {
   if (!_costEstimate.isValid()) {
-    _costEstimate = estimateCost();
+    // Use a walker to estimate cost of all direct and indirect dependencies.
+    // This is necessary to avoid deeply nested recursive calls in estimateCosts
+    // which could result in a stack overflow.
+    struct CostEstimator : WalkerWorkerBase<ExecutionNode> {
+      void after(ExecutionNode* n) override {
+        if (!n->_costEstimate.isValid()) {
+          n->_costEstimate = n->estimateCost();
+        }
+      }
+    } estimator;
+    const_cast<ExecutionNode*>(this)->walk(estimator);
   }
   TRI_ASSERT(_costEstimate.estimatedCost >= 0.0);
   TRI_ASSERT(_costEstimate.isValid());
