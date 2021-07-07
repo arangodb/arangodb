@@ -58,7 +58,13 @@ namespace mocks {
 /// @brief mock application server with no features added
 class MockServer {
  public:
-  MockServer();
+  // Note, setting injectClusterIndexes causes the "create" methods to fail.
+  // this is all hardly worked around the Cluster engine and needs a proper
+  // clean up. It is highly recommended to not set injectClusterIndexes unless
+  // you want to specificly test something that selects an index, but cannot use
+  // it. Use with care for now.
+  MockServer(arangodb::ServerState::RoleEnum = arangodb::ServerState::RoleEnum::ROLE_SINGLE,
+             bool injectClusterIndexes = false);
   virtual ~MockServer();
 
   application_features::ApplicationServer& server();
@@ -121,6 +127,7 @@ class MockServer {
 
  private:
   bool _started;
+  arangodb::ServerState::RoleEnum _oldRole;
 };
 
 /// @brief a server with almost no features added (Metrics are available
@@ -213,9 +220,14 @@ class MockClusterServer : public MockServer,
                                 DataSourceId const& planId,
                                 std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs);
 
+  std::unique_ptr<arangodb::aql::Query> createFakeQuery(
+      bool activateTracing = false, std::string queryString = "",
+      std::function<void(arangodb::aql::Query&)> runBeforePrepare =
+          [](arangodb::aql::Query&) {}) const;
   // You can only create specialized types
  protected:
-  MockClusterServer(bool useAgencyMockConnection);
+  MockClusterServer(bool useAgencyMockConnection, arangodb::ServerState::RoleEnum role,
+                    bool injectClusterIndexes = false);
   ~MockClusterServer();
 
  protected:
@@ -232,8 +244,9 @@ class MockClusterServer : public MockServer,
 
  protected:
   std::unique_ptr<arangodb::network::ConnectionPool> _pool;
+
+ private:
   bool _useAgencyMockPool;
-  arangodb::ServerState::RoleEnum _oldRole;
   int _dummy;
 };
 
@@ -251,7 +264,8 @@ class MockDBServer : public MockClusterServer {
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true);
+  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true,
+                  bool injectClusterIndexes = false);
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;

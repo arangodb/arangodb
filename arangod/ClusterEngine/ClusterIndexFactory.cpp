@@ -52,8 +52,7 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs,
-             std::string const& dbname) const override {
+             arangodb::velocypack::Slice const& rhs, std::string const& dbname) const override {
     auto& clusterEngine =
         _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
     auto* engine = clusterEngine.actualEngine();
@@ -76,15 +75,14 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
     auto ct = clusterEngine.engineType();
 
     return std::make_shared<arangodb::ClusterIndex>(id, collection, ct,
-                                                    arangodb::Index::type(_type),
-                                                    definition);
+                                                    arangodb::Index::type(_type), definition);
   }
 
-  virtual arangodb::Result normalize( // normalize definition
-      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
-      arangodb::velocypack::Slice definition, // source definition
-      bool isCreation, // definition for index creation
-      TRI_vocbase_t const& vocbase // index vocbase
+  virtual arangodb::Result normalize(             // normalize definition
+      arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+      arangodb::velocypack::Slice definition,  // source definition
+      bool isCreation,                         // definition for index creation
+      TRI_vocbase_t const& vocbase             // index vocbase
   ) const override {
     auto& clusterEngine =
         _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
@@ -96,8 +94,8 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
           "cannot find storage engine while normalizing index");
     }
 
-    return engine->indexFactory().factory(_type).normalize( // normalize definition
-      normalized, definition, isCreation, vocbase // args
+    return engine->indexFactory().factory(_type).normalize(  // normalize definition
+        normalized, definition, isCreation, vocbase          // args
     );
   }
 };
@@ -113,7 +111,8 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
                                                bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create edge index");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "cannot create edge index");
     }
 
     auto& clusterEngine =
@@ -137,7 +136,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
                                                bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create primary index");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "cannot create primary index");
     }
 
     auto& clusterEngine =
@@ -154,8 +154,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 namespace arangodb {
 
-ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer& server)
-    : IndexFactory(server) {
+void ClusterIndexFactory::LinkIndexFactories(application_features::ApplicationServer& server,
+                                             IndexFactory& factory) {
   static const EdgeIndexFactory edgeIndexFactory(server, "edge");
   static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext");
   static const DefaultIndexFactory geoIndexFactory(server, "geo");
@@ -167,16 +167,21 @@ ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
 
-  emplace(edgeIndexFactory._type, edgeIndexFactory);
-  emplace(fulltextIndexFactory._type, fulltextIndexFactory);
-  emplace(geoIndexFactory._type, geoIndexFactory);
-  emplace(geo1IndexFactory._type, geo1IndexFactory);
-  emplace(geo2IndexFactory._type, geo2IndexFactory);
-  emplace(hashIndexFactory._type, hashIndexFactory);
-  emplace(persistentIndexFactory._type, persistentIndexFactory);
-  emplace(primaryIndexFactory._type, primaryIndexFactory);
-  emplace(skiplistIndexFactory._type, skiplistIndexFactory);
-  emplace(ttlIndexFactory._type, ttlIndexFactory);
+  factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
+  factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
+  factory.emplace(geoIndexFactory._type, geoIndexFactory);
+  factory.emplace(geo1IndexFactory._type, geo1IndexFactory);
+  factory.emplace(geo2IndexFactory._type, geo2IndexFactory);
+  factory.emplace(hashIndexFactory._type, hashIndexFactory);
+  factory.emplace(persistentIndexFactory._type, persistentIndexFactory);
+  factory.emplace(primaryIndexFactory._type, primaryIndexFactory);
+  factory.emplace(skiplistIndexFactory._type, skiplistIndexFactory);
+  factory.emplace(ttlIndexFactory._type, ttlIndexFactory);
+}
+
+ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer& server)
+    : IndexFactory(server) {
+  LinkIndexFactories(server, *this);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
@@ -191,11 +196,11 @@ std::unordered_map<std::string, std::string> ClusterIndexFactory::indexAliases()
   return ae->indexFactory().indexAliases();
 }
 
-Result ClusterIndexFactory::enhanceIndexDefinition( // normalize definition
-    velocypack::Slice const definition, // source definition
-    velocypack::Builder& normalized, // normalized definition (out-param)
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
+Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
+    velocypack::Slice const definition,              // source definition
+    velocypack::Builder& normalized,  // normalized definition (out-param)
+    bool isCreation,                  // definition for index creation
+    TRI_vocbase_t const& vocbase      // index vocbase
 ) const {
   auto& ce = _server.getFeature<EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
 
@@ -205,8 +210,8 @@ Result ClusterIndexFactory::enhanceIndexDefinition( // normalize definition
     return TRI_ERROR_INTERNAL;
   }
 
-  return ae->indexFactory().enhanceIndexDefinition( // normalize definition
-    definition, normalized, isCreation, vocbase // args
+  return ae->indexFactory().enhanceIndexDefinition(  // normalize definition
+      definition, normalized, isCreation, vocbase    // args
   );
 }
 
@@ -299,8 +304,8 @@ void ClusterIndexFactory::prepareIndexes(
       indexes.emplace_back(std::move(idx));
     } catch (std::exception const& ex) {
       LOG_TOPIC("7ed52", ERR, arangodb::Logger::ENGINES)
-          << "error creating index from definition '" << v.toString() << "': " << ex.what();
-
+          << "error creating index from definition '" << v.toString()
+          << "': " << ex.what();
     }
   }
 }

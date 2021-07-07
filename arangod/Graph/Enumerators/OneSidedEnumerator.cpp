@@ -269,3 +269,4 @@ template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServ
 template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::NONE, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<DFSConfiguration<SingleServerProvider, VertexUniquenessLevel::GLOBAL, true>>;
+

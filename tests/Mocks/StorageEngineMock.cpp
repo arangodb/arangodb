@@ -33,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "ClusterEngine/ClusterIndexFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
@@ -479,8 +480,13 @@ class AllIteratorMock final : public arangodb::IndexIterator {
 };  // AllIteratorMock
 
 struct IndexFactoryMock : arangodb::IndexFactory {
-  IndexFactoryMock(arangodb::application_features::ApplicationServer& server)
-      : IndexFactory(server) {}
+  IndexFactoryMock(arangodb::application_features::ApplicationServer& server, bool injectClusterIndexes)
+      : IndexFactory(server) {
+    if (injectClusterIndexes) {
+      arangodb::ClusterIndexFactory::LinkIndexFactories(server, *this);
+    }
+  }
+
   virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
                                  std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override {
     // NOOP
@@ -1301,6 +1307,24 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
   }
 }
 
+arangodb::IndexEstMap PhysicalCollectionMock::clusterIndexEstimates(bool allowUpdating,
+                                                                    arangodb::TransactionId tid) {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  arangodb::IndexEstMap estimates;
+  for (auto const& it : _indexes) {
+    std::string id = std::to_string(it->id().id());
+    if (it->hasSelectivityEstimate()) {
+      // Note: This may actually be bad, as this instance cannot
+      // have documents => The estimate is off.
+      estimates.emplace(std::move(id), it->selectivityEstimate());
+    } else {
+      // Random hardcoded estimate. We do not actually know anything
+      estimates.emplace(std::move(id), 0.25);
+    }
+  }
+  return estimates;
+}
+
 arangodb::Result PhysicalCollectionMock::read(
     arangodb::transaction::Methods*, arangodb::velocypack::StringRef const& key,
     arangodb::IndexIterator::DocumentCallback const& cb) const {
@@ -1484,9 +1508,11 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
-StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server)
+StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server,
+                                     bool injectClusterIndexes)
     : StorageEngine(server, "Mock", "",
-                    std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock(server))),
+                    std::unique_ptr<arangodb::IndexFactory>(
+                        new IndexFactoryMock(server, injectClusterIndexes))),
       vocbaseCount(1),
       _releasedTick(0) {}
 

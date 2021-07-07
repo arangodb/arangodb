@@ -181,11 +181,16 @@ static void SetupAqlPhase(MockServer& server) {
 #endif
 }
 
-MockServer::MockServer()
+MockServer::MockServer(arangodb::ServerState::RoleEnum myRole, bool injectClusterIndexes)
     : _server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr), nullptr),
-      _engine(_server),
+      _engine(_server, injectClusterIndexes),
       _oldRebootId(0),
       _started(false) {
+  _oldRole = arangodb::ServerState::instance()->getRole();
+  arangodb::ServerState::instance()->setRole(myRole);
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    arangodb::ClusterEngine::Mocking = true;
+  }
   init();
 }
 
@@ -193,6 +198,10 @@ MockServer::~MockServer() {
   stopFeatures();
   _server.setStateUnsafe(_oldApplicationServerState);
 
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    arangodb::ClusterEngine::Mocking = false;
+  }
+  arangodb::ServerState::instance()->setRole(_oldRole);
   arangodb::ServerState::instance()->setRebootId(_oldRebootId);
 }
 
@@ -454,10 +463,10 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
 
 consensus::Store& AgencyCache::store() { return _readDB; }
 
-MockClusterServer::MockClusterServer(bool useAgencyMockPool)
-    : MockServer(), _useAgencyMockPool(useAgencyMockPool) {
-  _oldRole = arangodb::ServerState::instance()->getRole();
-
+MockClusterServer::MockClusterServer(bool useAgencyMockPool,
+                                     arangodb::ServerState::RoleEnum newRole,
+                                     bool injectClusterIndexes)
+    : MockServer(newRole, injectClusterIndexes), _useAgencyMockPool(useAgencyMockPool) {
   // Add features
   SetupAqlPhase(*this);
 
@@ -478,7 +487,6 @@ MockClusterServer::~MockClusterServer() {
   ci.shutdownSyncers();
   ci.waitForSyncersToStop();
   _server.getFeature<arangodb::ClusterFeature>().shutdownAgencyCache();
-  arangodb::ServerState::instance()->setRole(_oldRole);
 }
 
 void MockClusterServer::startFeatures() {
@@ -516,6 +524,32 @@ void MockClusterServer::startFeatures() {
       getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
   indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
   _server.getFeature<arangodb::ClusterFeature>().clusterInfo().startSyncers();
+}
+
+std::unique_ptr<arangodb::aql::Query> MockClusterServer::createFakeQuery(
+    bool activateTracing, std::string queryString,
+    std::function<void(aql::Query&)> callback) const {
+  auto bindParams = std::make_shared<VPackBuilder>();
+  bindParams->openObject();
+  bindParams->close();
+  VPackBuilder queryOptions;
+  queryOptions.openObject();
+  if (activateTracing) {
+    queryOptions.add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
+  }
+  queryOptions.close();
+  if (queryString.empty()) {
+    queryString = "RETURN 1";
+  }
+
+  aql::QueryString fakeQueryString(queryString);
+  auto query = std::make_unique<arangodb::aql::Query>(
+      arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
+      fakeQueryString, bindParams, queryOptions.slice());
+  callback(*query);
+  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+
+  return query;
 }
 
 consensus::index_t MockClusterServer::agencyTrx(std::string const& key,
@@ -710,8 +744,7 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
 }
 
 MockDBServer::MockDBServer(bool start, bool useAgencyMock)
-    : MockClusterServer(useAgencyMock) {
-  arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
+    : MockClusterServer(useAgencyMock, arangodb::ServerState::RoleEnum::ROLE_DBSERVER) {
   addFeature<arangodb::FlushFeature>(false);        // do not start the thread
   addFeature<arangodb::MaintenanceFeature>(false);  // do not start the thread
   if (start) {
@@ -824,9 +857,9 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
   }
 }
 
-MockCoordinator::MockCoordinator(bool start, bool useAgencyMock)
-    : MockClusterServer(useAgencyMock) {
-  arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_COORDINATOR);
+MockCoordinator::MockCoordinator(bool start, bool useAgencyMock, bool injectClusterIndexes)
+    : MockClusterServer(useAgencyMock, arangodb::ServerState::RoleEnum::ROLE_COORDINATOR,
+                        injectClusterIndexes) {
   if (start) {
     MockCoordinator::startFeatures();
     MockCoordinator::createDatabase("_system");
