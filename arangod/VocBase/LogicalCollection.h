@@ -29,6 +29,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
+#include "Replication2/ReplicatedLog/Common.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"

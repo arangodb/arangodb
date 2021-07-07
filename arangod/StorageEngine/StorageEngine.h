@@ -30,6 +30,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Indexes/IndexFactory.h"
+#include "Replication2/ReplicatedLog/Common.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngineFeature.h"

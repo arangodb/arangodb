@@ -24,9 +24,7 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "Replication2/ReplicatedLog/Common.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -39,6 +37,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
+namespace replication2 {
+class LogId;
+struct LogIndex;
+};
 
 class RocksDBKey {
  public:

@@ -39,7 +39,6 @@
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
-#include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/Version.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -58,6 +57,10 @@ class QueryList;
 namespace replication2 {
 struct LogManager;
 struct PersistedLog;
+class LogId;
+struct LogIndex;
+struct LogTerm;
+struct LogPayload;
 namespace replicated_log {
 class LogLeader;
 class LogFollower;
