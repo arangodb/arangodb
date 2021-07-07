@@ -87,11 +87,11 @@ AqlCallStack const defaultStack{AqlCallList{AqlCall{}}};
 }
 
 /// @brief internal constructor, Used to construct a full query or a ClusterQuery
-Query::Query(std::shared_ptr<transaction::Context> const& ctx,
+Query::Query(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              aql::QueryOptions&& options,
              std::shared_ptr<SharedQueryState> sharedState)
-    : QueryContext(ctx->vocbase()),
+    : QueryContext(ctx->vocbase(), id),
       _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
@@ -165,13 +165,13 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              QueryOptions&& options)
-    : Query(ctx, queryString, bindParameters, std::move(options),
+    : Query(0, ctx, queryString, bindParameters, std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              VPackSlice options)
-    : Query(ctx, queryString, bindParameters,
+    : Query(0, ctx, queryString, bindParameters,
             QueryOptions(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
@@ -1482,7 +1482,9 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     }
     bool usingSystemCollection = false;
     // Ignore queries on System collections, we do not want them to hit failure points
-    collections().visit([&usingSystemCollection](std::string const&, Collection& col) -> bool {
+    // note that we must call the _const_ version of collections() here, because the non-const
+    // version will trigger an assertion failure if the query is already executing!
+    const_cast<Query const*>(this)->collections().visit([&usingSystemCollection](std::string const&, Collection const& col) -> bool {
       if (col.getCollection()->system()) {
         usingSystemCollection = true;
         return false;

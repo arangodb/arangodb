@@ -229,10 +229,9 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
-  uint64_t _numLogdata = 0;
-#endif
+  uint64_t _numLogdata;
+  
   /// @brief number of commits, including intermediate commits
   uint64_t _numCommits;
   // if a transaction gets bigger than these values then an automatic
@@ -240,6 +239,10 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
+
+  /// @brief number of rollbacks performed in current transaction. not
+  /// resetted on intermediate commit
+  uint64_t _numRollbacks;
 
   /// @brief if true there key buffers will no longer be shared
   bool _parallel;
