@@ -574,6 +574,9 @@ class ExecutionNode {
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
+
+private:
+  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst);
 };
 
 /// @brief class SingletonNode

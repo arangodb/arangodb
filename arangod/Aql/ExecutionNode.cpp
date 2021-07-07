@@ -672,57 +672,7 @@ CostEstimate ExecutionNode::getCost() const {
 
 /// @brief functionality to walk an execution plan recursively
 bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
-  if (worker.done(this)) {
-    return false;
-  }
-
-  if (worker.before(this)) {
-    return true;
-  }
-
-  if (!_dependencies.empty()) {
-    // intentionally copy the dependencies from before you we iterate
-    // over them.
-    // we keep this copy to check that no worker function modifies the
-    // dependencies while we are working over them. this would be
-    // inherently unsafe, e.g. adding to _dependencies while walking 
-    // over them could lead to vector storage reallocation, and
-    // removing dependencies while walking over them can invalidate
-    // iterators.
-    ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type arena;
-    ::arangodb::containers::SmallVector<ExecutionNode*> dependencies{arena};
-
-    // we normally should have 1, at most 2 dependencies here!
-    dependencies.assign(_dependencies.begin(), _dependencies.end());
-
-    // Now the children in their natural order:
-    for (auto const& it : dependencies) {
-      bool stopWalking = it->walk(worker);
-
-      if (stopWalking) {
-        return true;
-      }
-    }
-  }
-
-  // Now handle a subquery:
-  if (getType() == SUBQUERY) {
-    auto p = ExecutionNode::castTo<SubqueryNode*>(this);
-    auto subquery = p->getSubquery();
-
-    if (worker.enterSubquery(this, subquery)) {
-      bool shouldAbort = subquery->walk(worker);
-      worker.leaveSubquery(this, subquery);
-
-      if (shouldAbort) {
-        return true;
-      }
-    }
-  }
-
-  worker.after(this);
-
-  return false;
+  return doWalk(worker, false);
 }
 
 /// @brief functionality to walk an execution plan recursively.
@@ -732,38 +682,93 @@ bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
 /// This is in contrast to walk(), which recurses on the dependencies before
 /// recursing into the subquery.
 bool ExecutionNode::walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (worker.done(this)) {
-    return false;
-  }
-#endif
-  if (worker.before(this)) {
-    return true;
-  }
+  return doWalk(worker, true);
+}
 
-  // Now handle a subquery:
-  if (getType() == SUBQUERY) {
-    auto p = ExecutionNode::castTo<SubqueryNode*>(this);
-    auto subquery = p->getSubquery();
+bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst) {
+  enum class State {
+    Pending,
+    Processed,
+    InSubQuery
+  };
 
-    if (worker.enterSubquery(this, subquery)) {
-      bool shouldAbort = subquery->walkSubqueriesFirst(worker);
-      worker.leaveSubquery(this, subquery);
+  using Entry = std::pair<ExecutionNode*, State>;
+  // we can be quite generous with the buffer size since the implementation is not recursive.
+  constexpr std::size_t NumBufferedEntries = 1000;
+  constexpr std::size_t BufferSize = sizeof(Entry) * NumBufferedEntries;
+  using Container = containers::SmallVector<Entry, BufferSize>;
+  Container::allocator_type::arena_type arena;
+  Container nodes{arena};
+  // Our stackbased arena can hold NumBufferedEntries, so we reserve everythhing at once.
+  nodes.reserve(NumBufferedEntries);
+  nodes.emplace_back(const_cast<ExecutionNode*>(this), State::Pending);
 
-      if (shouldAbort) {
-        return true;
+  auto enqueDependencies = [&nodes](std::vector<ExecutionNode*>& deps) {
+    // we enqueue the dependencies in reversed order, because we always continue with the _last_ node in the list.
+    for (auto it = deps.rbegin(); it != deps.rend(); ++it) {
+      nodes.emplace_back(*it, State::Pending);
+    }
+  };
+
+  while (!nodes.empty()) {
+    auto& [n, state] = nodes.back();
+    switch (state) {
+      case State::Pending: {
+        if (worker.done(n)) {
+          nodes.pop_back();
+          break;
+        }
+
+        if (worker.before(n)) {
+          return true;
+        }
+
+        if (subQueryFirst && n->getType() == SUBQUERY) {
+          auto p = ExecutionNode::castTo<SubqueryNode*>(n);
+          auto subquery = p->getSubquery();
+
+          if (worker.enterSubquery(n, subquery)) {
+            state = State::InSubQuery;
+            nodes.emplace_back(subquery, State::Pending);
+            break;
+          }
+        }
+        state = State::Processed;
+        enqueDependencies(n->_dependencies);
+        break;
+      }
+
+      case State::Processed: {
+        if (!subQueryFirst && n->getType() == SUBQUERY) {
+          auto p = ExecutionNode::castTo<SubqueryNode*>(n);
+          auto subquery = p->getSubquery();
+
+          if (worker.enterSubquery(n, subquery)) {
+            state = State::InSubQuery;
+            nodes.emplace_back(subquery, State::Pending);
+            break;
+          }
+        }
+        worker.after(n);
+        nodes.pop_back();
+        break;
+      }
+
+      case State::InSubQuery: {
+        TRI_ASSERT(n->getType() == SUBQUERY);
+        auto p = ExecutionNode::castTo<SubqueryNode*>(n);
+        worker.leaveSubquery(n, p->getSubquery());
+        if (subQueryFirst) {
+          state = State::Processed;
+          enqueDependencies(n->_dependencies);
+        } else {
+          worker.after(n);
+          nodes.pop_back();
+        }
+        break;
       }
     }
   }
-
-  // Now the children in their natural order:
-  for (auto const& it : _dependencies) {
-    if (it->walkSubqueriesFirst(worker)) {
-      return true;
-    }
-  }
-
-  worker.after(this);
 
   return false;
 }
