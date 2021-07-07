@@ -58,19 +58,14 @@ TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {
   VPackBuilder builder;
 
   std::unique_ptr<SubqueryStartNode> node, nodeFromVPack;
-  std::unordered_set<ExecutionNode const*> seen{};
 
   node = std::make_unique<SubqueryStartNode>(&plan, ExecutionNodeId{0}, nullptr);
   node->setVarsUsedLater({{}});
   node->setVarsValid({{}});
   node->setRegsToKeep({{}});
 
-  builder.openArray();
-  node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
-  builder.close();
-  EXPECT_NE(seen.find(node.get()), seen.end())
-      << "The node has not been added into the seen list";
-
+  node->allToVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
+  
   nodeFromVPack = std::make_unique<SubqueryStartNode>(&plan, builder.slice()[0]);
 
   ASSERT_TRUE(node->isEqualTo(*nodeFromVPack));
@@ -91,19 +86,13 @@ TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_no_invariable) {
   Variable outvar("name", 1, false);
 
   std::unique_ptr<SubqueryEndNode> node, nodeFromVPack;
-  std::unordered_set<ExecutionNode const*> seen{};
 
   node = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr, &outvar);
   node->setVarsUsedLater({{}});
   node->setVarsValid({{}});
   node->setRegsToKeep({{}});
 
-  builder.openArray();
-  node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
-  builder.close();
-
-  EXPECT_NE(seen.find(node.get()), seen.end())
-      << "The node has not been added into the seen list";
+  node->allToVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
 
   nodeFromVPack = std::make_unique<SubqueryEndNode>(&plan, builder.slice()[0]);
 
@@ -117,19 +106,13 @@ TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_invariable) {
   Variable invar("otherName", 2, false);
 
   std::unique_ptr<SubqueryEndNode> node, nodeFromVPack;
-  std::unordered_set<ExecutionNode const*> seen{};
 
   node = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar, &outvar);
   node->setVarsUsedLater({{}});
   node->setVarsValid({{}});
   node->setRegsToKeep({{}});
 
-  builder.openArray();
-  node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
-  builder.close();
-
-  EXPECT_NE(seen.find(node.get()), seen.end())
-      << "The node has not been added into the seen list";
+  node->allToVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
 
   nodeFromVPack = std::make_unique<SubqueryEndNode>(&plan, builder.slice()[0]);
 

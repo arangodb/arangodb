@@ -489,11 +489,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     // serialization and deserialization
     {
       VPackBuilder builder;
-      std::unordered_set<arangodb::aql::ExecutionNode const*> seen;
-      {
-        VPackArrayBuilder guard(&builder);
-        indNode.toVelocyPackHelper(builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS, seen);
-      }
+      indNode.allToVelocyPack(builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS);
 
       arangodb::aql::IndexNode indNodeDeserialized(
         const_cast<arangodb::aql::ExecutionPlan*>(query.plan()), createJson->slice());
