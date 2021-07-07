@@ -1,5 +1,8 @@
 devel
 -----
+* Adapt various places related to handling of execution plans non-recursive
+  in order to avoid stack overflows. This allows us now to execute much larger
+  queries.
 
 * Updated ArangoDB Starter to 0.15.1-preview-3.
 
