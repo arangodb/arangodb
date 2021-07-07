@@ -287,10 +287,14 @@ set(ARANGODB_TESTS_SOURCES
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/AppendEntriesBatchTest.cpp
   Replication2/ChangeStreamTests.cpp
+  Replication2/CheckLogsTest.cpp
   Replication2/ConcurrencyTests.cpp
+  Replication2/DetectConflictTest.cpp
   Replication2/FollowerAppendEntries.cpp
   Replication2/FollowerWaitFor.cpp
   Replication2/LeaderAppendEntriesTest.cpp
+  Replication2/LogReclaimTest.cpp
+  Replication2/MaintenanceTests.cpp
   Replication2/MultiTermTest.cpp
   Replication2/ReplicatedLogMetricsMock.cpp
   Replication2/ReplicatedLogTest.cpp
@@ -298,7 +302,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/RocksDBLogTest.cpp
   Replication2/SimpleInsertTests.cpp
   Replication2/TestHelper.cpp
-        Replication2/LogReclaimTest.cpp Replication2/CheckLogsTest.cpp Replication2/DetectConflictTest.cpp Replication2/MaintenanceTests.cpp Replication2/UpdateReplicatedLogTests.cpp)
+  Replication2/UpdateReplicatedLogTests.cpp
+)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
@@ -316,15 +321,21 @@ endif ()
 add_executable(
   arangodbtests
   ${ARANGODB_TESTS_SOURCES}
-  main.cpp
-)
-
-add_executable(
-  arangodbtests_replication2
-  ${ARANGODB_TESTS_COMMON_SOURCES}
   ${ARANGODB_REPLICATION2_TEST_SOURCES}
   main.cpp
 )
+
+set(USE_SEPARATE_REPLICATION2_TESTS_BINARY FALSE CACHE BOOL
+  "Write a separate binary 'arangodbtests_replication2', containing only the Replication 2.0 tests.")
+
+if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+  add_executable(
+    arangodbtests_replication2
+    ${ARANGODB_TESTS_COMMON_SOURCES}
+    ${ARANGODB_REPLICATION2_TEST_SOURCES}
+    main.cpp
+  )
+endif()
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
@@ -344,14 +355,16 @@ target_link_libraries(arangodbtests
   boost_boost
 )
 
-target_link_libraries(arangodbtests_replication2
-  gtest
-  arango_agency
-  arango_v8server
-  arangoserver
-  arango_replication2
-  arango_iresearch
+if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+  target_link_libraries(arangodbtests_replication2
+    gtest
+    arango_agency
+    arango_v8server
+    arangoserver
+    arango_replication2
+    arango_iresearch
   )
+endif()
 
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
@@ -360,20 +373,27 @@ endif ()
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
   )
-target_include_directories(arangodbtests_replication2 PRIVATE
-  ${INCLUDE_DIRECTORIES}
+
+if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+  target_include_directories(arangodbtests_replication2 PRIVATE
+    ${INCLUDE_DIRECTORIES}
   )
-target_link_libraries(arangodbtests_replication2 arango)
+  target_link_libraries(arangodbtests_replication2 arango)
+endif()
 
 if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+    target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  endif()
 endif()
 
 if (DARWIN AND USE_FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
   target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
-  target_compile_options(arangodbtests_replication2 PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
+  if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+    target_compile_options(arangodbtests_replication2 PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
+  endif()
 endif()
 
 # add these includes as system includes because otherwise
@@ -384,9 +404,12 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
-target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
-)
+
+if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+  target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
+    ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+  )
+endif()
 
 if (USE_JEMALLOC)
   add_dependencies(arangodbtests jemalloc_build)
