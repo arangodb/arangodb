@@ -36,6 +36,7 @@
 namespace arangodb::replication2::replicated_log {
 
 struct LogCore;
+struct LogStatus;
 
 /**
 * @brief Interface for a log participant: That is, usually either a leader or a

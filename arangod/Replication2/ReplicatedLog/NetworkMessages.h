@@ -87,8 +87,6 @@ struct AppendEntriesResult {
   static auto withOk(LogTerm, MessageId) noexcept -> AppendEntriesResult;
 };
 
-auto to_string(AppendEntriesErrorReason reason) -> std::string;
-
 struct AppendEntriesRequest {
   using EntryContainer = ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy>;
 

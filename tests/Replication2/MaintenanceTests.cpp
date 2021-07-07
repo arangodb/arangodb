@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "Cluster/Maintenance.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
 
 using namespace arangodb;
 using namespace arangodb::maintenance;

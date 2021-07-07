@@ -23,11 +23,11 @@
 #include "LogParticipantI.h"
 
 #include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "RestServer/Metrics.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/overload.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;

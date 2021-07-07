@@ -45,6 +45,8 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/vocbase.h"
 
+#include "Replication2/ReplicatedLog/LogStatus.h"
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

@@ -22,12 +22,11 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/Common.h"
-
 #include <string>
 #include <unordered_map>
-#include <variant>
 #include <vector>
+
+#include "Replication2/ReplicatedLog/Common.h"
 
 namespace arangodb::futures {
 template <typename T>
@@ -55,6 +54,7 @@ enum class AppendEntriesErrorReason {
   COMMUNICATION_ERROR,
 };
 
+auto to_string(AppendEntriesErrorReason reason) noexcept -> std::string_view;
 
 struct LogStatistics {
   TermIndexPair spearHead{};
@@ -62,56 +62,6 @@ struct LogStatistics {
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LogStatistics;
-};
-
-struct LeaderStatus {
-  struct FollowerStatistics : LogStatistics {
-    AppendEntriesErrorReason lastErrorReason;
-    double lastRequestLatencyMS;
-    void toVelocyPack(velocypack::Builder& builder) const;
-    static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
-  };
-
-  LogStatistics local;
-  LogTerm term;
-  std::unordered_map<ParticipantId, FollowerStatistics> follower;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;
-};
-
-struct FollowerStatus {
-  LogStatistics local;
-  std::optional<ParticipantId> leader;
-  LogTerm term;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatus;
-};
-
-struct UnconfiguredStatus {
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus;
-};
-
-struct LogStatus {
-  using VariantType = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
-
-  // default constructs as unconfigured status
-  LogStatus() = default;
-  explicit LogStatus(UnconfiguredStatus) noexcept;
-  explicit LogStatus(LeaderStatus) noexcept;
-  explicit LogStatus(FollowerStatus) noexcept;
-
-  [[nodiscard]] auto getVariant() const noexcept -> VariantType const&;
-
-  [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
-  [[nodiscard]] auto getLocalStatistics() const noexcept -> std::optional<LogStatistics>;
-
-  static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
-  void toVelocyPack(velocypack::Builder& builder) const;
- private:
-  VariantType _variant;
 };
 
 struct AbstractFollower {

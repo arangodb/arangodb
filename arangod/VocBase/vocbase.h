@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <stddef.h>
+#include <cstddef>
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -40,7 +40,6 @@
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
 #include "Replication2/ReplicatedLog/Common.h"
-#include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/Version.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -64,6 +63,7 @@ class LogLeader;
 class LogFollower;
 struct LogParticipantI;
 struct ReplicatedLog;
+struct LogStatus;
 }
 }
 namespace velocypack {

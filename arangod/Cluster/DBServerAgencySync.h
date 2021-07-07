@@ -33,6 +33,11 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+
+namespace replication2::replicated_log {
+struct LogStatus;
+}
+
 class HeartbeatThread;
 
 struct DBServerAgencySyncResult {

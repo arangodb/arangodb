@@ -36,6 +36,10 @@ namespace arangodb {
 class LogicalCollection;
 class StorageEngine;
 
+namespace replication2::replicated_log {
+struct LogStatus;
+}
+
 namespace maintenance {
 
 // A few constants for priorities used in Maintenance for ActionDescriptions:

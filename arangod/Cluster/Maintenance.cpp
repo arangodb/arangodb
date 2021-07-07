@@ -41,6 +41,7 @@
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"

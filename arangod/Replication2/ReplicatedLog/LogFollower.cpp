@@ -22,13 +22,12 @@
 
 #include "LogFollower.h"
 
-#include "Algorithms.h"
-#include "LogContextKeys.h"
-#include "ReplicatedLogIterator.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "RestServer/Metrics.h"
 
@@ -39,9 +38,6 @@
 #include <Futures/Promise.h>
 
 #include <algorithm>
-#include <chrono>
-#include <cstdlib>
-#include <string>
 #include <utility>
 
 #if (_MSC_VER >= 1)
