@@ -33,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -541,4 +542,37 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
     injectFollowerInfoInternal(newValue);
   }
   return newValue;
+}
+
+uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
+  WRITE_LOCKER(guard, _dataLock);
+  uint64_t i = 0;
+  uint64_t prev = 0;
+  auto it = _followingTermId.find(s);
+  if (it != _followingTermId.end()) {
+    prev = it->second;
+  }
+  // We want the random number to be non-zero and different from a previous one:
+  do {
+    i = RandomGenerator::interval(UINT64_MAX);
+  } while (i == 0 || i == prev);
+  try {
+    _followingTermId[s] = i;
+  } catch(std::bad_alloc const&) {
+    i = 1;   // I assume here that I do not get bad_alloc if the key is
+             // already in the map, since it then only has to overwrite
+             // an integer, if the key is not in the map, we default to 1.
+  }
+  return i;
+}
+
+uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) const noexcept {
+  READ_LOCKER(guard, _dataLock);
+  // Note that we assume that find() does not throw!
+  auto it = _followingTermId.find(s);
+  if (it == _followingTermId.end()) {
+    // If not found, we use the default from above:
+    return 1;
+  }
+  return it->second;
 }
