@@ -90,21 +90,21 @@ template<typename T> class AtomicMetric : public Metric {
 
 public:
 
-  AtomicMetric(const T& val, std::string const& name, std::string const& help,
+  AtomicMetric(T&& val, std::string const& name, std::string const& help,
         std::string const& labels = std::string())
-    : Metric(name, help, labels), statsPtr(std::make_shared<T>(val)) { }
+    : Metric(name, help, labels), stats(std::move(val)) { }
 
   ~AtomicMetric() = default;
 
-  void store(const std::shared_ptr<T>& newStatsPtr) {
+  void store(T newStats) {
     std::lock_guard<std::mutex> lock(mutex);
-    statsPtr = newStatsPtr;
+    stats = newStats;
     return;
   }
 
-  const std::shared_ptr<T> load() const noexcept {
+  T load() const noexcept {
     std::lock_guard<std::mutex> lock(mutex);
-    return statsPtr;
+    return stats;
   }
 
   virtual std::string type() const override { return "atomic_metric"; }
@@ -113,16 +113,14 @@ public:
                     std::string const& globalLabels,
                     std::string const& alternativeName) const override {
     std::unique_lock<std::mutex> mutex_lock(mutex);
-    auto tmp = statsPtr.lock();
+    auto tmpStats = stats;
     mutex_lock.unlock();
-    if (tmp) {
-      tmp->toPrometheus(result, labels(), globalLabels);
-    }
+    tmpStats.toPrometheus(result, labels(), globalLabels);
     return;
   }
 
 private:
-  std::weak_ptr<T> statsPtr;
+  T stats;
   mutable std::mutex mutex;
 };
 

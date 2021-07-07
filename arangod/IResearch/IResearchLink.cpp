@@ -67,7 +67,7 @@ using namespace arangodb::iresearch;
 
 using irs::async_utils::read_write_mutex;
 
-DECLARE_ATOMIC_METRIC(arangodb_arangosearch_link_stats, LinkStats, "Stats of documents in link");
+DECLARE_ATOMIC_METRIC(arangodb_arangosearch_link_stats, IResearchLink::Stats, "Stats of documents in link");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
@@ -613,9 +613,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _id(iid),
       _lastCommittedTick(0),
       _createdInRecovery(false),
-      _linkStats(
-        _collection.vocbase().server()
-          .getFeature<arangodb::MetricsFeature>().add(arangodb_arangosearch_link_stats{})) {
+      _linkStats(nullptr) {
 
   auto* key = this;
 
@@ -872,7 +870,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     Stats curr_stats = stats();
 
     // update stats
-    _linkStats.store(std::make_shared<Stats>(curr_stats));
+    _linkStats->store(curr_stats);
 
     // update last committed tick
     impl.tick(_lastCommittedTick);
@@ -1244,6 +1242,9 @@ Result IResearchLink::init(
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
+
+  _linkStats = &_collection.vocbase().server()
+            .getFeature<arangodb::MetricsFeature>().add(arangodb_arangosearch_link_stats{});
 
   return {};
 }
@@ -1872,6 +1873,10 @@ bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
 }
 
 Result IResearchLink::unload() {
+
+  _collection.vocbase().server()
+    .getFeature<arangodb::MetricsFeature>().remove(arangodb_arangosearch_link_stats{});
+
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
@@ -1920,6 +1925,35 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) cons
   }
 
   return nullptr;
+}
+
+void IResearchLink::Stats::toPrometheus(std::string &result,
+                                        const std::string &labels,
+                                        const std::string &globalLabels) const {
+
+  std::string annotation = "{ " + globalLabels;
+  if (!labels.empty()) {
+    if (!globalLabels.empty()) {
+      annotation += ", ";
+    }
+    annotation += labels;
+  }
+  annotation += "} ";
+
+  auto write_metric = [&result, &annotation](std::string_view metricName, size_t value) {
+    result.append(metricName.data(), metricName.size());
+    result += annotation;
+    result += std::to_string(value);
+    result += '\n';
+  };
+
+  write_metric("arangodb_arangosearch_docs_count", docsCount);
+  write_metric("arangodb_arangosearch_live_docs_count", liveDocsCount);
+  write_metric("arangodb_arangosearch_index_size", indexSize);
+  write_metric("arangodb_arangosearch_segments_count", numSegments);
+  write_metric("arangodb_arangosearch_files_count", this->numFiles);
+
+  return;
 }
 
 IResearchLink::Stats IResearchLink::stats() const {

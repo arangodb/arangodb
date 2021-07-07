@@ -25,6 +25,7 @@
 #ifndef METRICS_FEATURE_TEST_H
 #define METRICS_FEATURE_TEST_H
 #include <RestServer/MetricsFeature.h>
+#include <IResearch/IResearchLink.h>
 struct HISTOGRAMLOGSCALE {
   static log_scale_t<double> scale() { return { 10.0, 0, 1000.0, 8 }; }
 };
@@ -42,5 +43,9 @@ struct HISTOGRAMLIN : arangodb::metrics::HistogramBuilder<HISTOGRAMLIN, HISTOGRA
 };
 struct GAUGE : arangodb::metrics::GaugeBuilder<GAUGE, uint64_t> {
   GAUGE() { _name = "GAUGE", _help = "one gauge"; }
+};
+using stats_t = arangodb::iresearch::IResearchLink::Stats;
+struct ATOMIC_METRIC : arangodb::metrics::AtomicMetricBuilder<ATOMIC_METRIC, stats_t> {
+  ATOMIC_METRIC() { _name = "ATOMIC_METRIC", _help = "one atomic metric"; }
 };
 #endif

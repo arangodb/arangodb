@@ -438,6 +438,17 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 
+bool MetricsFeature::doRemove(const metrics::Builder& builder) {
+  auto key = builder.key();
+  size_t success = 0;
+  {
+    std::lock_guard<std::recursive_mutex> guard(_lock);
+    success = _registry.erase(std::move(key));
+  }
+
+  return static_cast<bool>(success);
+}
+
 bool MetricsFeature::exportAPI() const {
   return _export;
 }

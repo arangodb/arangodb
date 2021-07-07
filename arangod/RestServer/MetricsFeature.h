@@ -188,13 +188,18 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return static_cast<typename MetricBuilder::metric_t&>(doAdd(builder));
   }
 
+  template <typename MetricBuilder>
+  bool remove(MetricBuilder&& builder) {
+    return doRemove(builder);
+  }
+
   void toPrometheus(std::string& result, bool V2) const;
 
   ServerStatistics& serverStatistics();
 
  private:
   Metric& doAdd(metrics::Builder& builder);
-
+  bool doRemove(const metrics::Builder& builder);
 
   registry_type _registry;
 
