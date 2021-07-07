@@ -1162,12 +1162,8 @@ std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const
                         irs::check_bit<1>(_volatilityMask));  // sort
 }
 
-/// @brief toVelocyPack, for EnumerateViewNode
-void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                           std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for EnumerateViewNode
+void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // system info
   nodes.add(NODE_DATABASE_PARAM, VPackValue(_vocbase.name()));
   // need 'view' field to correctly print view name in JS explanation
@@ -1264,8 +1260,6 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     }
     nodes.add(NODE_PRIMARY_SORT_BUCKETS_PARAM, VPackValue(_sort.second));
   }
-
-  nodes.close();
 }
 
 std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::collections() const {

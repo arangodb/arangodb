@@ -499,10 +499,12 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose,
   if (explainRegisterPlan == ExplainRegisterPlan::Yes) {
     flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
   }
-  // keeps top level of built object open
-  _root->toVelocyPack(builder, flags, true);
+  builder.openObject();
+  builder.add(VPackValue("nodes"));
 
-  TRI_ASSERT(!builder.isClosed());
+  _root->allToVelocyPack(builder, flags);
+
+  TRI_ASSERT(builder.isOpenObject());
 
   // set up rules
   builder.add(VPackValue("rules"));

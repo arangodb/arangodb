@@ -506,8 +506,12 @@ void QuerySnippet::serializeIntoBuilder(
       cloneWorker.process();
     }
 
-    const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
-    internalGather->toVelocyPack(infoBuilder, flags, false);
+    {
+      VPackObjectBuilder guard(&infoBuilder);
+      infoBuilder.add(VPackValue("nodes"));
+      const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
+      internalGather->allToVelocyPack(infoBuilder, flags);
+    }
 
     // Clean up plan for next run
     //
@@ -532,8 +536,10 @@ void QuerySnippet::serializeIntoBuilder(
       TRI_ASSERT(remoteParent->getDependencies()[0] == _remoteNode);
     }
   } else {
+    VPackObjectBuilder guard(&infoBuilder);
+    infoBuilder.add(VPackValue("nodes"));
     const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
-    _nodes.front()->toVelocyPack(infoBuilder, flags, false);
+    _nodes.front()->allToVelocyPack(infoBuilder, flags);
   }
 
   if (_remoteNode != nullptr) {
