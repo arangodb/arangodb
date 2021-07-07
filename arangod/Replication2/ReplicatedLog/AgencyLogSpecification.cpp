@@ -37,46 +37,6 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 
-template <>
-struct std::tuple_size<velocypack::ObjectIteratorPair> {
-  static constexpr auto value = 2;
-};
-
-template <std::size_t idx>
-struct std::tuple_element<idx, velocypack::ObjectIteratorPair> {
-  static_assert(0 <= idx && idx <= 1);
-  using type = arangodb::velocypack::Slice;
-};
-
-namespace arangodb::velocypack {
-template <std::size_t idx>
-auto get(velocypack::ObjectIteratorPair pair) -> VPackSlice {
-  static_assert(0 <= idx && idx <= 1);
-  if constexpr (idx == 0) {
-    return pair.key;
-  } else if constexpr (idx == 1) {
-    return pair.value;
-  }
-}
-}
-// namespace arangodb::velocypack
-
-LogPlanConfig::LogPlanConfig(from_velocypack_t, VPackSlice slice) {
-  waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
-  writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
-}
-
-auto LogPlanConfig::toVelocyPack(VPackBuilder& builder) const -> void {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
-  builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
-}
-
-auto agency::operator==(LogPlanConfig const& left, LogPlanConfig const& right) noexcept -> bool {
-  // TODO How can we make sure that we never forget a field here?
-  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern;
-}
-
 template<>
 struct velocypack::Extractor<LogTerm> {
   static auto extract(VPackSlice slice) -> LogTerm {
@@ -127,7 +87,7 @@ auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const -> void
 
 LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t, VPackSlice slice) {
   term = slice.get(StaticStrings::Term).extract<LogTerm>();
-  config = LogPlanConfig(from_velocypack, slice.get(StaticStrings::Config));
+  config = LogConfig(slice.get(StaticStrings::Config));
   for (auto const& [key, value] :
        VPackObjectIterator(slice.get(StaticStrings::Participants))) {
     TRI_ASSERT(value.isEmptyObject());
@@ -152,13 +112,13 @@ auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
 
 LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice) {
   id = slice.get(StaticStrings::Id).extract<LogId>();
-  targetConfig = LogPlanConfig(from_velocypack, slice.get(StaticStrings::TargetConfig));
+  targetConfig = LogConfig(slice.get(StaticStrings::TargetConfig));
   if (auto term = slice.get(StaticStrings::CurrentTerm); !term.isNone()) {
     currentTerm = LogPlanTermSpecification{from_velocypack, term};
   }
 }
 
-LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term, LogPlanConfig config,
+LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term, LogConfig config,
                                                    std::optional<Leader> leader,
                                                    std::unordered_map<ParticipantId, Participant> participants)
     : term(term),
@@ -167,7 +127,7 @@ LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term, LogPlanConfig c
       participants(std::move(participants)) {}
 
 LogPlanSpecification::LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
-                                           LogPlanConfig config) : id(id), currentTerm(std::move(term)), targetConfig(config) {}
+                                           LogConfig config) : id(id), currentTerm(std::move(term)), targetConfig(config) {}
 
 LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t, VPackSlice slice) {
   auto spearheadSlice = slice.get(StaticStrings::Spearhead);

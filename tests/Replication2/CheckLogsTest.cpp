@@ -22,6 +22,8 @@
 
 #include <gtest/gtest.h>
 
+#include <utility>
+
 #include "Replication2/ReplicatedLog/Algorithms.h"
 
 using namespace arangodb;
@@ -40,10 +42,10 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
 
   auto makeLeader(ParticipantId leader, RebootId rebootId)
       -> agency::LogPlanTermSpecification::Leader {
-    return {leader, rebootId};
+    return {std::move(leader), rebootId};
   }
 
-  auto makeTermSpecification(LogTerm term, agency::LogPlanConfig const& config,
+  auto makeTermSpecification(LogTerm term, LogConfig const& config,
                              ParticipantInfo const& info)
       -> agency::LogPlanTermSpecification {
     auto termSpec = agency::LogPlanTermSpecification{};

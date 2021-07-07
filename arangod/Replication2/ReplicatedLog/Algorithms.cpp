@@ -231,13 +231,6 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
     auto log = ctx.ensureReplicatedLog(logId);
 
     if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
-      replicated_log::LogLeader::TermData termData;
-      termData.term = spec->currentTerm->term;
-      termData.id = serverId;
-      // TODO maybe we should use the same type in the term data
-      termData.writeConcern = spec->currentTerm->config.writeConcern;
-      termData.waitForSync = spec->currentTerm->config.waitForSync;
-
       auto follower =
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
@@ -246,7 +239,8 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
         }
       }
 
-      auto newLeader = log->becomeLeader(termData, follower);
+      auto newLeader = log->becomeLeader(spec->currentTerm->config, serverId,
+                                         spec->currentTerm->term, follower);
       newLeader->runAsyncStep(); // TODO move this call into becomeLeader?
     } else {
       auto leaderString = std::optional<ParticipantId>{};

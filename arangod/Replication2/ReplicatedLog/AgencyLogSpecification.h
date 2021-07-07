@@ -36,25 +36,9 @@ namespace arangodb::replication2::agency {
 struct from_velocypack_t {};
 inline constexpr auto from_velocypack = from_velocypack_t{};
 
-struct LogPlanConfig {
-  std::size_t writeConcern = 1;
-  bool waitForSync = false;
-
-  auto toVelocyPack(VPackBuilder&) const -> void;
-  LogPlanConfig(from_velocypack_t, VPackSlice);
-  LogPlanConfig() noexcept = default;
-
-  friend auto operator==(LogPlanConfig const& left, LogPlanConfig const& right) noexcept -> bool;
-  friend auto operator!=(LogPlanConfig const& left, LogPlanConfig const& right) noexcept -> bool {
-    return !(left == right);
-  }
-};
-
-auto operator==(LogPlanConfig const& left, LogPlanConfig const& right) noexcept -> bool;
-
 struct LogPlanTermSpecification {
   LogTerm term;
-  LogPlanConfig config;
+  LogConfig config;
   struct Leader {
     ParticipantId serverId;
     RebootId rebootId;
@@ -68,20 +52,20 @@ struct LogPlanTermSpecification {
   LogPlanTermSpecification(from_velocypack_t, VPackSlice);
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(LogTerm term, LogPlanConfig config, std::optional<Leader>, std::unordered_map<ParticipantId, Participant> participants);
+  LogPlanTermSpecification(LogTerm term, LogConfig config, std::optional<Leader>, std::unordered_map<ParticipantId, Participant> participants);
 };
 
 struct LogPlanSpecification {
   LogId id;
   std::optional<LogPlanTermSpecification> currentTerm;
 
-  LogPlanConfig targetConfig;
+  LogConfig targetConfig;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanSpecification(from_velocypack_t, VPackSlice);
   LogPlanSpecification() = default;
 
-  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term, LogPlanConfig config);
+  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config);
 };
 
 struct LogCurrentLocalState {

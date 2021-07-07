@@ -384,7 +384,6 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
         generateError(result);
       }
     }));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   } else if(verb == "becomeLeader") {
     if (!ServerState::instance()->isDBServer()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -401,12 +400,10 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
       follower.emplace_back(std::make_shared<replicated_log::NetworkAttachedFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
     }
 
-    replicated_log::LogLeader::TermData termData;
-    termData.id = ServerState::instance()->getId();
-    termData.term = term;
-    termData.writeConcern = writeConcern;
-    termData.waitForSync = waitForSync;
-    log->becomeLeader(termData, follower);
+    replication2::LogConfig config;
+    config.waitForSync = waitForSync;
+    config.writeConcern = writeConcern;
+    log->becomeLeader(config, ServerState::instance()->getId(), term, follower);
     generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
   } else if (verb == "becomeFollower") {
     if (!ServerState::instance()->isDBServer()) {
@@ -430,7 +427,6 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
     });
 
     return waitForFuture(std::move(f));
-#endif
   } else {
     generateError(
         rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,

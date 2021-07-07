@@ -30,7 +30,6 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <Basics/Identifier.h>
 
@@ -105,8 +104,8 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
 };
 
 struct LogPayload {
-  explicit LogPayload(VPackBufferUInt8 dummy) : dummy(std::move(dummy)) {}
-  explicit LogPayload(VPackSlice slice);
+  explicit LogPayload(velocypack::UInt8Buffer dummy) : dummy(std::move(dummy)) {}
+  explicit LogPayload(velocypack::Slice slice);
   explicit LogPayload(std::string_view dummy);
 
   friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
@@ -115,7 +114,7 @@ struct LogPayload {
   [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
 
   // just a placeholder for now
-  VPackBufferUInt8 dummy;
+  velocypack::UInt8Buffer dummy;
 };
 
 // just a placeholder for now, must have a hash<>
@@ -163,6 +162,19 @@ auto to_string(LogId logId) -> std::string;
 struct LogIterator {
   virtual ~LogIterator() = default;
   virtual auto next() -> std::optional<LogEntry> = 0;
+};
+
+struct LogConfig {
+  std::size_t writeConcern = 1;
+  bool waitForSync = false;
+
+  auto toVelocyPack(velocypack::Builder&) const -> void;
+  LogConfig(velocypack::Slice);
+  LogConfig() noexcept = default;
+  LogConfig(std::size_t writeConcern, bool waitForSync) noexcept;
+
+  friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+  friend auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 };
 
 }  // namespace arangodb::replication2

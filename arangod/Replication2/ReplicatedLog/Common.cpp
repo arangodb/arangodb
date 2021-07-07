@@ -168,3 +168,28 @@ replication2::TermIndexPair::TermIndexPair(LogTerm term, LogIndex index) noexcep
 auto replication2::operator<<(std::ostream& os, const TermIndexPair& pair) -> std::ostream& {
     return os << '(' << pair.term << ':' << pair.index << ')';
 }
+
+
+LogConfig::LogConfig(VPackSlice slice) {
+  waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
+  writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
+}
+
+LogConfig::LogConfig(std::size_t writeConcern, bool waitForSync) noexcept
+    : writeConcern(writeConcern), waitForSync(waitForSync) {}
+
+auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
+  builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+}
+
+auto replication2::operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool {
+  // TODO How can we make sure that we never forget a field here?
+  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern;
+}
+
+auto replication2::operator!=(const LogConfig& left, const LogConfig& right) noexcept
+-> bool {
+  return !(left == right);
+}

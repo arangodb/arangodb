@@ -247,7 +247,7 @@ auto createReplicatedLog(DatabaseID const& dbName, replication2::LogId const log
   using namespace arangodb::cluster::paths::aliases;
   auto const logPath = plan()->replicatedLogs()->database(dbName)->log(to_string(logId));
 
-  auto config = replication2::agency::LogPlanConfig();
+  auto config = replication2::LogConfig();
   config.writeConcern = writeConcern;
   // config.replicationFactor = replicationFactor;
   config.waitForSync = waitForSync;

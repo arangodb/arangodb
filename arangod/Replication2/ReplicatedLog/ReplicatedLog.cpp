@@ -53,23 +53,23 @@ replicated_log::ReplicatedLog::ReplicatedLog(std::unique_ptr<LogCore> core,
       _metrics(metrics) {}
 
 auto replicated_log::ReplicatedLog::becomeLeader(
-    LogLeader::TermData const& termData,
+    LogConfig config, ParticipantId id, LogTerm newTerm,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
     -> std::shared_ptr<LogLeader> {
   auto [leader, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
-    if (auto term = _participant->getTerm(); term && *term > termData.term) {
+    if (auto currentTerm = _participant->getTerm(); currentTerm && *currentTerm > newTerm) {
       LOG_CTX("b8bf7", INFO, _logContext)
-          << "tried to become leader with term " << termData.term
-          << ", but current term is " << *term;
+          << "tried to become leader with term " << newTerm
+          << ", but current term is " << *currentTerm;
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM);
     }
 
     auto [logCore, deferred] = std::move(*_participant).resign();
     LOG_CTX("23d7b", DEBUG, _logContext)
-        << "becoming leader in term " << termData.term;
-    auto leader = LogLeader::construct(termData, std::move(logCore), follower,
-                                  _logContext, _metrics);
+        << "becoming leader in term " << newTerm;
+    auto leader = LogLeader::construct(config, std::move(logCore), follower,
+                                       std::move(id), newTerm, _logContext, _metrics);
     _participant = std::static_pointer_cast<LogParticipantI>(leader);
     _metrics->replicatedLogLeaderTookOverNumber->count();
     return std::make_pair(std::move(leader), std::move(deferred));

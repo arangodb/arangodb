@@ -75,7 +75,7 @@ struct alignas(64) ReplicatedLog {
   auto operator=(ReplicatedLog const&) -> ReplicatedLog& = delete;
   auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
 
-  auto becomeLeader(LogLeader::TermData const& termData,
+  auto becomeLeader(LogConfig config, ParticipantId id, LogTerm term,
                     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
       -> std::shared_ptr<LogLeader>;
   auto becomeFollower(ParticipantId id, LogTerm term, std::optional<ParticipantId> leaderId)

@@ -42,7 +42,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{};
-  auto const defaultConfig = agency::LogPlanConfig{};
+  auto const defaultConfig = LogConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -76,7 +76,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant)
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{};
-  auto const defaultConfig = agency::LogPlanConfig{};
+  auto const defaultConfig = LogConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -107,7 +107,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant_
   auto const localLogs = ReplicatedLogStatusMap{
       {logId, replicated_log::UnconfiguredStatus{}},
   };
-  auto const defaultConfig = agency::LogPlanConfig{};
+  auto const defaultConfig = LogConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -142,7 +142,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
   auto const localLogs = ReplicatedLogStatusMap{
       {logId, replicated_log::UnconfiguredStatus{}},
   };
-  auto const defaultConfig = agency::LogPlanConfig{};
+  auto const defaultConfig = LogConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -177,7 +177,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
   auto const localLogs = ReplicatedLogStatusMap{
       {logId, replicated_log::FollowerStatus{{}, ParticipantId{"leader"}, LogTerm{4}}},
   };
-  auto const defaultConfig = agency::LogPlanConfig{};
+  auto const defaultConfig = LogConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,

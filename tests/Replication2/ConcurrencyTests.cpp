@@ -1,6 +1,9 @@
 //
 // Created by lars on 30/04/2021.
 //
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "TestHelper.h"

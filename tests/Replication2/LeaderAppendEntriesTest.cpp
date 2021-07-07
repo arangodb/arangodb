@@ -174,12 +174,10 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");
 
-  auto termData = LogLeader::TermData{};
-  termData.waitForSync = true;
-  termData.id = "leader";
-  termData.term = LogTerm{4};
-  termData.writeConcern = 2;
-  auto leader = leaderLog->becomeLeader(termData, {follower});
+  auto config = LogConfig{};
+  config.waitForSync = true;
+  config.writeConcern = 2;
+  auto leader = leaderLog->becomeLeader(config, "leader", LogTerm{4}, {follower});
 
   {
     auto idx = leader->insert(LogPayload{"first entry"});

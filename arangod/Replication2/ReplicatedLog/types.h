@@ -96,7 +96,7 @@ struct UnconfiguredStatus {
 
 using LogStatus = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
 
-auto statusFromVelocyPack(VPackSlice slice) -> LogStatus;
+auto statusFromVelocyPack(velocypack::Slice slice) -> LogStatus;
 
 auto getCurrentTerm(LogStatus const&) noexcept -> std::optional<LogTerm>;
 auto getLocalStatistics(LogStatus const&) noexcept -> std::optional<LogStatistics>;
