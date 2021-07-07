@@ -58,13 +58,13 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
   {
     // Nothing written on the leader
-    auto status = std::get<LeaderStatus>(leader->getStatus());
+    auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
   }
   {
     // Nothing written on the follower
-    auto status = std::get<FollowerStatus>(follower->getStatus());
+    auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
   }
@@ -82,12 +82,12 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     // Insert first entry on the follower, expect the spearhead to be one
     auto idx = leader->insert(LogPayload{"first entry"});
     {
-      auto status = std::get<LeaderStatus>(leader->getStatus());
+      auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{0});
       EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
     }
     {
-      auto status = std::get<FollowerStatus>(follower->getStatus());
+      auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{0});
       EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
     }
@@ -125,13 +125,13 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
     {
       // Leader commit index is 1
-      auto status = std::get<LeaderStatus>(leader->getStatus());
+      auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{1});
       EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
     }
     {
       // Follower has spearhead 1 and commitIndex still 0
-      auto status = std::get<FollowerStatus>(follower->getStatus());
+      auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{0});
       EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
     }
@@ -169,7 +169,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
     {
       // Follower has commitIndex 1
-      auto status = std::get<FollowerStatus>(follower->getStatus());
+      auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{1});
       EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
     }
@@ -219,13 +219,13 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
 
   {
     // Leader should know it spearhead, but commitIndex is 0
-    auto status = std::get<LeaderStatus>(leader->getStatus());
+    auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{3});
   }
   {
     // Nothing written on the follower
-    auto status = std::get<FollowerStatus>(follower->getStatus());
+    auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
   }
@@ -252,13 +252,13 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
 
   {
     // Leader has replicated all 3 entries
-    auto status = std::get<LeaderStatus>(leader->getStatus());
+    auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{3});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{3});
   }
   {
     // Follower knows that everything is replicated
-    auto status = std::get<FollowerStatus>(follower->getStatus());
+    auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{3});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{3});
   }
@@ -300,19 +300,19 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
 
   {
     // Leader has spearhead at 1 but not committed
-    auto status = std::get<LeaderStatus>(leader->getStatus());
+    auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
   }
   {
     // Follower has nothing
-    auto status = std::get<FollowerStatus>(follower_1->getStatus());
+    auto status = std::get<FollowerStatus>(follower_1->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
   }
   {
     // Follower has nothing
-    auto status = std::get<FollowerStatus>(follower_2->getStatus());
+    auto status = std::get<FollowerStatus>(follower_2->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
   }
@@ -329,19 +329,19 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   EXPECT_FALSE(future.isReady());
   {
     // Leader has spearhead at 1 but not committed
-    auto status = std::get<LeaderStatus>(leader->getStatus());
+    auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
   }
   {
     // Follower has written 1 entry but not committed
-    auto status = std::get<FollowerStatus>(follower_1->getStatus());
+    auto status = std::get<FollowerStatus>(follower_1->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
   }
   {
     // Follower has nothing
-    auto status = std::get<FollowerStatus>(follower_2->getStatus());
+    auto status = std::get<FollowerStatus>(follower_2->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
   }
@@ -362,19 +362,19 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   EXPECT_TRUE(follower_2->hasPendingAppendEntries());
   {
     // Leader has committed 1
-    auto status = std::get<LeaderStatus>(leader->getStatus());
+    auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{1});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
   }
   {
     // Follower has written 1 entry but not committed
-    auto status = std::get<FollowerStatus>(follower_1->getStatus());
+    auto status = std::get<FollowerStatus>(follower_1->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
   }
   {
     // Follower has written 1 entry but not committed
-    auto status = std::get<FollowerStatus>(follower_2->getStatus());
+    auto status = std::get<FollowerStatus>(follower_2->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
   }
@@ -386,19 +386,19 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
 
   {
     // Leader has committed 1
-    auto status = std::get<LeaderStatus>(leader->getStatus());
+    auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{1});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
   }
   {
     // Follower has committed 1
-    auto status = std::get<FollowerStatus>(follower_1->getStatus());
+    auto status = std::get<FollowerStatus>(follower_1->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{1});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
   }
   {
     // Follower has committed 1
-    auto status = std::get<FollowerStatus>(follower_2->getStatus());
+    auto status = std::get<FollowerStatus>(follower_2->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{1});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{1});
   }

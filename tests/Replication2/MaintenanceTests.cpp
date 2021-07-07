@@ -105,7 +105,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant_
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::UnconfiguredStatus{}},
+      {logId, replicated_log::LogStatus{replicated_log::UnconfiguredStatus{}}},
   };
   auto const defaultConfig = LogConfig{};
 
@@ -140,7 +140,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::UnconfiguredStatus{}},
+      {logId, replicated_log::LogStatus{replicated_log::UnconfiguredStatus{}}},
   };
   auto const defaultConfig = LogConfig{};
 
@@ -175,7 +175,9 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::FollowerStatus{{}, ParticipantId{"leader"}, LogTerm{4}}},
+      {logId,
+       replicated_log::LogStatus{
+           replicated_log::FollowerStatus{{}, ParticipantId{"leader"}, LogTerm{4}}}},
   };
   auto const defaultConfig = LogConfig{};
 

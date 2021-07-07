@@ -107,7 +107,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
   }
 
   {
-    auto stats = std::get<LeaderStatus>(leader->getStatus());
+    auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(stats.local.commitIndex, LogIndex{1});
   }
 
@@ -152,7 +152,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
   }
 
   {
-    auto stats = std::get<LeaderStatus>(leader->getStatus());
+    auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(stats.local.commitIndex, LogIndex{0}); // do not commit yet
   }
 

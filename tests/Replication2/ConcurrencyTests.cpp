@@ -216,7 +216,7 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   data.stopReplicationThreads.store(true);
   replicationThread.join();
 
-  auto stats = std::get<LeaderStatus>(data.log->getStatus()).local;
+  auto stats = std::get<LeaderStatus>(data.log->getStatus().getVariant()).local;
   EXPECT_LE(LogIndex{8000}, stats.commitIndex);
   EXPECT_LE(stats.commitIndex, stats.spearHead.index);
   stopAsyncMockLogs();
@@ -278,7 +278,7 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
 
   guard.cancel();
 
-  auto stats = std::get<LeaderStatus>(data.log->getStatus()).local;
+  auto stats = std::get<LeaderStatus>(data.log->getStatus().getVariant()).local;
   EXPECT_LE(LogIndex{8000}, stats.commitIndex);
   EXPECT_LE(stats.commitIndex, stats.spearHead.index);
 }

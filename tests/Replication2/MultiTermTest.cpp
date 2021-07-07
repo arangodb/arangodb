@@ -46,7 +46,7 @@ TEST_F(MultiTermTest, add_follower_test) {
       EXPECT_EQ(quorum->quorum, std::vector<ParticipantId>{"leader"});
     }
     {
-      auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
+      auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
       EXPECT_EQ(stats.commitIndex, LogIndex{1});
     }
@@ -59,7 +59,7 @@ TEST_F(MultiTermTest, add_follower_test) {
     auto leader = leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
 
     {
-      auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
+      auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
       EXPECT_EQ(stats.commitIndex, LogIndex{0});
     }
@@ -74,7 +74,7 @@ TEST_F(MultiTermTest, add_follower_test) {
 
     EXPECT_TRUE(f.isReady());
     {
-      auto stats = std::get<FollowerStatus>(follower->getStatus()).local;
+      auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
       EXPECT_EQ(stats.commitIndex, LogIndex{1});
     }
@@ -116,7 +116,7 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     leader->runAsyncStep();
 
     {
-      auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
+      auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
       EXPECT_EQ(stats.commitIndex, LogIndex{0});
     }
@@ -146,7 +146,7 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     }
 
     {
-      auto stats = std::get<FollowerStatus>(newFollower->getStatus()).local;
+      auto stats = std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
       EXPECT_EQ(stats.spearHead,  TermIndexPair(LogTerm{1}, LogIndex{1}));
       EXPECT_EQ(stats.commitIndex, LogIndex{1});
     }
@@ -189,7 +189,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     EXPECT_FALSE(f.isReady());
 
     {
-      auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
+      auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
       EXPECT_EQ(stats.commitIndex, LogIndex{0});
     }
@@ -228,7 +228,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     }
 
     {
-      auto stats = std::get<FollowerStatus>(newFollower->getStatus()).local;
+      auto stats = std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
       EXPECT_EQ(stats.commitIndex, LogIndex{1});
     }

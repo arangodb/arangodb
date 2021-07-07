@@ -119,7 +119,7 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader) {
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  auto status = std::get<LeaderStatus>(log->getParticipant()->getStatus());
+  auto status = std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
   EXPECT_EQ(status.follower.size(), 1);
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
 }
@@ -140,7 +140,7 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_wrong_rebo
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  EXPECT_TRUE(std::holds_alternative<FollowerStatus>(log->getParticipant()->getStatus()));
+  EXPECT_TRUE(std::holds_alternative<FollowerStatus>(log->getParticipant()->getStatus().getVariant()));
 }
 
 TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follower) {
@@ -161,7 +161,7 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follo
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  auto status = std::get<LeaderStatus>(log->getParticipant()->getStatus());
+  auto status = std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
   EXPECT_EQ(status.follower.size(), 2);
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
   EXPECT_NE(status.follower.find(followerId), status.follower.end());

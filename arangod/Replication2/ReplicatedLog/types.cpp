@@ -224,3 +224,17 @@ auto LogStatus::fromVelocyPack(VPackSlice slice) -> LogStatus {
     return LogStatus{UnconfiguredStatus::fromVelocyPack(slice)};
   }
 }
+
+LogStatus::LogStatus(UnconfiguredStatus status) noexcept : _variant(status) {}
+LogStatus::LogStatus(LeaderStatus status) noexcept
+    : _variant(std::move(status)) {}
+LogStatus::LogStatus(FollowerStatus status) noexcept
+    : _variant(std::move(status)) {}
+
+auto LogStatus::getVariant() const noexcept -> VariantType const& {
+  return _variant;
+}
+
+auto LogStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
+  std::visit([&](auto const& s) { s.toVelocyPack(builder); }, _variant);
+}

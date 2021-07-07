@@ -58,12 +58,12 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   auto leader = leaderLog->becomeLeader("leader", LogTerm{3}, {follower}, 2);
 
   {
-    auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
+    auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
     EXPECT_EQ(stats.spearHead.index, LogIndex{1});
   }
   {
-    auto stats = std::get<FollowerStatus>(follower->getStatus()).local;
+    auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
     EXPECT_EQ(stats.spearHead.index, LogIndex{3});
   }
@@ -73,12 +73,12 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   }
 
   {
-    auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
+    auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
     EXPECT_EQ(stats.spearHead.index, LogIndex{2});
   }
   {
-    auto stats = std::get<FollowerStatus>(follower->getStatus()).local;
+    auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
     EXPECT_EQ(stats.spearHead.index, LogIndex{3});
   }
@@ -100,12 +100,12 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   }
 
   {
-    auto stats = std::get<LeaderStatus>(leader->getStatus()).local;
+    auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{2});
     EXPECT_EQ(stats.spearHead.index, LogIndex{2});
   }
   {
-    auto stats = std::get<FollowerStatus>(follower->getStatus()).local;
+    auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{2});
     EXPECT_EQ(stats.spearHead.index, LogIndex{2});
   }
