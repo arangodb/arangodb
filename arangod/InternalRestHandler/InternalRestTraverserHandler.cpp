@@ -246,7 +246,14 @@ void InternalRestTraverserHandler::queryEngine() {
     // Safe cast BaseTraverserEngines are all of type TRAVERSER
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
-    eng->smartSearchNew(body, result); // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
+    LOG_DEVEL << "OLD: ";
+    eng->smartSearchBFS(body, result);
+    LOG_DEVEL << result.toJson();
+
+    LOG_DEVEL << "New: ";
+    VPackBuilder other;
+    eng->smartSearch(body, other); // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
+    LOG_DEVEL << other.toJson();
   } else if (option == "smartSearchWeighted") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
