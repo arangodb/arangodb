@@ -77,6 +77,7 @@ add_library(arango_iresearch
   IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
   IResearch/IResearchPDP.cpp IResearch/IResearchPDP.h
   IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
+  IResearch/IResearchRocksDBInvertedIndex.cpp IResearch/IResearchRocksDBInvertedIndex.h
   IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
   IResearch/IResearchRocksDBRecoveryHelper.cpp
   IResearch/IResearchRocksDBRecoveryHelper.h

@@ -21,18 +21,17 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearch/IResearchInvertedIndex.h"
+#include "IResearchInvertedIndex.h"
 
+#include "AqlHelper.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
-#include "AqlHelper.h"
 #include "IResearchDocument.h"
-#include "IResearchIdentityAnalyzer.h"
 #include "IResearchFilterFactory.h"
-#include "IResearchRocksDBEncryption.h"
-#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "IResearchIdentityAnalyzer.h"
+#include "Transaction/Methods.h"
+
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
@@ -236,8 +235,8 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
         return;
       }
       ctx->snapshot = _index->snapshot();
-      _reader =  &static_cast<irs::directory_reader const&>(ctx->snapshot);
     }
+    _reader =  &static_cast<irs::directory_reader const&>(ctx->snapshot);
     QueryContext const queryCtx = { _trx, nullptr, nullptr,
                                     nullptr, _reader, _variable};
     irs::Or root;
@@ -300,6 +299,27 @@ void IResearchInvertedIndex::toVelocyPack(
         TRI_ERROR_INTERNAL,
         std::string("Failed to generate inverted index definition")));
   }
+}
+
+std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::fields(IResearchLinkMeta const& meta) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> res;
+  FieldsBuilder fb(res);
+  visitFields({0, irs::hashed_string_ref::NIL}, meta, fb);
+  return res;
+}
+
+Result IResearchInvertedIndex::init(IResearchDataStore::InitCallback const& initCallback /*= {}*/) {
+  auto const& storedValuesColumns = _meta._storedValues.columns();
+  TRI_ASSERT(_meta._sortCompression);
+  auto const primarySortCompression = _meta._sortCompression
+      ? _meta._sortCompression
+      : getDefaultCompression();
+  auto const res = initDataStore(initCallback, isSorted(), storedValuesColumns, primarySortCompression);
+
+  if (!res.ok()) {
+    return res;
+  }
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,6 +454,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = 0; // FIXME: we may use stored values!
+    filterCosts.estimatedCosts = 1;
   }
   return filterCosts;
 }
@@ -442,219 +463,5 @@ aql::AstNode* IResearchInvertedIndex::specializeCondition(aql::AstNode* node,
                                                           aql::Variable const* reference) const {
   return node;
 }
-
-IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(application_features::ApplicationServer& server)
-    : IndexTypeFactory(server) {
-}
-
-bool IResearchRocksDBInvertedIndexFactory::equal(velocypack::Slice const& lhs,
-                                          velocypack::Slice const& rhs,
-                                          std::string const& dbname) const {
-  return false;
-}
-
-std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(LogicalCollection& collection,
-                                                                  velocypack::Slice const& definition,
-                                                                  IndexId id,
-                                                                  bool isClusterConstructor) const {
-  IResearchViewMeta indexMeta;
-  std::string errField;
-  if (!indexMeta.init(definition, errField)) {
-    LOG_TOPIC("a9ccd", ERR, iresearch::TOPIC)
-      << (errField.empty() ?
-           (std::string("failed to initialize index from definition: ") + definition.toString())
-           : (std::string("failed to initialize index from definition, error in attribute '")
-               + errField + "': " + definition.toString()));
-     return nullptr;
-  }
-  IResearchLinkMeta fieldsMeta;
-  if (!fieldsMeta.init(_server, definition, false, errField,
-                        collection.vocbase().name(), IResearchLinkMeta::DEFAULT(), nullptr, true)) {
-    LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
-      << (errField.empty() ?
-           (std::string("failed to initialize index from definition: ") + definition.toString())
-           : (std::string("failed to initialize index from definition, error in attribute '")
-               + errField + "': " + definition.toString()));
-    return nullptr;
-  }
-  auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
-  std::string indexName;
-  if (!nameSlice.isNone()) {
-    if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
-      LOG_TOPIC("91ebd", ERR, iresearch::TOPIC) <<
-        std::string("failed to initialize index from definition, error in attribute '")
-        + arangodb::StaticStrings::IndexName + "': "
-        + definition.toString();
-      return nullptr;
-    }
-    indexName = nameSlice.copyString();
-  }
-
-  auto objectId = basics::VelocyPackHelper::stringUInt64(definition, arangodb::StaticStrings::ObjectId);
-  auto index = std::make_shared<IResearchRocksDBInvertedIndex>(id, collection, objectId, indexName, std::move(fieldsMeta));
-
-  auto initRes  = index->init([this](irs::directory& dir) {
-    auto& selector = _server.getFeature<EngineSelectorFeature>();
-    TRI_ASSERT(selector.isRocksDB());
-    auto& engine = selector.engine<RocksDBEngine>();
-    auto* encryption = engine.encryptionProvider();
-    if (encryption) {
-      dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
-                                                          engine.rocksDBOptions());
-    }
-  });
-
-  // separate call as here object should be fully constructed and could be safely used by async tasks
-  initRes = index->properties(indexMeta);
-  if (initRes.fail()) {
-    LOG_TOPIC("9c949", ERR, iresearch::TOPIC) <<
-      std::string("failed to initialize index from definition, error setting index properties ")
-      << initRes.errorMessage();
-    return nullptr;
-  }
-  return index;
-}
-
-Result IResearchRocksDBInvertedIndexFactory::normalize(velocypack::Builder& normalized, velocypack::Slice definition,
-                                                bool isCreation, TRI_vocbase_t const& vocbase) const {
-  TRI_ASSERT(normalized.isOpenObject());
-
-  auto res  =  IndexFactory::validateFieldsDefinition(definition, 1, SIZE_MAX, true);
-  if (res.fail()) {
-    return res;
-  }
-
-  IResearchViewMeta tmpMeta;
-  std::string errField;
-  if (!tmpMeta.init(definition, errField)) {
-     return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        errField.empty()
-        ? (std::string("failed to initialize index from definition: ") + definition.toString())
-        : (std::string("failed to initialize index from definition, error in attribute '")
-          + errField + "': " + definition.toString()));
-  }
-  if (!tmpMeta.json(normalized)) {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("failed to initialize index from definition: ") + definition.toString());
-  }
-  IResearchLinkMeta tmpLinkMeta;
-  if (!tmpLinkMeta.init(_server, definition, false, errField,
-                        vocbase.name(), IResearchLinkMeta::DEFAULT(), nullptr, true)) {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        errField.empty()
-        ? (std::string("failed to initialize index from definition: ") + definition.toString())
-        : (std::string("failed to initialize index from definition, error in attribute '")
-          + errField + "': " + definition.toString()));
-  }
-  if (!tmpLinkMeta.json(_server, normalized, false, nullptr, &vocbase, nullptr, true)) {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("failed to initialize index from definition: ") + definition.toString());
-  }
-  auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
-  if (nameSlice.isString() && nameSlice.getStringLength() > 0) {
-    normalized.add(arangodb::StaticStrings::IndexName, nameSlice);
-  } else if (!nameSlice.isNone()) {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("failed to initialize index from definition, error in attribute '")
-        + arangodb::StaticStrings::IndexName + "': "
-        + definition.toString());
-  }
-
-  normalized.add(arangodb::StaticStrings::IndexType,
-                 arangodb::velocypack::Value(arangodb::Index::oldtypeName(
-                     arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX)));
-
-  if (isCreation && !arangodb::ServerState::instance()->isCoordinator() &&
-      !definition.hasKey(arangodb::StaticStrings::ObjectId)) {
-    normalized.add(arangodb::StaticStrings::ObjectId, VPackValue(std::to_string(TRI_NewTickServer())));
-  }
-  normalized.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
-  normalized.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
-
-  // FIXME: make indexing true background?
-  bool bck = basics::VelocyPackHelper::getBooleanValue(definition,
-                                                       arangodb::StaticStrings::IndexInBackground,
-                                                       false);
-  normalized.add(arangodb::StaticStrings::IndexInBackground, VPackValue(bck));
-
-  return res;
-}
-
-std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::fields(IResearchLinkMeta const& meta) {
-  std::vector<std::vector<arangodb::basics::AttributeName>> res;
-  FieldsBuilder fb(res);
-  visitFields({0, irs::hashed_string_ref::NIL}, meta, fb);
-  return res;
-}
-
-Result IResearchInvertedIndex::init(IResearchDataStore::InitCallback const& initCallback /*= {}*/) {
-  auto const& storedValuesColumns = _meta._storedValues.columns();
-  TRI_ASSERT(_meta._sortCompression);
-  auto const primarySortCompression = _meta._sortCompression
-      ? _meta._sortCompression
-      : getDefaultCompression();
-  auto const res = initDataStore(initCallback, isSorted(), storedValuesColumns, primarySortCompression);
-
-  if (!res.ok()) {
-    return res;
-  }
-  return {};
-}
-
-IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
-    IndexId id, LogicalCollection& collection, uint64_t objectId, std::string const& name, IResearchLinkMeta&& meta)
-    : IResearchInvertedIndex(id, collection, std::move(meta)),
-      RocksDBIndex(id, collection, name, IResearchInvertedIndex::fields(_meta), false, false,
-                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid), objectId, false) {}
-
-void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
-                                                 std::underlying_type<Index::Serialize>::type flags) const {
-  auto const forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
-  VPackObjectBuilder objectBuilder(&builder);
-  IResearchInvertedIndex::toVelocyPack(IResearchDataStore::collection().vocbase().server(),
-                                       &IResearchDataStore::collection().vocbase(), builder, forPersistence);
-  if (forPersistence) {
-    TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
-    builder.add(arangodb::StaticStrings::ObjectId, VPackValue(std::to_string(objectId())));
-  }
-  // can't use Index::toVelocyPack as it will try to output 'fields'
-  // but we have custom storage format
-  builder.add(arangodb::StaticStrings::IndexId,
-              arangodb::velocypack::Value(std::to_string(_iid.id())));
-  builder.add(arangodb::StaticStrings::IndexType,
-              arangodb::velocypack::Value(oldtypeName(type())));
-  builder.add(arangodb::StaticStrings::IndexName, arangodb::velocypack::Value(name()));
-  builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
-  builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
-}
-
-bool IResearchRocksDBInvertedIndex::matchesDefinition(arangodb::velocypack::Slice const& other) const {
-  TRI_ASSERT(other.isObject());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto typeSlice = other.get(arangodb::StaticStrings::IndexType);
-  TRI_ASSERT(typeSlice.isString());
-  arangodb::velocypack::StringRef typeStr(typeSlice);
-  TRI_ASSERT(typeStr == oldtypeName());
-#endif
-  auto value = other.get(arangodb::StaticStrings::IndexId);
-
-  if (!value.isNone()) {
-    // We already have an id.
-    if (!value.isString()) {
-      // Invalid ID
-      return false;
-    }
-    // Short circuit. If id is correct the index is identical.
-    arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(IResearchDataStore::id().id());
-  }
-  return IResearchInvertedIndex::matchesFieldsDefinition(other);
-}
-
 } // namespace iresearch
 } // namespace arangodb
