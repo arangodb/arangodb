@@ -40,6 +40,7 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_log;
 
 replicated_log::QuorumData::QuorumData(LogIndex index, LogTerm term,
                                        std::vector<ParticipantId> quorum)
@@ -184,8 +185,7 @@ std::string arangodb::replication2::replicated_log::to_string(replicated_log::Ap
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-auto arangodb::replication2::replicated_log::getCurrentTerm(LogStatus const& status) noexcept
-    -> std::optional<LogTerm> {
+auto LogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {
   return std::visit(
       overload{[&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
                  return std::nullopt;
@@ -196,10 +196,10 @@ auto arangodb::replication2::replicated_log::getCurrentTerm(LogStatus const& sta
                [&](replicated_log::FollowerStatus const& s) -> std::optional<LogTerm> {
                  return s.term;
                }},
-      status);
+      _variant);
 }
 
-auto arangodb::replication2::replicated_log::getLocalStatistics(LogStatus const& status) noexcept
+auto LogStatus::getLocalStatistics() const noexcept
     -> std::optional<LogStatistics> {
   return std::visit(
       overload{[&](replicated_log::UnconfiguredStatus const& s) -> std::optional<LogStatistics> {
@@ -211,16 +211,16 @@ auto arangodb::replication2::replicated_log::getLocalStatistics(LogStatus const&
                [&](replicated_log::FollowerStatus const& s) -> std::optional<LogStatistics> {
                  return s.local;
                }},
-      status);
+      _variant);
 }
 
-auto replicated_log::statusFromVelocyPack(VPackSlice slice) -> replicated_log::LogStatus {
+auto LogStatus::fromVelocyPack(VPackSlice slice) -> LogStatus {
   auto role = slice.get("role");
   if (role.isEqualString(StaticStrings::Leader)) {
-    return LeaderStatus::fromVelocyPack(slice);
+    return LogStatus{LeaderStatus::fromVelocyPack(slice)};
   } else if (role.isEqualString(StaticStrings::Follower)) {
-    return FollowerStatus::fromVelocyPack(slice);
+    return LogStatus{FollowerStatus::fromVelocyPack(slice)};
   } else {
-    return UnconfiguredStatus::fromVelocyPack(slice);
+    return LogStatus{UnconfiguredStatus::fromVelocyPack(slice)};
   }
 }

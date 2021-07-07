@@ -62,5 +62,5 @@ auto replicated_log::LogParticipantI::waitForIterator(LogIndex index)
 }
 
 auto replicated_log::LogParticipantI::getTerm() const noexcept -> std::optional<LogTerm> {
-  return getCurrentTerm(getStatus());
+  return getStatus().getCurrentTerm();
 }

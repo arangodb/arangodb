@@ -169,7 +169,6 @@ auto replication2::operator<<(std::ostream& os, const TermIndexPair& pair) -> st
     return os << '(' << pair.term << ':' << pair.index << ')';
 }
 
-
 LogConfig::LogConfig(VPackSlice slice) {
   waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
   writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();

@@ -563,7 +563,7 @@ auto arangodb::maintenance::diffReplicatedLogs(
         // check if the term is the same
         bool const requiresUpdate = std::invoke([&, &status = localIt->second, &spec = spec] {
           if (spec.currentTerm.has_value()) {
-            auto currentTerm = getCurrentTerm(status);
+            auto currentTerm = status.getCurrentTerm();
             return !currentTerm.has_value() || *currentTerm != spec.currentTerm->term;
           }
           return false;
@@ -1542,7 +1542,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           //  {"currentTerm": currentTerm, "spearHead": {"index": last-index, "term": last-term}}
           // and precondition
           //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
-          auto localTerm = getCurrentTerm(status);
+          auto localTerm = status.getCurrentTerm();
           if (!localTerm.has_value()) {
             continue;
           }
@@ -1573,7 +1573,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
           replication2::agency::LogCurrentLocalState localState;
           localState.term = localTerm.value();
-          localState.spearhead = getLocalStatistics(status).value().spearHead;
+          localState.spearhead = status.getLocalStatistics().value().spearHead;
 
           using namespace cluster::paths;
           auto reportPath =

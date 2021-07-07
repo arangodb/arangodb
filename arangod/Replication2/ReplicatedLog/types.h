@@ -94,12 +94,25 @@ struct UnconfiguredStatus {
   static auto fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus;
 };
 
-using LogStatus = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
+struct LogStatus {
+  using VariantType = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
 
-auto statusFromVelocyPack(velocypack::Slice slice) -> LogStatus;
+  // default constructs as unconfigured status
+  LogStatus() = default;
+  explicit LogStatus(UnconfiguredStatus) noexcept;
+  explicit LogStatus(LeaderStatus) noexcept;
+  explicit LogStatus(FollowerStatus) noexcept;
 
-auto getCurrentTerm(LogStatus const&) noexcept -> std::optional<LogTerm>;
-auto getLocalStatistics(LogStatus const&) noexcept -> std::optional<LogStatistics>;
+  [[nodiscard]] auto getVariant() const noexcept -> VariantType const&;
+
+  [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
+  [[nodiscard]] auto getLocalStatistics() const noexcept -> std::optional<LogStatistics>;
+
+  static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
+  void toVelocyPack(velocypack::Builder& builder) const;
+ private:
+  VariantType _variant;
+};
 
 struct AbstractFollower {
   virtual ~AbstractFollower() = default;

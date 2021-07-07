@@ -126,7 +126,7 @@ auto sendLogStatusRequest(network::ConnectionPool *pool, std::string const& serv
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
           THROW_ARANGO_EXCEPTION(resp.combinedResult());
         }
-        return replication2::replicated_log::statusFromVelocyPack(resp.slice().get("result"));
+        return replication2::replicated_log::LogStatus::fromVelocyPack(resp.slice().get("result"));
       });
 }
 
@@ -493,7 +493,7 @@ RestStatus RestLogHandler::handleGet(const ReplicatedLogMethods& methods) {
 
       for (auto const& [idx, status] : logs) {
         builder.add(VPackValue(std::to_string(idx.id())));
-        std::visit([&](auto const& status) { status.toVelocyPack(builder); }, status);
+        status.toVelocyPack(builder);
       }
     }
 
@@ -505,7 +505,7 @@ RestStatus RestLogHandler::handleGetLog(const ReplicatedLogMethods& methods,
                                         replication2::LogId logId) {
   return waitForFuture(methods.getLogStatus(logId).thenValue([this](auto&& status) {
     VPackBuilder buffer;
-    std::visit([&](auto const& status) { status.toVelocyPack(buffer); }, status);
+    status.toVelocyPack(buffer);
     generateOk(rest::ResponseCode::OK, buffer.slice());
   }));
 }
