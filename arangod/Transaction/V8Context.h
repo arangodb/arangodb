@@ -42,9 +42,6 @@ class V8Context final : public Context {
 
   /// @brief destroy the context
   ~V8Context() noexcept;
-  
-  /// @brief return the context type
-  Context::Type type() const override { return Context::Type::V8Context; }
 
   /// @brief order a custom type handler
   arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;

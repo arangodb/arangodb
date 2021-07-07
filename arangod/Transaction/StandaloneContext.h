@@ -41,9 +41,6 @@ struct StandaloneContext final : public SmartContext {
   
   explicit StandaloneContext(TRI_vocbase_t& vocbase);
   
-  /// @brief return the context type
-  Context::Type type() const override { return Context::Type::StandaloneContext; }
-  
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
                                                  bool& responsibleForCommit) override;

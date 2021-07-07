@@ -56,14 +56,6 @@ struct Options;
 
 class Context {
  public:
-  enum class Type {
-    StandaloneContext,
-    V8Context,
-    SmartContext,
-    ManagedContext,
-    AQLStandaloneContext,
-  };
-
   Context(Context const&) = delete;
   Context& operator=(Context const&) = delete;
 
@@ -74,9 +66,6 @@ class Context {
  public:
   /// @brief destroy the context
   virtual ~Context();
-
-  /// @brief return the context type
-  virtual Type type() const = 0;
   
   /// @brief destroys objects owned by the context,
   /// this can be called multiple times.
@@ -119,6 +108,7 @@ class Context {
                               bool isReadOnlyTransaction,
                               bool isFollowerTranaction) noexcept;
 
+ public:
   /// @brief get a custom type handler
   virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
 
