@@ -1,6 +1,27 @@
 devel
 -----
 
+* Add following term ids, which prevents old synchronous replication requests
+  to be accepted after a follower was dropped and has gotten in sync again.
+  This makes the chaos tests which delay synchronous replication requests
+  more reliable and prevent inconsistent shard replicas under bad network
+  conditions.
+
+* Enable process metrics on agent instances by default. Previously, some 
+  metrics (including the metrics starting with `arangodb_process` prefix) were
+  not returned by agent instances.
+
+* Fix potential memleak in Pregel conductor garbage collection.
+
+* Added a retry loop for arangorestore during the initial connection phase. The
+  number of retries defaults to 3 and can be configured using
+  --initial-connect-retries.
+
+* Fix numeric overflow in AQL WINDOW node cost estimation if the number of
+  preceding rows was set to `unbounded`.
+
+* Updated ArangoDB Starter to 0.15.1-preview-3.
+
 * Added garbage collection for finished and failed Pregel conductors.
   Previously, Pregel executions that finished successfully or unsuccessfully
   remained in memory until being explicitly canceled. This prevented a 
