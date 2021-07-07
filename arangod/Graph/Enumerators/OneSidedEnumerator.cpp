@@ -56,8 +56,8 @@ OneSidedEnumerator<Configuration>::OneSidedEnumerator(Provider&& forwardProvider
     : _options(std::move(options)),
       _queue(resourceMonitor),
       _provider(std::move(forwardProvider)),
-      _validator(_provider, _interior, std::move(validatorOptions)),
-      _interior(resourceMonitor) {}
+      _interior(resourceMonitor),
+      _validator(_provider, _interior, std::move(validatorOptions)) {}
 
 template <class Configuration>
 OneSidedEnumerator<Configuration>::~OneSidedEnumerator() = default;

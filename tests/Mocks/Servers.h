@@ -209,7 +209,16 @@ class MockClusterServer : public MockServer,
   std::shared_ptr<LogicalCollection> createCollection(
       std::string const& dbName, std::string collectionName,
       std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
-      TRI_col_type_e type);
+      TRI_col_type_e type,
+      VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
+
+  void buildCollectionProperties(VPackBuilder& props, std::string const& collectionName,
+                                 std::string const& cid, TRI_col_type_e type,
+                                 VPackSlice additionalProperties);
+
+  void injectCollectionToAgency(std::string const& dbName, VPackBuilder& velocy,
+                                DataSourceId const& planId,
+                                std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs);
 
   std::unique_ptr<arangodb::aql::Query> createFakeQuery(
       bool activateTracing = false, std::string queryString = "",
@@ -231,7 +240,6 @@ class MockClusterServer : public MockServer,
   // create database and only after collections
   // will be populated in plan.
   void agencyCreateCollections(std::string const& name);
-
   void agencyDropDatabase(std::string const& name);
 
  protected:
