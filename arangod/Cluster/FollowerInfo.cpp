@@ -323,7 +323,7 @@ void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyn
     // are that Current has been changed in the meantime. The assertion should remain here
     // to detect any errors during CI.
     if (myEntry == failoverCandidates->end()) {
-      LOG_TOPIC("c9422", WARNING, Logger::CLUSTER)
+      LOG_TOPIC("c9422", WARN, Logger::CLUSTER)
           << "invalid failover candidates for FollowerInfo of shard - "
           << "can happen, when scheduling and starting the leadership "
           << "takeover are timewise apart, so that the Current entry has expired. "
