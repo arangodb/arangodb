@@ -261,6 +261,7 @@ void PregelFeature::scheduleGarbageCollection() {
                                    "No thread available to queue Pregel garbage collection");
   }
 
+  MUTEX_LOCKER(guard, _mutex);
   _gcHandle = std::move(handle);
 }
 
@@ -278,9 +279,10 @@ void PregelFeature::start() {
 
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
-  _gcHandle.reset();
   
   MUTEX_LOCKER(guard, _mutex);
+  _gcHandle.reset();
+
   // cancel all conductors and workers
   for (auto& it : _conductors) {
     it.second.conductor->cancel();
@@ -291,6 +293,8 @@ void PregelFeature::beginShutdown() {
 }
 
 void PregelFeature::unprepare() {
+  garbageCollectConductors();
+  
   MUTEX_LOCKER(guard, _mutex);
   decltype(_conductors) cs = std::move(_conductors);
   decltype(_workers) ws = std::move(_workers);
@@ -336,6 +340,7 @@ void PregelFeature::garbageCollectConductors() try {
     if (it->second.conductor->canBeGarbageCollected()) {
       uint64_t executionNumber = it->first;
 
+      it->second.conductor->cancel();
       it = _conductors.erase(it);
       
       _workers.erase(executionNumber);
