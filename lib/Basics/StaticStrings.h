@@ -312,6 +312,7 @@ class StaticStrings {
   static std::string const RevisionTreeRanges;
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
+  static std::string const FollowingTermId;
 
   // generic attribute names
   static std::string const AttrCoordinator;

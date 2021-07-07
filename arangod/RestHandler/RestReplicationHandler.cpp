@@ -2567,6 +2567,10 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   VPackSlice const leaderIdSlice = body.get("leaderId");
   VPackSlice const oldLeaderIdSlice = body.get("oldLeaderId");
   VPackSlice const shard = body.get("shard");
+  VPackSlice const followingTermId = body.get(StaticStrings::FollowingTermId);
+  // Note that we tolerate if followingTermId is not present or not a number
+  // for upgrade scenarios. If the new leader does not send it, it will also
+  // not send it in the option IsSynchronousReplication.
   if (!leaderIdSlice.isString() || !shard.isString() || !oldLeaderIdSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "'leaderId' and 'shard' attributes must be strings");
@@ -2600,7 +2604,12 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
       return;
     }
 
-    col->followers()->setTheLeader(leaderId);
+    if (followingTermId.isNumber()) {
+      col->followers()->setTheLeader(leaderId + "_" +
+          StringUtils::itoa(followingTermId.getNumber<uint64_t>()));
+    } else {
+      col->followers()->setTheLeader(leaderId);
+    }
   }
 
   VPackBuilder b;
@@ -2729,6 +2738,10 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   {
     VPackObjectBuilder bb(&b);
     b.add(StaticStrings::Error, VPackValue(false));
+    if (!serverId.empty()) {
+      b.add(StaticStrings::FollowingTermId,
+            VPackValue(col->followers()->newFollowingTermId(serverId)));
+    }
   }
 
   LOG_TOPIC("61a9d", DEBUG, Logger::REPLICATION)
