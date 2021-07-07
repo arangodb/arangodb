@@ -525,9 +525,9 @@ void ExecutionNode::allToVelocyPack(VPackBuilder& builder, unsigned flags) const
   struct NodeSerializer : WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
     NodeSerializer(VPackBuilder& builder, unsigned flags)
         : builder(builder), flags(flags) {}
-    virtual void after(ExecutionNode* n) {
+    void after(ExecutionNode* n) override {
       n->toVelocyPack(builder, flags);
-    };
+    }
     VPackBuilder& builder;
     unsigned flags;
   } nodeSerializer{builder, flags};

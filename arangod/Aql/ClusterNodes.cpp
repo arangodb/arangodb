@@ -302,7 +302,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
                                                                   std::move(infos));
 }
 
-/// @brief doToVelocyPack, for DistributedNode
+/// @brief doToVelocyPack, for DistributeNode
 void DistributeNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // call base class method
   ScatterNode::doToVelocyPack(builder, flags);
