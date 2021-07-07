@@ -553,10 +553,6 @@ std::unique_ptr<arangodb::aql::Query> MockClusterServer::createFakeQuery(
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
-  //  auto engine =
-  //      std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
-  //  query->setEngine(std::move(engine));
-
   return query;
 }
 
