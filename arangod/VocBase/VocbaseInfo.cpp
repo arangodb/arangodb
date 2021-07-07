@@ -304,6 +304,18 @@ Result CreateDatabaseInfo::checkOptions() {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
+  if (_replicationVersion == replication::Version::TWO && !replication2::EnableReplication2) {
+    LOG_TOPIC("8fdd7", ERR, Logger::REPLICATION2)
+        << "Replication version 2 is disabled in this binary, but loading a "
+           "version 2 database "
+        << "(named '" << _name << "'). "
+        << "Creating such databases is disabled. Loading a version 2 database "
+           "that was created with another binary will work, but it is strongly "
+           "discouraged to use it in production. Please dump the data, and "
+           "recreate the database with replication version 1 (the default), "
+           "and then restore the data.";
+  }
+
   return Result();
 }
 
@@ -390,12 +402,6 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
       auto res = replication::parseVersion(replicationVersionSlice);
       if (res.ok()) {
         auto version = res.get();
-        if (version == replication::Version::TWO && !replication2::EnableReplication2) {
-          ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_NOT_IMPLEMENTED,
-              "Replication2 is disabled, but trying to load a version 2 "
-              "database.");
-        }
 
         vocbaseOptions.replicationVersion = version;
       } else {

@@ -22,10 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Databases.h"
-#include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Common.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -298,6 +299,16 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
 
   CreateDatabaseInfo createInfo(server, exec);
   arangodb::Result res = createInfo.load(dbName, options, users);
+
+  if (createInfo.replicationVersion() == replication::Version::TWO &&
+      !replication2::EnableReplication2) {
+    using namespace std::string_view_literals;
+    auto const message = R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
+    LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
+    // Should not happen during testing
+    TRI_ASSERT(false);
+    return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
+  }
 
   if (!res.ok()) {
     events::CreateDatabase(dbName, res, exec);
