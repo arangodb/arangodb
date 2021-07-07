@@ -159,8 +159,8 @@ class Manager final {
   Result beginTransaction(transaction::Hints hints, std::shared_ptr<TransactionState>& state);
 
   /// @brief lease the transaction, increases nesting
-  std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid, AccessMode::Type mode, bool isSideUser = false);
-  void returnManagedTrx(TransactionId, bool isSideUser = false) noexcept;
+  std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid, AccessMode::Type mode, bool isSideUser);
+  void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
   
   /// @brief get the meta transasction state
   transaction::Status getManagedTrxStatus(TransactionId, std::string const& database) const;

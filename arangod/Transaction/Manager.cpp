@@ -893,7 +893,7 @@ transaction::Status Manager::getManagedTrxStatus(TransactionId tid,
 Result Manager::statusChangeWithTimeout(TransactionId tid, std::string const& database,
                                         transaction::Status status) {
   double startTime = 0.0;
-  constexpr double maxWaitTime = 2.0;
+  constexpr double maxWaitTime = 3.0;
   Result res;
   while (true) {
     res = updateTransaction(tid, status, false, database);
