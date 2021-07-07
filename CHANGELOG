@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix ArangoAgency::version(), which always returned an empty string instead
+  of the agency's correctly reported version. This also fixes the agency
+  version in the startup log messages of the cluster.
+
 * Fixed an issue in index selection, when the selectivty estimate of another
   prefix index was used without checking if the other index covered the
   FILTER condition.
