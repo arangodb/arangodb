@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix ArangoAgency::version(), which always returned an empty string instead
+  of the agency's correctly reported version. This also fixes the agency
+  version in the startup log messages of the cluster.
+
 * Add following term ids, which prevents old synchronous replication requests
   to be accepted after a follower was dropped and has gotten in sync again.
   This makes the chaos tests which delay synchronous replication requests
