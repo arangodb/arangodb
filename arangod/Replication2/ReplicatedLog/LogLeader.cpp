@@ -720,7 +720,9 @@ auto replicated_log::LogLeader::getReplicatedLogSnapshot() const -> InMemoryLog:
 
 auto replicated_log::LogLeader::waitForIterator(LogIndex index)
     -> replicated_log::LogParticipantI::WaitForIteratorFuture {
-  TRI_ASSERT(index != LogIndex{0});
+  if (index == LogIndex{0}) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid parameter; log index 0 is invalid");
+  }
   return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
     return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leaderData) {
       return leaderData.getLogIterator(LogIndex{index.value - 1});

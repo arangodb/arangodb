@@ -83,11 +83,6 @@ struct envelope {
     read_trx(read_trx&&) = default;
     read_trx& operator=(read_trx&&) = default;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // if this assertion triggers you forgot to call `end()`
-    ~read_trx() { /* TRI_ASSERT(_builder == nullptr); */ }
-#endif
-
    private:
     friend envelope;
     read_trx(builder_ptr b) : _builder(std::move(b)) { _builder->openArray(); }
@@ -141,11 +136,6 @@ struct envelope {
     }
     precs_trx(precs_trx&&) = default;
     precs_trx& operator=(precs_trx&&) = default;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // if this assertion triggers you forgot to call `end()`
-    ~precs_trx() {  /* TRI_ASSERT(_builder == nullptr); */ }
-#endif
 
    private:
     friend write_trx;
@@ -221,11 +211,6 @@ struct envelope {
     write_trx(write_trx&&) = default;
     write_trx& operator=(write_trx&&) = default;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // if this assertion triggers you forgot to call `end()`
-    ~write_trx() {  /* TRI_ASSERT(_builder == nullptr); */ }
-#endif
-
     precs_trx precs() { return precs_trx(std::move(_builder)); }
 
    private:
@@ -252,12 +237,7 @@ struct envelope {
     b.openArray();
     return envelope(&b);
   }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // if this assertion triggers you forgot to call `done()`
-    ~envelope() {
-      // TRI_ASSERT(_builder == nullptr);
-    }
-#endif
+
  private:
   envelope(VPackBuilder* b) : _builder(b) {}
   builder_ptr _builder;

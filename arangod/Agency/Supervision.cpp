@@ -2292,7 +2292,7 @@ void Supervision::checkReplicatedLogs() {
                      return arangodb::replication2::agency::methods::updateElectionResult(
                          std::move(envelope), dbName, spec.id, newElection);
                    },
-                   [&](auto) {
+                   [&](auto&&) {
                      return std::move(envelope);  // do nothing
                    }},
           newTermSpec);
