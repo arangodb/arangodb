@@ -85,6 +85,23 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
 #endif
 }
 
+MeasureTimeGuard::MeasureTimeGuard(std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> histogram) noexcept
+    : _start(std::chrono::steady_clock::now()), _histogram(std::move(histogram)) {}
+
+void MeasureTimeGuard::fire() {
+  auto const endTime = std::chrono::steady_clock::now();
+  if (_histogram) {
+    auto const duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(endTime - _start);
+    _histogram->count(duration.count());
+    _histogram.reset();
+  }
+}
+
+MeasureTimeGuard::~MeasureTimeGuard() { fire(); }
+
 template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(
     arangodb::MetricsFeature*);
 template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(std::nullptr_t);
+
+

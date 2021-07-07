@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <chrono>
 
 class Counter;
 template <typename T>
@@ -65,6 +66,18 @@ struct ReplicatedLogMetrics {
   std::shared_ptr<Counter> const replicatedLogStartedFollowingNumber;
   std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> const replicatedLogInsertsBytes;
   std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> const replicatedLogInsertsRtt;
+};
+
+struct MeasureTimeGuard {
+  explicit MeasureTimeGuard(std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> histogram) noexcept;
+  MeasureTimeGuard(MeasureTimeGuard const&) = delete;
+  MeasureTimeGuard(MeasureTimeGuard&&) = default;
+  ~MeasureTimeGuard();
+
+  void fire();
+ private:
+  std::chrono::steady_clock::time_point const _start;
+  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> _histogram;
 };
 
 }  // namespace arangodb::replication2::replicated_log

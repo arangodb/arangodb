@@ -62,36 +62,7 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
-
-namespace {
-
-using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
-
-struct MeasureTimeGuard {
-  explicit MeasureTimeGuard(std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> histogram) noexcept
-      : _start(std::chrono::steady_clock::now()), _histogram(std::move(histogram)) {}
-  MeasureTimeGuard(MeasureTimeGuard const&) = delete;
-  MeasureTimeGuard(MeasureTimeGuard&&) = default;
-
-  void fire() {
-    auto const endTime = std::chrono::steady_clock::now();
-    if (_histogram) {
-      auto const duration =
-          std::chrono::duration_cast<std::chrono::microseconds>(endTime - _start);
-      _histogram->count(duration.count());
-      _histogram.reset();
-    }
-  }
-
-  ~MeasureTimeGuard() { fire(); }
-
- private:
-  std::chrono::steady_clock::time_point const _start;
-  std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> _histogram;
-};
-
-}  // namespace
 
 auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
                                                AppendEntriesRequest const& req) const noexcept

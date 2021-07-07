@@ -749,13 +749,7 @@ auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
 
 auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesRequest const request)
     -> futures::Future<AppendEntriesResult> {
-  auto const startTime = std::chrono::steady_clock::now();
-  auto measureTime = DeferredAction{[startTime, metrics = _leader._logMetrics]() noexcept {
-    auto const endTime = std::chrono::steady_clock::now();
-    auto const duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-    metrics->replicatedLogFollowerAppendEntriesRtUs->count(duration.count());
-  }};
+  MeasureTimeGuard measureTimeGuard(_leader._logMetrics->replicatedLogFollowerAppendEntriesRtUs);
 
   auto messageLogContext =
       _logContext.with<logContextKeyMessageId>(request.messageId)
@@ -765,7 +759,9 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
 
   auto returnAppendEntriesResult =
       [term = request.leaderTerm, messageId = request.messageId, logContext = messageLogContext,
-       measureTime = std::move(measureTime)](Result const& res) {
+       measureTime = std::move(measureTimeGuard)](Result const& res) mutable {
+        // fire here because the lambda is destroyed much later in a future
+        measureTime.fire();
         if (!res.ok()) {
           LOG_CTX("fdc87", FATAL, logContext)
               << "local follower failed to write entries: " << res;
@@ -784,19 +780,18 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
     return returnAppendEntriesResult(Result(TRI_ERROR_NO_ERROR));
   }
 
+  auto iter = std::make_unique<ReplicatedLogIterator>(request.entries);
   return _guardedLogCore.doUnderLock([&](auto& logCore) -> futures::Future<AppendEntriesResult> {
     if (logCore == nullptr) {
       LOG_CTX("e9b70", DEBUG, messageLogContext)
           << "local follower received append entries although the log core is "
              "moved away.";
-      return AppendEntriesResult{request.leaderTerm, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                                 AppendEntriesErrorReason::LOST_LOG_CORE,
-                                 request.messageId};
+      return AppendEntriesResult::withRejection(request.leaderTerm, request.messageId,
+                                                AppendEntriesErrorReason::LOST_LOG_CORE);
     }
 
     // TODO The LogCore should know its last log index, and we should assert here
     //      that the AppendEntriesRequest matches it.
-    auto iter = std::make_unique<ReplicatedLogIterator>(request.entries);
     return logCore->insertAsync(std::move(iter), request.waitForSync).thenValue(std::move(returnAppendEntriesResult));
   });
 }
