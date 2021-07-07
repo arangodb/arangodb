@@ -548,7 +548,7 @@ class Runner extends EventEmitter {
     var self = this;
     var rootSuite = this.suite;
 
-    fn = fn || function() {}
+    fn = fn || function() {};
 
     function uncaught(err) {
       self.uncaught(err);

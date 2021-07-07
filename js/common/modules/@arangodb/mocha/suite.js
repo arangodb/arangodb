@@ -324,7 +324,7 @@ class Suite extends EventEmitter {
   }
 }
 
-module.exports = Suite
+module.exports = Suite;
 
 Suite.create = function(parent, title) {
   var suite = new Suite(title, parent.ctx);
@@ -332,4 +332,4 @@ Suite.create = function(parent, title) {
   title = suite.fullTitle();
   parent.addSuite(suite);
   return suite;
-}
+};

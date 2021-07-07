@@ -16,7 +16,7 @@ exports.clean = function clean(test) {
     currentRetry: test.currentRetry(),
     err: cleanCycles(err)
   };
-}
+};
 
 function cleanCycles(obj) {
   var cache = [];
